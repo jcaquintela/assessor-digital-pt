@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 
-export const Route = createFileRoute("/_admin/utilizadores")({
+export const Route = createFileRoute("/admin/utilizadores")({
   head: () => ({ meta: [{ title: "Admin — Utilizadores" }] }),
   component: UsersPage,
 });

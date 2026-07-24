@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getAdminOverview } from "@/lib/admin.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export const Route = createFileRoute("/_admin/")({
+export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [{ title: "Admin — Visão geral" }] }),
   component: OverviewPage,
 });
