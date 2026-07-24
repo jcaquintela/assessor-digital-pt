@@ -17,6 +17,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizadores'
+import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
@@ -72,6 +73,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminUtilizadoresRoute = AdminUtilizadoresRouteImport.update({
   id: '/utilizadores',
   path: '/utilizadores',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSubscricoesRoute = AdminSubscricoesRouteImport.update({
+  id: '/subscricoes',
+  path: '/subscricoes',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminSegurancaRoute = AdminSegurancaRouteImport.update({
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
+  '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
+  '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -240,6 +248,7 @@ export interface FileRoutesById {
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
+  '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -268,6 +277,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/funcionalidades'
     | '/admin/seguranca'
+    | '/admin/subscricoes'
     | '/admin/utilizadores'
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/funcionalidades'
     | '/admin/seguranca'
+    | '/admin/subscricoes'
     | '/admin/utilizadores'
     | '/admin'
     | '/.mcp/invoke-tool/$tool'
@@ -320,6 +331,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/funcionalidades'
     | '/admin/seguranca'
+    | '/admin/subscricoes'
     | '/admin/utilizadores'
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
@@ -393,6 +405,13 @@ declare module '@tanstack/react-router' {
       path: '/utilizadores'
       fullPath: '/admin/utilizadores'
       preLoaderRoute: typeof AdminUtilizadoresRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/subscricoes': {
+      id: '/admin/subscricoes'
+      path: '/subscricoes'
+      fullPath: '/admin/subscricoes'
+      preLoaderRoute: typeof AdminSubscricoesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/seguranca': {
@@ -552,6 +571,7 @@ interface AdminRouteRouteChildren {
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
   AdminSegurancaRoute: typeof AdminSegurancaRoute
+  AdminSubscricoesRoute: typeof AdminSubscricoesRoute
   AdminUtilizadoresRoute: typeof AdminUtilizadoresRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -560,6 +580,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
   AdminSegurancaRoute: AdminSegurancaRoute,
+  AdminSubscricoesRoute: AdminSubscricoesRoute,
   AdminUtilizadoresRoute: AdminUtilizadoresRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
