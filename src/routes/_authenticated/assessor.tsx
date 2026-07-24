@@ -448,7 +448,7 @@ function PessoaPicker({ nome, pessoaId, onChange, store }: {
   const criar = async () => {
     setCriando(true);
     try {
-      const p = await store.addPessoa({ nome: nome.trim(), relacao: "Potencial" });
+      const p = await store.addPessoa({ nome: nome.trim(), relacao: "Potencial", telefone: "", email: "", resumo: "" } as never);
       if (p) onChange(p.nome, p.id);
     } catch (e) { toast.error((e as Error).message); }
     finally { setCriando(false); }
