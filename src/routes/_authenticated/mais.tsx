@@ -3,7 +3,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, CalendarDays, ChevronRight, FileText, Settings, Users, Wallet, Briefcase } from "lucide-react";
 
-export const Route = createFileRoute("/mais")({
+export const Route = createFileRoute("/_authenticated/mais")({
   head: () => ({
     meta: [
       { title: "Mais — Assessor do Consultor" },

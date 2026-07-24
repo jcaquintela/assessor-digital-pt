@@ -8,7 +8,7 @@ import { formatDataHora } from "@/lib/demo-data";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/calendario")({
+export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
     meta: [
       { title: "Calendário — Assessor do Consultor" },

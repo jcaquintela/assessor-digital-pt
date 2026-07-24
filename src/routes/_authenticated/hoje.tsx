@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CalendarClock, CheckCircle2, Clock, Sparkles } from "lucide-react";
 
-export const Route = createFileRoute("/hoje")({
+export const Route = createFileRoute("/_authenticated/hoje")({
   head: () => ({
     meta: [
       { title: "Hoje — Assessor do Consultor" },

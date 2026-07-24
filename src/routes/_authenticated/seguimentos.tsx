@@ -10,7 +10,7 @@ import { formatDataHora, type Seguimento } from "@/lib/demo-data";
 import { Calendar, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/seguimentos")({
+export const Route = createFileRoute("/_authenticated/seguimentos")({
   head: () => ({
     meta: [
       { title: "Seguimentos — Assessor do Consultor" },

@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/assessor")({
+export const Route = createFileRoute("/_authenticated/assessor")({
   head: () => ({
     meta: [
       { title: "Assessor — chat" },
