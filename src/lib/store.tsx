@@ -186,6 +186,47 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("follow_ups");
   }, [qc]);
 
+  const addSeguimentoReturning = useCallback(async (s: Omit<Seguimento, "id">) => {
+    const uid = await currentUserId();
+    const { data, error } = await supabase.from("follow_ups").insert({
+      user_id: uid,
+      type: s.tipo,
+      title: s.titulo,
+      due_date: s.data,
+      due_time: s.hora ?? null,
+      person_id: s.pessoaId ?? null,
+      opportunity_id: s.oportunidadeId ?? null,
+      status: s.estado ?? "Pendente",
+      priority: s.prioridade ?? "Média",
+      notes: s.notas ?? null,
+    }).select("*").single();
+    if (error) throw error;
+    invalidate("follow_ups");
+    return data ? toSeguimento(data) : null;
+  }, [qc]);
+
+  const atualizarSeguimento = useCallback(async (id: string, patch: Partial<Omit<Seguimento, "id">>) => {
+    const p: Record<string, unknown> = {};
+    if (patch.tipo !== undefined) p.type = patch.tipo;
+    if (patch.titulo !== undefined) p.title = patch.titulo;
+    if (patch.data !== undefined) p.due_date = patch.data;
+    if (patch.hora !== undefined) p.due_time = patch.hora;
+    if (patch.pessoaId !== undefined) p.person_id = patch.pessoaId || null;
+    if (patch.oportunidadeId !== undefined) p.opportunity_id = patch.oportunidadeId || null;
+    if (patch.estado !== undefined) p.status = patch.estado;
+    if (patch.prioridade !== undefined) p.priority = patch.prioridade;
+    if (patch.notas !== undefined) p.notes = patch.notas;
+    const { error } = await supabase.from("follow_ups").update(p as never).eq("id", id);
+    if (error) throw error;
+    invalidate("follow_ups");
+  }, [qc]);
+
+  const eliminarSeguimento = useCallback(async (id: string) => {
+    const { error } = await supabase.from("follow_ups").delete().eq("id", id);
+    if (error) throw error;
+    invalidate("follow_ups");
+  }, [qc]);
+
   const concluirSeguimento = useCallback(async (id: string) => {
     const { error } = await supabase.from("follow_ups").update({ status: "Concluído" }).eq("id", id);
     if (error) throw error;
@@ -213,6 +254,36 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("financial_movements");
   }, [qc]);
 
+  const addDespesaReturning = useCallback(async (d: Omit<Despesa, "id"> & { oportunidadeId?: string; imovelId?: string }) => {
+    const uid = await currentUserId();
+    const { data, error } = await supabase.from("financial_movements").insert({
+      user_id: uid,
+      type: "expense",
+      description: d.descricao,
+      category: d.categoria,
+      amount: d.valor,
+      status: "Recebida",
+      movement_date: d.data,
+      opportunity_id: d.oportunidadeId || null,
+      property_id: d.imovelId || null,
+    }).select("id").single();
+    if (error) throw error;
+    invalidate("financial_movements");
+    return data as { id: string } | null;
+  }, [qc]);
+
+  const atualizarMovimento = useCallback(async (id: string, patch: Record<string, unknown>) => {
+    const { error } = await supabase.from("financial_movements").update(patch as never).eq("id", id);
+    if (error) throw error;
+    invalidate("financial_movements");
+  }, [qc]);
+
+  const eliminarMovimento = useCallback(async (id: string) => {
+    const { error } = await supabase.from("financial_movements").delete().eq("id", id);
+    if (error) throw error;
+    invalidate("financial_movements");
+  }, [qc]);
+
   const addComissao = useCallback(async (c: Omit<Comissao, "id">) => {
     const uid = await currentUserId();
     const { error } = await supabase.from("financial_movements").insert({
@@ -228,6 +299,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("financial_movements");
   }, [qc]);
 
+  const addComissaoReturning = useCallback(async (c: Omit<Comissao, "id"> & { descricao?: string }) => {
+    const uid = await currentUserId();
+    const { data, error } = await supabase.from("financial_movements").insert({
+      user_id: uid,
+      type: "commission",
+      description: c.descricao || "Comissão",
+      amount: c.valor,
+      status: c.estado,
+      movement_date: c.data,
+      opportunity_id: c.oportunidadeId || null,
+    }).select("id").single();
+    if (error) throw error;
+    invalidate("financial_movements");
+    return data as { id: string } | null;
+  }, [qc]);
+
   const addEntrada = useCallback(async (e: Omit<EntradaAssessor, "id">) => {
     const uid = await currentUserId();
     const { error } = await supabase.from("interactions").insert({
@@ -240,6 +327,25 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
     if (error) console.error(error);
   }, []);
+
+  const addInteracao = useCallback(async (i: { pessoaId?: string; oportunidadeId?: string; conteudoOriginal: string; resumo?: string; proximaAcao?: string }) => {
+    const uid = await currentUserId();
+    const { error } = await supabase.from("interactions").insert({
+      user_id: uid,
+      source_channel: "web",
+      person_id: i.pessoaId || null,
+      opportunity_id: i.oportunidadeId || null,
+      original_content: i.conteudoOriginal,
+      summary: i.resumo || null,
+      interaction_type: "conversa",
+      occurred_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+    if (i.proximaAcao && i.pessoaId) {
+      await supabase.from("people").update({ next_action: i.proximaAcao } as never).eq("id", i.pessoaId);
+      invalidate("people");
+    }
+  }, [qc]);
 
   const addPessoa = useCallback(async (p: Omit<Pessoa, "id">) => {
     const uid = await currentUserId();
