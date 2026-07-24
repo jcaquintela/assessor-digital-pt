@@ -4,6 +4,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---- Mobile PWA app-shell rules ---- */
+html, body, #root {
+  height: 100%;
+  overscroll-behavior-y: none;
+}
+body {
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+/* Prevent iOS Safari auto-zoom on focus */
+@media (max-width: 767px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+/* Hide mobile bottom nav while the on-screen keyboard is open */
+html[data-keyboard="open"] .mobile-bottom-nav {
+  display: none;
+}
+
 /*
  * Design system definition.
  *
