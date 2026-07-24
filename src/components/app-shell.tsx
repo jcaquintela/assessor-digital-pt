@@ -36,7 +36,7 @@ const mobileNav = [
   { to: "/mais", label: "Mais", icon: MoreHorizontal },
 ] as const;
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, fullBleed = false }: { children: ReactNode; fullBleed?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -77,12 +77,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main */}
-      <main className="pb-24 md:ml-64 md:pb-8">
-        <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">{children}</div>
-      </main>
+      {fullBleed ? (
+        <main className="md:ml-64 md:pb-8">
+          <div className="md:mx-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
+        </main>
+      ) : (
+        <main className="pb-24 md:ml-64 md:pb-8">
+          <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">{children}</div>
+        </main>
+      )}
 
       {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur md:hidden">
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         <div className="mx-auto grid max-w-lg grid-cols-4">
           {mobileNav.map(({ to, label, icon: Icon }) => {
             const active = pathname === to || (to !== "/hoje" && pathname.startsWith(to));
