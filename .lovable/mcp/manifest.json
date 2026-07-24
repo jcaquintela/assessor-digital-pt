@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "assessor-do-consultor-mcp",
+      "version": "0.1.0",
+      "title": "Assessor do Consultor"
+    },
+    "tools": [
+      {
+        "name": "list_pessoas",
+        "title": "Listar pessoas",
+        "description": "Devolve a lista de pessoas (clientes, potenciais, proprietários) do assessor com nome, contactos, relação e resumo.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "description": "Filtro opcional por nome, email ou resumo.",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_oportunidades",
+        "title": "Listar oportunidades",
+        "description": "Devolve as oportunidades do consultor (compra, venda, angariação, etc.) com pessoa associada, estado, valor e próxima ação.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "estado": {
+              "description": "Filtrar por estado exato (ex.: 'Visita', 'Proposta').",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_seguimentos",
+        "title": "Listar seguimentos",
+        "description": "Devolve tarefas e eventos do consultor, filtráveis por âmbito temporal.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "escopo": {
+              "default": "todos",
+              "description": "Âmbito temporal do filtro.",
+              "type": "string",
+              "enum": [
+                "hoje",
+                "semana",
+                "atrasados",
+                "concluidos",
+                "todos"
+              ]
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "briefing_hoje",
+        "title": "Briefing de hoje",
+        "description": "Resumo do dia do consultor: compromissos, tarefas de hoje, atrasados e oportunidades sem próxima ação.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
