@@ -79,8 +79,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
       {/* Main */}
       {fullBleed ? (
         <main className="md:ml-64 md:pb-8">
-          <div className="hidden md:block md:mx-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
-          <div className="md:hidden">{children}</div>
+          <div className="md:mx-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
         </main>
       ) : (
         <main className="pb-24 md:ml-64 md:pb-8">
