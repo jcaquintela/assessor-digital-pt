@@ -9,6 +9,16 @@ html, body, #root {
   height: 100%;
   overscroll-behavior-y: none;
 }
+/* Prevent accidental horizontal overflow on mobile without affecting desktop layout. */
+@media (max-width: 767px) {
+  html, body, #root {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+  img, svg, video, canvas, iframe {
+    max-width: 100%;
+  }
+}
 body {
   -webkit-tap-highlight-color: transparent;
   text-size-adjust: 100%;
