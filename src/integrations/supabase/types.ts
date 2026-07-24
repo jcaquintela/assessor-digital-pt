@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_logs: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          reason: string | null
+          resource_id: string | null
+          resource_type: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      admin_mfa_required: {
+        Row: {
+          required_at: string
+          required_by: string | null
+          user_id: string
+        }
+        Insert: {
+          required_at?: string
+          required_by?: string | null
+          user_id: string
+        }
+        Update: {
+          required_at?: string
+          required_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       assessor_messages: {
         Row: {
           content: string
@@ -44,6 +98,59 @@ export type Database = {
           status?: string | null
           structured_payload?: Json | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      feature_flag_users: {
+        Row: {
+          flag_key: string
+          user_id: string
+        }
+        Insert: {
+          flag_key: string
+          user_id: string
+        }
+        Update: {
+          flag_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_flag_users_flag_key_fkey"
+            columns: ["flag_key"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      feature_flags: {
+        Row: {
+          description: string | null
+          enabled_globally: boolean
+          enabled_plans: string[]
+          key: string
+          rollout_percentage: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          enabled_globally?: boolean
+          enabled_plans?: string[]
+          key: string
+          rollout_percentage?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          enabled_globally?: boolean
+          enabled_plans?: string[]
+          key?: string
+          rollout_percentage?: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -412,15 +519,46 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "consultant" | "support_admin" | "super_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -547,6 +685,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["consultant", "support_admin", "super_admin"],
+    },
   },
 } as const

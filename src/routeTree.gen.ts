@@ -12,8 +12,19 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizadores'
+import { Route as AdminUtilizacaoRouteImport } from './routes/admin/utilizacao'
+import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
+import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
+import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
+import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes'
+import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
+import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
+import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
 import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
 import { Route as AuthenticatedOportunidadesRouteImport } from './routes/_authenticated/oportunidades'
@@ -44,6 +55,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -52,6 +68,56 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminUtilizadoresRoute = AdminUtilizadoresRouteImport.update({
+  id: '/utilizadores',
+  path: '/utilizadores',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminUtilizacaoRoute = AdminUtilizacaoRouteImport.update({
+  id: '/utilizacao',
+  path: '/utilizacao',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSuporteRoute = AdminSuporteRouteImport.update({
+  id: '/suporte',
+  path: '/suporte',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSubscricoesRoute = AdminSubscricoesRouteImport.update({
+  id: '/subscricoes',
+  path: '/subscricoes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSegurancaRoute = AdminSegurancaRouteImport.update({
+  id: '/seguranca',
+  path: '/seguranca',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminIntegracoesRoute = AdminIntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminFuncionalidadesRoute = AdminFuncionalidadesRouteImport.update({
+  id: '/funcionalidades',
+  path: '/funcionalidades',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDefinicoesRoute = AdminDefinicoesRouteImport.update({
+  id: '/definicoes',
+  path: '/definicoes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AuthenticatedSeguimentosRoute =
   AuthenticatedSeguimentosRouteImport.update({
@@ -131,6 +197,7 @@ const Char91DotmcpChar93InvokeToolToolRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -147,6 +214,16 @@ export interface FileRoutesByFullPath {
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
   '/pessoas': typeof AuthenticatedPessoasRoute
   '/seguimentos': typeof AuthenticatedSeguimentosRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/definicoes': typeof AdminDefinicoesRoute
+  '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
+  '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/seguranca': typeof AdminSegurancaRoute
+  '/admin/subscricoes': typeof AdminSubscricoesRoute
+  '/admin/suporte': typeof AdminSuporteRoute
+  '/admin/utilizacao': typeof AdminUtilizacaoRoute
+  '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesByTo {
@@ -167,12 +244,23 @@ export interface FileRoutesByTo {
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
   '/pessoas': typeof AuthenticatedPessoasRoute
   '/seguimentos': typeof AuthenticatedSeguimentosRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/definicoes': typeof AdminDefinicoesRoute
+  '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
+  '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/seguranca': typeof AdminSegurancaRoute
+  '/admin/subscricoes': typeof AdminSubscricoesRoute
+  '/admin/suporte': typeof AdminSuporteRoute
+  '/admin/utilizacao': typeof AdminUtilizacaoRoute
+  '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/admin': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -189,12 +277,23 @@ export interface FileRoutesById {
   '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRoute
   '/_authenticated/pessoas': typeof AuthenticatedPessoasRoute
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/definicoes': typeof AdminDefinicoesRoute
+  '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
+  '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/seguranca': typeof AdminSegurancaRoute
+  '/admin/subscricoes': typeof AdminSubscricoesRoute
+  '/admin/suporte': typeof AdminSuporteRoute
+  '/admin/utilizacao': typeof AdminUtilizacaoRoute
+  '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/auth'
     | '/mcp'
     | '/reset-password'
@@ -211,6 +310,16 @@ export interface FileRouteTypes {
     | '/oportunidades'
     | '/pessoas'
     | '/seguimentos'
+    | '/admin/auditoria'
+    | '/admin/definicoes'
+    | '/admin/funcionalidades'
+    | '/admin/integracoes'
+    | '/admin/seguranca'
+    | '/admin/subscricoes'
+    | '/admin/suporte'
+    | '/admin/utilizacao'
+    | '/admin/utilizadores'
+    | '/admin/'
     | '/.mcp/invoke-tool/$tool'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -231,11 +340,22 @@ export interface FileRouteTypes {
     | '/oportunidades'
     | '/pessoas'
     | '/seguimentos'
+    | '/admin/auditoria'
+    | '/admin/definicoes'
+    | '/admin/funcionalidades'
+    | '/admin/integracoes'
+    | '/admin/seguranca'
+    | '/admin/subscricoes'
+    | '/admin/suporte'
+    | '/admin/utilizacao'
+    | '/admin/utilizadores'
+    | '/admin'
     | '/.mcp/invoke-tool/$tool'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/admin'
     | '/auth'
     | '/mcp'
     | '/reset-password'
@@ -252,12 +372,23 @@ export interface FileRouteTypes {
     | '/_authenticated/oportunidades'
     | '/_authenticated/pessoas'
     | '/_authenticated/seguimentos'
+    | '/admin/auditoria'
+    | '/admin/definicoes'
+    | '/admin/funcionalidades'
+    | '/admin/integracoes'
+    | '/admin/seguranca'
+    | '/admin/subscricoes'
+    | '/admin/suporte'
+    | '/admin/utilizacao'
+    | '/admin/utilizadores'
+    | '/admin/'
     | '/.mcp/invoke-tool/$tool'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   McpRoute: typeof McpRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -289,6 +420,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -302,6 +440,76 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/utilizadores': {
+      id: '/admin/utilizadores'
+      path: '/utilizadores'
+      fullPath: '/admin/utilizadores'
+      preLoaderRoute: typeof AdminUtilizadoresRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/utilizacao': {
+      id: '/admin/utilizacao'
+      path: '/utilizacao'
+      fullPath: '/admin/utilizacao'
+      preLoaderRoute: typeof AdminUtilizacaoRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/suporte': {
+      id: '/admin/suporte'
+      path: '/suporte'
+      fullPath: '/admin/suporte'
+      preLoaderRoute: typeof AdminSuporteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/subscricoes': {
+      id: '/admin/subscricoes'
+      path: '/subscricoes'
+      fullPath: '/admin/subscricoes'
+      preLoaderRoute: typeof AdminSubscricoesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/seguranca': {
+      id: '/admin/seguranca'
+      path: '/seguranca'
+      fullPath: '/admin/seguranca'
+      preLoaderRoute: typeof AdminSegurancaRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/integracoes': {
+      id: '/admin/integracoes'
+      path: '/integracoes'
+      fullPath: '/admin/integracoes'
+      preLoaderRoute: typeof AdminIntegracoesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/funcionalidades': {
+      id: '/admin/funcionalidades'
+      path: '/funcionalidades'
+      fullPath: '/admin/funcionalidades'
+      preLoaderRoute: typeof AdminFuncionalidadesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/definicoes': {
+      id: '/admin/definicoes'
+      path: '/definicoes'
+      fullPath: '/admin/definicoes'
+      preLoaderRoute: typeof AdminDefinicoesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/auditoria': {
+      id: '/admin/auditoria'
+      path: '/auditoria'
+      fullPath: '/admin/auditoria'
+      preLoaderRoute: typeof AdminAuditoriaRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/_authenticated/seguimentos': {
       id: '/_authenticated/seguimentos'
@@ -435,9 +643,40 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AdminRouteRouteChildren {
+  AdminAuditoriaRoute: typeof AdminAuditoriaRoute
+  AdminDefinicoesRoute: typeof AdminDefinicoesRoute
+  AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
+  AdminIntegracoesRoute: typeof AdminIntegracoesRoute
+  AdminSegurancaRoute: typeof AdminSegurancaRoute
+  AdminSubscricoesRoute: typeof AdminSubscricoesRoute
+  AdminSuporteRoute: typeof AdminSuporteRoute
+  AdminUtilizacaoRoute: typeof AdminUtilizacaoRoute
+  AdminUtilizadoresRoute: typeof AdminUtilizadoresRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAuditoriaRoute: AdminAuditoriaRoute,
+  AdminDefinicoesRoute: AdminDefinicoesRoute,
+  AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
+  AdminIntegracoesRoute: AdminIntegracoesRoute,
+  AdminSegurancaRoute: AdminSegurancaRoute,
+  AdminSubscricoesRoute: AdminSubscricoesRoute,
+  AdminSuporteRoute: AdminSuporteRoute,
+  AdminUtilizacaoRoute: AdminUtilizacaoRoute,
+  AdminUtilizadoresRoute: AdminUtilizadoresRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   McpRoute: McpRoute,
   ResetPasswordRoute: ResetPasswordRoute,
