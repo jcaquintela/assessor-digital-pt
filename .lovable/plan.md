@@ -1,67 +1,100 @@
+# Área de Administração — “Assessor do Consultor”
 
-# MVP funcional e persistente — Plano
+Objetivo: adicionar um backoffice `/admin` separado da app do consultor, com papéis, RLS estrita, auditoria imutável e feature flags. Nenhum admin vê dados privados do consultor por defeito.
 
-Objetivo: substituir o store em memória e os dados demo por Supabase (Lovable Cloud) com autenticação real, RLS por `user_id`, formulários funcionais e histórico de chat persistente. Sem alterar o design atual.
+## 1. Base de dados (uma migração)
 
-## 1. Backend (Lovable Cloud)
+Novos objetos:
 
-Ativar Lovable Cloud e criar uma migração única com as 8 tabelas pedidas: `profiles`, `people`, `opportunities`, `properties`, `follow_ups`, `interactions`, `financial_movements`, `assessor_messages`.
+- Enum `public.app_role`: `consultant`, `support_admin`, `super_admin`.
+- Tabela `public.user_roles` (`id`, `user_id`, `role`, `created_at`, `created_by`, UNIQUE(`user_id`,`role`)).
+  - RLS: utilizador lê apenas as suas próprias funções; **nenhuma** policy de INSERT/UPDATE/DELETE para `authenticated` (só service_role via server functions).
+- Função `public.has_role(_user_id uuid, _role app_role)` SECURITY DEFINER (padrão do projeto).
+- Função `public.is_admin(_user_id uuid)` → `has_role(super_admin) OR has_role(support_admin)`.
+- Tabela `public.admin_audit_logs` (`id`, `admin_user_id`, `action`, `target_user_id`, `resource_type`, `resource_id`, `reason`, `metadata jsonb`, `created_at`).
+  - RLS: SELECT permitido a admins; nenhum INSERT/UPDATE/DELETE do lado do cliente (append-only via service_role). Sem trigger de update.
+- Tabela `public.feature_flags` (`key`, `description`, `enabled_globally`, `enabled_plans text[]`, `rollout_percentage`, `updated_at`, `updated_by`).
+  - RLS: SELECT a `authenticated`; escrita só via service_role.
+- Tabela `public.feature_flag_users` (`flag_key`, `user_id`) para overrides por utilizador.
+- Tabela `public.admin_mfa_required` (`user_id`, `required_at`) — placeholder para futura obrigatoriedade de MFA (mostrada na UI, não bloqueante nesta fase).
+- Trigger em `auth.users` já existente cria profile; adicionar seed automático da role `consultant` em `user_roles` via extensão do `handle_new_user` (função re-declarada).
+- GRANTs conforme regras do projeto (`authenticated` SELECT onde aplicável, `service_role` ALL).
 
-Para cada tabela:
-- `id uuid pk default gen_random_uuid()`, `user_id uuid not null references auth.users on delete cascade`, `created_at`, `updated_at` com trigger de `updated_at`.
-- Enums Postgres para: `relationship_type`, `opportunity_type`, `opportunity_status`, `probability`, `property_type`, `property_status`, `follow_up_type` (task/event), `follow_up_status`, `priority`, `interaction_source_channel`, `movement_type` (expense/commission/invoice/receipt), `movement_status`, `assessor_role` (user/assistant).
-- GRANTs a `authenticated` e `service_role` (nunca `anon`). RLS ON com policies `auth.uid() = user_id` para SELECT/INSERT/UPDATE/DELETE.
-- Trigger `on_auth_user_created` cria linha em `profiles`.
+## 2. Server functions (backend privilegiado)
 
-## 2. Autenticação
+Todas em `src/lib/admin.functions.ts`, com `.middleware([requireSupabaseAuth])`. Cada handler:
+1. Verifica role do chamador via `context.supabase` (RLS como user).
+2. Se necessário `super_admin`, valida antes de importar `supabaseAdmin`.
+3. Executa a ação com `supabaseAdmin` (import dinâmico dentro do handler).
+4. Escreve linha em `admin_audit_logs`.
+5. **Bloqueia** qualquer alteração onde `target_user_id === context.userId` (impede auto-promoção/auto-alteração).
 
-- Rota pública `/auth` com sign-up, sign-in, reset (redirect `/reset-password`) e `/reset-password`.
-- Layout `_authenticated` (managed) protege todas as rotas de app; mover `hoje`, `assessor`, `pessoas`, `oportunidades`, `imoveis`, `seguimentos`, `calendario`, `documentos`, `negocio`, `definicoes`, `mais` para `_authenticated/`.
-- `/` continua com o redirect mobile/desktop, mas para utilizadores não autenticados envia para `/auth`.
-- Header/nav com sign-out; listener `onAuthStateChange` no `__root`.
+Funções:
+- `getAdminOverview` — agregados (contagens de users, seguimentos, movimentos, mensagens, erros).
+- `listAdminUsers` — junta `auth.users` (via admin API) + `profiles` + `user_roles` + métricas de uso. Sem dados privados.
+- `inviteUser`, `suspendUser`, `reactivateUser`, `sendPasswordReset`, `startUserDeletion`, `extendTrial`, `changePlan` — `super_admin` para suspender/eliminar/alterar plano; `support_admin` para reset/convite.
+- `grantRole` / `revokeRole` — só `super_admin`, nunca sobre si próprio.
+- `listAuditLogs` — admins.
+- `listFeatureFlags`, `upsertFeatureFlag`, `setFlagUsers` — `super_admin`.
+- `getIntegrationsStatus` — placeholders.
 
-## 3. Camada de dados
+## 3. Rotas e UI
 
-Substituir `AppStoreProvider` por hooks de TanStack Query por entidade (`usePeople`, `useOpportunities`, `useProperties`, `useFollowUps`, `useFinancialMovements`, `useInteractions`, `useAssessorMessages`) usando o cliente browser Supabase com RLS. Mutations com invalidateQueries e optimistic updates onde seguro (concluir seguimento, alterar estado).
+Novo layout dedicado `src/routes/_admin/route.tsx` (`ssr: false`):
+- `beforeLoad` chama server fn `requireAdmin` que devolve role; se não for admin, `redirect('/')`.
+- Layout próprio (sidebar/topo distintos da app consultor, tema neutro).
 
-## 4. Dados iniciais
+Páginas (`src/routes/_admin/…`):
+- `index.tsx` — Visão geral (cards de métricas + estado integrações + erros recentes).
+- `utilizadores.tsx` — tabela com filtros e ações (menu por linha). Ações críticas exigem `super_admin` (botões desativados p/ support).
+- `subscricoes.tsx`, `utilizacao.tsx`, `suporte.tsx`, `integracoes.tsx` — vistas de leitura + placeholders.
+- `funcionalidades.tsx` — CRUD de feature flags com toggle global, planos, % rollout, lista de utilizadores.
+- `auditoria.tsx` — tabela paginada, apenas leitura, filtro por admin/ação/data.
+- `seguranca.tsx` — estado de MFA por admin, botão “Marcar MFA obrigatório” (grava em `admin_mfa_required`), aviso do desenho de “acesso de suporte temporário” (mostrado como roadmap, sem permitir aceder a dados privados).
+- `definicoes.tsx` — preferências do backoffice.
 
-Após primeiro login, se `people` está vazio mostrar modal "Começar vazio" ou "Carregar demo". "Carregar demo" chama server function que insere para `user_id` os registos equivalentes ao seed atual. Em Definições: "Apagar dados demo" e "Repor conta" (apaga tudo do user exceto profile).
+Sem overlap com `/`: os utilizadores consultores continuam a ver `/hoje`, `/assessor`, etc. Route `/admin` fica fora de `_authenticated/` para ter o próprio guard e layout, mas usa o mesmo Supabase auth.
 
-## 5. Módulos funcionais
+## 4. Privacidade
 
-- **Pessoas**: criar/editar (Sheet com form + zod), eliminar com AlertDialog, pesquisa server-side, ficha com tabs (Oportunidades, Seguimentos, Interações, Documentos).
-- **Oportunidades**: CRUD, quick-actions para estado/probabilidade, associar pessoa/imóvel via Combobox.
-- **Imóveis**: CRUD, associar proprietário.
-- **Seguimentos**: CRUD task/event, concluir, reagendar (date picker), prioridade. Vistas filtradas em Europe/Lisbon usando `date-fns-tz`.
-- **O Meu Negócio**: CRUD `financial_movements`, agregados calculados client-side por queries.
+- `listAdminUsers` e restantes fetchers **nunca** selecionam colunas de `people`, `opportunities`, `interactions`, `assessor_messages`, `financial_movements`, `follow_ups`, `properties`, `documents`.
+- Métricas usam `count(*)` agregados via `supabaseAdmin`.
+- Secção “Acesso de suporte temporário” apresentada como *coming soon* com o fluxo desenhado (autorização, motivo, duração, revogação, auditoria) — nenhum endpoint de leitura de dados privados é criado.
 
-## 6. Chat do Assessor (interpretação heurística funcional)
+## 5. Documentação
 
-Manter UI. Substituir handler por parser determinístico (regex + tokens PT) que:
-- extrai valores €, datas relativas ("amanhã às 10h"), nomes de pessoa (fuzzy match contra `people`).
-- gera cartão estruturado com payload; ao Confirmar, executa a mutation real e regista `interactions` + `assessor_messages` com `structured_payload`.
-- fluxos: Criar seguimento, Registar despesa, Registar comissão, Registar conversa, "O que tenho hoje?" (agrega dados reais).
-- ambiguidade → pergunta de follow-up em vez de inventar (ex.: várias "Ana" → cartão de escolha).
+Novo `docs/admin-bootstrap.md` a explicar (passos manuais, sem credenciais no código):
+1. Criar/entrar como utilizador normal na app.
+2. No SQL editor do backend (Lovable Cloud → Backend), executar:
+   ```sql
+   INSERT INTO public.user_roles (user_id, role, created_by)
+   VALUES ('<uuid do utilizador>', 'super_admin', '<uuid do utilizador>')
+   ON CONFLICT DO NOTHING;
+   ```
+3. Confirmar em `/admin`.
+4. Promoções seguintes fazem-se pela UI (só `super_admin`).
+5. Recomendação: ativar MFA na conta antes de promover.
 
-Mensagens persistidas em `assessor_messages`; ao abrir /assessor carrega histórico recente. Botões "Limpar conversa" e "Nova conversa".
+## 6. Critérios de aceitação (verificação)
 
-## 7. Estados e formulários
+- Consultor autenticado que abre `/admin` é redirecionado para `/`.
+- `support_admin` vê overview/users/auditoria/suporte mas botões de suspender/eliminar/alterar plano/gerir flags estão desativados.
+- `super_admin` acede a tudo.
+- Nenhuma página admin lê tabelas de dados privados do consultor.
+- `grantRole`/`revokeRole` rejeitam `target_user_id === caller`.
+- Todas as mutações admin escrevem em `admin_audit_logs`.
+- Um segundo utilizador não consegue promover-se (só `super_admin` chama `grantRole`, e a self-check bloqueia mesmo assim).
 
-Loading skeletons, empty states, toasts de sucesso/erro reais. Remover "em breve" exceto em: WhatsApp, Google Calendar, Outlook, Stripe, OpenAI, upload avançado de documentos.
+## Ordem de execução
 
-## 8. Segurança
+1. Migração SQL (aprovação do utilizador).
+2. `src/lib/admin.functions.ts` + helpers.
+3. Layout `_admin` + páginas.
+4. `docs/admin-bootstrap.md`.
+5. Verificação (typecheck + smoke navegação).
 
-RLS em todas as tabelas. Nenhuma service-role no cliente. Só chave publishable no browser. Validação zod client + constraints DB.
+## Fora de âmbito nesta iteração
 
-## Detalhes técnicos
-
-- Stack: TanStack Start + Supabase browser client via `@/integrations/supabase/client`. Reads/writes user-scoped fazem-se direto do browser sob RLS — sem server functions nesta fase, exceto seed demo e reset conta (que usam `requireSupabaseAuth` + `supabaseAdmin` só onde estritamente necessário; caso contrário direto).
-- Timezone: helper `src/lib/tz.ts` para Europe/Lisbon (usar `date-fns-tz`).
-- MCP tools atuais lêem do store em memória — atualizar para query direta ao Supabase com service role (mantendo endpoint público) OU marcar como demo. Proponho: MCP passa a exigir `user_id` como parâmetro e usa service role internamente; documentar que continua público (fora do critério de aceitação desta fase).
-
-## Escopo
-
-Implemento tudo acima numa única iteração longa. Não incluído (conforme pedido): WhatsApp, Google/Outlook, Stripe, OpenAI real, upload de ficheiros, faturação certificada.
-
-Confirmas para avançar?
+- Implementação real do fluxo “acesso de suporte temporário” (apenas UI/estado).
+- Enforcement de MFA (apenas registo de exigência).
+- Integrações reais (WhatsApp/Google/Microsoft/Stripe): só estado mostrado.
