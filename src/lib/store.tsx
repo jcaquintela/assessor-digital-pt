@@ -403,17 +403,25 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       despesas,
       entradas: [],
       addSeguimento,
+      addSeguimentoReturning,
       concluirSeguimento,
       reagendarSeguimento,
+      atualizarSeguimento,
+      eliminarSeguimento,
       addDespesa,
+      addDespesaReturning,
+      atualizarMovimento,
+      eliminarMovimento,
       addComissao,
+      addComissaoReturning,
       addEntrada,
+      addInteracao,
       addPessoa,
       updatePessoa,
       deletePessoa,
       refresh,
     };
-  }, [people.data, opps.data, props.data, followups.data, movements.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, addSeguimento, concluirSeguimento, reagendarSeguimento, addDespesa, addComissao, addEntrada, addPessoa, updatePessoa, deletePessoa, refresh]);
+  }, [people.data, opps.data, props.data, followups.data, movements.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, addSeguimento, addSeguimentoReturning, concluirSeguimento, reagendarSeguimento, atualizarSeguimento, eliminarSeguimento, addDespesa, addDespesaReturning, atualizarMovimento, eliminarMovimento, addComissao, addComissaoReturning, addEntrada, addInteracao, addPessoa, updatePessoa, deletePessoa, refresh]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
