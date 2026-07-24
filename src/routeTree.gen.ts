@@ -35,6 +35,7 @@ import { Route as AuthenticatedHojeRouteImport } from './routes/_authenticated/h
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
+import { Route as AuthenticatedAssessorRouteImport } from './routes/_authenticated/assessor'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -170,6 +171,11 @@ const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
   path: '/calendario',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAssessorRoute = AuthenticatedAssessorRouteImport.update({
+  id: '/assessor',
+  path: '/assessor',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
@@ -226,6 +233,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
@@ -258,6 +266,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/_authenticated/assessor': typeof AuthenticatedAssessorRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/assessor'
     | '/calendario'
     | '/definicoes'
     | '/documentos'
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/assessor'
     | '/calendario'
     | '/definicoes'
     | '/documentos'
@@ -350,6 +361,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/_authenticated/assessor'
     | '/_authenticated/calendario'
     | '/_authenticated/definicoes'
     | '/_authenticated/documentos'
@@ -569,6 +581,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarioRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/assessor': {
+      id: '/_authenticated/assessor'
+      path: '/assessor'
+      fullPath: '/assessor'
+      preLoaderRoute: typeof AuthenticatedAssessorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
       path: '/.well-known/oauth-protected-resource'
@@ -594,6 +613,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAssessorRoute: typeof AuthenticatedAssessorRoute
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
@@ -607,6 +627,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAssessorRoute: AuthenticatedAssessorRoute,
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
