@@ -18,9 +18,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizadores'
 import { Route as AdminUtilizacaoRouteImport } from './routes/admin/utilizacao'
+import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
 import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
+import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
+import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
 import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
@@ -81,6 +84,11 @@ const AdminUtilizacaoRoute = AdminUtilizacaoRouteImport.update({
   path: '/utilizacao',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminSuporteRoute = AdminSuporteRouteImport.update({
+  id: '/suporte',
+  path: '/suporte',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminSubscricoesRoute = AdminSubscricoesRouteImport.update({
   id: '/subscricoes',
   path: '/subscricoes',
@@ -91,9 +99,19 @@ const AdminSegurancaRoute = AdminSegurancaRouteImport.update({
   path: '/seguranca',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminIntegracoesRoute = AdminIntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminFuncionalidadesRoute = AdminFuncionalidadesRouteImport.update({
   id: '/funcionalidades',
   path: '/funcionalidades',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDefinicoesRoute = AdminDefinicoesRouteImport.update({
+  id: '/definicoes',
+  path: '/definicoes',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
@@ -197,9 +215,12 @@ export interface FileRoutesByFullPath {
   '/pessoas': typeof AuthenticatedPessoasRoute
   '/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
+  '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
+  '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
@@ -224,9 +245,12 @@ export interface FileRoutesByTo {
   '/pessoas': typeof AuthenticatedPessoasRoute
   '/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
+  '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
+  '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin': typeof AdminIndexRoute
@@ -254,9 +278,12 @@ export interface FileRoutesById {
   '/_authenticated/pessoas': typeof AuthenticatedPessoasRoute
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
+  '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
+  '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
@@ -284,9 +311,12 @@ export interface FileRouteTypes {
     | '/pessoas'
     | '/seguimentos'
     | '/admin/auditoria'
+    | '/admin/definicoes'
     | '/admin/funcionalidades'
+    | '/admin/integracoes'
     | '/admin/seguranca'
     | '/admin/subscricoes'
+    | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
     | '/admin/'
@@ -311,9 +341,12 @@ export interface FileRouteTypes {
     | '/pessoas'
     | '/seguimentos'
     | '/admin/auditoria'
+    | '/admin/definicoes'
     | '/admin/funcionalidades'
+    | '/admin/integracoes'
     | '/admin/seguranca'
     | '/admin/subscricoes'
+    | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
     | '/admin'
@@ -340,9 +373,12 @@ export interface FileRouteTypes {
     | '/_authenticated/pessoas'
     | '/_authenticated/seguimentos'
     | '/admin/auditoria'
+    | '/admin/definicoes'
     | '/admin/funcionalidades'
+    | '/admin/integracoes'
     | '/admin/seguranca'
     | '/admin/subscricoes'
+    | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
     | '/admin/'
@@ -426,6 +462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUtilizacaoRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/suporte': {
+      id: '/admin/suporte'
+      path: '/suporte'
+      fullPath: '/admin/suporte'
+      preLoaderRoute: typeof AdminSuporteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/subscricoes': {
       id: '/admin/subscricoes'
       path: '/subscricoes'
@@ -440,11 +483,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSegurancaRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/integracoes': {
+      id: '/admin/integracoes'
+      path: '/integracoes'
+      fullPath: '/admin/integracoes'
+      preLoaderRoute: typeof AdminIntegracoesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/funcionalidades': {
       id: '/admin/funcionalidades'
       path: '/funcionalidades'
       fullPath: '/admin/funcionalidades'
       preLoaderRoute: typeof AdminFuncionalidadesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/definicoes': {
+      id: '/admin/definicoes'
+      path: '/definicoes'
+      fullPath: '/admin/definicoes'
+      preLoaderRoute: typeof AdminDefinicoesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/auditoria': {
@@ -588,9 +645,12 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface AdminRouteRouteChildren {
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
+  AdminDefinicoesRoute: typeof AdminDefinicoesRoute
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
+  AdminIntegracoesRoute: typeof AdminIntegracoesRoute
   AdminSegurancaRoute: typeof AdminSegurancaRoute
   AdminSubscricoesRoute: typeof AdminSubscricoesRoute
+  AdminSuporteRoute: typeof AdminSuporteRoute
   AdminUtilizacaoRoute: typeof AdminUtilizacaoRoute
   AdminUtilizadoresRoute: typeof AdminUtilizadoresRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -598,9 +658,12 @@ interface AdminRouteRouteChildren {
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuditoriaRoute: AdminAuditoriaRoute,
+  AdminDefinicoesRoute: AdminDefinicoesRoute,
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
+  AdminIntegracoesRoute: AdminIntegracoesRoute,
   AdminSegurancaRoute: AdminSegurancaRoute,
   AdminSubscricoesRoute: AdminSubscricoesRoute,
+  AdminSuporteRoute: AdminSuporteRoute,
   AdminUtilizacaoRoute: AdminUtilizacaoRoute,
   AdminUtilizadoresRoute: AdminUtilizadoresRoute,
   AdminIndexRoute: AdminIndexRoute,
