@@ -9,8 +9,74 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SeguimentosRouteImport } from './routes/seguimentos'
+import { Route as PessoasRouteImport } from './routes/pessoas'
+import { Route as OportunidadesRouteImport } from './routes/oportunidades'
+import { Route as NegocioRouteImport } from './routes/negocio'
+import { Route as MaisRouteImport } from './routes/mais'
+import { Route as ImoveisRouteImport } from './routes/imoveis'
+import { Route as HojeRouteImport } from './routes/hoje'
+import { Route as DocumentosRouteImport } from './routes/documentos'
+import { Route as DefinicoesRouteImport } from './routes/definicoes'
+import { Route as CalendarioRouteImport } from './routes/calendario'
+import { Route as AssessorRouteImport } from './routes/assessor'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SeguimentosRoute = SeguimentosRouteImport.update({
+  id: '/seguimentos',
+  path: '/seguimentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PessoasRoute = PessoasRouteImport.update({
+  id: '/pessoas',
+  path: '/pessoas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OportunidadesRoute = OportunidadesRouteImport.update({
+  id: '/oportunidades',
+  path: '/oportunidades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NegocioRoute = NegocioRouteImport.update({
+  id: '/negocio',
+  path: '/negocio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MaisRoute = MaisRouteImport.update({
+  id: '/mais',
+  path: '/mais',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImoveisRoute = ImoveisRouteImport.update({
+  id: '/imoveis',
+  path: '/imoveis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HojeRoute = HojeRouteImport.update({
+  id: '/hoje',
+  path: '/hoje',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentosRoute = DocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DefinicoesRoute = DefinicoesRouteImport.update({
+  id: '/definicoes',
+  path: '/definicoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarioRoute = CalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssessorRoute = AssessorRouteImport.update({
+  id: '/assessor',
+  path: '/assessor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +85,186 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/assessor': typeof AssessorRoute
+  '/calendario': typeof CalendarioRoute
+  '/definicoes': typeof DefinicoesRoute
+  '/documentos': typeof DocumentosRoute
+  '/hoje': typeof HojeRoute
+  '/imoveis': typeof ImoveisRoute
+  '/mais': typeof MaisRoute
+  '/negocio': typeof NegocioRoute
+  '/oportunidades': typeof OportunidadesRoute
+  '/pessoas': typeof PessoasRoute
+  '/seguimentos': typeof SeguimentosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assessor': typeof AssessorRoute
+  '/calendario': typeof CalendarioRoute
+  '/definicoes': typeof DefinicoesRoute
+  '/documentos': typeof DocumentosRoute
+  '/hoje': typeof HojeRoute
+  '/imoveis': typeof ImoveisRoute
+  '/mais': typeof MaisRoute
+  '/negocio': typeof NegocioRoute
+  '/oportunidades': typeof OportunidadesRoute
+  '/pessoas': typeof PessoasRoute
+  '/seguimentos': typeof SeguimentosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/assessor': typeof AssessorRoute
+  '/calendario': typeof CalendarioRoute
+  '/definicoes': typeof DefinicoesRoute
+  '/documentos': typeof DocumentosRoute
+  '/hoje': typeof HojeRoute
+  '/imoveis': typeof ImoveisRoute
+  '/mais': typeof MaisRoute
+  '/negocio': typeof NegocioRoute
+  '/oportunidades': typeof OportunidadesRoute
+  '/pessoas': typeof PessoasRoute
+  '/seguimentos': typeof SeguimentosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/assessor'
+    | '/calendario'
+    | '/definicoes'
+    | '/documentos'
+    | '/hoje'
+    | '/imoveis'
+    | '/mais'
+    | '/negocio'
+    | '/oportunidades'
+    | '/pessoas'
+    | '/seguimentos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/assessor'
+    | '/calendario'
+    | '/definicoes'
+    | '/documentos'
+    | '/hoje'
+    | '/imoveis'
+    | '/mais'
+    | '/negocio'
+    | '/oportunidades'
+    | '/pessoas'
+    | '/seguimentos'
+  id:
+    | '__root__'
+    | '/'
+    | '/assessor'
+    | '/calendario'
+    | '/definicoes'
+    | '/documentos'
+    | '/hoje'
+    | '/imoveis'
+    | '/mais'
+    | '/negocio'
+    | '/oportunidades'
+    | '/pessoas'
+    | '/seguimentos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AssessorRoute: typeof AssessorRoute
+  CalendarioRoute: typeof CalendarioRoute
+  DefinicoesRoute: typeof DefinicoesRoute
+  DocumentosRoute: typeof DocumentosRoute
+  HojeRoute: typeof HojeRoute
+  ImoveisRoute: typeof ImoveisRoute
+  MaisRoute: typeof MaisRoute
+  NegocioRoute: typeof NegocioRoute
+  OportunidadesRoute: typeof OportunidadesRoute
+  PessoasRoute: typeof PessoasRoute
+  SeguimentosRoute: typeof SeguimentosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/seguimentos': {
+      id: '/seguimentos'
+      path: '/seguimentos'
+      fullPath: '/seguimentos'
+      preLoaderRoute: typeof SeguimentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pessoas': {
+      id: '/pessoas'
+      path: '/pessoas'
+      fullPath: '/pessoas'
+      preLoaderRoute: typeof PessoasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oportunidades': {
+      id: '/oportunidades'
+      path: '/oportunidades'
+      fullPath: '/oportunidades'
+      preLoaderRoute: typeof OportunidadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/negocio': {
+      id: '/negocio'
+      path: '/negocio'
+      fullPath: '/negocio'
+      preLoaderRoute: typeof NegocioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mais': {
+      id: '/mais'
+      path: '/mais'
+      fullPath: '/mais'
+      preLoaderRoute: typeof MaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/imoveis': {
+      id: '/imoveis'
+      path: '/imoveis'
+      fullPath: '/imoveis'
+      preLoaderRoute: typeof ImoveisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hoje': {
+      id: '/hoje'
+      path: '/hoje'
+      fullPath: '/hoje'
+      preLoaderRoute: typeof HojeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documentos': {
+      id: '/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof DocumentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/definicoes': {
+      id: '/definicoes'
+      path: '/definicoes'
+      fullPath: '/definicoes'
+      preLoaderRoute: typeof DefinicoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendario': {
+      id: '/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof CalendarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assessor': {
+      id: '/assessor'
+      path: '/assessor'
+      fullPath: '/assessor'
+      preLoaderRoute: typeof AssessorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +277,18 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AssessorRoute: AssessorRoute,
+  CalendarioRoute: CalendarioRoute,
+  DefinicoesRoute: DefinicoesRoute,
+  DocumentosRoute: DocumentosRoute,
+  HojeRoute: HojeRoute,
+  ImoveisRoute: ImoveisRoute,
+  MaisRoute: MaisRoute,
+  NegocioRoute: NegocioRoute,
+  OportunidadesRoute: OportunidadesRoute,
+  PessoasRoute: PessoasRoute,
+  SeguimentosRoute: SeguimentosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
