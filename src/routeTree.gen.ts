@@ -17,6 +17,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizadores'
+import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
 import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
@@ -70,6 +71,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminUtilizadoresRoute = AdminUtilizadoresRouteImport.update({
   id: '/utilizadores',
   path: '/utilizadores',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminFuncionalidadesRoute = AdminFuncionalidadesRouteImport.update({
+  id: '/funcionalidades',
+  path: '/funcionalidades',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/pessoas': typeof AuthenticatedPessoasRoute
   '/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -196,6 +203,7 @@ export interface FileRoutesByTo {
   '/pessoas': typeof AuthenticatedPessoasRoute
   '/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -222,6 +230,7 @@ export interface FileRoutesById {
   '/_authenticated/pessoas': typeof AuthenticatedPessoasRoute
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/pessoas'
     | '/seguimentos'
     | '/admin/auditoria'
+    | '/admin/funcionalidades'
     | '/admin/utilizadores'
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/pessoas'
     | '/seguimentos'
     | '/admin/auditoria'
+    | '/admin/funcionalidades'
     | '/admin/utilizadores'
     | '/admin'
     | '/.mcp/invoke-tool/$tool'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pessoas'
     | '/_authenticated/seguimentos'
     | '/admin/auditoria'
+    | '/admin/funcionalidades'
     | '/admin/utilizadores'
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
@@ -369,6 +381,13 @@ declare module '@tanstack/react-router' {
       path: '/utilizadores'
       fullPath: '/admin/utilizadores'
       preLoaderRoute: typeof AdminUtilizadoresRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/funcionalidades': {
+      id: '/admin/funcionalidades'
+      path: '/funcionalidades'
+      fullPath: '/admin/funcionalidades'
+      preLoaderRoute: typeof AdminFuncionalidadesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/auditoria': {
@@ -512,12 +531,14 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface AdminRouteRouteChildren {
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
+  AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
   AdminUtilizadoresRoute: typeof AdminUtilizadoresRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuditoriaRoute: AdminAuditoriaRoute,
+  AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
   AdminUtilizadoresRoute: AdminUtilizadoresRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
