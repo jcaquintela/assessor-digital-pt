@@ -1,100 +1,77 @@
-# Área de Administração — “Assessor do Consultor”
+# Plano — Preparar “Assessor do Consultor” para piloto de 14 dias
 
-Objetivo: adicionar um backoffice `/admin` separado da app do consultor, com papéis, RLS estrita, auditoria imutável e feature flags. Nenhum admin vê dados privados do consultor por defeito.
+Este é um gate de qualidade: sem novas áreas, apenas endurecer o núcleo para deixar de ser demo. O trabalho é grande e vou dividi-lo em fases coerentes. Após aprovação, executo tudo de seguida.
 
-## 1. Base de dados (uma migração)
+## Fase 1 — Assessor real (chat sem dados inventados)
 
-Novos objetos:
+Reescrever `src/routes/_authenticated/assessor.tsx` e criar `src/lib/assessor/` com:
 
-- Enum `public.app_role`: `consultant`, `support_admin`, `super_admin`.
-- Tabela `public.user_roles` (`id`, `user_id`, `role`, `created_at`, `created_by`, UNIQUE(`user_id`,`role`)).
-  - RLS: utilizador lê apenas as suas próprias funções; **nenhuma** policy de INSERT/UPDATE/DELETE para `authenticated` (só service_role via server functions).
-- Função `public.has_role(_user_id uuid, _role app_role)` SECURITY DEFINER (padrão do projeto).
-- Função `public.is_admin(_user_id uuid)` → `has_role(super_admin) OR has_role(support_admin)`.
-- Tabela `public.admin_audit_logs` (`id`, `admin_user_id`, `action`, `target_user_id`, `resource_type`, `resource_id`, `reason`, `metadata jsonb`, `created_at`).
-  - RLS: SELECT permitido a admins; nenhum INSERT/UPDATE/DELETE do lado do cliente (append-only via service_role). Sem trigger de update.
-- Tabela `public.feature_flags` (`key`, `description`, `enabled_globally`, `enabled_plans text[]`, `rollout_percentage`, `updated_at`, `updated_by`).
-  - RLS: SELECT a `authenticated`; escrita só via service_role.
-- Tabela `public.feature_flag_users` (`flag_key`, `user_id`) para overrides por utilizador.
-- Tabela `public.admin_mfa_required` (`user_id`, `required_at`) — placeholder para futura obrigatoriedade de MFA (mostrada na UI, não bloqueante nesta fase).
-- Trigger em `auth.users` já existente cria profile; adicionar seed automático da role `consultant` em `user_roles` via extensão do `handle_new_user` (função re-declarada).
-- GRANTs conforme regras do projeto (`authenticated` SELECT onde aplicável, `service_role` ALL).
+- **Parser PT-PT** (`parser.ts`): extrai nome, data, hora, valor (€), categoria a partir do texto. Timezone `Europe/Lisbon`. Sem defaults inventados — se falta info, marca campo como vazio.
+- **Cartões editáveis** (`CartaoSeguimento`, `CartaoDespesa`, `CartaoComissao`, `CartaoConversa`): cada cartão tem modo *view* e *edit* com inputs reais (Combobox de pessoa/oportunidade/imóvel a ler do store, DatePicker, TimePicker, Select de categoria/estado/prioridade). Botões Confirmar / Editar / Cancelar. Confirmar só fecha após a mutation resolver.
+- **Resolução de pessoa**: pesquisa por nome no `people` do utilizador; 0 → sugere "Criar pessoa X"; 1 → associa; N → mostra lista para escolher.
+- **Sem `montarCartao` com valores fixos**: remover "Ana Silva", "42 €", "9.450 €", "amanhã 10h", briefings falsos, resultados de pesquisa simulados.
+- **Briefing real** (ação `O que tenho hoje?`): consulta live `follow_ups`, `opportunities`, `financial_movements` do utilizador e devolve contagens/listas reais.
+- **Pesquisa real**: query textual (`ilike`) em `people`, `opportunities`, `properties`, `follow_ups`. Sem resultados inventados.
 
-## 2. Server functions (backend privilegiado)
+## Fase 2 — Histórico persistente do chat
 
-Todas em `src/lib/admin.functions.ts`, com `.middleware([requireSupabaseAuth])`. Cada handler:
-1. Verifica role do chamador via `context.supabase` (RLS como user).
-2. Se necessário `super_admin`, valida antes de importar `supabaseAdmin`.
-3. Executa a ação com `supabaseAdmin` (import dinâmico dentro do handler).
-4. Escreve linha em `admin_audit_logs`.
-5. **Bloqueia** qualquer alteração onde `target_user_id === context.userId` (impede auto-promoção/auto-alteração).
+- Novo módulo `src/lib/assessor/messages.ts` com CRUD sobre `assessor_messages` (colunas existentes: role, content, card_type, card_state, card_payload, created_record_id).
+- Ao abrir `/assessor`, carregar últimas ~50 mensagens do utilizador.
+- Guardar cada mensagem do utilizador, cada resposta do assessor e cada cartão com estado (`draft`/`confirmed`/`cancelled`) e `card_payload` JSON.
+- Botões **Nova conversa** e **Limpar conversa** no header do chat. Limpar apaga só `assessor_messages`; não toca em pessoas, seguimentos, despesas nem comissões já confirmados.
 
-Funções:
-- `getAdminOverview` — agregados (contagens de users, seguimentos, movimentos, mensagens, erros).
-- `listAdminUsers` — junta `auth.users` (via admin API) + `profiles` + `user_roles` + métricas de uso. Sem dados privados.
-- `inviteUser`, `suspendUser`, `reactivateUser`, `sendPasswordReset`, `startUserDeletion`, `extendTrial`, `changePlan` — `super_admin` para suspender/eliminar/alterar plano; `support_admin` para reset/convite.
-- `grantRole` / `revokeRole` — só `super_admin`, nunca sobre si próprio.
-- `listAuditLogs` — admins.
-- `listFeatureFlags`, `upsertFeatureFlag`, `setFlagUsers` — `super_admin`.
-- `getIntegrationsStatus` — placeholders.
+## Fase 3 — Persistência das ações (com estados de erro/loading)
 
-## 3. Rotas e UI
+Rever `src/lib/store.tsx`:
+- Adicionar mutations para **comissão** e **despesa** que gravam em `financial_movements` (`type = commission | expense`), campos: amount, description, category, movement_date, opportunity_id, property_id.
+- Adicionar `atualizarPessoa`, `eliminarPessoa`, `atualizarSeguimento`, `eliminarSeguimento`, `atualizarMovimento`, `eliminarMovimento`.
+- Todas retornam promessa; erros propagam para o cartão (que mantém estado `draft`, mostra mensagem e permite retry, sem duplicar).
 
-Novo layout dedicado `src/routes/_admin/route.tsx` (`ssr: false`):
-- `beforeLoad` chama server fn `requireAdmin` que devolve role; se não for admin, `redirect('/')`.
-- Layout próprio (sidebar/topo distintos da app consultor, tema neutro).
+## Fase 4 — CRUD mínimo nas páginas existentes
 
-Páginas (`src/routes/_admin/…`):
-- `index.tsx` — Visão geral (cards de métricas + estado integrações + erros recentes).
-- `utilizadores.tsx` — tabela com filtros e ações (menu por linha). Ações críticas exigem `super_admin` (botões desativados p/ support).
-- `subscricoes.tsx`, `utilizacao.tsx`, `suporte.tsx`, `integracoes.tsx` — vistas de leitura + placeholders.
-- `funcionalidades.tsx` — CRUD de feature flags com toggle global, planos, % rollout, lista de utilizadores.
-- `auditoria.tsx` — tabela paginada, apenas leitura, filtro por admin/ação/data.
-- `seguranca.tsx` — estado de MFA por admin, botão “Marcar MFA obrigatório” (grava em `admin_mfa_required`), aviso do desenho de “acesso de suporte temporário” (mostrado como roadmap, sem permitir aceder a dados privados).
-- `definicoes.tsx` — preferências do backoffice.
+- `/pessoas`: já tem criar; adicionar editar e eliminar no Sheet de detalhe.
+- `/seguimentos`: adicionar editar, eliminar, reagendar-para-data-arbitrária (para além do já existente concluir + reagendar amanhã).
+- `/negocio`: adicionar botões “Nova despesa” e “Nova comissão” + editar/eliminar em cada linha.
 
-Sem overlap com `/`: os utilizadores consultores continuam a ver `/hoje`, `/assessor`, etc. Route `/admin` fica fora de `_authenticated/` para ter o próprio guard e layout, mas usa o mesmo Supabase auth.
+## Fase 5 — Definições, dados demo e aviso de piloto
 
-## 4. Privacidade
+- `seedDemoData` só corre por ação explícita do utilizador (já é o caso; garantir que nada mais chama seed).
+- Novo campo `profiles.account_kind` (`real` | `demo`) — set para `demo` quando seed corre; volta a `real` no `resetAccount`.
+- Definições: badge “Conta com dados reais” / “Conta de demonstração”.
+- Onboarding (primeiro login) e Definições: mostrar aviso *“Versão piloto de 14 dias. Não inserir documentos sensíveis…”* — usar `localStorage` para dispensar após leitura. Não aparece nas outras páginas.
 
-- `listAdminUsers` e restantes fetchers **nunca** selecionam colunas de `people`, `opportunities`, `interactions`, `assessor_messages`, `financial_movements`, `follow_ups`, `properties`, `documents`.
-- Métricas usam `count(*)` agregados via `supabaseAdmin`.
-- Secção “Acesso de suporte temporário” apresentada como *coming soon* com o fluxo desenhado (autorização, motivo, duração, revogação, auditoria) — nenhum endpoint de leitura de dados privados é criado.
+## Fase 6 — Segurança / RLS
 
-## 5. Documentação
+- Migração de verificação: `ALTER TABLE ... FORCE ROW LEVEL SECURITY` + policies confirmadas em `profiles`, `people`, `opportunities`, `properties`, `follow_ups`, `interactions`, `financial_movements`, `assessor_messages`.
+- Confirmar que `/admin` não expõe conteúdo privado — auditar `src/routes/admin/utilizadores.tsx` e remover qualquer leitura de dados de consultor.
 
-Novo `docs/admin-bootstrap.md` a explicar (passos manuais, sem credenciais no código):
-1. Criar/entrar como utilizador normal na app.
-2. No SQL editor do backend (Lovable Cloud → Backend), executar:
-   ```sql
-   INSERT INTO public.user_roles (user_id, role, created_by)
-   VALUES ('<uuid do utilizador>', 'super_admin', '<uuid do utilizador>')
-   ON CONFLICT DO NOTHING;
-   ```
-3. Confirmar em `/admin`.
-4. Promoções seguintes fazem-se pela UI (só `super_admin`).
-5. Recomendação: ativar MFA na conta antes de promover.
+## Fase 7 — Mobile
 
-## 6. Critérios de aceitação (verificação)
+- Garantir que a caixa de mensagem respeita `env(safe-area-inset-bottom)` e não é tapada pelo teclado (usar `visualViewport` API para ajustar o `bottom` do compositor).
+- Cartões editáveis compactos em mobile (mesma lógica, layout empilhado).
 
-- Consultor autenticado que abre `/admin` é redirecionado para `/`.
-- `support_admin` vê overview/users/auditoria/suporte mas botões de suspender/eliminar/alterar plano/gerir flags estão desativados.
-- `super_admin` acede a tudo.
-- Nenhuma página admin lê tabelas de dados privados do consultor.
-- `grantRole`/`revokeRole` rejeitam `target_user_id === caller`.
-- Todas as mutações admin escrevem em `admin_audit_logs`.
-- Um segundo utilizador não consegue promover-se (só `super_admin` chama `grantRole`, e a self-check bloqueia mesmo assim).
+## Fase 8 — Relatório final
 
-## Ordem de execução
+Documento em `docs/piloto-14-dias.md` com:
+- Cenários testados (Consultor A, Consultor B, Super Admin, mobile).
+- Passos manuais executados e resultados.
+- Falhas encontradas / limitações conhecidas (WhatsApp, áudio real, upload, Google/Outlook, Stripe indisponíveis — mensagem “Ainda não disponível nesta versão piloto”).
+- Veredicto: **Apto** ou **Não apto**.
 
-1. Migração SQL (aprovação do utilizador).
-2. `src/lib/admin.functions.ts` + helpers.
-3. Layout `_admin` + páginas.
-4. `docs/admin-bootstrap.md`.
-5. Verificação (typecheck + smoke navegação).
+## Detalhes técnicos
 
-## Fora de âmbito nesta iteração
+- Timezone: usar `Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon' })` + `date-fns-tz` (já disponível via `date-fns`, ou parse manual — evito nova dependência).
+- Sem alteração de layout desktop existente.
+- Sem novas rotas.
+- Migração única para `profiles.account_kind` + FORCE RLS.
+- Reutilizar componentes shadcn existentes (Popover, Command, Calendar) para os cartões editáveis; instalar apenas se faltarem (`cmdk`, `react-day-picker` provavelmente já presentes via shadcn).
 
-- Implementação real do fluxo “acesso de suporte temporário” (apenas UI/estado).
-- Enforcement de MFA (apenas registo de exigência).
-- Integrações reais (WhatsApp/Google/Microsoft/Stripe): só estado mostrado.
+## Volume estimado
+
+- Reescrever assessor.tsx (~1000 linhas → dividido em módulos ~1200).
+- ~6 novos ficheiros em `src/lib/assessor/`.
+- 1 migração SQL.
+- Edições em store.tsx, pessoas.tsx, seguimentos.tsx, negocio.tsx, definicoes.tsx.
+- Novo `docs/piloto-14-dias.md`.
+
+Confirmas para avançar com todas as fases de uma vez? Se preferires, posso entregar por fases (ex.: Fase 1+2+3 primeiro, resto depois) para reveres cada bloco.

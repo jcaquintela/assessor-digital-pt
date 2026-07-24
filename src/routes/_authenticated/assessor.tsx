@@ -1,73 +1,55 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/lib/store";
-import { formatDataHora, formatEUR } from "@/lib/demo-data";
+import { formatEUR } from "@/lib/demo-data";
 import { toast } from "sonner";
 import {
-  CalendarPlus,
-  Check,
-  ClipboardList,
-  Coins,
-  FileText,
-  Image as ImageIcon,
-  MessageSquarePlus,
-  Mic,
-  MoreVertical,
-  Paperclip,
-  Pencil,
-  Plus,
-  Receipt,
-  Search,
-  Send,
-  Sparkles,
-  Trash2,
-  X,
+  CalendarPlus, ClipboardList, Coins, MessageSquarePlus, Mic, Receipt, Search, Send, Sparkles, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parse, type Extraidos, type Intencao } from "@/lib/assessor/parser";
+import { clearMessages, loadMessages, saveMessage, updateMessageStatus, type MensagemDb } from "@/lib/assessor/messages";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
   head: () => ({
     meta: [
-      { title: "Assessor — chat" },
-      { name: "description", content: "Fale com o seu assessor pessoal digital." },
+      { title: "Assessor — chat com o seu assistente" },
+      { name: "description", content: "Registe conversas, seguimentos, despesas e comissões falando com o seu assessor." },
       { property: "og:title", content: "Assessor — chat" },
-      { property: "og:description", content: "Fale com o seu assessor pessoal digital." },
+      { property: "og:description", content: "Registe conversas, seguimentos, despesas e comissões." },
     ],
   }),
   component: AssessorPage,
 });
 
-type CartaoTipo =
-  | "conversa"
-  | "seguimento"
-  | "despesa"
-  | "comissao"
-  | "briefing"
-  | "procura";
+type CartaoTipo = "conversa" | "seguimento" | "despesa" | "comissao" | "briefing" | "procura";
+type EstadoCartao = "draft" | "confirmed" | "cancelled";
 
-interface Mensagem {
+interface Cartao {
+  tipo: CartaoTipo;
+  dados: Record<string, unknown>;
+  entidadeId?: string;
+}
+
+interface Msg {
   id: string;
-  autor: "consultor" | "assessor";
-  texto?: string;
-  cartao?: { tipo: CartaoTipo; dados: Record<string, string> };
-  confirmado?: boolean;
-  cancelado?: boolean;
+  role: "user" | "assessor";
+  content: string;
+  cartao?: Cartao;
+  status?: EstadoCartao;
   ts: string;
 }
 
-const acoesDesktop: { tipo: CartaoTipo; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+const ACOES: { tipo: CartaoTipo; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { tipo: "conversa", label: "Registar conversa", icon: MessageSquarePlus },
   { tipo: "seguimento", label: "Criar seguimento", icon: CalendarPlus },
   { tipo: "despesa", label: "Registar despesa", icon: Receipt },
@@ -76,883 +58,653 @@ const acoesDesktop: { tipo: CartaoTipo; label: string; icon: React.ComponentType
   { tipo: "procura", label: "Procurar informação", icon: Search },
 ];
 
-const sugestoesIniciais: { tipo: CartaoTipo; label: string }[] = [
-  { tipo: "conversa", label: "Registar conversa" },
-  { tipo: "seguimento", label: "Criar seguimento" },
-  { tipo: "despesa", label: "Registar despesa" },
-  { tipo: "briefing", label: "Ver o meu dia" },
-];
-
-const sugestoesContextuais: Record<CartaoTipo, { tipo: CartaoTipo; label: string }[]> = {
-  seguimento: [
-    { tipo: "seguimento", label: "Reagendar" },
-    { tipo: "conversa", label: "Associar pessoa" },
-    { tipo: "briefing", label: "Ver seguimentos" },
-  ],
-  conversa: [
-    { tipo: "seguimento", label: "Criar seguimento" },
-    { tipo: "despesa", label: "Registar despesa" },
-  ],
-  despesa: [
-    { tipo: "despesa", label: "Nova despesa" },
-    { tipo: "briefing", label: "Ver o meu dia" },
-  ],
-  comissao: [
-    { tipo: "briefing", label: "Ver o meu dia" },
-  ],
-  briefing: [
-    { tipo: "seguimento", label: "Criar seguimento" },
-    { tipo: "conversa", label: "Registar conversa" },
-  ],
-  procura: [
-    { tipo: "seguimento", label: "Criar seguimento" },
-    { tipo: "conversa", label: "Registar conversa" },
-  ],
-};
-
-let mid = 0;
-const newId = () => `m${++mid}`;
-const nowIso = () => new Date().toISOString();
-
-export function AssessorPage() {
-  const store = useStore();
-  const [mensagens, setMensagens] = useState<Mensagem[]>([
-    {
-      id: newId(),
-      autor: "assessor",
-      texto: "Olá, Júlio. O que queres registar ou consultar?",
-      ts: nowIso(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [ultimoTipo, setUltimoTipo] = useState<CartaoTipo | null>(null);
-  const scrollDesktop = useRef<HTMLDivElement>(null);
-  const scrollMobile = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    for (const r of [scrollDesktop, scrollMobile]) {
-      r.current?.scrollTo({ top: r.current.scrollHeight, behavior: "smooth" });
-    }
-  }, [mensagens]);
-
-  const responder = (tipo: CartaoTipo, textoConsultor?: string) => {
-    if (textoConsultor) {
-      setMensagens((m) => [...m, { id: newId(), autor: "consultor", texto: textoConsultor, ts: nowIso() }]);
-    }
-    setTimeout(() => {
-      setMensagens((m) => [...m, { id: newId(), autor: "assessor", cartao: montarCartao(tipo, store), ts: nowIso() }]);
-      setUltimoTipo(tipo);
-    }, 300);
+function toMsg(m: MensagemDb): Msg {
+  const payload = (m.structured_payload ?? null) as Record<string, unknown> | null;
+  return {
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    cartao: m.message_type && payload
+      ? { tipo: m.message_type as CartaoTipo, dados: payload, entidadeId: (payload.__entidadeId as string) || undefined }
+      : undefined,
+    status: (m.status as EstadoCartao | null) ?? undefined,
+    ts: m.created_at,
   };
-
-  const enviar = (textoOverride?: string) => {
-    const t = (textoOverride ?? input).trim();
-    if (!t) return;
-    setInput("");
-    setMensagens((m) => [...m, { id: newId(), autor: "consultor", texto: t, ts: nowIso() }]);
-    const lower = t.toLowerCase();
-    let tipo: CartaoTipo = "conversa";
-    if (lower.includes("despesa") || lower.includes("gasto") || lower.includes("portagem")) tipo = "despesa";
-    else if (lower.includes("comissão") || lower.includes("comissao")) tipo = "comissao";
-    else if (lower.includes("hoje") || lower.includes("dia")) tipo = "briefing";
-    else if (lower.includes("procur") || lower.includes("onde") || lower.includes("quanto")) tipo = "procura";
-    else if (lower.includes("liga") || lower.includes("marca") || lower.includes("visita") || lower.includes("enviar")) tipo = "seguimento";
-    setTimeout(() => {
-      setMensagens((m) => [...m, { id: newId(), autor: "assessor", cartao: montarCartao(tipo, store, t), ts: nowIso() }]);
-      setUltimoTipo(tipo);
-    }, 400);
-
-    store.addEntrada({
-      canal: "web",
-      conteudoOriginal: t,
-      interpretacao: tipo,
-      confirmado: false,
-      data: nowIso(),
-    });
-  };
-
-  const confirmar = (id: string) => {
-    setMensagens((m) =>
-      m.map((msg) => {
-        if (msg.id !== id || !msg.cartao) return msg;
-        aplicarCartao(msg.cartao, store);
-        toast.success("Registado.");
-        return { ...msg, confirmado: true };
-      }),
-    );
-  };
-  const cancelar = (id: string) => {
-    setMensagens((m) => m.map((msg) => (msg.id === id ? { ...msg, cancelado: true } : msg)));
-  };
-
-  const mensagensComSeparadores = useMemo(() => inserirSeparadores(mensagens), [mensagens]);
-  const conversaComecou = mensagens.length > 1;
-
-  return (
-    <>
-      {/* ========== MOBILE ========== */}
-      <div className="md:hidden">
-        <MobileAssessorLayout
-          scrollRef={scrollMobile}
-          mensagens={mensagensComSeparadores}
-          onConfirm={confirmar}
-          onCancel={cancelar}
-          onSend={enviar}
-          input={input}
-          setInput={setInput}
-          onQuickAction={responder}
-          mostrarSugestoesIniciais={!conversaComecou}
-          sugestoesContextuais={ultimoTipo ? sugestoesContextuais[ultimoTipo] : []}
-        />
-      </div>
-
-      {/* ========== DESKTOP ========== */}
-      <div className="hidden md:block">
-        <AppShell>
-          <PageHeader
-            title="Assessor"
-            subtitle="O seu assessor digital. Fale como falaria a um colega."
-            action={<Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" /> modo demo</Badge>}
-          />
-          <Card className="flex h-[calc(100vh-14rem)] flex-col overflow-hidden">
-            <div ref={scrollDesktop} className="flex-1 space-y-4 overflow-y-auto p-6">
-              {mensagens.map((m) => (
-                <DesktopMessageRow
-                  key={m.id}
-                  m={m}
-                  onConfirm={() => confirmar(m.id)}
-                  onCancel={() => cancelar(m.id)}
-                />
-              ))}
-            </div>
-            <div className="border-t border-border bg-card p-3">
-              <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
-                {acoesDesktop.map(({ tipo, label, icon: Icon }) => (
-                  <Button
-                    key={tipo}
-                    variant="secondary"
-                    size="sm"
-                    className="shrink-0 rounded-full"
-                    onClick={() => responder(tipo, label)}
-                  >
-                    <Icon className="mr-1.5 h-3.5 w-3.5" />
-                    {label}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex items-end gap-2">
-                <Button variant="ghost" size="icon" onClick={() => toast.info("Anexos em breve.")} aria-label="Anexar">
-                  <Paperclip className="h-5 w-5" />
-                </Button>
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      enviar();
-                    }
-                  }}
-                  placeholder='Escreva algo… por ex.: "Reunião amanhã 15h com a Ana Silva"'
-                  rows={1}
-                  className="min-h-[40px] max-h-32 resize-none"
-                />
-                <Button variant="ghost" size="icon" onClick={() => toast.info("Áudio em breve.")} aria-label="Gravar áudio">
-                  <Mic className="h-5 w-5" />
-                </Button>
-                <Button onClick={() => enviar()} size="icon" aria-label="Enviar">
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </AppShell>
-      </div>
-    </>
-  );
 }
 
-/* ================================================================
-   MOBILE LAYOUT — dedicated messaging-app experience
-   ================================================================ */
-
-function MobileAssessorLayout({
-  scrollRef,
-  mensagens,
-  onConfirm,
-  onCancel,
-  onSend,
-  input,
-  setInput,
-  onQuickAction,
-  mostrarSugestoesIniciais,
-  sugestoesContextuais,
-}: {
-  scrollRef: React.RefObject<HTMLDivElement | null>;
-  mensagens: (Mensagem | { separador: string; id: string })[];
-  onConfirm: (id: string) => void;
-  onCancel: (id: string) => void;
-  onSend: (t?: string) => void;
-  input: string;
-  setInput: (v: string) => void;
-  onQuickAction: (tipo: CartaoTipo, label: string) => void;
-  mostrarSugestoesIniciais: boolean;
-  sugestoesContextuais: { tipo: CartaoTipo; label: string }[];
-}) {
-  const [attachOpen, setAttachOpen] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [recSeconds, setRecSeconds] = useState(0);
+function AssessorPage() {
+  const isMobile = useIsMobile();
+  const store = useStore();
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [texto, setTexto] = useState("");
+  const [carregando, setCarregando] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!recording) return;
-    setRecSeconds(0);
-    const t = setInterval(() => setRecSeconds((s) => s + 1), 1000);
-    return () => clearInterval(t);
-  }, [recording]);
+    loadMessages().then((rows) => {
+      setMsgs(rows.map(toMsg));
+      setCarregando(false);
+    }).catch((e) => { toast.error((e as Error).message); setCarregando(false); });
+  }, []);
 
-  const NAV_H = "3.25rem";
-  const HEADER_TOP = "calc(env(safe-area-inset-top) + 0.5rem)";
-  const NAV_BOTTOM = `calc(${NAV_H} + env(safe-area-inset-bottom))`;
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [msgs.length]);
 
-  return (
-    <div
-      className="fixed inset-0 z-10 flex flex-col overflow-hidden bg-[hsl(var(--muted)/0.35)]"
-      style={{ height: "100dvh" }}
-    >
-      {/* Header */}
-      <header
-        className="flex shrink-0 items-center gap-3 border-b border-border/60 bg-card/95 px-4 backdrop-blur"
-        style={{ paddingTop: HEADER_TOP, paddingBottom: "0.5rem" }}
-      >
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-          <Sparkles className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1 leading-tight">
-          <div className="truncate text-[15px] font-semibold">Assessor</div>
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Disponível
+  const pushUser = useCallback(async (content: string) => {
+    const row = await saveMessage({ role: "user", content });
+    setMsgs((prev) => [...prev, toMsg(row)]);
+    return row;
+  }, []);
+
+  const pushAssessor = useCallback(async (content: string, cartao?: Cartao) => {
+    const row = await saveMessage({
+      role: "assessor",
+      content,
+      message_type: cartao?.tipo ?? null,
+      structured_payload: cartao ? cartao.dados : null,
+      status: cartao ? "draft" : null,
+    });
+    setMsgs((prev) => [...prev, toMsg(row)]);
+    return row;
+  }, []);
+
+  const interpretar = useCallback(async (input: string, intencaoForcada?: Intencao) => {
+    const parsed = parse(input);
+    const intencao: Intencao = intencaoForcada ?? parsed.intencao;
+    const dados = construirDados(intencao, parsed, input);
+    const label = LABEL_TIPO[intencao];
+    await pushAssessor(`Preparei um rascunho de ${label}. Reveja e confirme.`, { tipo: intencao, dados });
+  }, [pushAssessor]);
+
+  const enviar = useCallback(async (input?: string) => {
+    const conteudo = (input ?? texto).trim();
+    if (!conteudo) return;
+    setTexto("");
+    try {
+      await pushUser(conteudo);
+      const parsed = parse(conteudo);
+      if (parsed.intencao === "briefing") {
+        await pushAssessor("Aqui está o seu dia.", { tipo: "briefing", dados: { texto: conteudo } });
+      } else if (parsed.intencao === "procura") {
+        await pushAssessor("Resultados da pesquisa:", { tipo: "procura", dados: { termo: conteudo } });
+      } else {
+        await interpretar(conteudo);
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }, [texto, pushUser, pushAssessor, interpretar]);
+
+  const acaoRapida = useCallback(async (tipo: CartaoTipo) => {
+    try {
+      if (tipo === "briefing") {
+        await pushUser("O que tenho hoje?");
+        await pushAssessor("Aqui está o seu dia.", { tipo: "briefing", dados: {} });
+      } else if (tipo === "procura") {
+        await pushUser("Procurar informação");
+        await pushAssessor("O que quer procurar?", { tipo: "procura", dados: { termo: "" } });
+      } else {
+        await pushUser(LABEL_TIPO[tipo]);
+        await pushAssessor(`Preencha os dados de ${LABEL_TIPO[tipo]}.`, { tipo, dados: construirDados(tipo, parse(""), "") });
+      }
+    } catch (e) { toast.error((e as Error).message); }
+  }, [pushUser, pushAssessor]);
+
+  const atualizarCartao = useCallback((id: string, patch: Partial<Msg>) => {
+    setMsgs((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch, cartao: patch.cartao ?? m.cartao } : m)));
+  }, []);
+
+  const confirmarCartao = useCallback(async (msg: Msg, dados: Record<string, unknown>) => {
+    if (!msg.cartao) return;
+    try {
+      const entidadeId = await executarCartao(msg.cartao.tipo, dados, store);
+      const payload = { ...dados, ...(entidadeId ? { __entidadeId: entidadeId } : {}) };
+      await updateMessageStatus(msg.id, "confirmed", payload);
+      atualizarCartao(msg.id, { status: "confirmed", cartao: { ...msg.cartao, dados: payload, entidadeId } });
+      toast.success(`${LABEL_TIPO[msg.cartao.tipo]} registado.`);
+    } catch (e) { toast.error((e as Error).message); }
+  }, [store, atualizarCartao]);
+
+  const cancelarCartao = useCallback(async (msg: Msg) => {
+    try {
+      await updateMessageStatus(msg.id, "cancelled");
+      atualizarCartao(msg.id, { status: "cancelled" });
+    } catch (e) { toast.error((e as Error).message); }
+  }, [atualizarCartao]);
+
+  const limpar = useCallback(async () => {
+    if (!confirm("Apagar toda a conversa com o assessor?")) return;
+    try { await clearMessages(); setMsgs([]); toast.success("Conversa apagada."); }
+    catch (e) { toast.error((e as Error).message); }
+  }, []);
+
+  const conteudo = (
+    <div className="flex h-full flex-col">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 md:px-6">
+        {carregando && <p className="text-center text-sm text-muted-foreground">A carregar…</p>}
+        {!carregando && msgs.length === 0 && (
+          <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6 text-center">
+            <Sparkles className="mx-auto h-6 w-6 text-primary" />
+            <p className="mt-3 text-sm font-medium">Olá. Sou o seu assessor.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Diga o que aconteceu ou o que precisa fazer. Ex: "Ligar à Ana amanhã às 10h", "Paguei 38€ de portagens", "Comissão de 4500€ da venda do T2".
+            </p>
           </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => toast.info("Mais opções em breve.")}
-          className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-muted"
-          aria-label="Mais opções"
-        >
-          <MoreVertical className="h-5 w-5" />
-        </button>
-      </header>
-
-      {/* Messages */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3"
-        style={{ paddingBottom: `calc(${NAV_BOTTOM} + 8.5rem)` }}
-      >
-        <div className="mx-auto flex max-w-[560px] flex-col gap-1">
-          {mensagens.map((item) =>
-            "separador" in item ? (
-              <div key={item.id} className="my-2 flex justify-center">
-                <span className="rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] text-muted-foreground shadow-sm">
-                  {item.separador}
-                </span>
-              </div>
-            ) : (
-              <MobileMessage
-                key={item.id}
-                m={item}
-                onConfirm={() => onConfirm(item.id)}
-                onCancel={() => onCancel(item.id)}
-              />
-            ),
-          )}
-
-          {mostrarSugestoesIniciais && (
-            <div className="mt-3 flex flex-wrap gap-2 pl-1">
-              {sugestoesIniciais.map((s) => (
-                <button
-                  key={s.label}
-                  type="button"
-                  onClick={() => onQuickAction(s.tipo, s.label)}
-                  className="rounded-full border border-border bg-background px-3 py-1.5 text-[13px] text-foreground shadow-sm active:scale-[0.98]"
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          )}
+        )}
+        <div className="mx-auto flex max-w-3xl flex-col gap-3">
+          {msgs.map((m) => (
+            <Balao key={m.id} msg={m}
+              onConfirm={(dados) => confirmarCartao(m, dados)}
+              onCancel={() => cancelarCartao(m)}
+              store={store}
+            />
+          ))}
         </div>
       </div>
-
-      {/* Composer + contextual chips (fixed above nav) */}
-      <div
-        className="pointer-events-none fixed inset-x-0 z-20"
-        style={{ bottom: NAV_BOTTOM }}
-      >
-        {sugestoesContextuais.length > 0 && (
-          <div className="pointer-events-auto mb-1 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {sugestoesContextuais.map((s) => (
-              <button
-                key={s.label}
-                type="button"
-                onClick={() => onQuickAction(s.tipo, s.label)}
-                className="shrink-0 rounded-full border border-border bg-background/95 px-3 py-1 text-[12.5px] text-muted-foreground shadow-sm backdrop-blur active:scale-[0.98]"
-              >
-                {s.label}
+      <div className="border-t border-border bg-background/95 px-3 py-3 backdrop-blur md:px-6" style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0.75rem), 0.75rem)" }}>
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+            {ACOES.map((a) => (
+              <button key={a.tipo} onClick={() => acaoRapida(a.tipo)}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent">
+                <a.icon className="h-3.5 w-3.5" /> {a.label}
               </button>
             ))}
           </div>
-        )}
-        <div className="pointer-events-auto border-t border-border/60 bg-card/95 px-2 py-2 backdrop-blur">
-          {recording ? (
-            <RecordingBar
-              seconds={recSeconds}
-              onCancel={() => setRecording(false)}
-              onSend={() => {
-                setRecording(false);
-                onSend(`[Áudio ${formatDuration(recSeconds)}]`);
-              }}
+          <div className="flex items-end gap-2 rounded-full border border-border bg-card px-3 py-1.5">
+            <Textarea
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void enviar(); } }}
+              placeholder="Escreva ao seu assessor…"
+              rows={1}
+              className="min-h-[36px] resize-none border-0 bg-transparent p-1 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-          ) : (
-            <MobileMessageComposer
-              input={input}
-              setInput={setInput}
-              onSend={() => onSend()}
-              onAttach={() => setAttachOpen(true)}
-              onStartRecord={() => setRecording(true)}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Bottom nav — mobile-native */}
-      <MobileBottomNav />
-
-      {/* Attachments sheet */}
-      <Drawer open={attachOpen} onOpenChange={setAttachOpen}>
-        <DrawerContent>
-          <DrawerHeader className="text-left">
-            <DrawerTitle>Anexar</DrawerTitle>
-          </DrawerHeader>
-          <div className="grid grid-cols-4 gap-3 px-4 pb-6">
-            <AttachOption icon={FileText} label="Documento" onSelect={() => handleAttach("Documento", setAttachOpen, onSend)} />
-            <AttachOption icon={ImageIcon} label="Fotografia" onSelect={() => handleAttach("Fotografia", setAttachOpen, onSend)} />
-            <AttachOption icon={Receipt} label="Recibo" onSelect={() => handleAttach("Recibo", setAttachOpen, onSend)} />
-            <AttachOption icon={ImageIcon} label="Galeria" onSelect={() => handleAttach("Galeria", setAttachOpen, onSend)} />
-          </div>
-          <DrawerClose className="sr-only">Fechar</DrawerClose>
-        </DrawerContent>
-      </Drawer>
-    </div>
-  );
-}
-
-function handleAttach(
-  tipo: string,
-  setOpen: (v: boolean) => void,
-  onSend: (t?: string) => void,
-) {
-  setOpen(false);
-  onSend(`[Anexo: ${tipo}]`);
-}
-
-function AttachOption({
-  icon: Icon,
-  label,
-  onSelect,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className="flex flex-col items-center gap-2 rounded-xl py-3 text-center active:bg-muted"
-    >
-      <span className="grid h-12 w-12 place-items-center rounded-full bg-muted text-foreground">
-        <Icon className="h-5 w-5" />
-      </span>
-      <span className="text-[12px] text-foreground">{label}</span>
-    </button>
-  );
-}
-
-function MobileMessageComposer({
-  input,
-  setInput,
-  onSend,
-  onAttach,
-  onStartRecord,
-}: {
-  input: string;
-  setInput: (v: string) => void;
-  onSend: () => void;
-  onAttach: () => void;
-  onStartRecord: () => void;
-}) {
-  const taRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    const ta = taRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
-  }, [input]);
-  const hasText = input.trim().length > 0;
-  return (
-    <div className="flex items-end gap-1.5">
-      <button
-        type="button"
-        onClick={onAttach}
-        aria-label="Anexar"
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground active:bg-muted"
-      >
-        <Plus className="h-5 w-5" />
-      </button>
-      <div className="flex flex-1 items-end rounded-3xl bg-background px-3 py-1.5 shadow-sm ring-1 ring-border">
-        <textarea
-          ref={taRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Mensagem…"
-          rows={1}
-          className="max-h-[120px] w-full resize-none bg-transparent py-1.5 text-[15px] leading-snug outline-none placeholder:text-muted-foreground"
-        />
-      </div>
-      {hasText ? (
-        <button
-          type="button"
-          onClick={onSend}
-          aria-label="Enviar"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm active:scale-95"
-        >
-          <Send className="h-4 w-4" />
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={onStartRecord}
-          aria-label="Gravar áudio"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm active:scale-95"
-        >
-          <Mic className="h-4 w-4" />
-        </button>
-      )}
-    </div>
-  );
-}
-
-function RecordingBar({
-  seconds,
-  onCancel,
-  onSend,
-}: {
-  seconds: number;
-  onCancel: () => void;
-  onSend: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-3 px-1">
-      <button
-        type="button"
-        onClick={onCancel}
-        aria-label="Cancelar gravação"
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground active:bg-muted"
-      >
-        <Trash2 className="h-5 w-5" />
-      </button>
-      <div className="flex flex-1 items-center gap-2 rounded-full bg-background px-4 py-2 ring-1 ring-border">
-        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
-        <span className="text-[13px] tabular-nums text-foreground">{formatDuration(seconds)}</span>
-        <span className="ml-2 truncate text-[12px] text-muted-foreground">a gravar…</span>
-      </div>
-      <button
-        type="button"
-        onClick={onSend}
-        aria-label="Enviar áudio"
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm active:scale-95"
-      >
-        <Send className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
-
-function formatDuration(s: number) {
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m.toString().padStart(1, "0")}:${r.toString().padStart(2, "0")}`;
-}
-
-function MobileMessage({
-  m,
-  onConfirm,
-  onCancel,
-}: {
-  m: Mensagem;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const isMe = m.autor === "consultor";
-  const hora = new Date(m.ts).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
-  return (
-    <div className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}>
-      <div className={cn("flex flex-col", isMe ? "items-end max-w-[80%]" : "items-start max-w-[85%]")}>
-        {m.texto && (
-          <div
-            className={cn(
-              "rounded-2xl px-3 py-1.5 text-[15px] leading-snug shadow-sm",
-              isMe
-                ? "rounded-br-md bg-primary text-primary-foreground"
-                : "rounded-bl-md bg-card text-foreground ring-1 ring-border/60",
-            )}
-          >
-            {m.texto}
-          </div>
-        )}
-        {m.cartao && !m.cancelado && (
-          <MobileActionCard
-            cartao={m.cartao}
-            confirmado={!!m.confirmado}
-            onConfirm={onConfirm}
-            onCancel={onCancel}
-          />
-        )}
-        {m.cancelado && (
-          <div className="mt-0.5 text-[11px] italic text-muted-foreground">Cancelado</div>
-        )}
-        <div className="mt-0.5 px-1 text-[10.5px] text-muted-foreground">{hora}</div>
-      </div>
-    </div>
-  );
-}
-
-/* Compact structured message rendered inside chat bubble */
-function MobileActionCard({
-  cartao,
-  confirmado,
-  onConfirm,
-  onCancel,
-}: {
-  cartao: { tipo: CartaoTipo; dados: Record<string, string> };
-  confirmado: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const linhas = resumoCartao(cartao);
-  return (
-    <div
-      className={cn(
-        "mt-1 w-full rounded-2xl rounded-bl-md bg-card px-3 py-2.5 shadow-sm ring-1 ring-border/60",
-        confirmado && "opacity-90",
-      )}
-    >
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <div className="text-[13px] font-semibold text-foreground">{tituloCartao[cartao.tipo]}</div>
-        {confirmado && (
-          <span className="flex items-center gap-1 text-[11px] text-emerald-600">
-            <Check className="h-3 w-3" /> Concluído
-          </span>
-        )}
-      </div>
-      <div className="space-y-0.5 text-[13.5px] leading-snug text-foreground">
-        {linhas.map((l, i) => (
-          <div
-            key={i}
-            className={cn(
-              i === 0 ? "font-medium" : "text-muted-foreground",
-              "break-words",
-            )}
-          >
-            {l}
-          </div>
-        ))}
-      </div>
-      {!confirmado && (
-        <div className="mt-2.5 flex items-center gap-2">
-          <Button size="sm" className="h-8 flex-1 rounded-full text-[13px]" onClick={onConfirm}>
-            <Check className="mr-1 h-3.5 w-3.5" /> Confirmar
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 rounded-full px-3 text-[13px]"
-            onClick={() => toast.info("Edição em breve.")}
-          >
-            <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
-          </Button>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground active:bg-muted"
-              aria-label="Mais"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 bottom-9 z-10 w-36 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-destructive hover:bg-muted"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onCancel();
-                  }}
-                >
-                  <X className="h-3.5 w-3.5" /> Cancelar
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* Turn field dict into short human lines */
-function resumoCartao(c: { tipo: CartaoTipo; dados: Record<string, string> }): string[] {
-  const d = c.dados;
-  switch (c.tipo) {
-    case "seguimento":
-      return [
-        d["Título"] ?? "Novo seguimento",
-        [d["Pessoa"], d["Data"], d["Hora"]].filter(Boolean).join(" · "),
-        d["Prioridade"] ? `Prioridade ${d["Prioridade"].toLowerCase()}` : "",
-      ].filter(Boolean);
-    case "conversa":
-      return [d["Pessoa"] ?? "Conversa", d["Resumo"] ?? "", d["Sentimento"] ? `Sentimento: ${d["Sentimento"].toLowerCase()}` : ""].filter(Boolean);
-    case "despesa":
-      return [d["Descrição"] ?? "Despesa", `${d["Valor"] ?? ""} · ${d["Categoria"] ?? ""}`, d["Data"] ?? ""].filter(Boolean);
-    case "comissao":
-      return [d["Oportunidade"] ?? "Comissão", `${d["Valor"] ?? ""} · ${d["Estado"] ?? ""}`, d["Data prevista"] ? `Prevista ${d["Data prevista"]}` : ""].filter(Boolean);
-    case "briefing":
-      return [
-        `${d["Compromissos"] ?? 0} compromisso(s) hoje`,
-        d["Próximo"] ? `Próximo: ${d["Próximo"]}` : "",
-        d["Atrasados"] && Number(d["Atrasados"]) > 0 ? `${d["Atrasados"]} atrasado(s)` : "",
-        d["Foco"] ? `Foco: ${d["Foco"]}` : "",
-      ].filter(Boolean);
-    case "procura":
-      return [d["Consulta"] ?? "", d["Resultados"] ?? "", d["Sugestão"] ? `→ ${d["Sugestão"]}` : ""].filter(Boolean);
-  }
-}
-
-/* ================================================================
-   DATE SEPARATORS
-   ================================================================ */
-
-function inserirSeparadores(msgs: Mensagem[]): (Mensagem | { separador: string; id: string })[] {
-  const out: (Mensagem | { separador: string; id: string })[] = [];
-  let lastKey = "";
-  for (const m of msgs) {
-    const d = new Date(m.ts);
-    const key = d.toDateString();
-    if (key !== lastKey) {
-      out.push({ separador: rotuloData(d), id: "sep-" + key });
-      lastKey = key;
-    }
-    out.push(m);
-  }
-  return out;
-}
-
-function rotuloData(d: Date): string {
-  const now = new Date();
-  const yest = new Date(); yest.setDate(now.getDate() - 1);
-  if (sameDay(d, now)) return "Hoje";
-  if (sameDay(d, yest)) return "Ontem";
-  return d.toLocaleDateString("pt-PT", { day: "2-digit", month: "long" });
-}
-
-/* ================================================================
-   MOBILE BOTTOM NAV — slim
-   ================================================================ */
-
-function MobileBottomNav() {
-  const items = [
-    { to: "/assessor", label: "Assessor", icon: MessageSquarePlus, active: true },
-    { to: "/hoje", label: "Hoje", icon: ClipboardList, active: false },
-    { to: "/seguimentos", label: "Seguimentos", icon: CalendarPlus, active: false },
-    { to: "/mais", label: "Mais", icon: MoreVertical, active: false },
-  ];
-  return (
-    <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 backdrop-blur"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-    >
-      <div className="mx-auto grid max-w-lg grid-cols-4">
-        {items.map(({ to, label, icon: Icon, active }) => (
-          <a
-            key={to}
-            href={to}
-            className={cn(
-              "flex flex-col items-center gap-0.5 py-2 text-[10.5px]",
-              active ? "text-primary" : "text-muted-foreground",
-            )}
-          >
-            <Icon className="h-[18px] w-[18px]" />
-            <span>{label}</span>
-          </a>
-        ))}
-      </div>
-    </nav>
-  );
-}
-
-/* ================================================================
-   DESKTOP MESSAGE ROW — original card-style bubbles
-   ================================================================ */
-
-function DesktopMessageRow({
-  m,
-  onConfirm,
-  onCancel,
-}: {
-  m: Mensagem;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const isMe = m.autor === "consultor";
-  return (
-    <div className={isMe ? "flex justify-end" : "flex justify-start"}>
-      <div className={isMe ? "max-w-[85%]" : "max-w-[80%]"}>
-        {m.texto && (
-          <div
-            className={
-              isMe
-                ? "rounded-2xl rounded-tr-sm bg-primary px-4 py-2 text-sm text-primary-foreground"
-                : "text-sm leading-relaxed text-foreground"
-            }
-          >
-            {m.texto}
-          </div>
-        )}
-        {m.cartao && !m.cancelado && (
-          <Card className="mt-2 border-border bg-card p-4">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="text-sm font-medium">{tituloCartao[m.cartao.tipo]}</div>
-              <span className="text-[11px] text-muted-foreground">{formatDataHora(m.ts)}</span>
-            </div>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-              {Object.entries(m.cartao.dados).map(([k, v]) => (
-                <div key={k} className="contents">
-                  <dt className="text-muted-foreground">{k}</dt>
-                  <dd className="min-w-0 break-words font-medium">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            {!m.confirmado ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button size="sm" onClick={onConfirm}><Check className="mr-1 h-4 w-4" /> Confirmar</Button>
-                <Button size="sm" variant="outline"><Pencil className="mr-1 h-4 w-4" /> Editar</Button>
-                <Button size="sm" variant="ghost" onClick={onCancel}><X className="mr-1 h-4 w-4" /> Cancelar</Button>
-              </div>
+            {texto.trim() ? (
+              <Button size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={() => void enviar()}><Send className="h-4 w-4" /></Button>
             ) : (
-              <div className="mt-3 flex items-center gap-1 text-xs text-primary"><Check className="h-3.5 w-3.5" /> Confirmado</div>
+              <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 rounded-full" onClick={() => toast.info("Áudio disponível em breve.")}><Mic className="h-4 w-4" /></Button>
             )}
-          </Card>
-        )}
-        {m.cancelado && <div className="mt-1 text-xs italic text-muted-foreground">Cancelado.</div>}
+          </div>
+          <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+            <span>Piloto — validação de conceito. Reveja sempre antes de confirmar.</span>
+            <button className="hover:text-foreground" onClick={limpar}><Trash2 className="mr-1 inline h-3 w-3" />Limpar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <AppShell fullBleed>
+        <div className="fixed inset-x-0 top-0 z-10 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+          <div className="text-sm font-semibold">Assessor</div>
+          <div className="text-xs text-muted-foreground">Sempre disponível</div>
+        </div>
+        <div className="flex h-[100dvh] flex-col pt-14 pb-16">{conteudo}</div>
+      </AppShell>
+    );
+  }
+
+  return (
+    <AppShell>
+      <PageHeader title="Assessor" subtitle="Fale ou escreva. Eu preparo um rascunho para si confirmar." />
+      <div className="h-[calc(100vh-14rem)] rounded-2xl border border-border bg-card">{conteudo}</div>
+    </AppShell>
+  );
+}
+
+const LABEL_TIPO: Record<CartaoTipo, string> = {
+  conversa: "conversa",
+  seguimento: "seguimento",
+  despesa: "despesa",
+  comissao: "comissão",
+  briefing: "briefing",
+  procura: "pesquisa",
+};
+
+function construirDados(tipo: CartaoTipo, p: Extraidos, texto: string): Record<string, unknown> {
+  const now = new Date();
+  const dataDefault = p.data ?? new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString();
+  switch (tipo) {
+    case "seguimento":
+      return {
+        tipoSeg: p.hora ? "Evento" : "Tarefa",
+        titulo: texto || "",
+        nomePessoa: p.nome ?? "",
+        pessoaId: "",
+        data: dataDefault,
+        hora: p.hora ?? "",
+        prioridade: "Média",
+        notas: "",
+      };
+    case "despesa":
+      return {
+        descricao: texto || "",
+        categoria: p.categoria ?? "Outros",
+        valor: p.valor ?? 0,
+        data: p.data ?? new Date().toISOString(),
+      };
+    case "comissao":
+      return {
+        descricao: texto || "Comissão",
+        valor: p.valor ?? 0,
+        estado: "Prevista",
+        data: p.data ?? new Date().toISOString(),
+        oportunidadeId: "",
+      };
+    case "conversa":
+      return {
+        nomePessoa: p.nome ?? "",
+        pessoaId: "",
+        resumo: texto,
+        proximaAcao: "",
+      };
+    default:
+      return { texto };
+  }
+}
+
+async function executarCartao(
+  tipo: CartaoTipo,
+  dados: Record<string, unknown>,
+  store: ReturnType<typeof useStore>,
+): Promise<string | undefined> {
+  if (tipo === "seguimento") {
+    const titulo = String(dados.titulo || "").trim();
+    if (!titulo) throw new Error("Título é obrigatório.");
+    const s = await store.addSeguimentoReturning({
+      tipo: (dados.tipoSeg as "Tarefa" | "Evento") || "Tarefa",
+      titulo,
+      data: String(dados.data),
+      hora: (dados.hora as string) || undefined,
+      pessoaId: (dados.pessoaId as string) || undefined,
+      prioridade: (dados.prioridade as "Baixa" | "Média" | "Alta") || "Média",
+      estado: "Pendente",
+      notas: (dados.notas as string) || undefined,
+    });
+    return s?.id;
+  }
+  if (tipo === "despesa") {
+    const valor = Number(dados.valor);
+    if (!valor || valor <= 0) throw new Error("Valor tem de ser maior que zero.");
+    const cats = ["Deslocação","Marketing","Escritório","Formação","Outros"] as const;
+    const cat = (cats as readonly string[]).includes(String(dados.categoria))
+      ? (String(dados.categoria) as typeof cats[number]) : "Outros";
+    const d = await store.addDespesaReturning({
+      descricao: String(dados.descricao || "Despesa").trim(),
+      categoria: cat,
+      valor,
+      data: String(dados.data),
+    });
+    return d?.id;
+  }
+  if (tipo === "comissao") {
+    const valor = Number(dados.valor);
+    if (!valor || valor <= 0) throw new Error("Valor tem de ser maior que zero.");
+    const c = await store.addComissaoReturning({
+      descricao: String(dados.descricao || "Comissão"),
+      valor,
+      estado: (dados.estado as "Prevista" | "Faturada" | "Recebida") || "Prevista",
+      data: String(dados.data),
+      oportunidadeId: (dados.oportunidadeId as string) || "",
+    });
+    return c?.id;
+  }
+  if (tipo === "conversa") {
+    const resumo = String(dados.resumo || "").trim();
+    if (!resumo) throw new Error("Escreva o resumo da conversa.");
+    await store.addInteracao({
+      pessoaId: (dados.pessoaId as string) || undefined,
+      conteudoOriginal: resumo,
+      resumo,
+      proximaAcao: (dados.proximaAcao as string) || undefined,
+    });
+    return undefined;
+  }
+  return undefined;
+}
+
+function Balao({ msg, onConfirm, onCancel, store }: {
+  msg: Msg;
+  onConfirm: (dados: Record<string, unknown>) => void;
+  onCancel: () => void;
+  store: ReturnType<typeof useStore>;
+}) {
+  const isUser = msg.role === "user";
+  if (msg.cartao) {
+    return <CartaoView msg={msg} onConfirm={onConfirm} onCancel={onCancel} store={store} />;
+  }
+  return (
+    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+      <div className={cn("max-w-[85%] rounded-2xl px-4 py-2 text-sm", isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
+        {msg.content}
       </div>
     </div>
   );
 }
 
-/* ================================================================
-   CARD BUILDERS
-   ================================================================ */
+function CartaoView({ msg, onConfirm, onCancel, store }: {
+  msg: Msg;
+  onConfirm: (dados: Record<string, unknown>) => void;
+  onCancel: () => void;
+  store: ReturnType<typeof useStore>;
+}) {
+  const cartao = msg.cartao!;
+  const [dados, setDados] = useState<Record<string, unknown>>(cartao.dados);
+  const readOnly = msg.status === "confirmed" || msg.status === "cancelled";
 
-function montarCartao(tipo: CartaoTipo, store: ReturnType<typeof useStore>, texto?: string) {
+  useEffect(() => { setDados(cartao.dados); }, [cartao]);
+
+  const set = (k: string, v: unknown) => setDados((d) => ({ ...d, [k]: v }));
+
+  return (
+    <div className="flex justify-start">
+      <Card className={cn("w-full max-w-[92%] p-3", msg.status === "cancelled" && "opacity-60", msg.status === "confirmed" && "border-primary/30 bg-primary/5")}>
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{LABEL_TIPO[cartao.tipo]}</div>
+          {msg.status && <Badge variant={msg.status === "confirmed" ? "default" : "secondary"}>{
+            msg.status === "confirmed" ? "Registado" : msg.status === "cancelled" ? "Cancelado" : "Rascunho"
+          }</Badge>}
+        </div>
+
+        {cartao.tipo === "seguimento" && <FormSeguimento dados={dados} set={set} store={store} readOnly={readOnly} />}
+        {cartao.tipo === "despesa" && <FormDespesa dados={dados} set={set} readOnly={readOnly} />}
+        {cartao.tipo === "comissao" && <FormComissao dados={dados} set={set} store={store} readOnly={readOnly} />}
+        {cartao.tipo === "conversa" && <FormConversa dados={dados} set={set} store={store} readOnly={readOnly} />}
+        {cartao.tipo === "briefing" && <BriefingView store={store} />}
+        {cartao.tipo === "procura" && <ProcuraView dados={dados} set={set} store={store} />}
+
+        {!readOnly && (cartao.tipo === "seguimento" || cartao.tipo === "despesa" || cartao.tipo === "comissao" || cartao.tipo === "conversa") && (
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" onClick={() => onConfirm(dados)}>Confirmar</Button>
+            <Button size="sm" variant="ghost" onClick={onCancel}>Cancelar</Button>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ---------- Sub-formulários ----------
+
+function PessoaPicker({ nome, pessoaId, onChange, store }: {
+  nome: string; pessoaId: string;
+  onChange: (nome: string, pessoaId: string) => void;
+  store: ReturnType<typeof useStore>;
+}) {
+  const [criando, setCriando] = useState(false);
+  const matches = useMemo(() => {
+    const q = nome.trim().toLowerCase();
+    if (!q) return [];
+    return store.pessoas.filter((p) => p.nome.toLowerCase().includes(q)).slice(0, 5);
+  }, [nome, store.pessoas]);
+
+  const selecionado = store.pessoas.find((p) => p.id === pessoaId);
+  const semMatch = nome.trim().length > 1 && matches.length === 0 && !pessoaId;
+
+  const criar = async () => {
+    setCriando(true);
+    try {
+      const p = await store.addPessoa({ nome: nome.trim(), relacao: "Potencial", telefone: "", email: "", resumo: "" } as never);
+      if (p) onChange(p.nome, p.id);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setCriando(false); }
+  };
+
+  return (
+    <div>
+      <Label className="text-xs">Pessoa</Label>
+      <Input value={nome} onChange={(e) => onChange(e.target.value, "")} placeholder="Nome (opcional)" className="mt-1" />
+      {selecionado && <p className="mt-1 text-xs text-primary">Ligado a {selecionado.nome}</p>}
+      {!selecionado && matches.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {matches.map((p) => (
+            <button key={p.id} type="button" onClick={() => onChange(p.nome, p.id)}
+              className="rounded-full border border-border px-2 py-0.5 text-xs hover:bg-accent">{p.nome}</button>
+          ))}
+        </div>
+      )}
+      {semMatch && (
+        <button type="button" onClick={criar} disabled={criando}
+          className="mt-1 text-xs text-primary underline">
+          {criando ? "A criar…" : `Criar pessoa "${nome.trim()}"`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DateInput({ value, onChange, withTime }: { value: string; onChange: (iso: string) => void; withTime?: boolean }) {
+  const d = value ? new Date(value) : new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return (
+    <Input
+      type={withTime ? "datetime-local" : "date"}
+      value={withTime ? `${yyyy}-${mm}-${dd}T${hh}:${mi}` : `${yyyy}-${mm}-${dd}`}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (!v) return;
+        const nd = new Date(v);
+        if (!isNaN(nd.getTime())) onChange(nd.toISOString());
+      }}
+      className="mt-1"
+    />
+  );
+}
+
+function FormSeguimento({ dados, set, store, readOnly }: any) {
+  return (
+    <div className="grid gap-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Tipo</Label>
+          <Select value={String(dados.tipoSeg)} onValueChange={(v) => set("tipoSeg", v)} disabled={readOnly}>
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Tarefa">Tarefa (com prazo)</SelectItem>
+              <SelectItem value="Evento">Evento (com hora)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Prioridade</Label>
+          <Select value={String(dados.prioridade)} onValueChange={(v) => set("prioridade", v)} disabled={readOnly}>
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Baixa">Baixa</SelectItem>
+              <SelectItem value="Média">Média</SelectItem>
+              <SelectItem value="Alta">Alta</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Título</Label>
+        <Input value={String(dados.titulo)} onChange={(e) => set("titulo", e.target.value)} disabled={readOnly} className="mt-1" />
+      </div>
+      <PessoaPicker nome={String(dados.nomePessoa || "")} pessoaId={String(dados.pessoaId || "")}
+        onChange={(n, id) => { set("nomePessoa", n); set("pessoaId", id); }} store={store} />
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">{dados.tipoSeg === "Evento" ? "Data e hora" : "Prazo"}</Label>
+          <DateInput value={String(dados.data)} onChange={(iso) => set("data", iso)} withTime={dados.tipoSeg === "Evento"} />
+        </div>
+        {dados.tipoSeg === "Evento" && (
+          <div>
+            <Label className="text-xs">Hora (etiqueta)</Label>
+            <Input value={String(dados.hora || "")} onChange={(e) => set("hora", e.target.value)} placeholder="HH:mm" disabled={readOnly} className="mt-1" />
+          </div>
+        )}
+      </div>
+      <div>
+        <Label className="text-xs">Notas</Label>
+        <Textarea value={String(dados.notas || "")} onChange={(e) => set("notas", e.target.value)} rows={2} disabled={readOnly} className="mt-1" />
+      </div>
+    </div>
+  );
+}
+
+function FormDespesa({ dados, set, readOnly }: any) {
+  return (
+    <div className="grid gap-3">
+      <div>
+        <Label className="text-xs">Descrição</Label>
+        <Input value={String(dados.descricao)} onChange={(e) => set("descricao", e.target.value)} disabled={readOnly} className="mt-1" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Categoria</Label>
+          <Select value={String(dados.categoria)} onValueChange={(v) => set("categoria", v)} disabled={readOnly}>
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {["Deslocação","Marketing","Formação","Escritório","Comissões partilhadas","Outros"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Valor (€)</Label>
+          <Input type="number" step="0.01" value={String(dados.valor)} onChange={(e) => set("valor", Number(e.target.value))} disabled={readOnly} className="mt-1" />
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Data</Label>
+        <DateInput value={String(dados.data)} onChange={(iso) => set("data", iso)} />
+      </div>
+    </div>
+  );
+}
+
+function FormComissao({ dados, set, store, readOnly }: any) {
+  return (
+    <div className="grid gap-3">
+      <div>
+        <Label className="text-xs">Descrição</Label>
+        <Input value={String(dados.descricao)} onChange={(e) => set("descricao", e.target.value)} disabled={readOnly} className="mt-1" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Valor (€)</Label>
+          <Input type="number" step="0.01" value={String(dados.valor)} onChange={(e) => set("valor", Number(e.target.value))} disabled={readOnly} className="mt-1" />
+        </div>
+        <div>
+          <Label className="text-xs">Estado</Label>
+          <Select value={String(dados.estado)} onValueChange={(v) => set("estado", v)} disabled={readOnly}>
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Prevista">Prevista</SelectItem>
+              <SelectItem value="Faturada">Faturada</SelectItem>
+              <SelectItem value="Recebida">Recebida</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Data</Label>
+        <DateInput value={String(dados.data)} onChange={(iso) => set("data", iso)} />
+      </div>
+      <div>
+        <Label className="text-xs">Oportunidade (opcional)</Label>
+        <Select value={String(dados.oportunidadeId || "__none")} onValueChange={(v) => set("oportunidadeId", v === "__none" ? "" : v)} disabled={readOnly}>
+          <SelectTrigger className="mt-1"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">Nenhuma</SelectItem>
+            {store.oportunidades.map((o: any) => (
+              <SelectItem key={o.id} value={o.id}>{o.tipo} · {formatEUR(o.valor)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+function FormConversa({ dados, set, store, readOnly }: any) {
+  return (
+    <div className="grid gap-3">
+      <PessoaPicker nome={String(dados.nomePessoa || "")} pessoaId={String(dados.pessoaId || "")}
+        onChange={(n, id) => { set("nomePessoa", n); set("pessoaId", id); }} store={store} />
+      <div>
+        <Label className="text-xs">Resumo da conversa</Label>
+        <Textarea value={String(dados.resumo || "")} onChange={(e) => set("resumo", e.target.value)} rows={3} disabled={readOnly} className="mt-1" />
+      </div>
+      <div>
+        <Label className="text-xs">Próxima ação (opcional)</Label>
+        <Input value={String(dados.proximaAcao || "")} onChange={(e) => set("proximaAcao", e.target.value)} disabled={readOnly} className="mt-1" />
+      </div>
+    </div>
+  );
+}
+
+function BriefingView({ store }: { store: ReturnType<typeof useStore> }) {
   const now = new Date();
-  const amanha = new Date(now); amanha.setDate(now.getDate() + 1);
-  const dados: Record<string, string> = {};
-  switch (tipo) {
-    case "conversa":
-      dados["Pessoa"] = "Ana Silva";
-      dados["Resumo"] = texto ?? "Conversa breve sobre visita de amanhã.";
-      dados["Sentimento"] = "Positivo";
-      break;
-    case "seguimento":
-      dados["Título"] = texto ?? "Ligar a Ana Silva";
-      dados["Pessoa"] = "Ana Silva";
-      dados["Tipo"] = "Tarefa";
-      dados["Data"] = amanha.toLocaleDateString("pt-PT");
-      dados["Hora"] = "10:00";
-      dados["Prioridade"] = "Média";
-      break;
-    case "despesa":
-      dados["Descrição"] = texto ?? "Combustível — visita";
-      dados["Categoria"] = "Deslocação";
-      dados["Valor"] = formatEUR(42);
-      dados["Data"] = now.toLocaleDateString("pt-PT");
-      break;
-    case "comissao": {
-      const op = store.oportunidades[0];
-      dados["Oportunidade"] = op ? `${op.tipo} — ${store.pessoas.find((p) => p.id === op.pessoaId)?.nome ?? ""}` : "—";
-      dados["Valor"] = formatEUR(9450);
-      dados["Estado"] = "Prevista";
-      dados["Data prevista"] = new Date(now.getFullYear(), now.getMonth() + 1, 15).toLocaleDateString("pt-PT");
-      break;
-    }
-    case "briefing": {
-      const eventos = store.seguimentos.filter((s) => s.tipo === "Evento" && sameDay(new Date(s.data), now) && s.estado !== "Concluído");
-      const atrasados = store.seguimentos.filter((s) => s.estado !== "Concluído" && new Date(s.data) < now && !sameDay(new Date(s.data), now));
-      dados["Compromissos"] = String(eventos.length);
-      dados["Próximo"] = eventos[0] ? `${eventos[0].hora} · ${eventos[0].titulo}` : "sem compromissos";
-      dados["Atrasados"] = String(atrasados.length);
-      dados["Foco"] = "Confirmar visita das 10:30 com a Ana Silva";
-      break;
-    }
-    case "procura":
-      dados["Consulta"] = texto ?? "T2 Alvalade";
-      dados["Resultados"] = "3 imóveis, 2 pessoas, 1 oportunidade";
-      dados["Sugestão"] = "Abrir T2 Rua João Saraiva";
-      break;
-  }
-  return { tipo, dados };
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  const eventos = store.seguimentos.filter((s) => s.tipo === "Evento" && sameDay(new Date(s.data), now) && s.estado !== "Concluído");
+  const tarefas = store.seguimentos.filter((s) => s.tipo === "Tarefa" && sameDay(new Date(s.data), now) && s.estado !== "Concluído");
+  const atrasados = store.seguimentos.filter((s) => s.estado !== "Concluído" && new Date(s.data) < now && !sameDay(new Date(s.data), now));
+  const semAcao = store.oportunidades.filter((o) => !o.proximaAcao && o.estado !== "Perdida" && o.estado !== "Escritura");
+  const nomeP = (id?: string) => store.pessoas.find((p) => p.id === id)?.nome ?? "";
+
+  return (
+    <div className="text-sm">
+      <p><strong>{eventos.length}</strong> compromisso(s), <strong>{tarefas.length}</strong> tarefa(s) hoje. <strong>{atrasados.length}</strong> em atraso. <strong>{semAcao.length}</strong> oportunidade(s) sem próxima ação.</p>
+      {eventos.length > 0 && (
+        <div className="mt-2">
+          <div className="text-xs font-medium text-muted-foreground">Compromissos</div>
+          <ul className="mt-1 space-y-1">{eventos.map((e) => (
+            <li key={e.id} className="text-xs">• {e.hora || ""} {e.titulo} {nomeP(e.pessoaId) && `— ${nomeP(e.pessoaId)}`}</li>
+          ))}</ul>
+        </div>
+      )}
+      {tarefas.length > 0 && (
+        <div className="mt-2">
+          <div className="text-xs font-medium text-muted-foreground">Tarefas</div>
+          <ul className="mt-1 space-y-1">{tarefas.map((t) => (
+            <li key={t.id} className="text-xs">• {t.titulo} {nomeP(t.pessoaId) && `— ${nomeP(t.pessoaId)}`}</li>
+          ))}</ul>
+        </div>
+      )}
+      {store.seguimentos.length === 0 && store.oportunidades.length === 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">Ainda não há dados. Comece por registar uma conversa ou criar um seguimento.</p>
+      )}
+    </div>
+  );
 }
 
-function sameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+function ProcuraView({ dados, set, store }: any) {
+  const termo = String(dados.termo || "").trim().toLowerCase();
+  const pessoas = termo ? store.pessoas.filter((p: any) => (p.nome + " " + (p.email || "") + " " + (p.telefone || "")).toLowerCase().includes(termo)).slice(0, 5) : [];
+  const oport = termo ? store.oportunidades.filter((o: any) => (o.tipo + " " + (o.notas || "")).toLowerCase().includes(termo)).slice(0, 5) : [];
+  const seg = termo ? store.seguimentos.filter((s: any) => s.titulo.toLowerCase().includes(termo)).slice(0, 5) : [];
+  const imo = termo ? store.imoveis.filter((i: any) => (i.titulo + " " + (i.localizacao || "")).toLowerCase().includes(termo)).slice(0, 5) : [];
+
+  return (
+    <div>
+      <Input value={String(dados.termo || "")} onChange={(e) => set("termo", e.target.value)} placeholder="Procurar em pessoas, oportunidades, seguimentos, imóveis…" />
+      {termo && (
+        <div className="mt-3 space-y-2 text-xs">
+          {pessoas.length > 0 && <ResultadoBloco titulo="Pessoas" items={pessoas.map((p: any) => `${p.nome} · ${p.telefone || p.email || ""}`)} />}
+          {oport.length > 0 && <ResultadoBloco titulo="Oportunidades" items={oport.map((o: any) => `${o.tipo} · ${formatEUR(o.valor)} · ${o.estado}`)} />}
+          {seg.length > 0 && <ResultadoBloco titulo="Seguimentos" items={seg.map((s: any) => s.titulo)} />}
+          {imo.length > 0 && <ResultadoBloco titulo="Imóveis" items={imo.map((i: any) => `${i.titulo} · ${i.localizacao || ""}`)} />}
+          {pessoas.length + oport.length + seg.length + imo.length === 0 && <p className="text-muted-foreground">Nada encontrado.</p>}
+        </div>
+      )}
+    </div>
+  );
 }
 
-function aplicarCartao(cartao: { tipo: CartaoTipo; dados: Record<string, string> }, store: ReturnType<typeof useStore>) {
-  const now = nowIso();
-  if (cartao.tipo === "seguimento") {
-    store.addSeguimento({
-      tipo: "Tarefa",
-      titulo: cartao.dados["Título"] ?? "Novo seguimento",
-      data: now,
-      estado: "Pendente",
-      prioridade: "Média",
-    });
-  } else if (cartao.tipo === "despesa") {
-    store.addDespesa({
-      descricao: cartao.dados["Descrição"] ?? "Despesa",
-      categoria: "Deslocação",
-      valor: 42,
-      data: now,
-    });
-  } else if (cartao.tipo === "comissao") {
-    store.addComissao({
-      oportunidadeId: store.oportunidades[0]?.id ?? "",
-      valor: 9450,
-      data: now,
-      estado: "Prevista",
-    });
-  }
+function ResultadoBloco({ titulo, items }: { titulo: string; items: string[] }) {
+  return (
+    <div>
+      <div className="font-medium text-muted-foreground">{titulo}</div>
+      <ul className="mt-1 space-y-0.5">{items.map((s, i) => <li key={i}>• {s}</li>)}</ul>
+    </div>
+  );
 }
-
-const tituloCartao: Record<CartaoTipo, string> = {
-  conversa: "Conversa registada",
-  seguimento: "Seguimento criado",
-  despesa: "Despesa registada",
-  comissao: "Comissão registada",
-  briefing: "O seu dia",
-  procura: "Resultados",
-};
