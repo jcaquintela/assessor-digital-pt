@@ -4,7 +4,7 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatData, formatEUR } from "@/lib/demo-data";
 
-export const Route = createFileRoute("/negocio")({
+export const Route = createFileRoute("/_authenticated/negocio")({
   head: () => ({
     meta: [
       { title: "O Meu Negócio — Assessor do Consultor" },

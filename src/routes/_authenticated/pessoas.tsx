@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { formatData, formatEUR, type Pessoa } from "@/lib/demo-data";
 import { Mail, Phone } from "lucide-react";
 
-export const Route = createFileRoute("/pessoas")({
+export const Route = createFileRoute("/_authenticated/pessoas")({
   head: () => ({
     meta: [
       { title: "Pessoas — Assessor do Consultor" },

@@ -7,7 +7,7 @@ import { FileText, Upload } from "lucide-react";
 import { formatData } from "@/lib/demo-data";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/documentos")({
+export const Route = createFileRoute("/_authenticated/documentos")({
   head: () => ({
     meta: [
       { title: "Documentos — Assessor do Consultor" },

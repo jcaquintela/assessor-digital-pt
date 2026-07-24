@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/definicoes")({
+export const Route = createFileRoute("/_authenticated/definicoes")({
   head: () => ({
     meta: [
       { title: "Definições — Assessor do Consultor" },

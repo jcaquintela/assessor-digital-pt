@@ -9,86 +9,88 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SeguimentosRouteImport } from './routes/seguimentos'
-import { Route as PessoasRouteImport } from './routes/pessoas'
-import { Route as OportunidadesRouteImport } from './routes/oportunidades'
-import { Route as NegocioRouteImport } from './routes/negocio'
 import { Route as McpRouteImport } from './routes/mcp'
-import { Route as MaisRouteImport } from './routes/mais'
-import { Route as ImoveisRouteImport } from './routes/imoveis'
-import { Route as HojeRouteImport } from './routes/hoje'
-import { Route as DocumentosRouteImport } from './routes/documentos'
-import { Route as DefinicoesRouteImport } from './routes/definicoes'
-import { Route as CalendarioRouteImport } from './routes/calendario'
-import { Route as AssessorRouteImport } from './routes/assessor'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
+import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
+import { Route as AuthenticatedOportunidadesRouteImport } from './routes/_authenticated/oportunidades'
+import { Route as AuthenticatedNegocioRouteImport } from './routes/_authenticated/negocio'
+import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
+import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
+import { Route as AuthenticatedHojeRouteImport } from './routes/_authenticated/hoje'
+import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
+import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
+import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
+import { Route as AuthenticatedAssessorRouteImport } from './routes/_authenticated/assessor'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
-const SeguimentosRoute = SeguimentosRouteImport.update({
-  id: '/seguimentos',
-  path: '/seguimentos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PessoasRoute = PessoasRouteImport.update({
-  id: '/pessoas',
-  path: '/pessoas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OportunidadesRoute = OportunidadesRouteImport.update({
-  id: '/oportunidades',
-  path: '/oportunidades',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NegocioRoute = NegocioRouteImport.update({
-  id: '/negocio',
-  path: '/negocio',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MaisRoute = MaisRouteImport.update({
-  id: '/mais',
-  path: '/mais',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImoveisRoute = ImoveisRouteImport.update({
-  id: '/imoveis',
-  path: '/imoveis',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HojeRoute = HojeRouteImport.update({
-  id: '/hoje',
-  path: '/hoje',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocumentosRoute = DocumentosRouteImport.update({
-  id: '/documentos',
-  path: '/documentos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DefinicoesRoute = DefinicoesRouteImport.update({
-  id: '/definicoes',
-  path: '/definicoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CalendarioRoute = CalendarioRouteImport.update({
-  id: '/calendario',
-  path: '/calendario',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AssessorRoute = AssessorRouteImport.update({
-  id: '/assessor',
-  path: '/assessor',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSeguimentosRoute =
+  AuthenticatedSeguimentosRouteImport.update({
+    id: '/_authenticated/seguimentos',
+    path: '/seguimentos',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedPessoasRoute = AuthenticatedPessoasRouteImport.update({
+  id: '/_authenticated/pessoas',
+  path: '/pessoas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedOportunidadesRoute =
+  AuthenticatedOportunidadesRouteImport.update({
+    id: '/_authenticated/oportunidades',
+    path: '/oportunidades',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedNegocioRoute = AuthenticatedNegocioRouteImport.update({
+  id: '/_authenticated/negocio',
+  path: '/negocio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedMaisRoute = AuthenticatedMaisRouteImport.update({
+  id: '/_authenticated/mais',
+  path: '/mais',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedImoveisRoute = AuthenticatedImoveisRouteImport.update({
+  id: '/_authenticated/imoveis',
+  path: '/imoveis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedHojeRoute = AuthenticatedHojeRouteImport.update({
+  id: '/_authenticated/hoje',
+  path: '/hoje',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedDocumentosRoute = AuthenticatedDocumentosRouteImport.update({
+  id: '/_authenticated/documentos',
+  path: '/documentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedDefinicoesRoute = AuthenticatedDefinicoesRouteImport.update({
+  id: '/_authenticated/definicoes',
+  path: '/definicoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
+  id: '/_authenticated/calendario',
+  path: '/calendario',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAssessorRoute = AuthenticatedAssessorRouteImport.update({
+  id: '/_authenticated/assessor',
+  path: '/assessor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
@@ -112,63 +114,66 @@ const Char91DotmcpChar93InvokeToolToolRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/assessor': typeof AssessorRoute
-  '/calendario': typeof CalendarioRoute
-  '/definicoes': typeof DefinicoesRoute
-  '/documentos': typeof DocumentosRoute
-  '/hoje': typeof HojeRoute
-  '/imoveis': typeof ImoveisRoute
-  '/mais': typeof MaisRoute
   '/mcp': typeof McpRoute
-  '/negocio': typeof NegocioRoute
-  '/oportunidades': typeof OportunidadesRoute
-  '/pessoas': typeof PessoasRoute
-  '/seguimentos': typeof SeguimentosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/assessor': typeof AuthenticatedAssessorRoute
+  '/calendario': typeof AuthenticatedCalendarioRoute
+  '/definicoes': typeof AuthenticatedDefinicoesRoute
+  '/documentos': typeof AuthenticatedDocumentosRoute
+  '/hoje': typeof AuthenticatedHojeRoute
+  '/imoveis': typeof AuthenticatedImoveisRoute
+  '/mais': typeof AuthenticatedMaisRoute
+  '/negocio': typeof AuthenticatedNegocioRoute
+  '/oportunidades': typeof AuthenticatedOportunidadesRoute
+  '/pessoas': typeof AuthenticatedPessoasRoute
+  '/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/assessor': typeof AssessorRoute
-  '/calendario': typeof CalendarioRoute
-  '/definicoes': typeof DefinicoesRoute
-  '/documentos': typeof DocumentosRoute
-  '/hoje': typeof HojeRoute
-  '/imoveis': typeof ImoveisRoute
-  '/mais': typeof MaisRoute
   '/mcp': typeof McpRoute
-  '/negocio': typeof NegocioRoute
-  '/oportunidades': typeof OportunidadesRoute
-  '/pessoas': typeof PessoasRoute
-  '/seguimentos': typeof SeguimentosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/assessor': typeof AuthenticatedAssessorRoute
+  '/calendario': typeof AuthenticatedCalendarioRoute
+  '/definicoes': typeof AuthenticatedDefinicoesRoute
+  '/documentos': typeof AuthenticatedDocumentosRoute
+  '/hoje': typeof AuthenticatedHojeRoute
+  '/imoveis': typeof AuthenticatedImoveisRoute
+  '/mais': typeof AuthenticatedMaisRoute
+  '/negocio': typeof AuthenticatedNegocioRoute
+  '/oportunidades': typeof AuthenticatedOportunidadesRoute
+  '/pessoas': typeof AuthenticatedPessoasRoute
+  '/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/assessor': typeof AssessorRoute
-  '/calendario': typeof CalendarioRoute
-  '/definicoes': typeof DefinicoesRoute
-  '/documentos': typeof DocumentosRoute
-  '/hoje': typeof HojeRoute
-  '/imoveis': typeof ImoveisRoute
-  '/mais': typeof MaisRoute
   '/mcp': typeof McpRoute
-  '/negocio': typeof NegocioRoute
-  '/oportunidades': typeof OportunidadesRoute
-  '/pessoas': typeof PessoasRoute
-  '/seguimentos': typeof SeguimentosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/_authenticated/assessor': typeof AuthenticatedAssessorRoute
+  '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
+  '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
+  '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
+  '/_authenticated/hoje': typeof AuthenticatedHojeRoute
+  '/_authenticated/imoveis': typeof AuthenticatedImoveisRoute
+  '/_authenticated/mais': typeof AuthenticatedMaisRoute
+  '/_authenticated/negocio': typeof AuthenticatedNegocioRoute
+  '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRoute
+  '/_authenticated/pessoas': typeof AuthenticatedPessoasRoute
+  '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/mcp'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/assessor'
     | '/calendario'
     | '/definicoes'
@@ -176,17 +181,17 @@ export interface FileRouteTypes {
     | '/hoje'
     | '/imoveis'
     | '/mais'
-    | '/mcp'
     | '/negocio'
     | '/oportunidades'
     | '/pessoas'
     | '/seguimentos'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
     | '/.mcp/invoke-tool/$tool'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/mcp'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/assessor'
     | '/calendario'
     | '/definicoes'
@@ -194,83 +199,52 @@ export interface FileRouteTypes {
     | '/hoje'
     | '/imoveis'
     | '/mais'
-    | '/mcp'
     | '/negocio'
     | '/oportunidades'
     | '/pessoas'
     | '/seguimentos'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
     | '/.mcp/invoke-tool/$tool'
   id:
     | '__root__'
     | '/'
-    | '/assessor'
-    | '/calendario'
-    | '/definicoes'
-    | '/documentos'
-    | '/hoje'
-    | '/imoveis'
-    | '/mais'
     | '/mcp'
-    | '/negocio'
-    | '/oportunidades'
-    | '/pessoas'
-    | '/seguimentos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/_authenticated/assessor'
+    | '/_authenticated/calendario'
+    | '/_authenticated/definicoes'
+    | '/_authenticated/documentos'
+    | '/_authenticated/hoje'
+    | '/_authenticated/imoveis'
+    | '/_authenticated/mais'
+    | '/_authenticated/negocio'
+    | '/_authenticated/oportunidades'
+    | '/_authenticated/pessoas'
+    | '/_authenticated/seguimentos'
     | '/.mcp/invoke-tool/$tool'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AssessorRoute: typeof AssessorRoute
-  CalendarioRoute: typeof CalendarioRoute
-  DefinicoesRoute: typeof DefinicoesRoute
-  DocumentosRoute: typeof DocumentosRoute
-  HojeRoute: typeof HojeRoute
-  ImoveisRoute: typeof ImoveisRoute
-  MaisRoute: typeof MaisRoute
   McpRoute: typeof McpRoute
-  NegocioRoute: typeof NegocioRoute
-  OportunidadesRoute: typeof OportunidadesRoute
-  PessoasRoute: typeof PessoasRoute
-  SeguimentosRoute: typeof SeguimentosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  AuthenticatedAssessorRoute: typeof AuthenticatedAssessorRoute
+  AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
+  AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
+  AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
+  AuthenticatedHojeRoute: typeof AuthenticatedHojeRoute
+  AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRoute
+  AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
+  AuthenticatedNegocioRoute: typeof AuthenticatedNegocioRoute
+  AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRoute
+  AuthenticatedPessoasRoute: typeof AuthenticatedPessoasRoute
+  AuthenticatedSeguimentosRoute: typeof AuthenticatedSeguimentosRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/seguimentos': {
-      id: '/seguimentos'
-      path: '/seguimentos'
-      fullPath: '/seguimentos'
-      preLoaderRoute: typeof SeguimentosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pessoas': {
-      id: '/pessoas'
-      path: '/pessoas'
-      fullPath: '/pessoas'
-      preLoaderRoute: typeof PessoasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/oportunidades': {
-      id: '/oportunidades'
-      path: '/oportunidades'
-      fullPath: '/oportunidades'
-      preLoaderRoute: typeof OportunidadesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/negocio': {
-      id: '/negocio'
-      path: '/negocio'
-      fullPath: '/negocio'
-      preLoaderRoute: typeof NegocioRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/mcp': {
       id: '/mcp'
       path: '/mcp'
@@ -278,60 +252,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/mais': {
-      id: '/mais'
-      path: '/mais'
-      fullPath: '/mais'
-      preLoaderRoute: typeof MaisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/imoveis': {
-      id: '/imoveis'
-      path: '/imoveis'
-      fullPath: '/imoveis'
-      preLoaderRoute: typeof ImoveisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hoje': {
-      id: '/hoje'
-      path: '/hoje'
-      fullPath: '/hoje'
-      preLoaderRoute: typeof HojeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/documentos': {
-      id: '/documentos'
-      path: '/documentos'
-      fullPath: '/documentos'
-      preLoaderRoute: typeof DocumentosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/definicoes': {
-      id: '/definicoes'
-      path: '/definicoes'
-      fullPath: '/definicoes'
-      preLoaderRoute: typeof DefinicoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calendario': {
-      id: '/calendario'
-      path: '/calendario'
-      fullPath: '/calendario'
-      preLoaderRoute: typeof CalendarioRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/assessor': {
-      id: '/assessor'
-      path: '/assessor'
-      fullPath: '/assessor'
-      preLoaderRoute: typeof AssessorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/seguimentos': {
+      id: '/_authenticated/seguimentos'
+      path: '/seguimentos'
+      fullPath: '/seguimentos'
+      preLoaderRoute: typeof AuthenticatedSeguimentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/pessoas': {
+      id: '/_authenticated/pessoas'
+      path: '/pessoas'
+      fullPath: '/pessoas'
+      preLoaderRoute: typeof AuthenticatedPessoasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/oportunidades': {
+      id: '/_authenticated/oportunidades'
+      path: '/oportunidades'
+      fullPath: '/oportunidades'
+      preLoaderRoute: typeof AuthenticatedOportunidadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/negocio': {
+      id: '/_authenticated/negocio'
+      path: '/negocio'
+      fullPath: '/negocio'
+      preLoaderRoute: typeof AuthenticatedNegocioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/mais': {
+      id: '/_authenticated/mais'
+      path: '/mais'
+      fullPath: '/mais'
+      preLoaderRoute: typeof AuthenticatedMaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/imoveis': {
+      id: '/_authenticated/imoveis'
+      path: '/imoveis'
+      fullPath: '/imoveis'
+      preLoaderRoute: typeof AuthenticatedImoveisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/hoje': {
+      id: '/_authenticated/hoje'
+      path: '/hoje'
+      fullPath: '/hoje'
+      preLoaderRoute: typeof AuthenticatedHojeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/documentos': {
+      id: '/_authenticated/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof AuthenticatedDocumentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/definicoes': {
+      id: '/_authenticated/definicoes'
+      path: '/definicoes'
+      fullPath: '/definicoes'
+      preLoaderRoute: typeof AuthenticatedDefinicoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/calendario': {
+      id: '/_authenticated/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof AuthenticatedCalendarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/assessor': {
+      id: '/_authenticated/assessor'
+      path: '/assessor'
+      fullPath: '/assessor'
+      preLoaderRoute: typeof AuthenticatedAssessorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/oauth-protected-resource': {
@@ -360,21 +362,21 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AssessorRoute: AssessorRoute,
-  CalendarioRoute: CalendarioRoute,
-  DefinicoesRoute: DefinicoesRoute,
-  DocumentosRoute: DocumentosRoute,
-  HojeRoute: HojeRoute,
-  ImoveisRoute: ImoveisRoute,
-  MaisRoute: MaisRoute,
   McpRoute: McpRoute,
-  NegocioRoute: NegocioRoute,
-  OportunidadesRoute: OportunidadesRoute,
-  PessoasRoute: PessoasRoute,
-  SeguimentosRoute: SeguimentosRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  AuthenticatedAssessorRoute: AuthenticatedAssessorRoute,
+  AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
+  AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
+  AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
+  AuthenticatedHojeRoute: AuthenticatedHojeRoute,
+  AuthenticatedImoveisRoute: AuthenticatedImoveisRoute,
+  AuthenticatedMaisRoute: AuthenticatedMaisRoute,
+  AuthenticatedNegocioRoute: AuthenticatedNegocioRoute,
+  AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRoute,
+  AuthenticatedPessoasRoute: AuthenticatedPessoasRoute,
+  AuthenticatedSeguimentosRoute: AuthenticatedSeguimentosRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }
 export const routeTree = rootRouteImport

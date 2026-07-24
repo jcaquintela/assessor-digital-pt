@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatData, formatEUR } from "@/lib/demo-data";
 
-export const Route = createFileRoute("/oportunidades")({
+export const Route = createFileRoute("/_authenticated/oportunidades")({
   head: () => ({
     meta: [
       { title: "Oportunidades — Assessor do Consultor" },
