@@ -5,9 +5,15 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { formatData, formatEUR, type Pessoa } from "@/lib/demo-data";
-import { Mail, Phone } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatData, formatEUR, type Pessoa, type Relacao } from "@/lib/demo-data";
+import { Mail, Phone, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/pessoas")({
   head: () => ({
@@ -22,9 +28,10 @@ export const Route = createFileRoute("/_authenticated/pessoas")({
 });
 
 function PessoasPage() {
-  const { pessoas, oportunidades, imoveis, seguimentos, documentos } = useStore();
+  const { pessoas, oportunidades, imoveis, seguimentos, documentos, addPessoa, deletePessoa, loading } = useStore();
   const [q, setQ] = useState("");
   const [selecionada, setSelecionada] = useState<Pessoa | null>(null);
+  const [novoOpen, setNovoOpen] = useState(false);
 
   const filtradas = pessoas.filter((p) =>
     (p.nome + p.email + p.telefone + p.resumo).toLowerCase().includes(q.toLowerCase()),
@@ -32,13 +39,45 @@ function PessoasPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Pessoas" subtitle={`${pessoas.length} contactos`} />
+      <PageHeader
+        title="Pessoas"
+        subtitle={`${pessoas.length} contactos`}
+        action={
+          <Dialog open={novoOpen} onOpenChange={setNovoOpen}>
+            <DialogTrigger asChild>
+              <Button><Plus className="mr-1.5 h-4 w-4" /> Nova pessoa</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova pessoa</DialogTitle></DialogHeader>
+              <NovaPessoaForm
+                onSave={async (p) => {
+                  try {
+                    await addPessoa(p);
+                    toast.success("Pessoa criada.");
+                    setNovoOpen(false);
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        }
+      />
       <Input
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Procurar por nome, email ou tópico…"
         className="mb-4"
       />
+      {loading && pessoas.length === 0 && (
+        <p className="text-sm text-muted-foreground">A carregar…</p>
+      )}
+      {!loading && pessoas.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+          Ainda não tem contactos. Crie o primeiro com <strong>Nova pessoa</strong>, ou carregue dados de demonstração em Definições.
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         {filtradas.map((p) => (
@@ -134,6 +173,26 @@ function PessoasPage() {
               </div>
             </>
           )}
+          {selecionada && (
+            <div className="mt-6 flex justify-end">
+              <Button
+                variant="ghost"
+                className="text-destructive"
+                onClick={async () => {
+                  if (!confirm(`Apagar ${selecionada.nome}?`)) return;
+                  try {
+                    await deletePessoa(selecionada.id);
+                    toast.success("Pessoa apagada.");
+                    setSelecionada(null);
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                <Trash2 className="mr-1 h-4 w-4" /> Apagar
+              </Button>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </AppShell>
@@ -146,5 +205,47 @@ function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</h3>
       <div className="space-y-2">{children}</div>
     </section>
+  );
+}
+
+function NovaPessoaForm({ onSave }: { onSave: (p: Omit<Pessoa, "id">) => Promise<void> }) {
+  const [nome, setNome] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [email, setEmail] = useState("");
+  const [relacao, setRelacao] = useState<Relacao>("Potencial");
+  const [resumo, setResumo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nome.trim()) return;
+    setBusy(true);
+    await onSave({ nome: nome.trim(), telefone, email, relacao, resumo });
+    setBusy(false);
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <div className="space-y-1.5"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} required /></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5"><Label>Telefone</Label><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Relação</Label>
+        <Select value={relacao} onValueChange={(v) => setRelacao(v as Relacao)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(["Cliente","Potencial","Proprietário","Referenciador","Colega"] as Relacao[]).map((r) => (
+              <SelectItem key={r} value={r}>{r}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5"><Label>Resumo</Label><Textarea value={resumo} onChange={(e) => setResumo(e.target.value)} rows={3} /></div>
+      <DialogFooter>
+        <Button type="submit" disabled={busy}>Guardar</Button>
+      </DialogFooter>
+    </form>
   );
 }
