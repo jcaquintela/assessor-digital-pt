@@ -111,12 +111,12 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
 
       {/* Main */}
       {fullBleed ? (
-        <main className="min-h-0 overflow-hidden md:ml-64 md:overflow-visible md:pb-8">
-          <div className="h-full md:mx-auto md:h-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
+        <main className="min-h-0 min-w-0 overflow-hidden md:ml-64 md:overflow-visible md:pb-8">
+          <div className="h-full min-w-0 md:mx-auto md:h-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
         </main>
       ) : (
-        <main className="min-h-0 md:ml-64 md:pb-8">
-          <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">{children}</div>
+        <main className="min-h-0 min-w-0 md:ml-64 md:pb-8">
+          <div className="mx-auto min-w-0 max-w-6xl px-4 py-6 md:px-8 md:py-10">{children}</div>
         </main>
       )}
 
