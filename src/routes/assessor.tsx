@@ -21,8 +21,10 @@ import {
   Search,
   Send,
   Sparkles,
+  MoreVertical,
   X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/assessor")({
   head: () => ({
@@ -60,6 +62,13 @@ const acoesRapidas: { tipo: CartaoTipo; label: string; icon: React.ComponentType
   { tipo: "comissao", label: "Registar comissão", icon: Coins },
   { tipo: "briefing", label: "O que tenho hoje?", icon: ClipboardList },
   { tipo: "procura", label: "Procurar informação", icon: Search },
+];
+
+const acoesRapidasMobile: typeof acoesRapidas = [
+  { tipo: "conversa", label: "Registar conversa", icon: MessageSquarePlus },
+  { tipo: "seguimento", label: "Criar seguimento", icon: CalendarPlus },
+  { tipo: "despesa", label: "Registar despesa", icon: Receipt },
+  { tipo: "briefing", label: "O que tenho hoje?", icon: ClipboardList },
 ];
 
 let mid = 0;
@@ -132,42 +141,27 @@ export function AssessorPage() {
   };
 
   return (
-    <AppShell>
-      <PageHeader
+    <AppShell fullBleed>
+      {/* Desktop header (hidden on mobile) */}
+      <div className="hidden md:block">
+        <PageHeader
         title="Assessor"
         subtitle="O seu assessor digital. Fale como falaria a um colega."
         action={<Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" /> modo demo</Badge>}
-      />
+        />
+      </div>
 
-      <Card className="flex h-[calc(100vh-15rem)] flex-col overflow-hidden md:h-[calc(100vh-14rem)]">
+      {/* Desktop chat */}
+      <Card className="hidden h-[calc(100vh-14rem)] flex-col overflow-hidden md:flex">
         <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4 md:p-6">
           {mensagens.map((m) => (
-            <div key={m.id} className={m.autor === "consultor" ? "flex justify-end" : "flex justify-start"}>
-              <div className={m.autor === "consultor" ? "max-w-[80%]" : "max-w-[92%] w-full md:max-w-[80%]"}>
-                {m.texto && (
-                  <div
-                    className={
-                      m.autor === "consultor"
-                        ? "rounded-2xl rounded-tr-sm bg-primary px-4 py-2 text-sm text-primary-foreground"
-                        : "text-sm leading-relaxed text-foreground"
-                    }
-                  >
-                    {m.texto}
-                  </div>
-                )}
-                {m.cartao && !m.cancelado && (
-                  <CartaoEstruturado
-                    cartao={m.cartao}
-                    confirmado={!!m.confirmado}
-                    onConfirm={() => confirmar(m.id)}
-                    onCancel={() => cancelar(m.id)}
-                  />
-                )}
-                {m.cancelado && (
-                  <div className="mt-1 text-xs text-muted-foreground italic">Cancelado.</div>
-                )}
-              </div>
-            </div>
+            <MessageRow
+              key={m.id}
+              m={m}
+              compact={false}
+              onConfirm={() => confirmar(m.id)}
+              onCancel={() => cancelar(m.id)}
+            />
           ))}
         </div>
 
@@ -222,7 +216,155 @@ export function AssessorPage() {
           </div>
         </div>
       </Card>
+
+      {/* Mobile chat */}
+      <div
+        className="fixed inset-x-0 top-0 z-10 flex flex-col bg-background md:hidden"
+        style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom))" }}
+      >
+        <header
+          className="flex items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur"
+          style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.625rem)", paddingBottom: "0.625rem" }}
+        >
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold leading-tight">Assessor</div>
+            <div className="text-[11px] text-muted-foreground">Disponível</div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Mais opções"
+            onClick={() => toast.info("Mais opções em breve.")}
+          >
+            <MoreVertical className="h-5 w-5" />
+          </Button>
+        </header>
+
+        <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
+          {mensagens.map((m) => (
+            <MessageRow
+              key={m.id}
+              m={m}
+              compact
+              onConfirm={() => confirmar(m.id)}
+              onCancel={() => cancelar(m.id)}
+            />
+          ))}
+        </div>
+
+        <div className="border-t border-border bg-card px-2 pt-2 pb-2">
+          <div className="mb-2 flex gap-2 overflow-x-auto px-1 pb-1">
+            {acoesRapidasMobile.map(({ tipo, label, icon: Icon }) => (
+              <Button
+                key={tipo}
+                variant="secondary"
+                size="sm"
+                className="shrink-0 rounded-full"
+                onClick={() => responder(tipo, label)}
+              >
+                <Icon className="mr-1.5 h-3.5 w-3.5" />
+                {label}
+              </Button>
+            ))}
+          </div>
+          <div className="flex items-end gap-1.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              onClick={() => toast.info("Anexos disponíveis em breve.")}
+              aria-label="Anexar"
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  enviar();
+                }
+              }}
+              placeholder="Mensagem…"
+              rows={1}
+              className="min-h-[40px] max-h-32 flex-1 resize-none rounded-2xl bg-muted/60 border-transparent px-4 py-2 text-[15px]"
+            />
+            {input.trim() ? (
+              <Button onClick={enviar} size="icon" className="shrink-0" aria-label="Enviar">
+                <Send className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                onClick={() => toast.info("Gravação de áudio (simulada) — em breve envia por WhatsApp.")}
+                aria-label="Gravar áudio"
+              >
+                <Mic className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
     </AppShell>
+  );
+}
+
+function MessageRow({
+  m,
+  compact,
+  onConfirm,
+  onCancel,
+}: {
+  m: Mensagem;
+  compact: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const isMe = m.autor === "consultor";
+  return (
+    <div className={isMe ? "flex justify-end" : "flex justify-start"}>
+      <div
+        className={cn(
+          isMe ? "max-w-[85%]" : "max-w-[92%] w-full md:max-w-[80%]",
+          compact && !isMe ? "max-w-[88%]" : "",
+        )}
+      >
+        {m.texto && (
+          <div
+            className={
+              isMe
+                ? cn(
+                    "rounded-2xl rounded-tr-sm bg-primary text-primary-foreground",
+                    compact ? "px-3 py-1.5 text-[15px]" : "px-4 py-2 text-sm",
+                  )
+                : compact
+                  ? "rounded-2xl rounded-tl-sm bg-muted px-3 py-1.5 text-[15px] leading-relaxed text-foreground"
+                  : "text-sm leading-relaxed text-foreground"
+            }
+          >
+            {m.texto}
+          </div>
+        )}
+        {m.cartao && !m.cancelado && (
+          <CartaoEstruturado
+            cartao={m.cartao}
+            confirmado={!!m.confirmado}
+            compact={compact}
+            onConfirm={onConfirm}
+            onCancel={onCancel}
+          />
+        )}
+        {m.cancelado && (
+          <div className="mt-1 text-xs text-muted-foreground italic">Cancelado.</div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -318,30 +460,32 @@ const tituloCartao: Record<CartaoTipo, string> = {
 function CartaoEstruturado({
   cartao,
   confirmado,
+  compact,
   onConfirm,
   onCancel,
 }: {
   cartao: { tipo: CartaoTipo; dados: Record<string, string> };
   confirmado: boolean;
+  compact?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   return (
-    <Card className="mt-2 border-border bg-card p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-medium">{tituloCartao[cartao.tipo]}</div>
-        <span className="text-xs text-muted-foreground">{formatDataHora(new Date().toISOString())}</span>
+    <Card className={cn("mt-2 border-border bg-card", compact ? "p-3 rounded-2xl rounded-tl-sm" : "p-4")}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className={cn("font-medium", compact ? "text-[13px]" : "text-sm")}>{tituloCartao[cartao.tipo]}</div>
+        <span className="text-[11px] text-muted-foreground">{formatDataHora(new Date().toISOString())}</span>
       </div>
-      <dl className="grid grid-cols-1 gap-1.5 text-sm sm:grid-cols-[auto_1fr] sm:gap-x-4">
+      <dl className={cn("grid grid-cols-[auto_1fr] gap-x-3 gap-y-1", compact ? "text-[13px]" : "text-sm sm:gap-x-4")}>
         {Object.entries(cartao.dados).map(([k, v]) => (
           <div key={k} className="contents">
             <dt className="text-muted-foreground">{k}</dt>
-            <dd className="font-medium">{v}</dd>
+            <dd className="font-medium min-w-0 break-words">{v}</dd>
           </div>
         ))}
       </dl>
       {!confirmado ? (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className={cn("flex flex-wrap gap-2", compact ? "mt-3" : "mt-4")}>
           <Button size="sm" onClick={onConfirm}><Check className="mr-1 h-4 w-4" /> Confirmar</Button>
           <Button size="sm" variant="outline"><Pencil className="mr-1 h-4 w-4" /> Editar</Button>
           <Button size="sm" variant="ghost" onClick={onCancel}><X className="mr-1 h-4 w-4" /> Cancelar</Button>
