@@ -251,7 +251,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [qc]);
 
   const updatePessoa = useCallback(async (id: string, patch: Partial<Omit<Pessoa, "id">>) => {
-    const dbPatch: Row = {};
+    const dbPatch: Record<string, string | null> = {};
     if (patch.nome !== undefined) dbPatch.name = patch.nome;
     if (patch.telefone !== undefined) dbPatch.phone = patch.telefone;
     if (patch.email !== undefined) dbPatch.email = patch.email;
@@ -259,7 +259,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (patch.resumo !== undefined) dbPatch.summary = patch.resumo;
     if (patch.proximaAcao !== undefined) dbPatch.next_action = patch.proximaAcao;
     if (patch.proximaAcaoData !== undefined) dbPatch.next_action_date = patch.proximaAcaoData;
-    const { error } = await supabase.from("people").update(dbPatch).eq("id", id);
+    const { error } = await supabase.from("people").update(dbPatch as never).eq("id", id);
     if (error) throw error;
     invalidate("people");
   }, [qc]);
