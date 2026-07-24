@@ -83,12 +83,14 @@ function SeguimentosPage() {
     <AppShell>
       <PageHeader title="Seguimentos" subtitle="Tarefas com prazo e eventos com hora." />
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="hoje">Hoje ({grupos.hoje.length})</TabsTrigger>
-          <TabsTrigger value="semana">Esta semana ({grupos.semana.length})</TabsTrigger>
-          <TabsTrigger value="atrasados">Atrasados ({grupos.atrasados.length})</TabsTrigger>
-          <TabsTrigger value="concluidos">Concluídos ({grupos.concluidos.length})</TabsTrigger>
-        </TabsList>
+        <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:px-0 md:overflow-visible">
+          <TabsList className="w-max md:w-auto">
+            <TabsTrigger value="hoje">Hoje ({grupos.hoje.length})</TabsTrigger>
+            <TabsTrigger value="semana">Esta semana ({grupos.semana.length})</TabsTrigger>
+            <TabsTrigger value="atrasados">Atrasados ({grupos.atrasados.length})</TabsTrigger>
+            <TabsTrigger value="concluidos">Concluídos ({grupos.concluidos.length})</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="hoje" className="mt-4"><Lista items={grupos.hoje} /></TabsContent>
         <TabsContent value="semana" className="mt-4"><Lista items={grupos.semana} /></TabsContent>
         <TabsContent value="atrasados" className="mt-4"><Lista items={grupos.atrasados} /></TabsContent>
