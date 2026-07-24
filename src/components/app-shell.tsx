@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import {
   CalendarDays,
   FileText,
@@ -38,8 +39,40 @@ const mobileNav = [
 
 export function AppShell({ children, fullBleed = false }: { children: ReactNode; fullBleed?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Detect on-screen keyboard via visualViewport and expose as html[data-keyboard].
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const html = document.documentElement;
+    const update = () => {
+      const diff = window.innerHeight - vv.height;
+      html.dataset.keyboard = diff > 120 ? "open" : "closed";
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      window.removeEventListener("orientationchange", update);
+      delete html.dataset.keyboard;
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div
+      className={cn(
+        "bg-background text-foreground",
+        // Mobile: fixed viewport grid (header?/main/nav). Desktop: normal flow.
+        "grid md:block",
+        fullBleed
+          ? "h-[100svh] h-[100dvh] grid-rows-[minmax(0,1fr)_auto] overflow-hidden md:h-auto md:overflow-visible"
+          : "min-h-[100dvh] grid-rows-[minmax(0,1fr)_auto]",
+      )}
+    >
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-border bg-card/60 px-4 py-6 md:flex">
         <Link to="/hoje" className="mb-8 flex items-center gap-2 px-2">
@@ -78,18 +111,18 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
 
       {/* Main */}
       {fullBleed ? (
-        <main className="md:ml-64 md:pb-8">
-          <div className="md:mx-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
+        <main className="min-h-0 overflow-hidden md:ml-64 md:overflow-visible md:pb-8">
+          <div className="h-full md:mx-auto md:h-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
         </main>
       ) : (
-        <main className="pb-24 md:ml-64 md:pb-8">
+        <main className="min-h-0 md:ml-64 md:pb-8">
           <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">{children}</div>
         </main>
       )}
 
       {/* Mobile bottom nav */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur md:hidden"
+        className="mobile-bottom-nav border-t border-border bg-card/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto grid max-w-lg grid-cols-4">
