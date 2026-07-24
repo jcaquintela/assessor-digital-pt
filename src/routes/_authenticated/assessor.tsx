@@ -330,9 +330,12 @@ async function executarCartao(
   if (tipo === "despesa") {
     const valor = Number(dados.valor);
     if (!valor || valor <= 0) throw new Error("Valor tem de ser maior que zero.");
+    const cats = ["Deslocação","Marketing","Escritório","Formação","Outros"] as const;
+    const cat = (cats as readonly string[]).includes(String(dados.categoria))
+      ? (String(dados.categoria) as typeof cats[number]) : "Outros";
     const d = await store.addDespesaReturning({
       descricao: String(dados.descricao || "Despesa").trim(),
-      categoria: String(dados.categoria || "Outros"),
+      categoria: cat,
       valor,
       data: String(dados.data),
     });
@@ -346,7 +349,7 @@ async function executarCartao(
       valor,
       estado: (dados.estado as "Prevista" | "Faturada" | "Recebida") || "Prevista",
       data: String(dados.data),
-      oportunidadeId: (dados.oportunidadeId as string) || undefined,
+      oportunidadeId: (dados.oportunidadeId as string) || "",
     });
     return c?.id;
   }
@@ -445,7 +448,7 @@ function PessoaPicker({ nome, pessoaId, onChange, store }: {
   const criar = async () => {
     setCriando(true);
     try {
-      const p = await store.addPessoa({ nome: nome.trim(), relacao: "Contacto", notasProximaAcao: "" });
+      const p = await store.addPessoa({ nome: nome.trim(), relacao: "Potencial", notasProximaAcao: "" });
       if (p) onChange(p.nome, p.id);
     } catch (e) { toast.error((e as Error).message); }
     finally { setCriando(false); }
