@@ -950,8 +950,6 @@ async function queryPerson(supabase: any, userId: string, name: string): Promise
   return parts.join("\n");
 }
 
-async function confirmPendingSafe(
-
 // Slot-fill determinístico para pending em `collecting_information`.
 // Preenche apenas o campo em falta a partir do texto do utilizador; se ficar
 // completo, executa imediatamente. Nunca chama a IA nem consulta a agenda.
