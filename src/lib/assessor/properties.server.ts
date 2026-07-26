@@ -173,32 +173,8 @@ export function extractStatus(text: string): string | null {
   return null;
 }
 
-// Estados suportados e respetivos rótulos PT-PT para UI.
-export const PROPERTY_STATUSES = [
-  "por_angariar",
-  "em_angariacao",
-  "angariado",
-  "ativo",
-  "reservado",
-  "vendido",
-  "arquivado",
-] as const;
-
-export function propertyStatusLabel(s: string | null | undefined): string {
-  if (!s) return "—";
-  switch (s) {
-    case "por_angariar": return "Por angariar";
-    case "em_angariacao": return "Em angariação";
-    case "angariado":
-    case "Angariado": return "Angariado";
-    case "ativo":
-    case "activo": return "Ativo";
-    case "reservado": return "Reservado";
-    case "vendido": return "Vendido";
-    case "arquivado": return "Arquivado";
-    default: return s;
-  }
-}
+// Rótulos PT-PT reexportados a partir do módulo client-safe.
+export { PROPERTY_STATUSES, propertyStatusLabel } from "./properties-status";
 
 function parsePriceFromText(text: string): number | null {
   const t = text.toLowerCase();
