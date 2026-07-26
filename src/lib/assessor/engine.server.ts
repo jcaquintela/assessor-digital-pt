@@ -79,6 +79,14 @@ const QUERY_MISC_RE =
 const CORRECTION_RE =
   /^\s*(n[ãa]o[,.\s]|nao[,.\s]|mas\b|afinal\b|antes\b|corrige\b|corrigir\b|[ée]\s+(às|as|pelas|amanh|hoje|com|na|no|em)|na\s+verdade\b)/i;
 
+// Verbos que indicam pedido de acção/lembrete sobre alguém ou algo — não
+// devem ser interpretados como enriquecimento do imóvel activo.
+const ACTION_VERB_RE =
+  /\b(lembra(?:r|-me)?|lembrete|avisa(?:r|-me)?|marca(?:r)?|liga(?:r|-lhe)?|telefona(?:r|-lhe)?|contact(?:a|ar)|envia(?:r)?|escrev(?:e|er)|fala(?:r)?|manda(?:r)?|combinar)\b/i;
+
+// Referência a "dono/proprietário do imóvel" — usar contexto do imóvel activo.
+const OWNER_REF_RE = /\b(dono|dona|propriet[áa]ri[oa])\b/i;
+
 function isConfirmText(t: string): boolean {
   return CONFIRM_RE.test(t);
 }
@@ -318,9 +326,26 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   }
 
   if (pending && isConfirmText(trimmed)) {
+    // Pending "sugestão pós-criação de imóvel" (morada/proprietário) —
+    // "sim" pede os detalhes; "não" é tratado noutro ramo. Nunca deve
+    // acionar `confirmPendingSafe`, que não sabe executar este intent.
+    if (pending.intent === "await_property_details") {
+      await markPendingActionStatus(supabase, pending.id, "cancelled");
+      await upsertConversationState(supabase, {
+        userId, channel, pendingActionId: null,
+      });
+      return { reply: "Diz-me a morada ou o nome do proprietário." };
+    }
     return await confirmPendingSafe(supabase, userId, channel, pending);
   }
   if (pending && isCancelText(trimmed)) {
+    if (pending.intent === "await_property_details") {
+      await markPendingActionStatus(supabase, pending.id, "cancelled");
+      await upsertConversationState(supabase, {
+        userId, channel, pendingActionId: null,
+      });
+      return { reply: "Está bem." };
+    }
     await markPendingActionStatus(supabase, pending.id, "cancelled");
     await upsertConversationState(supabase, {
       userId, channel, pendingActionId: null, activeTopic: null,
@@ -332,7 +357,9 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   // 0.property) Se há um imóvel activo na conversa e a mensagem não é uma
   // nova acção clara, aplica enriquecimento progressivo. Cria pending para
   // alterações sensíveis (preço, morada, proprietário).
-  if (!pending) {
+  // Não corre quando a mensagem é claramente um pedido de acção (lembrete,
+  // chamada, etc.) — nesse caso o fluxo normal cria seguimento/evento.
+  if (!pending && !ACTION_VERB_RE.test(trimmed)) {
     const propHandled = await handleActivePropertyEnrichment(
       supabase,
       userId,
