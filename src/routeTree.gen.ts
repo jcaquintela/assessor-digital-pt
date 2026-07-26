@@ -44,6 +44,7 @@ import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/publi
 import { Route as AuthenticatedPessoasIdRouteImport } from './routes/_authenticated/pessoas.$id'
 import { Route as AuthenticatedOportunidadesIdRouteImport } from './routes/_authenticated/oportunidades.$id'
 import { Route as AuthenticatedNegocioDespesasRouteImport } from './routes/_authenticated/negocio.despesas'
+import { Route as AuthenticatedNegocioComissoesRouteImport } from './routes/_authenticated/negocio.comissoes'
 import { Route as AuthenticatedInteracoesIdRouteImport } from './routes/_authenticated/interacoes.$id'
 import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authenticated/imoveis.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -230,6 +231,12 @@ const AuthenticatedNegocioDespesasRoute =
     path: '/despesas',
     getParentRoute: () => AuthenticatedNegocioRoute,
   } as any)
+const AuthenticatedNegocioComissoesRoute =
+  AuthenticatedNegocioComissoesRouteImport.update({
+    id: '/comissoes',
+    path: '/comissoes',
+    getParentRoute: () => AuthenticatedNegocioRoute,
+  } as any)
 const AuthenticatedInteracoesIdRoute =
   AuthenticatedInteracoesIdRouteImport.update({
     id: '/$id',
@@ -288,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/interacoes/$id': typeof AuthenticatedInteracoesIdRoute
+  '/negocio/comissoes': typeof AuthenticatedNegocioComissoesRoute
   '/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
@@ -327,6 +335,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/interacoes/$id': typeof AuthenticatedInteracoesIdRoute
+  '/negocio/comissoes': typeof AuthenticatedNegocioComissoesRoute
   '/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
@@ -369,6 +378,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/_authenticated/interacoes/$id': typeof AuthenticatedInteracoesIdRoute
+  '/_authenticated/negocio/comissoes': typeof AuthenticatedNegocioComissoesRoute
   '/_authenticated/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/_authenticated/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/_authenticated/pessoas/$id': typeof AuthenticatedPessoasIdRoute
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/imoveis/$id'
     | '/interacoes/$id'
+    | '/negocio/comissoes'
     | '/negocio/despesas'
     | '/oportunidades/$id'
     | '/pessoas/$id'
@@ -450,6 +461,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/imoveis/$id'
     | '/interacoes/$id'
+    | '/negocio/comissoes'
     | '/negocio/despesas'
     | '/oportunidades/$id'
     | '/pessoas/$id'
@@ -491,6 +503,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/imoveis/$id'
     | '/_authenticated/interacoes/$id'
+    | '/_authenticated/negocio/comissoes'
     | '/_authenticated/negocio/despesas'
     | '/_authenticated/oportunidades/$id'
     | '/_authenticated/pessoas/$id'
@@ -758,6 +771,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNegocioDespesasRouteImport
       parentRoute: typeof AuthenticatedNegocioRoute
     }
+    '/_authenticated/negocio/comissoes': {
+      id: '/_authenticated/negocio/comissoes'
+      path: '/comissoes'
+      fullPath: '/negocio/comissoes'
+      preLoaderRoute: typeof AuthenticatedNegocioComissoesRouteImport
+      parentRoute: typeof AuthenticatedNegocioRoute
+    }
     '/_authenticated/interacoes/$id': {
       id: '/_authenticated/interacoes/$id'
       path: '/$id'
@@ -829,10 +849,12 @@ const AuthenticatedNegocioDespesasRouteWithChildren =
   )
 
 interface AuthenticatedNegocioRouteChildren {
+  AuthenticatedNegocioComissoesRoute: typeof AuthenticatedNegocioComissoesRoute
   AuthenticatedNegocioDespesasRoute: typeof AuthenticatedNegocioDespesasRouteWithChildren
 }
 
 const AuthenticatedNegocioRouteChildren: AuthenticatedNegocioRouteChildren = {
+  AuthenticatedNegocioComissoesRoute: AuthenticatedNegocioComissoesRoute,
   AuthenticatedNegocioDespesasRoute:
     AuthenticatedNegocioDespesasRouteWithChildren,
 }
