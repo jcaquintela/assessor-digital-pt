@@ -183,11 +183,10 @@ function naturalWhen(date: string, time?: string | null): string {
   if (dd.getTime() === today.getTime()) day = "hoje";
   else if (dd.getTime() === tomorrow.getTime()) day = "amanhã";
   else
-    day = d.toLocaleDateString("pt-PT", {
-      weekday: "long",
+    day = `dia ${d.toLocaleDateString("pt-PT", {
       day: "numeric",
       month: "long",
-    });
+    })}`;
   return time ? `${day} às ${naturalHour(time)}` : day;
 }
 
@@ -814,9 +813,28 @@ async function confirmDraft(
       return { reply: "Falta a data. Para quando é?" };
     }
     const tipoDb = intent === "create_event" ? "event" : "task";
-    const titulo = String(ent.title || (intent === "create_event" ? "Evento" : "Tarefa"));
+    let titulo = String(ent.title || "").trim();
+    if (!titulo) {
+      if (intent === "create_event") {
+        const evento = capitalize(String(ent.event_type || "Visita"));
+        const parts = [evento];
+        if (ent.property_type) parts.push(`— ${ent.property_type}`);
+        if (ent.location) parts.push(ent.property_type ? String(ent.location) : `— ${ent.location}`);
+        titulo = parts.join(" ");
+      } else {
+        titulo = "Tarefa";
+      }
+    }
     const dueDate = String(ent.date);
     const dueTime = (ent.start_time as string) || null;
+    // Compõe notas com contexto (localidade, valor, título de pessoa) para não perder dados.
+    const contextoNotas: string[] = [];
+    if (ent.location) contextoNotas.push(`Local: ${ent.location}`);
+    if (ent.property_type) contextoNotas.push(`Imóvel: ${ent.property_type}`);
+    if (typeof ent.property_value === "number") contextoNotas.push(`Valor: ${formatEuro(ent.property_value)}`);
+    if (ent.person_title && ent.person_name) contextoNotas.push(`Contacto: ${ent.person_title} ${ent.person_name}`);
+    if (ent.notes) contextoNotas.push(String(ent.notes));
+    const notasFinais = contextoNotas.length ? contextoNotas.join("\n") : null;
     const { data: fu, error } = await supabase
       .from("follow_ups")
       .insert({
@@ -828,7 +846,7 @@ async function confirmDraft(
         person_id: pessoaId,
         priority: "Média",
         status: "Pendente",
-        notes: (ent.notes as string) || null,
+        notes: notasFinais,
       } as never)
       .select("id")
       .single();
