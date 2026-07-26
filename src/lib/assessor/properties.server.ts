@@ -17,6 +17,16 @@ const OWNER_RE =
 const OWNER_DE_RE =
   /,\s*d[eo]\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-Za-zÀ-ÿ'’\-]+(?:\s+(?:[a-zà-ÿ]{2,3}\s+)?[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-Za-zÀ-ÿ'’\-]+){0,3})\s*[.!?]?\s*$/;
 
+// Verbos de acção/lembrete: quando a mensagem começa por um destes,
+// "dono/proprietário do imóvel em X" é o *objeto* da acção, não uma
+// declaração sobre quem é o proprietário. Nunca extrair owner_name aqui.
+const REMINDER_OR_ACTION_RE =
+  /\b(lembra(?:r|-me)?|lembrete|avisa(?:r|-me)?|liga(?:r|-lhe)?|telefona(?:r|-lhe)?|contact(?:a|ar)|marca(?:r)?|envia(?:r)?|escrev(?:e|er)|fala(?:r)?|combinar|manda(?:r)?|mandar\s+mensagem|mandar\s+e-?mail)\b/i;
+
+// Contexto "dono/proprietário DO imóvel em X" — X é localização, não pessoa.
+const OWNER_OF_PROPERTY_RE =
+  /\b(dono|dona|propriet[áa]ri[oa])\s+d[oa]s?\s+(im[óo]vel|apartamento|moradia|casa|terreno|loja|escrit[óo]rio|armaz[ée]m)\b/i;
+
 export interface PropertyFields {
   title?: string | null; // título explícito indicado pelo consultor
   status?: string | null; // estado comercial (por_angariar/em_angariacao/…)
@@ -108,14 +118,37 @@ export function extractPropertyFields(text: string): PropertyFields {
   if (mEnr) out.energy_rating = mEnr[1].toUpperCase();
 
   // Proprietário
-  const mOwn = t.match(OWNER_RE);
-  if (mOwn) out.owner_name = mOwn[2];
-  if (!out.owner_name) {
-    const mDe = t.match(OWNER_DE_RE);
-    if (mDe) out.owner_name = mDe[1];
+  // Só tentar extrair proprietário quando a mensagem NÃO é um pedido de
+  // acção sobre o proprietário ("liga ao dono", "lembra de contactar o
+  // proprietário") e quando não referimos genericamente "dono do imóvel".
+  const skipOwner =
+    REMINDER_OR_ACTION_RE.test(t) || OWNER_OF_PROPERTY_RE.test(t);
+  if (!skipOwner) {
+    const mOwn = t.match(OWNER_RE);
+    if (mOwn) {
+      const cand = mOwn[2];
+      if (!looksLikeLocation(cand, t)) out.owner_name = cand;
+    }
+    if (!out.owner_name) {
+      const mDe = t.match(OWNER_DE_RE);
+      if (mDe) {
+        const cand = mDe[1];
+        if (!looksLikeLocation(cand, t)) out.owner_name = cand;
+      }
+    }
   }
 
   return out;
+}
+
+// Rejeita candidatos a nome de pessoa que são obviamente localizações:
+// cidade conhecida, ou aparecem precedidos por "em <X>" na mesma frase.
+function looksLikeLocation(candidate: string, text: string): boolean {
+  const first = (candidate.split(/\s+/)[0] || "").toLowerCase();
+  if (!first) return true;
+  if (CITY_HINTS.includes(first)) return true;
+  const re = new RegExp(`\\bem\\s+${first.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\b`, "i");
+  return re.test(text);
 }
 
 // Título explícito escolhido pelo consultor. Preserva-se tal como escrito.
