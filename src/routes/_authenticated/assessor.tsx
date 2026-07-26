@@ -17,6 +17,8 @@ import {
 import { cn } from "@/lib/utils";
 import { parse, type Extraidos, type Intencao } from "@/lib/assessor/parser";
 import { clearMessages, loadMessages, saveMessage, updateMessageStatus, type MensagemDb } from "@/lib/assessor/messages";
+import { sendAssessorMessage } from "@/lib/assessor/process.functions";
+import { useServerFn } from "@tanstack/react-start";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
@@ -78,6 +80,8 @@ function AssessorPage() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [texto, setTexto] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [pensando, setPensando] = useState(false);
+  const enviarMsg = useServerFn(sendAssessorMessage);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -121,20 +125,19 @@ function AssessorPage() {
     const conteudo = (input ?? texto).trim();
     if (!conteudo) return;
     setTexto("");
+    setPensando(true);
     try {
-      await pushUser(conteudo);
-      const parsed = parse(conteudo);
-      if (parsed.intencao === "briefing") {
-        await pushAssessor("Aqui está o seu dia.", { tipo: "briefing", dados: { texto: conteudo } });
-      } else if (parsed.intencao === "procura") {
-        await pushAssessor("Resultados da pesquisa:", { tipo: "procura", dados: { termo: conteudo } });
-      } else {
-        await interpretar(conteudo);
-      }
+      // O motor central (server function) persiste a mensagem do consultor
+      // e a resposta do Assessor. Depois recarregamos as mensagens do canal web.
+      await enviarMsg({ data: { content: conteudo } });
+      const rows = await loadMessages();
+      setMsgs(rows.map(toMsg));
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setPensando(false);
     }
-  }, [texto, pushUser, pushAssessor, interpretar]);
+  }, [texto, enviarMsg]);
 
   const acaoRapida = useCallback(async (tipo: CartaoTipo) => {
     try {
@@ -233,7 +236,7 @@ function AssessorPage() {
               className="max-h-32 min-h-[36px] resize-none border-0 bg-transparent p-1 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {texto.trim() ? (
-              <Button size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={() => void enviar()}><Send className="h-4 w-4" /></Button>
+              <Button size="icon" disabled={pensando} className="h-9 w-9 shrink-0 rounded-full" onClick={() => void enviar()}><Send className="h-4 w-4" /></Button>
             ) : (
               <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 rounded-full" onClick={() => toast.info("Áudio ainda não disponível nesta versão piloto.")}><Mic className="h-4 w-4" /></Button>
             )}

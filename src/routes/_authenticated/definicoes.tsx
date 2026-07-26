@@ -39,6 +39,8 @@ function DefinicoesPage() {
   const [email, setEmail] = useState<string>("");
   const [uid, setUid] = useState<string>("");
   const [accountKind, setAccountKind] = useState<"real" | "demo">("real");
+  const [assessorName, setAssessorName] = useState<string>("Assessor");
+  const [assessorNameDraft, setAssessorNameDraft] = useState<string>("Assessor");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -47,10 +49,13 @@ function DefinicoesPage() {
       setEmail(data.user?.email ?? "");
       setUid(data.user?.id ?? "");
       if (data.user?.id) {
-        const { data: prof } = await supabase.from("profiles").select("account_kind").eq("id", data.user.id).maybeSingle();
+        const { data: prof } = await supabase.from("profiles").select("account_kind, assessor_name" as never).eq("id", data.user.id).maybeSingle();
         if (prof && (prof as { account_kind?: string }).account_kind) {
           setAccountKind(((prof as { account_kind?: string }).account_kind === "demo" ? "demo" : "real"));
         }
+        const nm = (prof as { assessor_name?: string } | null)?.assessor_name || "Assessor";
+        setAssessorName(nm);
+        setAssessorNameDraft(nm);
       }
     })();
   }, []);
@@ -98,6 +103,15 @@ function DefinicoesPage() {
     }
   };
 
+  const saveAssessorName = async () => {
+    if (!uid) return;
+    const nome = assessorNameDraft.trim() || "Assessor";
+    const { error } = await supabase.from("profiles").update({ assessor_name: nome } as never).eq("id", uid);
+    if (error) { toast.error(error.message); return; }
+    setAssessorName(nome);
+    toast.success("Nome do Assessor atualizado.");
+  };
+
   return (
     <AppShell>
       <PageHeader title="Definições" subtitle="Preferências e integrações futuras." />
@@ -127,6 +141,21 @@ function DefinicoesPage() {
             <Button variant="outline" className="mt-3 w-full justify-start" onClick={signOut}>
               <LogOut className="mr-2 h-4 w-4" /> Terminar sessão
             </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Assessor</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <Label htmlFor="assessor-name">Nome do Assessor</Label>
+            <Input
+              id="assessor-name"
+              value={assessorNameDraft}
+              onChange={(e) => setAssessorNameDraft(e.target.value)}
+              maxLength={40}
+              placeholder="Assessor"
+            />
+            <p className="text-xs text-muted-foreground">Como queres chamar o teu assessor pessoal? Ex: "Sofia", "Bruno". Atual: {assessorName}.</p>
+            <Button size="sm" onClick={saveAssessorName} disabled={assessorNameDraft.trim() === assessorName}>Guardar</Button>
           </CardContent>
         </Card>
         <Card>

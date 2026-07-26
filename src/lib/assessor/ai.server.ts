@@ -1,0 +1,249 @@
+// Chamada à OpenAI Responses API para o motor do Assessor.
+// Server-only. Nunca importar do bundle do browser.
+
+export const ASSESSOR_MODEL = "gpt-5-nano";
+
+// Custos aproximados por 1M tokens (USD). Valores estimados para telemetria.
+const COST_INPUT_PER_M = 0.05;
+const COST_OUTPUT_PER_M = 0.4;
+
+export interface AiEntities {
+  event_type: string | null;
+  title: string | null;
+  person_name: string | null;
+  property_reference: string | null;
+  date: string | null; // YYYY-MM-DD
+  start_time: string | null; // HH:mm
+  duration_minutes: number | null;
+  reminder_minutes: number | null;
+  notes: string | null;
+}
+
+export type AiIntent =
+  | "create_event"
+  | "create_follow_up"
+  | "record_interaction"
+  | "query_today"
+  | "query_person"
+  | "confirm"
+  | "cancel"
+  | "unknown";
+
+export interface AiInterpretation {
+  intent: AiIntent;
+  confidence: number;
+  requires_confirmation: boolean;
+  missing_fields: string[];
+  entities: AiEntities;
+  reply: string;
+}
+
+export interface AiCallResult {
+  ok: boolean;
+  interpretation?: AiInterpretation;
+  error?: string;
+  telemetry: {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    latencyMs: number;
+    estimatedCostUsd: number;
+  };
+}
+
+const SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["intent", "confidence", "requires_confirmation", "missing_fields", "entities", "reply"],
+  properties: {
+    intent: {
+      type: "string",
+      enum: [
+        "create_event",
+        "create_follow_up",
+        "record_interaction",
+        "query_today",
+        "query_person",
+        "confirm",
+        "cancel",
+        "unknown",
+      ],
+    },
+    confidence: { type: "number" },
+    requires_confirmation: { type: "boolean" },
+    missing_fields: { type: "array", items: { type: "string" } },
+    entities: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "event_type",
+        "title",
+        "person_name",
+        "property_reference",
+        "date",
+        "start_time",
+        "duration_minutes",
+        "reminder_minutes",
+        "notes",
+      ],
+      properties: {
+        event_type: { type: ["string", "null"] },
+        title: { type: ["string", "null"] },
+        person_name: { type: ["string", "null"] },
+        property_reference: { type: ["string", "null"] },
+        date: { type: ["string", "null"] },
+        start_time: { type: ["string", "null"] },
+        duration_minutes: { type: ["integer", "null"] },
+        reminder_minutes: { type: ["integer", "null"] },
+        notes: { type: ["string", "null"] },
+      },
+    },
+    reply: { type: "string" },
+  },
+} as const;
+
+export interface AiContextMessage {
+  role: "user" | "assessor";
+  content: string;
+}
+
+export interface AiCallInput {
+  content: string;
+  now: Date;
+  timezone?: string;
+  locale?: string;
+  userName?: string | null;
+  assessorName?: string | null;
+  recent: AiContextMessage[]; // últimas 4-6 mensagens
+  pendingAction?: { intent: string; entities: Record<string, unknown> } | null;
+}
+
+function buildInstructions(input: AiCallInput): string {
+  const tz = input.timezone || "Europe/Lisbon";
+  const nowStr = input.now.toLocaleString("pt-PT", { timeZone: tz });
+  const assessorName = input.assessorName || "Assessor";
+  const userName = input.userName || "consultor";
+  const pending = input.pendingAction
+    ? `Existe uma ação pendente do tipo "${input.pendingAction.intent}" com dados ${JSON.stringify(input.pendingAction.entities)}. Se a mensagem atual for de confirmação (sim, confirma, regista, pode ser) devolve intent "confirm". Se for cancelamento (não, cancela, esquece) devolve intent "cancel".`
+    : "";
+
+  return [
+    `És o "${assessorName}", o assessor pessoal digital de um consultor imobiliário chamado ${userName}.`,
+    `Falas em português de Portugal, de forma curta, natural e humana. Uma pergunta de cada vez. Sem emojis por defeito. Sem linguagem técnica. Não pareces um CRM.`,
+    `Data e hora atuais: ${nowStr} (${tz}).`,
+    `A tua função é interpretar a mensagem do consultor e devolver um JSON com a intenção e os campos estruturados. Nunca inventes pessoas, imóveis, datas, horas ou valores. Se faltar informação essencial, indica-a em "missing_fields" e faz uma pergunta curta em "reply".`,
+    `Intenções possíveis: create_event (visita, reunião, almoço, jantar, café, encontro — com hora); create_follow_up (tarefa com prazo, ex: "ligar a X na sexta"); record_interaction (registo de uma conversa que já aconteceu); query_today (o que tenho hoje); query_person (o que sei sobre X); confirm/cancel (apenas quando há ação pendente); unknown (não é nenhuma das anteriores).`,
+    `Para create_event e create_follow_up define requires_confirmation=true e produz uma "reply" curta a resumir a proposta e a perguntar "Queres que registe?". Não afirmes que já registaste — só o backend regista após confirmação. Formato de "date": YYYY-MM-DD. Formato de "start_time": HH:mm em 24h. Se o utilizador disse "às três" e é de tarde, assume 15:00.`,
+    `Para queries devolve requires_confirmation=false e "reply" pode ser vazia (o backend produz a resposta com dados reais).`,
+    `Para confirm/cancel copia as entities da ação pendente se aplicável, e devolve reply vazia (o backend responde).`,
+    `Se a mensagem não puder ser mapeada, devolve intent="unknown" e uma reply curta a pedir para reformular sem enumerar comandos.`,
+    pending,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildInput(input: AiCallInput): string {
+  const lines: string[] = [];
+  for (const m of input.recent.slice(-6)) {
+    lines.push(`${m.role === "user" ? "Consultor" : "Assessor"}: ${m.content}`);
+  }
+  lines.push(`Consultor (agora): ${input.content}`);
+  return lines.join("\n");
+}
+
+function extractJson(payload: any): string | null {
+  if (typeof payload?.output_text === "string" && payload.output_text.trim()) return payload.output_text;
+  const out = Array.isArray(payload?.output) ? payload.output : [];
+  for (const item of out) {
+    const content = item?.content;
+    if (Array.isArray(content)) {
+      for (const c of content) {
+        if (typeof c?.text === "string" && c.text.trim()) return c.text;
+      }
+    }
+  }
+  return null;
+}
+
+export async function callAssessorAi(input: AiCallInput): Promise<AiCallResult> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  const started = Date.now();
+  const emptyTelemetry = {
+    model: ASSESSOR_MODEL,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    latencyMs: 0,
+    estimatedCostUsd: 0,
+  };
+  if (!apiKey) {
+    return { ok: false, error: "OPENAI_API_KEY não configurada.", telemetry: emptyTelemetry };
+  }
+
+  const body = {
+    model: ASSESSOR_MODEL,
+    instructions: buildInstructions(input),
+    input: buildInput(input),
+    text: {
+      verbosity: "low",
+      format: {
+        type: "json_schema",
+        name: "assessor_interpretation",
+        schema: SCHEMA,
+        strict: true,
+      },
+    },
+    reasoning: { effort: "minimal" },
+    max_output_tokens: 600,
+    store: false,
+  };
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const latencyMs = Date.now() - started;
+    const payload: any = await res.json().catch(() => ({}));
+
+    const inputTokens = Number(payload?.usage?.input_tokens ?? 0);
+    const outputTokens = Number(payload?.usage?.output_tokens ?? 0);
+    const totalTokens = Number(payload?.usage?.total_tokens ?? inputTokens + outputTokens);
+    const estimatedCostUsd =
+      (inputTokens / 1_000_000) * COST_INPUT_PER_M + (outputTokens / 1_000_000) * COST_OUTPUT_PER_M;
+    const telemetry = { model: ASSESSOR_MODEL, inputTokens, outputTokens, totalTokens, latencyMs, estimatedCostUsd };
+
+    if (!res.ok) {
+      const errMsg = payload?.error?.message || `HTTP ${res.status}`;
+      return { ok: false, error: errMsg, telemetry };
+    }
+
+    const raw = extractJson(payload);
+    if (!raw) return { ok: false, error: "Resposta vazia do modelo.", telemetry };
+
+    let parsed: AiInterpretation;
+    try {
+      parsed = JSON.parse(raw) as AiInterpretation;
+    } catch {
+      return { ok: false, error: "JSON inválido do modelo.", telemetry };
+    }
+
+    // Validação mínima defensiva.
+    if (!parsed || typeof parsed.intent !== "string" || !parsed.entities) {
+      return { ok: false, error: "Schema inválido do modelo.", telemetry };
+    }
+    return { ok: true, interpretation: parsed, telemetry };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+      telemetry: { ...emptyTelemetry, latencyMs: Date.now() - started },
+    };
+  }
+}

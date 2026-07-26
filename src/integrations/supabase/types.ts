@@ -68,6 +68,57 @@ export type Database = {
         }
         Relationships: []
       }
+      assessor_ai_logs: {
+        Row: {
+          channel: string
+          confidence: number | null
+          created_at: string
+          error: string | null
+          estimated_cost_usd: number | null
+          id: string
+          input_tokens: number | null
+          intent: string | null
+          latency_ms: number | null
+          model: string
+          output_tokens: number | null
+          success: boolean
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          channel: string
+          confidence?: number | null
+          created_at?: string
+          error?: string | null
+          estimated_cost_usd?: number | null
+          id?: string
+          input_tokens?: number | null
+          intent?: string | null
+          latency_ms?: number | null
+          model: string
+          output_tokens?: number | null
+          success?: boolean
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          channel?: string
+          confidence?: number | null
+          created_at?: string
+          error?: string | null
+          estimated_cost_usd?: number | null
+          id?: string
+          input_tokens?: number | null
+          intent?: string | null
+          latency_ms?: number | null
+          model?: string
+          output_tokens?: number | null
+          success?: boolean
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       assessor_messages: {
         Row: {
           channel: string
@@ -454,6 +505,7 @@ export type Database = {
       profiles: {
         Row: {
           account_kind: string
+          assessor_name: string
           created_at: string
           email: string | null
           id: string
@@ -466,6 +518,7 @@ export type Database = {
         }
         Insert: {
           account_kind?: string
+          assessor_name?: string
           created_at?: string
           email?: string | null
           id: string
@@ -478,6 +531,7 @@ export type Database = {
         }
         Update: {
           account_kind?: string
+          assessor_name?: string
           created_at?: string
           email?: string | null
           id?: string
