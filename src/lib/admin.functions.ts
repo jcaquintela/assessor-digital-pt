@@ -95,6 +95,28 @@ export const getWhatsAppStatus = createServerFn({ method: "GET" })
     const unassociatedSet = new Set(
       (unassoc.data ?? []).map((r: any) => r.sender_phone).filter(Boolean),
     );
+
+    const [linked, pending, recent, failedLinks] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("whatsapp_link_status", "linked"),
+      supabaseAdmin
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("whatsapp_link_status", "pending"),
+      supabaseAdmin
+        .from("profiles")
+        .select("id, whatsapp_linked_at")
+        .not("whatsapp_linked_at", "is", null)
+        .order("whatsapp_linked_at", { ascending: false })
+        .limit(5),
+      supabaseAdmin
+        .from("whatsapp_link_codes")
+        .select("id", { count: "exact", head: true })
+        .gte("attempts", 5),
+    ]);
+
     return {
       lastInboundAt: lastIn.data?.created_at ?? null,
       lastInboundAssociated: !!lastIn.data?.user_id,
@@ -103,6 +125,10 @@ export const getWhatsAppStatus = createServerFn({ method: "GET" })
       messages24h: last24.count ?? 0,
       failures24h: fails.count ?? 0,
       unassociatedSenders24h: unassociatedSet.size,
+      linkedAccounts: linked.count ?? 0,
+      pendingAccounts: pending.count ?? 0,
+      recentLinkedAt: (recent.data ?? []).map((r: any) => r.whatsapp_linked_at).filter(Boolean),
+      linkFailures: failedLinks.count ?? 0,
     };
   });
 
