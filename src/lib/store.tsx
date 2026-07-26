@@ -16,6 +16,28 @@ import {
 
 type Row = Record<string, any>;
 
+export interface Interacao {
+  id: string;
+  pessoaId?: string;
+  oportunidadeId?: string;
+  canal: string;
+  tipo?: string;
+  conteudo: string;
+  resumo?: string;
+  data: string;
+}
+
+const toInteracao = (r: Row): Interacao => ({
+  id: r.id,
+  pessoaId: r.person_id ?? undefined,
+  oportunidadeId: r.opportunity_id ?? undefined,
+  canal: r.source_channel ?? "web",
+  tipo: r.interaction_type ?? undefined,
+  conteudo: r.original_content ?? "",
+  resumo: r.summary ?? undefined,
+  data: r.occurred_at,
+});
+
 const toPessoa = (r: Row): Pessoa => ({
   id: r.id,
   nome: r.name ?? "",
@@ -92,6 +114,7 @@ interface AppStore {
   comissoes: Comissao[];
   despesas: Despesa[];
   entradas: EntradaAssessor[];
+  interacoes: Interacao[];
   addSeguimento: (s: Omit<Seguimento, "id">) => Promise<void>;
   addSeguimentoReturning: (s: Omit<Seguimento, "id">) => Promise<Seguimento | null>;
   concluirSeguimento: (id: string) => Promise<void>;
@@ -112,6 +135,8 @@ interface AppStore {
   addOportunidade: (o: Omit<Oportunidade, "id">) => Promise<Oportunidade | null>;
   updateOportunidade: (id: string, patch: Partial<Omit<Oportunidade, "id">>) => Promise<void>;
   deleteOportunidade: (id: string) => Promise<void>;
+  updateInteracao: (id: string, patch: Partial<Omit<Interacao, "id">>) => Promise<void>;
+  deleteInteracao: (id: string) => Promise<void>;
   refresh: () => void;
 }
 
@@ -166,6 +191,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.from("financial_movements").select("*").order("movement_date", { ascending: false });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+  const interactions = useQuery({
+    queryKey: ["interactions"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("interactions").select("*").order("occurred_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(toInteracao);
     },
   });
 
@@ -428,8 +461,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("opportunities");
   }, [qc]);
 
+  const updateInteracao = useCallback(async (id: string, patch: Partial<Omit<Interacao, "id">>) => {
+    const p: Record<string, unknown> = {};
+    if (patch.pessoaId !== undefined) p.person_id = patch.pessoaId || null;
+    if (patch.oportunidadeId !== undefined) p.opportunity_id = patch.oportunidadeId || null;
+    if (patch.canal !== undefined) p.source_channel = patch.canal;
+    if (patch.tipo !== undefined) p.interaction_type = patch.tipo || null;
+    if (patch.conteudo !== undefined) p.original_content = patch.conteudo;
+    if (patch.resumo !== undefined) p.summary = patch.resumo || null;
+    if (patch.data !== undefined) p.occurred_at = patch.data;
+    const { error } = await supabase.from("interactions").update(p as never).eq("id", id);
+    if (error) throw error;
+    invalidate("interactions");
+  }, [qc]);
+
+  const deleteInteracao = useCallback(async (id: string) => {
+    const { error } = await supabase.from("interactions").delete().eq("id", id);
+    if (error) throw error;
+    invalidate("interactions");
+  }, [qc]);
+
   const refresh = useCallback(() => {
-    ["people", "opportunities", "properties", "follow_ups", "financial_movements"].forEach(invalidate);
+    ["people", "opportunities", "properties", "follow_ups", "financial_movements", "interactions"].forEach(invalidate);
   }, [qc]);
 
   const value = useMemo<AppStore>(() => {
@@ -437,7 +490,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const comissoes = movs.filter((m: Row) => m.type === "commission").map(toComissao);
     const despesas = movs.filter((m: Row) => m.type === "expense").map(toDespesa);
     return {
-      loading: people.isLoading || opps.isLoading || props.isLoading || followups.isLoading || movements.isLoading,
+      loading: people.isLoading || opps.isLoading || props.isLoading || followups.isLoading || movements.isLoading || interactions.isLoading,
       pessoas: people.data ?? [],
       oportunidades: opps.data ?? [],
       imoveis: props.data ?? [],
@@ -446,6 +499,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       comissoes,
       despesas,
       entradas: [],
+      interacoes: interactions.data ?? [],
       addSeguimento,
       addSeguimentoReturning,
       concluirSeguimento,
@@ -466,9 +520,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       addOportunidade,
       updateOportunidade,
       deleteOportunidade,
+      updateInteracao,
+      deleteInteracao,
       refresh,
     };
-  }, [people.data, opps.data, props.data, followups.data, movements.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, addSeguimento, addSeguimentoReturning, concluirSeguimento, reagendarSeguimento, atualizarSeguimento, eliminarSeguimento, addDespesa, addDespesaReturning, atualizarMovimento, eliminarMovimento, addComissao, addComissaoReturning, addEntrada, addInteracao, addPessoa, updatePessoa, deletePessoa, addOportunidade, updateOportunidade, deleteOportunidade, refresh]);
+  }, [people.data, opps.data, props.data, followups.data, movements.data, interactions.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, interactions.isLoading, addSeguimento, addSeguimentoReturning, concluirSeguimento, reagendarSeguimento, atualizarSeguimento, eliminarSeguimento, addDespesa, addDespesaReturning, atualizarMovimento, eliminarMovimento, addComissao, addComissaoReturning, addEntrada, addInteracao, addPessoa, updatePessoa, deletePessoa, addOportunidade, updateOportunidade, deleteOportunidade, updateInteracao, deleteInteracao, refresh]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
