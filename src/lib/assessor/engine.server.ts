@@ -122,54 +122,8 @@ function articleFor(tipo: string): string {
   return /^(visita|reuni)/.test(tipo) ? "a" : "o";
 }
 
-async function findLatestDraft(supabase: any, userId: string, channel: string) {
-  const { data } = await supabase
-    .from("assessor_messages")
-    .select("id, message_type, structured_payload, created_at")
-    .eq("user_id", userId)
-    .eq("channel", channel)
-    .eq("role", "assessor")
-    .eq("status", "draft")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data as any) ?? null;
-}
-
-async function findLastConfirmedEvent(supabase: any, userId: string, channel: string) {
-  // Última mensagem do assessor com evento já criado (para correções tipo
-  // "mas é amanhã" / "é às 11h").
-  const { data } = await supabase
-    .from("assessor_messages")
-    .select("id, structured_payload, created_at")
-    .eq("user_id", userId)
-    .eq("channel", channel)
-    .eq("role", "assessor")
-    .eq("status", "confirmed")
-    .order("created_at", { ascending: false })
-    .limit(5);
-  const rows = (data as any[]) ?? [];
-  for (const r of rows) {
-    const p = r.structured_payload as any;
-    if (!p) continue;
-    if ((p.__intent === "create_event" || p.__intent === "create_follow_up") && p.__entidadeId) {
-      return r;
-    }
-  }
-  return null;
-}
-
-async function cancelDraft(supabase: any, draftId: string) {
-  await supabase
-    .from("assessor_messages")
-    .update({ status: "cancelled" } as never)
-    .eq("id", draftId);
-}
-
-function isDraftFresh(draft: { created_at: string } | null): boolean {
-  if (!draft?.created_at) return false;
-  return Date.now() - new Date(draft.created_at).getTime() < DRAFT_TTL_MS;
-}
+// Pending actions moved to public.pending_actions (memory.server.ts).
+// findActivePendingAction already filters by TTL and marks expired rows.
 
 function capitalize(s: string): string {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
