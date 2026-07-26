@@ -28,6 +28,7 @@ export interface PendingActionRow {
   status: PendingActionStatus;
   confidence: number | null;
   pending_question: string | null;
+  current_question: string | null;
   created_resource_type: string | null;
   created_resource_id: string | null;
   error_message: string | null;
@@ -100,6 +101,7 @@ export async function createPendingAction(
     missingFields?: string[];
     confidence?: number | null;
     pendingQuestion?: string | null;
+    currentQuestion?: string | null;
     sourceMessageId?: string | null;
   },
 ): Promise<PendingActionRow | null> {
@@ -115,6 +117,7 @@ export async function createPendingAction(
       status: (input.missingFields?.length ? "collecting_information" : "pending_confirmation") as PendingActionStatus,
       confidence: input.confidence ?? null,
       pending_question: input.pendingQuestion ?? null,
+      current_question: input.currentQuestion ?? null,
       source_message_id: input.sourceMessageId ?? null,
       expires_at: isoFuture(DRAFT_TTL_MS),
     } as never)
@@ -128,7 +131,7 @@ export async function updatePendingActionPayload(
   supabase: any,
   id: string,
   payload: Record<string, any>,
-  extra?: Partial<Pick<PendingActionRow, "status" | "pending_question" | "missing_fields">>,
+  extra?: Partial<Pick<PendingActionRow, "status" | "pending_question" | "current_question" | "missing_fields">>,
 ): Promise<void> {
   await supabase
     .from("pending_actions")
