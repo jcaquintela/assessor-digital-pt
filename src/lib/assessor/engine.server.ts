@@ -1468,7 +1468,19 @@ async function executePendingProperty(
     const suffix = fileId ? " e associei o documento" : "";
     const { propertyStatusLabel } = await import("./properties.server");
     const statusLabel = propertyStatusLabel(fields.status ?? "em_angariacao").toLowerCase();
-    return { reply: `Feito. Criei o imóvel "${created.title}" em ${statusLabel}${suffix}. Queres acrescentar a morada ou o proprietário?` };
+    const reply = `Feito. Criei o imóvel "${created.title}", em fase de ${statusLabel}${suffix}. Queres acrescentar a morada ou o proprietário?`;
+    // Cria um pending leve para intercetar "sim"/"não" à pergunta acima
+    // sem exigir passagem pela IA. "não" responde apenas "Está bem." e
+    // não altera o imóvel nem o ficheiro.
+    await createPendingAction(supabase, {
+      userId, channel,
+      intent: "await_property_details",
+      originalContent: "",
+      payload: { target_property_id: created.id },
+      pendingQuestion: reply,
+      currentQuestion: "await_property_details",
+    });
+    return { reply };
   }
 
   if (intent === "associate_property_to_file") {
