@@ -71,6 +71,9 @@ export function UploadedFilesList() {
             <div className="rounded-md bg-muted p-2">{iconFor(r.mime_type)}</div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{r.original_file_name || "(sem nome)"}</p>
+              {r.user_description ? (
+                <p className="truncate text-xs text-foreground/80">{r.user_description}</p>
+              ) : null}
               <p className="text-xs text-muted-foreground">
                 {r.mime_type} · {formatSize(Number(r.size_bytes ?? 0))} ·{" "}
                 {new Date(r.created_at).toLocaleString("pt-PT", {
@@ -92,6 +95,9 @@ export function UploadedFilesList() {
               {r.processing_status}
             </Badge>
             {r.classification ? <Badge className="text-[10px]">{r.classification}</Badge> : null}
+            {r.related_resource_type === "follow_up" && r.related_resource_id ? (
+              <Badge variant="outline" className="text-[10px]">Com lembrete</Badge>
+            ) : null}
             {r.storage_path ? (
               <Button size="sm" variant="outline" onClick={() => open(r.id)}>
                 <Download className="mr-1 h-3.5 w-3.5" /> Abrir
