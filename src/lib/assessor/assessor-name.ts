@@ -72,7 +72,7 @@ export function stripAssessorVocative(text: string, name: string | null | undefi
   );
   // 2) Vocativo no início sem pontuação, seguido de palavra em minúsculas:
   //    "maria lembra-me de ligar ao João."
-  const leadSpaceLower = new RegExp(`^\\s*${escaped}\\s+(?=\\p{Ll})`, "u");
+  const leadSpaceLower = new RegExp(`^\\s*${escaped}\\s+(?=\\p{Ll})`, "iu");
 
   if (leadPunct.test(out)) {
     out = out.replace(leadPunct, "");
