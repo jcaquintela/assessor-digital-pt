@@ -1431,7 +1431,9 @@ async function executePendingProperty(
       stateSummary: `imóvel activo: ${created.title}`,
     } as any);
     const suffix = fileId ? " e associei o documento" : "";
-    return { reply: `Feito. Criei o imóvel "${created.title}"${suffix}. Queres acrescentar a morada ou o proprietário?` };
+    const { propertyStatusLabel } = await import("./properties.server");
+    const statusLabel = propertyStatusLabel(fields.status ?? "em_angariacao").toLowerCase();
+    return { reply: `Feito. Criei o imóvel "${created.title}" em ${statusLabel}${suffix}. Queres acrescentar a morada ou o proprietário?` };
   }
 
   if (intent === "associate_property_to_file") {
@@ -1466,12 +1468,20 @@ async function executePendingProperty(
     const propertyId = payload.target_property_id as string;
     const patch = (payload.patch ?? {}) as Record<string, unknown>;
     try {
-      await updatePropertyPatch(supabase, userId, propertyId, patch);
+      const changed = await updatePropertyPatch(supabase, userId, propertyId, patch);
       await markPendingActionStatus(supabase, pending.id, "executed", {
         created_resource_type: "property",
         created_resource_id: propertyId,
       });
-      return { reply: "Feito. Atualizei o imóvel." };
+      const bits: string[] = [];
+      if (patch.address) bits.push(`a morada para "${patch.address}"`);
+      if (patch.asking_price != null) bits.push(`o preço para ${formatEuro(Number(patch.asking_price))}`);
+      if (patch.status) {
+        const { propertyStatusLabel } = await import("./properties.server");
+        bits.push(`o estado para "${propertyStatusLabel(String(patch.status))}"`);
+      }
+      if (bits.length === 0) return { reply: changed.length ? "Feito. Atualizei o imóvel." : "Sem alterações." };
+      return { reply: `Feito. Atualizei ${bits.join(" e ")}.` };
     } catch {
       await markPendingActionStatus(supabase, pending.id, "failed");
       return { reply: "Não consegui atualizar o imóvel." };
