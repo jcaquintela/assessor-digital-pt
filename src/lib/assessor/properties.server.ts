@@ -13,7 +13,13 @@ export const PROPERTY_REFERENT_RE =
 const OWNER_RE =
   /\b(propriet[áa]ri[oa]|dono|dona)\b[^.:]*?(?:chama-se|:\s*|\s+[ée]\s+|\s+)([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-Za-zÀ-ÿ'’\-]+(?:\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-Za-zÀ-ÿ'’\-]+){0,3})/;
 
+// "…, de <Nome>" no fim ou depois de morada. Ex.: "Rua Consortes, de Júlio Quintela".
+const OWNER_DE_RE =
+  /,\s*d[eo]\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-Za-zÀ-ÿ'’\-]+(?:\s+(?:[a-zà-ÿ]{2,3}\s+)?[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-Za-zÀ-ÿ'’\-]+){0,3})\s*[.!?]?\s*$/;
+
 export interface PropertyFields {
+  title?: string | null; // título explícito indicado pelo consultor
+  status?: string | null; // estado comercial (por_angariar/em_angariacao/…)
   typology?: string | null;
   property_type?: string | null; // apartamento/moradia/terreno/etc.
   city?: string | null;
@@ -43,6 +49,15 @@ export function detectPropertyContext(text: string, fileName?: string | null): b
 export function extractPropertyFields(text: string): PropertyFields {
   const out: PropertyFields = {};
   const t = text;
+
+  // Título explícito indicado pelo consultor (ex.: "Imóvel T2 Oliveira Douro"
+  // ou "chama-se 'T2 Oliveira Douro'"). Se existir, guarda-o tal como escrito.
+  const explicit = extractExplicitTitle(t);
+  if (explicit) out.title = explicit;
+
+  // Estado comercial (por_angariar / em_angariacao / angariado / …).
+  const status = extractStatus(t);
+  if (status) out.status = status;
 
   const mTip = t.match(/\b([TV][0-6](?:\+[0-9])?)\b/i);
   if (mTip) out.typology = mTip[1].toUpperCase();
@@ -95,8 +110,94 @@ export function extractPropertyFields(text: string): PropertyFields {
   // Proprietário
   const mOwn = t.match(OWNER_RE);
   if (mOwn) out.owner_name = mOwn[2];
+  if (!out.owner_name) {
+    const mDe = t.match(OWNER_DE_RE);
+    if (mDe) out.owner_name = mDe[1];
+  }
 
   return out;
+}
+
+// Título explícito escolhido pelo consultor. Preserva-se tal como escrito.
+export function extractExplicitTitle(text: string): string | null {
+  // Com aspas: "chama-se 'X'", "nome 'X'", "imóvel 'X'"
+  let m = text.match(
+    /\b(?:chama[- ]se|com\s+nome|nome|im[óo]vel|apartamento|moradia)\s+["'“”‘’]([^"'“”‘’\n]{2,80})["'“”‘’]/i,
+  );
+  if (m) return normalizeExplicitTitle(m[1]);
+  // "Imóvel T2 Oliveira Douro" — tipologia + palavras seguintes até pontuação.
+  m = text.match(
+    /\bim[óo]vel\s+((?:[TV][0-6](?:\+\d)?)(?:\s+[A-Za-zÀ-ÿ0-9'’\-]+){0,6})(?=[.,;:!?\n]|$)/i,
+  );
+  if (m) {
+    const raw = m[1].trim();
+    // Só considerar título explícito se tiver pelo menos uma palavra além da tipologia.
+    if (/\s/.test(raw)) return normalizeExplicitTitle(raw);
+  }
+  // "afinal chama-se X" / "afinal é X"
+  m = text.match(/\bafinal\s+(?:chama[- ]se|[ée])\s+([^\n.,;:!?]{2,80})/i);
+  if (m) return normalizeExplicitTitle(m[1]);
+  // "chama-se X" (sem aspas)
+  m = text.match(/\bchama[- ]se\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ0-9][^\n.,;:!?]{2,80})/);
+  if (m) return normalizeExplicitTitle(m[1]);
+  return null;
+}
+
+function normalizeExplicitTitle(s: string): string {
+  const cleaned = s.trim().replace(/\s+/g, " ").replace(/^["'“”‘’]+|["'“”‘’]+$/g, "");
+  const connectors = new Set(["de", "do", "da", "dos", "das", "em", "no", "na", "e", "a", "o"]);
+  return cleaned
+    .split(" ")
+    .map((w, i) => {
+      if (/^[TV]\d/i.test(w)) return w.toUpperCase();
+      const lower = w.toLowerCase();
+      if (i > 0 && connectors.has(lower)) return lower;
+      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+// Estado comercial expresso na mensagem. Só devolve não-nulo quando o texto
+// é inequívoco — não inventa "angariado" a partir de referências vagas.
+export function extractStatus(text: string): string | null {
+  const t = text.toLowerCase();
+  if (/\b(vendido|foi\s+vendido)\b/.test(t)) return "vendido";
+  if (/\b(reservado)\b/.test(t)) return "reservado";
+  if (/\b(arquivado)\b/.test(t)) return "arquivado";
+  if (/\b(a\s+trabalhar\s+(?:para|na|numa?)\s+angaria|trabalhar\s+para\s+angariar|em\s+angaria[çc][ãa]o|estou\s+a\s+angariar|em\s+processo\s+de\s+angaria|para\s+angariar)\b/.test(t))
+    return "em_angariacao";
+  if (/\b(por\s+angariar|ainda\s+n[ãa]o\s+angari)\b/.test(t)) return "por_angariar";
+  if (/\b(j[áa]\s+angariei|acabei\s+de\s+angariar|angariei|angariado|foi\s+angariado)\b/.test(t))
+    return "angariado";
+  if (/\b(ativo|activo)\b/.test(t)) return "ativo";
+  return null;
+}
+
+// Estados suportados e respetivos rótulos PT-PT para UI.
+export const PROPERTY_STATUSES = [
+  "por_angariar",
+  "em_angariacao",
+  "angariado",
+  "ativo",
+  "reservado",
+  "vendido",
+  "arquivado",
+] as const;
+
+export function propertyStatusLabel(s: string | null | undefined): string {
+  if (!s) return "—";
+  switch (s) {
+    case "por_angariar": return "Por angariar";
+    case "em_angariacao": return "Em angariação";
+    case "angariado":
+    case "Angariado": return "Angariado";
+    case "ativo":
+    case "activo": return "Ativo";
+    case "reservado": return "Reservado";
+    case "vendido": return "Vendido";
+    case "arquivado": return "Arquivado";
+    default: return s;
+  }
 }
 
 function parsePriceFromText(text: string): number | null {
@@ -117,6 +218,8 @@ function parsePriceFromText(text: string): number | null {
 }
 
 export function buildPropertyTitle(f: PropertyFields): string {
+  // O título escolhido pelo consultor prevalece sempre.
+  if (f.title && f.title.trim()) return f.title.trim();
   const loc = f.city || f.location;
   const kind = f.property_type ? capitalize(f.property_type) : null;
   if (f.typology && loc) return `${f.typology} em ${loc}`;
@@ -242,7 +345,8 @@ export async function createPropertyFromFields(
     bathrooms: fields.bathrooms ?? null,
     parking: fields.parking ?? null,
     energy_rating: fields.energy_rating ?? null,
-    status: "Angariado",
+    // Estado por omissão: em angariação (não assumir que já está angariado).
+    status: fields.status ?? "em_angariacao",
     source_channel: extras.channel ?? null,
     source_message_id: extras.sourceMessageId ?? null,
     notes: extras.notes ?? null,
