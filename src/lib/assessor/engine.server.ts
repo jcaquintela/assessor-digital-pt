@@ -907,3 +907,157 @@ async function executePending(
   await markPendingActionStatus(supabase, pending.id, "executed");
   return { reply: "Feito." };
 }
+
+// -------- Fluxo progressivo: classificação de ficheiro → lembrete --------
+
+async function handleFileClassificationTurn(
+  supabase: any,
+  userId: string,
+  channel: string,
+  pending: PendingActionRow,
+  trimmed: string,
+  trimmedRaw: string,
+  now: Date,
+): Promise<EngineOutcome | null> {
+  const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+  const q = pending.current_question ?? "file_description";
+  const fileId: string | null = payload.file_id ?? null;
+  const label: string = payload.file_label ?? "ficheiro";
+  const article: string = payload.file_article ?? "o";
+
+  // Cancelamento em qualquer altura do fluxo.
+  if (isCancelText(trimmed)) {
+    await markPendingActionStatus(supabase, pending.id, "cancelled");
+    await upsertConversationState(supabase, {
+      userId,
+      channel,
+      pendingActionId: null,
+      activeTopic: null,
+      stateSummary: "utilizador não quis lembrete sobre o ficheiro",
+    });
+    return { reply: `Ok, deixo ${article} ${label} em Diversos → Ficheiros sem lembrete.` };
+  }
+
+  if (q === "file_description") {
+    const description = trimmedRaw.trim();
+    if (!description) return { reply: `A que se refere ${article === "a" ? "esta" : "este"} ${label}?` };
+    // Guarda a descrição no ficheiro.
+    if (fileId) {
+      await supabase
+        .from("uploaded_files")
+        .update({ user_description: description } as never)
+        .eq("id", fileId);
+    }
+    const newPayload = { ...payload, user_description: description };
+    const reply = `Percebi: ${description}. Vou guardar este ${label}. Queres que te lembre de tratar disso?`;
+    await updatePendingActionPayload(supabase, pending.id, newPayload, {
+      status: "collecting_information",
+      pending_question: reply,
+      current_question: "reminder_confirmation",
+    });
+    return { reply };
+  }
+
+  if (q === "reminder_confirmation") {
+    // Se a mensagem já traz data/hora, salta para criação directa.
+    const resolved = resolveDateTimeFromText(trimmed, now);
+    if (resolved.date || resolved.time) {
+      return await createFileReminder(supabase, userId, channel, pending, resolved);
+    }
+    const wantsReminder =
+      isConfirmText(trimmed) || /\b(lembra|lembrar|lembrete|avisa|avisar|recorda)/i.test(trimmed);
+    if (wantsReminder) {
+      const reply = "Quando queres que te lembre?";
+      await updatePendingActionPayload(supabase, pending.id, payload, {
+        status: "collecting_information",
+        pending_question: reply,
+        current_question: "reminder_datetime",
+      });
+      return { reply };
+    }
+    // Resposta ambígua — pergunta de forma clara.
+    return { reply: `Queres que te lembre de tratar ${article === "a" ? "desta" : "deste"} ${label}? Diz sim ou não.` };
+  }
+
+  if (q === "reminder_datetime") {
+    const resolved = resolveDateTimeFromText(trimmed, now);
+    if (!resolved.date && !resolved.time) {
+      return { reply: 'Não percebi a data. Podes indicar por exemplo "amanhã às 10h"?' };
+    }
+    return await createFileReminder(supabase, userId, channel, pending, resolved);
+  }
+
+  return null;
+}
+
+async function createFileReminder(
+  supabase: any,
+  userId: string,
+  channel: string,
+  pending: PendingActionRow,
+  resolved: { date: string | null; time: string | null },
+): Promise<EngineOutcome> {
+  const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+  const fileId: string | null = payload.file_id ?? null;
+  const description: string = payload.user_description ?? payload.original_file_name ?? "este ficheiro";
+  const label: string = payload.file_label ?? "ficheiro";
+
+  if (!resolved.date) {
+    // Só tempo — assume hoje se ainda for futuro; caso contrário amanhã.
+    const today = new Date().toISOString().slice(0, 10);
+    resolved = { ...resolved, date: today };
+  }
+
+  const titulo = `Tratar de ${description}`.slice(0, 200);
+  const notas = `Ficheiro: ${payload.original_file_name ?? label}\nDescrição: ${description}`;
+
+  const { data: fu, error } = await supabase
+    .from("follow_ups")
+    .insert({
+      user_id: userId,
+      title: titulo,
+      type: "task",
+      due_date: resolved.date,
+      due_time: resolved.time ?? null,
+      priority: "Média",
+      status: "Pendente",
+      notes: notas,
+      related_file_id: fileId,
+    } as never)
+    .select("id")
+    .single();
+  if (error) {
+    await markPendingActionStatus(supabase, pending.id, "failed", { error_message: error.message });
+    return { reply: "Não consegui criar o lembrete. Tenta novamente." };
+  }
+  const resourceId = (fu as any).id as string;
+
+  // Liga o ficheiro ao lembrete criado.
+  if (fileId) {
+    await supabase
+      .from("uploaded_files")
+      .update({
+        related_resource_type: "follow_up",
+        related_resource_id: resourceId,
+      } as never)
+      .eq("id", fileId);
+  }
+
+  await markPendingActionStatus(supabase, pending.id, "executed", {
+    created_resource_type: "follow_up",
+    created_resource_id: resourceId,
+  });
+  await upsertConversationState(supabase, {
+    userId,
+    channel,
+    pendingActionId: null,
+    activeTopic: null,
+    lastIntent: "create_follow_up",
+    lastCreatedResourceType: "follow_up",
+    lastCreatedResourceId: resourceId,
+    stateSummary: `criou lembrete a partir de ficheiro para ${naturalWhen(resolved.date!, resolved.time)}`,
+  });
+
+  const quando = naturalWhen(resolved.date!, resolved.time);
+  return { reply: `Feito. ${capitalize(quando)} lembro-te de tratar de ${description}.` };
+}
