@@ -1050,11 +1050,19 @@ async function handleFileClassificationTurn(
       // Executa criação/associação imediatamente.
       return await executePendingProperty(supabase, userId, channel, pending);
     }
-    // Resposta ambígua — aceita como texto adicional de enriquecimento.
+    // Resposta ambígua — enriquece a ficha pendente. Se o consultor
+    // indica um título explícito ("Imóvel 'T2 Oliveira Douro'"), esse
+    // valor prevalece sobre o título automático anterior.
     const extra = extractPropertyFields(trimmedRaw);
     const merged: PropertyFields = { ...(payload.property_fields ?? {}), ...extra };
+    // extra.title já entra por spread; garantimos que não se perde.
+    if (extra.title) merged.title = extra.title;
+    if (extra.status) merged.status = extra.status;
     const newTitle = buildPropertyTitle(merged);
-    const reply = `Queres que crie o imóvel "${newTitle}"?`;
+    const fileSuffix = payload.file_id ? " e associe o documento" : "";
+    const reply = extra.title
+      ? `Percebi. Vou criar o imóvel "${newTitle}"${fileSuffix}. Confirmas?`
+      : `Queres que crie o imóvel "${newTitle}"${fileSuffix}?`;
     await updatePendingActionPayload(
       supabase,
       pending.id,
