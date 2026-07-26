@@ -459,7 +459,10 @@ export type Database = {
           id: string
           name: string | null
           phone: string | null
+          phone_verified_at: string | null
           updated_at: string
+          whatsapp_link_status: string
+          whatsapp_linked_at: string | null
         }
         Insert: {
           account_kind?: string
@@ -468,7 +471,10 @@ export type Database = {
           id: string
           name?: string | null
           phone?: string | null
+          phone_verified_at?: string | null
           updated_at?: string
+          whatsapp_link_status?: string
+          whatsapp_linked_at?: string | null
         }
         Update: {
           account_kind?: string
@@ -477,7 +483,10 @@ export type Database = {
           id?: string
           name?: string | null
           phone?: string | null
+          phone_verified_at?: string | null
           updated_at?: string
+          whatsapp_link_status?: string
+          whatsapp_linked_at?: string | null
         }
         Relationships: []
       }
@@ -551,6 +560,39 @@ export type Database = {
           created_by?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_link_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
+          used_at?: string | null
           user_id?: string
         }
         Relationships: []
