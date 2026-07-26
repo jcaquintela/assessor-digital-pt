@@ -316,7 +316,7 @@ async function replyAndStore(
   userId: string | null,
   body: string,
 ) {
-  const result = await sendWhatsAppText(toPhone, body);
+  const result = await sendWhatsAppText(toPhone, body, { kind: "auto" });
   await supabaseAdmin.from("assessor_messages").insert({
     user_id: userId,
     role: "assistant",
@@ -326,6 +326,15 @@ async function replyAndStore(
     channel: "whatsapp",
     sender_phone: toPhone,
     whatsapp_message_id: result.ok ? result.messageId : null,
-    structured_payload: result.ok ? null : ({ error: result.error } as any),
+    structured_payload: result.ok
+      ? null
+      : ({
+          error: result.error,
+          http_status: result.telemetry.httpStatus,
+          error_code: result.telemetry.errorCode,
+          error_subcode: result.telemetry.errorSubcode,
+          error_type: result.telemetry.errorType,
+          fbtrace_id: result.telemetry.fbtraceId,
+        } as any),
   });
 }
