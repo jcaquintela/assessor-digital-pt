@@ -70,34 +70,43 @@ export type Database = {
       }
       assessor_messages: {
         Row: {
+          channel: string
           content: string
           created_at: string
           id: string
           message_type: string | null
           role: string
+          sender_phone: string | null
           status: string | null
           structured_payload: Json | null
-          user_id: string
+          user_id: string | null
+          whatsapp_message_id: string | null
         }
         Insert: {
+          channel?: string
           content: string
           created_at?: string
           id?: string
           message_type?: string | null
           role: string
+          sender_phone?: string | null
           status?: string | null
           structured_payload?: Json | null
-          user_id: string
+          user_id?: string | null
+          whatsapp_message_id?: string | null
         }
         Update: {
+          channel?: string
           content?: string
           created_at?: string
           id?: string
           message_type?: string | null
           role?: string
+          sender_phone?: string | null
           status?: string | null
           structured_payload?: Json | null
-          user_id?: string
+          user_id?: string | null
+          whatsapp_message_id?: string | null
         }
         Relationships: []
       }
