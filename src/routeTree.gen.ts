@@ -41,6 +41,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
 import { Route as AuthenticatedPessoasIdRouteImport } from './routes/_authenticated/pessoas.$id'
+import { Route as AuthenticatedOportunidadesIdRouteImport } from './routes/_authenticated/oportunidades.$id'
 import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authenticated/imoveis.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
@@ -208,6 +209,12 @@ const AuthenticatedPessoasIdRoute = AuthenticatedPessoasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedPessoasRoute,
 } as any)
+const AuthenticatedOportunidadesIdRoute =
+  AuthenticatedOportunidadesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedOportunidadesRoute,
+  } as any)
 const AuthenticatedImoveisIdRoute = AuthenticatedImoveisIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -237,7 +244,7 @@ export interface FileRoutesByFullPath {
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/mais': typeof AuthenticatedMaisRoute
   '/negocio': typeof AuthenticatedNegocioRoute
-  '/oportunidades': typeof AuthenticatedOportunidadesRoute
+  '/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -252,6 +259,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
+  '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
 }
@@ -271,7 +279,7 @@ export interface FileRoutesByTo {
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/mais': typeof AuthenticatedMaisRoute
   '/negocio': typeof AuthenticatedNegocioRoute
-  '/oportunidades': typeof AuthenticatedOportunidadesRoute
+  '/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -286,6 +294,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
+  '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
 }
@@ -308,7 +317,7 @@ export interface FileRoutesById {
   '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
   '/_authenticated/negocio': typeof AuthenticatedNegocioRoute
-  '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRoute
+  '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
   '/_authenticated/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -323,6 +332,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/imoveis/$id': typeof AuthenticatedImoveisIdRoute
+  '/_authenticated/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/_authenticated/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
 }
@@ -360,6 +370,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
     | '/imoveis/$id'
+    | '/oportunidades/$id'
     | '/pessoas/$id'
     | '/api/public/whatsapp-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -394,6 +405,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/.mcp/invoke-tool/$tool'
     | '/imoveis/$id'
+    | '/oportunidades/$id'
     | '/pessoas/$id'
     | '/api/public/whatsapp-webhook'
   id:
@@ -430,6 +442,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/imoveis/$id'
+    | '/_authenticated/oportunidades/$id'
     | '/_authenticated/pessoas/$id'
     | '/api/public/whatsapp-webhook'
   fileRoutesById: FileRoutesById
@@ -673,6 +686,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPessoasIdRouteImport
       parentRoute: typeof AuthenticatedPessoasRoute
     }
+    '/_authenticated/oportunidades/$id': {
+      id: '/_authenticated/oportunidades/$id'
+      path: '/$id'
+      fullPath: '/oportunidades/$id'
+      preLoaderRoute: typeof AuthenticatedOportunidadesIdRouteImport
+      parentRoute: typeof AuthenticatedOportunidadesRoute
+    }
     '/_authenticated/imoveis/$id': {
       id: '/_authenticated/imoveis/$id'
       path: '/$id'
@@ -701,6 +721,20 @@ const AuthenticatedImoveisRouteChildren: AuthenticatedImoveisRouteChildren = {
 const AuthenticatedImoveisRouteWithChildren =
   AuthenticatedImoveisRoute._addFileChildren(AuthenticatedImoveisRouteChildren)
 
+interface AuthenticatedOportunidadesRouteChildren {
+  AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
+}
+
+const AuthenticatedOportunidadesRouteChildren: AuthenticatedOportunidadesRouteChildren =
+  {
+    AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
+  }
+
+const AuthenticatedOportunidadesRouteWithChildren =
+  AuthenticatedOportunidadesRoute._addFileChildren(
+    AuthenticatedOportunidadesRouteChildren,
+  )
+
 interface AuthenticatedPessoasRouteChildren {
   AuthenticatedPessoasIdRoute: typeof AuthenticatedPessoasIdRoute
 }
@@ -722,7 +756,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedNegocioRoute: typeof AuthenticatedNegocioRoute
-  AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRoute
+  AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRouteWithChildren
   AuthenticatedPessoasRoute: typeof AuthenticatedPessoasRouteWithChildren
   AuthenticatedSeguimentosRoute: typeof AuthenticatedSeguimentosRoute
 }
@@ -737,7 +771,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedNegocioRoute: AuthenticatedNegocioRoute,
-  AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRoute,
+  AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRouteWithChildren,
   AuthenticatedPessoasRoute: AuthenticatedPessoasRouteWithChildren,
   AuthenticatedSeguimentosRoute: AuthenticatedSeguimentosRoute,
 }
