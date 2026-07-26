@@ -598,6 +598,9 @@ async function queryMisc(supabase: any, userId: string, text: string): Promise<s
 function hardenEntitiesFromMessage(interp: AiInterpretation, text: string, now: Date) {
   const resolved = resolveDateTimeFromText(text, now);
   const ent = interp.entities as any;
+  // Descarta datas mal formadas (a IA pode devolver "amanhã" em vez de ISO).
+  if (ent.date && !/^\d{4}-\d{2}-\d{2}$/.test(String(ent.date))) ent.date = null;
+  if (ent.start_time && !/^\d{2}:\d{2}$/.test(String(ent.start_time))) ent.start_time = null;
   // Data / hora: se a mensagem tem expressão explícita, usa-a;
   // caso contrário, se a IA inventou uma data sem base no texto, descarta.
   if (resolved.date) ent.date = resolved.date;
