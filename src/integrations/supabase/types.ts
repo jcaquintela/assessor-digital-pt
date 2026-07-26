@@ -815,6 +815,93 @@ export type Database = {
           },
         ]
       }
+      uploaded_files: {
+        Row: {
+          channel: string
+          classification: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          external_file_id: string | null
+          extracted_metadata: Json
+          extracted_text: string | null
+          id: string
+          internal_file_name: string
+          mime_type: string
+          original_file_name: string | null
+          processing_status: string
+          related_pending_action_id: string | null
+          related_resource_id: string | null
+          related_resource_type: string | null
+          size_bytes: number
+          source_message_id: string | null
+          storage_path: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          channel?: string
+          classification?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          external_file_id?: string | null
+          extracted_metadata?: Json
+          extracted_text?: string | null
+          id?: string
+          internal_file_name: string
+          mime_type: string
+          original_file_name?: string | null
+          processing_status?: string
+          related_pending_action_id?: string | null
+          related_resource_id?: string | null
+          related_resource_type?: string | null
+          size_bytes?: number
+          source_message_id?: string | null
+          storage_path: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          channel?: string
+          classification?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          external_file_id?: string | null
+          extracted_metadata?: Json
+          extracted_text?: string | null
+          id?: string
+          internal_file_name?: string
+          mime_type?: string
+          original_file_name?: string | null
+          processing_status?: string
+          related_pending_action_id?: string | null
+          related_resource_id?: string | null
+          related_resource_type?: string | null
+          size_bytes?: number
+          source_message_id?: string | null
+          storage_path?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uploaded_files_related_pending_action_id_fkey"
+            columns: ["related_pending_action_id"]
+            isOneToOne: false
+            referencedRelation: "pending_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_files_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "assessor_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
