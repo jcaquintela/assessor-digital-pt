@@ -129,6 +129,88 @@ export const getWhatsAppStatus = createServerFn({ method: "GET" })
       pendingAccounts: pending.count ?? 0,
       recentLinkedAt: (recent.data ?? []).map((r: any) => r.whatsapp_linked_at).filter(Boolean),
       linkFailures: failedLinks.count ?? 0,
+      config: {
+        hasAccessToken: !!process.env.WHATSAPP_ACCESS_TOKEN,
+        hasPhoneNumberId: !!process.env.WHATSAPP_PHONE_NUMBER_ID,
+        hasAppSecret: !!process.env.WHATSAPP_APP_SECRET,
+        hasVerifyToken: !!process.env.WHATSAPP_VERIFY_TOKEN,
+        phoneNumberIdMasked: maskPhoneNumberId(process.env.WHATSAPP_PHONE_NUMBER_ID),
+        endpointBase: "https://graph.facebook.com/v20.0",
+      },
+      lastSend: await getLastSendLog(),
+    };
+  });
+
+function maskPhoneNumberId(v: string | undefined | null): string | null {
+  if (!v) return null;
+  if (v.length <= 4) return `••${v}`;
+  return `${v.slice(0, 3)}••••${v.slice(-4)}`;
+}
+
+async function getLastSendLog() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("whatsapp_send_logs" as never)
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as any) ?? null;
+}
+
+export const listWhatsAppSendLogs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    assertAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("whatsapp_send_logs" as never)
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    return (data as any[]) ?? [];
+  });
+
+export const sendWhatsAppTestMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    assertAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("phone, whatsapp_link_status")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const phone = (prof as any)?.phone as string | null;
+    if (!phone) {
+      return {
+        ok: false as const,
+        error: "Sem número associado. Liga o teu WhatsApp em Definições antes de testar.",
+      };
+    }
+    const { normalizePhone } = await import("@/lib/whatsapp/phone");
+    const to = normalizePhone(phone);
+    if (!to) {
+      return { ok: false as const, error: "Número inválido no perfil." };
+    }
+    const { sendWhatsAppText } = await import("@/lib/whatsapp/send.server");
+    const result = await sendWhatsAppText(to, "Teste de ligação do Assessor.", {
+      triggeredBy: context.userId,
+      kind: "test",
+    });
+    await audit(context.userId, "whatsapp.test_send", {
+      metadata: {
+        ok: result.ok,
+        http: result.telemetry.httpStatus,
+        code: result.telemetry.errorCode,
+        subcode: result.telemetry.errorSubcode,
+        fbtrace_id: result.telemetry.fbtraceId,
+      },
+    });
+    return {
+      ok: result.ok,
+      telemetry: result.telemetry,
+      error: result.ok ? null : (result as any).error,
     };
   });
 
