@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "@/lib/assessor/assessor-name";
 import {
   getWhatsAppLink,
   startWhatsAppLink,
@@ -105,11 +106,22 @@ function DefinicoesPage() {
 
   const saveAssessorName = async () => {
     if (!uid) return;
-    const nome = assessorNameDraft.trim() || "Assessor";
-    const { error } = await supabase.from("profiles").update({ assessor_name: nome } as never).eq("id", uid);
+    const v = validateAssessorName(assessorNameDraft);
+    if (!v.ok) { toast.error(v.error ?? "Nome inválido."); return; }
+    const { error } = await supabase.from("profiles").update({ assessor_name: v.value } as never).eq("id", uid);
     if (error) { toast.error(error.message); return; }
-    setAssessorName(nome);
+    setAssessorName(v.value);
+    setAssessorNameDraft(v.value);
     toast.success("Nome do Assessor atualizado.");
+  };
+
+  const resetAssessorName = async () => {
+    if (!uid) return;
+    const { error } = await supabase.from("profiles").update({ assessor_name: ASSESSOR_NAME_DEFAULT } as never).eq("id", uid);
+    if (error) { toast.error(error.message); return; }
+    setAssessorName(ASSESSOR_NAME_DEFAULT);
+    setAssessorNameDraft(ASSESSOR_NAME_DEFAULT);
+    toast.success("Nome reposto.");
   };
 
   return (
@@ -146,16 +158,19 @@ function DefinicoesPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Assessor</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            <Label htmlFor="assessor-name">Nome do Assessor</Label>
+            <Label htmlFor="assessor-name">Nome do meu Assessor</Label>
             <Input
               id="assessor-name"
               value={assessorNameDraft}
               onChange={(e) => setAssessorNameDraft(e.target.value)}
-              maxLength={40}
+              maxLength={ASSESSOR_NAME_MAX}
               placeholder="Assessor"
             />
-            <p className="text-xs text-muted-foreground">Como queres chamar o teu assessor pessoal? Ex: "Sofia", "Bruno". Atual: {assessorName}.</p>
-            <Button size="sm" onClick={saveAssessorName} disabled={assessorNameDraft.trim() === assessorName}>Guardar</Button>
+            <p className="text-xs text-muted-foreground">Ex: "Maria", "Alex". Máx. {ASSESSOR_NAME_MAX} caracteres. Atual: {assessorName}.</p>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={saveAssessorName} disabled={assessorNameDraft.trim() === assessorName}>Guardar</Button>
+              <Button size="sm" variant="outline" onClick={resetAssessorName} disabled={assessorName === ASSESSOR_NAME_DEFAULT}>Repor "{ASSESSOR_NAME_DEFAULT}"</Button>
+            </div>
           </CardContent>
         </Card>
         <Card>
