@@ -324,6 +324,21 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     return { reply: "Ok, não registei nada." };
   }
 
+  // 0.property) Se há um imóvel activo na conversa e a mensagem não é uma
+  // nova acção clara, aplica enriquecimento progressivo. Cria pending para
+  // alterações sensíveis (preço, morada, proprietário).
+  if (!pending) {
+    const propHandled = await handleActivePropertyEnrichment(
+      supabase,
+      userId,
+      channel,
+      convState,
+      trimmed,
+      trimmedRaw,
+    );
+    if (propHandled) return propHandled;
+  }
+
   // 0.d) Pergunta sobre Diversos — resposta com dados reais.
   if (isQueryMisc(trimmed)) {
     const reply = await queryMisc(supabase, userId, trimmed);
@@ -480,6 +495,20 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     // repetir dados da proposta antiga.
     if (pending) await markPendingActionStatus(supabase, pending.id, "cancelled");
     return await proposeAction(supabase, userId, channel, trimmed, interp);
+  }
+
+  // 3.b) Contexto de imóvel na mensagem — propor criação/associação.
+  if (detectPropertyContext(trimmed)) {
+    const fields = extractPropertyFields(trimmed);
+    const propRes = await proposePropertyFromMessage(
+      supabase,
+      userId,
+      channel,
+      trimmedRaw,
+      fields,
+      null,
+    );
+    if (propRes) return propRes;
   }
 
   // 4) fallback conversacional — nunca resposta técnica.
@@ -960,6 +989,42 @@ async function handleFileClassificationTurn(
         .update({ user_description: description } as never)
         .eq("id", fileId);
     }
+    // Se a descrição sugere um imóvel, entra no fluxo de imóvel em vez de lembrete.
+    if (detectPropertyContext(description)) {
+      const fields = extractPropertyFields(description);
+      const docType = guessDocumentType(payload.original_file_name, payload.mime_type || "");
+      if (fileId && docType) {
+        await supabase
+          .from("uploaded_files")
+          .update({ document_type: docType } as never)
+          .eq("id", fileId);
+      }
+      const matches = await findMatchingProperties(supabase, userId, fields);
+      const proposedTitle = buildPropertyTitle(fields);
+      const newPayload = {
+        ...payload,
+        user_description: description,
+        __intent: "create_property",
+        property_fields: fields,
+        matches,
+        document_type: docType,
+      };
+      let reply: string;
+      if (matches.length > 0) {
+        const m = matches[0];
+        reply = `Já tens ${m.title}${m.asking_price ? ` por ${formatEuro(m.asking_price)}` : ""}. Este documento pertence a esse imóvel?`;
+        newPayload.__intent = "associate_property_to_file";
+        newPayload.target_property_id = m.id;
+      } else {
+        reply = `Percebi. Queres que crie o imóvel "${proposedTitle}" e associe este ${label}?`;
+      }
+      await updatePendingActionPayload(supabase, pending.id, newPayload, {
+        status: "pending_confirmation",
+        pending_question: reply,
+        current_question: "property_confirmation",
+      });
+      return { reply };
+    }
     const newPayload = { ...payload, user_description: description };
     const reply = `Percebi: ${description}. Vou guardar este ${label}. Queres que te lembre de tratar disso?`;
     await updatePendingActionPayload(supabase, pending.id, newPayload, {
@@ -967,6 +1032,25 @@ async function handleFileClassificationTurn(
       pending_question: reply,
       current_question: "reminder_confirmation",
     });
+    return { reply };
+  }
+
+  if (q === "property_confirmation") {
+    if (isConfirmText(trimmed)) {
+      // Executa criação/associação imediatamente.
+      return await executePendingProperty(supabase, userId, channel, pending);
+    }
+    // Resposta ambígua — aceita como texto adicional de enriquecimento.
+    const extra = extractPropertyFields(trimmedRaw);
+    const merged: PropertyFields = { ...(payload.property_fields ?? {}), ...extra };
+    const newTitle = buildPropertyTitle(merged);
+    const reply = `Queres que crie o imóvel "${newTitle}"?`;
+    await updatePendingActionPayload(
+      supabase,
+      pending.id,
+      { ...payload, property_fields: merged },
+      { status: "pending_confirmation", pending_question: reply, current_question: "property_confirmation" },
+    );
     return { reply };
   }
 
