@@ -7,6 +7,16 @@
 import { callAssessorAi, type AiInterpretation, type AiContextMessage } from "./ai.server";
 import { sanitizeAssessorName, stripAssessorVocative, ASSESSOR_NAME_DEFAULT } from "./assessor-name";
 import { resolveDateTimeFromText, hasExplicitDateTime } from "./date-resolver";
+import {
+  findActivePendingAction,
+  findLastExecutedAction,
+  createPendingAction,
+  updatePendingActionPayload,
+  markPendingActionStatus,
+  upsertConversationState,
+  summarizePendingAction,
+  type PendingActionRow,
+} from "./memory.server";
 
 export interface EngineInput {
   supabase: any; // service-role client (admin)
