@@ -132,13 +132,7 @@ function PessoaDetail() {
       </div>
       <PageHeader
         title={pessoa.nome}
-        subtitle={
-          <span className="flex flex-wrap items-center gap-3 text-xs">
-            <Badge variant="secondary">{pessoa.relacao}</Badge>
-            {pessoa.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{pessoa.telefone}</span>}
-            {pessoa.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{pessoa.email}</span>}
-          </span>
-        }
+        subtitle={pessoa.relacao}
         action={
           <div className="flex gap-2">
             <Button variant="ghost" className="text-destructive" onClick={apagar}>
@@ -150,6 +144,11 @@ function PessoaDetail() {
           </div>
         }
       />
+      <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <Badge variant="secondary">{pessoa.relacao}</Badge>
+        {pessoa.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{pessoa.telefone}</span>}
+        {pessoa.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{pessoa.email}</span>}
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
