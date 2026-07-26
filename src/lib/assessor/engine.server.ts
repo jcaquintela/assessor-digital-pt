@@ -190,17 +190,6 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   return { reply: interp.reply?.trim() || REPLY_FALLBACK };
 }
 
-async function findPeopleByName(supabase: any, userId: string, nome: string) {
-  const firstName = nome.split(/\s+/)[0];
-  const { data } = await supabase
-    .from("people")
-    .select("id, name")
-    .eq("user_id", userId)
-    .ilike("name", `${firstName}%`)
-    .limit(6);
-  return (data as { id: string; name: string }[]) ?? [];
-}
-
 async function proposeAction(
   supabase: any,
   userId: string,
