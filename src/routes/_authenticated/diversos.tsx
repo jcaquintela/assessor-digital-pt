@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -141,7 +141,9 @@ function DiversosPage() {
               <Card key={r.id}>
                 <CardContent className="flex flex-col gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium">{r.title}</p>
+                    <Link to="/diversos/$id" params={{ id: r.id }} className="text-sm font-medium hover:underline">
+                      {r.title}
+                    </Link>
                     <Badge variant="outline" className="text-[10px]">
                       {STATUS_LABEL[r.status]}
                     </Badge>
