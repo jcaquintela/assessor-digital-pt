@@ -893,6 +893,66 @@ export type Database = {
           },
         ]
       }
+      routines: {
+        Row: {
+          active: boolean
+          created_at: string
+          day_of_month: number | null
+          frequency: string
+          id: string
+          interval_n: number
+          last_run_at: string | null
+          next_run_at: string
+          notes: string | null
+          opportunity_id: string | null
+          person_id: string | null
+          priority: string
+          time_of_day: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          weekday: number | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          day_of_month?: number | null
+          frequency?: string
+          id?: string
+          interval_n?: number
+          last_run_at?: string | null
+          next_run_at?: string
+          notes?: string | null
+          opportunity_id?: string | null
+          person_id?: string | null
+          priority?: string
+          time_of_day?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          weekday?: number | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          day_of_month?: number | null
+          frequency?: string
+          id?: string
+          interval_n?: number
+          last_run_at?: string | null
+          next_run_at?: string
+          notes?: string | null
+          opportunity_id?: string | null
+          person_id?: string | null
+          priority?: string
+          time_of_day?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          weekday?: number | null
+        }
+        Relationships: []
+      }
       uploaded_files: {
         Row: {
           channel: string
