@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
+import { PROPERTY_STATUSES, propertyStatusLabel } from "@/lib/assessor/properties.server";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatEUR } from "@/lib/demo-data";
 import { FileText, ChevronLeft } from "lucide-react";
 
@@ -86,6 +88,27 @@ function PropertyDetail() {
     </div>
   );
 
+  const statusField = (
+    <div className="grid gap-1">
+      <Label className="text-xs text-muted-foreground">Estado</Label>
+      {editing ? (
+        <Select
+          value={editValues.status ?? "em_angariacao"}
+          onValueChange={(v) => setDraft({ ...(draft as any), status: v })}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {PROPERTY_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>{propertyStatusLabel(s)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <div className="text-sm">{propertyStatusLabel(p.status)}</div>
+      )}
+    </div>
+  );
+
   return (
     <AppShell>
       <div className="mb-2">
@@ -113,7 +136,7 @@ function PropertyDetail() {
               {field("Título", "title")}
               {field("Tipologia", "typology")}
               {field("Tipo", "property_type")}
-              {field("Estado", "status")}
+              {statusField}
               {field("Cidade", "city")}
               {field("Freguesia", "parish")}
               {field("Morada", "address")}
