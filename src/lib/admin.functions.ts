@@ -47,6 +47,65 @@ export const getMyAdminRole = createServerFn({ method: "GET" })
     return { role, isAdmin: role !== "consultant", userId: context.userId };
   });
 
+export const getWhatsAppStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    assertAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const since24h = new Date(Date.now() - 864e5).toISOString();
+
+    const [lastIn, lastOut, last24, fails, unassoc] = await Promise.all([
+      supabaseAdmin
+        .from("assessor_messages")
+        .select("created_at, sender_phone, user_id")
+        .eq("channel", "whatsapp")
+        .eq("role", "user")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("assessor_messages")
+        .select("created_at, sender_phone, status")
+        .eq("channel", "whatsapp")
+        .eq("role", "assistant")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("assessor_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("channel", "whatsapp")
+        .gte("created_at", since24h),
+      supabaseAdmin
+        .from("assessor_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("channel", "whatsapp")
+        .eq("role", "assistant")
+        .eq("status", "failed")
+        .gte("created_at", since24h),
+      supabaseAdmin
+        .from("assessor_messages")
+        .select("sender_phone")
+        .eq("channel", "whatsapp")
+        .eq("role", "user")
+        .is("user_id", null)
+        .gte("created_at", since24h),
+    ]);
+
+    const unassociatedSet = new Set(
+      (unassoc.data ?? []).map((r: any) => r.sender_phone).filter(Boolean),
+    );
+    return {
+      lastInboundAt: lastIn.data?.created_at ?? null,
+      lastInboundAssociated: !!lastIn.data?.user_id,
+      lastOutboundAt: lastOut.data?.created_at ?? null,
+      lastOutboundStatus: (lastOut.data as any)?.status ?? null,
+      messages24h: last24.count ?? 0,
+      failures24h: fails.count ?? 0,
+      unassociatedSenders24h: unassociatedSet.size,
+    };
+  });
+
 export const getAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
