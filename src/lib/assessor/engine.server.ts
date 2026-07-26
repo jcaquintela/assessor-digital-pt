@@ -222,9 +222,21 @@ function buildProposalReply(
   ent: Record<string, any>,
   personName: string | null,
 ): string {
+  const hasDate = !!ent.date && /^\d{4}-\d{2}-\d{2}$/.test(String(ent.date));
+  // Nunca propomos sem data. Se a data é inválida ou está em falta,
+  // pedimos a data em primeiro lugar — o slot-fill vai completar o
+  // registo antes da confirmação final.
+  if (!hasDate) {
+    const alvo = personName
+      ? `de ligar a ${personWithArticle(personName)}`
+      : intent === "create_event"
+        ? "desse compromisso"
+        : (ent.title ? `de "${String(ent.title).trim()}"` : "disso");
+    return `Para quando queres que te lembre ${alvo}?`;
+  }
   if (intent === "create_event") {
     const evento = (ent.event_type as string) || "compromisso";
-    const when = ent.date ? naturalWhen(String(ent.date), (ent.start_time as string) || null) : null;
+    const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
     const feminine = /^(visita|reuni)/i.test(evento);
     const artigo = feminine ? "uma" : "um";
     const partes: string[] = [];
@@ -243,10 +255,15 @@ function buildProposalReply(
     return partes.join(". ");
   }
   if (intent === "create_follow_up") {
-    const title = (ent.title as string) || "essa tarefa";
-    const when = ent.date ? naturalWhen(String(ent.date), (ent.start_time as string) || null) : null;
-    const head = when ? `${capitalize(when)}: ${title}` : title;
-    return `${head}. Registo?`;
+    // Nunca mostrar "essa tarefa". Deriva do que existe.
+    let title = String(ent.title || "").trim();
+    if (!title) {
+      if (personName) title = `ligar a ${personName}`;
+      else if (ent.location) title = `tratar de ${ent.location}`;
+      else title = "essa tarefa";
+    }
+    const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
+    return `${capitalize(when)} queres que te lembre de ${title}?`;
   }
   if (intent === "record_interaction") {
     if (personName) return `Registo esta conversa com ${personWithArticle(personName)}?`;
@@ -984,8 +1001,13 @@ async function executePending(
 
   if (intent === "create_event" || intent === "create_follow_up") {
     if (!ent.date) {
-      await markPendingActionStatus(supabase, pending.id, "collecting_information");
-      return { reply: "Falta a data. Para quando é?" };
+      const question = "Para quando é? (por exemplo: amanhã às 12h)";
+      await updatePendingActionPayload(supabase, pending.id, payload, {
+        status: "collecting_information",
+        current_question: "date",
+        pending_question: question,
+      });
+      return { reply: question, messageType: "__ALREADY_PERSISTED__" };
     }
     const tipoDb = intent === "create_event" ? "event" : "task";
     let titulo = String(ent.title || "").trim();
