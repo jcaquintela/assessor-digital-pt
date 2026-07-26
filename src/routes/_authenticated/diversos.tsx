@@ -91,7 +91,7 @@ function DiversosPage() {
     <AppShell>
       <PageHeader
         title="Diversos"
-        description="Notas, ideias e observações que o Assessor guardou por ti."
+        subtitle="Notas, ideias e observações que o Assessor guardou por ti."
       />
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
