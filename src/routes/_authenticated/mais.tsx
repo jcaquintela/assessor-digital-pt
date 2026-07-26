@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, CalendarDays, ChevronRight, FileText, Inbox, MessagesSquare, Settings, Users, Wallet, Briefcase } from "lucide-react";
+import { Building2, CalendarDays, ChevronRight, FileText, Inbox, MessagesSquare, Repeat, Settings, Users, Wallet, Briefcase } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/mais")({
   head: () => ({
@@ -20,6 +20,7 @@ const items = [
   { to: "/oportunidades", label: "Oportunidades", icon: Briefcase },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/calendario", label: "Calendário", icon: CalendarDays },
+  { to: "/rotinas", label: "Rotinas", icon: Repeat },
   { to: "/interacoes", label: "Interações", icon: MessagesSquare },
   { to: "/documentos", label: "Documentos", icon: FileText },
   { to: "/diversos", label: "Diversos", icon: Inbox },
