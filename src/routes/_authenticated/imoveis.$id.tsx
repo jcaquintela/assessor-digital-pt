@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
-import { PROPERTY_STATUSES, propertyStatusLabel } from "@/lib/assessor/properties.server";
+import { PROPERTY_STATUSES, propertyStatusLabel } from "@/lib/assessor/properties-status";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatEUR } from "@/lib/demo-data";
 import { FileText, ChevronLeft } from "lucide-react";
