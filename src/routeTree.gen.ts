@@ -26,6 +26,7 @@ import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcion
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
+import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
 import { Route as AuthenticatedOportunidadesRouteImport } from './routes/_authenticated/oportunidades'
 import { Route as AuthenticatedNegocioRouteImport } from './routes/_authenticated/negocio'
@@ -42,6 +43,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
 import { Route as AuthenticatedSeguimentosIdRouteImport } from './routes/_authenticated/seguimentos.$id'
+import { Route as AuthenticatedRotinasIdRouteImport } from './routes/_authenticated/rotinas.$id'
 import { Route as AuthenticatedPessoasIdRouteImport } from './routes/_authenticated/pessoas.$id'
 import { Route as AuthenticatedOportunidadesIdRouteImport } from './routes/_authenticated/oportunidades.$id'
 import { Route as AuthenticatedNegocioFaturacaoRouteImport } from './routes/_authenticated/negocio.faturacao'
@@ -139,6 +141,11 @@ const AuthenticatedSeguimentosRoute =
     path: '/seguimentos',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedRotinasRoute = AuthenticatedRotinasRouteImport.update({
+  id: '/rotinas',
+  path: '/rotinas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPessoasRoute = AuthenticatedPessoasRouteImport.update({
   id: '/pessoas',
   path: '/pessoas',
@@ -224,6 +231,11 @@ const AuthenticatedSeguimentosIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedSeguimentosRoute,
   } as any)
+const AuthenticatedRotinasIdRoute = AuthenticatedRotinasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedRotinasRoute,
+} as any)
 const AuthenticatedPessoasIdRoute = AuthenticatedPessoasIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -308,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/negocio': typeof AuthenticatedNegocioRouteWithChildren
   '/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
+  '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
@@ -328,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/negocio/faturacao': typeof AuthenticatedNegocioFaturacaoRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
+  '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
@@ -352,6 +366,7 @@ export interface FileRoutesByTo {
   '/negocio': typeof AuthenticatedNegocioRouteWithChildren
   '/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
+  '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
@@ -372,6 +387,7 @@ export interface FileRoutesByTo {
   '/negocio/faturacao': typeof AuthenticatedNegocioFaturacaoRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
+  '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
@@ -399,6 +415,7 @@ export interface FileRoutesById {
   '/_authenticated/negocio': typeof AuthenticatedNegocioRouteWithChildren
   '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
   '/_authenticated/pessoas': typeof AuthenticatedPessoasRouteWithChildren
+  '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
@@ -419,6 +436,7 @@ export interface FileRoutesById {
   '/_authenticated/negocio/faturacao': typeof AuthenticatedNegocioFaturacaoRoute
   '/_authenticated/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/_authenticated/pessoas/$id': typeof AuthenticatedPessoasIdRoute
+  '/_authenticated/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/_authenticated/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/_authenticated/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
@@ -446,6 +464,7 @@ export interface FileRouteTypes {
     | '/negocio'
     | '/oportunidades'
     | '/pessoas'
+    | '/rotinas'
     | '/seguimentos'
     | '/admin/auditoria'
     | '/admin/definicoes'
@@ -466,6 +485,7 @@ export interface FileRouteTypes {
     | '/negocio/faturacao'
     | '/oportunidades/$id'
     | '/pessoas/$id'
+    | '/rotinas/$id'
     | '/seguimentos/$id'
     | '/api/public/whatsapp-webhook'
     | '/negocio/comissoes/$id'
@@ -490,6 +510,7 @@ export interface FileRouteTypes {
     | '/negocio'
     | '/oportunidades'
     | '/pessoas'
+    | '/rotinas'
     | '/seguimentos'
     | '/admin/auditoria'
     | '/admin/definicoes'
@@ -510,6 +531,7 @@ export interface FileRouteTypes {
     | '/negocio/faturacao'
     | '/oportunidades/$id'
     | '/pessoas/$id'
+    | '/rotinas/$id'
     | '/seguimentos/$id'
     | '/api/public/whatsapp-webhook'
     | '/negocio/comissoes/$id'
@@ -536,6 +558,7 @@ export interface FileRouteTypes {
     | '/_authenticated/negocio'
     | '/_authenticated/oportunidades'
     | '/_authenticated/pessoas'
+    | '/_authenticated/rotinas'
     | '/_authenticated/seguimentos'
     | '/admin/auditoria'
     | '/admin/definicoes'
@@ -556,6 +579,7 @@ export interface FileRouteTypes {
     | '/_authenticated/negocio/faturacao'
     | '/_authenticated/oportunidades/$id'
     | '/_authenticated/pessoas/$id'
+    | '/_authenticated/rotinas/$id'
     | '/_authenticated/seguimentos/$id'
     | '/api/public/whatsapp-webhook'
     | '/_authenticated/negocio/comissoes/$id'
@@ -696,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSeguimentosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/rotinas': {
+      id: '/_authenticated/rotinas'
+      path: '/rotinas'
+      fullPath: '/rotinas'
+      preLoaderRoute: typeof AuthenticatedRotinasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pessoas': {
       id: '/_authenticated/pessoas'
       path: '/pessoas'
@@ -807,6 +838,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/seguimentos/$id'
       preLoaderRoute: typeof AuthenticatedSeguimentosIdRouteImport
       parentRoute: typeof AuthenticatedSeguimentosRoute
+    }
+    '/_authenticated/rotinas/$id': {
+      id: '/_authenticated/rotinas/$id'
+      path: '/$id'
+      fullPath: '/rotinas/$id'
+      preLoaderRoute: typeof AuthenticatedRotinasIdRouteImport
+      parentRoute: typeof AuthenticatedRotinasRoute
     }
     '/_authenticated/pessoas/$id': {
       id: '/_authenticated/pessoas/$id'
@@ -996,6 +1034,17 @@ const AuthenticatedPessoasRouteChildren: AuthenticatedPessoasRouteChildren = {
 const AuthenticatedPessoasRouteWithChildren =
   AuthenticatedPessoasRoute._addFileChildren(AuthenticatedPessoasRouteChildren)
 
+interface AuthenticatedRotinasRouteChildren {
+  AuthenticatedRotinasIdRoute: typeof AuthenticatedRotinasIdRoute
+}
+
+const AuthenticatedRotinasRouteChildren: AuthenticatedRotinasRouteChildren = {
+  AuthenticatedRotinasIdRoute: AuthenticatedRotinasIdRoute,
+}
+
+const AuthenticatedRotinasRouteWithChildren =
+  AuthenticatedRotinasRoute._addFileChildren(AuthenticatedRotinasRouteChildren)
+
 interface AuthenticatedSeguimentosRouteChildren {
   AuthenticatedSeguimentosIdRoute: typeof AuthenticatedSeguimentosIdRoute
 }
@@ -1023,6 +1072,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNegocioRoute: typeof AuthenticatedNegocioRouteWithChildren
   AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRouteWithChildren
   AuthenticatedPessoasRoute: typeof AuthenticatedPessoasRouteWithChildren
+  AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
   AuthenticatedSeguimentosRoute: typeof AuthenticatedSeguimentosRouteWithChildren
 }
 
@@ -1039,6 +1089,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNegocioRoute: AuthenticatedNegocioRouteWithChildren,
   AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRouteWithChildren,
   AuthenticatedPessoasRoute: AuthenticatedPessoasRouteWithChildren,
+  AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
   AuthenticatedSeguimentosRoute: AuthenticatedSeguimentosRouteWithChildren,
 }
 
