@@ -526,7 +526,7 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     // Uma nova proposta invalida qualquer rascunho anterior — evita
     // repetir dados da proposta antiga.
     if (pending) await markPendingActionStatus(supabase, pending.id, "cancelled");
-    return await proposeAction(supabase, userId, channel, trimmed, interp);
+    return await proposeAction(supabase, userId, channel, trimmed, interp, convState);
   }
 
   // 3.b) Contexto de imóvel na mensagem — propor criação/associação.
@@ -737,14 +737,63 @@ async function proposeAction(
   channel: string,
   originalText: string,
   interp: AiInterpretation,
+  convState?: any,
 ): Promise<EngineOutcome> {
   const ent = interp.entities;
+
+  // Enriquecimento pelo contexto do imóvel activo:
+  // "ligar ao dono do imóvel em Canelas" → título e ligação ao imóvel.
+  let activeProperty: { id: string; title: string; owner_person_id: string | null } | null = null;
+  const propertyId: string | null =
+    convState?.last_property_id ||
+    (convState?.last_entity_type === "property" ? convState?.last_entity_id : null) ||
+    null;
+  const mentionsOwner = OWNER_REF_RE.test(originalText);
+  const mentionsProperty = /\b(im[óo]vel|apartamento|moradia|casa|angaria[çc][ãa]o)\b/i.test(originalText);
+  if (propertyId && (mentionsOwner || mentionsProperty)) {
+    const { data: p } = await supabase
+      .from("properties")
+      .select("id, title, owner_person_id")
+      .eq("id", propertyId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (p) activeProperty = p as any;
+  }
+  if (activeProperty && (interp.intent === "create_event" || interp.intent === "create_follow_up")) {
+    // Título contextual quando não vem no texto ou vem vazio.
+    const currentTitle = String((ent as any).title || "").trim();
+    if (!currentTitle) {
+      if (mentionsOwner) {
+        (ent as any).title = `Ligar ao proprietário do ${activeProperty.title}`;
+      } else {
+        (ent as any).title = `Sobre ${activeProperty.title}`;
+      }
+    }
+    // Marca a localização como o imóvel activo — evita "em Canelas" ser
+    // interpretado como localidade solta.
+    if (!(ent as any).property_reference) {
+      (ent as any).property_reference = activeProperty.title;
+    }
+  }
 
   // Resolução de pessoa (o backend, não a IA)
   let pessoaId: string | null = null;
   let candidates: { id: string; name: string }[] = [];
   let personName: string | null = null;
-  if (ent.person_name) {
+  if (activeProperty?.owner_person_id && mentionsOwner && !ent.person_name) {
+    // Usa o proprietário do imóvel activo, se conhecido.
+    pessoaId = activeProperty.owner_person_id;
+    const { data: person } = await supabase
+      .from("people")
+      .select("id, name")
+      .eq("id", pessoaId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (person) {
+      personName = (person as any).name;
+      candidates = [{ id: (person as any).id, name: (person as any).name }];
+    }
+  } else if (ent.person_name) {
     candidates = await findPeopleByName(supabase, userId, ent.person_name);
     if (candidates.length === 1) {
       pessoaId = candidates[0].id;
@@ -764,6 +813,7 @@ async function proposeAction(
     pessoaId: pessoaId ?? "",
     candidatosPessoa: candidates,
     textoOriginal: originalText,
+    target_property_id: activeProperty?.id ?? null,
   };
 
   // Mapear para o cartão legado do UI web quando aplicável.
