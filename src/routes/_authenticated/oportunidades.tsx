@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,12 +22,16 @@ function OportunidadesPage() {
   return (
     <AppShell>
       <PageHeader title="Oportunidades" subtitle={`${oportunidades.length} em curso`} />
+      {oportunidades.length === 0 && (
+        <p className="text-sm text-muted-foreground">Ainda não há oportunidades. Fala com o Assessor para criar a primeira.</p>
+      )}
       <div className="grid gap-3 md:grid-cols-2">
         {oportunidades.map((o) => {
           const pessoa = pessoas.find((p) => p.id === o.pessoaId);
           const imovel = imoveis.find((i) => i.id === o.imovelId);
           return (
-            <Card key={o.id}>
+            <Link key={o.id} to="/oportunidades/$id" params={{ id: o.id }} className="block">
+            <Card className="transition-colors hover:border-primary/40">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -49,6 +53,7 @@ function OportunidadesPage() {
                 {o.notas && <p className="mt-2 text-sm text-foreground/80">{o.notas}</p>}
               </CardContent>
             </Card>
+            </Link>
           );
         })}
       </div>
