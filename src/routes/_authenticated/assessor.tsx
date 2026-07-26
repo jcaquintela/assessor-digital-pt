@@ -236,7 +236,7 @@ function AssessorPage() {
               className="max-h-32 min-h-[36px] resize-none border-0 bg-transparent p-1 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {texto.trim() ? (
-              <Button size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={() => void enviar()}><Send className="h-4 w-4" /></Button>
+              <Button size="icon" disabled={pensando} className="h-9 w-9 shrink-0 rounded-full" onClick={() => void enviar()}><Send className="h-4 w-4" /></Button>
             ) : (
               <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 rounded-full" onClick={() => toast.info("Áudio ainda não disponível nesta versão piloto.")}><Mic className="h-4 w-4" /></Button>
             )}
