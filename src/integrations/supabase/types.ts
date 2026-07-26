@@ -123,9 +123,13 @@ export type Database = {
         Row: {
           channel: string
           content: string
+          conversation_id: string | null
           created_at: string
           id: string
           message_type: string | null
+          related_pending_action_id: string | null
+          related_resource_id: string | null
+          related_resource_type: string | null
           role: string
           sender_phone: string | null
           status: string | null
@@ -136,9 +140,13 @@ export type Database = {
         Insert: {
           channel?: string
           content: string
+          conversation_id?: string | null
           created_at?: string
           id?: string
           message_type?: string | null
+          related_pending_action_id?: string | null
+          related_resource_id?: string | null
+          related_resource_type?: string | null
           role: string
           sender_phone?: string | null
           status?: string | null
@@ -149,9 +157,13 @@ export type Database = {
         Update: {
           channel?: string
           content?: string
+          conversation_id?: string | null
           created_at?: string
           id?: string
           message_type?: string | null
+          related_pending_action_id?: string | null
+          related_resource_id?: string | null
+          related_resource_type?: string | null
           role?: string
           sender_phone?: string | null
           status?: string | null
@@ -159,7 +171,15 @@ export type Database = {
           user_id?: string | null
           whatsapp_message_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assessor_messages_related_pending_action_id_fkey"
+            columns: ["related_pending_action_id"]
+            isOneToOne: false
+            referencedRelation: "pending_actions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conversation_states: {
         Row: {
