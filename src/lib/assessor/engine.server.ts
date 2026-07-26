@@ -8,6 +8,18 @@ import { callAssessorAi, type AiInterpretation, type AiContextMessage } from "./
 import { sanitizeAssessorName, stripAssessorVocative, ASSESSOR_NAME_DEFAULT } from "./assessor-name";
 import { resolveDateTimeFromText, hasExplicitDateTime } from "./date-resolver";
 import {
+  detectPropertyContext,
+  extractPropertyFields,
+  buildPropertyTitle,
+  findMatchingProperties,
+  createPropertyFromFields,
+  updatePropertyPatch,
+  guessDocumentType,
+  NEW_PROPERTY_RE,
+  PROPERTY_REFERENT_RE,
+  type PropertyFields,
+} from "./properties.server";
+import {
   findActivePendingAction,
   findLastExecutedAction,
   createPendingAction,
@@ -312,6 +324,21 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     return { reply: "Ok, não registei nada." };
   }
 
+  // 0.property) Se há um imóvel activo na conversa e a mensagem não é uma
+  // nova acção clara, aplica enriquecimento progressivo. Cria pending para
+  // alterações sensíveis (preço, morada, proprietário).
+  if (!pending) {
+    const propHandled = await handleActivePropertyEnrichment(
+      supabase,
+      userId,
+      channel,
+      convState,
+      trimmed,
+      trimmedRaw,
+    );
+    if (propHandled) return propHandled;
+  }
+
   // 0.d) Pergunta sobre Diversos — resposta com dados reais.
   if (isQueryMisc(trimmed)) {
     const reply = await queryMisc(supabase, userId, trimmed);
@@ -468,6 +495,20 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     // repetir dados da proposta antiga.
     if (pending) await markPendingActionStatus(supabase, pending.id, "cancelled");
     return await proposeAction(supabase, userId, channel, trimmed, interp);
+  }
+
+  // 3.b) Contexto de imóvel na mensagem — propor criação/associação.
+  if (detectPropertyContext(trimmed)) {
+    const fields = extractPropertyFields(trimmed);
+    const propRes = await proposePropertyFromMessage(
+      supabase,
+      userId,
+      channel,
+      trimmedRaw,
+      fields,
+      null,
+    );
+    if (propRes) return propRes;
   }
 
   // 4) fallback conversacional — nunca resposta técnica.
@@ -806,6 +847,16 @@ async function executePending(
   const ent = (payload.entities ?? {}) as Record<string, any>;
   const pessoaId = (payload.pessoaId as string) || null;
 
+  // Property-related intents
+  if (
+    intent === "create_property" ||
+    intent === "associate_property_to_file" ||
+    intent === "update_property" ||
+    intent === "set_property_owner"
+  ) {
+    return await executePendingProperty(supabase, userId, channel, pending);
+  }
+
   if (intent === "create_event" || intent === "create_follow_up") {
     if (!ent.date) {
       await markPendingActionStatus(supabase, pending.id, "collecting_information");
@@ -948,6 +999,42 @@ async function handleFileClassificationTurn(
         .update({ user_description: description } as never)
         .eq("id", fileId);
     }
+    // Se a descrição sugere um imóvel, entra no fluxo de imóvel em vez de lembrete.
+    if (detectPropertyContext(description)) {
+      const fields = extractPropertyFields(description);
+      const docType = guessDocumentType(payload.original_file_name, payload.mime_type || "");
+      if (fileId && docType) {
+        await supabase
+          .from("uploaded_files")
+          .update({ document_type: docType } as never)
+          .eq("id", fileId);
+      }
+      const matches = await findMatchingProperties(supabase, userId, fields);
+      const proposedTitle = buildPropertyTitle(fields);
+      const newPayload = {
+        ...payload,
+        user_description: description,
+        __intent: "create_property",
+        property_fields: fields,
+        matches,
+        document_type: docType,
+      } as Record<string, any>;
+      let reply: string;
+      if (matches.length > 0) {
+        const m = matches[0];
+        reply = `Já tens ${m.title}${m.asking_price ? ` por ${formatEuro(m.asking_price)}` : ""}. Este documento pertence a esse imóvel?`;
+        newPayload.__intent = "associate_property_to_file";
+        newPayload.target_property_id = m.id;
+      } else {
+        reply = `Percebi. Queres que crie o imóvel "${proposedTitle}" e associe este ${label}?`;
+      }
+      await updatePendingActionPayload(supabase, pending.id, newPayload, {
+        status: "pending_confirmation",
+        pending_question: reply,
+        current_question: "property_confirmation",
+      });
+      return { reply };
+    }
     const newPayload = { ...payload, user_description: description };
     const reply = `Percebi: ${description}. Vou guardar este ${label}. Queres que te lembre de tratar disso?`;
     await updatePendingActionPayload(supabase, pending.id, newPayload, {
@@ -955,6 +1042,25 @@ async function handleFileClassificationTurn(
       pending_question: reply,
       current_question: "reminder_confirmation",
     });
+    return { reply };
+  }
+
+  if (q === "property_confirmation") {
+    if (isConfirmText(trimmed)) {
+      // Executa criação/associação imediatamente.
+      return await executePendingProperty(supabase, userId, channel, pending);
+    }
+    // Resposta ambígua — aceita como texto adicional de enriquecimento.
+    const extra = extractPropertyFields(trimmedRaw);
+    const merged: PropertyFields = { ...(payload.property_fields ?? {}), ...extra };
+    const newTitle = buildPropertyTitle(merged);
+    const reply = `Queres que crie o imóvel "${newTitle}"?`;
+    await updatePendingActionPayload(
+      supabase,
+      pending.id,
+      { ...payload, property_fields: merged },
+      { status: "pending_confirmation", pending_question: reply, current_question: "property_confirmation" },
+    );
     return { reply };
   }
 
@@ -1060,4 +1166,314 @@ async function createFileReminder(
 
   const quando = naturalWhen(resolved.date!, resolved.time);
   return { reply: `Feito. ${capitalize(quando)} lembro-te de tratar de ${description}.` };
+}
+
+// -------- Fluxo de imóveis: enriquecimento, proposta e execução --------
+
+async function handleActivePropertyEnrichment(
+  supabase: any,
+  userId: string,
+  channel: string,
+  convState: any,
+  trimmed: string,
+  trimmedRaw: string,
+): Promise<EngineOutcome | null> {
+  const propertyId = convState?.last_property_id || (convState?.last_entity_type === "property" ? convState?.last_entity_id : null);
+  if (!propertyId) return null;
+
+  // Mudança de imóvel — limpa entidade ativa.
+  if (NEW_PROPERTY_RE.test(trimmed)) {
+    await upsertConversationState(supabase, {
+      userId, channel,
+      activeTopic: null,
+      lastEntityType: null,
+      lastEntityId: null,
+      lastPropertyId: null,
+      stateSummary: "utilizador vai enviar outro imóvel",
+    } as any);
+    return { reply: "Claro. Envia-me os dados ou o documento do outro imóvel." };
+  }
+
+  // Se a mensagem não tem contexto imobiliário nem referente ("este", "a angariação"),
+  // devolve null para o fluxo normal continuar.
+  const hasContext = detectPropertyContext(trimmed) || PROPERTY_REFERENT_RE.test(trimmed);
+  const fields = extractPropertyFields(trimmedRaw);
+  const hasAnyField = Object.values(fields).some((v) => v !== undefined && v !== null && v !== "");
+  if (!hasContext && !hasAnyField) return null;
+
+  // Proprietário — precisa de confirmação e resolução de pessoa.
+  if (fields.owner_name) {
+    const candidates = await findPeopleByName(supabase, userId, fields.owner_name);
+    let reply: string;
+    let payload: Record<string, any> = {
+      target_property_id: propertyId,
+      owner_name: fields.owner_name,
+      candidates,
+    };
+    if (candidates.length === 1) {
+      payload.person_id = candidates[0].id;
+      reply = `Encontrei ${candidates[0].name}. Associo-o como proprietário?`;
+    } else if (candidates.length === 0) {
+      reply = `Não tenho ${fields.owner_name} nos teus contactos. Queres que crie o contacto e associe como proprietário?`;
+      payload.create_person = true;
+    } else {
+      reply = `Encontrei mais do que um: ${candidates.map((c: any) => c.name).join(", ")}. A qual te referes?`;
+      // Sem execução; deixa a IA / próxima mensagem esclarecer.
+      return { reply };
+    }
+    await createPendingAction(supabase, {
+      userId, channel,
+      intent: "set_property_owner",
+      originalContent: trimmedRaw,
+      payload,
+      pendingQuestion: reply,
+      currentQuestion: "owner_confirmation",
+    });
+    return { reply, messageType: "__ALREADY_PERSISTED__" };
+  }
+
+  // Alterações sensíveis: preço ou morada — pedir confirmação.
+  const sensitive: PropertyFields = {};
+  if (fields.asking_price != null) sensitive.asking_price = fields.asking_price;
+  if (fields.address) sensitive.address = fields.address;
+  if (Object.keys(sensitive).length > 0) {
+    const bits: string[] = [];
+    if (sensitive.asking_price != null) bits.push(`preço ${formatEuro(sensitive.asking_price)}`);
+    if (sensitive.address) bits.push(`morada "${sensitive.address}"`);
+    const reply = `Confirmas que atualizo ${bits.join(" e ")} neste imóvel?`;
+    await createPendingAction(supabase, {
+      userId, channel,
+      intent: "update_property",
+      originalContent: trimmedRaw,
+      payload: { target_property_id: propertyId, patch: sensitive },
+      pendingQuestion: reply,
+      currentQuestion: "property_update_confirmation",
+    });
+    return { reply, messageType: "__ALREADY_PERSISTED__" };
+  }
+
+  // Campos não-sensíveis — aplica directamente.
+  const patch: Record<string, unknown> = {};
+  if (fields.typology) patch.typology = fields.typology;
+  if (fields.property_type) patch.property_type = fields.property_type;
+  if (fields.city) patch.city = fields.city;
+  if (fields.location && !fields.city) patch.location = fields.location;
+  if (fields.area_useful != null) patch.area_useful = fields.area_useful;
+  if (fields.bedrooms != null) patch.bedrooms = fields.bedrooms;
+  if (fields.bathrooms != null) patch.bathrooms = fields.bathrooms;
+  if (fields.parking != null) patch.parking = fields.parking;
+  if (fields.energy_rating) patch.energy_rating = fields.energy_rating;
+
+  if (Object.keys(patch).length === 0) {
+    // Contexto imobiliário sem dados novos — guarda em notas.
+    const { data: cur } = await supabase.from("properties").select("notes").eq("id", propertyId).maybeSingle();
+    const prevNotes = (cur as any)?.notes ?? "";
+    const newNotes = prevNotes ? `${prevNotes}\n${trimmedRaw}` : trimmedRaw;
+    try {
+      await updatePropertyPatch(supabase, userId, propertyId, { notes: newNotes });
+      return { reply: "Anotado." };
+    } catch {
+      return { reply: "Anotado." };
+    }
+  }
+  try {
+    const changed = await updatePropertyPatch(supabase, userId, propertyId, patch);
+    if (changed.length === 0) return { reply: "Anotado." };
+    const parts = changed.map((k) => humanFieldLabel(k)).filter(Boolean);
+    return { reply: `Feito. Atualizei ${parts.join(", ")}.` };
+  } catch (err) {
+    return { reply: "Não consegui atualizar o imóvel. Tenta novamente." };
+  }
+}
+
+function humanFieldLabel(key: string): string {
+  switch (key) {
+    case "typology": return "a tipologia";
+    case "property_type": return "o tipo";
+    case "city": return "a cidade";
+    case "location": return "a localização";
+    case "area_useful": return "a área útil";
+    case "area_gross": return "a área bruta";
+    case "bedrooms": return "os quartos";
+    case "bathrooms": return "as casas de banho";
+    case "parking": return "o estacionamento";
+    case "energy_rating": return "o certificado energético";
+    case "asking_price": return "o preço";
+    case "address": return "a morada";
+    case "notes": return "as notas";
+    default: return "";
+  }
+}
+
+async function proposePropertyFromMessage(
+  supabase: any,
+  userId: string,
+  channel: string,
+  originalText: string,
+  fields: PropertyFields,
+  fileId: string | null,
+): Promise<EngineOutcome | null> {
+  const matches = await findMatchingProperties(supabase, userId, fields);
+  const title = buildPropertyTitle(fields);
+  let reply: string;
+  let payload: Record<string, any> = {
+    __intent: "create_property",
+    property_fields: fields,
+    matches,
+    file_id: fileId,
+  };
+  if (matches.length > 0) {
+    const m = matches[0];
+    payload.__intent = "associate_property_to_file";
+    payload.target_property_id = m.id;
+    reply = fileId
+      ? `Já tens ${m.title}. Este documento pertence a esse imóvel?`
+      : `Já tens ${m.title}. É a este imóvel que te referes?`;
+  } else {
+    reply = fileId
+      ? `Queres que crie o imóvel "${title}" e associe este documento?`
+      : `Queres que crie o imóvel "${title}"?`;
+  }
+  const pendingRow = await createPendingAction(supabase, {
+    userId, channel,
+    intent: (payload.__intent as string),
+    originalContent: originalText,
+    payload,
+    pendingQuestion: reply,
+    currentQuestion: "property_confirmation",
+  });
+  await upsertConversationState(supabase, {
+    userId, channel,
+    activeTopic: "property",
+    lastIntent: payload.__intent as string,
+    pendingActionId: pendingRow?.id ?? null,
+  });
+  return { reply, messageType: "__ALREADY_PERSISTED__" };
+}
+
+async function executePendingProperty(
+  supabase: any,
+  userId: string,
+  channel: string,
+  pending: PendingActionRow,
+): Promise<EngineOutcome> {
+  const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+  const intent = (payload.__intent as string) || pending.intent;
+
+  // create_property (+ opcional associação de ficheiro)
+  if (intent === "create_property") {
+    const fields = (payload.property_fields ?? {}) as PropertyFields;
+    const created = await createPropertyFromFields(supabase, userId, fields, {
+      channel,
+      sourceMessageId: null,
+      notes: payload.user_description ?? null,
+    });
+    if (!created) {
+      await markPendingActionStatus(supabase, pending.id, "failed", { error_message: "insert properties failed" });
+      return { reply: "Não consegui criar o imóvel. Tenta novamente." };
+    }
+    const fileId: string | null = payload.file_id ?? null;
+    if (fileId) {
+      await supabase
+        .from("uploaded_files")
+        .update({
+          related_resource_type: "property",
+          related_resource_id: created.id,
+          document_type: payload.document_type ?? null,
+        } as never)
+        .eq("id", fileId);
+    }
+    await markPendingActionStatus(supabase, pending.id, "executed", {
+      created_resource_type: "property",
+      created_resource_id: created.id,
+    });
+    await upsertConversationState(supabase, {
+      userId, channel,
+      activeTopic: "property",
+      lastEntityType: "property",
+      lastEntityId: created.id,
+      lastPropertyId: created.id,
+      lastIntent: "create_property",
+      lastCreatedResourceType: "property",
+      lastCreatedResourceId: created.id,
+      pendingActionId: null,
+      stateSummary: `imóvel activo: ${created.title}`,
+    } as any);
+    const suffix = fileId ? " e associei o documento" : "";
+    return { reply: `Feito. Criei o imóvel "${created.title}"${suffix}. Queres acrescentar a morada ou o proprietário?` };
+  }
+
+  if (intent === "associate_property_to_file") {
+    const propertyId = payload.target_property_id as string;
+    const fileId: string | null = payload.file_id ?? null;
+    if (fileId) {
+      await supabase
+        .from("uploaded_files")
+        .update({
+          related_resource_type: "property",
+          related_resource_id: propertyId,
+          document_type: payload.document_type ?? null,
+        } as never)
+        .eq("id", fileId);
+    }
+    await markPendingActionStatus(supabase, pending.id, "executed", {
+      created_resource_type: "property",
+      created_resource_id: propertyId,
+    });
+    await upsertConversationState(supabase, {
+      userId, channel,
+      activeTopic: "property",
+      lastEntityType: "property",
+      lastEntityId: propertyId,
+      lastPropertyId: propertyId,
+      pendingActionId: null,
+    } as any);
+    return { reply: "Feito. Associei o documento ao imóvel." };
+  }
+
+  if (intent === "update_property") {
+    const propertyId = payload.target_property_id as string;
+    const patch = (payload.patch ?? {}) as Record<string, unknown>;
+    try {
+      await updatePropertyPatch(supabase, userId, propertyId, patch);
+      await markPendingActionStatus(supabase, pending.id, "executed", {
+        created_resource_type: "property",
+        created_resource_id: propertyId,
+      });
+      return { reply: "Feito. Atualizei o imóvel." };
+    } catch {
+      await markPendingActionStatus(supabase, pending.id, "failed");
+      return { reply: "Não consegui atualizar o imóvel." };
+    }
+  }
+
+  if (intent === "set_property_owner") {
+    const propertyId = payload.target_property_id as string;
+    let personId: string | null = payload.person_id ?? null;
+    if (!personId && payload.create_person && payload.owner_name) {
+      const { data: p } = await supabase
+        .from("people")
+        .insert({ user_id: userId, name: payload.owner_name } as never)
+        .select("id")
+        .single();
+      personId = (p as any)?.id ?? null;
+    }
+    if (!personId) {
+      await markPendingActionStatus(supabase, pending.id, "failed");
+      return { reply: "Não consegui associar o proprietário." };
+    }
+    try {
+      await updatePropertyPatch(supabase, userId, propertyId, { owner_person_id: personId });
+      await markPendingActionStatus(supabase, pending.id, "executed", {
+        created_resource_type: "property",
+        created_resource_id: propertyId,
+      });
+      return { reply: "Feito. Associei o proprietário." };
+    } catch {
+      await markPendingActionStatus(supabase, pending.id, "failed");
+      return { reply: "Não consegui associar o proprietário." };
+    }
+  }
+
+  return { reply: "Feito." };
 }

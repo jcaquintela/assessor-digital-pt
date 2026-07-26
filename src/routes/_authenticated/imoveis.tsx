@@ -1,9 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatEUR } from "@/lib/demo-data";
+import { listProperties } from "@/lib/assessor/properties.functions";
+import { ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/imoveis")({
   head: () => ({
@@ -18,36 +21,48 @@ export const Route = createFileRoute("/_authenticated/imoveis")({
 });
 
 function ImoveisPage() {
-  const { imoveis, pessoas, documentos } = useStore();
+  const fetchList = useServerFn(listProperties);
+  const { data: rows } = useQuery({
+    queryKey: ["properties", "list"],
+    queryFn: () => fetchList(),
+  });
+  const list = rows ?? [];
   return (
     <AppShell>
-      <PageHeader title="Imóveis" subtitle={`${imoveis.length} em carteira`} />
+      <PageHeader title="Imóveis" subtitle={`${list.length} em carteira`} />
       <div className="grid gap-3 md:grid-cols-2">
-        {imoveis.map((i) => {
-          const dono = pessoas.find((p) => p.id === i.proprietarioId);
-          const docs = documentos.filter((d) => d.imovelId === i.id);
+        {list.length === 0 && (
+          <div className="text-sm text-muted-foreground">
+            Ainda não tens imóveis. Envia um documento ou descreve o imóvel ao Assessor.
+          </div>
+        )}
+        {list.map((i: any) => {
+          const localizacao = i.city || i.location || "";
+          const tipo = i.typology || i.property_type || "";
           return (
-            <Card key={i.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold">{i.titulo}</div>
-                    <div className="text-xs text-muted-foreground">{i.tipo} · {i.localizacao}</div>
+            <Link key={i.id} to="/imoveis/$id" params={{ id: i.id }}>
+              <Card className="hover:bg-muted/30 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{i.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {[tipo, localizacao].filter(Boolean).join(" · ") || "Sem detalhes"}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 flex items-center gap-2">
+                      <div>
+                        {i.asking_price != null && (
+                          <div className="text-sm font-semibold">{formatEUR(Number(i.asking_price))}</div>
+                        )}
+                        <Badge variant="outline" className="mt-1">{i.status}</Badge>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-semibold">{formatEUR(i.valor)}</div>
-                    <Badge variant="outline" className="mt-1">{i.estado}</Badge>
-                  </div>
-                </div>
-                {dono && <div className="mt-3 text-xs text-muted-foreground">Proprietário: <span className="text-foreground">{dono.nome}</span></div>}
-                {i.notas && <p className="mt-2 text-sm text-foreground/80">{i.notas}</p>}
-                {docs.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {docs.map((d) => <Badge key={d.id} variant="secondary">{d.nome}</Badge>)}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>

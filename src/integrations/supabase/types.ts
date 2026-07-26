@@ -194,6 +194,7 @@ export type Database = {
           last_entity_id: string | null
           last_entity_type: string | null
           last_intent: string | null
+          last_property_id: string | null
           pending_action_id: string | null
           state_summary: string | null
           updated_at: string
@@ -211,6 +212,7 @@ export type Database = {
           last_entity_id?: string | null
           last_entity_type?: string | null
           last_intent?: string | null
+          last_property_id?: string | null
           pending_action_id?: string | null
           state_summary?: string | null
           updated_at?: string
@@ -228,12 +230,20 @@ export type Database = {
           last_entity_id?: string | null
           last_entity_type?: string | null
           last_intent?: string | null
+          last_property_id?: string | null
           pending_action_id?: string | null
           state_summary?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "conversation_states_last_property_id_fkey"
+            columns: ["last_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversation_states_pending_action_id_fkey"
             columns: ["pending_action_id"]
@@ -373,6 +383,7 @@ export type Database = {
           person_id: string | null
           priority: string
           related_file_id: string | null
+          related_property_id: string | null
           status: string
           title: string
           type: string
@@ -389,6 +400,7 @@ export type Database = {
           person_id?: string | null
           priority?: string
           related_file_id?: string | null
+          related_property_id?: string | null
           status?: string
           title: string
           type?: string
@@ -405,6 +417,7 @@ export type Database = {
           person_id?: string | null
           priority?: string
           related_file_id?: string | null
+          related_property_id?: string | null
           status?: string
           title?: string
           type?: string
@@ -431,6 +444,13 @@ export type Database = {
             columns: ["related_file_id"]
             isOneToOne: false
             referencedRelation: "uploaded_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_ups_related_property_id_fkey"
+            columns: ["related_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -780,40 +800,85 @@ export type Database = {
       }
       properties: {
         Row: {
+          address: string | null
+          area_gross: number | null
+          area_useful: number | null
+          asking_price: number | null
+          bathrooms: number | null
+          bedrooms: number | null
+          city: string | null
           created_at: string
+          energy_rating: string | null
+          estimated_value: number | null
           id: string
           location: string | null
           notes: string | null
           owner_person_id: string | null
-          property_type: string
+          parish: string | null
+          parking: number | null
+          postal_code: string | null
+          property_type: string | null
+          source_channel: string | null
+          source_message_id: string | null
           status: string
           title: string
+          typology: string | null
           updated_at: string
           user_id: string
           value: number | null
         }
         Insert: {
+          address?: string | null
+          area_gross?: number | null
+          area_useful?: number | null
+          asking_price?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
           created_at?: string
+          energy_rating?: string | null
+          estimated_value?: number | null
           id?: string
           location?: string | null
           notes?: string | null
           owner_person_id?: string | null
-          property_type?: string
+          parish?: string | null
+          parking?: number | null
+          postal_code?: string | null
+          property_type?: string | null
+          source_channel?: string | null
+          source_message_id?: string | null
           status?: string
           title: string
+          typology?: string | null
           updated_at?: string
           user_id: string
           value?: number | null
         }
         Update: {
+          address?: string | null
+          area_gross?: number | null
+          area_useful?: number | null
+          asking_price?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
           created_at?: string
+          energy_rating?: string | null
+          estimated_value?: number | null
           id?: string
           location?: string | null
           notes?: string | null
           owner_person_id?: string | null
-          property_type?: string
+          parish?: string | null
+          parking?: number | null
+          postal_code?: string | null
+          property_type?: string | null
+          source_channel?: string | null
+          source_message_id?: string | null
           status?: string
           title?: string
+          typology?: string | null
           updated_at?: string
           user_id?: string
           value?: number | null
@@ -832,7 +897,9 @@ export type Database = {
         Row: {
           channel: string
           classification: string | null
+          classification_confidence: number | null
           created_at: string
+          document_type: string | null
           error_code: string | null
           error_message: string | null
           external_file_id: string | null
@@ -856,7 +923,9 @@ export type Database = {
         Insert: {
           channel?: string
           classification?: string | null
+          classification_confidence?: number | null
           created_at?: string
+          document_type?: string | null
           error_code?: string | null
           error_message?: string | null
           external_file_id?: string | null
@@ -880,7 +949,9 @@ export type Database = {
         Update: {
           channel?: string
           classification?: string | null
+          classification_confidence?: number | null
           created_at?: string
+          document_type?: string | null
           error_code?: string | null
           error_message?: string | null
           external_file_id?: string | null
