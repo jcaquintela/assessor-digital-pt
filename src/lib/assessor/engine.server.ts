@@ -6,6 +6,7 @@
 
 import { callAssessorAi, type AiInterpretation, type AiContextMessage } from "./ai.server";
 import { sanitizeAssessorName, stripAssessorVocative, ASSESSOR_NAME_DEFAULT } from "./assessor-name";
+import { resolveDateTimeFromText, hasExplicitDateTime } from "./date-resolver";
 
 export interface EngineInput {
   supabase: any; // service-role client (admin)
@@ -38,11 +39,28 @@ const CONFIRM_RE =
 const CANCEL_RE =
   /^\s*(n[ãa]o|nao|cancela(r)?|esquece|deixa|para|n[ãa]o registes|n[ãa]o registar)\s*[.!]?\s*$/i;
 
+// Saudações — respondemos sem chamar a IA.
+const GREET_RE =
+  /^\s*(ol[áa]|oi|hey|hi|hello|bom\s*dia|boa\s*tarde|boa\s*noite)\b[\s,.!?]*$/i;
+
+// "tenho mais uma", "outra visita", "mais um" — inicia nova recolha.
+const MORE_RE = /\b(mais\s+uma|mais\s+um|outra|outro|tenho\s+outra|tenho\s+mais)\b/i;
+
+// Prefixos de correção do último evento/proposta.
+const CORRECTION_RE =
+  /^\s*(n[ãa]o[,.\s]|nao[,.\s]|mas\b|afinal\b|antes\b|corrige\b|corrigir\b|[ée]\s+(às|as|pelas|amanh|hoje|com|na|no|em)|na\s+verdade\b)/i;
+
 function isConfirmText(t: string): boolean {
   return CONFIRM_RE.test(t);
 }
 function isCancelText(t: string): boolean {
   return CANCEL_RE.test(t);
+}
+function isGreetOnly(t: string): boolean {
+  return GREET_RE.test(t);
+}
+function looksLikeCorrection(t: string): boolean {
+  return CORRECTION_RE.test(t);
 }
 
 function detectTipoEvento(texto: string): string {
@@ -93,6 +111,36 @@ async function findLatestDraft(supabase: any, userId: string, channel: string) {
     .limit(1)
     .maybeSingle();
   return (data as any) ?? null;
+}
+
+async function findLastConfirmedEvent(supabase: any, userId: string, channel: string) {
+  // Última mensagem do assessor com evento já criado (para correções tipo
+  // "mas é amanhã" / "é às 11h").
+  const { data } = await supabase
+    .from("assessor_messages")
+    .select("id, structured_payload, created_at")
+    .eq("user_id", userId)
+    .eq("channel", channel)
+    .eq("role", "assessor")
+    .eq("status", "confirmed")
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const rows = (data as any[]) ?? [];
+  for (const r of rows) {
+    const p = r.structured_payload as any;
+    if (!p) continue;
+    if ((p.__intent === "create_event" || p.__intent === "create_follow_up") && p.__entidadeId) {
+      return r;
+    }
+  }
+  return null;
+}
+
+async function cancelDraft(supabase: any, draftId: string) {
+  await supabase
+    .from("assessor_messages")
+    .update({ status: "cancelled" } as never)
+    .eq("id", draftId);
 }
 
 function isDraftFresh(draft: { created_at: string } | null): boolean {
@@ -204,20 +252,25 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
 
   const assessorNameRaw = (prof as any)?.assessor_name;
   const assessorName = sanitizeAssessorName(assessorNameRaw ?? "") || ASSESSOR_NAME_DEFAULT;
+  const userFirstName = String((prof as any)?.name ?? "").split(/\s+/)[0] || "";
   // Remove o nome do Assessor quando usado como vocativo, para não poluir a interpretação.
   const trimmed = stripAssessorVocative(trimmedRaw, assessorName);
 
+  // 0.a) Saudação isolada — resposta natural sem IA.
+  if (isGreetOnly(trimmed)) {
+    const reply = userFirstName
+      ? `Olá, ${userFirstName}. Em que te posso ajudar?`
+      : "Olá. Em que te posso ajudar?";
+    return { reply };
+  }
+
   // 0) Fast-path: respostas curtas de confirmação/cancelamento.
   // Nunca envia "Sim"/"Não" isolados para a IA — interpreta localmente
-  // usando a ação pendente. Se o rascunho existir mas estiver expirado,
-  // pede reformulação em vez de erro genérico.
+  // usando a ação pendente.
   if (draft && isConfirmText(trimmed)) {
     if (!isDraftFresh(draft)) {
       const hint = describeDraftShort(draft);
-      await supabase
-        .from("assessor_messages")
-        .update({ status: "cancelled" } as never)
-        .eq("id", draft.id);
+      await cancelDraft(supabase, draft.id);
       return {
         reply: hint
           ? `Já não tenho essa confirmação ativa. Referes-te a ${hint}?`
@@ -227,8 +280,64 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     return await confirmDraftSafe(supabase, userId, draft);
   }
   if (draft && isCancelText(trimmed)) {
-    await supabase.from("assessor_messages").update({ status: "cancelled" } as never).eq("id", draft.id);
+    await cancelDraft(supabase, draft.id);
     return { reply: "Ok, não registei nada." };
+  }
+
+  // 0.b) "Tenho mais uma" / "outra" — inicia nova recolha e cancela o
+  // rascunho anterior para não repetir a mesma proposta.
+  if (draft && isDraftFresh(draft) && MORE_RE.test(trimmed) && !hasExplicitDateTime(trimmed)) {
+    await cancelDraft(supabase, draft.id);
+    return { reply: "Claro. Diz-me o dia e a hora dessa outra visita." };
+  }
+
+  // 0.c) Correção do último evento/proposta pendente ou já criado.
+  //   "Mas é amanhã", "é às 11h", "não é na Granja", etc.
+  if (looksLikeCorrection(trimmed)) {
+    const correction = resolveDateTimeFromText(trimmed, input.receivedAt ?? new Date());
+    // 1) Se há um rascunho pendente e a correção traz data/hora nova,
+    //    atualizamos o rascunho e voltamos a propor.
+    if (draft && isDraftFresh(draft) && (correction.date || correction.time)) {
+      const payload = (draft.structured_payload ?? {}) as any;
+      const ent = { ...(payload.entities ?? {}) };
+      if (correction.date) ent.date = correction.date;
+      if (correction.time) ent.start_time = correction.time;
+      const newPayload = { ...payload, entities: ent };
+      const reply = buildProposalReply(payload.__intent || "create_event", ent, null);
+      await supabase
+        .from("assessor_messages")
+        .update({ content: reply, structured_payload: newPayload as never } as never)
+        .eq("id", draft.id);
+      return { reply, messageType: "__ALREADY_PERSISTED__" };
+    }
+    // 2) Se não há rascunho mas há evento confirmado recentemente,
+    //    atualiza o registo real (follow_ups).
+    if (!draft && (correction.date || correction.time)) {
+      const last = await findLastConfirmedEvent(supabase, userId, channel);
+      if (last) {
+        const p = last.structured_payload as any;
+        const ent = { ...(p.entities ?? {}) };
+        if (correction.date) ent.date = correction.date;
+        if (correction.time) ent.start_time = correction.time;
+        const updateData: any = {};
+        if (correction.date) updateData.due_date = correction.date;
+        if (correction.time) updateData.due_time = correction.time;
+        const { error } = await supabase
+          .from("follow_ups")
+          .update(updateData)
+          .eq("id", p.__entidadeId)
+          .eq("user_id", userId);
+        if (!error) {
+          await supabase
+            .from("assessor_messages")
+            .update({ structured_payload: { ...p, entities: ent } as never } as never)
+            .eq("id", last.id);
+          const tipoLabel = (ent.event_type || (p.__intent === "create_event" ? "visita" : "tarefa")) as string;
+          const quando = naturalWhen(String(ent.date), (ent.start_time as string) || null);
+          return { reply: `Tens razão. Corrigi ${articleFor(tipoLabel)} ${tipoLabel} para ${quando}.` };
+        }
+      }
+    }
   }
 
   const recentMsgs: AiContextMessage[] = ((recent?.data ?? []) as any[])
@@ -250,7 +359,9 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     locale: "pt-PT",
     userName: (prof as any)?.name ?? null,
     assessorName,
-    recent: recentMsgs,
+    // Não enviamos histórico para a IA na extração de entidades —
+    // evita que o modelo copie pessoa/imóvel/valor de mensagens anteriores.
+    recent: [],
     pendingAction,
   });
 
@@ -279,10 +390,14 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
 
   const interp = ai.interpretation;
 
+  // Endurecer as entidades: usar SEMPRE o que está na mensagem atual
+  // como fonte de verdade para data/hora. A IA pode ter alucinado.
+  hardenEntitiesFromMessage(interp, trimmed, input.receivedAt ?? new Date());
+
   // 1) confirm/cancel via IA (fallback para frases menos óbvias)
   if (draft && interp.intent === "confirm") {
     if (!isDraftFresh(draft)) {
-      await supabase.from("assessor_messages").update({ status: "cancelled" } as never).eq("id", draft.id);
+      await cancelDraft(supabase, draft.id);
       const hint = describeDraftShort(draft);
       return {
         reply: hint
@@ -293,7 +408,7 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     return await confirmDraftSafe(supabase, userId, draft);
   }
   if (draft && interp.intent === "cancel") {
-    await supabase.from("assessor_messages").update({ status: "cancelled" } as never).eq("id", draft.id);
+    await cancelDraft(supabase, draft.id);
     return { reply: "Ok, não registei nada." };
   }
 
@@ -309,11 +424,56 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
 
   // 3) propostas com confirmação
   if (interp.intent === "create_event" || interp.intent === "create_follow_up" || interp.intent === "record_interaction") {
+    // Uma nova proposta invalida qualquer rascunho anterior — evita
+    // repetir dados da proposta antiga.
+    if (draft) await cancelDraft(supabase, draft.id);
     return await proposeAction(supabase, userId, channel, trimmed, interp);
   }
 
   // 4) fallback
   return { reply: sanitizeReply(interp.reply) || REPLY_FALLBACK };
+}
+
+// Substitui entidades sensíveis (data/hora, pessoa) por valores
+// derivados apenas da mensagem atual. Se a mensagem não contém
+// pessoa/imóvel/valor, esses campos ficam a null — nunca herdados.
+function hardenEntitiesFromMessage(interp: AiInterpretation, text: string, now: Date) {
+  const resolved = resolveDateTimeFromText(text, now);
+  const ent = interp.entities as any;
+  // Data / hora: se a mensagem tem expressão explícita, usa-a;
+  // caso contrário, se a IA inventou uma data sem base no texto, descarta.
+  if (resolved.date) ent.date = resolved.date;
+  else if (ent.date && !hasExplicitDateReferenceInText(text)) ent.date = null;
+  if (resolved.time) ent.start_time = resolved.time;
+  else if (ent.start_time && !/\d\s*(?:h|:)/i.test(text)) ent.start_time = null;
+
+  // Pessoa: aceita apenas se o primeiro nome aparecer literalmente no texto.
+  if (ent.person_name) {
+    const first = String(ent.person_name).split(/\s+/)[0];
+    if (first && !new RegExp(`\\b${escapeRe(first)}\\b`, "i").test(text)) {
+      ent.person_name = null;
+    }
+  }
+  // Imóvel: só mantém se aparecer no texto (T2/T3/T4/morada/tipologia).
+  if (ent.property_reference) {
+    const ref = String(ent.property_reference);
+    const token = ref.split(/\s+/)[0];
+    if (token && !new RegExp(`\\b${escapeRe(token)}\\b`, "i").test(text)) {
+      ent.property_reference = null;
+    }
+  }
+  // Preço/valor em notes/title: se a IA meteu um valor em euros, verifica.
+  if (ent.notes && /\d[\d.\s]*\s*(?:€|eur|euros?)/i.test(String(ent.notes)) && !/\d[\d.\s]*\s*(?:€|eur|euros?)/i.test(text)) {
+    ent.notes = null;
+  }
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasExplicitDateReferenceInText(text: string): boolean {
+  return /\b(hoje|amanh[ãa]|ontem|depois\s+de\s+amanh[ãa]|segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo|\d{1,2}\s+de\s+[a-zç]+|\d{1,2}[\/\-.]\d{1,2})/i.test(text);
 }
 
 // Remove prefixos técnicos que o modelo por vezes injeta ("Proposta:", "Intenção:", etc.)
@@ -463,9 +623,14 @@ async function confirmDraft(
   const pessoaId = (payload.pessoaId as string) || null;
 
   if (intent === "create_event" || intent === "create_follow_up") {
+    // NUNCA registar sem data explícita. Antes tinha fallback para hoje,
+    // o que causava eventos criados no dia errado.
+    if (!ent.date) {
+      return { reply: "Falta a data. Para quando é?" };
+    }
     const tipoDb = intent === "create_event" ? "event" : "task";
     const titulo = String(ent.title || (intent === "create_event" ? "Evento" : "Tarefa"));
-    const dueDate = String(ent.date || new Date().toISOString().slice(0, 10));
+    const dueDate = String(ent.date);
     const dueTime = (ent.start_time as string) || null;
     const { data: fu, error } = await supabase
       .from("follow_ups")
