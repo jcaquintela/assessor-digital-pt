@@ -79,7 +79,8 @@ export function resolveDateTimeFromText(
       }
     }
     if (!date) {
-      const m = t.match(/(\d{1,2})\s+de\s+([a-zç]+)(?:\s+de\s+(\d{4}))?/);
+      // "29 de julho", "29 julho", "dia 29 de julho"
+      const m = t.match(/(?:dia\s+)?(\d{1,2})\s+(?:de\s+)?([a-zç]+)(?:\s+de\s+(\d{4}))?/);
       if (m && MESES[m[2]] !== undefined) {
         const dia = parseInt(m[1], 10);
         const mes = MESES[m[2]];

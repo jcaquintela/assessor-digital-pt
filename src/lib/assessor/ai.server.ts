@@ -11,7 +11,11 @@ export interface AiEntities {
   event_type: string | null;
   title: string | null;
   person_name: string | null;
+  person_title: string | null;
   property_reference: string | null;
+  property_type: string | null;
+  property_value: number | null;
+  location: string | null;
   date: string | null; // YYYY-MM-DD
   start_time: string | null; // HH:mm
   duration_minutes: number | null;
@@ -121,7 +125,11 @@ const SCHEMA = {
         "event_type",
         "title",
         "person_name",
+        "person_title",
         "property_reference",
+        "property_type",
+        "property_value",
+        "location",
         "date",
         "start_time",
         "duration_minutes",
@@ -132,7 +140,11 @@ const SCHEMA = {
         event_type: { type: ["string", "null"] },
         title: { type: ["string", "null"] },
         person_name: { type: ["string", "null"] },
+        person_title: { type: ["string", "null"] },
         property_reference: { type: ["string", "null"] },
+        property_type: { type: ["string", "null"] },
+        property_value: { type: ["number", "null"] },
+        location: { type: ["string", "null"] },
         date: { type: ["string", "null"] },
         start_time: { type: ["string", "null"] },
         duration_minutes: { type: ["integer", "null"] },
@@ -176,6 +188,7 @@ function buildInstructions(input: AiCallInput): string {
     `Data e hora atuais: ${nowStr} (${tz}).`,
     `A tua função é interpretar APENAS a mensagem actual do consultor e devolver um JSON com a intenção e os campos estruturados.`,
     `REGRA CRÍTICA (não inventar): só podes preencher um campo (person_name, property_reference, date, start_time, notes, título, valor) se a informação estiver LITERALMENTE presente na mensagem actual. Não copies dados de acções pendentes, de exemplos, de mensagens anteriores ou do teu conhecimento geral. Se um campo não estiver no texto, devolve null. É preferível null do que adivinhar.`,
+    `Campos extra a preencher quando literalmente presentes: location (localidade, ex: "Espinho", "Porto"), property_type (tipologia, ex: "T3", "V4"), property_value (valor em euros como número inteiro — "300k€"→300000, "300 mil"→300000, "1,2M€"→1200000), person_title ("Sr.", "Sra.", "Dr.", "Dra.", "D."). Nunca inventes valores.`,
     `Não uses os nomes "Paulo", "Paulo Silva", "Ana", "Maria", "João", "T3", "T2", "Granja", "275.000" ou qualquer outro valor concreto a menos que apareçam literalmente na mensagem do consultor.`,
     `Datas: se o consultor escrever "amanhã", devolve date=null (o backend resolve). Se escrever "sexta", "15 de agosto", "20/08" ou uma data ISO, podes preencher date. Nunca converças "amanhã" em "hoje" nem o contrário.`,
     `Intenções possíveis: create_event (visita, reunião, almoço, jantar, café, encontro — com hora); create_follow_up (tarefa com prazo, ex: "ligar a X na sexta"); record_interaction (registo de uma conversa que já aconteceu); query_today (o que tenho hoje); query_person (o que sei sobre X); confirm/cancel (apenas quando há ação pendente); unknown (não é nenhuma das anteriores).`,
