@@ -47,15 +47,47 @@ export function validateAssessorName(raw: string): AssessorNameValidation {
   return { ok: true, value: v };
 }
 
-// Remove o vocativo do assessor no início da frase, se presente.
-// Ex.: "Maria, o que tenho hoje?" -> "o que tenho hoje?"
+// Remove o vocativo do Assessor (início ou fim), sem apagar ocorrências
+// que sejam claramente uma pessoa. Ex.:
+//   "Maria, amanhã tenho visita com a Ana." -> "amanhã tenho visita com a Ana."
+//   "O que tenho hoje, Maria?"              -> "O que tenho hoje"
+//   "maria lembra-me de ligar ao João."     -> "lembra-me de ligar ao João."
+//   "Ana, falei com a Ana Silva."           -> "falei com a Ana Silva."
+//   "Amanhã tenho visita com a Maria Silva." (Assessor=Maria) -> inalterado
 export function stripAssessorVocative(text: string, name: string | null | undefined): string {
   if (!text) return text;
   const n = sanitizeAssessorName(name ?? "");
-  if (!n || n.toLowerCase() === ASSESSOR_NAME_DEFAULT.toLowerCase()) return text;
-  const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`^\\s*${escaped}\\s*[,:;!\\.\\-–—]+\\s*`, "iu");
-  return text.replace(re, "").trim() || text;
+  const isDefault = !n || n.toLowerCase() === ASSESSOR_NAME_DEFAULT.toLowerCase();
+  const nameLit = isDefault ? ASSESSOR_NAME_DEFAULT : n;
+  const escaped = nameLit.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  let out = text;
+
+  // 1) Vocativo no início com pontuação (ou saudação opcional antes):
+  //    "Maria, ...", "Maria: ...", "Maria - ...", "Maria… ...", "Maria! ...",
+  //    "Olá Maria, ...", "Meu Assessor, ..."
+  const leadPunct = new RegExp(
+    `^\\s*(?:ol[áa]|hey|oi|meu|minha|querid[ao])?\\s*${escaped}\\s*(?:[,:;!\\.\\-–—…]|\\.{2,}|—|–)+\\s*`,
+    "iu",
+  );
+  // 2) Vocativo no início sem pontuação, seguido de palavra em minúsculas:
+  //    "maria lembra-me de ligar ao João."
+  const leadSpaceLower = new RegExp(`^\\s*${escaped}\\s+(?=\\p{Ll})`, "iu");
+
+  if (leadPunct.test(out)) {
+    out = out.replace(leadPunct, "");
+  } else if (leadSpaceLower.test(out)) {
+    // Só aplicamos o padrão sem pontuação se o Assessor tem nome próprio;
+    // com o nome por defeito ("Assessor") a frase seria demasiado ambígua.
+    if (!isDefault) out = out.replace(leadSpaceLower, "");
+  }
+
+  // 3) Vocativo no fim: precedido por pontuação de vocativo.
+  //    "..., Maria?" | "... — Maria!" | "... … Maria"
+  const tail = new RegExp(`[,;\\-–—…]\\s*${escaped}\\s*[.?!]*\\s*$`, "iu");
+  out = out.replace(tail, "");
+
+  return out.trim() || text;
 }
 
 // Hook para leitura do nome do Assessor do consultor autenticado.
