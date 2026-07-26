@@ -597,6 +597,57 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_send_logs: {
+        Row: {
+          created_at: string
+          error_code: number | null
+          error_message: string | null
+          error_subcode: number | null
+          error_type: string | null
+          fbtrace_id: string | null
+          http_status: number | null
+          id: string
+          kind: string
+          message_id: string | null
+          ok: boolean
+          phone_number_id: string | null
+          to_phone: string
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_code?: number | null
+          error_message?: string | null
+          error_subcode?: number | null
+          error_type?: string | null
+          fbtrace_id?: string | null
+          http_status?: number | null
+          id?: string
+          kind?: string
+          message_id?: string | null
+          ok?: boolean
+          phone_number_id?: string | null
+          to_phone: string
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_code?: number | null
+          error_message?: string | null
+          error_subcode?: number | null
+          error_type?: string | null
+          fbtrace_id?: string | null
+          http_status?: number | null
+          id?: string
+          kind?: string
+          message_id?: string | null
+          ok?: boolean
+          phone_number_id?: string | null
+          to_phone?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
