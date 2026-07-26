@@ -282,6 +282,24 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   // 0) Fast-path: respostas curtas de confirmação/cancelamento.
   // Nunca envia "Sim"/"Não" isolados para a IA — interpreta localmente
   // usando a ação pendente.
+  // 0.pre) Fluxo progressivo de classificação de ficheiros.
+  // Corre ANTES do fast-path genérico porque a resposta do utilizador
+  // ("sim", "amanhã às 10h", texto livre) tem de ser interpretada no
+  // contexto da pergunta atual (file_description → reminder_confirmation
+  // → reminder_datetime), não como intenção nova.
+  if (pending && pending.intent === "classify_file") {
+    const fileFlow = await handleFileClassificationTurn(
+      supabase,
+      userId,
+      channel,
+      pending,
+      trimmed,
+      trimmedRaw,
+      input.receivedAt ?? new Date(),
+    );
+    if (fileFlow) return fileFlow;
+  }
+
   if (pending && isConfirmText(trimmed)) {
     return await confirmPendingSafe(supabase, userId, channel, pending);
   }
