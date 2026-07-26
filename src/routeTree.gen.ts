@@ -26,6 +26,7 @@ import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcion
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
+import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
 import { Route as AuthenticatedOportunidadesRouteImport } from './routes/_authenticated/oportunidades'
 import { Route as AuthenticatedNegocioRouteImport } from './routes/_authenticated/negocio'
@@ -139,6 +140,11 @@ const AuthenticatedSeguimentosRoute =
     path: '/seguimentos',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedRotinasRoute = AuthenticatedRotinasRouteImport.update({
+  id: '/rotinas',
+  path: '/rotinas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPessoasRoute = AuthenticatedPessoasRouteImport.update({
   id: '/pessoas',
   path: '/pessoas',
@@ -308,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/negocio': typeof AuthenticatedNegocioRouteWithChildren
   '/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
+  '/rotinas': typeof AuthenticatedRotinasRoute
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
@@ -352,6 +359,7 @@ export interface FileRoutesByTo {
   '/negocio': typeof AuthenticatedNegocioRouteWithChildren
   '/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
+  '/rotinas': typeof AuthenticatedRotinasRoute
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
@@ -399,6 +407,7 @@ export interface FileRoutesById {
   '/_authenticated/negocio': typeof AuthenticatedNegocioRouteWithChildren
   '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
   '/_authenticated/pessoas': typeof AuthenticatedPessoasRouteWithChildren
+  '/_authenticated/rotinas': typeof AuthenticatedRotinasRoute
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
@@ -446,6 +455,7 @@ export interface FileRouteTypes {
     | '/negocio'
     | '/oportunidades'
     | '/pessoas'
+    | '/rotinas'
     | '/seguimentos'
     | '/admin/auditoria'
     | '/admin/definicoes'
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/negocio'
     | '/oportunidades'
     | '/pessoas'
+    | '/rotinas'
     | '/seguimentos'
     | '/admin/auditoria'
     | '/admin/definicoes'
@@ -536,6 +547,7 @@ export interface FileRouteTypes {
     | '/_authenticated/negocio'
     | '/_authenticated/oportunidades'
     | '/_authenticated/pessoas'
+    | '/_authenticated/rotinas'
     | '/_authenticated/seguimentos'
     | '/admin/auditoria'
     | '/admin/definicoes'
@@ -694,6 +706,13 @@ declare module '@tanstack/react-router' {
       path: '/seguimentos'
       fullPath: '/seguimentos'
       preLoaderRoute: typeof AuthenticatedSeguimentosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/rotinas': {
+      id: '/_authenticated/rotinas'
+      path: '/rotinas'
+      fullPath: '/rotinas'
+      preLoaderRoute: typeof AuthenticatedRotinasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/pessoas': {
@@ -1023,6 +1042,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNegocioRoute: typeof AuthenticatedNegocioRouteWithChildren
   AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRouteWithChildren
   AuthenticatedPessoasRoute: typeof AuthenticatedPessoasRouteWithChildren
+  AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRoute
   AuthenticatedSeguimentosRoute: typeof AuthenticatedSeguimentosRouteWithChildren
 }
 
@@ -1039,6 +1059,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNegocioRoute: AuthenticatedNegocioRouteWithChildren,
   AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRouteWithChildren,
   AuthenticatedPessoasRoute: AuthenticatedPessoasRouteWithChildren,
+  AuthenticatedRotinasRoute: AuthenticatedRotinasRoute,
   AuthenticatedSeguimentosRoute: AuthenticatedSeguimentosRouteWithChildren,
 }
 
