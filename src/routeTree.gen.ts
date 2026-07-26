@@ -49,6 +49,7 @@ import { Route as AuthenticatedNegocioDespesasRouteImport } from './routes/_auth
 import { Route as AuthenticatedNegocioComissoesRouteImport } from './routes/_authenticated/negocio.comissoes'
 import { Route as AuthenticatedInteracoesIdRouteImport } from './routes/_authenticated/interacoes.$id'
 import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authenticated/imoveis.$id'
+import { Route as AuthenticatedDiversosIdRouteImport } from './routes/_authenticated/diversos.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedNegocioDespesasIdRouteImport } from './routes/_authenticated/negocio.despesas.$id'
 import { Route as AuthenticatedNegocioComissoesIdRouteImport } from './routes/_authenticated/negocio.comissoes.$id'
@@ -263,6 +264,11 @@ const AuthenticatedImoveisIdRoute = AuthenticatedImoveisIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedImoveisRoute,
 } as any)
+const AuthenticatedDiversosIdRoute = AuthenticatedDiversosIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedDiversosRoute,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -293,7 +299,7 @@ export interface FileRoutesByFullPath {
   '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
-  '/diversos': typeof AuthenticatedDiversosRoute
+  '/diversos': typeof AuthenticatedDiversosRouteWithChildren
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
@@ -314,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/diversos/$id': typeof AuthenticatedDiversosIdRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/interacoes/$id': typeof AuthenticatedInteracoesIdRoute
   '/negocio/comissoes': typeof AuthenticatedNegocioComissoesRouteWithChildren
@@ -336,7 +343,7 @@ export interface FileRoutesByTo {
   '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
-  '/diversos': typeof AuthenticatedDiversosRoute
+  '/diversos': typeof AuthenticatedDiversosRouteWithChildren
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
@@ -357,6 +364,7 @@ export interface FileRoutesByTo {
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/diversos/$id': typeof AuthenticatedDiversosIdRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/interacoes/$id': typeof AuthenticatedInteracoesIdRoute
   '/negocio/comissoes': typeof AuthenticatedNegocioComissoesRouteWithChildren
@@ -382,7 +390,7 @@ export interface FileRoutesById {
   '/_authenticated/assessor': typeof AuthenticatedAssessorRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
-  '/_authenticated/diversos': typeof AuthenticatedDiversosRoute
+  '/_authenticated/diversos': typeof AuthenticatedDiversosRouteWithChildren
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
   '/_authenticated/hoje': typeof AuthenticatedHojeRoute
   '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
@@ -403,6 +411,7 @@ export interface FileRoutesById {
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/diversos/$id': typeof AuthenticatedDiversosIdRoute
   '/_authenticated/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/_authenticated/interacoes/$id': typeof AuthenticatedInteracoesIdRoute
   '/_authenticated/negocio/comissoes': typeof AuthenticatedNegocioComissoesRouteWithChildren
@@ -449,6 +458,7 @@ export interface FileRouteTypes {
     | '/admin/utilizadores'
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
+    | '/diversos/$id'
     | '/imoveis/$id'
     | '/interacoes/$id'
     | '/negocio/comissoes'
@@ -492,6 +502,7 @@ export interface FileRouteTypes {
     | '/admin/utilizadores'
     | '/admin'
     | '/.mcp/invoke-tool/$tool'
+    | '/diversos/$id'
     | '/imoveis/$id'
     | '/interacoes/$id'
     | '/negocio/comissoes'
@@ -537,6 +548,7 @@ export interface FileRouteTypes {
     | '/admin/utilizadores'
     | '/admin/'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/diversos/$id'
     | '/_authenticated/imoveis/$id'
     | '/_authenticated/interacoes/$id'
     | '/_authenticated/negocio/comissoes'
@@ -845,6 +857,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImoveisIdRouteImport
       parentRoute: typeof AuthenticatedImoveisRoute
     }
+    '/_authenticated/diversos/$id': {
+      id: '/_authenticated/diversos/$id'
+      path: '/$id'
+      fullPath: '/diversos/$id'
+      preLoaderRoute: typeof AuthenticatedDiversosIdRouteImport
+      parentRoute: typeof AuthenticatedDiversosRoute
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -868,6 +887,19 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedDiversosRouteChildren {
+  AuthenticatedDiversosIdRoute: typeof AuthenticatedDiversosIdRoute
+}
+
+const AuthenticatedDiversosRouteChildren: AuthenticatedDiversosRouteChildren = {
+  AuthenticatedDiversosIdRoute: AuthenticatedDiversosIdRoute,
+}
+
+const AuthenticatedDiversosRouteWithChildren =
+  AuthenticatedDiversosRoute._addFileChildren(
+    AuthenticatedDiversosRouteChildren,
+  )
 
 interface AuthenticatedImoveisRouteChildren {
   AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
@@ -982,7 +1014,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAssessorRoute: typeof AuthenticatedAssessorRoute
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
-  AuthenticatedDiversosRoute: typeof AuthenticatedDiversosRoute
+  AuthenticatedDiversosRoute: typeof AuthenticatedDiversosRouteWithChildren
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
   AuthenticatedHojeRoute: typeof AuthenticatedHojeRoute
   AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
@@ -998,7 +1030,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssessorRoute: AuthenticatedAssessorRoute,
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
-  AuthenticatedDiversosRoute: AuthenticatedDiversosRoute,
+  AuthenticatedDiversosRoute: AuthenticatedDiversosRouteWithChildren,
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
   AuthenticatedHojeRoute: AuthenticatedHojeRoute,
   AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
