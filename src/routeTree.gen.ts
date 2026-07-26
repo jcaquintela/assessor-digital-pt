@@ -30,6 +30,7 @@ import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedOportunidadesRouteImport } from './routes/_authenticated/oportunidades'
 import { Route as AuthenticatedNegocioRouteImport } from './routes/_authenticated/negocio'
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
+import { Route as AuthenticatedInteracoesRouteImport } from './routes/_authenticated/interacoes'
 import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
 import { Route as AuthenticatedHojeRouteImport } from './routes/_authenticated/hoje'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
@@ -151,6 +152,11 @@ const AuthenticatedMaisRoute = AuthenticatedMaisRouteImport.update({
   path: '/mais',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedInteracoesRoute = AuthenticatedInteracoesRouteImport.update({
+  id: '/interacoes',
+  path: '/interacoes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedImoveisRoute = AuthenticatedImoveisRouteImport.update({
   id: '/imoveis',
   path: '/imoveis',
@@ -242,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
+  '/interacoes': typeof AuthenticatedInteracoesRoute
   '/mais': typeof AuthenticatedMaisRoute
   '/negocio': typeof AuthenticatedNegocioRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
@@ -277,6 +284,7 @@ export interface FileRoutesByTo {
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
+  '/interacoes': typeof AuthenticatedInteracoesRoute
   '/mais': typeof AuthenticatedMaisRoute
   '/negocio': typeof AuthenticatedNegocioRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
@@ -315,6 +323,7 @@ export interface FileRoutesById {
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
   '/_authenticated/hoje': typeof AuthenticatedHojeRoute
   '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
+  '/_authenticated/interacoes': typeof AuthenticatedInteracoesRoute
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
   '/_authenticated/negocio': typeof AuthenticatedNegocioRoute
   '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRouteWithChildren
@@ -353,6 +362,7 @@ export interface FileRouteTypes {
     | '/documentos'
     | '/hoje'
     | '/imoveis'
+    | '/interacoes'
     | '/mais'
     | '/negocio'
     | '/oportunidades'
@@ -388,6 +398,7 @@ export interface FileRouteTypes {
     | '/documentos'
     | '/hoje'
     | '/imoveis'
+    | '/interacoes'
     | '/mais'
     | '/negocio'
     | '/oportunidades'
@@ -425,6 +436,7 @@ export interface FileRouteTypes {
     | '/_authenticated/documentos'
     | '/_authenticated/hoje'
     | '/_authenticated/imoveis'
+    | '/_authenticated/interacoes'
     | '/_authenticated/mais'
     | '/_authenticated/negocio'
     | '/_authenticated/oportunidades'
@@ -609,6 +621,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMaisRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/interacoes': {
+      id: '/_authenticated/interacoes'
+      path: '/interacoes'
+      fullPath: '/interacoes'
+      preLoaderRoute: typeof AuthenticatedInteracoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/imoveis': {
       id: '/_authenticated/imoveis'
       path: '/imoveis'
@@ -754,6 +773,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
   AuthenticatedHojeRoute: typeof AuthenticatedHojeRoute
   AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
+  AuthenticatedInteracoesRoute: typeof AuthenticatedInteracoesRoute
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedNegocioRoute: typeof AuthenticatedNegocioRoute
   AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRouteWithChildren
@@ -769,6 +789,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
   AuthenticatedHojeRoute: AuthenticatedHojeRoute,
   AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
+  AuthenticatedInteracoesRoute: AuthenticatedInteracoesRoute,
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedNegocioRoute: AuthenticatedNegocioRoute,
   AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRouteWithChildren,
