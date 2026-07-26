@@ -171,6 +171,7 @@ export interface ConversationStateRow {
   pending_action_id: string | null;
   last_created_resource_type: string | null;
   last_created_resource_id: string | null;
+  last_property_id: string | null;
   expires_at: string | null;
   updated_at: string;
 }
@@ -205,6 +206,7 @@ export async function upsertConversationState(
     pendingActionId?: string | null;
     lastCreatedResourceType?: string | null;
     lastCreatedResourceId?: string | null;
+    lastPropertyId?: string | null;
   },
 ): Promise<void> {
   const row: Record<string, unknown> = {
@@ -220,6 +222,7 @@ export async function upsertConversationState(
   if (input.pendingActionId !== undefined) row.pending_action_id = input.pendingActionId;
   if (input.lastCreatedResourceType !== undefined) row.last_created_resource_type = input.lastCreatedResourceType;
   if (input.lastCreatedResourceId !== undefined) row.last_created_resource_id = input.lastCreatedResourceId;
+  if (input.lastPropertyId !== undefined) row.last_property_id = input.lastPropertyId;
   await supabase
     .from("conversation_states")
     .upsert(row as never, {

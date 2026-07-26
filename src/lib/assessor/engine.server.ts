@@ -847,6 +847,16 @@ async function executePending(
   const ent = (payload.entities ?? {}) as Record<string, any>;
   const pessoaId = (payload.pessoaId as string) || null;
 
+  // Property-related intents
+  if (
+    intent === "create_property" ||
+    intent === "associate_property_to_file" ||
+    intent === "update_property" ||
+    intent === "set_property_owner"
+  ) {
+    return await executePendingProperty(supabase, userId, channel, pending);
+  }
+
   if (intent === "create_event" || intent === "create_follow_up") {
     if (!ent.date) {
       await markPendingActionStatus(supabase, pending.id, "collecting_information");
