@@ -17,6 +17,8 @@ import {
 import { cn } from "@/lib/utils";
 import { parse, type Extraidos, type Intencao } from "@/lib/assessor/parser";
 import { clearMessages, loadMessages, saveMessage, updateMessageStatus, type MensagemDb } from "@/lib/assessor/messages";
+import { sendAssessorMessage } from "@/lib/assessor/process.functions";
+import { useServerFn } from "@tanstack/react-start";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
@@ -78,6 +80,8 @@ function AssessorPage() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [texto, setTexto] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [pensando, setPensando] = useState(false);
+  const enviarMsg = useServerFn(sendAssessorMessage);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -121,20 +125,19 @@ function AssessorPage() {
     const conteudo = (input ?? texto).trim();
     if (!conteudo) return;
     setTexto("");
+    setPensando(true);
     try {
-      await pushUser(conteudo);
-      const parsed = parse(conteudo);
-      if (parsed.intencao === "briefing") {
-        await pushAssessor("Aqui está o seu dia.", { tipo: "briefing", dados: { texto: conteudo } });
-      } else if (parsed.intencao === "procura") {
-        await pushAssessor("Resultados da pesquisa:", { tipo: "procura", dados: { termo: conteudo } });
-      } else {
-        await interpretar(conteudo);
-      }
+      // O motor central (server function) persiste a mensagem do consultor
+      // e a resposta do Assessor. Depois recarregamos as mensagens do canal web.
+      await enviarMsg({ data: { content: conteudo } });
+      const rows = await loadMessages();
+      setMsgs(rows.map(toMsg));
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setPensando(false);
     }
-  }, [texto, pushUser, pushAssessor, interpretar]);
+  }, [texto, enviarMsg]);
 
   const acaoRapida = useCallback(async (tipo: CartaoTipo) => {
     try {
