@@ -46,6 +46,13 @@ const GREET_RE =
 // "tenho mais uma", "outra visita", "mais um" — inicia nova recolha.
 const MORE_RE = /\b(mais\s+uma|mais\s+um|outra|outro|tenho\s+outra|tenho\s+mais)\b/i;
 
+// Agradecimentos curtos.
+const THANKS_RE = /^\s*(obrigad[oa]|obrigadinho|thanks|thank\s*you|valeu|grato|grata)\b[\s,.!?]*$/i;
+
+// Perguntas sobre a área Diversos.
+const QUERY_MISC_RE =
+  /(diversos|notas?\s+(?:que|deixei|pendentes?)|ideias?\s+(?:que|pendentes?|deixei)|(?:o\s+que\s+)?(?:registei|guardei|escrevi|apontei|deixei)\b.*\b(?:diversos|nota|notas|semana|hoje|ontem|ideias?))/i;
+
 // Prefixos de correção do último evento/proposta.
 const CORRECTION_RE =
   /^\s*(n[ãa]o[,.\s]|nao[,.\s]|mas\b|afinal\b|antes\b|corrige\b|corrigir\b|[ée]\s+(às|as|pelas|amanh|hoje|com|na|no|em)|na\s+verdade\b)/i;
@@ -61,6 +68,12 @@ function isGreetOnly(t: string): boolean {
 }
 function looksLikeCorrection(t: string): boolean {
   return CORRECTION_RE.test(t);
+}
+function isThanks(t: string): boolean {
+  return THANKS_RE.test(t);
+}
+function isQueryMisc(t: string): boolean {
+  return QUERY_MISC_RE.test(t);
 }
 
 function detectTipoEvento(texto: string): string {
@@ -263,6 +276,9 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
       : "Olá. Em que te posso ajudar?";
     return { reply };
   }
+  if (isThanks(trimmed)) {
+    return { reply: "De nada." };
+  }
 
   // 0) Fast-path: respostas curtas de confirmação/cancelamento.
   // Nunca envia "Sim"/"Não" isolados para a IA — interpreta localmente
@@ -282,6 +298,12 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   if (draft && isCancelText(trimmed)) {
     await cancelDraft(supabase, draft.id);
     return { reply: "Ok, não registei nada." };
+  }
+
+  // 0.d) Pergunta sobre Diversos — resposta com dados reais.
+  if (isQueryMisc(trimmed)) {
+    const reply = await queryMisc(supabase, userId, trimmed);
+    return { reply };
   }
 
   // 0.b) "Tenho mais uma" / "outra" — inicia nova recolha e cancela o
@@ -394,6 +416,12 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   // como fonte de verdade para data/hora. A IA pode ter alucinado.
   hardenEntitiesFromMessage(interp, trimmed, input.receivedAt ?? new Date());
 
+  // 0.e) smalltalk — responde e não regista nada.
+  if (interp.intent === "smalltalk" || interp.destination === "none" && interp.should_persist === false && !["confirm","cancel","query_today","query_person","query_misc","create_event","create_follow_up","record_interaction","note"].includes(interp.intent)) {
+    const reply = sanitizeReply(interp.reply) || (userFirstName ? `Estou aqui, ${userFirstName}.` : "Estou aqui.");
+    return { reply };
+  }
+
   // 1) confirm/cancel via IA (fallback para frases menos óbvias)
   if (draft && interp.intent === "confirm") {
     if (!isDraftFresh(draft)) {
@@ -421,6 +449,15 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     const reply = await queryPerson(supabase, userId, interp.entities.person_name ?? "");
     return { reply };
   }
+  if (interp.intent === "query_misc") {
+    const reply = await queryMisc(supabase, userId, trimmed);
+    return { reply };
+  }
+
+  // 2.b) Notas / observações — guarda sem confirmação em Diversos.
+  if (interp.intent === "note" || (interp.destination === "miscellaneous" && interp.should_persist)) {
+    return await saveMiscellaneous(supabase, userId, channel, trimmedRaw, interp);
+  }
 
   // 3) propostas com confirmação
   if (interp.intent === "create_event" || interp.intent === "create_follow_up" || interp.intent === "record_interaction") {
@@ -430,8 +467,80 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     return await proposeAction(supabase, userId, channel, trimmed, interp);
   }
 
-  // 4) fallback
-  return { reply: sanitizeReply(interp.reply) || REPLY_FALLBACK };
+  // 4) fallback conversacional — nunca resposta técnica.
+  // Se a IA devolveu uma reply natural, usa-a; caso contrário, guarda em Diversos
+  // (a mensagem tem texto profissional útil se chegou até aqui).
+  const aiReply = sanitizeReply(interp.reply);
+  if (aiReply) return { reply: aiReply };
+  if (trimmedRaw.length >= 8) {
+    return await saveMiscellaneous(supabase, userId, channel, trimmedRaw, interp);
+  }
+  return { reply: "Estou aqui. Conta-me mais quando quiseres." };
+}
+
+async function saveMiscellaneous(
+  supabase: any,
+  userId: string,
+  channel: string,
+  originalText: string,
+  interp: AiInterpretation,
+): Promise<EngineOutcome> {
+  const titleRaw = String(interp.entities?.title || interp.entities?.notes || originalText).trim();
+  const title = titleRaw.length > 120 ? titleRaw.slice(0, 117) + "..." : titleRaw;
+  const summary = String(interp.entities?.notes || "").trim() || null;
+  const { error } = await supabase.from("miscellaneous_items").insert({
+    user_id: userId,
+    title,
+    original_content: originalText,
+    summary,
+    source_channel: channel,
+    status: "inbox",
+    tags: [],
+  } as never);
+  if (error) {
+    return { reply: "Anotado." };
+  }
+  const aiReply = sanitizeReply(interp.reply);
+  return { reply: aiReply || "Fica registado." };
+}
+
+async function queryMisc(supabase: any, userId: string, text: string): Promise<string> {
+  const t = text.toLowerCase();
+  const now = new Date();
+  let sinceIso: string | null = null;
+  let label = "";
+  if (/\bhoje\b/.test(t)) {
+    const d = new Date(now); d.setHours(0, 0, 0, 0);
+    sinceIso = d.toISOString();
+    label = "hoje";
+  } else if (/\bontem\b/.test(t)) {
+    const d = new Date(now); d.setDate(d.getDate() - 1); d.setHours(0, 0, 0, 0);
+    sinceIso = d.toISOString();
+    label = "ontem";
+  } else if (/\b(semana|est[ae]s?\s+dias?)\b/.test(t)) {
+    const d = new Date(now); d.setDate(d.getDate() - 7);
+    sinceIso = d.toISOString();
+    label = "esta semana";
+  }
+  let q = supabase
+    .from("miscellaneous_items")
+    .select("title, created_at, status")
+    .eq("user_id", userId)
+    .neq("status", "deleted")
+    .neq("status", "archived")
+    .order("created_at", { ascending: false })
+    .limit(10);
+  if (sinceIso) q = q.gte("created_at", sinceIso);
+  const { data } = await q;
+  const rows = (data as any[]) ?? [];
+  if (rows.length === 0) {
+    return label
+      ? `Não tens notas em Diversos ${label}.`
+      : "Não tens notas em Diversos ainda.";
+  }
+  const linhas = rows.map((r) => `• ${r.title}`);
+  const header = label ? `Diversos (${label}):` : "Em Diversos:";
+  return `${header}\n${linhas.join("\n")}`;
 }
 
 // Substitui entidades sensíveis (data/hora, pessoa) por valores

@@ -23,14 +23,28 @@ export type AiIntent =
   | "create_event"
   | "create_follow_up"
   | "record_interaction"
+  | "note"
+  | "smalltalk"
   | "query_today"
   | "query_person"
+  | "query_misc"
   | "confirm"
   | "cancel"
   | "unknown";
 
 export interface AiInterpretation {
   intent: AiIntent;
+  destination:
+    | "people"
+    | "events"
+    | "follow_ups"
+    | "interactions"
+    | "opportunities"
+    | "properties"
+    | "financial"
+    | "miscellaneous"
+    | "none";
+  should_persist: boolean;
   confidence: number;
   requires_confirmation: boolean;
   missing_fields: string[];
@@ -55,7 +69,16 @@ export interface AiCallResult {
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["intent", "confidence", "requires_confirmation", "missing_fields", "entities", "reply"],
+  required: [
+    "intent",
+    "destination",
+    "should_persist",
+    "confidence",
+    "requires_confirmation",
+    "missing_fields",
+    "entities",
+    "reply",
+  ],
   properties: {
     intent: {
       type: "string",
@@ -63,13 +86,31 @@ const SCHEMA = {
         "create_event",
         "create_follow_up",
         "record_interaction",
+        "note",
+        "smalltalk",
         "query_today",
         "query_person",
+        "query_misc",
         "confirm",
         "cancel",
         "unknown",
       ],
     },
+    destination: {
+      type: "string",
+      enum: [
+        "people",
+        "events",
+        "follow_ups",
+        "interactions",
+        "opportunities",
+        "properties",
+        "financial",
+        "miscellaneous",
+        "none",
+      ],
+    },
+    should_persist: { type: "boolean" },
     confidence: { type: "number" },
     requires_confirmation: { type: "boolean" },
     missing_fields: { type: "array", items: { type: "string" } },
@@ -138,10 +179,14 @@ function buildInstructions(input: AiCallInput): string {
     `Não uses os nomes "Paulo", "Paulo Silva", "Ana", "Maria", "João", "T3", "T2", "Granja", "275.000" ou qualquer outro valor concreto a menos que apareçam literalmente na mensagem do consultor.`,
     `Datas: se o consultor escrever "amanhã", devolve date=null (o backend resolve). Se escrever "sexta", "15 de agosto", "20/08" ou uma data ISO, podes preencher date. Nunca converças "amanhã" em "hoje" nem o contrário.`,
     `Intenções possíveis: create_event (visita, reunião, almoço, jantar, café, encontro — com hora); create_follow_up (tarefa com prazo, ex: "ligar a X na sexta"); record_interaction (registo de uma conversa que já aconteceu); query_today (o que tenho hoje); query_person (o que sei sobre X); confirm/cancel (apenas quando há ação pendente); unknown (não é nenhuma das anteriores).`,
+    `Intenções adicionais: smalltalk (saudação, agradecimento, desabafo social sem valor futuro — destination=none, should_persist=false); note (observação, ideia, reflexão, contexto profissional útil mas sem enquadramento noutro módulo — destination=miscellaneous, should_persist=true, requires_confirmation=false); query_misc (o utilizador pergunta sobre Diversos, "o que registei", "que notas deixei", "ideias pendentes").`,
+    `Preenche sempre "destination" e "should_persist". Regras: create_event/create_follow_up→events/follow_ups, requires_confirmation=true; record_interaction→interactions, requires_confirmation=true; note→miscellaneous, should_persist=true, requires_confirmation=false; smalltalk→none, should_persist=false, requires_confirmation=false; queries→none, should_persist=false; confirm/cancel→none, should_persist=false.`,
+    `Uma frase profissional sem data/hora/pessoa concreta (ex: "tenho de rever a minha apresentação", "o proprietário parece estar a perder confiança", "preciso de pensar melhor neste imóvel") é uma note. Não peças confirmação — devolve reply vazia e o backend responde "Fica registado."`,
+    `Uma frase sem valor futuro (ex: "obrigado", "olá", "boa tarde", "ok", "fixe") é smalltalk. Devolve reply curta e natural (ex: "De nada.", "Olá."). Nunca guardes smalltalk.`,
     `Para create_event e create_follow_up define requires_confirmation=true e devolve "reply" VAZIA (""). O backend gera a resposta natural a partir das entities — não escrevas nenhum resumo tu próprio. Não afirmes que já registaste. Formato de "date": YYYY-MM-DD. Formato de "start_time": HH:mm em 24h. Se o utilizador disse "às três" e é de tarde, assume 15:00.`,
     `Para queries devolve requires_confirmation=false e "reply" pode ser vazia (o backend produz a resposta com dados reais).`,
     `Para confirm/cancel devolve todas as entities a null e reply vazia — o backend recupera a acção pendente e responde.`,
-    `Se a mensagem não puder ser mapeada, devolve intent="unknown" e uma reply curta a pedir para reformular sem enumerar comandos.`,
+    `Se genuinamente não perceberes, prefere note com um resumo curto em vez de unknown. Só usa unknown quando a mensagem for incompreensível — e mesmo assim, mantém tom conversacional.`,
     pending,
   ]
     .filter(Boolean)

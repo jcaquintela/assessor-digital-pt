@@ -33,6 +33,7 @@ import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/m
 import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
 import { Route as AuthenticatedHojeRouteImport } from './routes/_authenticated/hoje'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
+import { Route as AuthenticatedDiversosRouteImport } from './routes/_authenticated/diversos'
 import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedAssessorRouteImport } from './routes/_authenticated/assessor'
@@ -162,6 +163,11 @@ const AuthenticatedDocumentosRoute = AuthenticatedDocumentosRouteImport.update({
   path: '/documentos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDiversosRoute = AuthenticatedDiversosRouteImport.update({
+  id: '/diversos',
+  path: '/diversos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDefinicoesRoute = AuthenticatedDefinicoesRouteImport.update({
   id: '/definicoes',
   path: '/definicoes',
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
+  '/diversos': typeof AuthenticatedDiversosRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRoute
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
+  '/diversos': typeof AuthenticatedDiversosRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRoute
@@ -278,6 +286,7 @@ export interface FileRoutesById {
   '/_authenticated/assessor': typeof AuthenticatedAssessorRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
+  '/_authenticated/diversos': typeof AuthenticatedDiversosRoute
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
   '/_authenticated/hoje': typeof AuthenticatedHojeRoute
   '/_authenticated/imoveis': typeof AuthenticatedImoveisRoute
@@ -312,6 +321,7 @@ export interface FileRouteTypes {
     | '/assessor'
     | '/calendario'
     | '/definicoes'
+    | '/diversos'
     | '/documentos'
     | '/hoje'
     | '/imoveis'
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
     | '/assessor'
     | '/calendario'
     | '/definicoes'
+    | '/diversos'
     | '/documentos'
     | '/hoje'
     | '/imoveis'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
     | '/_authenticated/assessor'
     | '/_authenticated/calendario'
     | '/_authenticated/definicoes'
+    | '/_authenticated/diversos'
     | '/_authenticated/documentos'
     | '/_authenticated/hoje'
     | '/_authenticated/imoveis'
@@ -581,6 +593,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDocumentosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/diversos': {
+      id: '/_authenticated/diversos'
+      path: '/diversos'
+      fullPath: '/diversos'
+      preLoaderRoute: typeof AuthenticatedDiversosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/definicoes': {
       id: '/_authenticated/definicoes'
       path: '/definicoes'
@@ -637,6 +656,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAssessorRoute: typeof AuthenticatedAssessorRoute
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
+  AuthenticatedDiversosRoute: typeof AuthenticatedDiversosRoute
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
   AuthenticatedHojeRoute: typeof AuthenticatedHojeRoute
   AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRoute
@@ -651,6 +671,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssessorRoute: AuthenticatedAssessorRoute,
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
+  AuthenticatedDiversosRoute: AuthenticatedDiversosRoute,
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
   AuthenticatedHojeRoute: AuthenticatedHojeRoute,
   AuthenticatedImoveisRoute: AuthenticatedImoveisRoute,
