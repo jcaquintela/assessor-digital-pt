@@ -28,6 +28,22 @@ const REPLY_FALLBACK =
   "Não percebi bem. Podes reformular?";
 const REPLY_AI_DOWN =
   "Recebi a tua mensagem, mas estou com dificuldade em processá-la agora. Tenta novamente dentro de instantes.";
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+
+// Palavras/expressões curtas de confirmação e cancelamento.
+// Interpretadas localmente sempre que existe um rascunho pendente,
+// para não depender da IA em "Sim"/"Não" isolados.
+const CONFIRM_RE =
+  /^\s*(sim(,?\s*(regista|registar|regista isso|faz isso|por favor))?|regista(r)?|regista isso|confirma(r|do)?|pode ser|est[áa] bem|ok(ay|ei)?|claro|com certeza|faz isso|dale|👍|✅|sim!?)\s*[.!]?\s*$/i;
+const CANCEL_RE =
+  /^\s*(n[ãa]o|nao|cancela(r)?|esquece|deixa|para|n[ãa]o registes|n[ãa]o registar)\s*[.!]?\s*$/i;
+
+function isConfirmText(t: string): boolean {
+  return CONFIRM_RE.test(t);
+}
+function isCancelText(t: string): boolean {
+  return CANCEL_RE.test(t);
+}
 
 function detectTipoEvento(texto: string): string {
   const t = texto.toLowerCase();
@@ -79,6 +95,77 @@ async function findLatestDraft(supabase: any, userId: string, channel: string) {
   return (data as any) ?? null;
 }
 
+function isDraftFresh(draft: { created_at: string } | null): boolean {
+  if (!draft?.created_at) return false;
+  return Date.now() - new Date(draft.created_at).getTime() < DRAFT_TTL_MS;
+}
+
+function capitalize(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+function naturalHour(hhmm: string): string {
+  const [h, m] = hhmm.split(":");
+  const mm = Number(m || 0);
+  return mm ? `${Number(h)}h${String(mm).padStart(2, "0")}` : `${Number(h)}h`;
+}
+
+function naturalWhen(date: string, time?: string | null): string {
+  const d = new Date(`${date}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dd = new Date(d);
+  dd.setHours(0, 0, 0, 0);
+  let day: string;
+  if (dd.getTime() === today.getTime()) day = "hoje";
+  else if (dd.getTime() === tomorrow.getTime()) day = "amanhã";
+  else
+    day = d.toLocaleDateString("pt-PT", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+  return time ? `${day} às ${naturalHour(time)}` : day;
+}
+
+function personWithArticle(name: string): string {
+  const first = (name.split(/\s+/)[0] || "").toLowerCase();
+  const feminine = /a$/.test(first) && !/(costa|papa|maia|jesus)$/.test(first);
+  return `${feminine ? "a" : "o"} ${name}`;
+}
+
+function buildProposalReply(
+  intent: string,
+  ent: Record<string, any>,
+  personName: string | null,
+): string {
+  if (intent === "create_event") {
+    const evento = (ent.event_type as string) || "compromisso";
+    const when = ent.date ? naturalWhen(String(ent.date), (ent.start_time as string) || null) : null;
+    const feminine = /^(visita|reuni)/i.test(evento);
+    const artigo = feminine ? "uma" : "um";
+    const partes: string[] = [];
+    partes.push(`${capitalize(when || "em breve")} tens ${artigo} ${evento}`);
+    if (ent.property_reference) partes[0] += ` ao ${ent.property_reference}`;
+    if (personName) partes[0] += ` com ${personWithArticle(personName)}`;
+    partes.push("Queres que registe?");
+    return partes.join(". ");
+  }
+  if (intent === "create_follow_up") {
+    const title = (ent.title as string) || "essa tarefa";
+    const when = ent.date ? naturalWhen(String(ent.date), (ent.start_time as string) || null) : null;
+    const head = when ? `${capitalize(when)}: ${title}` : title;
+    return `${head}. Registo?`;
+  }
+  if (intent === "record_interaction") {
+    if (personName) return `Registo esta conversa com ${personWithArticle(personName)}?`;
+    return "Registo esta conversa?";
+  }
+  return "Queres que registe?";
+}
+
 async function findPeopleByName(supabase: any, userId: string, nome: string) {
   const firstName = nome.split(/\s+/)[0];
   const { data } = await supabase
@@ -120,12 +207,36 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   // Remove o nome do Assessor quando usado como vocativo, para não poluir a interpretação.
   const trimmed = stripAssessorVocative(trimmedRaw, assessorName);
 
+  // 0) Fast-path: respostas curtas de confirmação/cancelamento.
+  // Nunca envia "Sim"/"Não" isolados para a IA — interpreta localmente
+  // usando a ação pendente. Se o rascunho existir mas estiver expirado,
+  // pede reformulação em vez de erro genérico.
+  if (draft && isConfirmText(trimmed)) {
+    if (!isDraftFresh(draft)) {
+      const hint = describeDraftShort(draft);
+      await supabase
+        .from("assessor_messages")
+        .update({ status: "cancelled" } as never)
+        .eq("id", draft.id);
+      return {
+        reply: hint
+          ? `Já não tenho essa confirmação ativa. Referes-te a ${hint}?`
+          : "Já não tenho essa confirmação ativa. Podes repetir?",
+      };
+    }
+    return await confirmDraftSafe(supabase, userId, draft);
+  }
+  if (draft && isCancelText(trimmed)) {
+    await supabase.from("assessor_messages").update({ status: "cancelled" } as never).eq("id", draft.id);
+    return { reply: "Ok, não registei nada." };
+  }
+
   const recentMsgs: AiContextMessage[] = ((recent?.data ?? []) as any[])
     .reverse()
     .filter((m) => m.role === "user" || m.role === "assessor")
     .map((m) => ({ role: m.role as "user" | "assessor", content: String(m.content ?? "") }));
 
-  const pendingAction = draft
+  const pendingAction = draft && isDraftFresh(draft)
     ? {
         intent: (draft.structured_payload as any)?.__intent ?? "unknown",
         entities: ((draft.structured_payload as any)?.entities ?? {}) as Record<string, unknown>,
@@ -168,9 +279,18 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
 
   const interp = ai.interpretation;
 
-  // 1) confirm / cancel de rascunho pendente
+  // 1) confirm/cancel via IA (fallback para frases menos óbvias)
   if (draft && interp.intent === "confirm") {
-    return await confirmDraft(supabase, userId, draft);
+    if (!isDraftFresh(draft)) {
+      await supabase.from("assessor_messages").update({ status: "cancelled" } as never).eq("id", draft.id);
+      const hint = describeDraftShort(draft);
+      return {
+        reply: hint
+          ? `Já não tenho essa confirmação ativa. Referes-te a ${hint}?`
+          : "Já não tenho essa confirmação ativa. Podes repetir?",
+      };
+    }
+    return await confirmDraftSafe(supabase, userId, draft);
   }
   if (draft && interp.intent === "cancel") {
     await supabase.from("assessor_messages").update({ status: "cancelled" } as never).eq("id", draft.id);
@@ -193,7 +313,29 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   }
 
   // 4) fallback
-  return { reply: interp.reply?.trim() || REPLY_FALLBACK };
+  return { reply: sanitizeReply(interp.reply) || REPLY_FALLBACK };
+}
+
+// Remove prefixos técnicos que o modelo por vezes injeta ("Proposta:", "Intenção:", etc.)
+function sanitizeReply(reply?: string | null): string {
+  if (!reply) return "";
+  return reply
+    .replace(/^\s*(proposta|intenç[ãa]o|resumo|registo pendente|payload|a[cç][ãa]o( estruturada)?)\s*[:\-–—]\s*/i, "")
+    .trim();
+}
+
+function describeDraftShort(draft: { structured_payload: any } | null): string | null {
+  const payload = draft?.structured_payload as any;
+  const ent = payload?.entities;
+  if (!ent) return null;
+  const intent = payload.__intent;
+  if (intent === "create_event") {
+    const when = ent.date ? naturalWhen(String(ent.date), ent.start_time || null) : null;
+    const evento = ent.event_type || "compromisso";
+    return when ? `${evento} de ${when}` : evento;
+  }
+  if (intent === "create_follow_up") return ent.title || null;
+  return null;
 }
 
 async function proposeAction(
@@ -208,12 +350,20 @@ async function proposeAction(
   // Resolução de pessoa (o backend, não a IA)
   let pessoaId: string | null = null;
   let candidates: { id: string; name: string }[] = [];
+  let personName: string | null = null;
   if (ent.person_name) {
     candidates = await findPeopleByName(supabase, userId, ent.person_name);
-    if (candidates.length === 1) pessoaId = candidates[0].id;
+    if (candidates.length === 1) {
+      pessoaId = candidates[0].id;
+      personName = candidates[0].name;
+    } else if (candidates.length === 0) {
+      personName = ent.person_name;
+    }
   }
 
-  const reply = interp.reply?.trim() || "Queres que registe?";
+  // Resposta natural gerada pelo backend a partir das entities,
+  // ignorando o texto que a IA possa devolver ("Proposta: ...").
+  const reply = buildProposalReply(interp.intent, ent as any, personName);
 
   const payload: Record<string, unknown> = {
     __intent: interp.intent,
@@ -280,6 +430,28 @@ async function queryPerson(supabase: any, userId: string, name: string): Promise
   return parts.join("\n");
 }
 
+async function confirmDraftSafe(
+  supabase: any,
+  userId: string,
+  draft: { id: string; message_type: string | null; structured_payload: any },
+): Promise<EngineOutcome> {
+  try {
+    return await confirmDraft(supabase, userId, draft);
+  } catch (err) {
+    console.error("[assessor] confirmDraft falhou:", err instanceof Error ? err.message : err);
+    const payload = (draft.structured_payload ?? {}) as Record<string, any>;
+    const intent = payload.__intent as string | undefined;
+    const tipoLabel =
+      intent === "create_event"
+        ? (payload.entities?.event_type as string) || "compromisso"
+        : intent === "create_follow_up"
+          ? "tarefa"
+          : "registo";
+    // Mantém o rascunho ativo para permitir retry.
+    return { reply: `Não consegui registar ${tipoLabel === "compromisso" ? "o " : "a "}${tipoLabel}. Queres que tente novamente?` };
+  }
+}
+
 async function confirmDraft(
   supabase: any,
   userId: string,
@@ -315,7 +487,7 @@ async function confirmDraft(
       .from("assessor_messages")
       .update({ status: "confirmed", structured_payload: { ...payload, __entidadeId: (fu as any).id } as never } as never)
       .eq("id", draft.id);
-    const quando = formatWhen(dueDate, dueTime);
+    const quando = naturalWhen(dueDate, dueTime);
     const tipoLabel = intent === "create_event" ? (ent.event_type || "evento") : "seguimento";
     return { reply: `Feito. Registei ${articleFor(String(tipoLabel))} ${tipoLabel} para ${quando}.` };
   }
