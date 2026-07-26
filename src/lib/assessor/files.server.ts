@@ -1,0 +1,289 @@
+// Central pipeline para receção e classificação de ficheiros.
+// Independente do canal (WhatsApp, futuros). Import interno server-only.
+
+export const MAX_SIZES: Record<string, number> = {
+  "image/jpeg": 10 * 1024 * 1024,
+  "image/png": 10 * 1024 * 1024,
+  "application/pdf": 20 * 1024 * 1024,
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": 20 * 1024 * 1024,
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": 20 * 1024 * 1024,
+  "text/csv": 5 * 1024 * 1024,
+  "text/plain": 5 * 1024 * 1024,
+  "audio/ogg": 25 * 1024 * 1024,
+  "audio/mpeg": 25 * 1024 * 1024,
+  "audio/mp4": 25 * 1024 * 1024,
+  "audio/wav": 25 * 1024 * 1024,
+  "audio/webm": 25 * 1024 * 1024,
+  "audio/aac": 25 * 1024 * 1024,
+};
+
+const BLOCKED_MIME_PREFIXES = [
+  "application/x-msdownload",
+  "application/x-executable",
+  "application/x-sh",
+  "application/x-msi",
+  "application/x-dosexec",
+  "application/javascript",
+  "application/x-mach-binary",
+  "application/zip",
+  "application/x-rar",
+  "application/x-7z-compressed",
+  "application/x-tar",
+  "application/gzip",
+];
+
+export type ProcessIncomingFileInput = {
+  supabase: any;
+  userId: string;
+  channel: string;
+  externalFileId?: string | null;
+  fileName?: string | null;
+  mimeType: string;
+  size: number;
+  bytes: Uint8Array | ArrayBuffer;
+  sourceMessageId?: string | null;
+};
+
+export type ProcessIncomingFileResult = {
+  ok: boolean;
+  fileId: string | null;
+  classification: string;
+  status: string;
+  reply: string;
+  extractedText: string | null;
+  errorCode?: string;
+};
+
+function safeName(original?: string | null): string {
+  if (!original) return "ficheiro";
+  return original.replace(/[^a-zA-Z0-9._\- ]+/g, "_").slice(0, 120);
+}
+
+function extensionFor(mime: string): string {
+  const map: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "application/pdf": "pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "text/csv": "csv",
+    "text/plain": "txt",
+    "audio/ogg": "ogg",
+    "audio/mpeg": "mp3",
+    "audio/mp4": "m4a",
+    "audio/wav": "wav",
+    "audio/webm": "webm",
+    "audio/aac": "aac",
+  };
+  return map[mime] ?? "bin";
+}
+
+function classifyByMime(mime: string): string {
+  if (mime.startsWith("audio/")) return "audio";
+  if (mime.startsWith("image/")) return "imagem";
+  if (mime === "application/pdf") return "documento_pdf";
+  if (mime.includes("wordprocessingml")) return "documento_docx";
+  if (mime.includes("spreadsheetml") || mime === "text/csv") return "planilha";
+  if (mime === "text/plain") return "texto";
+  return "diversos";
+}
+
+function friendlyLabel(classification: string): string {
+  switch (classification) {
+    case "audio":
+      return "mensagem de voz";
+    case "imagem":
+      return "imagem";
+    case "documento_pdf":
+      return "documento PDF";
+    case "documento_docx":
+      return "documento Word";
+    case "planilha":
+      return "folha de cálculo";
+    case "texto":
+      return "ficheiro de texto";
+    default:
+      return "ficheiro";
+  }
+}
+
+function toUint8(bytes: Uint8Array | ArrayBuffer): Uint8Array {
+  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+}
+
+export async function processIncomingFile(
+  input: ProcessIncomingFileInput,
+): Promise<ProcessIncomingFileResult> {
+  const { supabase, userId, channel, mimeType, size, sourceMessageId } = input;
+  const originalName = safeName(input.fileName);
+
+  // 1. Validar MIME/extensão bloqueada
+  if (BLOCKED_MIME_PREFIXES.some((p) => mimeType.startsWith(p))) {
+    return failLog(supabase, {
+      userId,
+      channel,
+      sourceMessageId,
+      originalName,
+      mimeType,
+      size,
+      errorCode: "mime_blocked",
+      reply: "Este tipo de ficheiro não é permitido por questões de segurança.",
+    });
+  }
+
+  // 2. Validar tamanho por tipo
+  const cap = MAX_SIZES[mimeType];
+  if (!cap) {
+    return failLog(supabase, {
+      userId,
+      channel,
+      sourceMessageId,
+      originalName,
+      mimeType,
+      size,
+      errorCode: "mime_unsupported",
+      reply: `Recebi o ficheiro mas ainda não sei processar este formato (${mimeType}).`,
+    });
+  }
+  if (size <= 0) {
+    return failLog(supabase, {
+      userId,
+      channel,
+      sourceMessageId,
+      originalName,
+      mimeType,
+      size,
+      errorCode: "empty_file",
+      reply: "O ficheiro chegou vazio. Podes tentar enviar novamente?",
+    });
+  }
+  if (size > cap) {
+    const mb = Math.round(cap / (1024 * 1024));
+    return failLog(supabase, {
+      userId,
+      channel,
+      sourceMessageId,
+      originalName,
+      mimeType,
+      size,
+      errorCode: "too_large",
+      reply: `Este ficheiro é maior do que o limite permitido (${mb} MB).`,
+    });
+  }
+
+  const classification = classifyByMime(mimeType);
+  const ext = extensionFor(mimeType);
+  const internalName = `${crypto.randomUUID()}.${ext}`;
+  const storagePath = `${userId}/${new Date().getFullYear()}/${internalName}`;
+
+  // 3. Upload para bucket privado
+  const body = toUint8(input.bytes);
+  const upload = await supabase.storage
+    .from("assessor-files")
+    .upload(storagePath, body, {
+      contentType: mimeType,
+      upsert: false,
+    });
+  if (upload.error) {
+    console.error("[files] upload error:", upload.error.message);
+    return failLog(supabase, {
+      userId,
+      channel,
+      sourceMessageId,
+      originalName,
+      mimeType,
+      size,
+      errorCode: "storage_upload_failed",
+      reply: "Recebi o ficheiro mas não consegui guardá-lo. Tenta novamente.",
+    });
+  }
+
+  // 4. Persistir metadados
+  const { data: fileRow, error: insertErr } = await supabase
+    .from("uploaded_files")
+    .insert({
+      user_id: userId,
+      channel,
+      source_message_id: sourceMessageId ?? null,
+      external_file_id: input.externalFileId ?? null,
+      original_file_name: originalName,
+      internal_file_name: internalName,
+      mime_type: mimeType,
+      size_bytes: size,
+      storage_path: storagePath,
+      processing_status: "processed",
+      classification,
+      extracted_metadata: {},
+    })
+    .select("id")
+    .single();
+
+  if (insertErr || !fileRow) {
+    console.error("[files] insert error:", insertErr?.message);
+    // Cleanup do storage se metadados falharem
+    await supabase.storage.from("assessor-files").remove([storagePath]);
+    return {
+      ok: false,
+      fileId: null,
+      classification,
+      status: "failed",
+      reply: "Recebi o ficheiro mas houve um erro ao registá-lo.",
+      extractedText: null,
+      errorCode: "db_insert_failed",
+    };
+  }
+
+  const fileId = (fileRow as { id: string }).id;
+  const label = friendlyLabel(classification);
+  const reply = `Recebi ${label === "imagem" || label === "mensagem de voz" ? "a" : "o"} ${label} e guardei em Diversos → Ficheiros. Ainda não consigo classificar automaticamente — podes dizer-me a que se refere?`;
+
+  return {
+    ok: true,
+    fileId,
+    classification,
+    status: "processed",
+    reply,
+    extractedText: null,
+  };
+}
+
+async function failLog(
+  supabase: any,
+  args: {
+    userId: string;
+    channel: string;
+    sourceMessageId?: string | null;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    errorCode: string;
+    reply: string;
+  },
+): Promise<ProcessIncomingFileResult> {
+  try {
+    await supabase.from("uploaded_files").insert({
+      user_id: args.userId,
+      channel: args.channel,
+      source_message_id: args.sourceMessageId ?? null,
+      original_file_name: args.originalName,
+      internal_file_name: `rejected-${Date.now()}`,
+      mime_type: args.mimeType,
+      size_bytes: args.size,
+      storage_path: "",
+      processing_status: "failed",
+      error_code: args.errorCode,
+      error_message: args.reply,
+    });
+  } catch (err) {
+    console.error("[files] failLog insert error:", err instanceof Error ? err.message : err);
+  }
+  return {
+    ok: false,
+    fileId: null,
+    classification: "diversos",
+    status: "failed",
+    reply: args.reply,
+    extractedText: null,
+    errorCode: args.errorCode,
+  };
+}

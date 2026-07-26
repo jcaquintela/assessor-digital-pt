@@ -21,8 +21,12 @@ import {
 
 const REPLY_UNASSOCIATED =
   "Olá. Este número ainda não está associado a uma conta do Assessor. Entra no dashboard e confirma o teu número de WhatsApp.";
-const REPLY_NON_TEXT =
-  "Recebi a tua mensagem, mas nesta primeira versão só consigo processar texto.";
+const REPLY_UNSUPPORTED_TYPE =
+  "Recebi a tua mensagem, mas ainda não sei processar este tipo de conteúdo.";
+const REPLY_MEDIA_ERROR =
+  "Recebi o teu envio mas não consegui descarregá-lo. Tenta enviar novamente.";
+const REPLY_TRANSCRIBE_FAIL =
+  "Recebi a mensagem de voz, mas não consegui transcrever agora. Guardei o áudio em Diversos → Ficheiros.";
 const REPLY_LINK_OK =
   "A tua conta ficou associada ao WhatsApp. Já podes começar a falar com o teu Assessor.";
 const REPLY_LINK_EXPIRED =
@@ -159,8 +163,19 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
 
   const userId = await findUserIdByPhone(supabaseAdmin, senderPhone);
 
+  // Handle media types (image, document, audio/voice) via central file pipeline.
+  if (type === "image" || type === "document" || type === "audio" || type === "voice") {
+    await handleMediaMessage(supabaseAdmin, {
+      msg,
+      type,
+      waMessageId,
+      senderPhone,
+      userId,
+    });
+    return;
+  }
+
   if (type !== "text") {
-    // Persist a placeholder record so admin can see non-text volume.
     await supabaseAdmin.from("assessor_messages").insert({
       user_id: userId,
       role: "user",
@@ -171,7 +186,7 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
       sender_phone: senderPhone,
       whatsapp_message_id: waMessageId,
     });
-    await replyAndStore(supabaseAdmin, senderPhone, userId, REPLY_NON_TEXT);
+    await replyAndStore(supabaseAdmin, senderPhone, userId, REPLY_UNSUPPORTED_TYPE);
     return;
   }
 
@@ -222,6 +237,119 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
     console.error("[whatsapp-webhook] engine error:", err instanceof Error ? err.message : err);
     await replyAndStore(supabaseAdmin, senderPhone, userId, REPLY_ENGINE_ERROR);
   }
+}
+
+async function handleMediaMessage(
+  supabaseAdmin: any,
+  args: {
+    msg: any;
+    type: string;
+    waMessageId: string;
+    senderPhone: string;
+    userId: string | null;
+  },
+) {
+  const { msg, type, waMessageId, senderPhone, userId } = args;
+  const node = msg?.[type] ?? msg?.audio ?? {};
+  const mediaId: string | undefined = node?.id;
+  const filename: string | undefined = node?.filename;
+  const caption: string | undefined = msg?.image?.caption ?? msg?.document?.caption;
+
+  // Persist the inbound event even if we cannot store the file.
+  await supabaseAdmin.from("assessor_messages").insert({
+    user_id: userId,
+    role: "user",
+    content: caption || `[${type}]`,
+    message_type: `whatsapp_${type}`,
+    status: "received",
+    channel: "whatsapp",
+    sender_phone: senderPhone,
+    whatsapp_message_id: waMessageId,
+  });
+
+  if (!userId) {
+    await replyAndStore(supabaseAdmin, senderPhone, null, REPLY_UNASSOCIATED);
+    return;
+  }
+  if (!mediaId) {
+    await replyAndStore(supabaseAdmin, senderPhone, userId, REPLY_MEDIA_ERROR);
+    return;
+  }
+
+  // Look up the just-inserted message row id so file can be linked.
+  const { data: srcRow } = await supabaseAdmin
+    .from("assessor_messages")
+    .select("id")
+    .eq("whatsapp_message_id", waMessageId)
+    .maybeSingle();
+  const sourceMessageId = (srcRow as { id?: string } | null)?.id ?? null;
+
+  // Download from Meta Graph.
+  let media: { bytes: Uint8Array; mimeType: string; size: number };
+  try {
+    const { downloadWhatsAppMedia } = await import("@/lib/whatsapp/media.server");
+    media = await downloadWhatsAppMedia(mediaId);
+  } catch (err) {
+    console.error("[whatsapp-webhook] media download error:", err instanceof Error ? err.message : err);
+    await replyAndStore(supabaseAdmin, senderPhone, userId, REPLY_MEDIA_ERROR);
+    return;
+  }
+
+  // Route through central file pipeline (validation + storage + persistence).
+  const { processIncomingFile } = await import("@/lib/assessor/files.server");
+  const result = await processIncomingFile({
+    supabase: supabaseAdmin,
+    userId,
+    channel: "whatsapp",
+    externalFileId: mediaId,
+    fileName: filename ?? null,
+    mimeType: media.mimeType,
+    size: media.size,
+    bytes: media.bytes,
+    sourceMessageId,
+  });
+
+  // Audio → transcribe and feed the transcript into the assessor engine.
+  if (result.ok && (type === "audio" || type === "voice")) {
+    try {
+      const { transcribeAudio } = await import("@/lib/ai/transcribe.server");
+      const t = await transcribeAudio(media.bytes, media.mimeType);
+      if (!t.ok || !t.text) {
+        await replyAndStore(supabaseAdmin, senderPhone, userId, REPLY_TRANSCRIBE_FAIL);
+        return;
+      }
+      // Persist the transcript as a user message so the engine has context.
+      await supabaseAdmin.from("assessor_messages").insert({
+        user_id: userId,
+        role: "user",
+        content: t.text,
+        message_type: "whatsapp_audio_transcript",
+        status: "received",
+        channel: "whatsapp",
+        sender_phone: senderPhone,
+      });
+      const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
+      const outcome = await processAssessorMessage({
+        supabase: supabaseAdmin,
+        userId,
+        channel: "whatsapp",
+        content: t.text,
+        receivedAt: new Date(),
+      });
+      if (outcome.messageType === "__ALREADY_PERSISTED__") {
+        await sendWhatsAppText(senderPhone, outcome.reply, { kind: "auto" });
+      } else {
+        await replyAndStore(supabaseAdmin, senderPhone, userId, outcome.reply);
+      }
+      return;
+    } catch (err) {
+      console.error("[whatsapp-webhook] transcribe error:", err instanceof Error ? err.message : err);
+      await replyAndStore(supabaseAdmin, senderPhone, userId, REPLY_TRANSCRIBE_FAIL);
+      return;
+    }
+  }
+
+  await replyAndStore(supabaseAdmin, senderPhone, userId, result.reply);
 }
 
 async function tryLinkCode(

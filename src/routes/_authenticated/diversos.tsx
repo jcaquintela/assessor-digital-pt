@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Archive, Trash2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { UploadedFilesList } from "@/components/uploaded-files-list";
 
 export const Route = createFileRoute("/_authenticated/diversos")({
   head: () => ({
@@ -44,7 +45,9 @@ const STATUS_LABEL: Record<MiscItem["status"], string> = {
 function DiversosPage() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
-  const [tab, setTab] = useState<"recentes" | "tratar" | "classificados" | "arquivados">("recentes");
+  const [tab, setTab] = useState<
+    "recentes" | "tratar" | "classificados" | "arquivados" | "ficheiros"
+  >("recentes");
 
   const items = useQuery({
     queryKey: ["misc"],
@@ -95,7 +98,7 @@ function DiversosPage() {
       />
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          {(["recentes", "tratar", "classificados", "arquivados"] as const).map((k) => (
+          {(["recentes", "tratar", "classificados", "arquivados", "ficheiros"] as const).map((k) => (
             <button
               key={k}
               onClick={() => setTab(k)}
@@ -103,15 +106,27 @@ function DiversosPage() {
                 tab === k ? "bg-foreground text-background" : "bg-background text-foreground"
               }`}
             >
-              {k === "recentes" ? "Recentes" : k === "tratar" ? "Por tratar" : k === "classificados" ? "Classificados" : "Arquivados"}
+              {k === "recentes"
+                ? "Recentes"
+                : k === "tratar"
+                ? "Por tratar"
+                : k === "classificados"
+                ? "Classificados"
+                : k === "arquivados"
+                ? "Arquivados"
+                : "Ficheiros"}
             </button>
           ))}
-          <div className="ml-auto w-full max-w-xs">
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar notas…" />
-          </div>
+          {tab !== "ficheiros" ? (
+            <div className="ml-auto w-full max-w-xs">
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar notas…" />
+            </div>
+          ) : null}
         </div>
 
-        {items.isLoading ? (
+        {tab === "ficheiros" ? (
+          <UploadedFilesList />
+        ) : items.isLoading ? (
           <p className="text-sm text-muted-foreground">A carregar…</p>
         ) : filtered.length === 0 ? (
           <Card>
