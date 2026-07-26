@@ -383,6 +383,7 @@ export type Database = {
           person_id: string | null
           priority: string
           related_file_id: string | null
+          related_property_id: string | null
           status: string
           title: string
           type: string
@@ -399,6 +400,7 @@ export type Database = {
           person_id?: string | null
           priority?: string
           related_file_id?: string | null
+          related_property_id?: string | null
           status?: string
           title: string
           type?: string
@@ -415,6 +417,7 @@ export type Database = {
           person_id?: string | null
           priority?: string
           related_file_id?: string | null
+          related_property_id?: string | null
           status?: string
           title?: string
           type?: string
@@ -441,6 +444,13 @@ export type Database = {
             columns: ["related_file_id"]
             isOneToOne: false
             referencedRelation: "uploaded_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_ups_related_property_id_fkey"
+            columns: ["related_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]

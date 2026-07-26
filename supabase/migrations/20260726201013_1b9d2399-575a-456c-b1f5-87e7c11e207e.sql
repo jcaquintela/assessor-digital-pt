@@ -1,0 +1,2 @@
+ALTER TABLE public.follow_ups ADD COLUMN IF NOT EXISTS related_property_id UUID REFERENCES public.properties(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS follow_ups_related_property_id_idx ON public.follow_ups(related_property_id);
