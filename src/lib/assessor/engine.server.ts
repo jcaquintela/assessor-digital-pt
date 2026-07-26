@@ -951,6 +951,67 @@ async function queryPerson(supabase: any, userId: string, name: string): Promise
 }
 
 async function confirmPendingSafe(
+
+// Slot-fill determinístico para pending em `collecting_information`.
+// Preenche apenas o campo em falta a partir do texto do utilizador; se ficar
+// completo, executa imediatamente. Nunca chama a IA nem consulta a agenda.
+async function handleSlotFill(
+  supabase: any,
+  userId: string,
+  channel: string,
+  pending: PendingActionRow,
+  trimmed: string,
+  now: Date,
+): Promise<EngineOutcome | null> {
+  const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+  const ent = { ...(payload.entities ?? {}) } as Record<string, any>;
+  const asked = pending.current_question || "";
+
+  if (isCancelText(trimmed)) {
+    await markPendingActionStatus(supabase, pending.id, "cancelled");
+    await upsertConversationState(supabase, {
+      userId, channel, pendingActionId: null, activeTopic: null,
+      stateSummary: "utilizador cancelou o pedido pendente",
+    });
+    return { reply: "Ok, não registei nada." };
+  }
+
+  const resolved = resolveDateTimeFromText(trimmed, now);
+  let filled = false;
+  if (asked === "date" || !ent.date) {
+    if (resolved.date) { ent.date = resolved.date; filled = true; }
+    if (resolved.time) { ent.start_time = resolved.time; filled = true; }
+  } else if (asked === "time" || !ent.start_time) {
+    if (resolved.time) { ent.start_time = resolved.time; filled = true; }
+  }
+
+  if (!filled) {
+    // Resposta não interpretável — repete a pergunta sem chamar a IA.
+    const q = pending.pending_question || "Para quando é? (por exemplo: amanhã às 12h)";
+    return { reply: q };
+  }
+
+  const newPayload = { ...payload, entities: ent };
+  // Ainda falta data → volta a pedir.
+  if (!ent.date) {
+    const q = "Para quando é? (por exemplo: amanhã às 12h)";
+    await updatePendingActionPayload(supabase, pending.id, newPayload, {
+      status: "collecting_information",
+      current_question: "date",
+      pending_question: q,
+    });
+    return { reply: q };
+  }
+  // Data preenchida — passa a pending_confirmation e executa de imediato.
+  await updatePendingActionPayload(supabase, pending.id, newPayload, {
+    status: "pending_confirmation",
+    current_question: null,
+  });
+  const reloaded = { ...pending, structured_payload: newPayload, status: "pending_confirmation" as any };
+  return await confirmPendingSafe(supabase, userId, channel, reloaded as PendingActionRow);
+}
+
+async function confirmPendingSafe(
   supabase: any,
   userId: string,
   channel: string,
