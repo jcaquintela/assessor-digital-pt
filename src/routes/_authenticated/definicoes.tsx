@@ -49,7 +49,7 @@ function DefinicoesPage() {
       setEmail(data.user?.email ?? "");
       setUid(data.user?.id ?? "");
       if (data.user?.id) {
-        const { data: prof } = await supabase.from("profiles").select("account_kind, assessor_name").eq("id", data.user.id).maybeSingle();
+        const { data: prof } = await supabase.from("profiles").select("account_kind, assessor_name" as never).eq("id", data.user.id).maybeSingle();
         if (prof && (prof as { account_kind?: string }).account_kind) {
           setAccountKind(((prof as { account_kind?: string }).account_kind === "demo" ? "demo" : "real"));
         }
