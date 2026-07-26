@@ -749,42 +749,48 @@ async function queryPerson(supabase: any, userId: string, name: string): Promise
   return parts.join("\n");
 }
 
-async function confirmDraftSafe(
+async function confirmPendingSafe(
   supabase: any,
   userId: string,
-  draft: { id: string; message_type: string | null; structured_payload: any },
+  channel: string,
+  pending: PendingActionRow,
 ): Promise<EngineOutcome> {
   try {
-    return await confirmDraft(supabase, userId, draft);
+    await markPendingActionStatus(supabase, pending.id, "executing");
+    return await executePending(supabase, userId, channel, pending);
   } catch (err) {
-    console.error("[assessor] confirmDraft falhou:", err instanceof Error ? err.message : err);
-    const payload = (draft.structured_payload ?? {}) as Record<string, any>;
-    const intent = payload.__intent as string | undefined;
+    console.error("[assessor] executePending falhou:", err instanceof Error ? err.message : err);
+    await markPendingActionStatus(supabase, pending.id, "failed", {
+      error_message: err instanceof Error ? err.message : String(err),
+    });
+    const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+    const intent = pending.intent;
     const tipoLabel =
       intent === "create_event"
         ? (payload.entities?.event_type as string) || "compromisso"
         : intent === "create_follow_up"
           ? "tarefa"
           : "registo";
-    // Mantém o rascunho ativo para permitir retry.
-    return { reply: `Não consegui registar ${tipoLabel === "compromisso" ? "o " : "a "}${tipoLabel}. Queres que tente novamente?` };
+    return {
+      reply: `Não consegui registar ${tipoLabel === "compromisso" ? "o " : "a "}${tipoLabel}. Queres que tente novamente?`,
+    };
   }
 }
 
-async function confirmDraft(
+async function executePending(
   supabase: any,
   userId: string,
-  draft: { id: string; message_type: string | null; structured_payload: any },
+  channel: string,
+  pending: PendingActionRow,
 ): Promise<EngineOutcome> {
-  const payload = (draft.structured_payload ?? {}) as Record<string, any>;
-  const intent = payload.__intent as string | undefined;
+  const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+  const intent = pending.intent;
   const ent = (payload.entities ?? {}) as Record<string, any>;
   const pessoaId = (payload.pessoaId as string) || null;
 
   if (intent === "create_event" || intent === "create_follow_up") {
-    // NUNCA registar sem data explícita. Antes tinha fallback para hoje,
-    // o que causava eventos criados no dia errado.
     if (!ent.date) {
+      await markPendingActionStatus(supabase, pending.id, "collecting_information");
       return { reply: "Falta a data. Para quando é?" };
     }
     const tipoDb = intent === "create_event" ? "event" : "task";
@@ -802,7 +808,6 @@ async function confirmDraft(
     }
     const dueDate = String(ent.date);
     const dueTime = (ent.start_time as string) || null;
-    // Compõe notas com contexto (localidade, valor, título de pessoa) para não perder dados.
     const contextoNotas: string[] = [];
     if (ent.location) contextoNotas.push(`Local: ${ent.location}`);
     if (ent.property_type) contextoNotas.push(`Imóvel: ${ent.property_type}`);
@@ -826,10 +831,30 @@ async function confirmDraft(
       .select("id")
       .single();
     if (error) throw error;
+    const resourceId = (fu as any).id as string;
+    await markPendingActionStatus(supabase, pending.id, "executed", {
+      created_resource_type: "follow_up",
+      created_resource_id: resourceId,
+    });
+    await upsertConversationState(supabase, {
+      userId,
+      channel,
+      pendingActionId: null,
+      activeTopic: null,
+      lastIntent: intent,
+      lastCreatedResourceType: "follow_up",
+      lastCreatedResourceId: resourceId,
+      stateSummary: `criou ${intent === "create_event" ? "evento" : "tarefa"} para ${naturalWhen(dueDate, dueTime)}`,
+    });
     await supabase
       .from("assessor_messages")
-      .update({ status: "confirmed", structured_payload: { ...payload, __entidadeId: (fu as any).id } as never } as never)
-      .eq("id", draft.id);
+      .update({
+        status: "confirmed",
+        related_resource_type: "follow_up",
+        related_resource_id: resourceId,
+        structured_payload: { ...payload, __entidadeId: resourceId } as never,
+      } as never)
+      .eq("related_pending_action_id", pending.id);
     const quando = naturalWhen(dueDate, dueTime);
     const tipoLabel = intent === "create_event" ? (ent.event_type || "evento") : "seguimento";
     return { reply: `Feito. Registei ${articleFor(String(tipoLabel))} ${tipoLabel} para ${quando}.` };
@@ -845,10 +870,22 @@ async function confirmDraft(
       occurred_at: new Date().toISOString(),
     } as never);
     if (error) throw error;
-    await supabase.from("assessor_messages").update({ status: "confirmed" } as never).eq("id", draft.id);
+    await markPendingActionStatus(supabase, pending.id, "executed", { created_resource_type: "interaction" });
+    await upsertConversationState(supabase, {
+      userId,
+      channel,
+      pendingActionId: null,
+      activeTopic: null,
+      lastIntent: intent,
+      stateSummary: "registou conversa",
+    });
+    await supabase
+      .from("assessor_messages")
+      .update({ status: "confirmed" } as never)
+      .eq("related_pending_action_id", pending.id);
     return { reply: "Feito. Registei a conversa." };
   }
 
-  await supabase.from("assessor_messages").update({ status: "confirmed" } as never).eq("id", draft.id);
+  await markPendingActionStatus(supabase, pending.id, "executed");
   return { reply: "Feito." };
 }
