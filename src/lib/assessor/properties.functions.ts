@@ -12,7 +12,22 @@ export const listProperties = createServerFn({ method: "GET" })
       .order("updated_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    return data ?? [];
+    const rows = (data ?? []) as any[];
+    const ids = rows.map((r) => r.id);
+    const counts: Record<string, number> = {};
+    if (ids.length) {
+      const { data: files } = await supabase
+        .from("uploaded_files")
+        .select("related_resource_id")
+        .eq("user_id", userId)
+        .eq("related_resource_type", "property")
+        .in("related_resource_id", ids);
+      for (const f of (files ?? []) as any[]) {
+        const k = f.related_resource_id as string;
+        counts[k] = (counts[k] ?? 0) + 1;
+      }
+    }
+    return rows.map((r) => ({ ...r, file_count: counts[r.id] ?? 0 }));
   });
 
 export const getProperty = createServerFn({ method: "POST" })
