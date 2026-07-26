@@ -15,6 +15,7 @@ import {
   Users,
   Wallet,
   Briefcase,
+  Repeat,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ const desktopNav = [
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/seguimentos", label: "Seguimentos", icon: ListChecks },
   { to: "/calendario", label: "Calendário", icon: CalendarDays },
+  { to: "/rotinas", label: "Rotinas", icon: Repeat },
   { to: "/interacoes", label: "Interações", icon: MessagesSquare },
   { to: "/documentos", label: "Documentos", icon: FileText },
   { to: "/diversos", label: "Diversos", icon: Inbox },
