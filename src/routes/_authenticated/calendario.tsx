@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,13 +33,18 @@ function CalendarioPage() {
           <CardHeader><CardTitle className="text-base">Próximos compromissos</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {eventos.map((e) => (
-              <div key={e.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+              <Link
+                key={e.id}
+                to="/seguimentos/$id"
+                params={{ id: e.id }}
+                className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:border-primary/40"
+              >
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{e.titulo}</div>
                   <div className="text-xs text-muted-foreground">{formatDataHora(e.data)}</div>
                 </div>
                 <Badge variant="outline" className="shrink-0"><CalendarIcon className="mr-1 h-3 w-3" />{e.hora}</Badge>
-              </div>
+              </Link>
             ))}
           </CardContent>
         </Card>
