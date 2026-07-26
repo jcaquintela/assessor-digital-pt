@@ -75,6 +75,12 @@ const THANKS_RE = /^\s*(obrigad[oa]|obrigadinho|thanks|thank\s*you|valeu|grato|g
 const QUERY_MISC_RE =
   /(diversos|notas?\s+(?:que|deixei|pendentes?)|ideias?\s+(?:que|pendentes?|deixei)|(?:o\s+que\s+)?(?:registei|guardei|escrevi|apontei|deixei)\b.*\b(?:diversos|nota|notas|semana|hoje|ontem|ideias?))/i;
 
+// Consulta explícita da agenda. "amanhã" isolado NÃO é uma consulta.
+// Só disparamos query_today quando existe intenção clara de listar
+// eventos/compromissos.
+const QUERY_AGENDA_RE =
+  /\b(agenda|compromissos?|marca(?:d[oa]s?|ç[õo]es)|hoje\s+(?:tenho|tens|temos)|o\s+que\s+tenho\s+(?:hoje|amanh[ãa])|que\s+(?:tenho|compromissos))\b/i;
+
 // Prefixos de correção do último evento/proposta.
 const CORRECTION_RE =
   /^\s*(n[ãa]o[,.\s]|nao[,.\s]|mas\b|afinal\b|antes\b|corrige\b|corrigir\b|[ée]\s+(às|as|pelas|amanh|hoje|com|na|no|em)|na\s+verdade\b)/i;
@@ -104,6 +110,9 @@ function isThanks(t: string): boolean {
 }
 function isQueryMisc(t: string): boolean {
   return QUERY_MISC_RE.test(t);
+}
+function isExplicitAgendaQuery(t: string): boolean {
+  return QUERY_AGENDA_RE.test(t);
 }
 
 function detectTipoEvento(texto: string): string {
@@ -325,6 +334,26 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     if (fileFlow) return fileFlow;
   }
 
+  // 0.slot) Slot-fill determinístico. Se existe pending em
+  // `collecting_information` para create_event/create_follow_up, a próxima
+  // mensagem preenche APENAS o campo em falta (data/hora) e nunca é
+  // enviada à IA — evita que "amanhã" seja interpretado como query_today.
+  if (
+    pending &&
+    pending.status === "collecting_information" &&
+    (pending.intent === "create_event" || pending.intent === "create_follow_up")
+  ) {
+    const slot = await handleSlotFill(
+      supabase,
+      userId,
+      channel,
+      pending,
+      trimmed,
+      input.receivedAt ?? new Date(),
+    );
+    if (slot) return slot;
+  }
+
   if (pending && isConfirmText(trimmed)) {
     // Pending "sugestão pós-criação de imóvel" (morada/proprietário) —
     // "sim" pede os detalhes; "não" é tratado noutro ramo. Nunca deve
@@ -504,8 +533,19 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
 
   // 2) queries executadas com dados reais
   if (interp.intent === "query_today") {
-    const reply = await queryToday(supabase, userId);
-    return { reply };
+    // Só executa quando a mensagem é claramente uma consulta.
+    // "amanhã" sozinho, ou qualquer resposta curta sem verbo/keyword de
+    // agenda, cai no fallback conversacional em vez de consultar a agenda.
+    if (isExplicitAgendaQuery(trimmed) || /\?/.test(trimmed)) {
+      const reply = await queryToday(supabase, userId);
+      return { reply };
+    }
+    // Sem sinais claros — devolve fallback natural.
+    return {
+      reply: userFirstName
+        ? `Diz-me o que queres, ${userFirstName}.`
+        : "Diz-me o que queres.",
+    };
   }
   if (interp.intent === "query_person") {
     const reply = await queryPerson(supabase, userId, interp.entities.person_name ?? "");
