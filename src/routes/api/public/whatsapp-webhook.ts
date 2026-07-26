@@ -2,6 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "crypto";
 import { normalizePhone } from "@/lib/whatsapp/phone";
 import { sendWhatsAppText } from "@/lib/whatsapp/send.server";
+import {
+  hashLinkCode,
+  WHATSAPP_CODE_MAX_ATTEMPTS,
+  WHATSAPP_CODE_PATTERN,
+} from "@/lib/whatsapp/link.functions";
 
 // Webhook público da Meta WhatsApp Cloud API.
 // Caminho: /api/public/whatsapp-webhook  (bypassa autenticação do site).
@@ -20,6 +25,12 @@ const REPLY_UNASSOCIATED =
   "Olá. Este número ainda não está associado a uma conta do Assessor. Entra no dashboard e confirma o teu número de WhatsApp.";
 const REPLY_NON_TEXT =
   "Recebi a tua mensagem, mas nesta primeira versão só consigo processar texto.";
+const REPLY_LINK_OK =
+  "A tua conta ficou associada ao WhatsApp. Já podes começar a falar com o teu Assessor.";
+const REPLY_LINK_EXPIRED =
+  "Este código expirou. Gera um novo código no dashboard.";
+const REPLY_LINK_INVALID =
+  "Não consegui validar este código. Confirma o código no dashboard e tenta novamente.";
 
 function verifySignature(rawBody: string, header: string | null, appSecret: string): boolean {
   if (!header || !header.startsWith("sha256=")) return false;
@@ -36,18 +47,14 @@ function verifySignature(rawBody: string, header: string | null, appSecret: stri
 }
 
 async function findUserIdByPhone(supabaseAdmin: any, phone: string): Promise<string | null> {
-  // Try exact match first, then suffix match (last 9 digits) to tolerate stored formatting.
-  const { data: exact } = await supabaseAdmin
+  // Only linked accounts get automatic association.
+  const { data } = await supabaseAdmin
     .from("profiles")
-    .select("id, phone");
-  if (!exact) return null;
-  const matches = exact.filter((p: any) => {
-    const n = normalizePhone(p.phone);
-    if (!n) return false;
-    return n === phone || n.endsWith(phone) || phone.endsWith(n);
-  });
-  if (matches.length === 1) return matches[0].id as string;
-  return null;
+    .select("id")
+    .eq("phone", phone)
+    .eq("whatsapp_link_status", "linked")
+    .maybeSingle();
+  return (data as { id?: string } | null)?.id ?? null;
 }
 export const Route = createFileRoute("/api/public/whatsapp-webhook")({
   server: {
@@ -181,8 +188,126 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
     whatsapp_message_id: waMessageId,
   });
 
+  // Attempt link-code validation before generic replies.
+  const codeMatch = body.match(WHATSAPP_CODE_PATTERN);
+  if (codeMatch) {
+    const linkResult = await tryLinkCode(supabaseAdmin, senderPhone, codeMatch[0]);
+    await replyAndStore(supabaseAdmin, senderPhone, linkResult.userId ?? userId, linkResult.reply);
+    return;
+  }
+
   const reply = userId ? REPLY_ASSOCIATED : REPLY_UNASSOCIATED;
   await replyAndStore(supabaseAdmin, senderPhone, userId, reply);
+}
+
+async function tryLinkCode(
+  supabaseAdmin: any,
+  senderPhone: string,
+  rawCode: string,
+): Promise<{ reply: string; userId: string | null }> {
+  const codeHash = hashLinkCode(rawCode);
+  const nowIso = new Date().toISOString();
+
+  // Look up the code by hash (only unused codes have the partial index).
+  const { data: found } = await supabaseAdmin
+    .from("whatsapp_link_codes")
+    .select("id, user_id, phone, expires_at, used_at, attempts")
+    .eq("code_hash", codeHash)
+    .is("used_at", null)
+    .maybeSingle();
+
+  if (found) {
+    const row = found as {
+      id: string;
+      user_id: string;
+      phone: string;
+      expires_at: string;
+      attempts: number;
+    };
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      await supabaseAdmin
+        .from("whatsapp_link_codes")
+        .update({ used_at: nowIso } as never)
+        .eq("id", row.id);
+      return { reply: REPLY_LINK_EXPIRED, userId: null };
+    }
+    if (row.phone !== senderPhone) {
+      // Sender doesn't match the phone the code was issued for.
+      await bumpAttempts(supabaseAdmin, row.id, row.attempts);
+      return { reply: REPLY_LINK_INVALID, userId: null };
+    }
+    // Enforce unique linked phone: safety net in case race conditions.
+    const { data: takenBy } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("phone", senderPhone)
+      .eq("whatsapp_link_status", "linked")
+      .neq("id", row.user_id);
+    if (takenBy && takenBy.length > 0) {
+      await supabaseAdmin
+        .from("whatsapp_link_codes")
+        .update({ used_at: nowIso } as never)
+        .eq("id", row.id);
+      return { reply: REPLY_LINK_INVALID, userId: null };
+    }
+
+    await supabaseAdmin
+      .from("whatsapp_link_codes")
+      .update({ used_at: nowIso } as never)
+      .eq("id", row.id);
+    await supabaseAdmin
+      .from("profiles")
+      .update({
+        phone: senderPhone,
+        whatsapp_link_status: "linked",
+        whatsapp_linked_at: nowIso,
+        phone_verified_at: nowIso,
+      } as never)
+      .eq("id", row.user_id);
+    await supabaseAdmin.from("admin_audit_logs").insert({
+      admin_user_id: row.user_id,
+      action: "whatsapp.linked",
+      target_user_id: row.user_id,
+      resource_type: "whatsapp",
+      metadata: { phone: senderPhone } as never,
+    } as never);
+    return { reply: REPLY_LINK_OK, userId: row.user_id };
+  }
+
+  // Code hash not found among active codes: might be wrong code from this sender.
+  // Bump attempts on this sender's newest active code, if any.
+  const { data: activeForSender } = await supabaseAdmin
+    .from("whatsapp_link_codes")
+    .select("id, attempts, expires_at")
+    .eq("phone", senderPhone)
+    .is("used_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (activeForSender) {
+    const row = activeForSender as { id: string; attempts: number; expires_at: string };
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      await supabaseAdmin
+        .from("whatsapp_link_codes")
+        .update({ used_at: nowIso } as never)
+        .eq("id", row.id);
+      return { reply: REPLY_LINK_EXPIRED, userId: null };
+    }
+    await bumpAttempts(supabaseAdmin, row.id, row.attempts);
+  }
+  return { reply: REPLY_LINK_INVALID, userId: null };
+}
+
+async function bumpAttempts(supabaseAdmin: any, id: string, current: number) {
+  const next = current + 1;
+  const patch: Record<string, unknown> = { attempts: next };
+  if (next >= WHATSAPP_CODE_MAX_ATTEMPTS) {
+    patch.used_at = new Date().toISOString();
+  }
+  await supabaseAdmin
+    .from("whatsapp_link_codes")
+    .update(patch as never)
+    .eq("id", id);
 }
 
 async function replyAndStore(
