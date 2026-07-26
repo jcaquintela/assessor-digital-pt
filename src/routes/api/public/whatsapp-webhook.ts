@@ -188,8 +188,126 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
     whatsapp_message_id: waMessageId,
   });
 
+  // Attempt link-code validation before generic replies.
+  const codeMatch = body.match(WHATSAPP_CODE_PATTERN);
+  if (codeMatch) {
+    const linkResult = await tryLinkCode(supabaseAdmin, senderPhone, codeMatch[0]);
+    await replyAndStore(supabaseAdmin, senderPhone, linkResult.userId ?? userId, linkResult.reply);
+    return;
+  }
+
   const reply = userId ? REPLY_ASSOCIATED : REPLY_UNASSOCIATED;
   await replyAndStore(supabaseAdmin, senderPhone, userId, reply);
+}
+
+async function tryLinkCode(
+  supabaseAdmin: any,
+  senderPhone: string,
+  rawCode: string,
+): Promise<{ reply: string; userId: string | null }> {
+  const codeHash = hashLinkCode(rawCode);
+  const nowIso = new Date().toISOString();
+
+  // Look up the code by hash (only unused codes have the partial index).
+  const { data: found } = await supabaseAdmin
+    .from("whatsapp_link_codes")
+    .select("id, user_id, phone, expires_at, used_at, attempts")
+    .eq("code_hash", codeHash)
+    .is("used_at", null)
+    .maybeSingle();
+
+  if (found) {
+    const row = found as {
+      id: string;
+      user_id: string;
+      phone: string;
+      expires_at: string;
+      attempts: number;
+    };
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      await supabaseAdmin
+        .from("whatsapp_link_codes")
+        .update({ used_at: nowIso } as never)
+        .eq("id", row.id);
+      return { reply: REPLY_LINK_EXPIRED, userId: null };
+    }
+    if (row.phone !== senderPhone) {
+      // Sender doesn't match the phone the code was issued for.
+      await bumpAttempts(supabaseAdmin, row.id, row.attempts);
+      return { reply: REPLY_LINK_INVALID, userId: null };
+    }
+    // Enforce unique linked phone: safety net in case race conditions.
+    const { data: takenBy } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("phone", senderPhone)
+      .eq("whatsapp_link_status", "linked")
+      .neq("id", row.user_id);
+    if (takenBy && takenBy.length > 0) {
+      await supabaseAdmin
+        .from("whatsapp_link_codes")
+        .update({ used_at: nowIso } as never)
+        .eq("id", row.id);
+      return { reply: REPLY_LINK_INVALID, userId: null };
+    }
+
+    await supabaseAdmin
+      .from("whatsapp_link_codes")
+      .update({ used_at: nowIso } as never)
+      .eq("id", row.id);
+    await supabaseAdmin
+      .from("profiles")
+      .update({
+        phone: senderPhone,
+        whatsapp_link_status: "linked",
+        whatsapp_linked_at: nowIso,
+        phone_verified_at: nowIso,
+      } as never)
+      .eq("id", row.user_id);
+    await supabaseAdmin.from("admin_audit_logs").insert({
+      admin_user_id: row.user_id,
+      action: "whatsapp.linked",
+      target_user_id: row.user_id,
+      resource_type: "whatsapp",
+      metadata: { phone: senderPhone } as never,
+    } as never);
+    return { reply: REPLY_LINK_OK, userId: row.user_id };
+  }
+
+  // Code hash not found among active codes: might be wrong code from this sender.
+  // Bump attempts on this sender's newest active code, if any.
+  const { data: activeForSender } = await supabaseAdmin
+    .from("whatsapp_link_codes")
+    .select("id, attempts, expires_at")
+    .eq("phone", senderPhone)
+    .is("used_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (activeForSender) {
+    const row = activeForSender as { id: string; attempts: number; expires_at: string };
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      await supabaseAdmin
+        .from("whatsapp_link_codes")
+        .update({ used_at: nowIso } as never)
+        .eq("id", row.id);
+      return { reply: REPLY_LINK_EXPIRED, userId: null };
+    }
+    await bumpAttempts(supabaseAdmin, row.id, row.attempts);
+  }
+  return { reply: REPLY_LINK_INVALID, userId: null };
+}
+
+async function bumpAttempts(supabaseAdmin: any, id: string, current: number) {
+  const next = current + 1;
+  const patch: Record<string, unknown> = { attempts: next };
+  if (next >= WHATSAPP_CODE_MAX_ATTEMPTS) {
+    patch.used_at = new Date().toISOString();
+  }
+  await supabaseAdmin
+    .from("whatsapp_link_codes")
+    .update(patch as never)
+    .eq("id", id);
 }
 
 async function replyAndStore(
