@@ -75,6 +75,12 @@ const THANKS_RE = /^\s*(obrigad[oa]|obrigadinho|thanks|thank\s*you|valeu|grato|g
 const QUERY_MISC_RE =
   /(diversos|notas?\s+(?:que|deixei|pendentes?)|ideias?\s+(?:que|pendentes?|deixei)|(?:o\s+que\s+)?(?:registei|guardei|escrevi|apontei|deixei)\b.*\b(?:diversos|nota|notas|semana|hoje|ontem|ideias?))/i;
 
+// Consulta explícita da agenda. "amanhã" isolado NÃO é uma consulta.
+// Só disparamos query_today quando existe intenção clara de listar
+// eventos/compromissos.
+const QUERY_AGENDA_RE =
+  /\b(agenda|compromissos?|marca(?:d[oa]s?|ç[õo]es)|hoje\s+(?:tenho|tens|temos)|o\s+que\s+tenho\s+(?:hoje|amanh[ãa])|que\s+(?:tenho|compromissos))\b/i;
+
 // Prefixos de correção do último evento/proposta.
 const CORRECTION_RE =
   /^\s*(n[ãa]o[,.\s]|nao[,.\s]|mas\b|afinal\b|antes\b|corrige\b|corrigir\b|[ée]\s+(às|as|pelas|amanh|hoje|com|na|no|em)|na\s+verdade\b)/i;
@@ -104,6 +110,9 @@ function isThanks(t: string): boolean {
 }
 function isQueryMisc(t: string): boolean {
   return QUERY_MISC_RE.test(t);
+}
+function isExplicitAgendaQuery(t: string): boolean {
+  return QUERY_AGENDA_RE.test(t);
 }
 
 function detectTipoEvento(texto: string): string {
@@ -213,9 +222,21 @@ function buildProposalReply(
   ent: Record<string, any>,
   personName: string | null,
 ): string {
+  const hasDate = !!ent.date && /^\d{4}-\d{2}-\d{2}$/.test(String(ent.date));
+  // Nunca propomos sem data. Se a data é inválida ou está em falta,
+  // pedimos a data em primeiro lugar — o slot-fill vai completar o
+  // registo antes da confirmação final.
+  if (!hasDate) {
+    const alvo = personName
+      ? `de ligar a ${personWithArticle(personName)}`
+      : intent === "create_event"
+        ? "desse compromisso"
+        : (ent.title ? `de "${String(ent.title).trim()}"` : "disso");
+    return `Para quando queres que te lembre ${alvo}?`;
+  }
   if (intent === "create_event") {
     const evento = (ent.event_type as string) || "compromisso";
-    const when = ent.date ? naturalWhen(String(ent.date), (ent.start_time as string) || null) : null;
+    const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
     const feminine = /^(visita|reuni)/i.test(evento);
     const artigo = feminine ? "uma" : "um";
     const partes: string[] = [];
@@ -234,10 +255,15 @@ function buildProposalReply(
     return partes.join(". ");
   }
   if (intent === "create_follow_up") {
-    const title = (ent.title as string) || "essa tarefa";
-    const when = ent.date ? naturalWhen(String(ent.date), (ent.start_time as string) || null) : null;
-    const head = when ? `${capitalize(when)}: ${title}` : title;
-    return `${head}. Registo?`;
+    // Nunca mostrar "essa tarefa". Deriva do que existe.
+    let title = String(ent.title || "").trim();
+    if (!title) {
+      if (personName) title = `ligar a ${personName}`;
+      else if (ent.location) title = `tratar de ${ent.location}`;
+      else title = "essa tarefa";
+    }
+    const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
+    return `${capitalize(when)} queres que te lembre de ${title}?`;
   }
   if (intent === "record_interaction") {
     if (personName) return `Registo esta conversa com ${personWithArticle(personName)}?`;
@@ -323,6 +349,26 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
       input.receivedAt ?? new Date(),
     );
     if (fileFlow) return fileFlow;
+  }
+
+  // 0.slot) Slot-fill determinístico. Se existe pending em
+  // `collecting_information` para create_event/create_follow_up, a próxima
+  // mensagem preenche APENAS o campo em falta (data/hora) e nunca é
+  // enviada à IA — evita que "amanhã" seja interpretado como query_today.
+  if (
+    pending &&
+    pending.status === "collecting_information" &&
+    (pending.intent === "create_event" || pending.intent === "create_follow_up")
+  ) {
+    const slot = await handleSlotFill(
+      supabase,
+      userId,
+      channel,
+      pending,
+      trimmed,
+      input.receivedAt ?? new Date(),
+    );
+    if (slot) return slot;
   }
 
   if (pending && isConfirmText(trimmed)) {
@@ -504,8 +550,19 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
 
   // 2) queries executadas com dados reais
   if (interp.intent === "query_today") {
-    const reply = await queryToday(supabase, userId);
-    return { reply };
+    // Só executa quando a mensagem é claramente uma consulta.
+    // "amanhã" sozinho, ou qualquer resposta curta sem verbo/keyword de
+    // agenda, cai no fallback conversacional em vez de consultar a agenda.
+    if (isExplicitAgendaQuery(trimmed) || /\?/.test(trimmed)) {
+      const reply = await queryToday(supabase, userId);
+      return { reply };
+    }
+    // Sem sinais claros — devolve fallback natural.
+    return {
+      reply: userFirstName
+        ? `Diz-me o que queres, ${userFirstName}.`
+        : "Diz-me o que queres.",
+    };
   }
   if (interp.intent === "query_person") {
     const reply = await queryPerson(supabase, userId, interp.entities.person_name ?? "");
@@ -893,6 +950,65 @@ async function queryPerson(supabase: any, userId: string, name: string): Promise
   return parts.join("\n");
 }
 
+// Slot-fill determinístico para pending em `collecting_information`.
+// Preenche apenas o campo em falta a partir do texto do utilizador; se ficar
+// completo, executa imediatamente. Nunca chama a IA nem consulta a agenda.
+async function handleSlotFill(
+  supabase: any,
+  userId: string,
+  channel: string,
+  pending: PendingActionRow,
+  trimmed: string,
+  now: Date,
+): Promise<EngineOutcome | null> {
+  const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+  const ent = { ...(payload.entities ?? {}) } as Record<string, any>;
+  const asked = pending.current_question || "";
+
+  if (isCancelText(trimmed)) {
+    await markPendingActionStatus(supabase, pending.id, "cancelled");
+    await upsertConversationState(supabase, {
+      userId, channel, pendingActionId: null, activeTopic: null,
+      stateSummary: "utilizador cancelou o pedido pendente",
+    });
+    return { reply: "Ok, não registei nada." };
+  }
+
+  const resolved = resolveDateTimeFromText(trimmed, now);
+  let filled = false;
+  if (asked === "date" || !ent.date) {
+    if (resolved.date) { ent.date = resolved.date; filled = true; }
+    if (resolved.time) { ent.start_time = resolved.time; filled = true; }
+  } else if (asked === "time" || !ent.start_time) {
+    if (resolved.time) { ent.start_time = resolved.time; filled = true; }
+  }
+
+  if (!filled) {
+    // Resposta não interpretável — repete a pergunta sem chamar a IA.
+    const q = pending.pending_question || "Para quando é? (por exemplo: amanhã às 12h)";
+    return { reply: q };
+  }
+
+  const newPayload = { ...payload, entities: ent };
+  // Ainda falta data → volta a pedir.
+  if (!ent.date) {
+    const q = "Para quando é? (por exemplo: amanhã às 12h)";
+    await updatePendingActionPayload(supabase, pending.id, newPayload, {
+      status: "collecting_information",
+      current_question: "date",
+      pending_question: q,
+    });
+    return { reply: q };
+  }
+  // Data preenchida — passa a pending_confirmation e executa de imediato.
+  await updatePendingActionPayload(supabase, pending.id, newPayload, {
+    status: "pending_confirmation",
+    current_question: null,
+  });
+  const reloaded = { ...pending, structured_payload: newPayload, status: "pending_confirmation" as any };
+  return await confirmPendingSafe(supabase, userId, channel, reloaded as PendingActionRow);
+}
+
 async function confirmPendingSafe(
   supabase: any,
   userId: string,
@@ -944,8 +1060,13 @@ async function executePending(
 
   if (intent === "create_event" || intent === "create_follow_up") {
     if (!ent.date) {
-      await markPendingActionStatus(supabase, pending.id, "collecting_information");
-      return { reply: "Falta a data. Para quando é?" };
+      const question = "Para quando é? (por exemplo: amanhã às 12h)";
+      await updatePendingActionPayload(supabase, pending.id, payload, {
+        status: "collecting_information",
+        current_question: "date",
+        pending_question: question,
+      });
+      return { reply: question, messageType: "__ALREADY_PERSISTED__" };
     }
     const tipoDb = intent === "create_event" ? "event" : "task";
     let titulo = String(ent.title || "").trim();

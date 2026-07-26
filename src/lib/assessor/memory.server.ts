@@ -105,6 +105,22 @@ export async function createPendingAction(
     sourceMessageId?: string | null;
   },
 ): Promise<PendingActionRow | null> {
+  // MVP invariant: only one active pending action per (user, channel).
+  // Any older draft is cancelled BEFORE the new one is inserted, so a
+  // confirmation/refusal cannot possibly land on a stale row.
+  await supabase
+    .from("pending_actions")
+    .update({
+      status: "cancelled",
+      error_message: "superseded by new pending action",
+    } as never)
+    .eq("user_id", input.userId)
+    .eq("channel", input.channel)
+    .in("status", [
+      "pending_confirmation",
+      "collecting_information",
+      "correction_pending",
+    ]);
   const { data, error } = await supabase
     .from("pending_actions")
     .insert({

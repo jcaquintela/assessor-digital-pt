@@ -417,6 +417,119 @@ export const listFeatureFlags = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+// Limpeza estrutural do estado conversacional do Assessor.
+// - Cancela pending_actions abertas há mais de `staleMinutes` (default 60).
+// - Limpa conversation_states inconsistentes (pending_action_id órfãos).
+// - Marca seguimentos duplicados (mesmo user/title/due_date/due_time criados
+//   no mesmo minuto) como `cancelled`, mantendo o mais antigo. Nunca apaga.
+// - `assessor_messages` NUNCA é alterada.
+// Se `target_user_id` for omitido, aplica-se a todos os utilizadores.
+export const cleanupAssessorState = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      target_user_id: z.string().uuid().optional(),
+      stale_minutes: z.number().int().min(1).max(24 * 60).default(60),
+    }).parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    assertAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const cutoff = new Date(Date.now() - data.stale_minutes * 60_000).toISOString();
+
+    // 1) Cancelar pending_actions em aberto e antigas.
+    let pendingQ = supabaseAdmin
+      .from("pending_actions")
+      .update({
+        status: "cancelled",
+        error_message: "reset estrutural",
+      } as never)
+      .in("status", [
+        "pending_confirmation",
+        "collecting_information",
+        "correction_pending",
+      ])
+      .lt("updated_at", cutoff)
+      .select("id, user_id");
+    if (data.target_user_id) pendingQ = pendingQ.eq("user_id", data.target_user_id);
+    const { data: cancelled } = await pendingQ;
+    const cancelledCount = (cancelled as any[] | null)?.length ?? 0;
+
+    // 2) Limpar conversation_states com pending_action_id órfãos.
+    let stateQ = supabaseAdmin
+      .from("conversation_states")
+      .select("id, user_id, pending_action_id");
+    if (data.target_user_id) stateQ = stateQ.eq("user_id", data.target_user_id);
+    const { data: states } = await stateQ;
+    let statesCleaned = 0;
+    for (const s of ((states as any[]) ?? [])) {
+      if (!s.pending_action_id) continue;
+      const { data: pa } = await supabaseAdmin
+        .from("pending_actions")
+        .select("status")
+        .eq("id", s.pending_action_id)
+        .maybeSingle();
+      const status = (pa as any)?.status;
+      const active = status === "pending_confirmation" || status === "collecting_information" || status === "correction_pending";
+      if (!active) {
+        await supabaseAdmin
+          .from("conversation_states")
+          .update({ pending_action_id: null, active_topic: null } as never)
+          .eq("id", s.id);
+        statesCleaned++;
+      }
+    }
+
+    // 3) Deduplicar follow_ups (mesmo user/title/due_date/due_time no mesmo minuto).
+    let fuQ = supabaseAdmin
+      .from("follow_ups")
+      .select("id, user_id, title, due_date, due_time, created_at, status, notes")
+      .neq("status", "Cancelado")
+      .order("created_at", { ascending: true });
+    if (data.target_user_id) fuQ = fuQ.eq("user_id", data.target_user_id);
+    const { data: fus } = await fuQ;
+    const groups = new Map<string, any[]>();
+    for (const r of ((fus as any[]) ?? [])) {
+      const minute = String(r.created_at ?? "").slice(0, 16);
+      const key = `${r.user_id}|${(r.title || "").trim().toLowerCase()}|${r.due_date}|${r.due_time || ""}|${minute}`;
+      const arr = groups.get(key) ?? [];
+      arr.push(r);
+      groups.set(key, arr);
+    }
+    let dupsCancelled = 0;
+    for (const arr of groups.values()) {
+      if (arr.length <= 1) continue;
+      for (const dup of arr.slice(1)) {
+        const notes = `${dup.notes ? dup.notes + "\n" : ""}[reset estrutural] duplicado de ${arr[0].id}`;
+        await supabaseAdmin
+          .from("follow_ups")
+          .update({ status: "Cancelado", notes } as never)
+          .eq("id", dup.id);
+        dupsCancelled++;
+      }
+    }
+
+    await audit(context.userId, "assessor.cleanup_state", {
+      target_user_id: data.target_user_id ?? null,
+      metadata: {
+        stale_minutes: data.stale_minutes,
+        pending_cancelled: cancelledCount,
+        states_cleaned: statesCleaned,
+        follow_ups_dedup: dupsCancelled,
+      },
+    });
+
+    return {
+      ok: true,
+      report: {
+        pending_cancelled: cancelledCount,
+        conversation_states_cleaned: statesCleaned,
+        follow_ups_deduplicated: dupsCancelled,
+        assessor_messages_touched: 0,
+      },
+    };
+  });
+
 export const upsertFeatureFlag = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
