@@ -2,6 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "crypto";
 import { normalizePhone } from "@/lib/whatsapp/phone";
 import { sendWhatsAppText } from "@/lib/whatsapp/send.server";
+import {
+  hashLinkCode,
+  WHATSAPP_CODE_MAX_ATTEMPTS,
+  WHATSAPP_CODE_PATTERN,
+} from "@/lib/whatsapp/link.functions";
 
 // Webhook público da Meta WhatsApp Cloud API.
 // Caminho: /api/public/whatsapp-webhook  (bypassa autenticação do site).
@@ -20,6 +25,12 @@ const REPLY_UNASSOCIATED =
   "Olá. Este número ainda não está associado a uma conta do Assessor. Entra no dashboard e confirma o teu número de WhatsApp.";
 const REPLY_NON_TEXT =
   "Recebi a tua mensagem, mas nesta primeira versão só consigo processar texto.";
+const REPLY_LINK_OK =
+  "A tua conta ficou associada ao WhatsApp. Já podes começar a falar com o teu Assessor.";
+const REPLY_LINK_EXPIRED =
+  "Este código expirou. Gera um novo código no dashboard.";
+const REPLY_LINK_INVALID =
+  "Não consegui validar este código. Confirma o código no dashboard e tenta novamente.";
 
 function verifySignature(rawBody: string, header: string | null, appSecret: string): boolean {
   if (!header || !header.startsWith("sha256=")) return false;
@@ -36,18 +47,14 @@ function verifySignature(rawBody: string, header: string | null, appSecret: stri
 }
 
 async function findUserIdByPhone(supabaseAdmin: any, phone: string): Promise<string | null> {
-  // Try exact match first, then suffix match (last 9 digits) to tolerate stored formatting.
-  const { data: exact } = await supabaseAdmin
+  // Only linked accounts get automatic association.
+  const { data } = await supabaseAdmin
     .from("profiles")
-    .select("id, phone");
-  if (!exact) return null;
-  const matches = exact.filter((p: any) => {
-    const n = normalizePhone(p.phone);
-    if (!n) return false;
-    return n === phone || n.endsWith(phone) || phone.endsWith(n);
-  });
-  if (matches.length === 1) return matches[0].id as string;
-  return null;
+    .select("id")
+    .eq("phone", phone)
+    .eq("whatsapp_link_status", "linked")
+    .maybeSingle();
+  return (data as { id?: string } | null)?.id ?? null;
 }
 export const Route = createFileRoute("/api/public/whatsapp-webhook")({
   server: {
