@@ -147,8 +147,8 @@ function looksLikeLocation(candidate: string, text: string): boolean {
   const first = (candidate.split(/\s+/)[0] || "").toLowerCase();
   if (!first) return true;
   if (CITY_HINTS.includes(first)) return true;
-  const re = new RegExp(`\\bem\\s+${first.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\b`, "i");
-  return re.test(text);
+  const safe = first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\bem\\s+${safe}\\b`, "i").test(text);
 }
 
 // Título explícito escolhido pelo consultor. Preserva-se tal como escrito.
