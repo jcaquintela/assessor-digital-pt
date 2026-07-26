@@ -110,7 +110,9 @@ function detectTipoEvento(texto: string): string {
 }
 
 function formatWhen(iso: string, hora?: string | null): string {
+  if (!iso) return hora ? `às ${hora}` : "";
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return hora ? `às ${hora}` : "";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -148,7 +150,10 @@ function naturalHour(hhmm: string): string {
 }
 
 function naturalWhen(date: string, time?: string | null): string {
+  if (!date) return time ? `às ${naturalHour(time)}` : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return time ? `às ${naturalHour(time)}` : "";
   const d = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return time ? `às ${naturalHour(time)}` : "";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
