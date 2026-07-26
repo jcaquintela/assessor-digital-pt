@@ -109,6 +109,9 @@ interface AppStore {
   addPessoa: (p: Omit<Pessoa, "id">) => Promise<Pessoa | null>;
   updatePessoa: (id: string, patch: Partial<Omit<Pessoa, "id">>) => Promise<void>;
   deletePessoa: (id: string) => Promise<void>;
+  addOportunidade: (o: Omit<Oportunidade, "id">) => Promise<Oportunidade | null>;
+  updateOportunidade: (id: string, patch: Partial<Omit<Oportunidade, "id">>) => Promise<void>;
+  deleteOportunidade: (id: string) => Promise<void>;
   refresh: () => void;
 }
 
@@ -384,6 +387,47 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("people");
   }, [qc]);
 
+  const addOportunidade = useCallback(async (o: Omit<Oportunidade, "id">) => {
+    const uid = await currentUserId();
+    const { data, error } = await supabase.from("opportunities").insert({
+      user_id: uid,
+      person_id: o.pessoaId || null,
+      property_id: o.imovelId || null,
+      type: o.tipo,
+      status: o.estado,
+      value: o.valor,
+      probability: o.probabilidade,
+      next_action: o.proximaAcao ?? null,
+      next_action_date: o.proximaAcaoData ?? null,
+      notes: o.notas ?? null,
+    }).select("*").single();
+    if (error) throw error;
+    invalidate("opportunities");
+    return data ? toOportunidade(data) : null;
+  }, [qc]);
+
+  const updateOportunidade = useCallback(async (id: string, patch: Partial<Omit<Oportunidade, "id">>) => {
+    const p: Record<string, unknown> = {};
+    if (patch.pessoaId !== undefined) p.person_id = patch.pessoaId || null;
+    if (patch.imovelId !== undefined) p.property_id = patch.imovelId || null;
+    if (patch.tipo !== undefined) p.type = patch.tipo;
+    if (patch.estado !== undefined) p.status = patch.estado;
+    if (patch.valor !== undefined) p.value = patch.valor;
+    if (patch.probabilidade !== undefined) p.probability = patch.probabilidade;
+    if (patch.proximaAcao !== undefined) p.next_action = patch.proximaAcao || null;
+    if (patch.proximaAcaoData !== undefined) p.next_action_date = patch.proximaAcaoData || null;
+    if (patch.notas !== undefined) p.notes = patch.notas || null;
+    const { error } = await supabase.from("opportunities").update(p as never).eq("id", id);
+    if (error) throw error;
+    invalidate("opportunities");
+  }, [qc]);
+
+  const deleteOportunidade = useCallback(async (id: string) => {
+    const { error } = await supabase.from("opportunities").delete().eq("id", id);
+    if (error) throw error;
+    invalidate("opportunities");
+  }, [qc]);
+
   const refresh = useCallback(() => {
     ["people", "opportunities", "properties", "follow_ups", "financial_movements"].forEach(invalidate);
   }, [qc]);
@@ -419,9 +463,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       addPessoa,
       updatePessoa,
       deletePessoa,
+      addOportunidade,
+      updateOportunidade,
+      deleteOportunidade,
       refresh,
     };
-  }, [people.data, opps.data, props.data, followups.data, movements.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, addSeguimento, addSeguimentoReturning, concluirSeguimento, reagendarSeguimento, atualizarSeguimento, eliminarSeguimento, addDespesa, addDespesaReturning, atualizarMovimento, eliminarMovimento, addComissao, addComissaoReturning, addEntrada, addInteracao, addPessoa, updatePessoa, deletePessoa, refresh]);
+  }, [people.data, opps.data, props.data, followups.data, movements.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, addSeguimento, addSeguimentoReturning, concluirSeguimento, reagendarSeguimento, atualizarSeguimento, eliminarSeguimento, addDespesa, addDespesaReturning, atualizarMovimento, eliminarMovimento, addComissao, addComissaoReturning, addEntrada, addInteracao, addPessoa, updatePessoa, deletePessoa, addOportunidade, updateOportunidade, deleteOportunidade, refresh]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
