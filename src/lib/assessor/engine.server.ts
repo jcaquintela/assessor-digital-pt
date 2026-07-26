@@ -1494,12 +1494,20 @@ async function executePendingProperty(
       return { reply: "Não consegui associar o proprietário." };
     }
     try {
-      await updatePropertyPatch(supabase, userId, propertyId, { owner_person_id: personId });
+      const patch: Record<string, unknown> = { owner_person_id: personId };
+      const extraPatch = (payload.patch ?? {}) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(extraPatch)) if (v != null && v !== "") patch[k] = v;
+      await updatePropertyPatch(supabase, userId, propertyId, patch);
       await markPendingActionStatus(supabase, pending.id, "executed", {
         created_resource_type: "property",
         created_resource_id: propertyId,
       });
-      return { reply: "Feito. Associei o proprietário." };
+      const ownerName = (payload.owner_name as string) || "o proprietário";
+      const addr = (payload.patch?.address as string) || null;
+      const bits: string[] = [];
+      if (addr) bits.push(`atualizei a morada para "${addr}"`);
+      bits.push(`associei ${ownerName} como proprietário`);
+      return { reply: `Feito. ${bits.join(" e ")}.` };
     } catch {
       await markPendingActionStatus(supabase, pending.id, "failed");
       return { reply: "Não consegui associar o proprietário." };
