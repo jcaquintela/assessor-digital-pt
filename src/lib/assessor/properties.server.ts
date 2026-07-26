@@ -125,6 +125,12 @@ export function extractExplicitTitle(text: string): string | null {
     /\b(?:chama[- ]se|com\s+nome|nome|im[óo]vel|apartamento|moradia)\s+["'“”‘’]([^"'“”‘’\n]{2,80})["'“”‘’]/i,
   );
   if (m) return normalizeExplicitTitle(m[1]);
+  // "o nome é X" / "o nome do imóvel é X"
+  m = text.match(/\bo\s+nome(?:\s+do\s+im[óo]vel)?\s+(?:[ée]|passa\s+a\s+ser)\s+([^\n.,;:!?]{2,80})/i);
+  if (m) return normalizeExplicitTitle(m[1]);
+  // "cria Moradia X" / "regista Apartamento X"
+  m = text.match(/\b(?:cria|regista|guarda|adiciona)\s+((?:moradia|apartamento|t[0-6](?:\+\d)?|v[0-6]|terreno|loja|escrit[óo]rio|armaz[ée]m)\s+[A-Za-zÀ-ÿ0-9'’\-]+(?:\s+[A-Za-zÀ-ÿ0-9'’\-]+){0,5})/i);
+  if (m) return normalizeExplicitTitle(m[1]);
   // "Imóvel T2 Oliveira Douro" — tipologia + palavras seguintes até pontuação.
   m = text.match(
     /\bim[óo]vel\s+((?:[TV][0-6](?:\+\d)?)(?:\s+[A-Za-zÀ-ÿ0-9'’\-]+){0,6})(?=[.,;:!?\n]|$)/i,
@@ -140,6 +146,13 @@ export function extractExplicitTitle(text: string): string | null {
   // "chama-se X" (sem aspas)
   m = text.match(/\bchama[- ]se\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ0-9][^\n.,;:!?]{2,80})/);
   if (m) return normalizeExplicitTitle(m[1]);
+  // Resposta breve começada por tipo+nome próprio, ex.: "Moradia Boavista",
+  // "Apartamento Ribeira", "T2 Oliveira Douro". Aceite quando o texto inteiro
+  // é curto e não contém verbos claros.
+  const bare = text.trim();
+  if (bare.length <= 60 && /^(moradia|apartamento|terreno|loja|escrit[óo]rio|armaz[ée]m|t[0-6](?:\+\d)?|v[0-6])\s+[A-Za-zÀ-ÿ0-9'’\-]+(?:\s+[A-Za-zÀ-ÿ0-9'’\-]+){0,4}[.!?]?$/i.test(bare)) {
+    return normalizeExplicitTitle(bare.replace(/[.!?]+$/, ""));
+  }
   return null;
 }
 
