@@ -4,6 +4,7 @@ import {
   CalendarDays,
   FileText,
   Home,
+  Inbox,
   ListChecks,
   MessageSquare,
   MoreHorizontal,
@@ -26,6 +27,7 @@ const desktopNav = [
   { to: "/seguimentos", label: "Seguimentos", icon: ListChecks },
   { to: "/calendario", label: "Calendário", icon: CalendarDays },
   { to: "/documentos", label: "Documentos", icon: FileText },
+  { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/negocio", label: "O Meu Negócio", icon: Wallet },
   { to: "/definicoes", label: "Definições", icon: Settings },
 ] as const;
