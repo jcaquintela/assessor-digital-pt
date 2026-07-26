@@ -981,6 +981,7 @@ async function executePending(
         priority: "Média",
         status: "Pendente",
         notes: notasFinais,
+        related_property_id: (payload.target_property_id as string) || null,
       } as never)
       .select("id")
       .single();
