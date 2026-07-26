@@ -372,6 +372,7 @@ export type Database = {
           opportunity_id: string | null
           person_id: string | null
           priority: string
+          related_file_id: string | null
           status: string
           title: string
           type: string
@@ -387,6 +388,7 @@ export type Database = {
           opportunity_id?: string | null
           person_id?: string | null
           priority?: string
+          related_file_id?: string | null
           status?: string
           title: string
           type?: string
@@ -402,6 +404,7 @@ export type Database = {
           opportunity_id?: string | null
           person_id?: string | null
           priority?: string
+          related_file_id?: string | null
           status?: string
           title?: string
           type?: string
@@ -421,6 +424,13 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_ups_related_file_id_fkey"
+            columns: ["related_file_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_files"
             referencedColumns: ["id"]
           },
         ]
@@ -628,6 +638,7 @@ export type Database = {
           created_at: string
           created_resource_id: string | null
           created_resource_type: string | null
+          current_question: string | null
           error_message: string | null
           expires_at: string
           id: string
@@ -647,6 +658,7 @@ export type Database = {
           created_at?: string
           created_resource_id?: string | null
           created_resource_type?: string | null
+          current_question?: string | null
           error_message?: string | null
           expires_at?: string
           id?: string
@@ -666,6 +678,7 @@ export type Database = {
           created_at?: string
           created_resource_id?: string | null
           created_resource_type?: string | null
+          current_question?: string | null
           error_message?: string | null
           expires_at?: string
           id?: string
@@ -837,6 +850,7 @@ export type Database = {
           source_message_id: string | null
           storage_path: string
           updated_at: string
+          user_description: string | null
           user_id: string | null
         }
         Insert: {
@@ -860,6 +874,7 @@ export type Database = {
           source_message_id?: string | null
           storage_path: string
           updated_at?: string
+          user_description?: string | null
           user_id?: string | null
         }
         Update: {
@@ -883,6 +898,7 @@ export type Database = {
           source_message_id?: string | null
           storage_path?: string
           updated_at?: string
+          user_description?: string | null
           user_id?: string | null
         }
         Relationships: [

@@ -8,7 +8,7 @@ export const listUploadedFiles = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("uploaded_files")
       .select(
-        "id, channel, original_file_name, mime_type, size_bytes, processing_status, classification, error_code, error_message, related_resource_type, related_resource_id, storage_path, created_at",
+        "id, channel, original_file_name, mime_type, size_bytes, processing_status, classification, user_description, error_code, error_message, related_resource_type, related_resource_id, storage_path, created_at",
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false })

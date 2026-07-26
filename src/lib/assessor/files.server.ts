@@ -235,7 +235,42 @@ export async function processIncomingFile(
 
   const fileId = (fileRow as { id: string }).id;
   const label = friendlyLabel(classification);
-  const reply = `Recebi ${label === "imagem" || label === "mensagem de voz" ? "a" : "o"} ${label} e guardei em Diversos → Ficheiros. Ainda não consigo classificar automaticamente — podes dizer-me a que se refere?`;
+  const article = label === "imagem" || label === "mensagem de voz" ? "a" : "o";
+  const reply = `Recebi ${article} ${label}. A que se refere?`;
+
+  // Regista uma ação pendente de classificação para conduzir a conversa
+  // progressiva (descrição → confirmação de lembrete → data/hora).
+  // Áudio segue o motor via transcrição — não precisa de classificação.
+  try {
+    if (classification !== "audio") {
+    const { findActivePendingAction, markPendingActionStatus, createPendingAction } =
+      await import("./memory.server");
+    const prev = await findActivePendingAction(supabase, userId, channel);
+    if (prev) await markPendingActionStatus(supabase, prev.id, "cancelled");
+    await createPendingAction(supabase, {
+      userId,
+      channel,
+      intent: "classify_file",
+      originalContent: `[${classification}] ${originalName}`,
+      payload: {
+        file_id: fileId,
+        file_label: label,
+        file_article: article,
+        classification,
+        original_file_name: originalName,
+        mime_type: mimeType,
+      },
+      pendingQuestion: reply,
+      currentQuestion: "file_description",
+      sourceMessageId: sourceMessageId ?? null,
+    });
+    }
+  } catch (err) {
+    console.error(
+      "[files] createPendingAction error:",
+      err instanceof Error ? err.message : err,
+    );
+  }
 
   return {
     ok: true,
