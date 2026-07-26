@@ -49,6 +49,7 @@ import { Route as AuthenticatedInteracoesIdRouteImport } from './routes/_authent
 import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authenticated/imoveis.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedNegocioDespesasIdRouteImport } from './routes/_authenticated/negocio.despesas.$id'
+import { Route as AuthenticatedNegocioComissoesIdRouteImport } from './routes/_authenticated/negocio.comissoes.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -260,6 +261,12 @@ const AuthenticatedNegocioDespesasIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedNegocioDespesasRoute,
   } as any)
+const AuthenticatedNegocioComissoesIdRoute =
+  AuthenticatedNegocioComissoesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedNegocioComissoesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -295,11 +302,12 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/interacoes/$id': typeof AuthenticatedInteracoesIdRoute
-  '/negocio/comissoes': typeof AuthenticatedNegocioComissoesRoute
+  '/negocio/comissoes': typeof AuthenticatedNegocioComissoesRouteWithChildren
   '/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
 }
 export interface FileRoutesByTo {
@@ -335,11 +343,12 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/interacoes/$id': typeof AuthenticatedInteracoesIdRoute
-  '/negocio/comissoes': typeof AuthenticatedNegocioComissoesRoute
+  '/negocio/comissoes': typeof AuthenticatedNegocioComissoesRouteWithChildren
   '/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
 }
 export interface FileRoutesById {
@@ -378,11 +387,12 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/_authenticated/interacoes/$id': typeof AuthenticatedInteracoesIdRoute
-  '/_authenticated/negocio/comissoes': typeof AuthenticatedNegocioComissoesRoute
+  '/_authenticated/negocio/comissoes': typeof AuthenticatedNegocioComissoesRouteWithChildren
   '/_authenticated/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/_authenticated/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
   '/_authenticated/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/_authenticated/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/_authenticated/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
 }
 export interface FileRouteTypes {
@@ -426,6 +436,7 @@ export interface FileRouteTypes {
     | '/oportunidades/$id'
     | '/pessoas/$id'
     | '/api/public/whatsapp-webhook'
+    | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -466,6 +477,7 @@ export interface FileRouteTypes {
     | '/oportunidades/$id'
     | '/pessoas/$id'
     | '/api/public/whatsapp-webhook'
+    | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
   id:
     | '__root__'
@@ -508,6 +520,7 @@ export interface FileRouteTypes {
     | '/_authenticated/oportunidades/$id'
     | '/_authenticated/pessoas/$id'
     | '/api/public/whatsapp-webhook'
+    | '/_authenticated/negocio/comissoes/$id'
     | '/_authenticated/negocio/despesas/$id'
   fileRoutesById: FileRoutesById
 }
@@ -806,6 +819,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNegocioDespesasIdRouteImport
       parentRoute: typeof AuthenticatedNegocioDespesasRoute
     }
+    '/_authenticated/negocio/comissoes/$id': {
+      id: '/_authenticated/negocio/comissoes/$id'
+      path: '/$id'
+      fullPath: '/negocio/comissoes/$id'
+      preLoaderRoute: typeof AuthenticatedNegocioComissoesIdRouteImport
+      parentRoute: typeof AuthenticatedNegocioComissoesRoute
+    }
   }
 }
 
@@ -834,6 +854,20 @@ const AuthenticatedInteracoesRouteWithChildren =
     AuthenticatedInteracoesRouteChildren,
   )
 
+interface AuthenticatedNegocioComissoesRouteChildren {
+  AuthenticatedNegocioComissoesIdRoute: typeof AuthenticatedNegocioComissoesIdRoute
+}
+
+const AuthenticatedNegocioComissoesRouteChildren: AuthenticatedNegocioComissoesRouteChildren =
+  {
+    AuthenticatedNegocioComissoesIdRoute: AuthenticatedNegocioComissoesIdRoute,
+  }
+
+const AuthenticatedNegocioComissoesRouteWithChildren =
+  AuthenticatedNegocioComissoesRoute._addFileChildren(
+    AuthenticatedNegocioComissoesRouteChildren,
+  )
+
 interface AuthenticatedNegocioDespesasRouteChildren {
   AuthenticatedNegocioDespesasIdRoute: typeof AuthenticatedNegocioDespesasIdRoute
 }
@@ -849,12 +883,13 @@ const AuthenticatedNegocioDespesasRouteWithChildren =
   )
 
 interface AuthenticatedNegocioRouteChildren {
-  AuthenticatedNegocioComissoesRoute: typeof AuthenticatedNegocioComissoesRoute
+  AuthenticatedNegocioComissoesRoute: typeof AuthenticatedNegocioComissoesRouteWithChildren
   AuthenticatedNegocioDespesasRoute: typeof AuthenticatedNegocioDespesasRouteWithChildren
 }
 
 const AuthenticatedNegocioRouteChildren: AuthenticatedNegocioRouteChildren = {
-  AuthenticatedNegocioComissoesRoute: AuthenticatedNegocioComissoesRoute,
+  AuthenticatedNegocioComissoesRoute:
+    AuthenticatedNegocioComissoesRouteWithChildren,
   AuthenticatedNegocioDespesasRoute:
     AuthenticatedNegocioDespesasRouteWithChildren,
 }
