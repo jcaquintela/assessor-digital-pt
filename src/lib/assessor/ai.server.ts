@@ -11,7 +11,11 @@ export interface AiEntities {
   event_type: string | null;
   title: string | null;
   person_name: string | null;
+  person_title: string | null;
   property_reference: string | null;
+  property_type: string | null;
+  property_value: number | null;
+  location: string | null;
   date: string | null; // YYYY-MM-DD
   start_time: string | null; // HH:mm
   duration_minutes: number | null;
@@ -121,7 +125,11 @@ const SCHEMA = {
         "event_type",
         "title",
         "person_name",
+        "person_title",
         "property_reference",
+        "property_type",
+        "property_value",
+        "location",
         "date",
         "start_time",
         "duration_minutes",
@@ -132,7 +140,11 @@ const SCHEMA = {
         event_type: { type: ["string", "null"] },
         title: { type: ["string", "null"] },
         person_name: { type: ["string", "null"] },
+        person_title: { type: ["string", "null"] },
         property_reference: { type: ["string", "null"] },
+        property_type: { type: ["string", "null"] },
+        property_value: { type: ["number", "null"] },
+        location: { type: ["string", "null"] },
         date: { type: ["string", "null"] },
         start_time: { type: ["string", "null"] },
         duration_minutes: { type: ["integer", "null"] },
