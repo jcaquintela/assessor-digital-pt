@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CalendarClock, CheckCircle2, Clock, Sparkles } from "lucide-react";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/hoje")({
   head: () => ({
@@ -25,6 +27,7 @@ function isSameDay(a: Date, b: Date) {
 
 function HojePage() {
   const { seguimentos, oportunidades, pessoas, concluirSeguimento } = useStore();
+  const { name: assessorName } = useAssessorName();
   const now = new Date();
 
   const eventosHoje = seguimentos.filter(
@@ -46,9 +49,17 @@ function HojePage() {
   return (
     <AppShell>
       <PageHeader
-        title="Bom dia, Consultor"
+        title={assessorName === "Assessor" ? "Bom dia, Consultor" : `Olá. Sou ${assessorName}.`}
         subtitle={new Intl.DateTimeFormat("pt-PT", { weekday: "long", day: "2-digit", month: "long" }).format(now)}
       />
+      {assessorName === "Assessor" && (
+        <Card className="mb-4 border-dashed">
+          <CardContent className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+            <span>Como queres chamar o teu Assessor?</span>
+            <Button asChild size="sm" variant="outline"><Link to="/definicoes">Escolher nome</Link></Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-6 border-primary/20 bg-primary/5">
         <CardHeader className="pb-2">

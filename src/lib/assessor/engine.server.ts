@@ -5,6 +5,7 @@
 // reais após confirmação explícita do utilizador.
 
 import { callAssessorAi, type AiInterpretation, type AiContextMessage } from "./ai.server";
+import { sanitizeAssessorName, stripAssessorVocative, ASSESSOR_NAME_DEFAULT } from "./assessor-name";
 
 export interface EngineInput {
   supabase: any; // service-role client (admin)
@@ -94,8 +95,8 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
 
   if (!userId) return { reply: REPLY_UNASSOCIATED };
 
-  const trimmed = content.trim();
-  if (!trimmed) return { reply: REPLY_FALLBACK };
+  const trimmedRaw = content.trim();
+  if (!trimmedRaw) return { reply: REPLY_FALLBACK };
 
   // Contexto: perfil, últimas mensagens, rascunho pendente
   const [{ data: prof }, recent, draft] = await Promise.all([
@@ -113,6 +114,11 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
       .limit(6),
     findLatestDraft(supabase, userId, channel),
   ]);
+
+  const assessorNameRaw = (prof as any)?.assessor_name;
+  const assessorName = sanitizeAssessorName(assessorNameRaw ?? "") || ASSESSOR_NAME_DEFAULT;
+  // Remove o nome do Assessor quando usado como vocativo, para não poluir a interpretação.
+  const trimmed = stripAssessorVocative(trimmedRaw, assessorName);
 
   const recentMsgs: AiContextMessage[] = ((recent?.data ?? []) as any[])
     .reverse()
@@ -132,7 +138,7 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     timezone: "Europe/Lisbon",
     locale: "pt-PT",
     userName: (prof as any)?.name ?? null,
-    assessorName: (prof as any)?.assessor_name ?? "Assessor",
+    assessorName,
     recent: recentMsgs,
     pendingAction,
   });
