@@ -397,6 +397,85 @@ export type Database = {
           },
         ]
       }
+      miscellaneous_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          occurred_at: string
+          original_content: string | null
+          related_opportunity_id: string | null
+          related_person_id: string | null
+          related_property_id: string | null
+          source_channel: string
+          source_message_id: string | null
+          status: string
+          summary: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          original_content?: string | null
+          related_opportunity_id?: string | null
+          related_person_id?: string | null
+          related_property_id?: string | null
+          source_channel?: string
+          source_message_id?: string | null
+          status?: string
+          summary?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          original_content?: string | null
+          related_opportunity_id?: string | null
+          related_person_id?: string | null
+          related_property_id?: string | null
+          source_channel?: string
+          source_message_id?: string | null
+          status?: string
+          summary?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "miscellaneous_items_related_opportunity_id_fkey"
+            columns: ["related_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miscellaneous_items_related_person_id_fkey"
+            columns: ["related_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miscellaneous_items_related_property_id_fkey"
+            columns: ["related_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           created_at: string
