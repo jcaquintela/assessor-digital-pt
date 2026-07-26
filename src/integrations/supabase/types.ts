@@ -161,6 +161,68 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_states: {
+        Row: {
+          active_topic: string | null
+          channel: string
+          created_at: string
+          expires_at: string | null
+          external_conversation_id: string
+          id: string
+          last_created_resource_id: string | null
+          last_created_resource_type: string | null
+          last_entity_id: string | null
+          last_entity_type: string | null
+          last_intent: string | null
+          pending_action_id: string | null
+          state_summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_topic?: string | null
+          channel: string
+          created_at?: string
+          expires_at?: string | null
+          external_conversation_id?: string
+          id?: string
+          last_created_resource_id?: string | null
+          last_created_resource_type?: string | null
+          last_entity_id?: string | null
+          last_entity_type?: string | null
+          last_intent?: string | null
+          pending_action_id?: string | null
+          state_summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_topic?: string | null
+          channel?: string
+          created_at?: string
+          expires_at?: string | null
+          external_conversation_id?: string
+          id?: string
+          last_created_resource_id?: string | null
+          last_created_resource_type?: string | null
+          last_entity_id?: string | null
+          last_entity_type?: string | null
+          last_intent?: string | null
+          pending_action_id?: string | null
+          state_summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_states_pending_action_id_fkey"
+            columns: ["pending_action_id"]
+            isOneToOne: false
+            referencedRelation: "pending_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flag_users: {
         Row: {
           flag_key: string
@@ -538,6 +600,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pending_actions: {
+        Row: {
+          channel: string
+          confidence: number | null
+          created_at: string
+          created_resource_id: string | null
+          created_resource_type: string | null
+          error_message: string | null
+          expires_at: string
+          id: string
+          intent: string
+          missing_fields: string[]
+          original_content: string
+          pending_question: string | null
+          source_message_id: string | null
+          status: string
+          structured_payload: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          confidence?: number | null
+          created_at?: string
+          created_resource_id?: string | null
+          created_resource_type?: string | null
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          intent: string
+          missing_fields?: string[]
+          original_content: string
+          pending_question?: string | null
+          source_message_id?: string | null
+          status?: string
+          structured_payload?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          confidence?: number | null
+          created_at?: string
+          created_resource_id?: string | null
+          created_resource_type?: string | null
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          intent?: string
+          missing_fields?: string[]
+          original_content?: string
+          pending_question?: string | null
+          source_message_id?: string | null
+          status?: string
+          structured_payload?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       people: {
         Row: {
