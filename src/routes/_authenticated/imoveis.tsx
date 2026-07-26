@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatEUR } from "@/lib/demo-data";
 import { listProperties } from "@/lib/assessor/properties.functions";
-import { ChevronRight } from "lucide-react";
+import { propertyStatusLabel } from "@/lib/assessor/properties.server";
+import { ChevronRight, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/imoveis")({
   head: () => ({
@@ -55,7 +56,12 @@ function ImoveisPage() {
                         {i.asking_price != null && (
                           <div className="text-sm font-semibold">{formatEUR(Number(i.asking_price))}</div>
                         )}
-                        <Badge variant="outline" className="mt-1">{i.status}</Badge>
+                        <Badge variant="outline" className="mt-1">{propertyStatusLabel(i.status)}</Badge>
+                        {i.file_count > 0 && (
+                          <div className="mt-1 flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                            <FileText className="h-3 w-3" /> {i.file_count}
+                          </div>
+                        )}
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
