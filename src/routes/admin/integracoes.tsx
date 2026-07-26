@@ -42,6 +42,14 @@ function WhatsAppStatusCard() {
           <div className="text-destructive">Erro a carregar estado.</div>
         ) : data ? (
           <dl className="grid grid-cols-2 gap-y-2">
+            <dt className="text-muted-foreground">Contas ligadas</dt>
+            <dd>{data.linkedAccounts ?? 0}</dd>
+            <dt className="text-muted-foreground">Contas pendentes</dt>
+            <dd>{data.pendingAccounts ?? 0}</dd>
+            <dt className="text-muted-foreground">Falhas de associação</dt>
+            <dd>{data.linkFailures ?? 0}</dd>
+            <dt className="text-muted-foreground">Últimas associações</dt>
+            <dd>{(data.recentLinkedAt ?? []).length ? (data.recentLinkedAt as string[]).map(fmt).join(" · ") : "—"}</dd>
             <dt className="text-muted-foreground">Última recebida</dt>
             <dd>{fmt(data.lastInboundAt)}{data.lastInboundAt ? ` · ${data.lastInboundAssociated ? "associado" : "não associado"}` : ""}</dd>
             <dt className="text-muted-foreground">Última resposta</dt>
