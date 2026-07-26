@@ -1212,17 +1212,19 @@ async function handleActivePropertyEnrichment(
   // Proprietário — precisa de confirmação e resolução de pessoa.
   if (fields.owner_name) {
     const candidates = await findPeopleByName(supabase, userId, fields.owner_name);
+    const addressBit = fields.address ? ` e atualizo a morada para "${fields.address}"` : "";
     let reply: string;
     let payload: Record<string, any> = {
       target_property_id: propertyId,
       owner_name: fields.owner_name,
       candidates,
+      patch: fields.address ? { address: fields.address } : {},
     };
     if (candidates.length === 1) {
       payload.person_id = candidates[0].id;
-      reply = `Encontrei ${candidates[0].name}. Associo-o como proprietário?`;
+      reply = `Encontrei ${candidates[0].name}. Associo como proprietário${addressBit}?`;
     } else if (candidates.length === 0) {
-      reply = `Não tenho ${fields.owner_name} nos teus contactos. Queres que crie o contacto e associe como proprietário?`;
+      reply = `Não tenho ${fields.owner_name} nos teus contactos. Queres que crie o contacto e associe como proprietário${addressBit}?`;
       payload.create_person = true;
     } else {
       reply = `Encontrei mais do que um: ${candidates.map((c: any) => c.name).join(", ")}. A qual te referes?`;
@@ -1238,6 +1240,27 @@ async function handleActivePropertyEnrichment(
       currentQuestion: "owner_confirmation",
     });
     return { reply, messageType: "__ALREADY_PERSISTED__" };
+  }
+
+  // Alterações de estado comercial — aplica-se directamente.
+  if (fields.status) {
+    try {
+      await updatePropertyPatch(supabase, userId, propertyId, { status: fields.status });
+      const { propertyStatusLabel } = await import("./properties.server");
+      return { reply: `Feito. Marquei o imóvel como "${propertyStatusLabel(fields.status)}".` };
+    } catch {
+      return { reply: "Não consegui atualizar o estado do imóvel." };
+    }
+  }
+
+  // Título explícito — aplica sem pedir confirmação (é uma correção de nome).
+  if (fields.title) {
+    try {
+      await updatePropertyPatch(supabase, userId, propertyId, { title: fields.title });
+      return { reply: `Feito. Renomeei o imóvel para "${fields.title}".` };
+    } catch {
+      return { reply: "Não consegui atualizar o nome do imóvel." };
+    }
   }
 
   // Alterações sensíveis: preço ou morada — pedir confirmação.
