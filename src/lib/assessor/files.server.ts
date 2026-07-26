@@ -240,8 +240,9 @@ export async function processIncomingFile(
 
   // Regista uma ação pendente de classificação para conduzir a conversa
   // progressiva (descrição → confirmação de lembrete → data/hora).
-  // Cancela qualquer outra ação pendente para garantir contexto único.
+  // Áudio segue o motor via transcrição — não precisa de classificação.
   try {
+    if (classification !== "audio") {
     const { findActivePendingAction, markPendingActionStatus, createPendingAction } =
       await import("./memory.server");
     const prev = await findActivePendingAction(supabase, userId, channel);
@@ -263,6 +264,7 @@ export async function processIncomingFile(
       currentQuestion: "file_description",
       sourceMessageId: sourceMessageId ?? null,
     });
+    }
   } catch (err) {
     console.error(
       "[files] createPendingAction error:",
