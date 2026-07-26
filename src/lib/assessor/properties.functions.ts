@@ -34,8 +34,7 @@ export const getProperty = createServerFn({ method: "POST" })
         .eq("related_resource_type", "property")
         .eq("related_resource_id", data.id)
         .order("created_at", { ascending: false }),
-      supabase
-        .from("follow_ups")
+      (supabase.from("follow_ups") as any)
         .select("id, title, type, due_date, due_time, status")
         .eq("user_id", userId)
         .eq("related_property_id", data.id)
@@ -78,8 +77,7 @@ export const updatePropertyFields = createServerFn({ method: "POST" })
       if (allowed.has(k)) patch[k] = v === "" ? null : v;
     }
     if (Object.keys(patch).length === 0) return { ok: true };
-    const { error } = await supabase
-      .from("properties")
+    const { error } = await (supabase.from("properties") as any)
       .update(patch)
       .eq("id", data.id)
       .eq("user_id", userId);
