@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatData, formatEUR } from "@/lib/demo-data";
+import { Card, CardContent } from "@/components/ui/card";
+import { formatEUR } from "@/lib/demo-data";
+import { Receipt, Wallet, FileText, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/negocio")({
   head: () => ({
@@ -41,34 +42,10 @@ function NegocioPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Comissões</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {comissoes.map((c) => (
-              <div key={c.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm">
-                <div>
-                  <div className="font-medium">{formatEUR(c.valor)}</div>
-                  <div className="text-xs text-muted-foreground">{formatData(c.data)} · {c.estado}</div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Despesas</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {despesas.map((d) => (
-              <div key={d.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm">
-                <div className="min-w-0">
-                  <div className="truncate font-medium">{d.descricao}</div>
-                  <div className="text-xs text-muted-foreground">{d.categoria} · {formatData(d.data)}</div>
-                </div>
-                <div className="shrink-0 font-medium">{formatEUR(d.valor)}</div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+      <div className="grid gap-3 md:grid-cols-3">
+        <HubLink to="/negocio/comissoes" icon={<Wallet className="h-5 w-5" />} title="Comissões" desc={`${comissoes.length} registos`} />
+        <HubLink to="/negocio/faturacao" icon={<FileText className="h-5 w-5" />} title="Faturação" desc="Prevista, Faturada, Recebida" />
+        <HubLink to="/negocio/despesas" icon={<Receipt className="h-5 w-5" />} title="Despesas" desc={`${despesas.length} registos`} />
       </div>
     </AppShell>
   );
@@ -80,5 +57,22 @@ function Indicador({ label, value }: { label: string; value: string }) {
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 text-xl font-semibold">{value}</div>
     </div>
+  );
+}
+
+function HubLink({ to, icon, title, desc }: { to: string; icon: React.ReactNode; title: string; desc: string }) {
+  return (
+    <Link to={to} className="group rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-primary/5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</div>
+          <div>
+            <div className="font-medium">{title}</div>
+            <div className="text-xs text-muted-foreground">{desc}</div>
+          </div>
+        </div>
+        <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </div>
+    </Link>
   );
 }
