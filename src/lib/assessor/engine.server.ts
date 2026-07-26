@@ -8,6 +8,18 @@ import { callAssessorAi, type AiInterpretation, type AiContextMessage } from "./
 import { sanitizeAssessorName, stripAssessorVocative, ASSESSOR_NAME_DEFAULT } from "./assessor-name";
 import { resolveDateTimeFromText, hasExplicitDateTime } from "./date-resolver";
 import {
+  detectPropertyContext,
+  extractPropertyFields,
+  buildPropertyTitle,
+  findMatchingProperties,
+  createPropertyFromFields,
+  updatePropertyPatch,
+  guessDocumentType,
+  NEW_PROPERTY_RE,
+  PROPERTY_REFERENT_RE,
+  type PropertyFields,
+} from "./properties.server";
+import {
   findActivePendingAction,
   findLastExecutedAction,
   createPendingAction,
