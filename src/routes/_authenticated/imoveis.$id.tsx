@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
+import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { PROPERTY_STATUSES, propertyStatusLabel } from "@/lib/assessor/properties-status";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatEUR } from "@/lib/demo-data";
-import { FileText, ChevronLeft } from "lucide-react";
+import { FileText, ChevronLeft, Eye, Download, Archive } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   head: () => ({
@@ -31,10 +32,13 @@ function PropertyDetail() {
   const { id } = Route.useParams();
   const fetchOne = useServerFn(getProperty);
   const update = useServerFn(updatePropertyFields);
+  const signUrl = useServerFn(getUploadedFileSignedUrl);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({
     queryKey: ["properties", "one", id],
     queryFn: () => fetchOne({ data: { id } }),
+    retry: false,
   });
   const mutation = useMutation({
     mutationFn: (patch: Record<string, unknown>) => update({ data: { id, patch } }),
@@ -46,7 +50,7 @@ function PropertyDetail() {
   const editing = draft !== null;
   const editValues = draft ?? (p ?? {});
 
-  if (isLoading || !p) {
+  if (isLoading) {
     return (
       <AppShell>
         <PageHeader title="Imóvel" />
@@ -54,6 +58,41 @@ function PropertyDetail() {
       </AppShell>
     );
   }
+  if (!p) {
+    return (
+      <AppShell>
+        <PageHeader title="Imóvel não encontrado" />
+        <div className="text-sm text-muted-foreground">
+          Este imóvel não existe ou não tens acesso.{" "}
+          <Link to="/imoveis" className="underline">Voltar à lista</Link>.
+        </div>
+      </AppShell>
+    );
+  }
+  const openFile = async (fid: string) => {
+    try {
+      const { url } = await signUrl({ data: { id: fid } });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      alert(e?.message ?? "Não foi possível abrir o ficheiro.");
+    }
+  };
+  const downloadFile = async (fid: string, name: string) => {
+    try {
+      const { url } = await signUrl({ data: { id: fid } });
+      const a = document.createElement("a");
+      a.href = url; a.download = name || "ficheiro"; a.rel = "noopener";
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e: any) {
+      alert(e?.message ?? "Não foi possível descarregar.");
+    }
+  };
+  const archive = () => {
+    if (!confirm("Arquivar este imóvel?")) return;
+    mutation.mutate({ status: "arquivado" }, {
+      onSuccess: () => navigate({ to: "/imoveis" }),
+    });
+  };
 
   const owner = data?.owner;
   const files = data?.files ?? [];
@@ -120,6 +159,18 @@ function PropertyDetail() {
         title={p.title}
         subtitle={[p.typology, p.city || p.location].filter(Boolean).join(" · ")}
       />
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Badge variant="outline">{propertyStatusLabel(p.status)}</Badge>
+        {p.property_type && <Badge variant="secondary">{p.property_type}</Badge>}
+        <div className="ml-auto flex gap-2">
+          {!editing && <Button size="sm" variant="outline" onClick={startEdit}>Editar</Button>}
+          {p.status !== "arquivado" && (
+            <Button size="sm" variant="outline" onClick={archive}>
+              <Archive className="mr-1 h-4 w-4" /> Arquivar
+            </Button>
+          )}
+        </div>
+      </div>
 
       <div className="grid gap-3">
         <Card>
@@ -184,12 +235,20 @@ function PropertyDetail() {
               {files.map((f: any) => (
                 <div key={f.id} className="flex items-start gap-2 rounded-md border p-2">
                   <FileText className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate text-sm">{f.original_file_name || "ficheiro"}</div>
                     <div className="text-xs text-muted-foreground">
                       {f.document_type ? <Badge variant="secondary" className="mr-1">{f.document_type}</Badge> : <span className="mr-1 text-muted-foreground">Por classificar</span>}
                       {f.user_description && <span>{f.user_description}</span>}
                     </div>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => openFile(f.id)} title="Pré-visualizar">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => downloadFile(f.id, f.original_file_name)} title="Descarregar">
+                      <Download className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
