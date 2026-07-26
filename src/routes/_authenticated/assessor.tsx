@@ -19,6 +19,7 @@ import { parse, type Extraidos, type Intencao } from "@/lib/assessor/parser";
 import { clearMessages, loadMessages, saveMessage, updateMessageStatus, type MensagemDb } from "@/lib/assessor/messages";
 import { sendAssessorMessage } from "@/lib/assessor/process.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
@@ -77,6 +78,7 @@ function toMsg(m: MensagemDb): Msg {
 function AssessorPage() {
   const isMobile = useIsMobile();
   const store = useStore();
+  const { name: assessorName } = useAssessorName();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [texto, setTexto] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -193,7 +195,7 @@ function AssessorPage() {
         {!carregando && msgs.length === 0 && (
           <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6 text-center">
             <Sparkles className="mx-auto h-6 w-6 text-primary" />
-            <p className="mt-3 text-sm font-medium">Olá. Sou o seu assessor.</p>
+            <p className="mt-3 text-sm font-medium">Olá. Sou {assessorName === "Assessor" ? "o seu assessor" : `o ${assessorName}, o seu assessor`}.</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Diga o que aconteceu ou o que precisa fazer. Ex: "Ligar à Ana amanhã às 10h", "Paguei 38€ de portagens", "Comissão de 4500€ da venda do T2".
             </p>
@@ -255,7 +257,7 @@ function AssessorPage() {
       <AppShell fullBleed>
         <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
           <div className="border-b border-border bg-background px-4 py-2" style={{ paddingTop: "max(env(safe-area-inset-top), 0.5rem)" }}>
-            <div className="text-sm font-semibold">Assessor</div>
+            <div className="text-sm font-semibold">{assessorName}</div>
             <div className="text-[11px] text-muted-foreground">Sempre disponível</div>
           </div>
           <div className="min-h-0">{conteudo}</div>
