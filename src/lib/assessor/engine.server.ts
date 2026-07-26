@@ -240,8 +240,8 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   const trimmedRaw = content.trim();
   if (!trimmedRaw) return { reply: REPLY_FALLBACK };
 
-  // Contexto: perfil, últimas mensagens, rascunho pendente
-  const [{ data: prof }, recent, draft] = await Promise.all([
+  // Contexto: perfil, últimas mensagens, ação pendente e estado da conversa.
+  const [{ data: prof }, recent, pending, convState] = await Promise.all([
     supabase
       .from("profiles")
       .select("name, assessor_name")
@@ -254,8 +254,13 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
       .eq("channel", channel)
       .order("created_at", { ascending: false })
       .limit(6),
-    findLatestDraft(supabase, userId, channel),
+    findActivePendingAction(supabase, userId, channel),
+    (async () => {
+      const { getConversationState } = await import("./memory.server");
+      return getConversationState(supabase, userId, channel);
+    })(),
   ]);
+  void convState; // reservado para futuras heurísticas (last_intent, resumo).
 
   const assessorNameRaw = (prof as any)?.assessor_name;
   const assessorName = sanitizeAssessorName(assessorNameRaw ?? "") || ASSESSOR_NAME_DEFAULT;
@@ -277,20 +282,15 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   // 0) Fast-path: respostas curtas de confirmação/cancelamento.
   // Nunca envia "Sim"/"Não" isolados para a IA — interpreta localmente
   // usando a ação pendente.
-  if (draft && isConfirmText(trimmed)) {
-    if (!isDraftFresh(draft)) {
-      const hint = describeDraftShort(draft);
-      await cancelDraft(supabase, draft.id);
-      return {
-        reply: hint
-          ? `Já não tenho essa confirmação ativa. Referes-te a ${hint}?`
-          : "Já não tenho essa confirmação ativa. Podes repetir?",
-      };
-    }
-    return await confirmDraftSafe(supabase, userId, draft);
+  if (pending && isConfirmText(trimmed)) {
+    return await confirmPendingSafe(supabase, userId, channel, pending);
   }
-  if (draft && isCancelText(trimmed)) {
-    await cancelDraft(supabase, draft.id);
+  if (pending && isCancelText(trimmed)) {
+    await markPendingActionStatus(supabase, pending.id, "cancelled");
+    await upsertConversationState(supabase, {
+      userId, channel, pendingActionId: null, activeTopic: null,
+      stateSummary: "utilizador cancelou a última proposta",
+    });
     return { reply: "Ok, não registei nada." };
   }
 
@@ -302,8 +302,11 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
 
   // 0.b) "Tenho mais uma" / "outra" — inicia nova recolha e cancela o
   // rascunho anterior para não repetir a mesma proposta.
-  if (draft && isDraftFresh(draft) && MORE_RE.test(trimmed) && !hasExplicitDateTime(trimmed)) {
-    await cancelDraft(supabase, draft.id);
+  if (pending && MORE_RE.test(trimmed) && !hasExplicitDateTime(trimmed)) {
+    await markPendingActionStatus(supabase, pending.id, "cancelled");
+    await upsertConversationState(supabase, {
+      userId, channel, pendingActionId: null, activeTopic: null,
+    });
     return { reply: "Claro. Diz-me o dia e a hora dessa outra visita." };
   }
 
@@ -313,24 +316,24 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     const correction = resolveDateTimeFromText(trimmed, input.receivedAt ?? new Date());
     // 1) Se há um rascunho pendente e a correção traz data/hora nova,
     //    atualizamos o rascunho e voltamos a propor.
-    if (draft && isDraftFresh(draft) && (correction.date || correction.time)) {
-      const payload = (draft.structured_payload ?? {}) as any;
+    if (pending && (correction.date || correction.time)) {
+      const payload = (pending.structured_payload ?? {}) as any;
       const ent = { ...(payload.entities ?? {}) };
       if (correction.date) ent.date = correction.date;
       if (correction.time) ent.start_time = correction.time;
       const newPayload = { ...payload, entities: ent };
       const reply = buildProposalReply(payload.__intent || "create_event", ent, null);
-      await supabase
-        .from("assessor_messages")
-        .update({ content: reply, structured_payload: newPayload as never } as never)
-        .eq("id", draft.id);
+      await updatePendingActionPayload(supabase, pending.id, newPayload, {
+        status: "pending_confirmation",
+        pending_question: reply,
+      });
       return { reply, messageType: "__ALREADY_PERSISTED__" };
     }
     // 2) Se não há rascunho mas há evento confirmado recentemente,
     //    atualiza o registo real (follow_ups).
-    if (!draft && (correction.date || correction.time)) {
-      const last = await findLastConfirmedEvent(supabase, userId, channel);
-      if (last) {
+    if (!pending && (correction.date || correction.time)) {
+      const last = await findLastExecutedAction(supabase, userId, channel, ["create_event", "create_follow_up"]);
+      if (last && last.created_resource_id) {
         const p = last.structured_payload as any;
         const ent = { ...(p.entities ?? {}) };
         if (correction.date) ent.date = correction.date;
@@ -341,14 +344,11 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
         const { error } = await supabase
           .from("follow_ups")
           .update(updateData)
-          .eq("id", p.__entidadeId)
+          .eq("id", last.created_resource_id)
           .eq("user_id", userId);
         if (!error) {
-          await supabase
-            .from("assessor_messages")
-            .update({ structured_payload: { ...p, entities: ent } as never } as never)
-            .eq("id", last.id);
-          const tipoLabel = (ent.event_type || (p.__intent === "create_event" ? "visita" : "tarefa")) as string;
+          await updatePendingActionPayload(supabase, last.id, { ...p, entities: ent });
+          const tipoLabel = (ent.event_type || (last.intent === "create_event" ? "visita" : "tarefa")) as string;
           const quando = naturalWhen(String(ent.date), (ent.start_time as string) || null);
           return { reply: `Tens razão. Corrigi ${articleFor(tipoLabel)} ${tipoLabel} para ${quando}.` };
         }
@@ -361,10 +361,10 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     .filter((m) => m.role === "user" || m.role === "assessor")
     .map((m) => ({ role: m.role as "user" | "assessor", content: String(m.content ?? "") }));
 
-  const pendingAction = draft && isDraftFresh(draft)
+  const pendingAction = pending
     ? {
-        intent: (draft.structured_payload as any)?.__intent ?? "unknown",
-        entities: ((draft.structured_payload as any)?.entities ?? {}) as Record<string, unknown>,
+        intent: pending.intent,
+        entities: ((pending.structured_payload as any)?.entities ?? {}) as Record<string, unknown>,
       }
     : null;
 
@@ -417,20 +417,11 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   }
 
   // 1) confirm/cancel via IA (fallback para frases menos óbvias)
-  if (draft && interp.intent === "confirm") {
-    if (!isDraftFresh(draft)) {
-      await cancelDraft(supabase, draft.id);
-      const hint = describeDraftShort(draft);
-      return {
-        reply: hint
-          ? `Já não tenho essa confirmação ativa. Referes-te a ${hint}?`
-          : "Já não tenho essa confirmação ativa. Podes repetir?",
-      };
-    }
-    return await confirmDraftSafe(supabase, userId, draft);
+  if (pending && interp.intent === "confirm") {
+    return await confirmPendingSafe(supabase, userId, channel, pending);
   }
-  if (draft && interp.intent === "cancel") {
-    await cancelDraft(supabase, draft.id);
+  if (pending && interp.intent === "cancel") {
+    await markPendingActionStatus(supabase, pending.id, "cancelled");
     return { reply: "Ok, não registei nada." };
   }
 
@@ -457,7 +448,7 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   if (interp.intent === "create_event" || interp.intent === "create_follow_up" || interp.intent === "record_interaction") {
     // Uma nova proposta invalida qualquer rascunho anterior — evita
     // repetir dados da proposta antiga.
-    if (draft) await cancelDraft(supabase, draft.id);
+    if (pending) await markPendingActionStatus(supabase, pending.id, "cancelled");
     return await proposeAction(supabase, userId, channel, trimmed, interp);
   }
 
