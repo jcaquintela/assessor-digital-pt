@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatEUR } from "@/lib/demo-data";
 import { listProperties } from "@/lib/assessor/properties.functions";
-import { propertyStatusLabel } from "@/lib/assessor/properties.server";
+import { propertyStatusLabel } from "@/lib/assessor/properties-status";
 import { ChevronRight, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/imoveis")({
