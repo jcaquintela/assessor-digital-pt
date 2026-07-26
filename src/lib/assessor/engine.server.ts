@@ -1050,11 +1050,19 @@ async function handleFileClassificationTurn(
       // Executa criação/associação imediatamente.
       return await executePendingProperty(supabase, userId, channel, pending);
     }
-    // Resposta ambígua — aceita como texto adicional de enriquecimento.
+    // Resposta ambígua — enriquece a ficha pendente. Se o consultor
+    // indica um título explícito ("Imóvel 'T2 Oliveira Douro'"), esse
+    // valor prevalece sobre o título automático anterior.
     const extra = extractPropertyFields(trimmedRaw);
     const merged: PropertyFields = { ...(payload.property_fields ?? {}), ...extra };
+    // extra.title já entra por spread; garantimos que não se perde.
+    if (extra.title) merged.title = extra.title;
+    if (extra.status) merged.status = extra.status;
     const newTitle = buildPropertyTitle(merged);
-    const reply = `Queres que crie o imóvel "${newTitle}"?`;
+    const fileSuffix = payload.file_id ? " e associe o documento" : "";
+    const reply = extra.title
+      ? `Percebi. Vou criar o imóvel "${newTitle}"${fileSuffix}. Confirmas?`
+      : `Queres que crie o imóvel "${newTitle}"${fileSuffix}?`;
     await updatePendingActionPayload(
       supabase,
       pending.id,
@@ -1204,17 +1212,19 @@ async function handleActivePropertyEnrichment(
   // Proprietário — precisa de confirmação e resolução de pessoa.
   if (fields.owner_name) {
     const candidates = await findPeopleByName(supabase, userId, fields.owner_name);
+    const addressBit = fields.address ? ` e atualizo a morada para "${fields.address}"` : "";
     let reply: string;
     let payload: Record<string, any> = {
       target_property_id: propertyId,
       owner_name: fields.owner_name,
       candidates,
+      patch: fields.address ? { address: fields.address } : {},
     };
     if (candidates.length === 1) {
       payload.person_id = candidates[0].id;
-      reply = `Encontrei ${candidates[0].name}. Associo-o como proprietário?`;
+      reply = `Encontrei ${candidates[0].name}. Associo como proprietário${addressBit}?`;
     } else if (candidates.length === 0) {
-      reply = `Não tenho ${fields.owner_name} nos teus contactos. Queres que crie o contacto e associe como proprietário?`;
+      reply = `Não tenho ${fields.owner_name} nos teus contactos. Queres que crie o contacto e associe como proprietário${addressBit}?`;
       payload.create_person = true;
     } else {
       reply = `Encontrei mais do que um: ${candidates.map((c: any) => c.name).join(", ")}. A qual te referes?`;
@@ -1230,6 +1240,27 @@ async function handleActivePropertyEnrichment(
       currentQuestion: "owner_confirmation",
     });
     return { reply, messageType: "__ALREADY_PERSISTED__" };
+  }
+
+  // Alterações de estado comercial — aplica-se directamente.
+  if (fields.status) {
+    try {
+      await updatePropertyPatch(supabase, userId, propertyId, { status: fields.status });
+      const { propertyStatusLabel } = await import("./properties.server");
+      return { reply: `Feito. Marquei o imóvel como "${propertyStatusLabel(fields.status)}".` };
+    } catch {
+      return { reply: "Não consegui atualizar o estado do imóvel." };
+    }
+  }
+
+  // Título explícito — aplica sem pedir confirmação (é uma correção de nome).
+  if (fields.title) {
+    try {
+      await updatePropertyPatch(supabase, userId, propertyId, { title: fields.title });
+      return { reply: `Feito. Renomeei o imóvel para "${fields.title}".` };
+    } catch {
+      return { reply: "Não consegui atualizar o nome do imóvel." };
+    }
   }
 
   // Alterações sensíveis: preço ou morada — pedir confirmação.
@@ -1400,7 +1431,9 @@ async function executePendingProperty(
       stateSummary: `imóvel activo: ${created.title}`,
     } as any);
     const suffix = fileId ? " e associei o documento" : "";
-    return { reply: `Feito. Criei o imóvel "${created.title}"${suffix}. Queres acrescentar a morada ou o proprietário?` };
+    const { propertyStatusLabel } = await import("./properties.server");
+    const statusLabel = propertyStatusLabel(fields.status ?? "em_angariacao").toLowerCase();
+    return { reply: `Feito. Criei o imóvel "${created.title}" em ${statusLabel}${suffix}. Queres acrescentar a morada ou o proprietário?` };
   }
 
   if (intent === "associate_property_to_file") {
@@ -1435,12 +1468,20 @@ async function executePendingProperty(
     const propertyId = payload.target_property_id as string;
     const patch = (payload.patch ?? {}) as Record<string, unknown>;
     try {
-      await updatePropertyPatch(supabase, userId, propertyId, patch);
+      const changed = await updatePropertyPatch(supabase, userId, propertyId, patch);
       await markPendingActionStatus(supabase, pending.id, "executed", {
         created_resource_type: "property",
         created_resource_id: propertyId,
       });
-      return { reply: "Feito. Atualizei o imóvel." };
+      const bits: string[] = [];
+      if (patch.address) bits.push(`a morada para "${patch.address}"`);
+      if (patch.asking_price != null) bits.push(`o preço para ${formatEuro(Number(patch.asking_price))}`);
+      if (patch.status) {
+        const { propertyStatusLabel } = await import("./properties.server");
+        bits.push(`o estado para "${propertyStatusLabel(String(patch.status))}"`);
+      }
+      if (bits.length === 0) return { reply: changed.length ? "Feito. Atualizei o imóvel." : "Sem alterações." };
+      return { reply: `Feito. Atualizei ${bits.join(" e ")}.` };
     } catch {
       await markPendingActionStatus(supabase, pending.id, "failed");
       return { reply: "Não consegui atualizar o imóvel." };
@@ -1463,12 +1504,20 @@ async function executePendingProperty(
       return { reply: "Não consegui associar o proprietário." };
     }
     try {
-      await updatePropertyPatch(supabase, userId, propertyId, { owner_person_id: personId });
+      const patch: Record<string, unknown> = { owner_person_id: personId };
+      const extraPatch = (payload.patch ?? {}) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(extraPatch)) if (v != null && v !== "") patch[k] = v;
+      await updatePropertyPatch(supabase, userId, propertyId, patch);
       await markPendingActionStatus(supabase, pending.id, "executed", {
         created_resource_type: "property",
         created_resource_id: propertyId,
       });
-      return { reply: "Feito. Associei o proprietário." };
+      const ownerName = (payload.owner_name as string) || "o proprietário";
+      const addr = (payload.patch?.address as string) || null;
+      const bits: string[] = [];
+      if (addr) bits.push(`atualizei a morada para "${addr}"`);
+      bits.push(`associei ${ownerName} como proprietário`);
+      return { reply: `Feito. ${bits.join(" e ")}.` };
     } catch {
       await markPendingActionStatus(supabase, pending.id, "failed");
       return { reply: "Não consegui associar o proprietário." };
