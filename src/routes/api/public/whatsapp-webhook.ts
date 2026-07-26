@@ -19,8 +19,6 @@ import {
 //   - identifica consultor por profiles.phone;
 //   - responde com uma mensagem simples via WhatsApp Cloud API.
 
-const REPLY_ASSOCIATED =
-  "Olá. A tua mensagem foi recebida pelo Assessor. A ligação ao WhatsApp está ativa.";
 const REPLY_UNASSOCIATED =
   "Olá. Este número ainda não está associado a uma conta do Assessor. Entra no dashboard e confirma o teu número de WhatsApp.";
 const REPLY_NON_TEXT =
@@ -31,6 +29,8 @@ const REPLY_LINK_EXPIRED =
   "Este código expirou. Gera um novo código no dashboard.";
 const REPLY_LINK_INVALID =
   "Não consegui validar este código. Confirma o código no dashboard e tenta novamente.";
+const REPLY_ENGINE_ERROR =
+  "Recebi a tua mensagem, mas não consegui processá-la agora. Tenta novamente dentro de instantes.";
 
 function verifySignature(rawBody: string, header: string | null, appSecret: string): boolean {
   if (!header || !header.startsWith("sha256=")) return false;
@@ -196,8 +196,32 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
     return;
   }
 
-  const reply = userId ? REPLY_ASSOCIATED : REPLY_UNASSOCIATED;
-  await replyAndStore(supabaseAdmin, senderPhone, userId, reply);
+  if (!userId) {
+    await replyAndStore(supabaseAdmin, senderPhone, null, REPLY_UNASSOCIATED);
+    return;
+  }
+
+  try {
+    const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
+    const outcome = await processAssessorMessage({
+      supabase: supabaseAdmin,
+      userId,
+      channel: "whatsapp",
+      content: body,
+      receivedAt: new Date(),
+    });
+    const alreadyPersisted = outcome.messageType === "__ALREADY_PERSISTED__";
+    if (alreadyPersisted) {
+      // Engine persisted the assessor draft with its structured payload.
+      // We still send via WhatsApp, but don't insert a duplicate row.
+      await sendWhatsAppText(senderPhone, outcome.reply, { kind: "auto" });
+    } else {
+      await replyAndStore(supabaseAdmin, senderPhone, userId, outcome.reply);
+    }
+  } catch (err) {
+    console.error("[whatsapp-webhook] engine error:", err instanceof Error ? err.message : err);
+    await replyAndStore(supabaseAdmin, senderPhone, userId, REPLY_ENGINE_ERROR);
+  }
 }
 
 async function tryLinkCode(
