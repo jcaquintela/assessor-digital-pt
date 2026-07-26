@@ -676,6 +676,16 @@ async function proposeAction(
   const cartaoTipo =
     interp.intent === "record_interaction" ? "conversa" : "seguimento";
 
+  const pendingRow = await createPendingAction(supabase, {
+    userId,
+    channel,
+    intent: interp.intent,
+    originalContent: originalText,
+    payload,
+    confidence: interp.confidence ?? null,
+    pendingQuestion: reply,
+  });
+
   await supabase.from("assessor_messages").insert({
     user_id: userId,
     role: "assessor",
@@ -684,7 +694,17 @@ async function proposeAction(
     structured_payload: payload as never,
     status: "draft",
     channel,
+    related_pending_action_id: pendingRow?.id ?? null,
   } as never);
+
+  await upsertConversationState(supabase, {
+    userId,
+    channel,
+    activeTopic: interp.intent,
+    lastIntent: interp.intent,
+    pendingActionId: pendingRow?.id ?? null,
+    stateSummary: summarizePendingAction(pendingRow),
+  });
 
   return { reply, messageType: "__ALREADY_PERSISTED__" };
 }
