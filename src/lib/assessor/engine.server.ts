@@ -79,6 +79,14 @@ const QUERY_MISC_RE =
 const CORRECTION_RE =
   /^\s*(n[ãa]o[,.\s]|nao[,.\s]|mas\b|afinal\b|antes\b|corrige\b|corrigir\b|[ée]\s+(às|as|pelas|amanh|hoje|com|na|no|em)|na\s+verdade\b)/i;
 
+// Verbos que indicam pedido de acção/lembrete sobre alguém ou algo — não
+// devem ser interpretados como enriquecimento do imóvel activo.
+const ACTION_VERB_RE =
+  /\b(lembra(?:r|-me)?|lembrete|avisa(?:r|-me)?|marca(?:r)?|liga(?:r|-lhe)?|telefona(?:r|-lhe)?|contact(?:a|ar)|envia(?:r)?|escrev(?:e|er)|fala(?:r)?|manda(?:r)?|combinar)\b/i;
+
+// Referência a "dono/proprietário do imóvel" — usar contexto do imóvel activo.
+const OWNER_REF_RE = /\b(dono|dona|propriet[áa]ri[oa])\b/i;
+
 function isConfirmText(t: string): boolean {
   return CONFIRM_RE.test(t);
 }
@@ -110,7 +118,9 @@ function detectTipoEvento(texto: string): string {
 }
 
 function formatWhen(iso: string, hora?: string | null): string {
+  if (!iso) return hora ? `às ${hora}` : "";
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return hora ? `às ${hora}` : "";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -148,7 +158,10 @@ function naturalHour(hhmm: string): string {
 }
 
 function naturalWhen(date: string, time?: string | null): string {
+  if (!date) return time ? `às ${naturalHour(time)}` : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return time ? `às ${naturalHour(time)}` : "";
   const d = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return time ? `às ${naturalHour(time)}` : "";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -313,9 +326,26 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   }
 
   if (pending && isConfirmText(trimmed)) {
+    // Pending "sugestão pós-criação de imóvel" (morada/proprietário) —
+    // "sim" pede os detalhes; "não" é tratado noutro ramo. Nunca deve
+    // acionar `confirmPendingSafe`, que não sabe executar este intent.
+    if (pending.intent === "await_property_details") {
+      await markPendingActionStatus(supabase, pending.id, "cancelled");
+      await upsertConversationState(supabase, {
+        userId, channel, pendingActionId: null,
+      });
+      return { reply: "Diz-me a morada ou o nome do proprietário." };
+    }
     return await confirmPendingSafe(supabase, userId, channel, pending);
   }
   if (pending && isCancelText(trimmed)) {
+    if (pending.intent === "await_property_details") {
+      await markPendingActionStatus(supabase, pending.id, "cancelled");
+      await upsertConversationState(supabase, {
+        userId, channel, pendingActionId: null,
+      });
+      return { reply: "Está bem." };
+    }
     await markPendingActionStatus(supabase, pending.id, "cancelled");
     await upsertConversationState(supabase, {
       userId, channel, pendingActionId: null, activeTopic: null,
@@ -327,7 +357,9 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   // 0.property) Se há um imóvel activo na conversa e a mensagem não é uma
   // nova acção clara, aplica enriquecimento progressivo. Cria pending para
   // alterações sensíveis (preço, morada, proprietário).
-  if (!pending) {
+  // Não corre quando a mensagem é claramente um pedido de acção (lembrete,
+  // chamada, etc.) — nesse caso o fluxo normal cria seguimento/evento.
+  if (!pending && !ACTION_VERB_RE.test(trimmed)) {
     const propHandled = await handleActivePropertyEnrichment(
       supabase,
       userId,
@@ -494,7 +526,7 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     // Uma nova proposta invalida qualquer rascunho anterior — evita
     // repetir dados da proposta antiga.
     if (pending) await markPendingActionStatus(supabase, pending.id, "cancelled");
-    return await proposeAction(supabase, userId, channel, trimmed, interp);
+    return await proposeAction(supabase, userId, channel, trimmed, interp, convState);
   }
 
   // 3.b) Contexto de imóvel na mensagem — propor criação/associação.
@@ -593,6 +625,9 @@ async function queryMisc(supabase: any, userId: string, text: string): Promise<s
 function hardenEntitiesFromMessage(interp: AiInterpretation, text: string, now: Date) {
   const resolved = resolveDateTimeFromText(text, now);
   const ent = interp.entities as any;
+  // Descarta datas mal formadas (a IA pode devolver "amanhã" em vez de ISO).
+  if (ent.date && !/^\d{4}-\d{2}-\d{2}$/.test(String(ent.date))) ent.date = null;
+  if (ent.start_time && !/^\d{2}:\d{2}$/.test(String(ent.start_time))) ent.start_time = null;
   // Data / hora: se a mensagem tem expressão explícita, usa-a;
   // caso contrário, se a IA inventou uma data sem base no texto, descarta.
   if (resolved.date) ent.date = resolved.date;
@@ -702,14 +737,63 @@ async function proposeAction(
   channel: string,
   originalText: string,
   interp: AiInterpretation,
+  convState?: any,
 ): Promise<EngineOutcome> {
   const ent = interp.entities;
+
+  // Enriquecimento pelo contexto do imóvel activo:
+  // "ligar ao dono do imóvel em Canelas" → título e ligação ao imóvel.
+  let activeProperty: { id: string; title: string; owner_person_id: string | null } | null = null;
+  const propertyId: string | null =
+    convState?.last_property_id ||
+    (convState?.last_entity_type === "property" ? convState?.last_entity_id : null) ||
+    null;
+  const mentionsOwner = OWNER_REF_RE.test(originalText);
+  const mentionsProperty = /\b(im[óo]vel|apartamento|moradia|casa|angaria[çc][ãa]o)\b/i.test(originalText);
+  if (propertyId && (mentionsOwner || mentionsProperty)) {
+    const { data: p } = await supabase
+      .from("properties")
+      .select("id, title, owner_person_id")
+      .eq("id", propertyId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (p) activeProperty = p as any;
+  }
+  if (activeProperty && (interp.intent === "create_event" || interp.intent === "create_follow_up")) {
+    // Título contextual quando não vem no texto ou vem vazio.
+    const currentTitle = String((ent as any).title || "").trim();
+    if (!currentTitle) {
+      if (mentionsOwner) {
+        (ent as any).title = `Ligar ao proprietário do ${activeProperty.title}`;
+      } else {
+        (ent as any).title = `Sobre ${activeProperty.title}`;
+      }
+    }
+    // Marca a localização como o imóvel activo — evita "em Canelas" ser
+    // interpretado como localidade solta.
+    if (!(ent as any).property_reference) {
+      (ent as any).property_reference = activeProperty.title;
+    }
+  }
 
   // Resolução de pessoa (o backend, não a IA)
   let pessoaId: string | null = null;
   let candidates: { id: string; name: string }[] = [];
   let personName: string | null = null;
-  if (ent.person_name) {
+  if (activeProperty?.owner_person_id && mentionsOwner && !ent.person_name) {
+    // Usa o proprietário do imóvel activo, se conhecido.
+    pessoaId = activeProperty.owner_person_id;
+    const { data: person } = await supabase
+      .from("people")
+      .select("id, name")
+      .eq("id", pessoaId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (person) {
+      personName = (person as any).name;
+      candidates = [{ id: (person as any).id, name: (person as any).name }];
+    }
+  } else if (ent.person_name) {
     candidates = await findPeopleByName(supabase, userId, ent.person_name);
     if (candidates.length === 1) {
       pessoaId = candidates[0].id;
@@ -729,6 +813,7 @@ async function proposeAction(
     pessoaId: pessoaId ?? "",
     candidatosPessoa: candidates,
     textoOriginal: originalText,
+    target_property_id: activeProperty?.id ?? null,
   };
 
   // Mapear para o cartão legado do UI web quando aplicável.
@@ -896,6 +981,7 @@ async function executePending(
         priority: "Média",
         status: "Pendente",
         notes: notasFinais,
+        related_property_id: (payload.target_property_id as string) || null,
       } as never)
       .select("id")
       .single();
@@ -1433,7 +1519,19 @@ async function executePendingProperty(
     const suffix = fileId ? " e associei o documento" : "";
     const { propertyStatusLabel } = await import("./properties.server");
     const statusLabel = propertyStatusLabel(fields.status ?? "em_angariacao").toLowerCase();
-    return { reply: `Feito. Criei o imóvel "${created.title}" em ${statusLabel}${suffix}. Queres acrescentar a morada ou o proprietário?` };
+    const reply = `Feito. Criei o imóvel "${created.title}", em fase de ${statusLabel}${suffix}. Queres acrescentar a morada ou o proprietário?`;
+    // Cria um pending leve para intercetar "sim"/"não" à pergunta acima
+    // sem exigir passagem pela IA. "não" responde apenas "Está bem." e
+    // não altera o imóvel nem o ficheiro.
+    await createPendingAction(supabase, {
+      userId, channel,
+      intent: "await_property_details",
+      originalContent: "",
+      payload: { target_property_id: created.id },
+      pendingQuestion: reply,
+      currentQuestion: "await_property_details",
+    });
+    return { reply };
   }
 
   if (intent === "associate_property_to_file") {
