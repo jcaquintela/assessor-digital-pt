@@ -100,9 +100,9 @@ describe("cenário 2 — visita simples ('amanhã às 10h')", () => {
   });
 
   it("hasExplicitDateTime true quando há data ou hora", () => {
-    expect(hasExplicitDateTime("visita amanhã", NOW)).toBe(true);
-    expect(hasExplicitDateTime("visita às 15h30", NOW)).toBe(true);
-    expect(hasExplicitDateTime("visita com o Paulo", NOW)).toBe(false);
+    expect(hasExplicitDateTime("visita amanhã")).toBe(true);
+    expect(hasExplicitDateTime("visita às 15h30")).toBe(true);
+    expect(hasExplicitDateTime("visita com o Paulo")).toBe(false);
   });
 
   it("resolve 'depois de amanhã' antes de 'amanhã'", () => {
