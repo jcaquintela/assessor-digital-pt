@@ -103,3 +103,26 @@ describe("short-answers: classificador agregador", () => {
     expect(classifyShortAnswer("Olá Alfred, tenho visita amanhã", NOW).kind).not.toBe("greeting");
   });
 });
+
+describe("short-answers: regressão — 'sim' nunca é saudação", () => {
+  it("'sim' é confirmação e nunca saudação nem fecho social", () => {
+    expect(isConfirmation("sim")).toBe(true);
+    expect(isGreeting("sim")).toBe(false);
+    expect(classifyShortAnswer("sim", NOW).kind).toBe("confirmation");
+  });
+  it("'Sim' com maiúscula/pontuação continua confirmação", () => {
+    for (const s of ["Sim", "Sim.", "Sim!", "sim!"]) {
+      expect(isConfirmation(s)).toBe(true);
+      expect(isGreeting(s)).toBe(false);
+    }
+  });
+  it("'ok' é confirmação (nunca greeting)", () => {
+    expect(isConfirmation("ok")).toBe(true);
+    expect(isGreeting("ok")).toBe(false);
+    expect(classifyShortAnswer("ok", NOW).kind).toBe("confirmation");
+  });
+  it("'pode ser' e 'está bem' são confirmações", () => {
+    expect(classifyShortAnswer("pode ser", NOW).kind).toBe("confirmation");
+    expect(classifyShortAnswer("está bem", NOW).kind).toBe("confirmation");
+  });
+});

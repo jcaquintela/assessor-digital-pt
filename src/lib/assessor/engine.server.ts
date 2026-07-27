@@ -114,12 +114,25 @@ const SOCIAL_CLOSER_RE =
 function isSocialCloser(t: string): boolean {
   return SOCIAL_CLOSER_RE.test(t);
 }
-function pickCloserReply(t: string): string {
+// Devolve a resposta social apropriada, ou `null` se `t` não for um fecho social.
+// Puro: nunca inventa saudação, nunca reabre ações antigas.
+function pickCloserReply(t: string): string | null {
+  if (!isSocialCloser(t)) return null;
   const s = t.toLowerCase();
   if (/combinad/.test(s)) return "Combinado.";
   if (/perfeito/.test(s)) return "Perfeito.";
   if (/est[áa]\s+bem/.test(s)) return "Está bem.";
   return "Perfeito.";
+}
+
+// Log estruturado de decisões do motor. Nunca inclui conteúdo do utilizador.
+function logBranch(event: string, meta: Record<string, unknown> = {}) {
+  try {
+    // eslint-disable-next-line no-console
+    console.log(`[assessor] ${event}`, JSON.stringify(meta));
+  } catch {
+    /* ignore */
+  }
 }
 function isQueryMisc(t: string): boolean {
   return QUERY_MISC_RE.test(t);
@@ -359,14 +372,56 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   // Remove o nome do Assessor quando usado como vocativo, para não poluir a interpretação.
   const trimmed = stripAssessorVocative(trimmedRaw, assessorName);
 
+  logBranch("turn_received", {
+    channel,
+    has_pending: !!pending,
+    pending_id: pending?.id ?? null,
+    pending_status: pending?.status ?? null,
+    pending_intent: pending?.intent ?? null,
+    len: trimmed.length,
+  });
+
+  // 0.confirm) PRIORIDADE ABSOLUTA: se existe uma pending válida e a mensagem
+  // é uma confirmação (sim/ok/está bem/…), executa antes de qualquer outro
+  // ramo — nunca pode cair em saudação, fecho social ou IA.
+  if (pending && isConfirmText(trimmed)) {
+    logBranch("confirm_short_answer", { pending_id: pending.id, intent: pending.intent });
+    if (pending.intent === "await_property_details") {
+      await markPendingActionStatus(supabase, pending.id, "cancelled");
+      await upsertConversationState(supabase, {
+        userId, channel, pendingActionId: null,
+      });
+      return { reply: "Diz-me a morada ou o nome do proprietário." };
+    }
+    return await confirmPendingSafe(supabase, userId, channel, pending);
+  }
+  if (pending && isCancelText(trimmed)) {
+    logBranch("cancel_short_answer", { pending_id: pending.id, intent: pending.intent });
+    if (pending.intent === "await_property_details") {
+      await markPendingActionStatus(supabase, pending.id, "cancelled");
+      await upsertConversationState(supabase, {
+        userId, channel, pendingActionId: null,
+      });
+      return { reply: "Está bem." };
+    }
+    await markPendingActionStatus(supabase, pending.id, "cancelled");
+    await upsertConversationState(supabase, {
+      userId, channel, pendingActionId: null, activeTopic: null,
+      stateSummary: "utilizador cancelou a última proposta",
+    });
+    return { reply: "Ok, não registei nada." };
+  }
+
   // 0.a) Saudação isolada — resposta natural sem IA.
   if (isGreetOnly(trimmed)) {
+    logBranch("greeting");
     const reply = userFirstName
       ? `Olá, ${userFirstName}. Em que te posso ajudar?`
       : "Olá. Em que te posso ajudar?";
     return { reply };
   }
   if (isThanks(trimmed)) {
+    logBranch("thanks");
     return { reply: "De nada." };
   }
 
@@ -375,7 +430,8 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   //   - Sem proposta pendente, é um fecho de conversa: resposta neutra
   //     e nunca reabrir a última ação. Nunca cai no ramo de saudação.
   if (!pending && isSocialCloser(trimmed)) {
-    return { reply: pickCloserReply(trimmed) };
+    logBranch("social_closer_no_pending");
+    return { reply: pickCloserReply(trimmed) ?? "Perfeito." };
   }
 
   // 0) Fast-path: respostas curtas de confirmação/cancelamento.
@@ -419,34 +475,7 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     if (slot) return slot;
   }
 
-  if (pending && isConfirmText(trimmed)) {
-    // Pending "sugestão pós-criação de imóvel" (morada/proprietário) —
-    // "sim" pede os detalhes; "não" é tratado noutro ramo. Nunca deve
-    // acionar `confirmPendingSafe`, que não sabe executar este intent.
-    if (pending.intent === "await_property_details") {
-      await markPendingActionStatus(supabase, pending.id, "cancelled");
-      await upsertConversationState(supabase, {
-        userId, channel, pendingActionId: null,
-      });
-      return { reply: "Diz-me a morada ou o nome do proprietário." };
-    }
-    return await confirmPendingSafe(supabase, userId, channel, pending);
-  }
-  if (pending && isCancelText(trimmed)) {
-    if (pending.intent === "await_property_details") {
-      await markPendingActionStatus(supabase, pending.id, "cancelled");
-      await upsertConversationState(supabase, {
-        userId, channel, pendingActionId: null,
-      });
-      return { reply: "Está bem." };
-    }
-    await markPendingActionStatus(supabase, pending.id, "cancelled");
-    await upsertConversationState(supabase, {
-      userId, channel, pendingActionId: null, activeTopic: null,
-      stateSummary: "utilizador cancelou a última proposta",
-    });
-    return { reply: "Ok, não registei nada." };
-  }
+  // (Confirmação/cancelamento já foram tratados no topo com prioridade absoluta.)
 
   // 0.property) Se há um imóvel activo na conversa e a mensagem não é uma
   // nova acção clara, aplica enriquecimento progressivo. Cria pending para
@@ -509,6 +538,21 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
         (correction.time as string) || ((last?.structured_payload as any)?.entities?.start_time as string) || null,
       );
       if (last && last.created_resource_id) {
+        // Verifica ANTES de qualquer UPDATE que o recurso ainda existe.
+        // Sem esta salvaguarda, corríamos o risco de anunciar "Corrigi..."
+        // sem que exista um seguimento real na base de dados.
+        const { data: exists } = await supabase
+          .from("follow_ups")
+          .select("id")
+          .eq("id", last.created_resource_id)
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!exists) {
+          logBranch("correction_target_missing", { last_id: last.id });
+          return {
+            reply: `Não encontrei o seguimento que querias corrigir. Queres que o registe para ${quandoAsk}?`,
+          };
+        }
         const p = last.structured_payload as any;
         const ent = { ...(p.entities ?? {}) };
         if (correction.date) ent.date = correction.date;
@@ -531,12 +575,14 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
         await updatePendingActionPayload(supabase, last.id, { ...p, entities: ent });
         const tipoLabel = (ent.event_type || (last.intent === "create_event" ? "visita" : "tarefa")) as string;
         const quando = naturalWhen(String(ent.date), (ent.start_time as string) || null);
+        logBranch("correction_applied", { resource_id: last.created_resource_id });
         return { reply: `Tens razão. Corrigi ${articleFor(tipoLabel)} ${tipoLabel} para ${quando}.` };
       }
       // Sem alvo para corrigir: perguntar antes de criar novo (evita duplicados).
-      if (last && !last.created_resource_id) {
+      if (!last || !last.created_resource_id) {
+        logBranch("correction_no_target", { has_last: !!last });
         return {
-          reply: `Não encontrei o seguimento que acabámos de criar. Queres que o registe novamente para ${quandoAsk}?`,
+          reply: `Não encontrei o seguimento que querias corrigir. Queres que o registe para ${quandoAsk}?`,
         };
       }
     }
