@@ -87,6 +87,14 @@ export function stripAssessorVocative(text: string, name: string | null | undefi
   const tail = new RegExp(`[,;\\-–—…]\\s*${escaped}\\s*[.?!]*\\s*$`, "iu");
   out = out.replace(tail, "");
 
+  // 4) Saudação + Assessor no fim, sem pontuação: "Olá Maria", "Bom dia Maria".
+  //    Mantém a saudação, remove o nome do Assessor.
+  const greetTail = new RegExp(
+    `^(\\s*(?:ol[áa]|oi|hey|hello|hi|bom\\s+dia|boa\\s+tarde|boa\\s+noite))\\s+${escaped}\\s*[.?!]*\\s*$`,
+    "iu",
+  );
+  if (greetTail.test(out)) out = out.replace(greetTail, "$1");
+
   return out.trim() || text;
 }
 
