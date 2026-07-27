@@ -239,7 +239,7 @@ function buildProposalReply(
   // registo antes da confirmação final.
   if (!hasDate) {
     const alvo = personName
-      ? `de ligar a ${personWithArticle(personName)}`
+      ? `de ligar ${personObject("a", personName)}`
       : intent === "create_event"
         ? "desse compromisso"
         : (ent.title ? `de "${String(ent.title).trim()}"` : "disso");
@@ -269,13 +269,19 @@ function buildProposalReply(
     // Nunca mostrar "essa tarefa". Deriva do que existe.
     let title = String(ent.title || "").trim();
     if (!title) {
-      if (personName) title = `ligar a ${personName}`;
+      if (personName) title = `ligar ${personObject("a", personName)}`;
       else if (ent.location) title = `tratar de ${ent.location}`;
       else {
         // Sem contexto suficiente — pergunta em vez de propor com placeholder.
         const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
         return `${capitalize(when)} do que queres que te lembre?`;
       }
+    } else {
+      // Normaliza "ligar a Paulo" → "ligar ao Paulo" quando aplicável.
+      title = title.replace(
+        /\bligar\s+a\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][\p{L}\-']+)/u,
+        (_m, nm: string) => `ligar ${personObject("a", nm)}`,
+      );
     }
     const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
     return `${capitalize(when)} queres que te lembre de ${title}?`;
