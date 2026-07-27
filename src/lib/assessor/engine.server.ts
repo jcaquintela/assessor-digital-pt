@@ -30,6 +30,19 @@ import {
   type PendingActionRow,
 } from "./memory.server";
 import { sanitizeReply as sanitizeReplyFromCulture, safeReply, NATURAL_FALLBACKS } from "./culture/sanitize";
+import {
+  CONFIRM_RE,
+  CANCEL_RE,
+  GREET_RE,
+  THANKS_RE,
+  MORE_RE,
+  CORRECTION_RE,
+  isConfirmation as saIsConfirmation,
+  isRejection as saIsRejection,
+  isGreeting as saIsGreeting,
+  isThanks as saIsThanks,
+  detectCorrection as saDetectCorrection,
+} from "./culture/short-answers";
 
 export interface EngineInput {
   supabase: any; // service-role client (admin)
@@ -51,24 +64,11 @@ const REPLY_FALLBACK = NATURAL_FALLBACKS.didNotUnderstand;
 const REPLY_AI_DOWN = NATURAL_FALLBACKS.aiDown;
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 
-// Palavras/expressões curtas de confirmação e cancelamento.
-// Interpretadas localmente sempre que existe um rascunho pendente,
-// para não depender da IA em "Sim"/"Não" isolados.
-const CONFIRM_RE =
-  /^\s*(sim(,?\s*(regista|registar|regista isso|faz isso|por favor))?|regista(r)?|regista isso|confirma(r|do)?|pode ser|est[áa] bem|ok(ay|ei)?|claro|com certeza|faz isso|dale|👍|✅|sim!?)\s*[.!]?\s*$/i;
-const CANCEL_RE =
-  /^\s*(n[ãa]o|nao|cancela(r)?|esquece|deixa|para|n[ãa]o registes|n[ãa]o registar)\s*[.!]?\s*$/i;
-
-// Saudações — respondemos sem chamar a IA.
-const GREET_RE =
-  /^\s*(ol[áa]|oi|hey|hi|hello|bom\s*dia|boa\s*tarde|boa\s*noite)\b[\s,.!?]*$/i;
-
-// "tenho mais uma", "outra visita", "mais um" — inicia nova recolha.
-const MORE_RE = /\b(mais\s+uma|mais\s+um|outra|outro|tenho\s+outra|tenho\s+mais)\b/i;
-
-// Agradecimentos curtos.
-const THANKS_RE = /^\s*(obrigad[oa]|obrigadinho|thanks|thank\s*you|valeu|grato|grata)\b[\s,.!?]*$/i;
-
+// Cultura conversacional — regexes de confirmação/cancelamento/saudação/
+// agradecimento/correção/"mais uma" vêm de `culture/short-answers.ts`.
+// Mantidos como re-exports para preservar todos os call-sites e testes
+// que possam importar estes símbolos.
+//
 // Perguntas sobre a área Diversos.
 const QUERY_MISC_RE =
   /(diversos|notas?\s+(?:que|deixei|pendentes?)|ideias?\s+(?:que|pendentes?|deixei)|(?:o\s+que\s+)?(?:registei|guardei|escrevi|apontei|deixei)\b.*\b(?:diversos|nota|notas|semana|hoje|ontem|ideias?))/i;
@@ -79,10 +79,6 @@ const QUERY_MISC_RE =
 const QUERY_AGENDA_RE =
   /\b(agenda|compromissos?|marca(?:d[oa]s?|ç[õo]es)|hoje\s+(?:tenho|tens|temos)|o\s+que\s+tenho\s+(?:hoje|amanh[ãa])|que\s+(?:tenho|compromissos))\b/i;
 
-// Prefixos de correção do último evento/proposta.
-const CORRECTION_RE =
-  /^\s*(n[ãa]o[,.\s]|nao[,.\s]|mas\b|afinal\b|antes\b|corrige\b|corrigir\b|[ée]\s+(às|as|pelas|amanh|hoje|com|na|no|em)|na\s+verdade\b)/i;
-
 // Verbos que indicam pedido de acção/lembrete sobre alguém ou algo — não
 // devem ser interpretados como enriquecimento do imóvel activo.
 const ACTION_VERB_RE =
@@ -92,19 +88,19 @@ const ACTION_VERB_RE =
 const OWNER_REF_RE = /\b(dono|dona|propriet[áa]ri[oa])\b/i;
 
 function isConfirmText(t: string): boolean {
-  return CONFIRM_RE.test(t);
+  return saIsConfirmation(t);
 }
 function isCancelText(t: string): boolean {
-  return CANCEL_RE.test(t);
+  return saIsRejection(t);
 }
 function isGreetOnly(t: string): boolean {
-  return GREET_RE.test(t);
+  return saIsGreeting(t);
 }
 function looksLikeCorrection(t: string): boolean {
-  return CORRECTION_RE.test(t);
+  return saDetectCorrection(t);
 }
 function isThanks(t: string): boolean {
-  return THANKS_RE.test(t);
+  return saIsThanks(t);
 }
 function isQueryMisc(t: string): boolean {
   return QUERY_MISC_RE.test(t);
