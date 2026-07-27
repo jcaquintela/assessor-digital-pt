@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { appSourceColumns } from "@/lib/assessor/follow-ups-source";
 
 export type Frequency = "daily" | "weekly" | "monthly";
 
