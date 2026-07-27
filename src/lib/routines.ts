@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { appSourceColumns } from "@/lib/assessor/follow-ups-source";
 
 export type Frequency = "daily" | "weekly" | "monthly";
 
@@ -103,6 +104,7 @@ export async function materializeDueRoutines(): Promise<number> {
       status: "Pendente",
       priority: r.priority,
       notes: r.notes ? `[Rotina] ${r.notes}` : "[Rotina]",
+      ...appSourceColumns({ externalReference: `routine:${r.id}` }),
     } as never);
     if (insErr) continue;
 

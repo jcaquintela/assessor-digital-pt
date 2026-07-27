@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { appSourceColumns } from "@/lib/assessor/follow-ups-source";
 import {
   type Comissao,
   type Despesa,
@@ -217,6 +218,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       status: s.estado ?? "Pendente",
       priority: s.prioridade ?? "Média",
       notes: s.notas ?? null,
+      ...appSourceColumns(),
     });
     if (error) throw error;
     invalidate("follow_ups");
@@ -235,6 +237,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       status: s.estado ?? "Pendente",
       priority: s.prioridade ?? "Média",
       notes: s.notas ?? null,
+      ...appSourceColumns(),
     }).select("*").single();
     if (error) throw error;
     invalidate("follow_ups");

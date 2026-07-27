@@ -30,6 +30,7 @@ import {
   type PendingActionRow,
 } from "./memory.server";
 import { sanitizeReply as sanitizeReplyFromCulture, safeReply, NATURAL_FALLBACKS } from "./culture/sanitize";
+import { assessorSourceColumns } from "./follow-ups-source";
 import {
   CONFIRM_RE,
   CANCEL_RE,
@@ -50,6 +51,9 @@ export interface EngineInput {
   channel: string; // 'whatsapp' | 'web' | 'telegram' | ...
   content: string;
   receivedAt?: Date;
+  // ID da mensagem externa que originou este turno (ex.: WhatsApp wamid).
+  // Persistido em `follow_ups.source_message_id` para auditoria.
+  sourceMessageId?: string | null;
 }
 
 export interface EngineOutcome {
@@ -642,7 +646,7 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     // Uma nova proposta invalida qualquer rascunho anterior — evita
     // repetir dados da proposta antiga.
     if (pending) await markPendingActionStatus(supabase, pending.id, "cancelled");
-    return await proposeAction(supabase, userId, channel, trimmed, interp, convState);
+    return await proposeAction(supabase, userId, channel, trimmed, interp, convState, input.sourceMessageId ?? null);
   }
 
   // 3.b) Contexto de imóvel na mensagem — propor criação/associação.
@@ -851,6 +855,7 @@ async function proposeAction(
   originalText: string,
   interp: AiInterpretation,
   convState?: any,
+  sourceMessageId?: string | null,
 ): Promise<EngineOutcome> {
   const ent = interp.entities;
 
@@ -941,6 +946,7 @@ async function proposeAction(
     payload,
     confidence: interp.confidence ?? null,
     pendingQuestion: reply,
+    sourceMessageId: sourceMessageId ?? null,
   });
 
   await supabase.from("assessor_messages").insert({
@@ -1144,6 +1150,25 @@ async function executePending(
         return { reply: `Já estava registado para ${quando}.` };
       }
     }
+    // Idempotência dura: se o índice único por source_pending_action_id
+    // já tem um seguimento para esta pending, adota-o em vez de tentar
+    // inserir duplicado.
+    {
+      const { data: dup } = await supabase
+        .from("follow_ups")
+        .select("id, due_date, due_time")
+        .eq("user_id", userId)
+        .eq("source_pending_action_id", pending.id)
+        .maybeSingle();
+      if (dup) {
+        await markPendingActionStatus(supabase, pending.id, "executed", {
+          created_resource_type: "follow_up",
+          created_resource_id: (dup as any).id as string,
+        });
+        const quando = naturalWhen(String((dup as any).due_date), ((dup as any).due_time as string) || null);
+        return { reply: `Já estava registado para ${quando}.` };
+      }
+    }
     const tipoDb = intent === "create_event" ? "event" : "task";
     let titulo = String(ent.title || "").trim();
     if (!titulo) {
@@ -1179,6 +1204,11 @@ async function executePending(
         status: "Pendente",
         notes: notasFinais,
         related_property_id: (payload.target_property_id as string) || null,
+        ...assessorSourceColumns({
+          channel,
+          sourceMessageId: pending.source_message_id ?? null,
+          pendingActionId: pending.id,
+        }),
       } as never)
       .select("id")
       .single();
@@ -1429,6 +1459,11 @@ async function createFileReminder(
       status: "Pendente",
       notes: notas,
       related_file_id: fileId,
+      ...assessorSourceColumns({
+        channel,
+        sourceMessageId: pending.source_message_id ?? null,
+        pendingActionId: pending.id,
+      }),
     } as never)
     .select("id")
     .single();

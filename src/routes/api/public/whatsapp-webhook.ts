@@ -224,6 +224,7 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
       channel: "whatsapp",
       content: body,
       receivedAt: new Date(),
+      sourceMessageId: waMessageId ?? null,
     });
     const alreadyPersisted = outcome.messageType === "__ALREADY_PERSISTED__";
     if (alreadyPersisted) {

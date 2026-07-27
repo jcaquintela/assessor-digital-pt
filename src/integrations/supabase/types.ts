@@ -375,8 +375,10 @@ export type Database = {
       follow_ups: {
         Row: {
           created_at: string
+          created_by_assessor: boolean
           due_date: string
           due_time: string | null
+          external_reference: string | null
           id: string
           notes: string | null
           opportunity_id: string | null
@@ -384,7 +386,11 @@ export type Database = {
           priority: string
           related_file_id: string | null
           related_property_id: string | null
+          source_channel: string | null
+          source_message_id: string | null
+          source_pending_action_id: string | null
           status: string
+          timezone: string | null
           title: string
           type: string
           updated_at: string
@@ -392,8 +398,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by_assessor?: boolean
           due_date?: string
           due_time?: string | null
+          external_reference?: string | null
           id?: string
           notes?: string | null
           opportunity_id?: string | null
@@ -401,7 +409,11 @@ export type Database = {
           priority?: string
           related_file_id?: string | null
           related_property_id?: string | null
+          source_channel?: string | null
+          source_message_id?: string | null
+          source_pending_action_id?: string | null
           status?: string
+          timezone?: string | null
           title: string
           type?: string
           updated_at?: string
@@ -409,8 +421,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by_assessor?: boolean
           due_date?: string
           due_time?: string | null
+          external_reference?: string | null
           id?: string
           notes?: string | null
           opportunity_id?: string | null
@@ -418,7 +432,11 @@ export type Database = {
           priority?: string
           related_file_id?: string | null
           related_property_id?: string | null
+          source_channel?: string | null
+          source_message_id?: string | null
+          source_pending_action_id?: string | null
           status?: string
+          timezone?: string | null
           title?: string
           type?: string
           updated_at?: string
