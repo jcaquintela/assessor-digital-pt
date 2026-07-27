@@ -143,8 +143,11 @@ function formatWhen(iso: string, hora?: string | null): string {
 }
 
 function articleFor(tipo: string): string {
-  // "a visita", "a reunião", "o almoço", "o jantar", "o encontro", "o café"
-  return /^(visita|reuni)/.test(tipo) ? "a" : "o";
+  // "a visita", "a reunião", "a tarefa", "a chamada"; "o almoço", "o jantar",
+  // "o encontro", "o café", "o compromisso", "o seguimento", "o evento".
+  const t = String(tipo || "").toLowerCase();
+  if (/^(visita|reuni|tarefa|chamada|nota|ideia|marca[çc][ãa]o)/.test(t)) return "a";
+  return "o";
 }
 
 // Pending actions moved to public.pending_actions (memory.server.ts).
@@ -186,6 +189,20 @@ function personWithArticle(name: string): string {
   const first = (name.split(/\s+/)[0] || "").toLowerCase();
   const feminine = /a$/.test(first) && !/(costa|papa|maia|jesus)$/.test(first);
   return `${feminine ? "a" : "o"} ${name}`;
+}
+
+// "ligar a" + nome → "ligar ao Paulo" / "ligar à Maria".
+// Devolve a preposição + artigo contraído. Se `name` estiver vazio,
+// devolve apenas a preposição.
+function personObject(prep: "a" | "de" | "com" | "para", name: string): string {
+  if (!name) return prep;
+  const first = (name.split(/\s+/)[0] || "").toLowerCase();
+  const feminine = /a$/.test(first) && !/(costa|papa|maia|jesus)$/.test(first);
+  if (prep === "a") return `${feminine ? "à" : "ao"} ${name}`;
+  if (prep === "de") return `${feminine ? "da" : "do"} ${name}`;
+  // "com" e "para" não contraem com o artigo definido em PT-PT normativo,
+  // mas soam mais naturais com artigo: "com o Paulo".
+  return `${prep} ${feminine ? "a" : "o"} ${name}`;
 }
 
 function personWithTitle(name: string, title?: string | null): string {
