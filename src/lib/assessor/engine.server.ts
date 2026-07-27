@@ -102,6 +102,21 @@ function looksLikeCorrection(t: string): boolean {
 function isThanks(t: string): boolean {
   return saIsThanks(t);
 }
+
+// Fechos sociais: reconhecidos SEM ação pendente para responder de forma
+// natural sem cair no ramo de saudação nem reabrir ações antigas.
+const SOCIAL_CLOSER_RE =
+  /^\s*(ok(ay|ei)?|est[áa]\s+bem|perfeito|combinad[oa]|fixe|beleza|👍|✅)\s*[.!]?\s*$/i;
+function isSocialCloser(t: string): boolean {
+  return SOCIAL_CLOSER_RE.test(t);
+}
+function pickCloserReply(t: string): string {
+  const s = t.toLowerCase();
+  if (/combinad/.test(s)) return "Combinado.";
+  if (/perfeito/.test(s)) return "Perfeito.";
+  if (/est[áa]\s+bem/.test(s)) return "Está bem.";
+  return "Perfeito.";
+}
 function isQueryMisc(t: string): boolean {
   return QUERY_MISC_RE.test(t);
 }
