@@ -55,10 +55,10 @@ export function resolveDateTimeFromText(
   let date: string | null = null;
   let expression: string | null = null;
 
-  if (/\b(depois\s+de\s+amanh[ãa])\b/.test(t)) {
+  if (/(?:^|[^\p{L}])depois\s+de\s+amanh[ãa](?![\p{L}])/u.test(t)) {
     date = addDaysYmd(todayYmd, 2);
     expression = "depois de amanhã";
-  } else if (/\bamanh[ãa]\b/.test(t)) {
+  } else if (/(?:^|[^\p{L}])amanh[ãa](?![\p{L}])/u.test(t)) {
     date = addDaysYmd(todayYmd, 1);
     expression = "amanhã";
   } else if (/\bhoje\b/.test(t)) {
@@ -69,7 +69,7 @@ export function resolveDateTimeFromText(
     expression = "ontem";
   } else {
     for (const k of Object.keys(DIAS_SEMANA)) {
-      if (new RegExp(`\\b${k}\\b`).test(t)) {
+      if (new RegExp(`(?:^|[^\\p{L}])${k}(?![\\p{L}])`, "u").test(t)) {
         const target = DIAS_SEMANA[k];
         const cur = dayOfWeekYmd(todayYmd);
         const diff = (target - cur + 7) % 7 || 7;
