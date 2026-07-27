@@ -351,6 +351,14 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     return { reply: "De nada." };
   }
 
+  // 0.a.bis) Fechos sociais ("ok", "perfeito", "combinado", "está bem").
+  //   - Se existe uma proposta pendente, "ok" é confirmação (tratado abaixo).
+  //   - Sem proposta pendente, é um fecho de conversa: resposta neutra
+  //     e nunca reabrir a última ação. Nunca cai no ramo de saudação.
+  if (!pending && isSocialCloser(trimmed)) {
+    return { reply: pickCloserReply(trimmed) };
+  }
+
   // 0) Fast-path: respostas curtas de confirmação/cancelamento.
   // Nunca envia "Sim"/"Não" isolados para a IA — interpreta localmente
   // usando a ação pendente.
