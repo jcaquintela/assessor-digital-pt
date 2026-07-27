@@ -29,7 +29,7 @@ import {
   summarizePendingAction,
   type PendingActionRow,
 } from "./memory.server";
-import { sanitizeReply as sanitizeReplyCulture, safeReply, NATURAL_FALLBACKS } from "./culture/sanitize";
+import { sanitizeReply as sanitizeReplyFromCulture, safeReply, NATURAL_FALLBACKS } from "./culture/sanitize";
 
 export interface EngineInput {
   supabase: any; // service-role client (admin)
@@ -258,7 +258,11 @@ function buildProposalReply(
     if (!title) {
       if (personName) title = `ligar a ${personName}`;
       else if (ent.location) title = `tratar de ${ent.location}`;
-      else title = "essa tarefa";
+      else {
+        // Sem contexto suficiente — pergunta em vez de propor com placeholder.
+        const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
+        return `${capitalize(when)} do que queres que te lembre?`;
+      }
     }
     const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
     return `${capitalize(when)} queres que te lembre de ${title}?`;
@@ -764,12 +768,9 @@ function hasExplicitDateReferenceInText(text: string): boolean {
   return /\b(hoje|amanh[ãa]|ontem|depois\s+de\s+amanh[ãa]|segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo|(?:dia\s+)?\d{1,2}\s+(?:de\s+)?(?:janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)|\d{1,2}[\/\-.]\d{1,2})/i.test(text);
 }
 
-// Remove prefixos técnicos que o modelo por vezes injeta ("Proposta:", "Intenção:", etc.)
+// Delega para a camada de cultura — evita cópias divergentes.
 function sanitizeReply(reply?: string | null): string {
-  if (!reply) return "";
-  return reply
-    .replace(/^\s*(proposta|intenç[ãa]o|resumo|registo pendente|payload|a[cç][ãa]o( estruturada)?)\s*[:\-–—]\s*/i, "")
-    .trim();
+  return sanitizeReplyFromCulture(reply);
 }
 
 function describeDraftShort(draft: { structured_payload: any } | null): string | null {
@@ -983,14 +984,14 @@ async function handleSlotFill(
 
   if (!filled) {
     // Resposta não interpretável — repete a pergunta sem chamar a IA.
-    const q = pending.pending_question || "Para quando é? (por exemplo: amanhã às 12h)";
+    const q = pending.pending_question || NATURAL_FALLBACKS.askDate;
     return { reply: q };
   }
 
   const newPayload = { ...payload, entities: ent };
   // Ainda falta data → volta a pedir.
   if (!ent.date) {
-    const q = "Para quando é? (por exemplo: amanhã às 12h)";
+    const q = NATURAL_FALLBACKS.askDate;
     await updatePendingActionPayload(supabase, pending.id, newPayload, {
       status: "collecting_information",
       current_question: "date",
@@ -1058,7 +1059,7 @@ async function executePending(
 
   if (intent === "create_event" || intent === "create_follow_up") {
     if (!ent.date) {
-      const question = "Para quando é? (por exemplo: amanhã às 12h)";
+      const question = "Para quando é?";
       await updatePendingActionPayload(supabase, pending.id, payload, {
         status: "collecting_information",
         current_question: "date",
