@@ -1061,7 +1061,10 @@ async function confirmPendingSafe(
     return await executePending(supabase, userId, channel, pending);
   } catch (err) {
     console.error("[assessor] executePending falhou:", err instanceof Error ? err.message : err);
-    await markPendingActionStatus(supabase, pending.id, "failed", {
+    // Manter a ação disponível para retry — volta a pending_confirmation
+    // com o erro técnico guardado. NÃO marcar como executed nem failed
+    // terminal, para que "sim" volte a tentar.
+    await markPendingActionStatus(supabase, pending.id, "pending_confirmation", {
       error_message: err instanceof Error ? err.message : String(err),
     });
     const payload = (pending.structured_payload ?? {}) as Record<string, any>;
