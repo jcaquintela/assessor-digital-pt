@@ -50,6 +50,9 @@ export interface EngineInput {
   channel: string; // 'whatsapp' | 'web' | 'telegram' | ...
   content: string;
   receivedAt?: Date;
+  // ID da mensagem externa que originou este turno (ex.: WhatsApp wamid).
+  // Persistido em `follow_ups.source_message_id` para auditoria.
+  sourceMessageId?: string | null;
 }
 
 export interface EngineOutcome {
