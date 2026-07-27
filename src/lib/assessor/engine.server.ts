@@ -29,6 +29,7 @@ import {
   summarizePendingAction,
   type PendingActionRow,
 } from "./memory.server";
+import { sanitizeReply as sanitizeReplyCulture, safeReply, NATURAL_FALLBACKS } from "./culture/sanitize";
 
 export interface EngineInput {
   supabase: any; // service-role client (admin)
@@ -45,12 +46,9 @@ export interface EngineOutcome {
   status?: "draft" | "confirmed" | "cancelled" | null;
 }
 
-const REPLY_UNASSOCIATED =
-  "Olá. Este número ainda não está associado a uma conta do Assessor. Entra no dashboard e confirma o teu número de WhatsApp.";
-const REPLY_FALLBACK =
-  "Não percebi bem. Podes reformular?";
-const REPLY_AI_DOWN =
-  "Recebi a tua mensagem, mas estou com dificuldade em processá-la agora. Tenta novamente dentro de instantes.";
+const REPLY_UNASSOCIATED = NATURAL_FALLBACKS.unassociated;
+const REPLY_FALLBACK = NATURAL_FALLBACKS.didNotUnderstand;
+const REPLY_AI_DOWN = NATURAL_FALLBACKS.aiDown;
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 
 // Palavras/expressões curtas de confirmação e cancelamento.
