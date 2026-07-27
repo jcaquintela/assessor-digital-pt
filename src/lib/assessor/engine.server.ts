@@ -645,7 +645,7 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     // Uma nova proposta invalida qualquer rascunho anterior — evita
     // repetir dados da proposta antiga.
     if (pending) await markPendingActionStatus(supabase, pending.id, "cancelled");
-    return await proposeAction(supabase, userId, channel, trimmed, interp, convState);
+    return await proposeAction(supabase, userId, channel, trimmed, interp, convState, input.sourceMessageId ?? null);
   }
 
   // 3.b) Contexto de imóvel na mensagem — propor criação/associação.
