@@ -18,10 +18,10 @@ export const CANCEL_RE =
   /^\s*(n[ãa]o|nao|cancela(r)?|esquece|deixa|para|n[ãa]o registes|n[ãa]o registar)\s*[.!]?\s*$/i;
 
 export const GREET_RE =
-  /^\s*(ol[áa]|oi|hey|hi|hello|bom\s*dia|boa\s*tarde|boa\s*noite)\b[\s,.!?]*$/i;
+  /^\s*(ol[áa]|oi|hey|hi|hello|bom\s*dia|boa\s*tarde|boa\s*noite)(?![\p{L}])[\s,.!?]*$/iu;
 
 export const THANKS_RE =
-  /^\s*(obrigad[oa]|obrigadinho|thanks|thank\s*you|valeu|grato|grata)\b[\s,.!?]*$/i;
+  /^\s*(obrigad[oa]|obrigadinho|thanks|thank\s*you|valeu|grato|grata)(?![\p{L}])[\s,.!?]*$/iu;
 
 export const MORE_RE =
   /\b(mais\s+uma|mais\s+um|outra|outro|tenho\s+outra|tenho\s+mais)\b/i;
