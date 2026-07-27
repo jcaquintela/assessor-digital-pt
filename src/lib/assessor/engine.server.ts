@@ -1204,11 +1204,11 @@ async function executePending(
         status: "Pendente",
         notes: notasFinais,
         related_property_id: (payload.target_property_id as string) || null,
-        source_channel: channel,
-        source_message_id: pending.source_message_id ?? null,
-        source_pending_action_id: pending.id,
-        timezone: "Europe/Lisbon",
-        created_by_assessor: true,
+        ...assessorSourceColumns({
+          channel,
+          sourceMessageId: pending.source_message_id ?? null,
+          pendingActionId: pending.id,
+        }),
       } as never)
       .select("id")
       .single();
@@ -1459,11 +1459,11 @@ async function createFileReminder(
       status: "Pendente",
       notes: notas,
       related_file_id: fileId,
-      source_channel: channel,
-      source_message_id: pending.source_message_id ?? null,
-      source_pending_action_id: pending.id,
-      timezone: "Europe/Lisbon",
-      created_by_assessor: true,
+      ...assessorSourceColumns({
+        channel,
+        sourceMessageId: pending.source_message_id ?? null,
+        pendingActionId: pending.id,
+      }),
     } as never)
     .select("id")
     .single();
