@@ -21,6 +21,7 @@ export interface PendingActionRow {
   id: string;
   user_id: string;
   channel: string;
+  source_message_id: string | null;
   intent: string;
   original_content: string;
   structured_payload: Record<string, any>;
