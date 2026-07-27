@@ -217,6 +217,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       status: s.estado ?? "Pendente",
       priority: s.prioridade ?? "Média",
       notes: s.notas ?? null,
+      source_channel: "app",
+      timezone: "Europe/Lisbon",
+      created_by_assessor: false,
     });
     if (error) throw error;
     invalidate("follow_ups");
@@ -235,6 +238,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       status: s.estado ?? "Pendente",
       priority: s.prioridade ?? "Média",
       notes: s.notas ?? null,
+      source_channel: "app",
+      timezone: "Europe/Lisbon",
+      created_by_assessor: false,
     }).select("*").single();
     if (error) throw error;
     invalidate("follow_ups");
