@@ -1182,6 +1182,11 @@ async function executePending(
         status: "Pendente",
         notes: notasFinais,
         related_property_id: (payload.target_property_id as string) || null,
+        source_channel: channel,
+        source_message_id: pending.source_message_id ?? null,
+        source_pending_action_id: pending.id,
+        timezone: "Europe/Lisbon",
+        created_by_assessor: true,
       } as never)
       .select("id")
       .single();
