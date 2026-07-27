@@ -30,6 +30,7 @@ import {
   type PendingActionRow,
 } from "./memory.server";
 import { sanitizeReply as sanitizeReplyFromCulture, safeReply, NATURAL_FALLBACKS } from "./culture/sanitize";
+import { assessorSourceColumns } from "./follow-ups-source";
 import {
   CONFIRM_RE,
   CANCEL_RE,
