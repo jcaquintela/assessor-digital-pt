@@ -102,6 +102,21 @@ function looksLikeCorrection(t: string): boolean {
 function isThanks(t: string): boolean {
   return saIsThanks(t);
 }
+
+// Fechos sociais: reconhecidos SEM ação pendente para responder de forma
+// natural sem cair no ramo de saudação nem reabrir ações antigas.
+const SOCIAL_CLOSER_RE =
+  /^\s*(ok(ay|ei)?|est[áa]\s+bem|perfeito|combinad[oa]|fixe|beleza|👍|✅)\s*[.!]?\s*$/i;
+function isSocialCloser(t: string): boolean {
+  return SOCIAL_CLOSER_RE.test(t);
+}
+function pickCloserReply(t: string): string {
+  const s = t.toLowerCase();
+  if (/combinad/.test(s)) return "Combinado.";
+  if (/perfeito/.test(s)) return "Perfeito.";
+  if (/est[áa]\s+bem/.test(s)) return "Está bem.";
+  return "Perfeito.";
+}
 function isQueryMisc(t: string): boolean {
   return QUERY_MISC_RE.test(t);
 }
@@ -143,8 +158,11 @@ function formatWhen(iso: string, hora?: string | null): string {
 }
 
 function articleFor(tipo: string): string {
-  // "a visita", "a reunião", "o almoço", "o jantar", "o encontro", "o café"
-  return /^(visita|reuni)/.test(tipo) ? "a" : "o";
+  // "a visita", "a reunião", "a tarefa", "a chamada"; "o almoço", "o jantar",
+  // "o encontro", "o café", "o compromisso", "o seguimento", "o evento".
+  const t = String(tipo || "").toLowerCase();
+  if (/^(visita|reuni|tarefa|chamada|nota|ideia|marca[çc][ãa]o)/.test(t)) return "a";
+  return "o";
 }
 
 // Pending actions moved to public.pending_actions (memory.server.ts).
@@ -188,6 +206,20 @@ function personWithArticle(name: string): string {
   return `${feminine ? "a" : "o"} ${name}`;
 }
 
+// "ligar a" + nome → "ligar ao Paulo" / "ligar à Maria".
+// Devolve a preposição + artigo contraído. Se `name` estiver vazio,
+// devolve apenas a preposição.
+function personObject(prep: "a" | "de" | "com" | "para", name: string): string {
+  if (!name) return prep;
+  const first = (name.split(/\s+/)[0] || "").toLowerCase();
+  const feminine = /a$/.test(first) && !/(costa|papa|maia|jesus)$/.test(first);
+  if (prep === "a") return `${feminine ? "à" : "ao"} ${name}`;
+  if (prep === "de") return `${feminine ? "da" : "do"} ${name}`;
+  // "com" e "para" não contraem com o artigo definido em PT-PT normativo,
+  // mas soam mais naturais com artigo: "com o Paulo".
+  return `${prep} ${feminine ? "a" : "o"} ${name}`;
+}
+
 function personWithTitle(name: string, title?: string | null): string {
   const t = (title || "").trim();
   if (!t) return personWithArticle(name);
@@ -222,7 +254,7 @@ function buildProposalReply(
   // registo antes da confirmação final.
   if (!hasDate) {
     const alvo = personName
-      ? `de ligar a ${personWithArticle(personName)}`
+      ? `de ligar ${personObject("a", personName)}`
       : intent === "create_event"
         ? "desse compromisso"
         : (ent.title ? `de "${String(ent.title).trim()}"` : "disso");
@@ -252,13 +284,19 @@ function buildProposalReply(
     // Nunca mostrar "essa tarefa". Deriva do que existe.
     let title = String(ent.title || "").trim();
     if (!title) {
-      if (personName) title = `ligar a ${personName}`;
+      if (personName) title = `ligar ${personObject("a", personName)}`;
       else if (ent.location) title = `tratar de ${ent.location}`;
       else {
         // Sem contexto suficiente — pergunta em vez de propor com placeholder.
         const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
         return `${capitalize(when)} do que queres que te lembre?`;
       }
+    } else {
+      // Normaliza "ligar a Paulo" → "ligar ao Paulo" quando aplicável.
+      title = title.replace(
+        /\bligar\s+a\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][\p{L}\-']+)/u,
+        (_m, nm: string) => `ligar ${personObject("a", nm)}`,
+      );
     }
     const when = naturalWhen(String(ent.date), (ent.start_time as string) || null);
     return `${capitalize(when)} queres que te lembre de ${title}?`;
@@ -326,6 +364,14 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   }
   if (isThanks(trimmed)) {
     return { reply: "De nada." };
+  }
+
+  // 0.a.bis) Fechos sociais ("ok", "perfeito", "combinado", "está bem").
+  //   - Se existe uma proposta pendente, "ok" é confirmação (tratado abaixo).
+  //   - Sem proposta pendente, é um fecho de conversa: resposta neutra
+  //     e nunca reabrir a última ação. Nunca cai no ramo de saudação.
+  if (!pending && isSocialCloser(trimmed)) {
+    return { reply: pickCloserReply(trimmed) };
   }
 
   // 0) Fast-path: respostas curtas de confirmação/cancelamento.
