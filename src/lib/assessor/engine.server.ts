@@ -1112,6 +1112,23 @@ async function executePending(
       });
       return { reply: question, messageType: "__ALREADY_PERSISTED__" };
     }
+    // Idempotência: se esta pending já criou o recurso, não voltar a inserir.
+    if (pending.created_resource_id) {
+      const { data: existing } = await supabase
+        .from("follow_ups")
+        .select("id, due_date, due_time")
+        .eq("id", pending.created_resource_id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existing) {
+        await markPendingActionStatus(supabase, pending.id, "executed", {
+          created_resource_type: "follow_up",
+          created_resource_id: pending.created_resource_id,
+        });
+        const quando = naturalWhen(String(existing.due_date), (existing.due_time as string) || null);
+        return { reply: `Já estava registado para ${quando}.` };
+      }
+    }
     const tipoDb = intent === "create_event" ? "event" : "task";
     let titulo = String(ent.title || "").trim();
     if (!titulo) {
@@ -1151,7 +1168,16 @@ async function executePending(
       .select("id")
       .single();
     if (error) throw error;
-    const resourceId = (fu as any).id as string;
+    const resourceId = (fu as any)?.id as string | undefined;
+    if (!resourceId) throw new Error("INSERT em follow_ups não devolveu id");
+    // Confirmar que o registo existe antes de responder "Feito".
+    const { data: verify, error: verifyErr } = await supabase
+      .from("follow_ups")
+      .select("id")
+      .eq("id", resourceId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (verifyErr || !verify) throw new Error("Registo não encontrado após INSERT");
     await markPendingActionStatus(supabase, pending.id, "executed", {
       created_resource_type: "follow_up",
       created_resource_id: resourceId,
