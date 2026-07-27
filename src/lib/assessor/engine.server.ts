@@ -1458,6 +1458,11 @@ async function createFileReminder(
       status: "Pendente",
       notes: notas,
       related_file_id: fileId,
+      source_channel: channel,
+      source_message_id: pending.source_message_id ?? null,
+      source_pending_action_id: pending.id,
+      timezone: "Europe/Lisbon",
+      created_by_assessor: true,
     } as never)
     .select("id")
     .single();
