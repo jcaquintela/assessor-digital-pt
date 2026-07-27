@@ -500,6 +500,10 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     //    atualiza o registo real (follow_ups).
     if (!pending && (correction.date || correction.time)) {
       const last = await findLastExecutedAction(supabase, userId, channel, ["create_event", "create_follow_up"]);
+      const quandoAsk = naturalWhen(
+        String(correction.date || (last?.structured_payload as any)?.entities?.date || ""),
+        (correction.time as string) || ((last?.structured_payload as any)?.entities?.start_time as string) || null,
+      );
       if (last && last.created_resource_id) {
         const p = last.structured_payload as any;
         const ent = { ...(p.entities ?? {}) };
@@ -508,17 +512,28 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
         const updateData: any = {};
         if (correction.date) updateData.due_date = correction.date;
         if (correction.time) updateData.due_time = correction.time;
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from("follow_ups")
           .update(updateData)
           .eq("id", last.created_resource_id)
-          .eq("user_id", userId);
-        if (!error) {
-          await updatePendingActionPayload(supabase, last.id, { ...p, entities: ent });
-          const tipoLabel = (ent.event_type || (last.intent === "create_event" ? "visita" : "tarefa")) as string;
-          const quando = naturalWhen(String(ent.date), (ent.start_time as string) || null);
-          return { reply: `Tens razão. Corrigi ${articleFor(tipoLabel)} ${tipoLabel} para ${quando}.` };
+          .eq("user_id", userId)
+          .select("id");
+        if (error || !updated || updated.length === 0) {
+          console.error("[assessor] correção falhou:", error?.message || "0 linhas afetadas");
+          return {
+            reply: `Não encontrei o seguimento que acabámos de criar. Queres que o registe novamente para ${quandoAsk}?`,
+          };
         }
+        await updatePendingActionPayload(supabase, last.id, { ...p, entities: ent });
+        const tipoLabel = (ent.event_type || (last.intent === "create_event" ? "visita" : "tarefa")) as string;
+        const quando = naturalWhen(String(ent.date), (ent.start_time as string) || null);
+        return { reply: `Tens razão. Corrigi ${articleFor(tipoLabel)} ${tipoLabel} para ${quando}.` };
+      }
+      // Sem alvo para corrigir: perguntar antes de criar novo (evita duplicados).
+      if (last && !last.created_resource_id) {
+        return {
+          reply: `Não encontrei o seguimento que acabámos de criar. Queres que o registe novamente para ${quandoAsk}?`,
+        };
       }
     }
   }
@@ -1061,7 +1076,10 @@ async function confirmPendingSafe(
     return await executePending(supabase, userId, channel, pending);
   } catch (err) {
     console.error("[assessor] executePending falhou:", err instanceof Error ? err.message : err);
-    await markPendingActionStatus(supabase, pending.id, "failed", {
+    // Manter a ação disponível para retry — volta a pending_confirmation
+    // com o erro técnico guardado. NÃO marcar como executed nem failed
+    // terminal, para que "sim" volte a tentar.
+    await markPendingActionStatus(supabase, pending.id, "pending_confirmation", {
       error_message: err instanceof Error ? err.message : String(err),
     });
     const payload = (pending.structured_payload ?? {}) as Record<string, any>;
@@ -1109,6 +1127,23 @@ async function executePending(
       });
       return { reply: question, messageType: "__ALREADY_PERSISTED__" };
     }
+    // Idempotência: se esta pending já criou o recurso, não voltar a inserir.
+    if (pending.created_resource_id) {
+      const { data: existing } = await supabase
+        .from("follow_ups")
+        .select("id, due_date, due_time")
+        .eq("id", pending.created_resource_id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existing) {
+        await markPendingActionStatus(supabase, pending.id, "executed", {
+          created_resource_type: "follow_up",
+          created_resource_id: pending.created_resource_id,
+        });
+        const quando = naturalWhen(String(existing.due_date), (existing.due_time as string) || null);
+        return { reply: `Já estava registado para ${quando}.` };
+      }
+    }
     const tipoDb = intent === "create_event" ? "event" : "task";
     let titulo = String(ent.title || "").trim();
     if (!titulo) {
@@ -1148,7 +1183,16 @@ async function executePending(
       .select("id")
       .single();
     if (error) throw error;
-    const resourceId = (fu as any).id as string;
+    const resourceId = (fu as any)?.id as string | undefined;
+    if (!resourceId) throw new Error("INSERT em follow_ups não devolveu id");
+    // Confirmar que o registo existe antes de responder "Feito".
+    const { data: verify, error: verifyErr } = await supabase
+      .from("follow_ups")
+      .select("id")
+      .eq("id", resourceId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (verifyErr || !verify) throw new Error("Registo não encontrado após INSERT");
     await markPendingActionStatus(supabase, pending.id, "executed", {
       created_resource_type: "follow_up",
       created_resource_id: resourceId,
