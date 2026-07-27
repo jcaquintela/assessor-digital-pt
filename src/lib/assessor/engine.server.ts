@@ -1147,6 +1147,25 @@ async function executePending(
         return { reply: `Já estava registado para ${quando}.` };
       }
     }
+    // Idempotência dura: se o índice único por source_pending_action_id
+    // já tem um seguimento para esta pending, adota-o em vez de tentar
+    // inserir duplicado.
+    {
+      const { data: dup } = await supabase
+        .from("follow_ups")
+        .select("id, due_date, due_time")
+        .eq("user_id", userId)
+        .eq("source_pending_action_id", pending.id)
+        .maybeSingle();
+      if (dup) {
+        await markPendingActionStatus(supabase, pending.id, "executed", {
+          created_resource_type: "follow_up",
+          created_resource_id: (dup as any).id as string,
+        });
+        const quando = naturalWhen(String((dup as any).due_date), ((dup as any).due_time as string) || null);
+        return { reply: `Já estava registado para ${quando}.` };
+      }
+    }
     const tipoDb = intent === "create_event" ? "event" : "task";
     let titulo = String(ent.title || "").trim();
     if (!titulo) {
