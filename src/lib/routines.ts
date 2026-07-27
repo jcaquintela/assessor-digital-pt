@@ -103,6 +103,10 @@ export async function materializeDueRoutines(): Promise<number> {
       status: "Pendente",
       priority: r.priority,
       notes: r.notes ? `[Rotina] ${r.notes}` : "[Rotina]",
+      source_channel: "app",
+      external_reference: `routine:${r.id}`,
+      timezone: "Europe/Lisbon",
+      created_by_assessor: false,
     } as never);
     if (insErr) continue;
 
