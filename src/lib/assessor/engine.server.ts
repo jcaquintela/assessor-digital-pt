@@ -854,6 +854,7 @@ async function proposeAction(
   originalText: string,
   interp: AiInterpretation,
   convState?: any,
+  sourceMessageId?: string | null,
 ): Promise<EngineOutcome> {
   const ent = interp.entities;
 
@@ -944,6 +945,7 @@ async function proposeAction(
     payload,
     confidence: interp.confidence ?? null,
     pendingQuestion: reply,
+    sourceMessageId: sourceMessageId ?? null,
   });
 
   await supabase.from("assessor_messages").insert({
