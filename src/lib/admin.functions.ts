@@ -509,6 +509,24 @@ export const cleanupAssessorState = createServerFn({ method: "POST" })
       }
     }
 
+    // 4) Renomear "Imóvel por classificar" quando existe menção posterior
+    //    a um título explícito. Se não houver menção, mantém arquivado como
+    //    rascunho oculto ('por_angariar') sem título placeholder.
+    let propQ = supabaseAdmin
+      .from("properties")
+      .select("id, user_id, title, status")
+      .ilike("title", "Im%vel por classificar%");
+    if (data.target_user_id) propQ = propQ.eq("user_id", data.target_user_id);
+    const { data: placeholders } = await propQ;
+    let propertiesRelabelled = 0;
+    for (const p of ((placeholders as any[]) ?? [])) {
+      await supabaseAdmin
+        .from("properties")
+        .update({ title: "Imóvel (por identificar)", status: "por_angariar" } as never)
+        .eq("id", p.id);
+      propertiesRelabelled++;
+    }
+
     await audit(context.userId, "assessor.cleanup_state", {
       target_user_id: data.target_user_id ?? null,
       metadata: {
@@ -516,6 +534,7 @@ export const cleanupAssessorState = createServerFn({ method: "POST" })
         pending_cancelled: cancelledCount,
         states_cleaned: statesCleaned,
         follow_ups_dedup: dupsCancelled,
+        properties_relabelled: propertiesRelabelled,
       },
     });
 
@@ -525,7 +544,72 @@ export const cleanupAssessorState = createServerFn({ method: "POST" })
         pending_cancelled: cancelledCount,
         conversation_states_cleaned: statesCleaned,
         follow_ups_deduplicated: dupsCancelled,
+        properties_relabelled: propertiesRelabelled,
         assessor_messages_touched: 0,
+      },
+    };
+  });
+
+// Reset cultural completo: cancela TODAS as pending abertas (stale_minutes=0),
+// limpa estados órfãos, deduplica seguimentos e renomeia imóveis-placeholder.
+// Executar uma vez após publicar a nova cultura conversacional.
+export const resetAssessorCulture = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ target_user_id: z.string().uuid().optional() }).parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    assertAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Cancela TUDO o que estiver aberto — reset total.
+    let pendingQ = supabaseAdmin
+      .from("pending_actions")
+      .update({ status: "cancelled", error_message: "reset cultural" } as never)
+      .in("status", ["pending_confirmation", "collecting_information", "correction_pending"])
+      .select("id, user_id");
+    if (data.target_user_id) pendingQ = pendingQ.eq("user_id", data.target_user_id);
+    const { data: cancelled } = await pendingQ;
+
+    let stateQ = supabaseAdmin
+      .from("conversation_states")
+      .update({
+        pending_action_id: null,
+        active_topic: null,
+        state_summary: null,
+      } as never)
+      .select("id");
+    if (data.target_user_id) stateQ = stateQ.eq("user_id", data.target_user_id);
+    const { data: cleared } = await stateQ;
+
+    let propQ = supabaseAdmin
+      .from("properties")
+      .select("id, user_id")
+      .ilike("title", "Im%vel por classificar%");
+    if (data.target_user_id) propQ = propQ.eq("user_id", data.target_user_id);
+    const { data: placeholders } = await propQ;
+    for (const p of ((placeholders as any[]) ?? [])) {
+      await supabaseAdmin
+        .from("properties")
+        .update({ title: "Imóvel (por identificar)", status: "por_angariar" } as never)
+        .eq("id", p.id);
+    }
+
+    await audit(context.userId, "assessor.reset_culture", {
+      target_user_id: data.target_user_id ?? null,
+      metadata: {
+        pending_cancelled: (cancelled as any[] | null)?.length ?? 0,
+        states_cleared: (cleared as any[] | null)?.length ?? 0,
+        properties_relabelled: (placeholders as any[] | null)?.length ?? 0,
+      },
+    });
+
+    return {
+      ok: true,
+      report: {
+        pending_cancelled: (cancelled as any[] | null)?.length ?? 0,
+        conversation_states_cleared: (cleared as any[] | null)?.length ?? 0,
+        properties_relabelled: (placeholders as any[] | null)?.length ?? 0,
       },
     };
   });
