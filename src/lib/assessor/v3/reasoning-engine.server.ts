@@ -8,6 +8,7 @@ import { decide } from "./decide.server";
 import { executeToolCalls, applyMemoryWrites } from "./act.server";
 import { sanitizeReply, enforceHumanTone, enforceSingleQuestion, NATURAL_FALLBACKS } from "../culture/sanitize";
 import { computeQualitySignals, persistQualityScore } from "./quality.server";
+import { runShadow, shouldRunShadow } from "./shadow.server";
 import {
   computeATS, computeContextPreservation, computeSafeDecisions, computeTaskSuccess,
   persistTrustScore, type TrustSignals,
@@ -253,6 +254,24 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       ats: atsValue,
       correctionCategory: correctionRecord?.category ?? null,
       correctionMessage: correctionRecord ? trimmed : null,
+    });
+  }
+
+  // Shadow Mode — estratégia alternativa amostrada, não bloqueia a resposta.
+  if (shouldRunShadow()) {
+    void runShadow(supabase, {
+      userId, channel, traceId,
+      strategy: "decide_temp_0.6",
+      content: trimmed,
+      observations,
+      hypotheses: thinkR.output.hypotheses,
+      searches,
+      historyPreview,
+      assessorName,
+      userFirstName,
+      nowLisbonYmd: nowLisbonYmd(),
+      nowLisbonHuman: nowLisbonHuman(),
+      baseline: { action: decideR.decision.action, reply },
     });
   }
 
