@@ -21,6 +21,7 @@ import { Route as AdminUtilizacaoRouteImport } from './routes/admin/utilizacao'
 import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
 import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
+import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
 import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
@@ -114,6 +115,11 @@ const AdminSubscricoesRoute = AdminSubscricoesRouteImport.update({
 const AdminSegurancaRoute = AdminSegurancaRouteImport.update({
   id: '/seguranca',
   path: '/seguranca',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminQualidadeRoute = AdminQualidadeRouteImport.update({
+  id: '/qualidade',
+  path: '/qualidade',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminIntegracoesRoute = AdminIntegracoesRouteImport.update({
@@ -333,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByTo {
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -430,6 +438,7 @@ export interface FileRoutesById {
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -480,6 +489,7 @@ export interface FileRouteTypes {
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/integracoes'
+    | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
     | '/admin/suporte'
@@ -527,6 +537,7 @@ export interface FileRouteTypes {
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/integracoes'
+    | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
     | '/admin/suporte'
@@ -576,6 +587,7 @@ export interface FileRouteTypes {
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/integracoes'
+    | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
     | '/admin/suporte'
@@ -697,6 +709,13 @@ declare module '@tanstack/react-router' {
       path: '/seguranca'
       fullPath: '/admin/seguranca'
       preLoaderRoute: typeof AdminSegurancaRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/qualidade': {
+      id: '/admin/qualidade'
+      path: '/qualidade'
+      fullPath: '/admin/qualidade'
+      preLoaderRoute: typeof AdminQualidadeRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/integracoes': {
@@ -1122,6 +1141,7 @@ interface AdminRouteRouteChildren {
   AdminDefinicoesRoute: typeof AdminDefinicoesRoute
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
   AdminIntegracoesRoute: typeof AdminIntegracoesRoute
+  AdminQualidadeRoute: typeof AdminQualidadeRoute
   AdminSegurancaRoute: typeof AdminSegurancaRoute
   AdminSubscricoesRoute: typeof AdminSubscricoesRoute
   AdminSuporteRoute: typeof AdminSuporteRoute
@@ -1135,6 +1155,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDefinicoesRoute: AdminDefinicoesRoute,
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
   AdminIntegracoesRoute: AdminIntegracoesRoute,
+  AdminQualidadeRoute: AdminQualidadeRoute,
   AdminSegurancaRoute: AdminSegurancaRoute,
   AdminSubscricoesRoute: AdminSubscricoesRoute,
   AdminSuporteRoute: AdminSuporteRoute,
