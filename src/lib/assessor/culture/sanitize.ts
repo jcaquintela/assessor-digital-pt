@@ -19,6 +19,17 @@ const FORBIDDEN_TOKENS: RegExp[] = [
   /\bessa\s+tarefa\b/gi,
 ];
 
+// Vocabulário técnico que nunca deve aparecer nas respostas ao consultor.
+// Usado por `hasHumanTone` e `enforceHumanTone` para pontuar/limpar.
+const TECH_VOCAB_RE =
+  /\b(intent|payload|tool|backend|schema|endpoint|token|status\s+code|id\s*[:=]|uuid|json|api|database|tabela|coluna|policy|rls|migration)\b/gi;
+
+// Aberturas que fingem execução antes do backend confirmar.
+const PRECLAIM_RE = /^\s*(feito|pronto|registei|guardei|criei|marquei|apaguei|actualizei|atualizei)\b[^\n]*[.!]?\s*/i;
+
+// Confirmação em linguagem de formulário ("Confirmas os seguintes campos: …").
+const FORM_CONFIRM_RE = /confirmas?\s+os?\s+seguintes?\s+(campos|dados|itens)\s*:/i;
+
 // Frases-fallback naturais (secção 22).
 export const NATURAL_FALLBACKS = {
   didNotUnderstand: "Não percebi bem essa parte. Podes explicar de outra forma?",
@@ -55,4 +66,45 @@ export function safeReply(
   fallback: string = NATURAL_FALLBACKS.didNotUnderstand,
 ): string {
   return sanitizeReply(reply) || fallback;
+}
+
+// Verifica se a resposta parece humana: sem vocabulário técnico, sem
+// linguagem de formulário, ≤ 2 frases. Usado pelo AQS.
+export function hasHumanTone(reply?: string | null): boolean {
+  const s = String(reply ?? "").trim();
+  if (!s) return false;
+  if (TECH_VOCAB_RE.test(s)) return false;
+  if (FORM_CONFIRM_RE.test(s)) return false;
+  const sentences = s.split(/(?<=[.!?])\s+/).filter(Boolean);
+  if (sentences.length > 3) return false;
+  return true;
+}
+
+// Garante que a resposta é adequada para enviar ao consultor:
+// remove aberturas de "Feito" antes de acção confirmada, corta para 2 frases
+// e substitui pedidos de confirmação em formato de formulário por linguagem
+// natural. Se `actionExecutedOk` é falso, o "Feito" pré-emptivo cai fora.
+export function enforceHumanTone(
+  reply: string,
+  opts: { actionExecutedOk?: boolean } = {},
+): string {
+  let out = reply;
+  if (!opts.actionExecutedOk) out = out.replace(PRECLAIM_RE, "").trim();
+  out = out.replace(TECH_VOCAB_RE, "").replace(/\s{2,}/g, " ").trim();
+  out = out.replace(FORM_CONFIRM_RE, "Confirmas?").trim();
+  // Corta para no máximo 2 frases.
+  const parts = out.split(/(?<=[.!?])\s+/).filter(Boolean);
+  if (parts.length > 2) out = parts.slice(0, 2).join(" ");
+  return out.trim();
+}
+
+// Se a resposta tem mais do que uma pergunta, mantém só a primeira.
+// Uma pergunta de cada vez é regra dura da cultura PT do assessor.
+export function enforceSingleQuestion(reply: string): string {
+  const s = reply.trim();
+  const qCount = (s.match(/\?/g) ?? []).length;
+  if (qCount <= 1) return s;
+  const parts = s.split(/(?<=\?)\s+/);
+  const first = parts.find((p) => p.includes("?")) ?? parts[0];
+  return first.trim();
 }
