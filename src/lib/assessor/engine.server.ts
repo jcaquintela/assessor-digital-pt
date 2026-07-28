@@ -32,6 +32,13 @@ import {
 import { sanitizeReply as sanitizeReplyFromCulture, safeReply, NATURAL_FALLBACKS } from "./culture/sanitize";
 import { assessorSourceColumns } from "./follow-ups-source";
 import {
+  detectAgendaPeriod,
+  formatAgendaReply,
+  buildDescriptiveTitle,
+  type AgendaPeriod,
+  type AgendaRow,
+} from "./agenda";
+import {
   CONFIRM_RE,
   CANCEL_RE,
   GREET_RE,
@@ -425,6 +432,18 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     return { reply: "De nada." };
   }
 
+  // 0.agenda) Consulta explícita da agenda — antes da IA.
+  //   Reconhece "hoje/amanhã/esta semana/próxima semana/agendamentos/compromissos".
+  //   Nunca reduz "esta semana" a "hoje".
+  if (isExplicitAgendaQuery(trimmed) || /agendamentos?/i.test(trimmed)) {
+    const period = detectAgendaPeriod(trimmed, input.receivedAt ?? new Date());
+    if (period) {
+      logBranch("agenda_query", { kind: period.kind, from: period.from, to: period.to });
+      const reply = await queryAgenda(supabase, userId, period);
+      return { reply };
+    }
+  }
+
   // 0.a.bis) Fechos sociais ("ok", "perfeito", "combinado", "está bem").
   //   - Se existe uma proposta pendente, "ok" é confirmação (tratado abaixo).
   //   - Sem proposta pendente, é um fecho de conversa: resposta neutra
@@ -663,7 +682,9 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     // "amanhã" sozinho, ou qualquer resposta curta sem verbo/keyword de
     // agenda, cai no fallback conversacional em vez de consultar a agenda.
     if (isExplicitAgendaQuery(trimmed) || /\?/.test(trimmed)) {
-      const reply = await queryToday(supabase, userId);
+      const period = detectAgendaPeriod(trimmed, input.receivedAt ?? new Date()) ??
+        detectAgendaPeriod("hoje", input.receivedAt ?? new Date())!;
+      const reply = await queryAgenda(supabase, userId, period);
       return { reply };
     }
     // Sem sinais claros — devolve fallback natural.
