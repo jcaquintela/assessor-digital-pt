@@ -526,8 +526,13 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     if (propHandled) return propHandled;
   }
 
-  // 0.d) Pergunta sobre Diversos — resposta com dados reais.
+  // 0.d) Pergunta sobre Diversos — apenas com referência EXPLÍCITA a
+  // "diversos/notas/ideias/apontamentos". Agenda já foi tratada acima.
   if (isQueryMisc(trimmed)) {
+    logBranch("misc_query", {
+      detected_route: "miscellaneous",
+      matched_pattern: "QUERY_MISC_RE",
+    });
     const reply = await queryMisc(supabase, userId, trimmed);
     return { reply };
   }
