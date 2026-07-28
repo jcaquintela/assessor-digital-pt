@@ -23,6 +23,7 @@ import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
 import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
 import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes'
+import { Route as AdminGoldensRouteImport } from './routes/admin/goldens'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
@@ -125,6 +126,11 @@ const AdminQualidadeRoute = AdminQualidadeRouteImport.update({
 const AdminIntegracoesRoute = AdminIntegracoesRouteImport.update({
   id: '/integracoes',
   path: '/integracoes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminGoldensRoute = AdminGoldensRouteImport.update({
+  id: '/goldens',
+  path: '/goldens',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminFuncionalidadesRoute = AdminFuncionalidadesRouteImport.update({
@@ -338,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
+  '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
@@ -386,6 +393,7 @@ export interface FileRoutesByTo {
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
+  '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
@@ -437,6 +445,7 @@ export interface FileRoutesById {
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
+  '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
@@ -488,6 +497,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/definicoes'
     | '/admin/funcionalidades'
+    | '/admin/goldens'
     | '/admin/integracoes'
     | '/admin/qualidade'
     | '/admin/seguranca'
@@ -536,6 +546,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/definicoes'
     | '/admin/funcionalidades'
+    | '/admin/goldens'
     | '/admin/integracoes'
     | '/admin/qualidade'
     | '/admin/seguranca'
@@ -586,6 +597,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/definicoes'
     | '/admin/funcionalidades'
+    | '/admin/goldens'
     | '/admin/integracoes'
     | '/admin/qualidade'
     | '/admin/seguranca'
@@ -723,6 +735,13 @@ declare module '@tanstack/react-router' {
       path: '/integracoes'
       fullPath: '/admin/integracoes'
       preLoaderRoute: typeof AdminIntegracoesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/goldens': {
+      id: '/admin/goldens'
+      path: '/goldens'
+      fullPath: '/admin/goldens'
+      preLoaderRoute: typeof AdminGoldensRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/funcionalidades': {
@@ -1140,6 +1159,7 @@ interface AdminRouteRouteChildren {
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminDefinicoesRoute: typeof AdminDefinicoesRoute
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
+  AdminGoldensRoute: typeof AdminGoldensRoute
   AdminIntegracoesRoute: typeof AdminIntegracoesRoute
   AdminQualidadeRoute: typeof AdminQualidadeRoute
   AdminSegurancaRoute: typeof AdminSegurancaRoute
@@ -1154,6 +1174,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminDefinicoesRoute: AdminDefinicoesRoute,
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
+  AdminGoldensRoute: AdminGoldensRoute,
   AdminIntegracoesRoute: AdminIntegracoesRoute,
   AdminQualidadeRoute: AdminQualidadeRoute,
   AdminSegurancaRoute: AdminSegurancaRoute,
