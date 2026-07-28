@@ -5,8 +5,8 @@ function fakeSupabase(fixtures: Record<string, any[]>) {
   const chain: any = {
     _table: "",
     _rows: [] as any[],
-    from(t: string) { this._table = t; this._rows = fixtures[t] ?? []; return this; },
-    select(_s: string, opts?: any) { if (opts?.head && opts?.count === "exact") { this._headCount = true; } return this; },
+    from(t: string) { this._table = t; this._rows = fixtures[t] ?? []; this._headCount = false; return this; },
+    select(_s: string, opts?: any) { this._headCount = !!(opts?.head && opts?.count === "exact"); return this; },
     eq(_k: string, _v: any) { return this; },
     in(_k: string, _v: any) { return this; },
     not(_k: string, _op: string, _v: any) { return this; },
