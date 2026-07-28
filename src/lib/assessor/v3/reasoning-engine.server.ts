@@ -6,7 +6,8 @@ import { think } from "./think.server";
 import { search } from "./search.server";
 import { decide } from "./decide.server";
 import { executeToolCalls, applyMemoryWrites } from "./act.server";
-import { sanitizeReply, NATURAL_FALLBACKS } from "../culture/sanitize";
+import { sanitizeReply, enforceHumanTone, enforceSingleQuestion, NATURAL_FALLBACKS } from "../culture/sanitize";
+import { computeQualitySignals, persistQualityScore } from "./quality.server";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
 import type { DomainContext } from "../v2/domain.server";
 
@@ -95,6 +96,12 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   if (shouldAct && !allOk) {
     reply = "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
   }
+  // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
+  // técnico, no máximo 2 frases, uma pergunta de cada vez.
+  reply = enforceHumanTone(reply, { actionExecutedOk: shouldAct && allOk });
+  if (decideR.decision.action === "ask") {
+    reply = enforceSingleQuestion(reply);
+  }
   if (!reply) reply = NATURAL_FALLBACKS.didNotUnderstand;
 
   const totalLatencyMs = Date.now() - started;
@@ -102,8 +109,9 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   const outputTokens = thinkR.usage.outputTokens + decideR.usage.outputTokens;
   const success = allOk && !decideR.error && !thinkR.error;
 
+  let traceId: string | null = null;
   try {
-    await supabase.from("assessor_reasoning_traces").insert({
+    const { data: traceRow } = await supabase.from("assessor_reasoning_traces").insert({
       user_id: userId,
       channel,
       source_message_id: sourceMessageId ?? null,
@@ -122,7 +130,8 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       output_tokens: outputTokens,
       success,
       error: (decideR.error ?? thinkR.error) ?? null,
-    } as never);
+    } as never).select("id").maybeSingle();
+    traceId = (traceRow as any)?.id ?? null;
 
     await supabase.from("assessor_ai_logs").insert({
       user_id: userId,
@@ -140,6 +149,19 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       route: "v3",
       fallback_used: !success,
     } as never);
+  } catch { /* noop */ }
+
+  // AQS — Assistant Quality Score.
+  try {
+    const prevUserAt = ((recentRows as any[]) ?? [])
+      .find((r) => r?.role === "user")?.created_at ?? null;
+    const signals = computeQualitySignals({
+      decision: decideR.decision,
+      toolResults,
+      reply,
+      previousUserTurnAt: prevUserAt ? new Date(prevUserAt) : null,
+    });
+    await persistQualityScore(supabase, { userId, channel, traceId, signals });
   } catch { /* noop */ }
 
   return { reply };
