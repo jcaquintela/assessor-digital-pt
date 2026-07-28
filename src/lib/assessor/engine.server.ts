@@ -1243,18 +1243,11 @@ async function executePending(
       }
     }
     const tipoDb = intent === "create_event" ? "event" : "task";
-    let titulo = String(ent.title || "").trim();
-    if (!titulo) {
-      if (intent === "create_event") {
-        const evento = capitalize(String(ent.event_type || "Visita"));
-        const parts = [evento];
-        if (ent.property_type) parts.push(`— ${ent.property_type}`);
-        if (ent.location) parts.push(ent.property_type ? String(ent.location) : `— ${ent.location}`);
-        titulo = parts.join(" ");
-      } else {
-        titulo = "Tarefa";
-      }
-    }
+    const titulo = buildDescriptiveTitle({
+      intent,
+      entities: ent as any,
+      originalText: pending.original_content,
+    });
     const dueDate = String(ent.date);
     const dueTime = (ent.start_time as string) || null;
     const contextoNotas: string[] = [];
