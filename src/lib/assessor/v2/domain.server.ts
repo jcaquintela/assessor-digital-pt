@@ -22,7 +22,21 @@ import {
   SaveMiscellaneousArgs,
   ZOD_BY_TOOL,
 } from "./tools";
-import { getAgendaPeriodRange } from "../agenda";
+import { lisbonParts, addDaysYmd } from "../agenda";
+
+function agendaRange(period: "today" | "tomorrow" | "week" | "next_week"): { startIso: string; endIso: string; label: string } {
+  const now = new Date();
+  const { ymd, weekday } = lisbonParts(now);
+  // segunda = 1 na convenção lisbonParts (0=domingo)
+  const daysSinceMon = (weekday + 6) % 7;
+  const monday = addDaysYmd(ymd, -daysSinceMon);
+  const sunday = addDaysYmd(monday, 6);
+  if (period === "today") return { startIso: ymd, endIso: ymd, label: "hoje" };
+  if (period === "tomorrow") { const t = addDaysYmd(ymd, 1); return { startIso: t, endIso: t, label: "amanhã" }; }
+  if (period === "week") return { startIso: monday, endIso: sunday, label: "esta semana" };
+  const nm = addDaysYmd(monday, 7);
+  return { startIso: nm, endIso: addDaysYmd(nm, 6), label: "próxima semana" };
+}
 
 export interface DomainContext {
   supabase: any;
@@ -125,7 +139,7 @@ async function execCreateProperty(ctx: DomainContext, args: unknown): Promise<Do
 
 async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(SearchAgendaArgs, args); if (!p.ok) return fail(p.error);
-  const range = getAgendaPeriodRange(p.value.period);
+  const range = agendaRange(p.value.period);
   const { data, error } = await ctx.supabase
     .from("follow_ups")
     .select("id, title, type, due_date, due_time, priority, status, related_property_id, person_id")
