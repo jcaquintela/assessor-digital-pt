@@ -41,12 +41,13 @@ describe("Trust — pilares", () => {
     expect(s).toBeLessThan(1);
   });
 
-  it("ATS combina pesos correctamente (só AQS presente)", () => {
+  it("ATS combina pesos correctamente (só AQS + correções presente)", () => {
     const ats = computeATS({
       task_success: null, aqs_score: 0.8, corrections_count: 0,
       context_preservation: null, safe_decisions: null,
     });
-    expect(ats).toBe(80);
+    // 25*0.8 + 15*1 = 35, peso 40 → 0.875 → 87.5
+    expect(ats).toBe(87.5);
   });
 
   it("ATS aplica correções (>=3 = zero nesse pilar)", () => {
