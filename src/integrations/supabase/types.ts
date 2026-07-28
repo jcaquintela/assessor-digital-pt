@@ -85,6 +85,8 @@ export type Database = {
           output_tokens: number | null
           route: string | null
           success: boolean
+          tool_name: string | null
+          tool_success: boolean | null
           total_tokens: number | null
           user_id: string | null
         }
@@ -104,6 +106,8 @@ export type Database = {
           output_tokens?: number | null
           route?: string | null
           success?: boolean
+          tool_name?: string | null
+          tool_success?: boolean | null
           total_tokens?: number | null
           user_id?: string | null
         }
@@ -123,6 +127,8 @@ export type Database = {
           output_tokens?: number | null
           route?: string | null
           success?: boolean
+          tool_name?: string | null
+          tool_success?: boolean | null
           total_tokens?: number | null
           user_id?: string | null
         }
@@ -190,13 +196,103 @@ export type Database = {
           },
         ]
       }
+      assessor_tool_calls: {
+        Row: {
+          arguments: Json
+          channel: string
+          created_at: string
+          error: string | null
+          id: string
+          latency_ms: number | null
+          result: Json | null
+          success: boolean
+          tool_name: string
+          turn_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          arguments?: Json
+          channel: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          latency_ms?: number | null
+          result?: Json | null
+          success: boolean
+          tool_name: string
+          turn_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          arguments?: Json
+          channel?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          latency_ms?: number | null
+          result?: Json | null
+          success?: boolean
+          tool_name?: string
+          turn_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      calendar_connections: {
+        Row: {
+          connected_at: string
+          created_at: string
+          display_name: string | null
+          external_account_id: string | null
+          id: string
+          is_primary: boolean
+          last_sync_at: string | null
+          provider: string
+          refresh_token_encrypted: string | null
+          scopes: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connected_at?: string
+          created_at?: string
+          display_name?: string | null
+          external_account_id?: string | null
+          id?: string
+          is_primary?: boolean
+          last_sync_at?: string | null
+          provider: string
+          refresh_token_encrypted?: string | null
+          scopes?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connected_at?: string
+          created_at?: string
+          display_name?: string | null
+          external_account_id?: string | null
+          id?: string
+          is_primary?: boolean
+          last_sync_at?: string | null
+          provider?: string
+          refresh_token_encrypted?: string | null
+          scopes?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversation_states: {
         Row: {
+          active_person_id: string | null
           active_topic: string | null
           channel: string
           created_at: string
           expires_at: string | null
           external_conversation_id: string
+          factual_summary: string | null
+          goal: string | null
           id: string
           last_created_resource_id: string | null
           last_created_resource_type: string | null
@@ -210,11 +306,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active_person_id?: string | null
           active_topic?: string | null
           channel: string
           created_at?: string
           expires_at?: string | null
           external_conversation_id?: string
+          factual_summary?: string | null
+          goal?: string | null
           id?: string
           last_created_resource_id?: string | null
           last_created_resource_type?: string | null
@@ -228,11 +327,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active_person_id?: string | null
           active_topic?: string | null
           channel?: string
           created_at?: string
           expires_at?: string | null
           external_conversation_id?: string
+          factual_summary?: string | null
+          goal?: string | null
           id?: string
           last_created_resource_id?: string | null
           last_created_resource_type?: string | null
@@ -246,6 +348,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "conversation_states_active_person_id_fkey"
+            columns: ["active_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversation_states_last_property_id_fkey"
             columns: ["last_property_id"]
@@ -682,12 +791,14 @@ export type Database = {
         Row: {
           channel: string
           confidence: number | null
+          confirmed_fields: Json
           created_at: string
           created_resource_id: string | null
           created_resource_type: string | null
           current_question: string | null
           error_message: string | null
           expires_at: string
+          goal: string | null
           id: string
           intent: string
           missing_fields: string[]
@@ -702,12 +813,14 @@ export type Database = {
         Insert: {
           channel: string
           confidence?: number | null
+          confirmed_fields?: Json
           created_at?: string
           created_resource_id?: string | null
           created_resource_type?: string | null
           current_question?: string | null
           error_message?: string | null
           expires_at?: string
+          goal?: string | null
           id?: string
           intent: string
           missing_fields?: string[]
@@ -722,12 +835,14 @@ export type Database = {
         Update: {
           channel?: string
           confidence?: number | null
+          confirmed_fields?: Json
           created_at?: string
           created_resource_id?: string | null
           created_resource_type?: string | null
           current_question?: string | null
           error_message?: string | null
           expires_at?: string
+          goal?: string | null
           id?: string
           intent?: string
           missing_fields?: string[]

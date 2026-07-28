@@ -358,6 +358,19 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   const trimmedRaw = content.trim();
   if (!trimmedRaw) return { reply: REPLY_FALLBACK };
 
+  // v2 gate — se a feature flag `assessor.engine.v2` estiver ligada para
+  // este utilizador, o novo motor (tool-calling via Lovable AI Gateway)
+  // orquestra o turno inteiro. O v1 continua a servir todos os outros.
+  try {
+    const { isEngineV2Enabled } = await import("./v2/feature-flag.server");
+    if (await isEngineV2Enabled(supabase, userId)) {
+      const { orchestrateAssessorV2 } = await import("./v2/orchestrator.server");
+      return await orchestrateAssessorV2(input);
+    }
+  } catch (err) {
+    logBranch("v2_gate_failed", { error: err instanceof Error ? err.message : String(err) });
+  }
+
   // Contexto: perfil, últimas mensagens, ação pendente e estado da conversa.
   const [{ data: prof }, recent, pending, convState] = await Promise.all([
     supabase
