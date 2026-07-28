@@ -32,6 +32,13 @@ import {
 import { sanitizeReply as sanitizeReplyFromCulture, safeReply, NATURAL_FALLBACKS } from "./culture/sanitize";
 import { assessorSourceColumns } from "./follow-ups-source";
 import {
+  detectAgendaPeriod,
+  formatAgendaReply,
+  buildDescriptiveTitle,
+  type AgendaPeriod,
+  type AgendaRow,
+} from "./agenda";
+import {
   CONFIRM_RE,
   CANCEL_RE,
   GREET_RE,
@@ -425,6 +432,18 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     return { reply: "De nada." };
   }
 
+  // 0.agenda) Consulta explícita da agenda — antes da IA.
+  //   Reconhece "hoje/amanhã/esta semana/próxima semana/agendamentos/compromissos".
+  //   Nunca reduz "esta semana" a "hoje".
+  if (isExplicitAgendaQuery(trimmed) || /agendamentos?/i.test(trimmed)) {
+    const period = detectAgendaPeriod(trimmed, input.receivedAt ?? new Date());
+    if (period) {
+      logBranch("agenda_query", { kind: period.kind, from: period.from, to: period.to });
+      const reply = await queryAgenda(supabase, userId, period);
+      return { reply };
+    }
+  }
+
   // 0.a.bis) Fechos sociais ("ok", "perfeito", "combinado", "está bem").
   //   - Se existe uma proposta pendente, "ok" é confirmação (tratado abaixo).
   //   - Sem proposta pendente, é um fecho de conversa: resposta neutra
@@ -663,7 +682,9 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     // "amanhã" sozinho, ou qualquer resposta curta sem verbo/keyword de
     // agenda, cai no fallback conversacional em vez de consultar a agenda.
     if (isExplicitAgendaQuery(trimmed) || /\?/.test(trimmed)) {
-      const reply = await queryToday(supabase, userId);
+      const period = detectAgendaPeriod(trimmed, input.receivedAt ?? new Date()) ??
+        detectAgendaPeriod("hoje", input.receivedAt ?? new Date())!;
+      const reply = await queryAgenda(supabase, userId, period);
       return { reply };
     }
     // Sem sinais claros — devolve fallback natural.
@@ -1019,22 +1040,28 @@ async function proposeAction(
 }
 
 async function queryToday(supabase: any, userId: string): Promise<string> {
-  const today = new Date();
-  const ymd = today.toISOString().slice(0, 10);
+  const now = new Date();
+  const period = detectAgendaPeriod("hoje", now)!;
+  return queryAgenda(supabase, userId, period);
+}
+
+async function queryAgenda(
+  supabase: any,
+  userId: string,
+  period: AgendaPeriod,
+): Promise<string> {
   const { data } = await supabase
     .from("follow_ups")
-    .select("title, type, due_time, status")
+    .select("title, type, due_date, due_time, status")
     .eq("user_id", userId)
-    .eq("due_date", ymd)
+    .gte("due_date", period.from)
+    .lte("due_date", period.to)
     .neq("status", "Concluído")
+    .neq("status", "Cancelado")
+    .order("due_date", { ascending: true })
     .order("due_time", { ascending: true, nullsFirst: false });
-  const rows = (data as any[]) ?? [];
-  if (rows.length === 0) return "Hoje não tens nada agendado.";
-  const linhas = rows.slice(0, 8).map((r) => {
-    const h = r.due_time ? `${String(r.due_time).slice(0, 5)} — ` : "";
-    return `• ${h}${r.title}`;
-  });
-  return `Hoje tens:\n${linhas.join("\n")}`;
+  const rows = ((data as any[]) ?? []) as AgendaRow[];
+  return formatAgendaReply({ period, rows, now: new Date() });
 }
 
 async function queryPerson(supabase: any, userId: string, name: string): Promise<string> {
@@ -1216,18 +1243,11 @@ async function executePending(
       }
     }
     const tipoDb = intent === "create_event" ? "event" : "task";
-    let titulo = String(ent.title || "").trim();
-    if (!titulo) {
-      if (intent === "create_event") {
-        const evento = capitalize(String(ent.event_type || "Visita"));
-        const parts = [evento];
-        if (ent.property_type) parts.push(`— ${ent.property_type}`);
-        if (ent.location) parts.push(ent.property_type ? String(ent.location) : `— ${ent.location}`);
-        titulo = parts.join(" ");
-      } else {
-        titulo = "Tarefa";
-      }
-    }
+    const titulo = buildDescriptiveTitle({
+      intent,
+      entities: ent as any,
+      originalText: pending.original_content,
+    });
     const dueDate = String(ent.date);
     const dueTime = (ent.start_time as string) || null;
     const contextoNotas: string[] = [];
