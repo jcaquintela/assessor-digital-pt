@@ -1,121 +1,87 @@
 
-# Reconstruir a cultura central do Assessor
+# Router semântico central com IA
 
-Substituo o núcleo conversacional para cumprir os 27 princípios: conversa natural PT-PT, memória estruturada, uma ação ativa, respostas curtas determinísticas, nunca inventar, dashboard como memória clicável.
+Objetivo: substituir o routing rígido baseado em regex pela interpretação de IA em todas as mensagens com conteúdo profissional ou conversacional. As regras determinísticas ficam apenas nos pontos onde a correção depende de garantia (segurança, confirmação, execução, idempotência, validação, sanitização).
 
-## Fase 0 — Reset do estado atual
+## Estratégia
 
-Server function admin `resetAssessorCulture` (executada uma vez):
+- **Interpretação (IA)**: intenção, domínio, referências ("dono desse imóvel", "o outro"), correção, continuação, confiança, campos em falta, ato conversacional.
+- **Execução (determinística)**: confirmações "sim/não", `handleSlotFill`, INSERT/UPDATE com re-SELECT, idempotência via `source_pending_action_id`, sanitização cultural, validação de datas.
+- **Resposta (mista)**: formulada depois de obter dados reais da BD; nunca "Feito" antes de o backend confirmar.
 
-- `pending_actions`: cancelar todas as linhas em `pending_confirmation | collecting_information | correction_pending` com `updated_at > 1h` — motivo `"reset cultural"`.
-- `conversation_states`: limpar `pending_action_id`, `active_topic`, `state_summary`, `last_intent` quando o pending referenciado já não está ativo.
-- `properties`: renomear `"Imóvel por classificar"` quando existir menção posterior explícita a um nome (via última mensagem do consultor no mesmo dia).
-- `follow_ups`: desativar duplicados criados no mesmo minuto (mesmo `user_id + title + due_date`).
-- `assessor_messages`: intacto.
+## O que mantém regex (não mexer)
 
-Relatório no chat com contagens por tabela.
+`short-answers.ts` (sim/não/ok/obrigado), `state-machine.ts`, `date-resolver.ts`, `culture/sanitize.ts`, extractores de imóveis (`properties.server.ts`), idempotência do INSERT em `engine.server.ts`, verificação de permissões e RLS.
 
-## Fase 1 — Módulos centrais novos
+## O que passa a ser IA
 
-Criar módulos pequenos, testáveis, independentes do canal:
+Todo o restante routing atual em `engine.server.ts`: `QUERY_AGENDA_RE`, `QUERY_MISC_RE`, `ACTION_VERB_RE`, `OWNER_REF_RE`, `MORE_RE`, `looksLikeCorrection`, `handleActivePropertyEnrichment`, e o dispatch de intenções via `ai.server.ts`.
 
-```
-src/lib/assessor/
-  culture/
-    identity.ts          nome do Assessor, vocativo, forma de tratamento
-    smalltalk.ts         saudações, agradecimentos, casual → não persiste
-    short-answers.ts     confirma/recusa/data/hora/correção determinísticos
-    state-machine.ts     enum ConversationStatus + transições
-    validators.ts        assertValidDate, assertNoTechLeak, sanitizeReply
-    reply-templates.ts   frases naturais PT-PT (nunca "proposta", "essa tarefa")
-    context-loader.ts    memória mínima: pending + últimas 4 msg + entidade ativa
-```
+## Fases
 
-## Fase 2 — Reescrita do orquestrador `engine.server.ts`
+### Fase 1 — Router semântico (`interpretAssessorMessage`)
+- Novo módulo `src/lib/assessor/router.server.ts`.
+- Migração de `google/gemini-3.6-flash` (default) via **Lovable AI Gateway** (substitui a dependência atual de `OPENAI_API_KEY` em `ai.server.ts`).
+- Structured output com `Output.object` (Zod), sem `.min()/.max()` no schema. Schema exato do brief (§4): `conversation_act`, `intent`, `destination`, `is_new_topic`, `is_continuation`, `is_correction`, `requires_database_lookup`, `requires_confirmation`, `should_persist`, `confidence`, `references`, `entities`, `missing_fields`, `reply_intent`.
+- Entrada: mensagem, nome consultor, nome Assessor, timezone, ação pendente (compacta), última pergunta, entidade ativa, 6 últimas mensagens, resumo factual. Sem histórico bruto contaminante.
+- System prompt com glossário imobiliário (§6): angariação, CPU, CRP, caderneta, CE, escritura, reserva, proposta, comissão, partilha, etc.
 
-Pipeline determinístico (ordem obrigatória da secção 9):
+### Fase 2 — Integração no motor
+- `engine.server.ts` refatorado para:
+  1. Pre-flight determinístico: sanidade de input, confirmação/cancelamento a pending, slot-fill, fluxo de ficheiros. (mantido)
+  2. **Chamar `interpretAssessorMessage`** para tudo o resto.
+  3. Dispatch pelo resultado estruturado (`intent`/`destination`), não por regex.
+  4. Se `requires_database_lookup=true` → consulta real (agenda, pessoa, imóvel, ficheiro) e devolve resposta natural formulada com esses dados.
+  5. Se `requires_confirmation=true` → cria `pending_action` com título descritivo determinístico (via `buildDescriptiveTitle`).
+  6. Se `missing_fields.length > 0` → pergunta curta contextual (§11), não "não percebi".
+  7. Se `confidence < 0.55` E há ambiguidade → pergunta de desambiguação com base em entidades ativas.
+- Remoção de `QUERY_AGENDA_RE`, `QUERY_MISC_RE`, `MORE_RE`, `looksLikeCorrection` do dispatch (mantidos como *safety nets* de fallback só se IA falhar).
 
-```text
-1. Identificar utilizador + canal + preferências (nome do Assessor)
-2. stripVocative(msg, assessorName)
-3. Se smalltalk → responder natural, não persistir, sair
-4. Carregar pending ativo + conversation_state
-5. Se pending existe:
-     - parseConfirmation → executar
-     - parseRefusal → cancelar
-     - parseCorrection → atualizar mesma linha
-     - parseSlotFill (data/hora/pessoa/imóvel) → preencher
-     - se nova intenção clara → "Tenho ainda X por confirmar. Concluir ou ignorar?"
-6. Se não há pending:
-     - detectar query_agenda (padrões estritos)
-     - detectar correção do último recurso (janela 30min)
-     - senão: IA extrai intent + entidades → criar pending
-7. Validar saída (sanitizeReply) antes de responder
-8. Ao concluir/cancelar: limpar pending_action_id, current_question → idle
-```
+### Fase 3 — Resolução de referências
+- Nova função `resolveReferences(refs, ctx)` em `router.server.ts`:
+  - "dono/proprietário desse imóvel" → `properties.owner_person_id` da entidade ativa.
+  - "esse T3", "aquele apartamento" → entidade ativa (`conversation_states.active_topic`).
+  - "o outro", "a outra" → última entidade do mesmo tipo em `pending_actions` recentes.
+  - Se referência não resolve → adiciona a `missing_fields` para forçar pergunta curta.
 
-Regras invioláveis:
-- nunca chamar IA para respostas < 40 chars quando há pending;
-- nunca preencher campos ausentes com "último conhecido";
-- nunca mostrar "proposta", "intent", "essa tarefa", "Invalid Date".
+### Fase 4 — Observabilidade e custo (§12, §13)
+- Nova tabela `assessor_ai_calls` (user_id, channel, model, intent, domain, confidence, tokens_in, tokens_out, latency_ms, fallback_used, run_id, created_at). RLS: só o próprio user + admins via `has_role`. GRANTs para authenticated/service_role.
+- Logs estruturados: `logBranch("router_ai", { intent, domain, confidence, route })`.
 
-## Fase 3 — Contrato de IA
+### Fase 5 — Testes de naturalidade
+- Nova suite `src/lib/assessor/router.test.ts` com mocks do gateway.
+- 12 variações do §14. Cada frase produz `intent`/`destination` esperado.
+- Testes de regressão para os 96 atuais (todos devem passar).
+- Teste "não contamina": conversa antiga sobre Paulo + nova mensagem sobre Ana não trocam entidades.
 
-Endurecer `ai.server.ts`:
+## Escopo desta plan
 
-- Modelo `google/gemini-3.6-flash` (default Lovable AI, sem chave externa).
-- JSON schema exato da secção 24: `intent, destination, confidence, requires_confirmation, is_continuation, is_correction, is_casual, entities, missing_fields, reply`.
-- Prompt curto com: nome do Assessor, tratamento, últimas 4 msg, pending atual, entidade ativa. Nada mais.
-- `reply` da IA é sugestão — passa por `sanitizeReply` antes de sair.
-- Se `confidence < 0.5` ou `intent === "unknown"` → resposta padrão "Não percebi bem essa parte. Podes explicar de outra forma?" (uma única variante, natural).
+- Substituir OpenAI por Lovable AI Gateway (Gemini). O user usa `gpt-5-nano` no brief, mas indicações internas apontam `google/gemini-3.6-flash` como default e mais barato/rápido. Se preferires manter GPT, uso `openai/gpt-5-nano` via mesmo gateway.
+- Preservar todos os fluxos existentes (WhatsApp webhook, /assessor, ficheiros). Zero alterações de schema para além de `assessor_ai_calls`.
+- Zero mudanças de UI.
 
-## Fase 4 — Respostas naturais
+## Fora de escopo
 
-`reply-templates.ts` centraliza todas as frases visíveis:
+- Streaming (chat continua request/response).
+- Novo modelo de embeddings/RAG.
+- Alterações a `properties.server.ts`, `whatsapp/*`, `admin/*`.
 
-- confirmação pendente: `"{quando} tens {o quê}. Queres que registe?"`
-- executado: `"Feito."` / `"Feito. {resumo curto}."`
-- correção aceite: `"Tens razão. Corrigi para {novo}."`
-- data desconhecida: `"Não percebi bem a data. Para que dia é?"`
-- ficheiro recebido: `"Recebi {tipo}. A que se refere?"`
+## Riscos e mitigação
 
-Formatação de datas via `naturalWhen()` — "amanhã às 10h", "sexta às 15h", nunca ISO.
+- **Latência** (IA em cada mensagem): usar Gemini Flash, cap `max_tokens: 300`, prompt compacto. Estimativa: 400-800ms extra por turno.
+- **Alucinação de entidades**: IA nunca cria recursos. Só devolve `references` e `entities`; execução usa apenas dados reais. Sanitização final continua obrigatória.
+- **Custo**: métricas por user em `assessor_ai_calls` + alerta no admin (fase futura).
+- **Falha de IA (429/402/5xx)**: fallback determinístico para o routing atual (mantido como camada 2).
 
-## Fase 5 — Imóveis e classificação invisível
+## Detalhes técnicos
 
-- Ao criar imóvel sem nome explícito: guardar como rascunho oculto (`status='por_angariar'`), pedir contexto naturalmente. Nunca gravar título `"Imóvel por classificar"`.
-- Enriquecimento progressivo: enquanto `conversation_state.last_property_id` estiver ativo (< 15min), novas frases atualizam a mesma ficha.
-- Distinguir localização vs pessoa via lista de freguesias/localidades PT + verbos ("dono do imóvel em X" → X é localização).
+**Modelo**: `google/gemini-3.6-flash` (default Lovable AI). Zero chaves para o utilizador.
+**SDK**: `ai` + `@ai-sdk/openai-compatible`. Provider helper em `src/lib/ai-gateway.server.ts`.
+**Schema**: Zod plano, sem bounds. Guard com `NoObjectGeneratedError.isInstance` + fallback parse.
+**Persistência de contexto**: reutiliza `conversation_states` e `pending_actions` existentes.
 
-## Fase 6 — Testes de aceitação (secção 26)
+## Verificação
 
-Suite Vitest `culture.test.ts` que mocka Supabase + IA e corre os 6 cenários exigidos:
-
-1. Saudação com nome personalizado
-2. Visita simples + sim
-3. Correção de hora
-4. Ficheiro CPU + criação de imóvel
-5. Lembrete contextual (localização, não pessoa)
-6. Nota fora do padrão → Diversos + sugestão de seguimento
-
-Cada teste verifica: resposta textual, ausência de leaks técnicos, estado final da BD (pending, follow_up, property, misc), e transição para `idle`.
-
-## Fora do âmbito
-
-- Sem alterações à UI do dashboard além de garantir que fichas continuam clicáveis.
-- Sem novos módulos (Google Calendar/Outlook ficam com stubs; secção 20 é preparatória).
-- Sem alterações a WhatsApp inbound/outbound além do reuso do motor.
-
-## Ordem de entrega
-
-1. Reset (Fase 0) — executo primeiro e reporto números.
-2. Módulos culture/* + testes unitários.
-3. Reescrita do engine + ai.server.
-4. Enriquecimento imóveis + templates.
-5. Suite de aceitação + `bunx vitest run` + typecheck.
-
-## Confirmações antes de arrancar
-
-- Confirmas que posso executar já o **reset** (Fase 0) em todos os utilizadores (produção inclusiva)?
-- Confirmas o modelo **`google/gemini-3.6-flash`** via Lovable AI (sem `OPENAI_API_KEY`) — ou preferes manter OpenAI `gpt-5-nano` como no texto?
-- O trabalho vai tocar em ~15 ficheiros e demora várias iterações — queres que entregue tudo de uma vez ou fase-a-fase com validação tua entre cada?
+1. `bunx vitest run` — todos os 96 + novos verdes.
+2. Playwright: enviar 4 mensagens variantes do §14 em `/assessor`, capturar respostas, comparar com esperado.
+3. Consulta manual em produção do log `assessor_ai_calls` para 20 turnos: confiança média, latência p95, custo estimado.
