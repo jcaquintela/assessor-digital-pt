@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectAgendaPeriod, formatAgendaReply, buildDescriptiveTitle, addDaysYmd, lisbonParts } from "../src/lib/assessor/agenda";
+import { detectAgendaPeriod, formatAgendaReply, buildDescriptiveTitle, addDaysYmd, lisbonParts } from "./agenda";
 
 const NOW = new Date("2026-07-27T10:00:00Z"); // segunda-feira Lisboa
 
