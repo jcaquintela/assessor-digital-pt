@@ -21,6 +21,7 @@ import { Route as AdminUtilizacaoRouteImport } from './routes/admin/utilizacao'
 import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
 import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
+import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
 import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
@@ -53,6 +54,7 @@ import { Route as AuthenticatedInteracoesIdRouteImport } from './routes/_authent
 import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authenticated/imoveis.$id'
 import { Route as AuthenticatedDiversosIdRouteImport } from './routes/_authenticated/diversos.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
 import { Route as AuthenticatedNegocioDespesasIdRouteImport } from './routes/_authenticated/negocio.despesas.$id'
 import { Route as AuthenticatedNegocioComissoesIdRouteImport } from './routes/_authenticated/negocio.comissoes.$id'
 
@@ -113,6 +115,11 @@ const AdminSubscricoesRoute = AdminSubscricoesRouteImport.update({
 const AdminSegurancaRoute = AdminSegurancaRouteImport.update({
   id: '/seguranca',
   path: '/seguranca',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminQualidadeRoute = AdminQualidadeRouteImport.update({
+  id: '/qualidade',
+  path: '/qualidade',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminIntegracoesRoute = AdminIntegracoesRouteImport.update({
@@ -287,6 +294,12 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProactiveTickRoute =
+  ApiPublicHooksProactiveTickRouteImport.update({
+    id: '/api/public/hooks/proactive-tick',
+    path: '/api/public/hooks/proactive-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedNegocioDespesasIdRoute =
   AuthenticatedNegocioDespesasIdRouteImport.update({
     id: '/$id',
@@ -326,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -346,6 +360,7 @@ export interface FileRoutesByFullPath {
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
+  '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -372,6 +387,7 @@ export interface FileRoutesByTo {
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -392,6 +408,7 @@ export interface FileRoutesByTo {
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
+  '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -421,6 +438,7 @@ export interface FileRoutesById {
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -441,6 +459,7 @@ export interface FileRoutesById {
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/_authenticated/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/_authenticated/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
+  '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -470,6 +489,7 @@ export interface FileRouteTypes {
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/integracoes'
+    | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
     | '/admin/suporte'
@@ -490,6 +510,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp-webhook'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
+    | '/api/public/hooks/proactive-tick'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -516,6 +537,7 @@ export interface FileRouteTypes {
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/integracoes'
+    | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
     | '/admin/suporte'
@@ -536,6 +558,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp-webhook'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
+    | '/api/public/hooks/proactive-tick'
   id:
     | '__root__'
     | '/'
@@ -564,6 +587,7 @@ export interface FileRouteTypes {
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/integracoes'
+    | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
     | '/admin/suporte'
@@ -584,6 +608,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp-webhook'
     | '/_authenticated/negocio/comissoes/$id'
     | '/_authenticated/negocio/despesas/$id'
+    | '/api/public/hooks/proactive-tick'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -597,6 +622,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
+  ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -683,6 +709,13 @@ declare module '@tanstack/react-router' {
       path: '/seguranca'
       fullPath: '/admin/seguranca'
       preLoaderRoute: typeof AdminSegurancaRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/qualidade': {
+      id: '/admin/qualidade'
+      path: '/qualidade'
+      fullPath: '/admin/qualidade'
+      preLoaderRoute: typeof AdminQualidadeRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/integracoes': {
@@ -909,6 +942,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/proactive-tick': {
+      id: '/api/public/hooks/proactive-tick'
+      path: '/api/public/hooks/proactive-tick'
+      fullPath: '/api/public/hooks/proactive-tick'
+      preLoaderRoute: typeof ApiPublicHooksProactiveTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/negocio/despesas/$id': {
       id: '/_authenticated/negocio/despesas/$id'
       path: '/$id'
@@ -1101,6 +1141,7 @@ interface AdminRouteRouteChildren {
   AdminDefinicoesRoute: typeof AdminDefinicoesRoute
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
   AdminIntegracoesRoute: typeof AdminIntegracoesRoute
+  AdminQualidadeRoute: typeof AdminQualidadeRoute
   AdminSegurancaRoute: typeof AdminSegurancaRoute
   AdminSubscricoesRoute: typeof AdminSubscricoesRoute
   AdminSuporteRoute: typeof AdminSuporteRoute
@@ -1114,6 +1155,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDefinicoesRoute: AdminDefinicoesRoute,
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
   AdminIntegracoesRoute: AdminIntegracoesRoute,
+  AdminQualidadeRoute: AdminQualidadeRoute,
   AdminSegurancaRoute: AdminSegurancaRoute,
   AdminSubscricoesRoute: AdminSubscricoesRoute,
   AdminSuporteRoute: AdminSuporteRoute,
@@ -1138,6 +1180,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
+  ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

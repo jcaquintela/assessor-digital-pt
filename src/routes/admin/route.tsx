@@ -24,6 +24,7 @@ const nav: { to: string; label: string; exact?: boolean }[] = [
   { to: "/admin/suporte", label: "Suporte" },
   { to: "/admin/integracoes", label: "Integrações" },
   { to: "/admin/funcionalidades", label: "Funcionalidades" },
+  { to: "/admin/qualidade", label: "Qualidade" },
   { to: "/admin/auditoria", label: "Auditoria" },
   { to: "/admin/seguranca", label: "Segurança" },
   { to: "/admin/definicoes", label: "Definições" },

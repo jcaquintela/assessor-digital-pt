@@ -196,6 +196,104 @@ export type Database = {
           },
         ]
       }
+      assessor_nudges: {
+        Row: {
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          kind: string
+          reason: string
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subject_id: string | null
+          subject_type: string | null
+          suggested_reply: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          kind: string
+          reason: string
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject_id?: string | null
+          subject_type?: string | null
+          suggested_reply: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          kind?: string
+          reason?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject_id?: string | null
+          subject_type?: string | null
+          suggested_reply?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assessor_quality_scores: {
+        Row: {
+          channel: string
+          created_at: string
+          executed_successfully: boolean | null
+          human_tone: boolean | null
+          id: string
+          notes: string | null
+          reformulated: boolean | null
+          score: number | null
+          trace_id: string | null
+          understood_first_try: boolean | null
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          executed_successfully?: boolean | null
+          human_tone?: boolean | null
+          id?: string
+          notes?: string | null
+          reformulated?: boolean | null
+          score?: number | null
+          trace_id?: string | null
+          understood_first_try?: boolean | null
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          executed_successfully?: boolean | null
+          human_tone?: boolean | null
+          id?: string
+          notes?: string | null
+          reformulated?: boolean | null
+          score?: number | null
+          trace_id?: string | null
+          understood_first_try?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessor_quality_scores_trace_id_fkey"
+            columns: ["trace_id"]
+            isOneToOne: false
+            referencedRelation: "assessor_reasoning_traces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessor_reasoning_traces: {
         Row: {
           channel: string
