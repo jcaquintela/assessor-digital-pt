@@ -358,9 +358,21 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   const trimmedRaw = content.trim();
   if (!trimmedRaw) return { reply: REPLY_FALLBACK };
 
-  // v2 gate — se a feature flag `assessor.engine.v2` estiver ligada para
-  // este utilizador, o novo motor (tool-calling via Lovable AI Gateway)
-  // orquestra o turno inteiro. O v1 continua a servir todos os outros.
+  // v3 gate — Reasoning Engine (OBSERVE→THINK→SEARCH→DECIDE→ACT).
+  // Se `assessor.engine.v3` estiver activa para este utilizador, o novo
+  // motor orquestra o turno inteiro. Kill switch: apagar linha em
+  // `feature_flag_users` (efeito imediato, sem redeploy).
+  try {
+    const { isEngineV3Enabled } = await import("./v3/feature-flag.server");
+    if (await isEngineV3Enabled(supabase, userId)) {
+      const { runReasoningEngine } = await import("./v3/reasoning-engine.server");
+      return await runReasoningEngine(input);
+    }
+  } catch (err) {
+    logBranch("v3_gate_failed", { error: err instanceof Error ? err.message : String(err) });
+  }
+
+  // v2 gate — se v3 estiver desligada, tenta v2 (tool-calling reactivo).
   try {
     const { isEngineV2Enabled } = await import("./v2/feature-flag.server");
     if (await isEngineV2Enabled(supabase, userId)) {
