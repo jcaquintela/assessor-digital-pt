@@ -49,7 +49,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     supabase.from("profiles").select("name, assessor_name").eq("id", userId).maybeSingle(),
     supabase
       .from("assessor_messages")
-      .select("role, content")
+      .select("role, content, created_at")
       .eq("user_id", userId).eq("channel", channel)
       .order("created_at", { ascending: false })
       .limit(HISTORY_LIMIT),
