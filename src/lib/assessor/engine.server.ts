@@ -80,15 +80,17 @@ const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 // Mantidos como re-exports para preservar todos os call-sites e testes
 // que possam importar estes símbolos.
 //
-// Perguntas sobre a área Diversos.
+// Perguntas sobre a área Diversos. Só dispara com referência EXPLÍCITA a
+// Diversos, notas, ideias ou apontamentos. Nunca dispara apenas por
+// "esta semana" / "hoje" — esses são períodos, não módulos.
 const QUERY_MISC_RE =
-  /(diversos|notas?\s+(?:que|deixei|pendentes?)|ideias?\s+(?:que|pendentes?|deixei)|(?:o\s+que\s+)?(?:registei|guardei|escrevi|apontei|deixei)\b.*\b(?:diversos|nota|notas|semana|hoje|ontem|ideias?))/i;
+  /\b(diversos|notas?|ideias?|apontamentos?|coisas?\s+que\s+registei|notas?\s+por\s+tratar)\b/i;
 
 // Consulta explícita da agenda. "amanhã" isolado NÃO é uma consulta.
-// Só disparamos query_today quando existe intenção clara de listar
-// eventos/compromissos.
+// Cobre "agendamentos/compromissos/agenda/marcado/reuniões/visitas/chamadas"
+// e "o que tenho (hoje|amanhã|esta semana|na próxima semana|marcado)".
 const QUERY_AGENDA_RE =
-  /\b(agenda|compromissos?|marca(?:d[oa]s?|ç[õo]es)|hoje\s+(?:tenho|tens|temos)|o\s+que\s+tenho\s+(?:hoje|amanh[ãa])|que\s+(?:tenho|compromissos))\b/i;
+  /\b(agenda|agendamentos?|compromissos?|marca(?:d[oa]s?|ç[õoã]es?)|reuni(?:[ãa]o|[õo]es)|visitas?|chamadas?|o\s+que\s+tenho(?:\s+(?:hoje|amanh[ãa]|marcad[oa]|esta\s+semana|na\s+pr[óo]xima\s+semana|para\s+(?:hoje|amanh[ãa]|esta\s+semana|a\s+pr[óo]xima\s+semana)))?|que\s+(?:tenho|compromissos))\b/i;
 
 // Verbos que indicam pedido de acção/lembrete sobre alguém ou algo — não
 // devem ser interpretados como enriquecimento do imóvel activo.
@@ -432,13 +434,24 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     return { reply: "De nada." };
   }
 
-  // 0.agenda) Consulta explícita da agenda — antes da IA.
-  //   Reconhece "hoje/amanhã/esta semana/próxima semana/agendamentos/compromissos".
-  //   Nunca reduz "esta semana" a "hoje".
-  if (isExplicitAgendaQuery(trimmed) || /agendamentos?/i.test(trimmed)) {
-    const period = detectAgendaPeriod(trimmed, input.receivedAt ?? new Date());
-    if (period) {
-      logBranch("agenda_query", { kind: period.kind, from: period.from, to: period.to });
+  // 0.agenda) Consulta explícita da agenda — PRIORIDADE sobre Diversos e IA.
+  //   Reconhece "hoje/amanhã/esta semana/próxima semana/agendamentos/
+  //   compromissos/marcado/reuniões/visitas/chamadas".
+  //   Nunca reduz "esta semana" a "hoje" e nunca cai em Diversos.
+  {
+    const agendaMatched = isExplicitAgendaQuery(trimmed);
+    if (agendaMatched) {
+      const period =
+        detectAgendaPeriod(trimmed, input.receivedAt ?? new Date()) ??
+        detectAgendaPeriod("hoje", input.receivedAt ?? new Date())!;
+      logBranch("agenda_query", {
+        detected_route: "agenda",
+        matched_pattern: "QUERY_AGENDA_RE",
+        agenda_period: period.kind,
+        from: period.from,
+        to: period.to,
+        fallback_used: !detectAgendaPeriod(trimmed, input.receivedAt ?? new Date()),
+      });
       const reply = await queryAgenda(supabase, userId, period);
       return { reply };
     }
