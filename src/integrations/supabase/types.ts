@@ -73,14 +73,17 @@ export type Database = {
           channel: string
           confidence: number | null
           created_at: string
+          domain: string | null
           error: string | null
           estimated_cost_usd: number | null
+          fallback_used: boolean | null
           id: string
           input_tokens: number | null
           intent: string | null
           latency_ms: number | null
           model: string
           output_tokens: number | null
+          route: string | null
           success: boolean
           total_tokens: number | null
           user_id: string | null
@@ -89,14 +92,17 @@ export type Database = {
           channel: string
           confidence?: number | null
           created_at?: string
+          domain?: string | null
           error?: string | null
           estimated_cost_usd?: number | null
+          fallback_used?: boolean | null
           id?: string
           input_tokens?: number | null
           intent?: string | null
           latency_ms?: number | null
           model: string
           output_tokens?: number | null
+          route?: string | null
           success?: boolean
           total_tokens?: number | null
           user_id?: string | null
@@ -105,14 +111,17 @@ export type Database = {
           channel?: string
           confidence?: number | null
           created_at?: string
+          domain?: string | null
           error?: string | null
           estimated_cost_usd?: number | null
+          fallback_used?: boolean | null
           id?: string
           input_tokens?: number | null
           intent?: string | null
           latency_ms?: number | null
           model?: string
           output_tokens?: number | null
+          route?: string | null
           success?: boolean
           total_tokens?: number | null
           user_id?: string | null

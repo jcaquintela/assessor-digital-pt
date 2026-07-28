@@ -5,6 +5,11 @@
 // reais após confirmação explícita do utilizador.
 
 import { callAssessorAi, type AiInterpretation, type AiContextMessage } from "./ai.server";
+import {
+  interpretAssessorMessage,
+  ROUTER_MIN_CONFIDENCE,
+  type RouterDecision,
+} from "./router.server";
 import { sanitizeAssessorName, stripAssessorVocative, ASSESSOR_NAME_DEFAULT } from "./assessor-name";
 import { resolveDateTimeFromText, hasExplicitDateTime } from "./date-resolver";
 import {
@@ -636,6 +641,102 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
         entities: ((pending.structured_payload as any)?.entities ?? {}) as Record<string, unknown>,
       }
     : null;
+
+  // ------------------------------------------------------------------
+  // Router semântico (IA central). Corre depois das guardas
+  // determinísticas (confirmações, saudações, agenda-regex, slot-fill,
+  // correcções) e ANTES da extração de entidades. Serve para apanhar
+  // consultas naturais que os regexes não cobrem — e.g. "e amanhã?"
+  // no seguimento de uma pergunta de agenda, ou "o que sabes do Paulo?".
+  // Só encurta o turno quando a intenção é conversacional/pesquisa;
+  // acções que criam/alteram dados continuam a passar pelo extrator
+  // existente para não perder validações e idempotência.
+  // ------------------------------------------------------------------
+  const router = await interpretAssessorMessage({
+    content: trimmed,
+    now: input.receivedAt ?? new Date(),
+    timezone: "Europe/Lisbon",
+    userName: (prof as any)?.name ?? null,
+    assessorName,
+    recent: recentMsgs.slice(-6),
+    pendingAction: pending
+      ? {
+          intent: pending.intent,
+          entities: ((pending.structured_payload as any)?.entities ?? {}) as Record<string, unknown>,
+          current_question: (pending as any).current_question ?? null,
+          pending_question: (pending as any).pending_question ?? null,
+        }
+      : null,
+    activeEntity: convState?.active_topic
+      ? { type: "property", id: (convState as any).active_property_id ?? null, label: (convState as any).active_topic ?? null }
+      : null,
+  });
+
+  // Telemetria dedicada do router.
+  await supabase
+    .from("assessor_ai_logs")
+    .insert({
+      user_id: userId,
+      channel,
+      model: router.telemetry.model,
+      intent: router.decision?.intent ?? null,
+      confidence: router.decision?.confidence ?? null,
+      input_tokens: router.telemetry.inputTokens,
+      output_tokens: router.telemetry.outputTokens,
+      total_tokens: router.telemetry.totalTokens,
+      latency_ms: router.telemetry.latencyMs,
+      success: router.ok,
+      error: router.error ?? null,
+      estimated_cost_usd: null,
+      domain: router.decision?.destination ?? null,
+      route: "router_semantic",
+      fallback_used: !router.ok,
+    } as never)
+    .then(() => undefined, () => undefined);
+
+  if (router.ok && router.decision && router.decision.confidence >= ROUTER_MIN_CONFIDENCE) {
+    const d = router.decision;
+
+    // (a) Consulta explícita à agenda — usa hint do router e detectAgendaPeriod
+    // para calcular os limites reais em Europe/Lisbon.
+    if (d.intent === "query_agenda") {
+      const hint =
+        d.entities?.period === "tomorrow" ? "amanhã" :
+        d.entities?.period === "week" ? "esta semana" :
+        d.entities?.period === "next_week" ? "próxima semana" :
+        d.entities?.period === "today" ? "hoje" :
+        trimmed;
+      const period =
+        detectAgendaPeriod(hint, input.receivedAt ?? new Date()) ??
+        detectAgendaPeriod("hoje", input.receivedAt ?? new Date())!;
+      logBranch("router_agenda", { period: period.kind, from: period.from, to: period.to });
+      const reply = await queryAgenda(supabase, userId, period);
+      return { reply };
+    }
+
+    // (b) Consulta a uma pessoa por nome — quando o router extrai person_name.
+    if (d.intent === "query_person" && d.entities?.person_name) {
+      logBranch("router_person", { name: d.entities.person_name });
+      const reply = await queryPerson(supabase, userId, String(d.entities.person_name));
+      return { reply };
+    }
+
+    // (c) Consulta a Diversos — só quando o router é explícito.
+    if (d.intent === "query_misc") {
+      logBranch("router_misc");
+      const reply = await queryMisc(supabase, userId, trimmed);
+      return { reply };
+    }
+
+    // (d) Smalltalk / saudação / desabafo — responde curto e não persiste.
+    //    Só encurta quando NÃO há pending (para não interromper fluxos).
+    if (!pending && (d.intent === "smalltalk" || d.conversation_act === "greeting" || d.conversation_act === "casual") && !d.should_persist) {
+      const suggestion = typeof d.reply === "string" ? d.reply.trim() : "";
+      const reply = sanitizeReplyFromCulture(suggestion) || (userFirstName ? `Estou aqui, ${userFirstName}.` : "Estou aqui.");
+      logBranch("router_smalltalk");
+      return { reply };
+    }
+  }
 
   const ai = await callAssessorAi({
     content: trimmed,
