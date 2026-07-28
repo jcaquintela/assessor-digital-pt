@@ -1040,22 +1040,28 @@ async function proposeAction(
 }
 
 async function queryToday(supabase: any, userId: string): Promise<string> {
-  const today = new Date();
-  const ymd = today.toISOString().slice(0, 10);
+  const now = new Date();
+  const period = detectAgendaPeriod("hoje", now)!;
+  return queryAgenda(supabase, userId, period);
+}
+
+async function queryAgenda(
+  supabase: any,
+  userId: string,
+  period: AgendaPeriod,
+): Promise<string> {
   const { data } = await supabase
     .from("follow_ups")
-    .select("title, type, due_time, status")
+    .select("title, type, due_date, due_time, status")
     .eq("user_id", userId)
-    .eq("due_date", ymd)
+    .gte("due_date", period.from)
+    .lte("due_date", period.to)
     .neq("status", "Concluído")
+    .neq("status", "Cancelado")
+    .order("due_date", { ascending: true })
     .order("due_time", { ascending: true, nullsFirst: false });
-  const rows = (data as any[]) ?? [];
-  if (rows.length === 0) return "Hoje não tens nada agendado.";
-  const linhas = rows.slice(0, 8).map((r) => {
-    const h = r.due_time ? `${String(r.due_time).slice(0, 5)} — ` : "";
-    return `• ${h}${r.title}`;
-  });
-  return `Hoje tens:\n${linhas.join("\n")}`;
+  const rows = ((data as any[]) ?? []) as AgendaRow[];
+  return formatAgendaReply({ period, rows, now: new Date() });
 }
 
 async function queryPerson(supabase: any, userId: string, name: string): Promise<string> {
