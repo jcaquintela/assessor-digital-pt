@@ -68,7 +68,7 @@ export function detectAgendaPeriod(text: string, now: Date): AgendaPeriod | null
   if (/\b(esta|nesta|para\s+esta)\s+semana\b|\bsemana\b(?!\s+passada)/.test(t)) {
     return { kind: "week", from: monday, to: sunday, label: "esta semana" };
   }
-  if (/\bamanh[ãa]\b/.test(t)) {
+  if (/(^|\W)amanh[ãa](\W|$)/.test(t)) {
     const d = addDaysYmd(today, 1);
     return { kind: "tomorrow", from: d, to: d, label: "amanhã" };
   }
