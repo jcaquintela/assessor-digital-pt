@@ -405,6 +405,293 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_golden_conversations: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          slug: string
+          tags: string[]
+          title: string
+          turns: Json
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          slug: string
+          tags?: string[]
+          title: string
+          turns?: Json
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          slug?: string
+          tags?: string[]
+          title?: string
+          turns?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      assistant_golden_runs: {
+        Row: {
+          aqs: number | null
+          ats: number | null
+          created_at: string
+          diffs: Json
+          golden_id: string
+          id: string
+          passed: boolean
+          release_ref: string
+          task_success: number | null
+        }
+        Insert: {
+          aqs?: number | null
+          ats?: number | null
+          created_at?: string
+          diffs?: Json
+          golden_id: string
+          id?: string
+          passed: boolean
+          release_ref: string
+          task_success?: number | null
+        }
+        Update: {
+          aqs?: number | null
+          ats?: number | null
+          created_at?: string
+          diffs?: Json
+          golden_id?: string
+          id?: string
+          passed?: boolean
+          release_ref?: string
+          task_success?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_golden_runs_golden_id_fkey"
+            columns: ["golden_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_golden_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_reflections: {
+        Row: {
+          analysis: Json
+          correction_id: string | null
+          created_at: string
+          id: string
+          model: string | null
+          trace_id: string | null
+          trigger: Database["public"]["Enums"]["assistant_reflection_trigger"]
+          user_id: string | null
+        }
+        Insert: {
+          analysis?: Json
+          correction_id?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          trace_id?: string | null
+          trigger: Database["public"]["Enums"]["assistant_reflection_trigger"]
+          user_id?: string | null
+        }
+        Update: {
+          analysis?: Json
+          correction_id?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          trace_id?: string | null
+          trigger?: Database["public"]["Enums"]["assistant_reflection_trigger"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_reflections_correction_id_fkey"
+            columns: ["correction_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_user_corrections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_reflections_trace_id_fkey"
+            columns: ["trace_id"]
+            isOneToOne: false
+            referencedRelation: "assessor_reasoning_traces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_shadow_runs: {
+        Row: {
+          aqs: number | null
+          ats: number | null
+          channel: string
+          created_at: string
+          diff: Json
+          id: string
+          latency_ms: number | null
+          reply: string | null
+          strategy: string
+          task_success: number | null
+          trace_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          aqs?: number | null
+          ats?: number | null
+          channel: string
+          created_at?: string
+          diff?: Json
+          id?: string
+          latency_ms?: number | null
+          reply?: string | null
+          strategy: string
+          task_success?: number | null
+          trace_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          aqs?: number | null
+          ats?: number | null
+          channel?: string
+          created_at?: string
+          diff?: Json
+          id?: string
+          latency_ms?: number | null
+          reply?: string | null
+          strategy?: string
+          task_success?: number | null
+          trace_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_shadow_runs_trace_id_fkey"
+            columns: ["trace_id"]
+            isOneToOne: false
+            referencedRelation: "assessor_reasoning_traces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_trust_scores: {
+        Row: {
+          aqs_score: number | null
+          ats: number | null
+          channel: string
+          context_preservation: number | null
+          corrections_count: number
+          created_at: string
+          id: string
+          notes: string | null
+          safe_decisions: number | null
+          task_success: number | null
+          trace_id: string | null
+          user_id: string
+        }
+        Insert: {
+          aqs_score?: number | null
+          ats?: number | null
+          channel: string
+          context_preservation?: number | null
+          corrections_count?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          safe_decisions?: number | null
+          task_success?: number | null
+          trace_id?: string | null
+          user_id: string
+        }
+        Update: {
+          aqs_score?: number | null
+          ats?: number | null
+          channel?: string
+          context_preservation?: number | null
+          corrections_count?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          safe_decisions?: number | null
+          task_success?: number | null
+          trace_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_trust_scores_trace_id_fkey"
+            columns: ["trace_id"]
+            isOneToOne: false
+            referencedRelation: "assessor_reasoning_traces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_user_corrections: {
+        Row: {
+          category: Database["public"]["Enums"]["assistant_correction_category"]
+          channel: string
+          conversation_id: string | null
+          correction_message: string
+          created_at: string
+          final_result: string | null
+          id: string
+          original_message: string | null
+          resolved: boolean
+          turn_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["assistant_correction_category"]
+          channel: string
+          conversation_id?: string | null
+          correction_message: string
+          created_at?: string
+          final_result?: string | null
+          id?: string
+          original_message?: string | null
+          resolved?: boolean
+          turn_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["assistant_correction_category"]
+          channel?: string
+          conversation_id?: string | null
+          correction_message?: string
+          created_at?: string
+          final_result?: string | null
+          id?: string
+          original_message?: string | null
+          resolved?: boolean
+          turn_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_user_corrections_turn_id_fkey"
+            columns: ["turn_id"]
+            isOneToOne: false
+            referencedRelation: "assessor_reasoning_traces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_connections: {
         Row: {
           connected_at: string
@@ -1482,6 +1769,17 @@ export type Database = {
     }
     Enums: {
       app_role: "consultant" | "support_admin" | "super_admin"
+      assistant_correction_category:
+        | "wrong_person"
+        | "wrong_property"
+        | "wrong_date"
+        | "wrong_document"
+        | "lost_context"
+        | "unnatural_reply"
+        | "unnecessary_question"
+        | "wrong_execution"
+        | "other"
+      assistant_reflection_trigger: "low_aqs" | "low_ats" | "user_correction"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1610,6 +1908,18 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["consultant", "support_admin", "super_admin"],
+      assistant_correction_category: [
+        "wrong_person",
+        "wrong_property",
+        "wrong_date",
+        "wrong_document",
+        "lost_context",
+        "unnatural_reply",
+        "unnecessary_question",
+        "wrong_execution",
+        "other",
+      ],
+      assistant_reflection_trigger: ["low_aqs", "low_ats", "user_correction"],
     },
   },
 } as const

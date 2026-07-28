@@ -1,58 +1,77 @@
-# Plano — Alinhar v3 à Constituição, adicionar Proatividade e AQS
+# Trust Mode v1 — Plano de implementação
 
-Três frentes em paralelo, entregues no mesmo turno. Item 4 (rebatismo Alfred) fica de fora conforme pedido.
+Objectivo: transformar o AQS num sistema de confiança (ATS) que sabe onde falha, aprende com correções do consultor e bloqueia regressões antes de expandir.
 
-## 1. Auditoria v3 vs Constituição — e correcções imediatas
+Faseado em 4 releases para não colocar tudo online de uma vez. Motor v3 continua atrás da flag `assessor.engine.v3` (só Júlio).
 
-Reler o motor v3 com a lente "um excelente assessor humano faria isto?" e corrigir fugas culturais no código, não em documentos.
+---
 
-Alvos concretos:
-- `src/lib/assessor/v3/prompts.ts`: reforçar que o modelo nunca menciona "acção", "intent", "payload", "tool", "estado", "id", "backend"; nunca começa por "Feito"; nunca pede confirmação com linguagem de formulário ("Confirmas os seguintes campos: ...").
-- `src/lib/assessor/v3/reasoning-engine.server.ts` (orquestrador): passar toda a `natural_reply` pelo `culture/sanitize.ts` (já existente) e pelo `culture/short-answers.ts` para garantir 1-2 frases, PT-PT, tratamento por "tu", contracções ("ao Paulo", "à Maria"), e substituir aberturas tipo "Registei/Guardei/Feito" pré-execução por confirmações só depois de `ACT` devolver sucesso.
-- `decide.server.ts`: quando `action = "ask"`, garantir uma só pergunta por turno (rejeitar respostas com mais do que um "?"); quando `action = "act"` mas o `ACT` falha, gerar reply humana de recuperação em vez de silêncio.
-- Vocabulário: bloquear no pós-processamento palavras proibidas (regex) e substituí-las por versões humanas quando escaparem do modelo.
+## Fase 1 — Fundação de dados (migração única)
 
-## 2. Ciclo Proativo — o Assessor fala primeiro
+Novas tabelas + colunas, com RLS e GRANT:
 
-Job periódico que gera *nudges* profissionais quando faz sentido, respeitando a regra de ouro.
+- `assistant_user_corrections`
+  - `conversation_id` (external_conversation_id), `turn_id` (uuid → `assessor_reasoning_traces.id`), `category` (enum: `wrong_person`, `wrong_property`, `wrong_date`, `wrong_document`, `lost_context`, `unnatural_reply`, `unnecessary_question`, `wrong_execution`, `other`), `original_message`, `correction_message`, `final_result`, `resolved bool`, `user_id`, timestamps.
+- `assistant_trust_scores` (por turno, agregável)
+  - `trace_id` FK, `task_success 0|1|null`, `aqs_score numeric`, `corrections_count int`, `context_preservation 0..1`, `safe_decisions 0..1`, `ats numeric` (0..100), timestamps.
+- `assistant_reflections`
+  - `trace_id` FK, `trigger` (`low_aqs` | `low_ats` | `user_correction`), `analysis jsonb` (porquê falhei, o que faltou, resposta ideal), `model`, timestamps. Nunca exposto ao consultor.
+- `assistant_golden_conversations`
+  - `id`, `slug`, `title`, `turns jsonb` (mensagens + expectativas por turno), `tags text[]`, `active bool`.
+- `assistant_golden_runs`
+  - `golden_id` FK, `release_ref` (git sha/timestamp), `passed bool`, `ats numeric`, `aqs numeric`, `task_success numeric`, `diffs jsonb`, `created_at`.
+- `assistant_shadow_runs`
+  - `trace_id` FK (produção), `strategy text` (nome da variante), `reply text`, `ats`, `aqs`, `task_success`, `latency_ms`, `created_at`. Nunca envia ao consultor.
 
-- Nova tabela `assessor_nudges` (id, user_id, kind, subject_type, subject_id, reason, suggested_reply, status: pending|sent|dismissed|acted, scheduled_for, created_at, sent_at). GRANTs + RLS por `user_id`.
-- Novo módulo `src/lib/assessor/v3/proactivity.server.ts` com regras determinísticas iniciais:
-  - Pessoa sem interacção há ≥ 21 dias e com oportunidade aberta → sugerir contacto.
-  - Imóvel com estado activo mas sem documentos essenciais (caderneta / CPU / certificado energético) há ≥ 7 dias → sugerir pedido ao proprietário.
-  - Follow-up vencido há > 2 dias e não concluído → sugerir reagendar ou fechar.
-  - Silêncio total do consultor há ≥ 3 dias úteis → nudge leve de bom-dia com resumo.
-- Cada nudge escreve `suggested_reply` já sanitizada pelo `culture/sanitize.ts`.
-- Rota pública `src/routes/api/public/hooks/proactive-tick.ts` (aut. via `apikey` anon key) que corre a geração e o envio via `whatsapp/send.server.ts` para consultores com número ligado e flag v3 activa.
-- Cron `pg_cron` a cada 30 min chamando a rota (via `supabase--insert`).
-- Rate limit dentro do gerador: máx 3 nudges por consultor por dia, nunca fora de 09:00–20:00 Europe/Lisbon, nunca sábado à noite/domingo.
+RLS: tudo bloqueado ao consultor; só admins leem. Escrita apenas via service role dentro de handlers.
 
-## 3. Assistant Quality Score (AQS)
+## Fase 2 — Cálculo do ATS
 
-Capturar por turno 4 sinais 0/1 e um score agregado.
+`src/lib/assessor/v3/trust.server.ts`:
+- `computeTaskSuccess(trace, toolResults)` — 1 se decisão `act` teve todas as tools ok e o recurso persistiu (re-select), 0 se falhou, null para `acknowledge`/`ask`.
+- `computeContextPreservation(trace, history)` — heurística determinística: penaliza se DECIDE fez `ask` sobre campo já presente no `conversation_state` ou historial recente; se criou duplicado (mesmo `dedupe_key`); se referiu entidade errada vs `active_person_id`/`last_property_id`.
+- `computeSafeDecisions(trace, toolResults, reply)` — 1 por defeito; 0 se resposta afirmou sucesso sem tool_calls ok, se prometeu ação futura não agendada, ou se sanitize teve de reescrever "Feito".
+- `computeATS({task, aqs, corrections, context, safe})` com pesos 35/25/15/15/10.
 
-- Nova tabela `assessor_quality_scores` (id, user_id, channel, trace_id → `assessor_reasoning_traces.id`, understood_first_try, reformulated, executed_successfully, human_tone, score numeric, notes text, created_at). GRANTs + RLS.
-- Cálculo automático no fim de cada turno v3 no `reasoning-engine.server.ts`:
-  - `understood_first_try` = decisão ≠ `ask` no primeiro turno da sequência (usar `conversation_states.last_intent` para detectar reformulação).
-  - `reformulated` = turno seguido de outro em < 60s do mesmo user no mesmo canal.
-  - `executed_successfully` = todos os `toolResults.ok === true` quando `action = "act"`; N/A ⇒ 1 quando `action ∈ {acknowledge, do_nothing}`.
-  - `human_tone` = passa nas heurísticas de `culture/sanitize.ts` (sem vocabulário técnico, ≤ 2 frases, tratamento por "tu").
-  - `score = média dos sinais aplicáveis`.
-- Painel Admin: nova página `src/routes/admin/qualidade.tsx` com:
-  - AQS diário (linha), últimos 14 dias.
-  - Distribuição dos 4 sinais.
-  - Últimos 20 turnos com score < 0.75 (drill-down para o trace).
-- Link adicionado ao menu do admin.
+Integrar no fim de `reasoning-engine.server.ts` a seguir ao AQS; gravar em `assistant_trust_scores`.
+
+## Fase 3 — Captura de correções
+
+Detector local no `reasoning-engine`: quando a mensagem do consultor no turno N segue < 90 s um turno assistente e contém padrões de correção (`não é`, `errado`, `queria dizer`, `esse não`, `não era o/a`, `não hoje`, `mudei`, `apaga`, `cancela`), classifica com pequeno prompt no `openai/gpt-5.6-sol` (categoria fechada) e insere em `assistant_user_corrections` ligando ao `trace_id` anterior. Usa `resolved=false`; passa a `true` quando o turno seguinte terminar com sucesso na mesma entidade.
+
+Reflection Engine: sempre que `AQS<80` OU `ATS<85` OU nova correção, dispara `reflect(trace, correction?)` (Lovable AI, prompt em PT-PT com 5 perguntas do brief) e grava em `assistant_reflections`. Assíncrono, sem bloquear a resposta ao consultor.
+
+## Fase 4 — Painel `/admin/qualidade` (extensão)
+
+Novos cartões:
+- ATS diário (14 dias) + breakdown por pilar.
+- Top 10 motivos de falha: agrega `assistant_user_corrections.category` + heurísticas do trust score (ask desnecessária, contexto perdido, duplicado, execução errada, resposta pouco natural). Percentagens.
+- Últimas 20 correções + reflexão associada (colapsável).
+- Barra "Definição de Pronto" com semáforos: ATS≥90, AQS≥90, TaskSuccess≥95%, Corrections<3%, Duplicados<1%, PerdaContexto<2%, Golden sem regressão.
+
+Server fns em `quality.functions.ts` (extensão).
+
+## Fase 5 — Golden Conversations + Shadow Mode (arquitetura, sem UI de execução ainda)
+
+- Seed inicial de ~30 golden conversations em `supabase/migrations` (JSON) cobrindo: criar seguimento, criar contacto, associar documento, consulta de agenda, referência ambígua, negação, correção de data.
+- CLI `bun run golden:check` (script em `scripts/golden-check.ts`) que corre cada golden contra `runReasoningEngine` com um user fake e compara ATS/AQS/TaskSuccess com o último `assistant_golden_runs`. Falha se regride. Documentado em `docs/golden-conversations.md`.
+- Shadow Mode: em `reasoning-engine.server.ts`, se flag `assessor.engine.v3.shadow` estiver on para o utilizador, corre `runShadowStrategy(trace)` em `waitUntil`-style (fire-and-forget) que executa uma segunda `decide()` com prompt/variante alternativa e grava em `assistant_shadow_runs`. Nunca responde ao consultor.
+
+---
 
 ## Detalhes técnicos
 
-- Migrações via `supabase--migration` (com GRANTs). Cron via `supabase--insert`.
-- Nenhuma alteração ao v2 nem ao v1; tudo está atrás da flag `assessor.engine.v3` já activa só para o Júlio, portanto testável em produção sem risco para outros.
-- Sem novos secrets: usa `LOVABLE_API_KEY`, `WHATSAPP_*` e `SUPABASE_*` já existentes.
-- Testes: adicionar `src/lib/assessor/v3/proactivity.test.ts` (regras determinísticas) e `src/lib/assessor/v3/quality.test.ts` (cálculo dos 4 sinais). Sem UI E2E nesta iteração.
-- Kill switch: `DELETE FROM feature_flag_users WHERE flag_key='assessor.engine.v3'` desliga tudo (motor, nudges v3-only, AQS).
+- Todas as escritas passam pela camada de domínio já existente — IA nunca escreve directamente.
+- Tabelas novas: `GRANT ALL ... TO service_role` + `GRANT SELECT` a `authenticated` só onde admins precisam ler via `is_admin`.
+- Prompts do Reflection Engine e Shadow Mode isolados em `src/lib/assessor/v3/prompts.ts` para versionamento.
+- Toda a lógica de correção/reflexão é assíncrona e não pode atrasar a resposta ao consultor (>200 ms extra é bloqueador).
+- Kill switch por flag continua a valer; ATS respeita a mesma flag do v3.
 
-## Fora do âmbito
-- Rebatismo Alfred (item 4).
-- Nudges gerados por IA (só regras determinísticas nesta fase).
-- Dashboards de AQS fora do /admin.
+## Fora de âmbito desta iteração
+
+- UI para os consultores verem correções (é interno).
+- Auto-substituição da estratégia produtiva pela shadow (só recolha comparativa).
+- Golden Conversations >30 (subimos para 200 depois de validar formato).
+- Alterações ao motor v2/legacy.
+
+Se aprovares, começo pela Fase 1 (migração) e Fase 2 (cálculo ATS + integração no engine) neste turno; Fases 3–5 na sequência.

@@ -8,6 +8,12 @@ import { decide } from "./decide.server";
 import { executeToolCalls, applyMemoryWrites } from "./act.server";
 import { sanitizeReply, enforceHumanTone, enforceSingleQuestion, NATURAL_FALLBACKS } from "../culture/sanitize";
 import { computeQualitySignals, persistQualityScore } from "./quality.server";
+import {
+  computeATS, computeContextPreservation, computeSafeDecisions, computeTaskSuccess,
+  persistTrustScore, type TrustSignals,
+} from "./trust.server";
+import { captureCorrection, looksLikeCorrection } from "./corrections.server";
+import { reflect, type ReflectionTrigger } from "./reflection.server";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
 import type { DomainContext } from "../v2/domain.server";
 
@@ -49,7 +55,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     supabase.from("profiles").select("name, assessor_name").eq("id", userId).maybeSingle(),
     supabase
       .from("assessor_messages")
-      .select("role, content, created_at")
+      .select("role, content, created_at, id")
       .eq("user_id", userId).eq("channel", channel)
       .order("created_at", { ascending: false })
       .limit(HISTORY_LIMIT),
@@ -57,6 +63,12 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   const assessorName = sanitizeAssessorName((prof as any)?.assessor_name ?? "") || ASSESSOR_NAME_DEFAULT;
   const userFirstName = String((prof as any)?.name ?? "").split(/\s+/)[0] || "";
   const historyPreview = toHistoryPreview((recentRows as any[]) ?? []);
+
+  // Detecção de correção precoce — antes de gastar OBSERVE/THINK/DECIDE.
+  const lastAssistantRow = ((recentRows as any[]) ?? []).find((r) => r?.role === "assistant");
+  const lastAssistantAt: Date | null = lastAssistantRow?.created_at ? new Date(lastAssistantRow.created_at) : null;
+  const lastAssistantReply: string = String(lastAssistantRow?.content ?? "");
+  const isCorrection = looksLikeCorrection(trimmed, lastAssistantAt);
 
   // 1) OBSERVE
   const observations = observe(trimmed);
@@ -152,6 +164,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   } catch { /* noop */ }
 
   // AQS — Assistant Quality Score.
+  let aqsScore: number | null = null;
   try {
     const prevUserAt = ((recentRows as any[]) ?? [])
       .find((r) => r?.role === "user")?.created_at ?? null;
@@ -161,8 +174,87 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       reply,
       previousUserTurnAt: prevUserAt ? new Date(prevUserAt) : null,
     });
+    aqsScore = signals.score;
     await persistQualityScore(supabase, { userId, channel, traceId, signals });
   } catch { /* noop */ }
+
+  // Correção do consultor → grava e conta para o ATS deste turno.
+  let correctionRecord: { id: string; category: string } | null = null;
+  if (isCorrection) {
+    try {
+      correctionRecord = await captureCorrection(supabase, {
+        userId,
+        channel,
+        conversationId: channel,
+        previousTraceId: null,
+        originalAssistantReply: lastAssistantReply,
+        correctionMessage: trimmed,
+      });
+    } catch { /* noop */ }
+  }
+
+  // ATS — Assistant Trust Score.
+  let atsValue: number | null = null;
+  try {
+    const searchesForContext = searches;
+    const contextPreservation = computeContextPreservation({
+      decision: decideR.decision,
+      toolResults,
+      conversationState: (searchesForContext as any).conversation_state ?? null,
+      historyPreview,
+      currentMessage: trimmed,
+    });
+    const safeDecisions = computeSafeDecisions({
+      decision: decideR.decision,
+      toolResults,
+      finalReply: reply,
+    });
+    const taskSuccess = computeTaskSuccess(decideR.decision, toolResults);
+    const signals: TrustSignals = {
+      task_success: taskSuccess,
+      aqs_score: aqsScore,
+      corrections_count: correctionRecord ? 1 : 0,
+      context_preservation: contextPreservation,
+      safe_decisions: safeDecisions,
+      ats: null,
+    };
+    signals.ats = computeATS({
+      task_success: signals.task_success,
+      aqs_score: signals.aqs_score,
+      corrections_count: signals.corrections_count,
+      context_preservation: signals.context_preservation,
+      safe_decisions: signals.safe_decisions,
+    });
+    atsValue = signals.ats;
+    await persistTrustScore(supabase, { userId, channel, traceId, signals });
+  } catch { /* noop */ }
+
+  // Reflection Engine — dispara em background quando o turno é fraco.
+  const shouldReflect =
+    (aqsScore != null && aqsScore < 0.80) ||
+    (atsValue != null && atsValue < 85) ||
+    !!correctionRecord;
+  if (shouldReflect) {
+    const trigger: ReflectionTrigger = correctionRecord
+      ? "user_correction"
+      : (atsValue != null && atsValue < 85 ? "low_ats" : "low_aqs");
+    // Fire-and-forget para não atrasar a resposta ao consultor.
+    void reflect(supabase, {
+      userId,
+      traceId,
+      correctionId: correctionRecord?.id ?? null,
+      trigger,
+      message: trimmed,
+      assistantReply: reply,
+      decisionAction: decideR.decision.action,
+      observations,
+      searches,
+      aqs: aqsScore,
+      ats: atsValue,
+      correctionCategory: correctionRecord?.category ?? null,
+      correctionMessage: correctionRecord ? trimmed : null,
+    });
+  }
 
   return { reply };
 }

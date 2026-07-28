@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getQualityOverview } from "@/lib/assessor/v3/quality.functions";
+import { getTrustOverview } from "@/lib/assessor/v3/quality.functions";
 
 export const Route = createFileRoute("/admin/qualidade")({
   component: QualidadePage,
@@ -23,24 +24,95 @@ function Bar({ value, max, label }: { value: number; max: number; label: string 
 
 function QualidadePage() {
   const fetchFn = useServerFn(getQualityOverview);
+  const fetchTrust = useServerFn(getTrustOverview);
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "qualidade"],
     queryFn: () => fetchFn(),
   });
+  const trustQ = useQuery({ queryKey: ["admin", "trust"], queryFn: () => fetchTrust() });
 
   if (isLoading) return <div className="text-sm text-slate-500">A carregar…</div>;
   if (error || !data) return <div className="text-sm text-red-600">Erro a carregar AQS.</div>;
 
   const maxAvg = Math.max(...data.daily.map((d) => d.avg ?? 0), 0.01);
+  const trust = trustQ.data;
+  const maxAts = trust ? Math.max(...trust.daily.map((d: any) => d.ats ?? 0), 1) : 1;
 
   return (
     <div className="space-y-8">
       <header>
         <h1 className="text-2xl font-semibold">Qualidade do Assessor</h1>
         <p className="text-sm text-slate-500">
-          Assistant Quality Score dos últimos 14 dias. Cálculo por turno v3.
+          Trust Mode v1 — ATS + AQS, correções e Top 10 falhas dos últimos 14 dias.
         </p>
       </header>
+
+      {trust && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="mb-4 text-sm font-semibold">Definição de Pronto</h2>
+          <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-5">
+            {[
+              ["ATS ≥ 90", trust.readiness.ats_ok, trust.pillars.ats ?? "—"],
+              ["AQS ≥ 0.90", trust.readiness.aqs_ok, trust.pillars.aqs ?? "—"],
+              ["Task ≥ 95%", trust.readiness.task_success_ok, trust.pillars.task_success ?? "—"],
+              ["Correções < 3%", trust.readiness.corrections_ok, trust.pillars.corrections_rate ?? "—"],
+              ["Contexto > 98%", trust.readiness.context_ok, trust.pillars.context_preservation ?? "—"],
+            ].map(([label, ok, val]) => (
+              <div key={label as string} className={`rounded-lg border p-2 ${ok ? "border-green-300 bg-green-50 dark:bg-green-900/20" : "border-slate-200 dark:border-slate-800"}`}>
+                <div className="text-xs text-slate-500">{label as string}</div>
+                <div className="font-mono">{String(val)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {trust && trust.daily.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="mb-4 text-sm font-semibold">ATS diário</h2>
+          <div className="flex h-40 items-end gap-1">
+            {trust.daily.map((d: any) => (
+              <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
+                <div
+                  className="w-full rounded-t bg-emerald-600 dark:bg-emerald-400"
+                  style={{ height: `${((d.ats ?? 0) / maxAts) * 100}%` }}
+                  title={`${d.day} — ATS ${d.ats ?? "—"} (${d.n} turnos)`}
+                />
+                <span className="text-[10px] text-slate-500">{d.day.slice(5)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {trust && trust.topFailures.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="mb-4 text-sm font-semibold">Top 10 motivos de falha</h2>
+          <ol className="space-y-1 text-sm">
+            {trust.topFailures.map((f: any, i: number) => (
+              <li key={f.label} className="flex justify-between border-b border-slate-100 py-1 dark:border-slate-800">
+                <span>{i + 1}. {f.label}</span>
+                <span className="font-mono text-slate-500">{f.count} · {f.pct}%</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {trust && trust.corrections.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="mb-4 text-sm font-semibold">Últimas correções do consultor</h2>
+          <div className="space-y-2 text-sm">
+            {trust.corrections.slice(0, 10).map((c: any) => (
+              <div key={c.id} className="rounded border border-slate-100 p-2 dark:border-slate-800">
+                <div className="text-xs text-slate-500">{new Date(c.created_at).toLocaleString("pt-PT")} · {c.category}</div>
+                <div className="mt-1"><span className="text-slate-500">Assessor:</span> {c.original_message ?? "—"}</div>
+                <div><span className="text-slate-500">Correção:</span> {c.correction_message}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="mb-4 text-sm font-semibold">AQS diário</h2>
