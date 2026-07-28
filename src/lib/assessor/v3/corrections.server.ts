@@ -7,7 +7,7 @@
 import { callGateway, V2_MODEL_DEFAULT } from "../v2/gateway.server";
 
 export const CORRECTION_HINT_RE =
-  /\b(n[ãa]o\s+[eé]|n[ãa]o\s+era|errado|erraste|queria\s+dizer|esse\s+n[ãa]o|essa\s+n[ãa]o|n[ãa]o\s+hoje|n[ãa]o\s+amanh[ãa]|mudei\s+de\s+ideias|apaga|cancela|desmarca|corrige|troca|substitui|ali[áa]s|n[ãa]o\s+quero)\b/i;
+  /(?:^|\W)(n[ãa]o\s+[eé]|n[ãa]o\s+era|errado|erraste|queria\s+dizer|esse\s+n[ãa]o|essa\s+n[ãa]o|n[ãa]o\s+hoje|n[ãa]o\s+amanh[ãa]|mudei\s+de\s+ideias|apaga|cancela|desmarca|corrige|troca|substitui|ali[áa]s|n[ãa]o\s+quero)(?:$|\W)/i;
 
 export type CorrectionCategory =
   | "wrong_person" | "wrong_property" | "wrong_date" | "wrong_document"
