@@ -196,6 +196,75 @@ export type Database = {
           },
         ]
       }
+      assessor_reasoning_traces: {
+        Row: {
+          channel: string
+          created_at: string
+          decide_latency_ms: number | null
+          decision: Json
+          error: string | null
+          hypotheses: Json
+          id: string
+          input_content: string
+          input_tokens: number | null
+          memory_writes: Json
+          observations: Json
+          output_tokens: number | null
+          reply: string | null
+          searches: Json
+          source_message_id: string | null
+          success: boolean
+          think_latency_ms: number | null
+          tool_calls: Json
+          total_latency_ms: number | null
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          decide_latency_ms?: number | null
+          decision?: Json
+          error?: string | null
+          hypotheses?: Json
+          id?: string
+          input_content: string
+          input_tokens?: number | null
+          memory_writes?: Json
+          observations?: Json
+          output_tokens?: number | null
+          reply?: string | null
+          searches?: Json
+          source_message_id?: string | null
+          success?: boolean
+          think_latency_ms?: number | null
+          tool_calls?: Json
+          total_latency_ms?: number | null
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          decide_latency_ms?: number | null
+          decision?: Json
+          error?: string | null
+          hypotheses?: Json
+          id?: string
+          input_content?: string
+          input_tokens?: number | null
+          memory_writes?: Json
+          observations?: Json
+          output_tokens?: number | null
+          reply?: string | null
+          searches?: Json
+          source_message_id?: string | null
+          success?: boolean
+          think_latency_ms?: number | null
+          tool_calls?: Json
+          total_latency_ms?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       assessor_tool_calls: {
         Row: {
           arguments: Json
