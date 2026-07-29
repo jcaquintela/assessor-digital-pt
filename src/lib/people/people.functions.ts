@@ -137,7 +137,11 @@ export const createOrMergePerson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => v as { person: PersonInput; targetId?: string | null; forceCreate?: boolean })
   .handler(async ({ data, context }): Promise<CreateOrMergeResult> => {
-    const { supabase, userId } = context;
+    return doCreateOrMerge(context.supabase, context.userId, data);
+  });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function doCreateOrMerge(supabase: any, userId: string, data: { person: PersonInput; targetId?: string | null; forceCreate?: boolean }): Promise<CreateOrMergeResult> {
     const p = data.person;
     const roles = sanitizeRoles(p.roles);
     const email = normalizeEmail(p.email);
@@ -234,7 +238,7 @@ export const createOrMergePerson = createServerFn({ method: "POST" })
     }
 
     return { id: newId, created: true, merged: false, addedPhones, addedRoles: roles };
-  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function mergeInto(
@@ -406,10 +410,11 @@ export const createPersonFromNaturalText = createServerFn({ method: "POST" })
       notes: data.text,
       sourceChannel: "web",
     };
-    return createOrMergePerson({
-      data: { person, forceCreate: data.forceCreate ?? false, targetId: data.targetId ?? null },
-      context,
-    } as never);
+    return doCreateOrMerge(context.supabase, context.userId, {
+      person,
+      forceCreate: data.forceCreate ?? false,
+      targetId: data.targetId ?? null,
+    });
   });
 
 /* ---------- Importar vCard ---------- */
@@ -430,8 +435,8 @@ export const importVCardText = createServerFn({ method: "POST" })
       roles: ["other"],
       sourceChannel: "vcard",
     };
-    return createOrMergePerson({
-      data: { person, forceCreate: data.forceCreate ?? false },
-      context,
-    } as never);
+    return doCreateOrMerge(context.supabase, context.userId, {
+      person,
+      forceCreate: data.forceCreate ?? false,
+    });
   });
