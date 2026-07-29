@@ -501,7 +501,7 @@ async function execSaveMiscellaneous(ctx: DomainContext, args: unknown): Promise
       category: v.category ?? null,
       source_channel: ctx.channel,
       occurred_at: new Date().toISOString(),
-      status: "aberto",
+      status: "inbox",
       tags: v.tags ?? [],
     } as never)
     .select("id, title")
