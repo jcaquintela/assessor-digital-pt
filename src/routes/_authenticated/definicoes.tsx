@@ -21,6 +21,7 @@ import {
   startWhatsAppLink,
   unlinkWhatsApp,
 } from "@/lib/whatsapp/link.functions";
+import { getSupremePreferences, updateSupremePreferences } from "@/lib/assessor/supreme/autonomy.functions";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
   head: () => ({
@@ -193,8 +194,86 @@ function DefinicoesPage() {
           </CardContent>
         </Card>
         <WhatsAppSection />
+        <SupremeSection />
       </div>
     </AppShell>
+  );
+}
+
+function SupremeSection() {
+  const qc = useQueryClient();
+  const fetchPrefs = useServerFn(getSupremePreferences);
+  const savePrefs = useServerFn(updateSupremePreferences);
+  const { data } = useQuery({ queryKey: ["supreme", "prefs"], queryFn: () => fetchPrefs() });
+  const save = useMutation({
+    mutationFn: (patch: Record<string, unknown>) => savePrefs({ data: patch }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["supreme", "prefs"] }); toast.success("Guardado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  if (!data?.enabled) return null;
+  const prefs = (data.preferences ?? {}) as {
+    morning_briefing_enabled?: boolean;
+    morning_time?: string;
+    autonomy_level?: string;
+    max_daily_nudges?: number;
+  };
+  const level = prefs.autonomy_level ?? "balanced";
+  return (
+    <Card className="md:col-span-2 border-primary/30 bg-primary/5">
+      <CardHeader>
+        <CardTitle className="text-base">Assessor Supremo</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label>Autonomia do meu Assessor</Label>
+          <div className="flex flex-wrap gap-2">
+            {(["conservador", "balanced", "proativo"] as const).map((lvl) => (
+              <Button
+                key={lvl}
+                size="sm"
+                variant={level === lvl ? "default" : "outline"}
+                onClick={() => save.mutate({ autonomy_level: lvl })}
+              >
+                {lvl === "balanced" ? "Equilibrado" : lvl === "conservador" ? "Conservador" : "Proativo"}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Conservador pede confirmação para quase tudo. Equilibrado executa ações de baixo risco. Proativo actua dentro dos limites permitidos. Ações sensíveis pedem sempre confirmação.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="briefing-time">Hora do briefing da manhã</Label>
+            <Input
+              id="briefing-time"
+              type="time"
+              defaultValue={prefs.morning_time ?? "08:00"}
+              onBlur={(e) => save.mutate({ morning_time: e.target.value })}
+            />
+            <Button
+              size="sm"
+              variant={prefs.morning_briefing_enabled === false ? "outline" : "default"}
+              onClick={() => save.mutate({ morning_briefing_enabled: !(prefs.morning_briefing_enabled ?? true) })}
+            >
+              {prefs.morning_briefing_enabled === false ? "Ativar briefing" : "Desativar briefing"}
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="max-nudges">Máx. de sugestões por dia</Label>
+            <Input
+              id="max-nudges"
+              type="number"
+              min={0}
+              max={20}
+              defaultValue={prefs.max_daily_nudges ?? 6}
+              onBlur={(e) => save.mutate({ max_daily_nudges: Number(e.target.value) })}
+            />
+            <p className="text-xs text-muted-foreground">Só as sugestões urgentes e importantes chegam ao WhatsApp.</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
