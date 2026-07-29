@@ -374,11 +374,12 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   await applyMemoryWrites(ctx, decideR.decision.memory_writes);
 
   let reply = sanitizeReply(decideR.decision.natural_reply);
+  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" = "executed_ok";
+  let archiveReason: string | null = null;
   if (shouldAct && !allOk) {
-    try {
-      const reason = toolResults.filter((r) => !r.ok).map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ");
-      await saveFailedActionAsMiscellaneous(ctx, trimmed, reason || "tool_failed");
-    } catch { /* noop */ }
+    archiveOutcome = "tool_failed";
+    archiveReason = toolResults.filter((r) => !r.ok)
+      .map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ") || "tool_failed";
     reply = "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
   }
 
