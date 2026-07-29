@@ -60,7 +60,7 @@ const followUpArgs = {
   due_date: "2026-07-30",
   due_time: "10:00",
   priority: "media",
-  person_id: "11111111-1111-1111-1111-111111111111",
+  person_id: "11111111-1111-4111-8111-111111111111",
 };
 
 const eventArgs = {
@@ -68,7 +68,7 @@ const eventArgs = {
   event_type: "visita",
   date: "2026-07-30",
   start_time: "15:00",
-  person_id: "11111111-1111-1111-1111-111111111111",
+  person_id: "11111111-1111-4111-8111-111111111111",
 };
 
 describe("idempotência — follow_ups por source_pending_action_id", () => {
