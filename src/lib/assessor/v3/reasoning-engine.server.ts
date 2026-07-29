@@ -30,7 +30,7 @@ import {
   hasValidPendingContext,
   type AgendaItem,
 } from "./deterministic.server";
-import { applySafetyNet } from "./safety-net.server";
+import { applySafetyNet, buildArchiveContent } from "./safety-net.server";
 
 const HISTORY_LIMIT = 6;
 
