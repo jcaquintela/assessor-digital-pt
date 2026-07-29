@@ -31,7 +31,7 @@ function fakeSb(handlers: Record<string, (op: string, payload?: any) => any> = {
       update: (row: any) => { state.op = "update"; state.payload = row; return chain; },
     };
     (chain as any).then = (resolve: any) =>
-      resolve(handlers[table] ? handlers[table]("select_list") : { data: [], error: null });
+      resolve(handlers[table] ? handlers[table](state.op ?? "select_list", state.payload) : { data: [], error: null });
     return chain;
   };
   return { from: (t: string) => build(t) } as any;
@@ -70,6 +70,22 @@ describe("v3 · prospeção · tools expostas", () => {
   it("Zod recusa argumentos sem source_type quando explicitamente inválido", () => {
     const r = ZOD_BY_TOOL.create_prospecting_lead.safeParse({ source_type: "invalid_source" });
     expect(r.success).toBe(false);
+  });
+
+  it("normaliza aliases ingleses em create_follow_up antes da execução", () => {
+    const r = ZOD_BY_TOOL.create_follow_up.safeParse({
+      title: "Contactar placa em Santa Maria da Feira",
+      type: "call",
+      due_date: "2026-07-29",
+      due_time: "11:45",
+      priority: "medium",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      const data = r.data as { type: string; priority: string };
+      expect(data.type).toBe("chamada");
+      expect(data.priority).toBe("media");
+    }
   });
 });
 
@@ -129,5 +145,44 @@ describe("v3 · prospeção · executor domínio (dedupe + insert)", () => {
     );
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/source_type/);
+  });
+
+  it("associa lembrete ao último lead de prospeção activo", async () => {
+    let insertedFollowUp: any = null;
+    let leadPatch: any = null;
+    const sb = fakeSb({
+      conversation_states: (op) => {
+        if (op === "select_one") return { data: { last_entity_type: "prospecting_lead", last_entity_id: "lead-1" }, error: null };
+        return { data: null, error: null };
+      },
+      prospecting_leads: (op, payload) => {
+        if (op === "select_one") return { data: { id: "lead-1", title: "Apartamento em Santa Maria da Feira", location: "Santa Maria da Feira", phone: "932145678" }, error: null };
+        if (op === "update") leadPatch = payload;
+        return { data: null, error: null };
+      },
+      follow_ups: (op, payload) => {
+        if (op === "insert") {
+          insertedFollowUp = Array.isArray(payload) ? payload[0] : payload;
+          return { data: { id: "fu-1", ...insertedFollowUp }, error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    const r = await dispatchToolCall(
+      { supabase: sb, userId: "u1", channel: "whatsapp", sourceMessageId: "00000000-0000-0000-0000-000000000001" },
+      "create_follow_up",
+      JSON.stringify({
+        title: "Contactar placa em Santa Maria da Feira",
+        type: "call",
+        due_date: "2026-07-29",
+        due_time: "11:45",
+        priority: "medium",
+      }),
+    );
+    expect(r.ok).toBe(true);
+    expect(insertedFollowUp?.related_prospecting_lead_id).toBe("lead-1");
+    expect(insertedFollowUp?.type).toBe("chamada");
+    expect(insertedFollowUp?.priority).toBe("media");
+    expect(leadPatch?.next_follow_up_at).toBe("2026-07-29T11:45:00");
   });
 });

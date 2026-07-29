@@ -210,10 +210,35 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
   return ok({ event: data, reminderId });
 }
 
+async function findActiveProspectingLead(ctx: DomainContext): Promise<{ id: string; title?: string | null; location?: string | null; phone?: string | null } | null> {
+  const { data: state } = await ctx.supabase
+    .from("conversation_states")
+    .select("last_entity_type, last_entity_id")
+    .eq("user_id", ctx.userId)
+    .eq("channel", ctx.channel)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const entityType = (state as any)?.last_entity_type;
+  const entityId = (state as any)?.last_entity_id;
+  if (entityType !== "prospecting_lead" || !entityId) return null;
+
+  const { data: lead } = await ctx.supabase
+    .from("prospecting_leads" as never)
+    .select("id, title, location, phone")
+    .eq("id", entityId)
+    .eq("user_id", ctx.userId)
+    .maybeSingle();
+  return (lead as any) ?? null;
+}
+
 async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateFollowUpArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
   const dueIsoDate = v.due_time ? `${v.due_date}T${v.due_time}:00` : `${v.due_date}T09:00:00`;
+  const activeProspectingLead = (!v.person_id && !v.property_id)
+    ? await findActiveProspectingLead(ctx)
+    : null;
   const { data, error } = await ctx.supabase
     .from("follow_ups")
     .insert({
@@ -226,6 +251,7 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
       priority: v.priority,
       person_id: v.person_id ?? null,
       related_property_id: v.property_id ?? null,
+      related_prospecting_lead_id: activeProspectingLead?.id ?? null,
       notes: v.notes ?? null,
       timezone: "Europe/Lisbon",
       source_channel: ctx.channel,
@@ -235,6 +261,13 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
     .select("id, title, due_date")
     .single();
   if (error) return fail(error.message);
+  if (activeProspectingLead?.id) {
+    await ctx.supabase
+      .from("prospecting_leads" as never)
+      .update({ next_follow_up_at: dueIsoDate } as never)
+      .eq("id", activeProspectingLead.id)
+      .eq("user_id", ctx.userId);
+  }
   return ok({ follow_up: data });
 }
 
