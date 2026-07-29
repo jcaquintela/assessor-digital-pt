@@ -1,5 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getMyEffectiveTier } from "@/lib/subscription/tier.functions";
+import { isModuleVisible } from "@/lib/subscription/tiers";
 import {
   CalendarDays,
   Home,
@@ -35,6 +39,17 @@ const mobileNav = [
 
 export function AppShell({ children, fullBleed = false }: { children: ReactNode; fullBleed?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const fetchTier = useServerFn(getMyEffectiveTier);
+  // Enquanto o tier ainda não carregou, assume 'base' — menos módulos visíveis,
+  // nunca revela algo que o utilizador não tenha direito a ver.
+  const { data: tierData } = useQuery({
+    queryKey: ["subscription", "effectiveTier"],
+    queryFn: () => fetchTier(),
+    staleTime: 5 * 60_000,
+  });
+  const tier = tierData?.tier ?? "base";
+  const visibleDesktopNav = desktopNav.filter((n) => isModuleVisible(n.to, tier));
+  const visibleMobileNav = mobileNav.filter((n) => isModuleVisible(n.to, tier));
 
   // Detect on-screen keyboard via visualViewport and expose as html[data-keyboard].
   useEffect(() => {
@@ -81,7 +96,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
           </div>
         </Link>
         <nav className="flex flex-col gap-0.5">
-          {desktopNav.map(({ to, label, icon: Icon }) => {
+          {visibleDesktopNav.map(({ to, label, icon: Icon }) => {
             const active = pathname === to || (to !== "/hoje" && pathname.startsWith(to));
             return (
               <Link
@@ -121,8 +136,11 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         className="mobile-bottom-nav border-t border-border bg-card/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto grid max-w-lg grid-cols-4">
-          {mobileNav.map(({ to, label, icon: Icon }) => {
+        <div
+          className="mx-auto grid max-w-lg"
+          style={{ gridTemplateColumns: `repeat(${visibleMobileNav.length}, minmax(0, 1fr))` }}
+        >
+          {visibleMobileNav.map(({ to, label, icon: Icon }) => {
             const active = pathname === to || (to !== "/hoje" && pathname.startsWith(to));
             return (
               <Link
