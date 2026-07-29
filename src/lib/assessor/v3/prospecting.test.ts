@@ -31,7 +31,7 @@ function fakeSb(handlers: Record<string, (op: string, payload?: any) => any> = {
       update: (row: any) => { state.op = "update"; state.payload = row; return chain; },
     };
     (chain as any).then = (resolve: any) =>
-      resolve(handlers[table] ? handlers[table]("select_list") : { data: [], error: null });
+      resolve(handlers[table] ? handlers[table](state.op ?? "select_list", state.payload) : { data: [], error: null });
     return chain;
   };
   return { from: (t: string) => build(t) } as any;
