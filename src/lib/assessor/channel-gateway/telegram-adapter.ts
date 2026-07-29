@@ -1,0 +1,308 @@
+// Adapter Telegram para o Channel Gateway.
+// Responsável por: parsing de Update, dedupe, persistência, download de
+// media, envio via TelegramProvider e onboarding por convite (shadow
+// account). Não contém lógica de negócio do motor.
+
+import { getTelegramProvider } from "@/lib/telegram/provider.server";
+import { linkChannelToUser } from "@/lib/assessor/channels.server";
+import type {
+  AdapterMediaBytes,
+  AdapterSendResult,
+  ChannelAdapter,
+  NormalizedInbound,
+  NormalizedMessageType,
+} from "./types";
+
+const REPLY_PRIVATE =
+  "Este bot é privado (piloto). Precisas de um código de convite para começar. Envia-o no formato /start <código> ou apenas o código.";
+const REPLY_INVITE_INVALID = "Não reconheci esse código de convite. Confirma-o com quem te enviou.";
+const REPLY_INVITE_EXPIRED = "Esse convite já expirou. Pede um novo à equipa.";
+const REPLY_INVITE_USED = "Esse convite já foi resgatado por outra conta.";
+const REPLY_ENGINE_ERROR = "Recebi a tua mensagem mas não consegui processá-la agora. Tenta daqui a pouco.";
+const REPLY_UNSUPPORTED = "Ainda não sei processar este tipo de conteúdo aqui.";
+const REPLY_MEDIA_ERROR = "Recebi o teu ficheiro mas não consegui descarregá-lo. Tenta reenviar.";
+const REPLY_TRANSCRIBE_FAIL =
+  "Recebi o áudio mas não consegui transcrevê-lo. Guardei em Drive.";
+const REPLY_ONBOARDING = (name: string) =>
+  `Olá${name ? ` ${name}` : ""}! Sou o teu Assessor. Falamos por aqui como se fosse WhatsApp — dizes-me em linguagem natural e eu organizo pessoas, imóveis, agenda e prospeção.\n\nExperimenta: "Placa Santa Maria da Feira junto ao Castelo, 932145678 Apartamento"`;
+
+function extractInviteCode(text: string): string | null {
+  const trimmed = text.trim();
+  const startMatch = trimmed.match(/^\/start(?:@\w+)?\s+([A-Z0-9-]{4,32})$/i);
+  if (startMatch) return startMatch[1].toUpperCase();
+  const bare = trimmed.match(/^[A-Z0-9]{3,10}-[A-Z0-9]{3,10}$/i);
+  if (bare) return trimmed.toUpperCase();
+  return null;
+}
+
+function detectMessageType(msg: any): {
+  kind: NormalizedMessageType;
+  raw: string;
+} {
+  if (typeof msg?.text === "string") return { kind: "text", raw: "text" };
+  if (msg?.photo) return { kind: "image", raw: "photo" };
+  if (msg?.document) return { kind: "document", raw: "document" };
+  if (msg?.voice) return { kind: "audio", raw: "voice" };
+  if (msg?.audio) return { kind: "audio", raw: "audio" };
+  if (msg?.video) return { kind: "unsupported", raw: "video" };
+  if (msg?.sticker) return { kind: "unsupported", raw: "sticker" };
+  if (msg?.location) return { kind: "unsupported", raw: "location" };
+  if (msg?.contact) return { kind: "unsupported", raw: "contact" };
+  return { kind: "unsupported", raw: "unknown" };
+}
+
+function fileIdFor(msg: any, raw: string): { fileId?: string; fileName?: string | null } {
+  if (raw === "photo") {
+    const arr = msg?.photo as any[] | undefined;
+    return { fileId: arr?.[arr.length - 1]?.file_id, fileName: null };
+  }
+  if (raw === "document") return { fileId: msg?.document?.file_id, fileName: msg?.document?.file_name ?? null };
+  if (raw === "voice") return { fileId: msg?.voice?.file_id, fileName: null };
+  if (raw === "audio") return { fileId: msg?.audio?.file_id, fileName: msg?.audio?.file_name ?? null };
+  return {};
+}
+
+function guessMime(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+    pdf: "application/pdf", oga: "audio/ogg", ogg: "audio/ogg", mp3: "audio/mpeg",
+    m4a: "audio/mp4", mp4: "video/mp4",
+  };
+  return map[ext] ?? "application/octet-stream";
+}
+
+export const telegramAdapter: ChannelAdapter = {
+  channel: "telegram",
+  replyUnassociated: REPLY_PRIVATE,
+  replyUnsupported: REPLY_UNSUPPORTED,
+  replyEngineError: REPLY_ENGINE_ERROR,
+  replyMediaError: REPLY_MEDIA_ERROR,
+  replyTranscribeFail: REPLY_TRANSCRIBE_FAIL,
+
+  parseUpdate(rawPayload: unknown): NormalizedInbound[] {
+    const update = rawPayload as any;
+    if (!update || typeof update.update_id !== "number") return [];
+
+    // Callback query (botão inline).
+    if (update.callback_query) {
+      const cq = update.callback_query;
+      const chatId = cq?.message?.chat?.id ? String(cq.message.chat.id) : null;
+      const data = typeof cq?.data === "string" ? cq.data : "";
+      if (!chatId || !data) return [];
+      return [{
+        channel: "telegram",
+        externalConversationId: chatId,
+        externalMessageId: `telegram_cb_${update.update_id}`,
+        replyToMessageId: null,
+        messageType: "callback",
+        text: data,
+        media: null,
+        callback: { data, callbackQueryId: String(cq.id) },
+        sender: cq?.from
+          ? { firstName: cq.from.first_name ?? null, lastName: cq.from.last_name ?? null, username: cq.from.username ?? null }
+          : null,
+        metadata: { rawType: "callback" },
+        receivedAt: new Date(),
+      }];
+    }
+
+    const msg = update.message ?? update.edited_message;
+    if (!msg?.chat?.id) return [];
+    const chatId = String(msg.chat.id);
+    const replyTo = msg?.message_id ? String(msg.message_id) : null;
+    const { kind, raw } = detectMessageType(msg);
+
+    let text: string | null = null;
+    let media: NormalizedInbound["media"] = null;
+    const caption: string | null = msg?.caption ?? msg?.document?.caption ?? null;
+
+    if (kind === "text") {
+      text = String(msg.text ?? "");
+    } else if (kind === "image" || kind === "document" || kind === "audio") {
+      const { fileId, fileName } = fileIdFor(msg, raw);
+      if (!fileId) {
+        return [{
+          channel: "telegram",
+          externalConversationId: chatId,
+          externalMessageId: `telegram_${update.update_id}`,
+          replyToMessageId: replyTo,
+          messageType: "unsupported",
+          text: `[${raw}]`,
+          media: null,
+          callback: null,
+          sender: msg?.from
+            ? { firstName: msg.from.first_name ?? null, lastName: msg.from.last_name ?? null, username: msg.from.username ?? null }
+            : null,
+          metadata: { rawType: raw },
+          receivedAt: new Date(),
+        }];
+      }
+      media = { externalFileId: fileId, fileName, mimeType: null, size: null, caption };
+      text = caption;
+    } else {
+      text = `[${raw}]`;
+    }
+
+    return [{
+      channel: "telegram",
+      externalConversationId: chatId,
+      externalMessageId: `telegram_${update.update_id}`,
+      replyToMessageId: replyTo,
+      messageType: kind,
+      text,
+      media,
+      callback: null,
+      sender: msg?.from
+        ? { firstName: msg.from.first_name ?? null, lastName: msg.from.last_name ?? null, username: msg.from.username ?? null }
+        : null,
+      metadata: { rawType: raw, caption },
+      receivedAt: new Date(),
+    }];
+  },
+
+  async isAlreadyProcessed(supabaseAdmin: any, externalMessageId: string): Promise<boolean> {
+    const { data } = await supabaseAdmin
+      .from("assessor_messages")
+      .select("id")
+      .eq("whatsapp_message_id", externalMessageId)
+      .maybeSingle();
+    return Boolean(data);
+  },
+
+  async persistInbound(supabaseAdmin, inbound, userId) {
+    const rawType = String(inbound.metadata?.rawType ?? inbound.messageType);
+    const content = inbound.text ?? `[${inbound.messageType}]`;
+    const { data } = await supabaseAdmin
+      .from("assessor_messages")
+      .insert({
+        user_id: userId,
+        role: "user",
+        content,
+        message_type: `telegram_${rawType}`,
+        status: "received",
+        channel: "telegram",
+        sender_phone: inbound.externalConversationId,
+        whatsapp_message_id: inbound.externalMessageId,
+      })
+      .select("id")
+      .single();
+    return (data as { id?: string } | null)?.id ?? null;
+  },
+
+  async onboardIfMissingUser(supabaseAdmin, inbound) {
+    const provider = getTelegramProvider();
+    const text = inbound.text ?? "";
+    const code = text ? extractInviteCode(text) : null;
+    if (!code) {
+      await provider.sendText({ chatId: inbound.externalConversationId, text: REPLY_PRIVATE });
+      return { handled: true };
+    }
+    const claim = await claimInvite(supabaseAdmin, code, inbound.externalConversationId, inbound.sender);
+    if (!claim.ok) {
+      await provider.sendText({ chatId: inbound.externalConversationId, text: claim.reply });
+      return { handled: true };
+    }
+    const firstName = (inbound.sender?.firstName ?? "").trim();
+    await provider.sendText({
+      chatId: inbound.externalConversationId,
+      text: REPLY_ONBOARDING(firstName),
+    });
+    return { handled: true, userId: claim.userId };
+  },
+
+  async fetchMedia(inbound: NormalizedInbound): Promise<AdapterMediaBytes> {
+    if (!inbound.media?.externalFileId) return { ok: false, error: "no_media" };
+    const provider = getTelegramProvider();
+    const info = await provider.getFile({ fileId: inbound.media.externalFileId });
+    if (!info.ok || !info.filePath) return { ok: false, error: info.error ?? "getFile_failed" };
+    const dl = await provider.downloadFile({ filePath: info.filePath });
+    if (!dl.ok || !dl.buffer) return { ok: false, error: dl.error ?? "download_failed" };
+    const mimeType = dl.mimeType ?? guessMime(info.filePath);
+    const fileName = inbound.media.fileName ?? info.filePath.split("/").pop() ?? null;
+    return { ok: true, bytes: dl.buffer, mimeType, fileName };
+  },
+
+  async sendText(externalConversationId, text, opts): Promise<AdapterSendResult> {
+    const r = await getTelegramProvider().sendText({
+      chatId: externalConversationId,
+      text,
+      replyToMessageId: opts?.replyTo ?? null,
+    });
+    return { ok: r.ok, messageId: r.messageId ?? null, error: r.error };
+  },
+
+  async answerInteraction(callbackQueryId: string, feedback?: string) {
+    await getTelegramProvider().answerCallback({
+      callbackQueryId,
+      ...(feedback ? { text: feedback } : {}),
+    });
+  },
+};
+
+async function claimInvite(
+  supabaseAdmin: any,
+  code: string,
+  chatId: string,
+  sender: NormalizedInbound["sender"],
+): Promise<
+  | { ok: true; userId: string }
+  | { ok: false; reply: string }
+> {
+  const { data: invite } = await supabaseAdmin
+    .from("telegram_invites")
+    .select("code, plan_tier, expires_at, used_by, used_at")
+    .eq("code", code)
+    .maybeSingle();
+  if (!invite) return { ok: false, reply: REPLY_INVITE_INVALID };
+  if (invite.used_by) return { ok: false, reply: REPLY_INVITE_USED };
+  if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
+    return { ok: false, reply: REPLY_INVITE_EXPIRED };
+  }
+
+  const email = `tg-${chatId}@shadow.assessor.local`;
+  const displayName =
+    [sender?.firstName, sender?.lastName].filter(Boolean).join(" ").trim() ||
+    (sender?.username ? `@${sender.username}` : `Telegram ${chatId}`);
+
+  const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: {
+      source: "telegram_shadow",
+      chat_id: chatId,
+      name: displayName,
+      telegram_username: sender?.username ?? null,
+    },
+  });
+  if (createErr || !created?.user?.id) {
+    console.error("[telegram-adapter] createUser:", createErr);
+    return { ok: false, reply: REPLY_ENGINE_ERROR };
+  }
+  const userId = created.user.id as string;
+
+  await supabaseAdmin
+    .from("profiles")
+    .update({
+      plan_tier: invite.plan_tier ?? "free",
+      primary_channel: "telegram",
+      name: displayName,
+    })
+    .eq("id", userId);
+
+  await supabaseAdmin
+    .from("consultant_preferences")
+    .upsert(
+      { user_id: userId, autonomy_level: "conservative", primary_channel: "telegram" },
+      { onConflict: "user_id" },
+    );
+
+  await linkChannelToUser(supabaseAdmin, "telegram", chatId, userId, displayName);
+
+  await supabaseAdmin
+    .from("telegram_invites")
+    .update({ used_by: userId, used_at: new Date().toISOString(), used_chat_id: chatId })
+    .eq("code", code);
+
+  return { ok: true, userId };
+}

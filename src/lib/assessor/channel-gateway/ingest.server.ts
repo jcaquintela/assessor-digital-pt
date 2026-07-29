@@ -1,0 +1,208 @@
+// Pipeline única de ingestão. Recebe um inbound normalizado e um adapter e
+// executa exactamente o mesmo fluxo em qualquer canal: dedupe → intercept
+// → resolver utilizador → onboarding → persistir → motor v3 → responder.
+
+import { findUserIdByChannel } from "@/lib/assessor/channels.server";
+import type { AdapterSendResult, ChannelAdapter, NormalizedInbound } from "./types";
+import type { EngineOutcome } from "@/lib/assessor/engine.server";
+
+export async function runInboundPipeline(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+): Promise<void> {
+  // 1. Dedupe.
+  if (await adapter.isAlreadyProcessed(supabaseAdmin, inbound.externalMessageId)) return;
+
+  // 2. Reacções e afins: só regista, sem resposta.
+  if (inbound.messageType === "reaction") {
+    await adapter.persistInbound(supabaseAdmin, inbound, null);
+    return;
+  }
+
+  // 3. Intercept específico do canal (ex.: LIGAR-XXXXXX no WhatsApp).
+  if (adapter.interceptBeforeIngest) {
+    const r = await adapter.interceptBeforeIngest(supabaseAdmin, inbound);
+    if (r.handled) return;
+  }
+
+  // 4. Resolver utilizador.
+  let userId = await findUserIdByChannel(
+    supabaseAdmin,
+    inbound.channel,
+    inbound.externalConversationId,
+  );
+
+  // 5. Se ainda não existe, tenta onboarding próprio do canal.
+  if (!userId && adapter.onboardIfMissingUser) {
+    const onboard = await adapter.onboardIfMissingUser(supabaseAdmin, inbound);
+    if (onboard.handled && !onboard.userId) {
+      // Onboarding respondeu (convite inválido/erro); persistir turno para trilha.
+      await adapter.persistInbound(supabaseAdmin, inbound, null);
+      return;
+    }
+    userId = onboard.userId ?? null;
+  }
+
+  // 6. Persistir turno do utilizador (uma única vez, agora que sabemos userId).
+  const persistedUuid = await adapter.persistInbound(supabaseAdmin, inbound, userId);
+
+  // 7. Sem utilizador → resposta "não associado".
+  if (!userId) {
+    await adapter.sendText(inbound.externalConversationId, adapter.replyUnassociated);
+    return;
+  }
+
+  // 8. Rotear por tipo.
+  if (inbound.messageType === "text" || inbound.messageType === "callback") {
+    const content =
+      inbound.messageType === "callback"
+        ? inbound.callback?.data ?? ""
+        : inbound.text ?? "";
+    if (!content.trim()) return;
+    try {
+      const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
+      const outcome = await processAssessorMessage({
+        supabase: supabaseAdmin,
+        userId,
+        channel: inbound.channel,
+        content,
+        receivedAt: inbound.receivedAt,
+        sourceMessageId: persistedUuid,
+      });
+      await deliverReply(adapter, supabaseAdmin, {
+        userId,
+        externalConversationId: inbound.externalConversationId,
+        outcome,
+        replyTo: inbound.replyToMessageId ?? null,
+      });
+      if (inbound.messageType === "callback" && inbound.callback && adapter.answerInteraction) {
+        try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
+        catch { /* Telegram acknowledge é best-effort */ }
+      }
+    } catch (err) {
+      console.error(
+        `[channel-gateway/${adapter.channel}] engine:`,
+        err instanceof Error ? err.message : err,
+      );
+      await adapter.sendText(inbound.externalConversationId, adapter.replyEngineError);
+    }
+    return;
+  }
+
+  if (inbound.messageType === "image" || inbound.messageType === "document" || inbound.messageType === "audio") {
+    await handleInboundMedia(adapter, supabaseAdmin, inbound, userId, persistedUuid);
+    return;
+  }
+
+  await adapter.sendText(inbound.externalConversationId, adapter.replyUnsupported);
+}
+
+async function deliverReply(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  args: {
+    userId: string;
+    externalConversationId: string;
+    outcome: EngineOutcome;
+    replyTo: string | null;
+  },
+): Promise<AdapterSendResult> {
+  const { outcome, externalConversationId, userId, replyTo } = args;
+  const alreadyPersisted = outcome.messageType === "__ALREADY_PERSISTED__";
+  const send = await adapter.sendText(externalConversationId, outcome.reply, {
+    replyTo,
+  });
+  if (!alreadyPersisted) {
+    await supabaseAdmin.from("assessor_messages").insert({
+      user_id: userId,
+      role: "assistant",
+      content: outcome.reply,
+      message_type: `${adapter.channel}_text`,
+      status: send.ok ? "sent" : "failed",
+      channel: adapter.channel,
+      sender_phone: externalConversationId,
+      whatsapp_message_id: send.ok ? send.messageId : null,
+    });
+  }
+  return send;
+}
+
+async function handleInboundMedia(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  persistedUuid: string | null,
+): Promise<void> {
+  const dl = await adapter.fetchMedia(inbound);
+  if (!dl.ok || !dl.bytes) {
+    console.error(
+      `[channel-gateway/${adapter.channel}] media download:`,
+      dl.error ?? "unknown",
+    );
+    await adapter.sendText(inbound.externalConversationId, adapter.replyMediaError);
+    return;
+  }
+
+  const mimeType = dl.mimeType ?? inbound.media?.mimeType ?? "application/octet-stream";
+  const { processIncomingFile } = await import("@/lib/assessor/files.server");
+  const result = await processIncomingFile({
+    supabase: supabaseAdmin,
+    userId,
+    channel: adapter.channel,
+    externalFileId: inbound.media?.externalFileId ?? null,
+    fileName: dl.fileName ?? inbound.media?.fileName ?? null,
+    mimeType,
+    size: dl.bytes.byteLength,
+    bytes: dl.bytes,
+    sourceMessageId: persistedUuid,
+  });
+
+  // Áudio → transcreve e re-entra no motor com o texto resultante.
+  if (result.ok && inbound.messageType === "audio") {
+    try {
+      const { transcribeAudio } = await import("@/lib/ai/transcribe.server");
+      const t = await transcribeAudio(dl.bytes, mimeType);
+      if (!t.ok || !t.text) {
+        await adapter.sendText(inbound.externalConversationId, adapter.replyTranscribeFail);
+        return;
+      }
+      // Log da transcrição como user turn para o motor ter contexto textual.
+      await supabaseAdmin.from("assessor_messages").insert({
+        user_id: userId,
+        role: "user",
+        content: t.text,
+        message_type: `${adapter.channel}_audio_transcript`,
+        status: "received",
+        channel: adapter.channel,
+        sender_phone: inbound.externalConversationId,
+      });
+      const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
+      const outcome = await processAssessorMessage({
+        supabase: supabaseAdmin,
+        userId,
+        channel: adapter.channel,
+        content: t.text,
+        receivedAt: inbound.receivedAt,
+        sourceMessageId: persistedUuid,
+      });
+      await deliverReply(adapter, supabaseAdmin, {
+        userId,
+        externalConversationId: inbound.externalConversationId,
+        outcome,
+        replyTo: inbound.replyToMessageId ?? null,
+      });
+      return;
+    } catch (err) {
+      console.error(
+        `[channel-gateway/${adapter.channel}] transcribe:`,
+        err instanceof Error ? err.message : err,
+      );
+      await adapter.sendText(inbound.externalConversationId, adapter.replyTranscribeFail);
+      return;
+    }
+  }
+
+  await adapter.sendText(inbound.externalConversationId, result.reply);
+}
