@@ -536,6 +536,25 @@ async function execCreateFinancialMovement(ctx: DomainContext, args: unknown): P
   const v = p.value;
   let opportunityId = v.opportunity_id ?? null;
 
+  // Dedupe: mesmo tipo, mesmo valor, mesmo dia — devolve o existente em vez
+  // de criar um segundo registo (mesmo nível de protecção da prospeção).
+  const dedupeDate = v.movement_date ?? todayLisbonYmd();
+  {
+    const dayStart = `${String(dedupeDate).slice(0, 10)}T00:00:00.000Z`;
+    const dayEnd = `${String(dedupeDate).slice(0, 10)}T23:59:59.999Z`;
+    const { data: dup } = await ctx.supabase
+      .from("financial_movements")
+      .select("id, type, amount, description, status, movement_date, opportunity_id")
+      .eq("user_id", ctx.userId)
+      .eq("type", v.type)
+      .eq("amount", v.amount)
+      .gte("movement_date", dayStart)
+      .lte("movement_date", dayEnd)
+      .limit(1)
+      .maybeSingle();
+    if (dup) return ok({ duplicate: true, existing: dup });
+  }
+
   if (!opportunityId && v.type === "commission" && (v.deal_value != null || v.production_amount != null || v.property_reference)) {
     const title = (v.opportunity_title?.trim()
       || (v.property_reference ? `Negócio ${v.property_reference.trim()}` : "Negócio fechado"))
@@ -558,7 +577,7 @@ async function execCreateFinancialMovement(ctx: DomainContext, args: unknown): P
     opportunityId = (opportunity as any)?.id ?? null;
   }
 
-  const movementDate = v.movement_date ?? todayLisbonYmd();
+  const movementDate = dedupeDate;
   const { data, error } = await ctx.supabase
     .from("financial_movements")
     .insert({
@@ -576,7 +595,7 @@ async function execCreateFinancialMovement(ctx: DomainContext, args: unknown): P
     .select("id, type, amount, status, opportunity_id, vat_amount")
     .single();
   if (error) return fail(`financial_movements:${error.message}`);
-  return ok({ movement: data, opportunity_id: opportunityId });
+  return ok({ duplicate: false, movement: data, opportunity_id: opportunityId });
 }
 
 // ---------- prospeção ----------

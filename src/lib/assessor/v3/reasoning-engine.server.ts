@@ -289,6 +289,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       } catch { /* noop */ }
       const amount = Number((commissionArgs as any).amount ?? 0);
       const reference = String((commissionArgs as any).property_reference ?? "negócio");
+      if (result.ok && (result.data as any)?.duplicate === true) {
+        return {
+          reply: `Já tinha uma ${(commissionArgs as any).type === "expense" ? "despesa" : "comissão"} de ${formatPtMoney(amount)} registada hoje. É a mesma ou queres registar outra?`,
+        };
+      }
       return result.ok
         ? { reply: `Feito. Registei a comissão de ${formatPtMoney(amount)} no ${reference}.` }
         : { reply: "Tentei guardar a comissão e não consegui. Deixei em Diversos para não se perder." };
@@ -420,6 +425,14 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   }
 
   // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
+  // Financeiro: duplicado do mesmo dia — pergunta antes de assumir novo registo.
+  const finTool = toolResults.find((t) => t.name === "create_financial_movement");
+  if (finTool?.ok && (finTool.data as any)?.duplicate === true) {
+    const existing = (finTool.data as any)?.existing ?? {};
+    const kind = existing.type === "expense" ? "despesa" : "comissão";
+    reply = `Já tinha uma ${kind} desse valor registada hoje. É a mesma ou queres registar outra?`;
+  }
+
   // técnico, no máximo 2 frases, uma pergunta de cada vez.
   const prospectingActed = !!leadTool && leadTool.ok && !(leadTool.data as any)?.duplicate;
   reply = enforceHumanTone(reply, { actionExecutedOk: (shouldAct && allOk) || prospectingActed });

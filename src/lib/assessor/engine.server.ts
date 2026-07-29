@@ -875,9 +875,19 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   }
 
   // 4) fallback conversacional — nunca resposta técnica.
-  // Se a IA devolveu uma reply natural, usa-a; caso contrário, guarda em Diversos
-  // (a mensagem tem texto profissional útil se chegou até aqui).
+  // Regra dura: quando não percebemos a mensagem (intent "unknown"), ela
+  // NUNCA pode desaparecer — grava sempre em Diversos ANTES de responder,
+  // mesmo que a IA tenha preenchido uma reply do género "Não percebi bem".
   const aiReply = sanitizeReply(interp.reply);
+  if (interp.intent === "unknown" && trimmedRaw.trim().length >= 3) {
+    const saved = await saveMiscellaneous(supabase, userId, channel, trimmedRaw, interp);
+    return {
+      ...saved,
+      reply: aiReply
+        ? `${aiReply} Deixei em Diversos, por tratar.`
+        : "Não percebi bem, mas deixei em Diversos para não se perder.",
+    };
+  }
   if (aiReply) return { reply: aiReply };
   if (trimmedRaw.length >= 8) {
     return await saveMiscellaneous(supabase, userId, channel, trimmedRaw, interp);
