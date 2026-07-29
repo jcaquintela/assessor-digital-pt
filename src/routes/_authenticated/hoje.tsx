@@ -39,11 +39,7 @@ function HojePage() {
   const outcomeFn = useServerFn(saveFollowUpOutcome);
   const qc = useQueryClient();
   const supreme = useQuery({ queryKey: ["supreme", "hoje"], queryFn: () => supremeQ() });
-  const dismiss = useMutation({
-    mutationFn: (id: string) => dismissFn({ data: { id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["supreme", "hoje"] }),
-    onError: (e: Error) => toast.error(e.message),
-  });
+  void dismissFn; // reservado para dismiss inline (próxima iteração)
   const outcome = useMutation({
     mutationFn: (v: { id: string; outcome: string }) => outcomeFn({ data: v }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["supreme", "hoje"] }); toast.success("Resultado registado."); },
