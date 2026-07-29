@@ -1,7 +1,8 @@
 // Reasoning Engine — Fase 5: ACT.
 
 import { TOOL_REGISTRY, type DomainContext, type DomainResult } from "../v2/domain.server";
-import { ZOD_BY_TOOL } from "../v2/tools";
+import { ZOD_BY_TOOL, CreateProspectingLeadArgs } from "../v2/tools";
+import { createPendingAction, markPendingActionStatus } from "../memory.server";
 import type { DecisionToolCall, MemoryWrite } from "./types";
 
 export interface ToolExecResult {
@@ -59,8 +60,45 @@ export async function applyMemoryWrites(
   const stateUpdate: Record<string, unknown> = {};
   for (const w of writes) {
     if (w.scope === "immediate" || w.scope === "operational") {
-      if (["last_property_id", "active_person_id", "goal", "factual_summary", "state_summary", "last_intent"].includes(w.key)) {
+      if ([
+        "last_property_id", "active_person_id", "goal", "factual_summary",
+        "state_summary", "last_intent",
+        "last_entity_type", "last_entity_id",
+      ].includes(w.key)) {
         stateUpdate[w.key] = w.value ?? null;
+      }
+      // Proposta de prospeção — cria um pending_action que a próxima
+      // confirmação do consultor irá executar.
+      if (w.key === "propose_prospecting_lead" && w.value && typeof w.value === "object") {
+        const parsed = CreateProspectingLeadArgs.safeParse(w.value);
+        if (parsed.success) {
+          try {
+            await createPendingAction(ctx.supabase, {
+              userId: ctx.userId,
+              channel: ctx.channel,
+              intent: "create_prospecting_lead",
+              originalContent: "",
+              payload: parsed.data as Record<string, unknown>,
+              sourceMessageId: ctx.sourceMessageId ?? null,
+            });
+          } catch { /* noop */ }
+        }
+      }
+      // Cancelamento explícito da proposta pendente.
+      if (w.key === "cancel_pending_prospecting_lead" && w.value) {
+        try {
+          const { data: pend } = await ctx.supabase
+            .from("pending_actions")
+            .select("id")
+            .eq("user_id", ctx.userId)
+            .eq("channel", ctx.channel)
+            .eq("intent", "create_prospecting_lead")
+            .in("status", ["pending_confirmation", "collecting_information"])
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (pend?.id) await markPendingActionStatus(ctx.supabase, pend.id, "cancelled");
+        } catch { /* noop */ }
       }
     }
     if ((w.scope === "strategic" || w.scope === "permanent") && w.target_person_id && typeof w.value === "string") {

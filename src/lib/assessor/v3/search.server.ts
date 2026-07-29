@@ -94,5 +94,44 @@ export async function search(
     out.pending_action = data ?? null;
   }
 
+  // Prospeção — placas/leads. Usadas para deduplicação por telefone e
+  // para responder a "que placas registei em X?".
+  if (wants.has("prospecting_by_phone")) {
+    const phone = firstOf(observations, "phone")?.value;
+    if (phone) {
+      const nine = phone.replace(/\D/g, "").slice(-9);
+      const { data } = await ctx.supabase
+        .from("prospecting_leads" as never)
+        .select("id, title, phone, location, address, property_type, typology, status, listing_type, agency_name")
+        .eq("user_id", ctx.userId)
+        .eq("phone", nine)
+        .neq("status", "archived")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      out.prospecting_leads = (data as unknown[]) ?? [];
+    }
+  }
+  if (wants.has("prospecting_by_location")) {
+    const loc =
+      firstOf(observations, "address")?.value ??
+      firstOf(observations, "name")?.value ??
+      firstOf(observations, "reference")?.value;
+    if (loc) {
+      const term = `%${String(loc).replace(/[%_]/g, "").slice(0, 60)}%`;
+      const { data } = await ctx.supabase
+        .from("prospecting_leads" as never)
+        .select("id, title, phone, location, address, property_type, typology, status")
+        .eq("user_id", ctx.userId)
+        .neq("status", "archived")
+        .or(`location.ilike.${term},address.ilike.${term},title.ilike.${term}`)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      const existing = (out.prospecting_leads as any[]) ?? [];
+      const extra = (data as any[]) ?? [];
+      const ids = new Set(existing.map((p) => p?.id));
+      out.prospecting_leads = [...existing, ...extra.filter((p) => !ids.has(p?.id))];
+    }
+  }
+
   return out;
 }
