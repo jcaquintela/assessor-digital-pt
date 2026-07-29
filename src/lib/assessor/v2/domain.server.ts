@@ -185,7 +185,7 @@ async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<Doma
 async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
-  const dueIsoDate = `${v.date}T${v.start_time}:00`;
+  const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   const { data, error } = await ctx.supabase
     .from("follow_ups")
     .insert({
