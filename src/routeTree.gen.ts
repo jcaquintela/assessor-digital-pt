@@ -47,6 +47,7 @@ import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/publi
 import { Route as AuthenticatedSeguimentosIdRouteImport } from './routes/_authenticated/seguimentos.$id'
 import { Route as AuthenticatedRotinasIdRouteImport } from './routes/_authenticated/rotinas.$id'
 import { Route as AuthenticatedPessoasIdRouteImport } from './routes/_authenticated/pessoas.$id'
+import { Route as AuthenticatedOportunidadesProspecaoRouteImport } from './routes/_authenticated/oportunidades.prospecao'
 import { Route as AuthenticatedOportunidadesIdRouteImport } from './routes/_authenticated/oportunidades.$id'
 import { Route as AuthenticatedNegocioFaturacaoRouteImport } from './routes/_authenticated/negocio.faturacao'
 import { Route as AuthenticatedNegocioDespesasRouteImport } from './routes/_authenticated/negocio.despesas'
@@ -254,6 +255,12 @@ const AuthenticatedPessoasIdRoute = AuthenticatedPessoasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedPessoasRoute,
 } as any)
+const AuthenticatedOportunidadesProspecaoRoute =
+  AuthenticatedOportunidadesProspecaoRouteImport.update({
+    id: '/prospecao',
+    path: '/prospecao',
+    getParentRoute: () => AuthenticatedOportunidadesRoute,
+  } as any)
 const AuthenticatedOportunidadesIdRoute =
   AuthenticatedOportunidadesIdRouteImport.update({
     id: '/$id',
@@ -361,6 +368,7 @@ export interface FileRoutesByFullPath {
   '/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/negocio/faturacao': typeof AuthenticatedNegocioFaturacaoRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
+  '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
@@ -410,6 +418,7 @@ export interface FileRoutesByTo {
   '/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/negocio/faturacao': typeof AuthenticatedNegocioFaturacaoRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
+  '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoRoute
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
@@ -462,6 +471,7 @@ export interface FileRoutesById {
   '/_authenticated/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/_authenticated/negocio/faturacao': typeof AuthenticatedNegocioFaturacaoRoute
   '/_authenticated/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
+  '/_authenticated/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoRoute
   '/_authenticated/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/_authenticated/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/_authenticated/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
@@ -514,6 +524,7 @@ export interface FileRouteTypes {
     | '/negocio/despesas'
     | '/negocio/faturacao'
     | '/oportunidades/$id'
+    | '/oportunidades/prospecao'
     | '/pessoas/$id'
     | '/rotinas/$id'
     | '/seguimentos/$id'
@@ -563,6 +574,7 @@ export interface FileRouteTypes {
     | '/negocio/despesas'
     | '/negocio/faturacao'
     | '/oportunidades/$id'
+    | '/oportunidades/prospecao'
     | '/pessoas/$id'
     | '/rotinas/$id'
     | '/seguimentos/$id'
@@ -614,6 +626,7 @@ export interface FileRouteTypes {
     | '/_authenticated/negocio/despesas'
     | '/_authenticated/negocio/faturacao'
     | '/_authenticated/oportunidades/$id'
+    | '/_authenticated/oportunidades/prospecao'
     | '/_authenticated/pessoas/$id'
     | '/_authenticated/rotinas/$id'
     | '/_authenticated/seguimentos/$id'
@@ -905,6 +918,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPessoasIdRouteImport
       parentRoute: typeof AuthenticatedPessoasRoute
     }
+    '/_authenticated/oportunidades/prospecao': {
+      id: '/_authenticated/oportunidades/prospecao'
+      path: '/prospecao'
+      fullPath: '/oportunidades/prospecao'
+      preLoaderRoute: typeof AuthenticatedOportunidadesProspecaoRouteImport
+      parentRoute: typeof AuthenticatedOportunidadesRoute
+    }
     '/_authenticated/oportunidades/$id': {
       id: '/_authenticated/oportunidades/$id'
       path: '/$id'
@@ -1070,11 +1090,14 @@ const AuthenticatedNegocioRouteWithChildren =
 
 interface AuthenticatedOportunidadesRouteChildren {
   AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
+  AuthenticatedOportunidadesProspecaoRoute: typeof AuthenticatedOportunidadesProspecaoRoute
 }
 
 const AuthenticatedOportunidadesRouteChildren: AuthenticatedOportunidadesRouteChildren =
   {
     AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
+    AuthenticatedOportunidadesProspecaoRoute:
+      AuthenticatedOportunidadesProspecaoRoute,
   }
 
 const AuthenticatedOportunidadesRouteWithChildren =
