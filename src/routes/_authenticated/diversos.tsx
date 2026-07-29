@@ -65,10 +65,27 @@ function DiversosPage() {
 
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: MiscItem["status"] }) => {
-      const { error } = await supabase.from("miscellaneous_items").update({ status }).eq("id", id);
+      const { data, error } = await supabase
+        .from("miscellaneous_items")
+        .update({ status })
+        .eq("id", id)
+        .select("id, status");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Não foi possível atualizar esta nota (sem permissão ou já removida).");
+      }
+      return data[0];
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["misc"] }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["misc"] });
+      toast.success(
+        vars.status === "archived"
+          ? "Nota arquivada."
+          : vars.status === "reviewed"
+          ? "Nota marcada como revista."
+          : "Nota eliminada.",
+      );
+    },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar."),
   });
 
@@ -138,17 +155,17 @@ function DiversosPage() {
         ) : (
           <div className="grid gap-3">
             {filtered.map((r) => (
-              <Link
-                key={r.id}
-                to="/diversos/$id"
-                params={{ id: r.id }}
-                className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                aria-label={`Abrir nota ${r.title}`}
-              >
-              <Card className="transition-colors group-hover:border-primary/40 group-focus-visible:border-primary/60">
+              <Card key={r.id} className="transition-colors hover:border-primary/40">
                 <CardContent className="flex flex-col gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium">{r.title}</span>
+                    <Link
+                      to="/diversos/$id"
+                      params={{ id: r.id }}
+                      className="text-sm font-medium underline-offset-2 hover:underline focus-visible:underline outline-none"
+                      aria-label={`Abrir nota ${r.title}`}
+                    >
+                      {r.title}
+                    </Link>
                     <Badge variant="outline" className="text-[10px]">
                       {STATUS_LABEL[r.status]}
                     </Badge>
@@ -172,7 +189,8 @@ function DiversosPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatus.mutate({ id: r.id, status: "reviewed" }); }}
+                        disabled={setStatus.isPending}
+                        onClick={() => setStatus.mutate({ id: r.id, status: "reviewed" })}
                       >
                         <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Marcar como revisto
                       </Button>
@@ -181,7 +199,8 @@ function DiversosPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatus.mutate({ id: r.id, status: "archived" }); }}
+                        disabled={setStatus.isPending}
+                        onClick={() => setStatus.mutate({ id: r.id, status: "archived" })}
                       >
                         <Archive className="mr-1 h-3.5 w-3.5" /> Arquivar
                       </Button>
@@ -190,14 +209,14 @@ function DiversosPage() {
                       size="sm"
                       variant="ghost"
                       className="text-destructive"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatus.mutate({ id: r.id, status: "deleted" }); }}
+                      disabled={setStatus.isPending}
+                      onClick={() => setStatus.mutate({ id: r.id, status: "deleted" })}
                     >
                       <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
                     </Button>
                   </div>
                 </CardContent>
               </Card>
-              </Link>
             ))}
           </div>
         )}
