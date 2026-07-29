@@ -8,11 +8,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
-import { resetAccount, seedDemoData } from "@/lib/seed-demo";
+import { resetAccount } from "@/lib/seed-demo";
 import { LogOut, MessageCircle, Copy, ExternalLink, CheckCircle2, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "@/lib/assessor/assessor-name";
@@ -75,21 +73,6 @@ function DefinicoesPage() {
     toast.success(kind === "demo" ? "Conta marcada como demonstração." : "Conta marcada como real.");
   };
 
-  const loadDemo = async () => {
-    if (!uid) return;
-    setBusy(true);
-    try {
-      await seedDemoData(uid);
-      await marcar("demo");
-      toast.success("Dados de demonstração carregados.");
-      refresh();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const doReset = async () => {
     if (!uid) return;
     if (!confirm("Apagar todos os seus dados? Esta ação não pode ser revertida.")) return;
@@ -127,14 +110,11 @@ function DefinicoesPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Definições" subtitle="Preferências e integrações futuras." />
-      <Alert className="mb-4 border-amber-500/40 bg-amber-500/10">
-        <AlertTriangle className="h-4 w-4 text-amber-600" />
-        <AlertTitle>Piloto — validação de conceito</AlertTitle>
-        <AlertDescription>
-          Esta aplicação está em piloto de 14 dias. Reveja sempre os rascunhos antes de confirmar. Os dados são reais e persistem na sua conta.
-        </AlertDescription>
-      </Alert>
+      <PageHeader title="Definições" subtitle="Preferências, conta e integrações." />
+      <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+        <Badge variant="secondary">Beta</Badge>
+        <span>Revê sempre os rascunhos antes de confirmar. Os dados são reais e ficam na tua conta.</span>
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -177,9 +157,6 @@ function DefinicoesPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Dados</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-start" onClick={loadDemo} disabled={busy}>
-              Carregar dados de demonstração
-            </Button>
             <Button variant="outline" className="w-full justify-start text-destructive" onClick={doReset} disabled={busy}>
               Repor conta (apagar tudo)
             </Button>
@@ -187,10 +164,16 @@ function DefinicoesPage() {
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-base">Integrações</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-start" onClick={() => toast.info("Google Calendar — em breve.")}>Ligar Google Calendar</Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => toast.info("Microsoft Outlook — em breve.")}>Ligar Microsoft Outlook</Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => toast.info("Faturação — em breve.")}>Faturação (Stripe)</Button>
+          <CardContent className="space-y-2 text-sm">
+            {["Google Calendar", "Microsoft Outlook", "Faturação (Stripe)"].map((name) => (
+              <div key={name} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                <span>{name}</span>
+                <Badge variant="outline" className="text-muted-foreground">Planeado</Badge>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              O WhatsApp é a única integração activa — configura-a no cartão abaixo.
+            </p>
           </CardContent>
         </Card>
         <WhatsAppSection />

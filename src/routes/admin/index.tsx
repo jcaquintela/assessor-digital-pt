@@ -45,7 +45,9 @@ function OverviewPage() {
           {data.integrations.map((i) => (
             <div key={i.name} className="flex items-center justify-between rounded border border-slate-200 px-3 py-2 dark:border-slate-800">
               <span>{i.name}</span>
-              <span className="text-xs text-slate-500 capitalize">{i.status}</span>
+              <span className={`text-xs ${i.status === "active" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"}`}>
+                {i.status === "active" ? i.detail : "Planeado"}
+              </span>
             </div>
           ))}
         </CardContent>

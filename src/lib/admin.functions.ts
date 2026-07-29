@@ -221,7 +221,7 @@ export const getAdminOverview = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const since30 = new Date(Date.now() - 30 * 864e5).toISOString();
     const since24h = new Date(Date.now() - 864e5).toISOString();
-    const [users, profiles, msgs, follow, movs, newUsers, active24h] = await Promise.all([
+    const [users, profiles, msgs, follow, movs, newUsers, active24h, demo, testProfiles, betaProfiles, errors24h] = await Promise.all([
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 }),
       supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("assessor_messages").select("id", { count: "exact", head: true }),
@@ -229,26 +229,46 @@ export const getAdminOverview = createServerFn({ method: "GET" })
       supabaseAdmin.from("financial_movements").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
       supabaseAdmin.from("assessor_messages").select("user_id").gte("created_at", since24h),
+      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).eq("account_kind", "demo"),
+      // Contas de teste: emails sintéticos usados por CI/QA.
+      supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .or("email.ilike.ci-%,email.ilike.%@test.assessor.local,email.ilike.%+test@%"),
+      supabaseAdmin.from("profiles").select("id").eq("is_beta_tester", true),
+      // Erros recentes: falhas do Assessor arquivadas em Diversos.
+      supabaseAdmin
+        .from("miscellaneous_items")
+        .select("id", { count: "exact", head: true })
+        .contains("tags", ["falha_assessor"])
+        .gte("created_at", since24h),
     ]);
     const activeSet = new Set((active24h.data ?? []).map((r: any) => r.user_id));
+    const testSet = new Set<string>([
+      ...((testProfiles.data ?? []) as any[]).map((r) => r.id),
+      ...((betaProfiles.data ?? []) as any[]).map((r) => r.id),
+    ]);
+    const { getIntegrationStatuses } = await import("./admin-integrations.server");
     return {
       totalUsers: (users.data as any)?.total ?? profiles.count ?? 0,
       activeUsers: activeSet.size,
       newUsers30d: newUsers.count ?? 0,
-      demoAccounts: 0,
-      trialAccounts: 0,
+      demoAccounts: demo.count ?? 0,
+      trialAccounts: testSet.size,
       messages: msgs.count ?? 0,
       followUps: follow.count ?? 0,
       financialMovements: movs.count ?? 0,
-      recentErrors: 0,
-      integrations: [
-        { name: "WhatsApp", status: "planned" },
-        { name: "Google Calendar", status: "planned" },
-        { name: "Microsoft Outlook", status: "planned" },
-        { name: "Stripe", status: "planned" },
-        { name: "OpenAI", status: "planned" },
-      ],
+      recentErrors: errors24h.count ?? 0,
+      integrations: getIntegrationStatuses(),
     };
+  });
+
+export const getIntegrationsOverview = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    assertAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { getIntegrationStatuses } = await import("./admin-integrations.server");
+    return getIntegrationStatuses();
   });
 
 export const listAdminUsers = createServerFn({ method: "GET" })
