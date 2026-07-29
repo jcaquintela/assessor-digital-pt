@@ -6,10 +6,10 @@
 import { normalizePhone } from "@/lib/whatsapp/phone";
 import { sendWhatsAppText } from "@/lib/whatsapp/send.server";
 import {
-  hashLinkCode,
   WHATSAPP_CODE_MAX_ATTEMPTS,
   WHATSAPP_CODE_PATTERN,
 } from "@/lib/whatsapp/link.functions";
+import { hashLinkCode } from "@/lib/whatsapp/link-code.server";
 import { canUseWhatsApp, normalizeTier } from "@/lib/subscription/tiers";
 import type {
   AdapterMediaBytes,
