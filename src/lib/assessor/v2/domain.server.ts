@@ -260,7 +260,7 @@ async function findActiveProspectingLead(ctx: DomainContext): Promise<{ id: stri
 async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateFollowUpArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
-  const dueIsoDate = v.due_time ? `${v.due_date}T${v.due_time}:00` : `${v.due_date}T09:00:00`;
+  const dueIsoDate = lisbonLocalToUtcIso(v.due_date, v.due_time ?? "09:00");
   const activeProspectingLead = (!v.person_id && !v.property_id)
     ? await findActiveProspectingLead(ctx)
     : null;
