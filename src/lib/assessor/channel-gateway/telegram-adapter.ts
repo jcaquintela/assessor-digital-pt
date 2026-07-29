@@ -251,7 +251,7 @@ async function claimInvite(
 > {
   const { data: invite } = await supabaseAdmin
     .from("telegram_invites")
-    .select("code, plan_tier, expires_at, used_by, used_at")
+    .select("code, subscription_tier, expires_at, used_by, used_at")
     .eq("code", code)
     .maybeSingle();
   if (!invite) return { ok: false, reply: REPLY_INVITE_INVALID };
@@ -284,7 +284,7 @@ async function claimInvite(
   await supabaseAdmin
     .from("profiles")
     .update({
-      plan_tier: invite.plan_tier ?? "free",
+      subscription_tier: invite.subscription_tier ?? "base",
       primary_channel: "telegram",
       name: displayName,
     })
