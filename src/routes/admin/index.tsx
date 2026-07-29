@@ -1,57 +1,81 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAdminOverview } from "@/lib/admin.functions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAfonsoBusiness } from "@/lib/admin/afonso.functions";
+import { useSystemHealth } from "@/components/admin/health-strip";
+import { Badge, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 
 export const Route = createFileRoute("/admin/")({
-  head: () => ({ meta: [{ title: "Admin — Visão geral" }] }),
+  head: () => ({ meta: [{ title: "Visão geral — Afonso admin" }] }),
   component: OverviewPage,
 });
 
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-slate-500">{label}</CardTitle></CardHeader>
-      <CardContent className="text-2xl font-semibold">{value}</CardContent>
-    </Card>
-  );
-}
-
 function OverviewPage() {
-  const fn = useServerFn(getAdminOverview);
-  const { data, isLoading } = useQuery({ queryKey: ["admin", "overview"], queryFn: () => fn() });
-  if (isLoading || !data) return <p className="text-sm text-slate-500">A carregar…</p>;
+  const fn = useServerFn(getAfonsoBusiness);
+  const { data, isPending } = useQuery({ queryKey: ["admin", "afonso", "business"], queryFn: () => fn() });
+  const health = useSystemHealth();
+
+  if (isPending || !data) return <p className="sub">A carregar…</p>;
+
+  const b = data.usersBreakdown;
+  const ts = data.taskSuccess;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Visão geral</h1>
-        <p className="text-sm text-slate-500">Métricas agregadas. Nenhum dado privado do consultor é exposto.</p>
-      </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Utilizadores totais" value={data.totalUsers} />
-        <Stat label="Ativos (24h)" value={data.activeUsers} />
-        <Stat label="Novos (30d)" value={data.newUsers30d} />
-        <Stat label="Contas demo" value={data.demoAccounts} />
-        <Stat label="Contas em teste" value={data.trialAccounts} />
-        <Stat label="Mensagens processadas" value={data.messages} />
-        <Stat label="Seguimentos criados" value={data.followUps} />
-        <Stat label="Movimentos financeiros" value={data.financialMovements} />
-        <Stat label="Erros recentes" value={data.recentErrors} />
-      </div>
-      <Card>
-        <CardHeader><CardTitle className="text-base">Estado das integrações</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-2 gap-2 text-sm md:grid-cols-3">
-          {data.integrations.map((i) => (
-            <div key={i.name} className="flex items-center justify-between rounded border border-slate-200 px-3 py-2 dark:border-slate-800">
-              <span>{i.name}</span>
-              <span className={`text-xs ${i.status === "active" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"}`}>
-                {i.status === "active" ? i.detail : "Planeado"}
-              </span>
-            </div>
+    <div>
+      <PageTitle
+        title="Visão geral"
+        sub="Um número por cartão, uma fonte por número. Nenhum cartão aqui é decorativo."
+      />
+
+      <SectionTitle first>Negócio</SectionTitle>
+      <Grid cols={4}>
+        <MetricCard label="MRR" value="—" tone="muted" sub="Stripe ainda não ligado" source="nenhuma · planeado" stale />
+        <MetricCard label="Subscritores pagos" value={data.paidSubscribers} sub="pré-lançamento" source="subscription_tier · live" />
+        <MetricCard
+          label="Utilizadores ativos"
+          value={data.totalUsers}
+          sub={`${b.real} reais · ${b.ci} CI teste · ${b.shadow} shadow`}
+          source="profiles · live"
+        />
+        <MetricCard label="Contas Nível 0" value={data.baseAccounts} sub="Telegram, grátis" source="profiles · live" />
+      </Grid>
+
+      <SectionTitle>Produto</SectionTitle>
+      <Grid cols={4}>
+        <MetricCard label="Mensagens 24h" value={data.messages24h} sub="WhatsApp, webhook ativo" source="assessor_messages · live" />
+        <MetricCard
+          label="Tarefa bem sucedida"
+          value={ts == null ? "—" : `${(ts * 100).toFixed(1).replace(".", ",")}%`}
+          tone={ts == null ? "muted" : ts >= 0.95 ? "default" : "coral"}
+          sub={`meta ≥ 95% · ${data.taskSuccessSamples} turnos / 14d`}
+          source="assistant_trust_scores · agregado"
+          stale={ts == null}
+        />
+        <MetricCard label="Erros por tratar" value={data.inboxErrors} sub="miscellaneous_items · por tratar" source="miscellaneous_items · live" />
+        <MetricCard label="Beta testers" value={data.betaTesters} sub="acesso total, sem pagar" source="is_beta_tester · live" />
+      </Grid>
+
+      <SectionTitle>Estado das integrações</SectionTitle>
+      <table>
+        <thead>
+          <tr><th>Canal</th><th>Estado</th><th>Última atividade</th></tr>
+        </thead>
+        <tbody>
+          {(health.data?.items ?? []).map((i) => (
+            <tr key={i.key}>
+              <td>{i.label}</td>
+              <td>
+                <Badge tone={i.level}>
+                  {i.level === "ok" ? "Ativo" : i.level === "warn" ? "Parcial" : "Crítico"}
+                </Badge>
+              </td>
+              <td className="mini">{i.detail || "—"}</td>
+            </tr>
           ))}
-        </CardContent>
-      </Card>
+          <tr><td>Google Calendar</td><td><Badge tone="bad">Planeado</Badge></td><td className="mini">—</td></tr>
+          <tr><td>Stripe</td><td><Badge tone="bad">Planeado</Badge></td><td className="mini">—</td></tr>
+        </tbody>
+      </table>
     </div>
   );
 }
