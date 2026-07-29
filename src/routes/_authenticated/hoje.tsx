@@ -17,7 +17,6 @@ import { dismissPriority, getHojeSupreme } from "@/lib/assessor/supreme/prioriti
 import { saveFollowUpOutcome } from "@/lib/assessor/supreme/outcomes.functions";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { QuickAdd } from "@/components/hoje/quick-add";
 import { GlobalSearch } from "@/components/hoje/global-search";
 import { EventDrawer, type EventDrawerItem } from "@/components/hoje/event-drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -249,7 +248,6 @@ function HojePage() {
             <Button asChild variant="secondary" size="sm" className="gap-1.5">
               <Link to="/assessor"><MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}</Link>
             </Button>
-            <QuickAdd />
           </div>
         </div>
         <GlobalSearch />
