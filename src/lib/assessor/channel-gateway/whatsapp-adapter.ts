@@ -10,6 +10,7 @@ import {
   WHATSAPP_CODE_MAX_ATTEMPTS,
   WHATSAPP_CODE_PATTERN,
 } from "@/lib/whatsapp/link.functions";
+import { canUseWhatsApp, normalizeTier } from "@/lib/subscription/tiers";
 import type {
   AdapterMediaBytes,
   AdapterSendResult,
@@ -31,6 +32,8 @@ const REPLY_ENGINE_ERROR =
 const REPLY_LINK_OK =
   "A tua conta ficou associada ao WhatsApp. Já podes começar a falar com o teu Assessor.";
 const REPLY_LINK_EXPIRED = "Este código expirou. Gera um novo código no dashboard.";
+const REPLY_LINK_TIER =
+  "Este código já não é válido: o teu plano actual não inclui WhatsApp. Podes continuar a usar o Assessor pelo Telegram.";
 const REPLY_LINK_INVALID =
   "Não consegui validar este código. Confirma o código no dashboard e tenta novamente.";
 
