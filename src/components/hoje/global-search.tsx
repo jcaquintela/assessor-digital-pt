@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Search, User, Building2, StickyNote, ListChecks, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 type Hit = { type: "pessoa" | "imovel" | "nota" | "seguimento"; id: string; label: string; sub?: string };
 
