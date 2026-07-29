@@ -584,7 +584,7 @@ async function execRescheduleReminder(ctx: DomainContext, args: unknown): Promis
     new_date: v.new_date,
     new_time: v.new_time,
     timezone: v.timezone ?? "Europe/Lisbon",
-    reason: v.reason ?? null,
+    reason: v.reason ?? undefined,
   });
   if (!r.ok && r.candidates) return ok({ ambiguous: true, candidates: r.candidates });
   if (!r.ok) return fail(r.error ?? "reschedule_failed");
