@@ -156,3 +156,151 @@ describe("idempotência — follow_ups por source_pending_action_id", () => {
     expect(idempotents.length).toBe(1);
   });
 });
+
+describe("stress — 'sim' em sequência rápida", () => {
+  it("N confirmações sequenciais rápidas de follow_up criam apenas 1 linha", async () => {
+    const sb = makeFakeSupabase();
+    const ctx = baseCtx(sb, "pa-stress-seq-fu");
+    const N = 15;
+    const results = [];
+    for (let i = 0; i < N; i++) {
+      results.push(await dispatchToolCall(ctx, "create_follow_up", JSON.stringify(followUpArgs)));
+    }
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(sb._rows.length).toBe(1);
+    const firstId = (results[0].data as any).follow_up.id;
+    for (let i = 1; i < N; i++) {
+      expect((results[i].data as any).idempotent).toBe(true);
+      expect((results[i].data as any).follow_up.id).toBe(firstId);
+    }
+  });
+
+  it("N confirmações sequenciais rápidas de event criam apenas 1 linha", async () => {
+    const sb = makeFakeSupabase();
+    const ctx = baseCtx(sb, "pa-stress-seq-evt");
+    const N = 15;
+    const results = [];
+    for (let i = 0; i < N; i++) {
+      results.push(await dispatchToolCall(ctx, "create_event", JSON.stringify(eventArgs)));
+    }
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(sb._rows.length).toBe(1);
+    const firstId = (results[0].data as any).event.id;
+    for (let i = 1; i < N; i++) {
+      expect((results[i].data as any).idempotent).toBe(true);
+      expect((results[i].data as any).event.id).toBe(firstId);
+    }
+  });
+
+  it("N dispatchs paralelos de follow_up com pre-check a falhar → 1 linha, N sucessos", async () => {
+    const sb = makeFakeSupabase();
+    const N = 10;
+    // Força todos os pre-checks a devolver null para simular a pior race.
+    let bypass = N;
+    const origFrom = sb.from.bind(sb);
+    sb.from = (table: string) => {
+      const chain = origFrom(table);
+      const orig = chain.maybeSingle.bind(chain);
+      chain.maybeSingle = async () => {
+        if (bypass > 0) { bypass--; return { data: null, error: null }; }
+        return orig();
+      };
+      return chain;
+    };
+    const ctx = baseCtx(sb, "pa-stress-par-fu");
+    const results = await Promise.all(
+      Array.from({ length: N }, () => dispatchToolCall(ctx, "create_follow_up", JSON.stringify(followUpArgs))),
+    );
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(sb._rows.length).toBe(1);
+    const winnerId = sb._rows[0].id;
+    for (const r of results) {
+      expect((r.data as any).follow_up.id).toBe(winnerId);
+    }
+    const idempotents = results.filter((r) => (r.data as any)?.idempotent === true);
+    expect(idempotents.length).toBe(N - 1);
+  });
+
+  it("N dispatchs paralelos de event com pre-check a falhar → 1 linha, N sucessos", async () => {
+    const sb = makeFakeSupabase();
+    const N = 10;
+    let bypass = N;
+    const origFrom = sb.from.bind(sb);
+    sb.from = (table: string) => {
+      const chain = origFrom(table);
+      const orig = chain.maybeSingle.bind(chain);
+      chain.maybeSingle = async () => {
+        if (bypass > 0) { bypass--; return { data: null, error: null }; }
+        return orig();
+      };
+      return chain;
+    };
+    const ctx = baseCtx(sb, "pa-stress-par-evt");
+    const results = await Promise.all(
+      Array.from({ length: N }, () => dispatchToolCall(ctx, "create_event", JSON.stringify(eventArgs))),
+    );
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(sb._rows.length).toBe(1);
+    const winnerId = sb._rows[0].id;
+    for (const r of results) {
+      expect((r.data as any).event.id).toBe(winnerId);
+    }
+    const idempotents = results.filter((r) => (r.data as any)?.idempotent === true);
+    expect(idempotents.length).toBe(N - 1);
+  });
+
+  it("retry técnico repetido após 23505 reutiliza sempre o mesmo follow_up", async () => {
+    const sb = makeFakeSupabase();
+    sb._rows.push({
+      id: "canonical-fu", user_id: "u1", source_pending_action_id: "pa-stress-retry-fu",
+      title: "Existente", due_date: "2026-07-30", due_time: null,
+    });
+    // Cada dispatch: 1º maybeSingle (pre-check) devolve null → força INSERT → 23505.
+    const origFrom = sb.from.bind(sb);
+    sb.from = (table: string) => {
+      const chain = origFrom(table);
+      const orig = chain.maybeSingle.bind(chain);
+      let firstCall = true;
+      chain.maybeSingle = async () => {
+        if (firstCall) { firstCall = false; return { data: null, error: null }; }
+        return orig();
+      };
+      return chain;
+    };
+    const ctx = baseCtx(sb, "pa-stress-retry-fu");
+    for (let i = 0; i < 8; i++) {
+      const r = await dispatchToolCall(ctx, "create_follow_up", JSON.stringify(followUpArgs));
+      expect(r.ok).toBe(true);
+      expect((r.data as any).idempotent).toBe(true);
+      expect((r.data as any).follow_up.id).toBe("canonical-fu");
+    }
+    expect(sb._rows.length).toBe(1);
+  });
+
+  it("retry técnico repetido após 23505 reutiliza sempre o mesmo event", async () => {
+    const sb = makeFakeSupabase();
+    sb._rows.push({
+      id: "canonical-evt", user_id: "u1", source_pending_action_id: "pa-stress-retry-evt",
+      title: "Existente",
+    });
+    const origFrom = sb.from.bind(sb);
+    sb.from = (table: string) => {
+      const chain = origFrom(table);
+      const orig = chain.maybeSingle.bind(chain);
+      let firstCall = true;
+      chain.maybeSingle = async () => {
+        if (firstCall) { firstCall = false; return { data: null, error: null }; }
+        return orig();
+      };
+      return chain;
+    };
+    const ctx = baseCtx(sb, "pa-stress-retry-evt");
+    for (let i = 0; i < 8; i++) {
+      const r = await dispatchToolCall(ctx, "create_event", JSON.stringify(eventArgs));
+      expect(r.ok).toBe(true);
+      expect((r.data as any).idempotent).toBe(true);
+      expect((r.data as any).event.id).toBe("canonical-evt");
+    }
+    expect(sb._rows.length).toBe(1);
+  });
+});
