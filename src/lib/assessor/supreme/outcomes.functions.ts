@@ -26,7 +26,7 @@ export const saveFollowUpOutcome = createServerFn({ method: "POST" })
     if (data.outcome === "concluido") patch.status = "Concluído";
     const { error } = await context.supabase
       .from("follow_ups")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
