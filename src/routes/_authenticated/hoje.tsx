@@ -468,4 +468,3 @@ function AlertRow({
 
 // Ícone reservado para futuras variantes; suprime aviso de import não usado.
 void MoreHorizontal;
-void pessoas;
