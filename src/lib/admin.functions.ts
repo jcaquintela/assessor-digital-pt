@@ -417,6 +417,63 @@ export const listFeatureFlags = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+// Cria/atualiza utilizadores de teste (já confirmados) para uso em CI.
+// Restrito a super_admin. Idempotente: se o email já existir, define a password
+// e devolve o id existente.
+export const createTestUsers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        users: z
+          .array(
+            z.object({
+              email: z.string().email(),
+              password: z.string().min(12).max(128),
+            }),
+          )
+          .min(1)
+          .max(10),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    assertSuperAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const results: Array<{ email: string; id: string; created: boolean }> = [];
+    for (const u of data.users) {
+      // Tenta criar já confirmado.
+      const created = await supabaseAdmin.auth.admin.createUser({
+        email: u.email,
+        password: u.password,
+        email_confirm: true,
+      });
+      if (created.data?.user) {
+        results.push({ email: u.email, id: created.data.user.id, created: true });
+        continue;
+      }
+      // Se já existir, procura e faz reset da password.
+      const list = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const existing = (list.data?.users ?? []).find(
+        (x) => (x.email ?? "").toLowerCase() === u.email.toLowerCase(),
+      );
+      if (!existing) {
+        throw new Error(`Falha ao criar ${u.email}: ${created.error?.message ?? "desconhecido"}`);
+      }
+      await supabaseAdmin.auth.admin.updateUserById(existing.id, {
+        password: u.password,
+        email_confirm: true,
+      });
+      results.push({ email: u.email, id: existing.id, created: false });
+    }
+
+    await audit(context.userId, "ci.test_users_provisioned", {
+      metadata: { emails: data.users.map((u) => u.email) },
+    });
+    return { ok: true as const, users: results };
+  });
+
 // Limpeza estrutural do estado conversacional do Assessor.
 // - Cancela pending_actions abertas há mais de `staleMinutes` (default 60).
 // - Limpa conversation_states inconsistentes (pending_action_id órfãos).
