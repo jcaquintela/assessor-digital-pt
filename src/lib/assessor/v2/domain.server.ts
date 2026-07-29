@@ -20,6 +20,9 @@ import {
   CreateFollowUpArgs,
   SaveInteractionArgs,
   SaveMiscellaneousArgs,
+  CreateProspectingLeadArgs,
+  SearchProspectingLeadsArgs,
+  UpdateProspectingLeadArgs,
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
@@ -275,6 +278,134 @@ async function execSaveMiscellaneous(ctx: DomainContext, args: unknown): Promise
   return ok({ item: data });
 }
 
+// ---------- prospeção ----------
+
+function normalizePhone(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const digits = String(raw).replace(/\D/g, "");
+  if (!digits) return null;
+  const nine = digits.length > 9 ? digits.slice(-9) : digits;
+  return /^[239]\d{8}$/.test(nine) ? nine : null;
+}
+
+function buildLeadTitle(v: {
+  title?: string | null;
+  property_type?: string | null;
+  typology?: string | null;
+  address_hint?: string | null;
+  location?: string | null;
+}): string {
+  if (v.title && v.title.trim()) return v.title.trim().slice(0, 200);
+  const kind = (v.typology || v.property_type || "Placa").trim();
+  const kindCap = kind.charAt(0).toUpperCase() + kind.slice(1);
+  const near = v.address_hint ? ` ${v.address_hint.trim()}` : "";
+  const loc = v.location ? ` — ${v.location.trim()}` : "";
+  const t = `${kindCap}${near}${loc}`.trim();
+  return (t || "Placa de prospeção").slice(0, 200);
+}
+
+async function execCreateProspectingLead(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(CreateProspectingLeadArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  const phone = normalizePhone(v.phone ?? null);
+
+  // dedupe por telefone (não arquivadas)
+  if (phone) {
+    const { data: dup } = await ctx.supabase
+      .from("prospecting_leads" as never)
+      .select("id, title, location, status")
+      .eq("user_id", ctx.userId)
+      .eq("phone", phone)
+      .neq("status", "archived")
+      .limit(1)
+      .maybeSingle();
+    if (dup) return ok({ duplicate: true, existing: dup });
+  }
+
+  const title = buildLeadTitle(v);
+  const notes = [v.notes ?? null, v.address_hint ? `Ref: ${v.address_hint}` : null]
+    .filter(Boolean)
+    .join(" · ")
+    .slice(0, 2000) || null;
+
+  const row = {
+    user_id: ctx.userId,
+    title,
+    phone,
+    location: v.location?.trim() || null,
+    address: v.address_hint?.trim() || null,
+    source_type: v.source_type,
+    listing_type: v.listing_type,
+    agency_name: v.agency_name?.trim() || null,
+    property_type: v.property_type?.trim() || null,
+    typology: v.typology?.trim() || null,
+    notes,
+    source_channel: ctx.channel,
+    source_message_id: ctx.sourceMessageId ?? null,
+    status: "to_contact",
+    extraction_raw: {},
+  } as Record<string, unknown>;
+
+  const { data, error } = await ctx.supabase
+    .from("prospecting_leads" as never)
+    .insert(row as never)
+    .select("id, title, phone, location, status")
+    .single();
+  if (error) return fail(error.message);
+  return ok({ duplicate: false, lead: data });
+}
+
+async function execSearchProspectingLeads(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(SearchProspectingLeadsArgs, args); if (!p.ok) return fail(p.error);
+  const { query, phone, location, status } = p.value;
+  let q = ctx.supabase
+    .from("prospecting_leads" as never)
+    .select("id, title, phone, location, address, property_type, typology, status, listing_type, agency_name, created_at")
+    .eq("user_id", ctx.userId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const normalized = normalizePhone(phone ?? null);
+  if (normalized) q = q.eq("phone", normalized);
+  if (location) q = q.ilike("location", `%${location}%`);
+  if (status) q = q.eq("status", status);
+  if (query && query.trim().length >= 2) {
+    const term = `%${query.trim().replace(/[%_]/g, "")}%`;
+    q = q.or(`title.ilike.${term},notes.ilike.${term},address.ilike.${term}`);
+  }
+  const { data, error } = await q;
+  if (error) return fail(error.message);
+  return ok({ results: data ?? [] });
+}
+
+async function execUpdateProspectingLead(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(UpdateProspectingLeadArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  const patch: Record<string, unknown> = {};
+  if (v.title !== undefined && v.title !== null) patch.title = v.title.trim().slice(0, 200);
+  if (v.phone !== undefined) patch.phone = v.phone === null ? null : normalizePhone(v.phone);
+  if (v.location !== undefined) patch.location = v.location?.trim() || null;
+  if (v.address_hint !== undefined) patch.address = v.address_hint?.trim() || null;
+  if (v.agency_name !== undefined) patch.agency_name = v.agency_name?.trim() || null;
+  if (v.property_type !== undefined) patch.property_type = v.property_type?.trim() || null;
+  if (v.typology !== undefined) patch.typology = v.typology?.trim() || null;
+  if (v.listing_type) patch.listing_type = v.listing_type;
+  if (v.source_type) patch.source_type = v.source_type;
+  if (v.status) patch.status = v.status;
+  if (v.notes !== undefined) patch.notes = v.notes?.slice(0, 2000) ?? null;
+
+  if (!Object.keys(patch).length) return fail("nada_para_actualizar");
+
+  const { data, error } = await ctx.supabase
+    .from("prospecting_leads" as never)
+    .update(patch as never)
+    .eq("id", v.id)
+    .eq("user_id", ctx.userId)
+    .select("id, title, status")
+    .single();
+  if (error) return fail(error.message);
+  return ok({ lead: data });
+}
+
 // ---------------------- registo público ----------------------
 
 export type ToolExecutor = (ctx: DomainContext, args: unknown) => Promise<DomainResult>;
@@ -289,6 +420,9 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   create_follow_up: execCreateFollowUp,
   save_interaction: execSaveInteraction,
   save_miscellaneous: execSaveMiscellaneous,
+  create_prospecting_lead: execCreateProspectingLead,
+  search_prospecting_leads: execSearchProspectingLeads,
+  update_prospecting_lead: execUpdateProspectingLead,
 };
 
 export async function dispatchToolCall(

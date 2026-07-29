@@ -115,6 +115,64 @@ export const SaveMiscellaneousArgs = z.object({
 });
 export type SaveMiscellaneousArgs = z.infer<typeof SaveMiscellaneousArgs>;
 
+// ---------- Prospeção imobiliária ----------
+
+const SourceType = z.enum([
+  "street_sign",
+  "online_listing",
+  "referral",
+  "direct_observation",
+  "other",
+]);
+const ListingType = z.enum(["owner_sale", "other_agency", "own_agency", "unknown"]);
+const LeadStatus = z.enum([
+  "to_contact",
+  "contact_attempted",
+  "contacted",
+  "no_interest",
+  "opportunity",
+  "converted",
+  "archived",
+]);
+
+export const CreateProspectingLeadArgs = z.object({
+  title: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  address_hint: z.string().optional().nullable(),
+  property_type: z.string().optional().nullable(),
+  typology: z.string().optional().nullable(),
+  source_type: SourceType.default("street_sign"),
+  listing_type: ListingType.default("unknown"),
+  agency_name: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+export type CreateProspectingLeadArgs = z.infer<typeof CreateProspectingLeadArgs>;
+
+export const SearchProspectingLeadsArgs = z.object({
+  query: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  status: LeadStatus.optional().nullable(),
+});
+export type SearchProspectingLeadsArgs = z.infer<typeof SearchProspectingLeadsArgs>;
+
+export const UpdateProspectingLeadArgs = z.object({
+  id: z.string().uuid(),
+  title: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  address_hint: z.string().optional().nullable(),
+  agency_name: z.string().optional().nullable(),
+  property_type: z.string().optional().nullable(),
+  typology: z.string().optional().nullable(),
+  listing_type: ListingType.optional().nullable(),
+  source_type: SourceType.optional().nullable(),
+  status: LeadStatus.optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+export type UpdateProspectingLeadArgs = z.infer<typeof UpdateProspectingLeadArgs>;
+
 // ---------- specs OpenAI/Gateway (function-calling) ----------
 
 export const TOOL_SPECS: GatewayToolSpec[] = [
@@ -316,6 +374,117 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_prospecting_lead",
+      description:
+        "Regista uma oportunidade de prospeção (placa na rua, número visto de longe, referência, anúncio). Usa quando o consultor descreve um imóvel à venda que ainda NÃO angariou: 'placa', 'vende-se', 'vi um apartamento à venda', 'número na placa', 'regista para ligar', 'particular', 'outra agência'. NÃO uses create_person nem create_property nestes casos — o proprietário e o imóvel ainda são desconhecidos. Deixa em branco tudo o que não estiver explícito (nome, morada exacta, preço, tipologia). Antes de invocar, procura duplicados com search_prospecting_leads se tiveres o telefone.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: ["string", "null"],
+            description:
+              "Título natural, ex.: 'Apartamento junto ao Castelo — Santa Maria da Feira'. Se null, é gerado automaticamente.",
+          },
+          phone: { type: ["string", "null"], description: "Telefone visto na placa/anúncio, se legível." },
+          location: { type: ["string", "null"], description: "Localidade principal (cidade, freguesia)." },
+          address_hint: {
+            type: ["string", "null"],
+            description: "Referência local (rua, ponto de referência, ex.: 'junto ao Castelo').",
+          },
+          property_type: { type: ["string", "null"], description: "Ex.: apartamento, moradia, terreno." },
+          typology: { type: ["string", "null"], description: "T2, T3, V4… apenas se explícito." },
+          source_type: {
+            type: "string",
+            enum: ["street_sign", "online_listing", "referral", "direct_observation", "other"],
+          },
+          listing_type: {
+            type: "string",
+            enum: ["owner_sale", "other_agency", "own_agency", "unknown"],
+            description: "unknown por defeito. Só usar owner_sale se aparecer 'particular', 'próprio', 'vende-se por particular'.",
+          },
+          agency_name: { type: ["string", "null"], description: "Nome da agência (ex.: ERA, Remax) se visível." },
+          notes: { type: ["string", "null"] },
+        },
+        required: ["source_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_prospecting_leads",
+      description:
+        "Procura placas/leads de prospeção do consultor. Usa para detectar duplicados antes de criar (por telefone) ou para responder a perguntas tipo 'que placas registei em Canelas?'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: ["string", "null"], description: "Texto livre a procurar no título/notas." },
+          phone: { type: ["string", "null"] },
+          location: { type: ["string", "null"] },
+          status: {
+            type: ["string", "null"],
+            enum: [
+              "to_contact",
+              "contact_attempted",
+              "contacted",
+              "no_interest",
+              "opportunity",
+              "converted",
+              "archived",
+              null,
+            ],
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_prospecting_lead",
+      description:
+        "Actualiza uma placa/lead existente (marcar contactado, sem interesse, converter em oportunidade, corrigir localização, adicionar notas). Requer id obtido de search_prospecting_leads.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          title: { type: ["string", "null"] },
+          phone: { type: ["string", "null"] },
+          location: { type: ["string", "null"] },
+          address_hint: { type: ["string", "null"] },
+          agency_name: { type: ["string", "null"] },
+          property_type: { type: ["string", "null"] },
+          typology: { type: ["string", "null"] },
+          listing_type: {
+            type: ["string", "null"],
+            enum: ["owner_sale", "other_agency", "own_agency", "unknown", null],
+          },
+          source_type: {
+            type: ["string", "null"],
+            enum: ["street_sign", "online_listing", "referral", "direct_observation", "other", null],
+          },
+          status: {
+            type: ["string", "null"],
+            enum: [
+              "to_contact",
+              "contact_attempted",
+              "contacted",
+              "no_interest",
+              "opportunity",
+              "converted",
+              "archived",
+              null,
+            ],
+          },
+          notes: { type: ["string", "null"] },
+        },
+        required: ["id"],
+      },
+    },
+  },
 ];
 
 // ---------- registo Zod (nome → schema) ----------
@@ -330,6 +499,9 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   create_follow_up: CreateFollowUpArgs,
   save_interaction: SaveInteractionArgs,
   save_miscellaneous: SaveMiscellaneousArgs,
+  create_prospecting_lead: CreateProspectingLeadArgs,
+  search_prospecting_leads: SearchProspectingLeadsArgs,
+  update_prospecting_lead: UpdateProspectingLeadArgs,
 };
 
 export const TOOL_NAMES = Object.keys(ZOD_BY_TOOL);
