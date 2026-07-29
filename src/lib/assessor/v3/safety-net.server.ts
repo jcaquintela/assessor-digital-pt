@@ -1,0 +1,89 @@
+// Rede de segurança "nada se perde" — motor v3.
+//
+// Regra de produto: uma mensagem profissional do consultor NUNCA pode
+// desaparecer. Se o Assessor não a percebeu, ou tentou executar algo e
+// falhou, o texto original fica em Diversos > Por tratar, consultável no
+// dashboard. Este módulo é o único ponto de decisão e de escrita.
+
+import type { DomainContext } from "../v2/domain.server";
+import { isConfirmation, isRejection, isGreeting, isThanks } from "../culture/short-answers";
+
+export type TurnOutcome =
+  | "executed_ok"       // ferramenta correu bem — nada a guardar
+  | "duplicate"         // já existia — nada a guardar
+  | "query"             // consulta (agenda, pessoa) — nada a guardar
+  | "tool_failed"       // tentou executar e falhou — guardar
+  | "not_understood";   // não percebeu — guardar
+
+// Mensagens descartáveis: confirmações, rejeições, saudações, agradecimentos
+// e texto demasiado curto para ter conteúdo profissional.
+export function isDisposableMessage(content: string): boolean {
+  const text = String(content ?? "").trim();
+  if (text.length < 3) return true;
+  if (isConfirmation(text) || isRejection(text)) return true;
+  if (isGreeting(text) || isThanks(text)) return true;
+  // Frases muito curtas sem qualquer sinal de conteúdo (números, nomes, verbos).
+  if (text.length < 8 && !/\d/.test(text)) return true;
+  return false;
+}
+
+export function shouldArchiveTurn(params: {
+  content: string;
+  outcome: TurnOutcome;
+}): boolean {
+  if (params.outcome !== "tool_failed" && params.outcome !== "not_understood") return false;
+  return !isDisposableMessage(params.content);
+}
+
+export async function archiveToMiscellaneous(
+  ctx: DomainContext,
+  content: string,
+  reason: string,
+): Promise<boolean> {
+  try {
+    const text = String(content ?? "").trim();
+    if (!text) return false;
+    const title = text.length > 120 ? `${text.slice(0, 117)}...` : text;
+    const { error } = await ctx.supabase.from("miscellaneous_items").insert({
+      user_id: ctx.userId,
+      title,
+      original_content: text,
+      summary: `Ficou por tratar: ${reason}`,
+      category: "Por tratar",
+      source_channel: ctx.channel,
+      source_message_id: ctx.sourceMessageId ?? null,
+      occurred_at: new Date().toISOString(),
+      status: "inbox",
+      tags: ["falha_assessor"],
+    } as never);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// Frase honesta a acrescentar quando a mensagem ficou guardada.
+const SAVED_SUFFIX = "Deixei em Diversos, por tratar, para não se perder.";
+
+export function withSavedNote(reply: string, saved: boolean): string {
+  const base = String(reply ?? "").trim();
+  if (!saved) return base;
+  if (/diversos/i.test(base)) return base;
+  return base ? `${base} ${SAVED_SUFFIX}` : SAVED_SUFFIX;
+}
+
+// Ponto único de saída: decide, grava e devolve a resposta final.
+export async function applySafetyNet(
+  ctx: DomainContext,
+  params: { content: string; outcome: TurnOutcome; reason?: string | null; reply: string },
+): Promise<string> {
+  if (!shouldArchiveTurn({ content: params.content, outcome: params.outcome })) {
+    return String(params.reply ?? "").trim();
+  }
+  const saved = await archiveToMiscellaneous(
+    ctx,
+    params.content,
+    params.reason || (params.outcome === "tool_failed" ? "não consegui guardar" : "não percebi a mensagem"),
+  );
+  return withSavedNote(params.reply, saved);
+}

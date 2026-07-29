@@ -30,6 +30,7 @@ import {
   hasValidPendingContext,
   type AgendaItem,
 } from "./deterministic.server";
+import { applySafetyNet } from "./safety-net.server";
 
 const HISTORY_LIMIT = 6;
 
@@ -106,25 +107,6 @@ function extractFinanceCommission(content: string): Record<string, unknown> | nu
     property_reference: propertyReference,
     opportunity_title: propertyReference ? `Negócio ${propertyReference}` : "Negócio fechado",
   };
-}
-
-async function saveFailedActionAsMiscellaneous(
-  ctx: DomainContext,
-  content: string,
-  reason: string,
-): Promise<void> {
-  const title = content.length > 120 ? `${content.slice(0, 117)}...` : content;
-  await ctx.supabase.from("miscellaneous_items").insert({
-    user_id: ctx.userId,
-    title,
-    original_content: content,
-    summary: `Falhou a gravação automática: ${reason}`,
-    category: "Por tratar",
-    source_channel: ctx.channel,
-    occurred_at: new Date().toISOString(),
-    status: "inbox",
-    tags: ["falha_assessor"],
-  } as never);
 }
 
 function nowLisbonHuman(): string {
@@ -246,11 +228,20 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
             }
           } catch { /* noop */ }
         }
-        const reply = okOk
+        const dupLead = (result.data as any)?.duplicate === true;
+        const baseReply = okOk
           ? "Feito. Registei a placa para contactares. Queres que te lembre de ligar?"
-          : ((result.data as any)?.duplicate
+          : (dupLead
               ? "Já tinhas uma placa registada com esse número. Fica na mesma."
               : "Tentei mas não consegui guardar a placa. Podes tentar outra vez?");
+        // Rede de segurança: placa confirmada que não chegou a ser criada
+        // fica em Diversos > Por tratar (antes desaparecia sem rasto).
+        const reply = await applySafetyNet(ctx, {
+          content: pending.original_content || trimmed,
+          outcome: okOk ? "executed_ok" : (dupLead ? "duplicate" : "tool_failed"),
+          reason: result.error ?? "not_created",
+          reply: baseReply,
+        });
         try {
           await supabase.from("assessor_ai_logs").insert({
             user_id: userId, channel, model: "reasoning-engine-v3",
@@ -273,10 +264,6 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     if (commissionArgs) {
       const t0 = Date.now();
       const result = await TOOL_REGISTRY.create_financial_movement(ctx, commissionArgs);
-      if (!result.ok) {
-        try { await saveFailedActionAsMiscellaneous(ctx, trimmed, result.error ?? "financial_failed"); }
-        catch { /* noop */ }
-      }
       try {
         await supabase.from("assessor_ai_logs").insert({
           user_id: userId, channel, model: "reasoning-engine-v3",
@@ -294,9 +281,15 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           reply: `Já tinha uma ${(commissionArgs as any).type === "expense" ? "despesa" : "comissão"} de ${formatPtMoney(amount)} registada hoje. É a mesma ou queres registar outra?`,
         };
       }
-      return result.ok
-        ? { reply: `Feito. Registei a comissão de ${formatPtMoney(amount)} no ${reference}.` }
-        : { reply: "Tentei guardar a comissão e não consegui. Deixei em Diversos para não se perder." };
+      const finReply = await applySafetyNet(ctx, {
+        content: trimmed,
+        outcome: result.ok ? "executed_ok" : "tool_failed",
+        reason: result.error ?? "financial_failed",
+        reply: result.ok
+          ? `Feito. Registei a comissão de ${formatPtMoney(amount)} no ${reference}.`
+          : "Tentei guardar a comissão e não consegui.",
+      });
+      return { reply: finReply };
     }
 
     // ---------- Router determinístico ----------
@@ -381,11 +374,12 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   await applyMemoryWrites(ctx, decideR.decision.memory_writes);
 
   let reply = sanitizeReply(decideR.decision.natural_reply);
+  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" = "executed_ok";
+  let archiveReason: string | null = null;
   if (shouldAct && !allOk) {
-    try {
-      const reason = toolResults.filter((r) => !r.ok).map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ");
-      await saveFailedActionAsMiscellaneous(ctx, trimmed, reason || "tool_failed");
-    } catch { /* noop */ }
+    archiveOutcome = "tool_failed";
+    archiveReason = toolResults.filter((r) => !r.ok)
+      .map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ") || "tool_failed";
     reply = "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
   }
 
@@ -440,6 +434,26 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     reply = enforceSingleQuestion(reply);
   }
   if (!reply) reply = NATURAL_FALLBACKS.didNotUnderstand;
+
+  // Rede de segurança final: quando o motor não executou nada e a resposta é
+  // um fallback de não-compreensão (ou o DECIDE/THINK falhou), a mensagem
+  // original fica em Diversos > Por tratar antes de responder.
+  if (archiveOutcome === "executed_ok" && !shouldAct) {
+    const isFallbackReply =
+      reply === NATURAL_FALLBACKS.didNotUnderstand ||
+      reply === NATURAL_FALLBACKS.aiDown ||
+      /^n[ãa]o percebi/i.test(reply);
+    if (isFallbackReply || decideR.error || thinkR.error) {
+      archiveOutcome = "not_understood";
+      archiveReason = decideR.error ?? thinkR.error ?? "não percebi a mensagem";
+    }
+  }
+  reply = await applySafetyNet(ctx, {
+    content: trimmed,
+    outcome: archiveOutcome,
+    reason: archiveReason,
+    reply,
+  });
 
   const totalLatencyMs = Date.now() - started;
   const inputTokens = thinkR.usage.inputTokens + decideR.usage.inputTokens;
