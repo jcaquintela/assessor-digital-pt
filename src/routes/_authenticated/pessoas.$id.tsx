@@ -121,7 +121,6 @@ function PessoaDetail() {
   };
 
   const opsPessoa = oportunidades.filter((o) => o.pessoaId === pessoa.id);
-  const imoveisPessoa = imoveis.filter((i) => i.proprietarioId === pessoa.id);
   const segsPessoa = seguimentos.filter((s) => s.pessoaId === pessoa.id);
   const docsPessoa = documentos.filter((d) => d.pessoaId === pessoa.id);
 
