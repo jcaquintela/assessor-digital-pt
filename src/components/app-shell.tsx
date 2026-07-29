@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { GlobalSearch } from "@/components/hoje/global-search";
 
 const desktopNav = [
   { to: "/hoje", label: "Hoje", icon: Home },
