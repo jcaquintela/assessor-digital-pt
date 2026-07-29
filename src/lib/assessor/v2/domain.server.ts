@@ -71,6 +71,10 @@ export interface DomainContext {
   userId: string;
   channel: string;
   sourceMessageId?: string | null;
+  // Quando presente, garante idempotência: `create_follow_up` e `create_event`
+  // gravam-no em `follow_ups.source_pending_action_id` (índice único parcial)
+  // e reutilizam o registo existente em vez de criar duplicados.
+  pendingActionId?: string | null;
 }
 
 export interface DomainResult<T = unknown> {
@@ -81,6 +85,28 @@ export interface DomainResult<T = unknown> {
 
 function fail(error: string): DomainResult { return { ok: false, error }; }
 function ok<T>(data: T): DomainResult<T> { return { ok: true, data }; }
+
+// Devolve o follow_up existente para esta pending_action, se houver.
+async function findFollowUpByPending(
+  ctx: DomainContext,
+  pendingId: string,
+): Promise<{ id: string; title: string; due_date: string; due_time: string | null } | null> {
+  const { data } = await ctx.supabase
+    .from("follow_ups")
+    .select("id, title, due_date, due_time")
+    .eq("user_id", ctx.userId)
+    .eq("source_pending_action_id", pendingId)
+    .maybeSingle();
+  return (data as any) ?? null;
+}
+
+// Trata violação do índice único parcial como sucesso idempotente.
+function isUniqueViolation(err: any): boolean {
+  if (!err) return false;
+  if (err.code === "23505") return true;
+  const msg = String(err.message ?? "").toLowerCase();
+  return msg.includes("duplicate key") || msg.includes("unique constraint");
+}
 
 function parse<T>(schema: z.ZodType<T>, args: unknown): { ok: true; value: T } | { ok: false; error: string } {
   const r = schema.safeParse(args);
@@ -186,6 +212,11 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
   const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
+  // Idempotência: um pending_action só pode criar um recurso.
+  if (ctx.pendingActionId) {
+    const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
+    if (existing) return ok({ event: existing, reminderId: null, idempotent: true });
+  }
   const { data, error } = await ctx.supabase
     .from("follow_ups")
     .insert({
@@ -203,10 +234,17 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
       source_channel: ctx.channel,
       source_message_id: ctx.sourceMessageId ?? null,
       created_by_assessor: true,
+      source_pending_action_id: ctx.pendingActionId ?? null,
     } as never)
     .select("id, title, due_date, due_time")
     .single();
-  if (error) return fail(error.message);
+  if (error) {
+    if (isUniqueViolation(error) && ctx.pendingActionId) {
+      const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
+      if (existing) return ok({ event: existing, reminderId: null, idempotent: true });
+    }
+    return fail(error.message);
+  }
 
   let reminderId: string | null = null;
   if (v.reminder_minutes && v.reminder_minutes > 0) {
@@ -264,6 +302,11 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
   const p = parse(CreateFollowUpArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
   const dueIsoDate = lisbonLocalToUtcIso(v.due_date, v.due_time ?? "09:00");
+  // Idempotência: se já existe um follow_up para esta pending_action, devolve-o.
+  if (ctx.pendingActionId) {
+    const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
+    if (existing) return ok({ follow_up: existing, idempotent: true });
+  }
   const activeProspectingLead = (!v.person_id && !v.property_id)
     ? await findActiveProspectingLead(ctx)
     : null;
@@ -285,10 +328,17 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
       source_channel: ctx.channel,
       source_message_id: ctx.sourceMessageId ?? null,
       created_by_assessor: true,
+      source_pending_action_id: ctx.pendingActionId ?? null,
     } as never)
     .select("id, title, due_date")
     .single();
-  if (error) return fail(error.message);
+  if (error) {
+    if (isUniqueViolation(error) && ctx.pendingActionId) {
+      const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
+      if (existing) return ok({ follow_up: existing, idempotent: true });
+    }
+    return fail(error.message);
+  }
   if (activeProspectingLead?.id) {
     await ctx.supabase
       .from("prospecting_leads" as never)
