@@ -163,6 +163,74 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
 
   const userId = await findUserIdByPhone(supabaseAdmin, senderPhone);
 
+  // Reacções/status → ignorar em silêncio, sem responder ao consultor.
+  if (type === "reaction" || type === "system") {
+    await supabaseAdmin.from("assessor_messages").insert({
+      user_id: userId,
+      role: "user",
+      content: `[${type}]`,
+      message_type: `whatsapp_${type}`,
+      status: "received",
+      channel: "whatsapp",
+      sender_phone: senderPhone,
+      whatsapp_message_id: waMessageId,
+    });
+    return;
+  }
+
+  // Botões e listas interactivas → extrair texto e tratar como texto normal.
+  if (type === "interactive" || type === "button") {
+    const interactive = msg?.interactive ?? {};
+    const buttonReply = interactive?.button_reply ?? msg?.button ?? null;
+    const listReply = interactive?.list_reply ?? null;
+    const derived: string =
+      buttonReply?.title ??
+      listReply?.title ??
+      msg?.button?.text ??
+      msg?.button?.payload ??
+      "";
+    const body = String(derived ?? "").trim();
+    const { data: insertedMsg } = await supabaseAdmin
+      .from("assessor_messages")
+      .insert({
+        user_id: userId,
+        role: "user",
+        content: body || `[${type}]`,
+        message_type: `whatsapp_${type}`,
+        status: "received",
+        channel: "whatsapp",
+        sender_phone: senderPhone,
+        whatsapp_message_id: waMessageId,
+      })
+      .select("id")
+      .single();
+    if (!userId) {
+      await replyAndStore(supabaseAdmin, senderPhone, null, REPLY_UNASSOCIATED);
+      return;
+    }
+    if (!body) return; // sem payload utilizável
+    try {
+      const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
+      const outcome = await processAssessorMessage({
+        supabase: supabaseAdmin,
+        userId,
+        channel: "whatsapp",
+        content: body,
+        receivedAt: new Date(),
+        sourceMessageId: (insertedMsg as { id?: string } | null)?.id ?? null,
+      });
+      if (outcome.messageType === "__ALREADY_PERSISTED__") {
+        await sendWhatsAppText(senderPhone, outcome.reply, { kind: "auto" });
+      } else {
+        await replyAndStore(supabaseAdmin, senderPhone, userId, outcome.reply);
+      }
+    } catch (err) {
+      console.error("[whatsapp-webhook] interactive engine error:", err instanceof Error ? err.message : err);
+      await replyAndStore(supabaseAdmin, senderPhone, userId, REPLY_ENGINE_ERROR);
+    }
+    return;
+  }
+
   // Handle media types (image, document, audio/voice) via central file pipeline.
   if (type === "image" || type === "document" || type === "audio" || type === "voice") {
     await handleMediaMessage(supabaseAdmin, {
