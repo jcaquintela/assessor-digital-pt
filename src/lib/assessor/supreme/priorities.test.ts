@@ -53,17 +53,3 @@ describe("computePriorities", () => {
   });
 });
 
-import { it as it2 } from "vitest";
-it2("debug", async () => {
-  const supabase = makeSupabase({
-    follow_ups: [{
-      id: "f1", user_id: "u1", title: "x", type: "Tarefa",
-      due_date: new Date(Date.now() - 2*864e5).toISOString(),
-      status: "Pendente", priority: "Alta", person_id: null, outcome: null,
-    }],
-    opportunities: [],
-    people: [],
-  });
-  const r = await supabase.from("follow_ups").select().eq("user_id","u1").neq("status","Concluído").is("outcome", null).lte("due_date", new Date(Date.now()+7*864e5).toISOString()).order().limit();
-  console.log("R", r);
-});
