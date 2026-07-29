@@ -579,6 +579,10 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   create_prospecting_lead: execCreateProspectingLead,
   search_prospecting_leads: execSearchProspectingLeads,
   update_prospecting_lead: execUpdateProspectingLead,
+  reschedule_reminder: execRescheduleReminder,
+  search_active_reminders: execSearchActiveReminders,
+  cancel_reminder: execCancelReminder,
+  send_reminder_now: execSendReminderNow,
 };
 
 export async function dispatchToolCall(
