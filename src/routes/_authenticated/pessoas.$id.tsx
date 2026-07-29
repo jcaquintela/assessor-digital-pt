@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatData, formatEUR, type Relacao } from "@/lib/demo-data";
 import { ChevronLeft, Mail, Phone, Trash2, Save, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
+import { PersonExtrasCard } from "@/components/pessoas/person-extras-card";
 
 const RELACOES: Relacao[] = ["Cliente", "Potencial", "Proprietário", "Referenciador", "Colega"];
 
@@ -195,6 +196,8 @@ function PessoaDetail() {
             </div>
           </CardContent>
         </Card>
+
+        <PersonExtrasCard personId={pessoa.id} />
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
