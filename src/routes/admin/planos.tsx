@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { listPlanConfigs, savePlanConfig } from "@/lib/admin/afonso.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
-import { AUTONOMY_CAP_BY_TIER, MODULE_MIN_TIER, tierLabel, tierAtLeast, type SubscriptionTier } from "@/lib/subscription/tiers";
+import { AUTONOMY_CAP_BY_TIER, MODULE_MIN_TIER, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 
 export const Route = createFileRoute("/admin/planos")({
   head: () => ({ meta: [{ title: "Planos & preços — Afonso admin" }] }),
@@ -127,6 +127,3 @@ function PlanosPage() {
     </div>
   );
 }
-
-// Mantém o import de tierAtLeast usável por futuras regras de gating de preços.
-export const _tierAtLeast = tierAtLeast;
