@@ -236,8 +236,9 @@ export const createOrMergePerson = createServerFn({ method: "POST" })
     return { id: newId, created: true, merged: false, addedPhones, addedRoles: roles };
   });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function mergeInto(
-  supabase: ReturnType<typeof requireSupabaseAuth extends never ? never : (typeof globalThis)["supabaseStub"]> | any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  supabase: any,
   userId: string,
   targetId: string,
   p: PersonInput,
