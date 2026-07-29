@@ -32,6 +32,7 @@ export function QuickAdd() {
   };
 
   return (
+    <>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Adicionar</Button>
@@ -72,6 +73,7 @@ export function QuickAdd() {
         </div>
       </PopoverContent>
     </Popover>
+    <NewPersonDialog open={personOpen} onOpenChange={setPersonOpen} defaultText={text} />
     </>
   );
 }
