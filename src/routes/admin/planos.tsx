@@ -25,12 +25,17 @@ const AUTONOMY_LABEL = { conservador: "Conservador", balanced: "Equilibrado", pr
 
 const BASE_MODULES = "Hoje, Pessoas, Agenda, Drive, Diversos";
 
+const MODULE_LABEL: Record<string, string> = {
+  "/imoveis": "Imóveis",
+  "/prospecao": "Prospeção",
+  "/negocio": "Negócio",
+};
+
 // Módulos por tier lidos de MODULE_MIN_TIER (mesma fonte usada pelo TierGate).
 function modulesFor(tier: SubscriptionTier): string {
   const unlocked = Object.entries(MODULE_MIN_TIER)
     .filter(([, min]) => min === tier)
-    .map(([path]) => path.replace("/", ""))
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1));
+    .map(([path]) => MODULE_LABEL[path] ?? path.replace("/", ""));
   if (tier === "base") return BASE_MODULES;
   if (!unlocked.length) return tier === "hub" ? "+ vista agregada" : "—";
   return `+ ${unlocked.join(", ")}`;
