@@ -148,7 +148,7 @@ function DrivePage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") navigate({ search: (s) => ({ ...s, q }) });
+              if (e.key === "Enter") navigate({ search: (s: any) => ({ ...s, q }) });
             }}
             placeholder="Pesquisa por nome, pessoa, imóvel ou conteúdo"
             className="pl-8"
@@ -170,7 +170,7 @@ function DrivePage() {
           return (
             <button
               key={t.key}
-              onClick={() => navigate({ search: (s) => ({ ...s, tab: t.key }) })}
+              onClick={() => navigate({ search: (s: any) => ({ ...s, tab: t.key }) })}
               className={
                 "shrink-0 rounded-full border px-3 py-1 text-sm transition " +
                 (active
