@@ -425,6 +425,14 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   }
 
   // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
+  // Financeiro: duplicado do mesmo dia — pergunta antes de assumir novo registo.
+  const finTool = toolResults.find((t) => t.name === "create_financial_movement");
+  if (finTool?.ok && (finTool.data as any)?.duplicate === true) {
+    const existing = (finTool.data as any)?.existing ?? {};
+    const kind = existing.type === "expense" ? "despesa" : "comissão";
+    reply = `Já tinha uma ${kind} desse valor registada hoje. É a mesma ou queres registar outra?`;
+  }
+
   // técnico, no máximo 2 frases, uma pergunta de cada vez.
   const prospectingActed = !!leadTool && leadTool.ok && !(leadTool.data as any)?.duplicate;
   reply = enforceHumanTone(reply, { actionExecutedOk: (shouldAct && allOk) || prospectingActed });
