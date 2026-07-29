@@ -770,6 +770,36 @@ export type Database = {
         }
         Relationships: []
       }
+      channel_links: {
+        Row: {
+          channel: string
+          created_at: string
+          display_name: string | null
+          external_id: string
+          id: string
+          linked_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          display_name?: string | null
+          external_id: string
+          id?: string
+          linked_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          display_name?: string | null
+          external_id?: string
+          id?: string
+          linked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       consultant_preferences: {
         Row: {
           autonomy_level: string
@@ -1654,6 +1684,8 @@ export type Database = {
           name: string | null
           phone: string | null
           phone_verified_at: string | null
+          plan_tier: string
+          primary_channel: string
           updated_at: string
           whatsapp_link_status: string
           whatsapp_linked_at: string | null
@@ -1667,6 +1699,8 @@ export type Database = {
           name?: string | null
           phone?: string | null
           phone_verified_at?: string | null
+          plan_tier?: string
+          primary_channel?: string
           updated_at?: string
           whatsapp_link_status?: string
           whatsapp_linked_at?: string | null
@@ -1680,6 +1714,8 @@ export type Database = {
           name?: string | null
           phone?: string | null
           phone_verified_at?: string | null
+          plan_tier?: string
+          primary_channel?: string
           updated_at?: string
           whatsapp_link_status?: string
           whatsapp_linked_at?: string | null
@@ -2010,6 +2046,42 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weekday?: number | null
+        }
+        Relationships: []
+      }
+      telegram_invites: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          note: string | null
+          plan_tier: string
+          used_at: string | null
+          used_by: string | null
+          used_chat_id: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          note?: string | null
+          plan_tier?: string
+          used_at?: string | null
+          used_by?: string | null
+          used_chat_id?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          note?: string | null
+          plan_tier?: string
+          used_at?: string | null
+          used_by?: string | null
+          used_chat_id?: string | null
         }
         Relationships: []
       }
