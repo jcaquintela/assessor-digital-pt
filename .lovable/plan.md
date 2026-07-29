@@ -1,108 +1,192 @@
-# Telegram — onboarding por convite com shadow accounts
 
-Nota: a tua mensagem ficou truncada a meio do bloco `TelegramProvider` (após `downloadFile`). Presumo que os pontos seguintes descreviam: convites (tabela + fluxo), shadow accounts em Supabase Auth, saudação de onboarding, botões inline (reminders) e allow-list. Se algum detalhe posterior for diferente, corrige-me antes de eu implementar.
+# Channel Gateway — WhatsApp e Telegram como transportes do mesmo motor
 
-## Objetivo
+## Estado atual (o que já cumpre o princípio)
 
-Adicionar o canal Telegram ao Assessor mantendo motor v3, isolamento por `user_id`, arquitetura actual e WhatsApp intactos. Bot **só por convite** no piloto.
+Ambos os webhooks já delegam ao mesmo pipeline: `processAssessorMessage` em `src/lib/assessor/engine.server.ts`, com o motor v3, pending_actions, conversation_states, reminders, prospecting, Drive, people, properties, agenda, corrections e sanitize. Já existe:
 
-## Arquitetura
+- `src/lib/assessor/channels.server.ts` — `findUserIdByChannel`, `linkChannelToUser`, `sendReplyForChannel` (WhatsApp+Telegram).
+- Tabela `channel_links` como fonte única de verdade da resolução por canal.
+- `processIncomingFile` partilhado (mesmo bucket, mesma classificação).
+- Reasoning Engine v3, ferramentas, memória e reminders indiferentes ao canal.
+
+O que **falta**: os dois webhooks ainda contêm lógica de negócio duplicada (normalização, dedupe, dispatch por tipo, media handling, reply-and-store, transcrição). É essa camada que vamos extrair — sem tocar no motor.
+
+## 1. Código WhatsApp a extrair para o Channel Gateway
+
+De `src/routes/api/public/whatsapp-webhook.ts`:
+
+- `handleEvent` / `handleMessage` — dispatch por `type` e dedupe.
+- `handleMediaMessage` — download, `processIncomingFile`, transcrição, re-entrada no motor.
+- Blocos `interactive`/`button` — extração de título/payload e re-injecção como texto.
+- `replyAndStore` — envio + persistência do turno do assistente com telemetria.
+- Persistência inicial da mensagem `role: "user"` (hoje é ad-hoc em cada ramo).
+
+O que **NÃO** se extrai (fica no webhook WhatsApp): verificação HMAC (Meta), `GET` challenge, `tryLinkCode` (LIGAR-XXXXXX é específico WhatsApp), `bumpAttempts`.
+
+## 2. Interfaces comuns
+
+Novo módulo `src/lib/assessor/channel-gateway/`:
 
 ```text
-Telegram → webhook /api/public/telegram/webhook
-  → verificar secret_token (derivado de TELEGRAM_API_KEY)
-  → normalizar update em CanonicalIncomingMessage
-  → resolveUserIdByChannel({channel:'telegram', chat_id})
-     ├─ existe link  → user_id
-     └─ não existe   → fluxo de convite / recusa
-  → processAssessorMessage(user_id, channel:'telegram', content, ...)  [motor v3 já existente]
-  → TelegramProvider.sendText / sendOptions
+channel-gateway/
+├── types.ts               NormalizedInbound, ChannelAdapter, AdapterReply
+├── adapter.ts             registry: getAdapter(channel)
+├── whatsapp-adapter.ts    implementa ChannelAdapter para WhatsApp
+├── telegram-adapter.ts    implementa ChannelAdapter para Telegram
+├── ingest.server.ts       runInboundPipeline(normalized) — o ÚNICO ponto de entrada
+├── media.server.ts        handleInboundMedia(normalized, adapter)
+└── reply.server.ts        deliverReply(userId, channel, externalId, outcome)
 ```
 
-O motor v3 (`reasoning-engine.server.ts`) já é agnóstico ao canal — só precisa de `channel` e `userId`. Nada de lógica de negócio no webhook.
+`NormalizedInbound` (produzido pelos adapters, consumido pela pipeline):
 
-## Base de dados (uma migration)
+```ts
+type NormalizedInbound = {
+  channel: "whatsapp" | "telegram";
+  externalConversationId: string;   // wa phone ou chat_id
+  externalMessageId: string;         // wamid ou telegram_${update_id}
+  messageType: "text" | "image" | "document" | "audio" | "contact" | "location" | "callback" | "unsupported";
+  text: string | null;
+  media?: { externalFileId: string; fileName: string | null; mimeType: string; size: number; bytes: Uint8Array } | null;
+  callback?: { data: string } | null;
+  metadata: Record<string, unknown>; // caption, replyTo, from, etc.
+  receivedAt: Date;
+};
+```
 
-1. **`channel_links`** — mapa canónico canal↔user_id (substitui a lógica ad-hoc `profiles.phone` a longo prazo; WhatsApp continua a funcionar pelo caminho actual em paralelo).
-   - `id`, `user_id → auth.users`, `channel text` (`whatsapp`|`telegram`), `external_id text` (chat_id ou msisdn), `display_name`, `linked_at`, `unique(channel, external_id)`.
-2. **`telegram_invites`** — convites emitidos pelo super_admin.
-   - `code text pk` (ex.: `AFONSO-7X2K`), `created_by`, `plan_tier text default 'free'`, `note`, `expires_at`, `used_by user_id null`, `used_at`, `used_chat_id`.
-3. **`profiles`** — adicionar `plan_tier text not null default 'free'` e `primary_channel text not null default 'whatsapp'`.
-4. **`consultant_preferences`** — já tem `autonomy_level`; garantir default `'conservative'` para contas novas via shadow.
-5. GRANTs + RLS (`auth.uid() = user_id`) em `channel_links`; `telegram_invites` só acessível a `is_admin(auth.uid())`.
+`ChannelAdapter`:
 
-## Shadow accounts
+```ts
+interface ChannelAdapter {
+  channel: "whatsapp" | "telegram";
+  // Transporte
+  sendText(externalId: string, text: string, opts?: { replyTo?: string | null }): Promise<{ ok: boolean; messageId?: string | null; telemetry?: unknown }>;
+  sendOptions(externalId: string, prompt: string, options: Array<{ id: string; label: string }>): Promise<{ ok: boolean }>;
+  sendFile?(externalId: string, file: { bytes: Uint8Array; mimeType: string; fileName?: string }, caption?: string): Promise<{ ok: boolean }>;
+  getFile(externalFileId: string): Promise<{ ok: boolean; bytes?: Uint8Array; mimeType?: string; fileName?: string | null }>;
+  answerInteraction?(interactionId: string, feedback?: string): Promise<void>;
+  formatResponse(text: string): string; // hoje é identity; hook para markdown/HTML se necessário
+  // Persistência do turno do utilizador (dedupe/log)
+  persistInbound(supabaseAdmin: any, n: NormalizedInbound, userId: string | null): Promise<string | null>; // devolve UUID
+}
+```
 
-Novo utilizador chega ao bot com código válido → criar via `supabaseAdmin.auth.admin.createUser({ email: \`tg-${chat_id}@shadow.assessor.local\`, email_confirm: true, user_metadata: { source: 'telegram_shadow', chat_id } })`. O trigger `handle_new_user` já cria `profiles` + `user_roles('consultant')`. Depois marcar convite como usado e inserir `channel_links`.
+## 3. Adapter WhatsApp
 
-O utilizador pode mais tarde reclamar a conta ligando email real (fora do âmbito desta tarefa — deixar TODO documentado).
+`whatsapp-adapter.ts` encapsula:
 
-## Provider abstracto
+- Envio via `sendWhatsAppText` (mantém telemetria e `kind: "auto"`).
+- `getFile` = `downloadWhatsAppMedia(mediaId)`.
+- `persistInbound` = insert em `assessor_messages` com `whatsapp_message_id = wamid` (dedupe existente preservado).
+- `sendOptions` mapeia para `interactive.button` (até 3 botões) ou fallback para texto numerado.
+- `formatResponse` = identity.
 
-`src/lib/telegram/provider.server.ts` — interface `TelegramProvider` (a que enviaste) + implementação `LovableConnectorTelegramProvider` que usa o connector Lovable via `connector-gateway.lovable.dev/telegram` com `LOVABLE_API_KEY` + `TELEGRAM_API_KEY`. Todo o webhook e motor consomem só a interface — trocar de provider no futuro é uma linha.
+O parser de payload Meta (`entry[].changes[].value.messages[]`, `interactive.button_reply`, `list_reply`, `image/document/audio/voice`) vive em `whatsapp-adapter.ts::parseUpdate(rawJson): NormalizedInbound[]`.
 
-## Webhook
+## 4. Adapter Telegram
 
-`src/routes/api/public/telegram/webhook.ts`:
+`telegram-adapter.ts` encapsula:
 
-- deriva `secret_token = sha256('telegram-webhook:'+TELEGRAM_API_KEY).base64url`, valida `X-Telegram-Bot-Api-Secret-Token` em `timingSafeEqual`;
-- extrai `message` / `edited_message` / `callback_query`;
-- idempotência por `update_id` (upsert numa nova `telegram_updates` mínima, ou reutilizar `assessor_messages.whatsapp_message_id` renomeando o índice? — proposta: adicionar coluna `external_update_id` a `assessor_messages` reutilizada por canal; a migration inclui isso);
-- fluxo utilizador:
-  - `channel_links` tem match → `processAssessorMessage`;
-  - sem match e texto = código de convite válido → cria shadow account, liga, responde saudação de onboarding + exemplo da placa;
-  - sem match e sem código → resposta curta: "Este bot é privado. Precisas de um código de convite.";
-- media (photo/document/voice): `provider.getFile` + `downloadFile` → passa para `handleIncomingFile` existente (mesmo pipeline do WhatsApp);
-- `callback_query` (botões): mapeia para o mesmo handler das buttons do WhatsApp (adiar reminder, etc.) e chama `answerCallback`.
+- Envio via `TelegramProvider.sendText` / `answerCallback`.
+- `getFile` = `provider.getFile` + `provider.downloadFile`.
+- `persistInbound` reutiliza a chave `telegram_${update_id}` no campo `whatsapp_message_id` até introduzirmos coluna dedicada (nota abaixo).
+- `sendOptions` mapeia para inline keyboard (`callback_data = option.id`).
+- `parseUpdate(update): NormalizedInbound[]` extrai texto/foto/documento/voice/audio e `callback_query`.
 
-## Motor & Serviços partilhados
+Mantém o fluxo actual de convite (`claimInvite`) mas isolado em `telegram-adapter.ts::onboardIfMissingUser(normalized)`, chamado ANTES da `runInboundPipeline` quando `findUserIdByChannel` devolve `null`. O onboarding fica só no adapter porque o convite é específico do canal.
 
-- Extrair `findUserIdByChannel(channel, externalId)` para `src/lib/assessor/channels.server.ts` e usar tanto no webhook WhatsApp como no Telegram.
-- `sendReplyForChannel(user, channel, text)` — despacha para `sendWhatsAppText` ou `TelegramProvider.sendText` conforme `channel`.
-- `reminders.server.ts` `dispatchDueFollowUpReminders` passa a olhar `primary_channel` do consultor.
+## 5. Pipeline comum
 
-## Admin (piloto por convite)
+`runInboundPipeline(normalized, adapter, supabaseAdmin)`:
 
-Nova página `/admin/convites`:
-- listar `telegram_invites` (código, usado por, quando);
-- botão "Gerar convite" → cria código legível + `expires_at = now()+30d` + `plan_tier`;
-- copiar link `https://t.me/<bot>?start=<code>` (o webhook trata `/start <code>` como resgate).
+```text
+1. userId = findUserIdByChannel(channel, externalConversationId)
+2. persistedMsgUuid = adapter.persistInbound(normalized, userId)   // idempotente via unique key
+3. Se !userId:
+     → adapter.onboardIfMissingUser?(normalized) — fluxo próprio do canal.
+     → Se nada: adapter.sendText(REPLY_UNASSOCIATED). Fim.
+4. Se messageType === "unsupported" → adapter.sendText(REPLY_UNSUPPORTED). Fim.
+5. Se messageType === "callback":
+     content = normalized.callback.data      // token opaco ou label
+     → processAssessorMessage({ userId, channel, content, sourceMessageId: null })
+     → adapter.answerInteraction(interactionId)  (se aplicável)
+     → deliverReply(...)
+6. Se messageType in {image, document, audio}:
+     → handleInboundMedia(normalized, adapter, userId, persistedMsgUuid)
+       (usa processIncomingFile; se audio → transcribeAudio → re-entra em processAssessorMessage)
+7. Se messageType === "text":
+     → processAssessorMessage({ userId, channel, content: text, sourceMessageId: persistedMsgUuid })
+     → deliverReply(...)
+```
 
-## Autonomia conservadora
+`deliverReply` respeita a convenção existente: quando `outcome.messageType === "__ALREADY_PERSISTED__"`, apenas envia (motor já persistiu); caso contrário, envia + insere `role: "assistant"` com telemetria.
 
-Shadow accounts recém-criadas → `consultant_preferences.autonomy_level = 'conservative'` (pede confirmação para tudo excepto leitura). Já existente, só garantir default no INSERT inicial.
+## 6. Mudanças mínimas nos webhooks
 
-## Secrets
+`src/routes/api/public/whatsapp-webhook.ts` (≈570 → ≈120 linhas):
 
-- `TELEGRAM_API_KEY` — via connector Lovable (`standard_connectors--connect` com `connector_id: telegram`). Peço-te para autorizar quando chegar a esse ponto — não avanço sem.
-- `LOVABLE_API_KEY` já existe.
+```ts
+POST: async ({ request }) => {
+  if (!verifyHmac(...)) return 401;
+  const payload = JSON.parse(raw);
+  const adapter = getAdapter("whatsapp");
+  const inbounds = adapter.parseUpdate(payload);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  for (const n of inbounds) {
+    // Fast-path LIGAR-XXXXXX antes da pipeline (fluxo legado só WhatsApp)
+    if (isLinkCode(n)) { await handleLinkCode(...); continue; }
+    await runInboundPipeline(n, adapter, supabaseAdmin);
+  }
+  return new Response("OK");
+}
+```
 
-## Registo do webhook
+`src/routes/api/public/telegram/webhook.ts` (≈366 → ≈70 linhas):
 
-Depois do route estar deployado, corro `setWebhook` via gateway (do sandbox) apontando para `https://project--<id>-dev.lovable.app/api/public/telegram/webhook` com o `secret_token` derivado. `allowed_updates: ["message","edited_message","callback_query"]`.
+```ts
+POST: async ({ request }) => {
+  if (!verifyTelegramSecret(...)) return 401;
+  const update = await request.json();
+  const adapter = getAdapter("telegram");
+  const inbounds = adapter.parseUpdate(update);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  for (const n of inbounds) await runInboundPipeline(n, adapter, supabaseAdmin);
+  return Response.json({ ok: true });
+}
+```
 
-## Testes
+Nenhuma referência directa a `sendWhatsAppText`, `getTelegramProvider`, `downloadWhatsAppMedia`, `processIncomingFile`, `processAssessorMessage` nos ficheiros de webhook — tudo passa pelo adapter/pipeline.
 
-- `src/lib/telegram/provider.test.ts` — mock de fetch, verifica shape das chamadas ao gateway.
-- `src/lib/assessor/channels.test.ts` — resolve utilizador por canal, cria shadow com convite, rejeita sem convite.
-- Idempotência `update_id`.
+## 7. Testes de equivalência
 
-## Não incluído nesta tarefa
+Novo `src/lib/assessor/channel-gateway/equivalence.test.ts` com fake adapters em memória e Supabase mockado (padrão dos testes v3 existentes). Cada cenário é um `it.each([["whatsapp"], ["telegram"]])`:
 
-- Reclamar shadow account com email real (TODO).
-- Tornar bot público.
-- UI de gestão de canais no dashboard do consultor.
+Cenários: saudação, criar seguimento, confirmar ("sim"), corrigir hora, reagendar reminder, consultar agenda, criar pessoa, criar imóvel, registar placa, PDF, áudio (mock de transcribe), resposta curta, botão/callback, reminder proativo (via `dispatchDueFollowUpReminders` + `primary_channel`), isolamento (dois userIds distintos, mesmo texto, não vazam registos).
 
----
+Assert por cenário: o **resultado de domínio** (rows criadas em `follow_ups`/`reminders`/`prospecting_leads`/etc.) é idêntico entre canais; só variam `external_message_id` e a forma da resposta (texto vs botões). Alvo: ~15 cenários × 2 canais.
 
-## Ordem de execução
+## 8. Notas técnicas
 
-1. Migration (tabelas + colunas + RLS + GRANTs).
-2. `provider.server.ts` + testes.
-3. `channels.server.ts` (resolveUserIdByChannel + sendReplyForChannel).
-4. Webhook `/api/public/telegram/webhook`.
-5. Refactor mínimo do webhook WhatsApp para usar `channels.server.ts` (sem alterar comportamento).
-6. Página admin `/admin/convites`.
-7. Pedir connect do connector Telegram, registar `setWebhook`, smoke test com convite real.
+- **Coluna dedupe**: hoje `assessor_messages.whatsapp_message_id` é reutilizada para Telegram (`telegram_${update_id}`). Fica registado como dívida técnica; migração para `external_message_id` (+ backfill) é separada e não bloqueia esta refactor.
+- **Mensagens proativas**: `sendReplyForChannel` já existe; passa a ser o único ponto usado por `dispatchDueFollowUpReminders`, `proactivity.server.ts` e briefings, escolhendo canal por `profiles.primary_channel` com fallback ao outro canal linkado em `channel_links`.
+- **Sem alterações de schema** nesta refactor.
+- **Sem alterações no motor v3, prompts, tools, memory, corrections, quality, golden**.
+- Não se cria `TelegramEngine`, `TelegramPrompt`, `TelegramTools`, `TelegramMemory` — o pedido explicita que não existem.
 
-Confirmas para avançar? Em particular: (a) o resto do bloco truncado da tua mensagem não muda nada acima; (b) autorizas criar shadow accounts com email sintético `tg-<chat_id>@shadow.assessor.local`.
+## 9. Ordem de execução
+
+1. Criar `channel-gateway/types.ts` + `adapter.ts` (registry).
+2. Criar `whatsapp-adapter.ts` (mover `parseUpdate`, media download, send + telemetria).
+3. Criar `telegram-adapter.ts` (mover `parseUpdate`, `getFile`/`downloadFile`, send, callback, onboarding por convite).
+4. Criar `ingest.server.ts` + `media.server.ts` + `reply.server.ts` (pipeline única).
+5. Reescrever os dois ficheiros de webhook para o esqueleto mínimo (~70–120 linhas cada).
+6. Adicionar `equivalence.test.ts` parametrizado e correr `bunx vitest run`.
+7. Smoke test manual: enviar "Placa Santa Maria da Feira 932145678 apartamento" em ambos os canais e confirmar que o `prospecting_leads` criado é equivalente.
+
+## Critério de aceitação
+
+- Os webhooks não contêm nenhuma chamada directa a `processAssessorMessage`, `processIncomingFile`, `transcribeAudio`, `sendWhatsAppText`, `getTelegramProvider` — tudo passa por `runInboundPipeline` / `ChannelAdapter`.
+- Zero regressões nas suites existentes.
+- Testes de equivalência verdes em ambos os canais.
+- Diferenças entre WhatsApp e Telegram no repo restringem-se a `whatsapp-adapter.ts` e `telegram-adapter.ts`.
