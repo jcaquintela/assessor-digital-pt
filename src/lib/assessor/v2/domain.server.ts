@@ -286,6 +286,27 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
       .select("id")
       .single();
     reminderId = (rem as { id: string } | null)?.id ?? null;
+    // Registo canónico em `reminders` para o dispatcher robusto.
+    if (reminderId) {
+      await upsertReminder(ctx.supabase, {
+        userId: ctx.userId,
+        related_resource_type: "follow_up",
+        related_resource_id: reminderId,
+        scheduled_for: remindAt.toISOString(),
+        message_preview: `Lembrete: ${v.title.trim()}`,
+      });
+    }
+  }
+  // Regista também um `reminder` para o próprio evento (à hora de início),
+  // para o consultor ser avisado se pediu confirmação.
+  if ((data as any)?.id) {
+    await upsertReminder(ctx.supabase, {
+      userId: ctx.userId,
+      related_resource_type: "follow_up",
+      related_resource_id: (data as any).id,
+      scheduled_for: dueIsoDate,
+      message_preview: `Lembrete: ${v.title.trim()} (${v.start_time}).`,
+    });
   }
   return ok({ event: data, reminderId });
 }
