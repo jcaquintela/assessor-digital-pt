@@ -183,6 +183,7 @@ describe("v3 · prospeção · executor domínio (dedupe + insert)", () => {
     expect(insertedFollowUp?.related_prospecting_lead_id).toBe("lead-1");
     expect(insertedFollowUp?.type).toBe("chamada");
     expect(insertedFollowUp?.priority).toBe("media");
-    expect(leadPatch?.next_follow_up_at).toBe("2026-07-29T11:45:00");
+    // 11:45 Europe/Lisbon (verão, UTC+1) → 10:45 UTC.
+    expect(leadPatch?.next_follow_up_at).toBe("2026-07-29T10:45:00.000Z");
   });
 });
