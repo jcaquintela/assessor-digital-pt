@@ -454,7 +454,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
   }
   reply = await applySafetyNet(ctx, {
-    content: trimmed,
+    content: buildArchiveContent({
+      trimmed,
+      pendingContent: pendingForArchive?.original_content ?? null,
+      recentRows: (recentRows as any[]) ?? [],
+    }),
     outcome: archiveOutcome,
     reason: archiveReason,
     reply,
