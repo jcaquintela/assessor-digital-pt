@@ -82,8 +82,9 @@ describe("v3 · prospeção · tools expostas", () => {
     });
     expect(r.success).toBe(true);
     if (r.success) {
-      expect(r.data.type).toBe("chamada");
-      expect(r.data.priority).toBe("media");
+      const data = r.data as { type: string; priority: string };
+      expect(data.type).toBe("chamada");
+      expect(data.priority).toBe("media");
     }
   });
 });
