@@ -5,6 +5,7 @@ import { getMyAdminRole } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut, ShieldCheck } from "lucide-react";
+import { HealthStrip } from "@/components/admin/health-strip";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -16,20 +17,37 @@ export const Route = createFileRoute("/admin")({
   component: AdminLayout,
 });
 
-const nav: { to: string; label: string; exact?: boolean }[] = [
-  { to: "/admin", label: "Visão geral", exact: true },
-  { to: "/admin/utilizadores", label: "Utilizadores" },
-  { to: "/admin/subscricoes", label: "Subscrições" },
-  { to: "/admin/utilizacao", label: "Utilização" },
-  { to: "/admin/suporte", label: "Suporte" },
-  { to: "/admin/integracoes", label: "Integrações" },
-  { to: "/admin/convites", label: "Convites Telegram" },
-  { to: "/admin/funcionalidades", label: "Funcionalidades" },
-  { to: "/admin/qualidade", label: "Qualidade" },
-  { to: "/admin/goldens", label: "Goldens" },
-  { to: "/admin/auditoria", label: "Auditoria" },
-  { to: "/admin/seguranca", label: "Segurança" },
-  { to: "/admin/definicoes", label: "Definições" },
+type NavItem = { to: string; label: string; exact?: boolean };
+
+const navGroups: { group: string; items: NavItem[] }[] = [
+  {
+    group: "Negócio do Afonso",
+    items: [
+      { to: "/admin", label: "Visão geral", exact: true },
+      { to: "/admin/negocio", label: "Negócio" },
+      { to: "/admin/planos", label: "Planos & preços" },
+      { to: "/admin/faturacao", label: "Faturação" },
+      { to: "/admin/custos", label: "Custos" },
+      { to: "/admin/aquisicao", label: "Aquisição" },
+    ],
+  },
+  {
+    group: "Outras páginas",
+    items: [
+      { to: "/admin/utilizadores", label: "Utilizadores" },
+      { to: "/admin/subscricoes", label: "Subscrições" },
+      { to: "/admin/utilizacao", label: "Utilização" },
+      { to: "/admin/suporte", label: "Suporte" },
+      { to: "/admin/integracoes", label: "Integrações" },
+      { to: "/admin/convites", label: "Convites Telegram" },
+      { to: "/admin/funcionalidades", label: "Funcionalidades" },
+      { to: "/admin/qualidade", label: "Qualidade" },
+      { to: "/admin/goldens", label: "Goldens" },
+      { to: "/admin/auditoria", label: "Auditoria" },
+      { to: "/admin/seguranca", label: "Segurança" },
+      { to: "/admin/definicoes", label: "Definições" },
+    ],
+  },
 ];
 
 function AdminLayout() {
@@ -55,47 +73,45 @@ function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 md:flex dark:border-slate-800 dark:bg-slate-900">
-        <div className="mb-8 flex items-center gap-2 px-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900">
-            <ShieldCheck className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="text-sm font-semibold">Administração</div>
-            <div className="text-xs text-slate-500 capitalize">{data.role.replace("_", " ")}</div>
-          </div>
+    <div className="admin-root min-h-screen">
+      <aside className="admin-nav fixed inset-y-0 left-0 z-20 hidden w-56 flex-col py-6 md:flex">
+        <div className="brand flex items-center gap-2 px-[22px] pb-6">
+          <span className="dot" />
+          Afonso — admin
         </div>
-        <nav className="flex-1 space-y-0.5">
-          {nav.map((n) => {
-            const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
-            return (
-            <Link
-                key={n.to}
-                to={n.to as any}
-                className={`block rounded-md px-3 py-2 text-sm ${active ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
-              >
-                {n.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto">
+          {navGroups.map((g) => (
+            <div key={g.group}>
+              <div className="navgroup">{g.group}</div>
+              {g.items.map((n) => {
+                const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
+                return (
+                  <Link key={n.to} to={n.to as any} className={`navitem ${active ? "active" : ""}`}>
+                    {n.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
-        <div className="mt-6 space-y-2">
-          <Link to="/" className="block text-xs text-slate-500 hover:underline">← Voltar à app</Link>
-          <Button variant="outline" size="sm" className="w-full justify-start" onClick={signOut}>
-            <LogOut className="mr-2 h-3 w-3" /> Terminar sessão
-          </Button>
+        <div className="navfoot">
+          <div className="capitalize">{data.role.replace("_", " ")}</div>
+          <Link to="/" className="mt-2 block hover:underline">← Voltar à app</Link>
+          <button type="button" onClick={signOut} className="mt-2 flex items-center gap-1 hover:underline">
+            <LogOut className="h-3 w-3" /> Terminar sessão
+          </button>
         </div>
       </aside>
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center gap-2">
+      <header className="admin-nav sticky top-0 z-10 flex items-center justify-between px-4 py-3 md:hidden">
+        <div className="flex items-center gap-2 text-white">
           <ShieldCheck className="h-4 w-4" />
-          <span className="text-sm font-semibold">Admin</span>
+          <span className="text-sm font-semibold">Afonso — admin</span>
         </div>
-        <Link to="/" className="text-xs text-slate-500">Sair</Link>
+        <Button variant="ghost" size="sm" className="text-xs text-white" onClick={signOut}>Sair</Button>
       </header>
-      <main className="md:pl-64">
-        <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">
+      <main className="md:pl-56">
+        <div className="mx-auto max-w-6xl px-4 py-8 md:px-10 md:pb-16">
+          <HealthStrip />
           <Outlet />
         </div>
       </main>
