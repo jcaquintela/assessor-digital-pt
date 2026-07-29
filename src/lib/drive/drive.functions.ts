@@ -143,12 +143,12 @@ export const getDriveFile = createServerFn({ method: "POST" })
         };
         const target = map[l.entity_type];
         if (target) {
-          const { data: row } = await supabase
+          const { data: row } = await (supabase as any)
             .from(target[0])
-            .select(`${target[1]}`)
+            .select(target[1])
             .eq("id", l.entity_id)
             .maybeSingle();
-          name = (row as any)?.[target[1]] ?? null;
+          name = row?.[target[1]] ?? null;
         }
         return { ...l, entity_name: name };
       }),
@@ -172,14 +172,14 @@ export const setDriveFileStatus = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const now = new Date().toISOString();
-    const patch: Record<string, unknown> =
+    const patch =
       data.action === "archive"
         ? { archived_at: now, processing_status: "archived" }
         : data.action === "unarchive"
           ? { archived_at: null, processing_status: "organized" }
           : { deleted_at: now, processing_status: "deleted" };
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("uploaded_files")
       .update(patch)
       .eq("id", data.id)
