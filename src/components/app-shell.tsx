@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { GlobalSearch } from "@/components/hoje/global-search";
 
 const desktopNav = [
   { to: "/hoje", label: "Hoje", icon: Home },
@@ -120,7 +121,12 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         </main>
       ) : (
         <main className="min-h-0 min-w-0 md:ml-64 md:pb-8">
-          <div className="mx-auto min-w-0 max-w-6xl px-4 py-6 md:px-8 md:py-10">{children}</div>
+          <div className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+            <div className="mx-auto min-w-0 max-w-6xl px-4 py-3 md:px-8 md:py-4">
+              <GlobalSearch size="lg" />
+            </div>
+          </div>
+          <div className="mx-auto min-w-0 max-w-6xl px-4 py-6 md:px-8 md:py-8">{children}</div>
         </main>
       )}
 

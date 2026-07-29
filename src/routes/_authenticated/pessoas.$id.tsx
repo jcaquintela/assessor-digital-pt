@@ -13,6 +13,7 @@ import { formatData, formatEUR, type Relacao } from "@/lib/demo-data";
 import { ChevronLeft, Mail, Phone, Trash2, Save, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import { PersonExtrasCard } from "@/components/pessoas/person-extras-card";
+import { PersonLinkedCard } from "@/components/pessoas/person-linked-card";
 
 const RELACOES: Relacao[] = ["Cliente", "Potencial", "Proprietário", "Referenciador", "Colega"];
 
@@ -120,7 +121,6 @@ function PessoaDetail() {
   };
 
   const opsPessoa = oportunidades.filter((o) => o.pessoaId === pessoa.id);
-  const imoveisPessoa = imoveis.filter((i) => i.proprietarioId === pessoa.id);
   const segsPessoa = seguimentos.filter((s) => s.pessoaId === pessoa.id);
   const docsPessoa = documentos.filter((d) => d.pessoaId === pessoa.id);
 
@@ -200,6 +200,8 @@ function PessoaDetail() {
         <PersonExtrasCard personId={pessoa.id} />
       </div>
 
+      <PersonLinkedCard personId={pessoa.id} />
+
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="p-4">
@@ -216,24 +218,6 @@ function PessoaDetail() {
                     </div>
                     <div className="text-xs text-muted-foreground">{o.estado} · Prob. {o.probabilidade}</div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold">Imóveis ({imoveisPessoa.length})</h3>
-            {imoveisPessoa.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sem imóveis associados como proprietário.</p>
-            ) : (
-              <div className="space-y-2">
-                {imoveisPessoa.map((i) => (
-                  <Link key={i.id} to="/imoveis/$id" params={{ id: i.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
-                    <div className="font-medium">{i.titulo}</div>
-                    <div className="text-xs text-muted-foreground">{i.localizacao} · {formatEUR(i.valor)}</div>
-                  </Link>
                 ))}
               </div>
             )}
