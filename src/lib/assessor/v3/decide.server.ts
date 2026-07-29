@@ -76,7 +76,9 @@ export async function decide(input: {
       { role: "user", content: JSON.stringify(userPayload) },
     ],
     temperature: 0.25,
-    maxTokens: 700,
+    // Gemini 3.6 Flash gasta ~670 reasoning tokens invisíveis antes de emitir texto.
+    // Precisamos de espaço suficiente para o JSON de saída após esse overhead.
+    maxTokens: 3000,
     responseFormat: { type: "json_object" },
   });
 

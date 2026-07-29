@@ -43,7 +43,7 @@ export async function reflect(
         }) },
       ],
       temperature: 0.2,
-      maxTokens: 400,
+      maxTokens: 1500,
       responseFormat: { type: "json_object" },
     });
     const raw = call.message?.content ?? "{}";
