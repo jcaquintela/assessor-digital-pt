@@ -5,14 +5,10 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatData, type Pessoa, type Relacao } from "@/lib/demo-data";
+import { formatData } from "@/lib/demo-data";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
+import { NewPersonDialog } from "@/components/pessoas/new-person-dialog";
 
 export const Route = createFileRoute("/_authenticated/pessoas")({
   head: () => ({
@@ -27,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/pessoas")({
 });
 
 function PessoasPage() {
-  const { pessoas, addPessoa, loading } = useStore();
+  const { pessoas, loading } = useStore();
   const [q, setQ] = useState("");
   const [novoOpen, setNovoOpen] = useState(false);
 
@@ -41,27 +37,10 @@ function PessoasPage() {
         title="Pessoas"
         subtitle={`${pessoas.length} contactos`}
         action={
-          <Dialog open={novoOpen} onOpenChange={setNovoOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="mr-1.5 h-4 w-4" /> Nova pessoa</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Nova pessoa</DialogTitle></DialogHeader>
-              <NovaPessoaForm
-                onSave={async (p) => {
-                  try {
-                    await addPessoa(p);
-                    toast.success("Pessoa criada.");
-                    setNovoOpen(false);
-                  } catch (e) {
-                    toast.error((e as Error).message);
-                  }
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setNovoOpen(true)}><Plus className="mr-1.5 h-4 w-4" /> Nova pessoa</Button>
         }
       />
+      <NewPersonDialog open={novoOpen} onOpenChange={setNovoOpen} />
       <Input
         value={q}
         onChange={(e) => setQ(e.target.value)}
@@ -101,47 +80,5 @@ function PessoasPage() {
         ))}
       </div>
     </AppShell>
-  );
-}
-
-function NovaPessoaForm({ onSave }: { onSave: (p: Omit<Pessoa, "id">) => Promise<void> }) {
-  const [nome, setNome] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [email, setEmail] = useState("");
-  const [relacao, setRelacao] = useState<Relacao>("Potencial");
-  const [resumo, setResumo] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nome.trim()) return;
-    setBusy(true);
-    await onSave({ nome: nome.trim(), telefone, email, relacao, resumo });
-    setBusy(false);
-  };
-
-  return (
-    <form onSubmit={submit} className="space-y-3">
-      <div className="space-y-1.5"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} required /></div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5"><Label>Telefone</Label><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} /></div>
-        <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-      </div>
-      <div className="space-y-1.5">
-        <Label>Relação</Label>
-        <Select value={relacao} onValueChange={(v) => setRelacao(v as Relacao)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {(["Cliente","Potencial","Proprietário","Referenciador","Colega"] as Relacao[]).map((r) => (
-              <SelectItem key={r} value={r}>{r}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1.5"><Label>Resumo</Label><Textarea value={resumo} onChange={(e) => setResumo(e.target.value)} rows={3} /></div>
-      <DialogFooter>
-        <Button type="submit" disabled={busy}>Guardar</Button>
-      </DialogFooter>
-    </form>
   );
 }
