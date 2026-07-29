@@ -1010,6 +1010,53 @@ export type Database = {
         }
         Relationships: []
       }
+      file_links: {
+        Row: {
+          confidence: number | null
+          confirmed_at: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          file_id: string
+          id: string
+          relation_type: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          confirmed_at?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          file_id: string
+          id?: string
+          relation_type?: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          confirmed_at?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          file_id?: string
+          id?: string
+          relation_type?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_links_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_movements: {
         Row: {
           amount: number
@@ -1908,10 +1955,14 @@ export type Database = {
       }
       uploaded_files: {
         Row: {
+          ai_summary: string | null
+          archived_at: string | null
           channel: string
+          checksum: string | null
           classification: string | null
           classification_confidence: number | null
           created_at: string
+          deleted_at: string | null
           document_type: string | null
           error_code: string | null
           error_message: string | null
@@ -1926,7 +1977,9 @@ export type Database = {
           related_pending_action_id: string | null
           related_resource_id: string | null
           related_resource_type: string | null
+          requires_review: boolean
           size_bytes: number
+          source_external_file_id: string | null
           source_message_id: string | null
           storage_path: string
           updated_at: string
@@ -1934,10 +1987,14 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          ai_summary?: string | null
+          archived_at?: string | null
           channel?: string
+          checksum?: string | null
           classification?: string | null
           classification_confidence?: number | null
           created_at?: string
+          deleted_at?: string | null
           document_type?: string | null
           error_code?: string | null
           error_message?: string | null
@@ -1952,7 +2009,9 @@ export type Database = {
           related_pending_action_id?: string | null
           related_resource_id?: string | null
           related_resource_type?: string | null
+          requires_review?: boolean
           size_bytes?: number
+          source_external_file_id?: string | null
           source_message_id?: string | null
           storage_path: string
           updated_at?: string
@@ -1960,10 +2019,14 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          ai_summary?: string | null
+          archived_at?: string | null
           channel?: string
+          checksum?: string | null
           classification?: string | null
           classification_confidence?: number | null
           created_at?: string
+          deleted_at?: string | null
           document_type?: string | null
           error_code?: string | null
           error_message?: string | null
@@ -1978,7 +2041,9 @@ export type Database = {
           related_pending_action_id?: string | null
           related_resource_id?: string | null
           related_resource_type?: string | null
+          requires_review?: boolean
           size_bytes?: number
+          source_external_file_id?: string | null
           source_message_id?: string | null
           storage_path?: string
           updated_at?: string
