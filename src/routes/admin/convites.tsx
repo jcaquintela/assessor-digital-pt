@@ -27,7 +27,7 @@ function ConvitesPage() {
   const [ttl, setTtl] = useState(30);
 
   const createMut = useMutation({
-    mutationFn: () => create({ data: { note: note.trim() || undefined, ttlDays: ttl, planTier: "free" } }),
+    mutationFn: () => create({ data: { note: note.trim() || undefined, ttlDays: ttl, subscriptionTier: "base" } }),
     onSuccess: (r: any) => {
       toast.success(`Convite criado: ${r.code}`);
       setNote("");
