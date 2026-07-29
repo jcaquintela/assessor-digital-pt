@@ -25,9 +25,9 @@ const HAVE_ANY_RE = /\btenho\s+(?:alguma\s+coisa|algo|algum\s+compromiss|alguma\
 const AND_TIME_RE = /^\s*e\s+(hoje|amanh[ãa])\??\s*$/i;
 
 // Períodos.
-const TODAY_RE = /\bhoje\b/i;
-const TOMORROW_RE = /\bamanh[ãa]\b/i;
-const WEEK_RE = /\b(esta\s+semana|na\s+semana|semana)\b/i;
+const TODAY_RE = /\bhoje\b/iu;
+const TOMORROW_RE = /(?:^|[^\p{L}])amanh[ãa](?:[^\p{L}]|$)/iu;
+const WEEK_RE = /\b(esta\s+semana|na\s+semana|semana)\b/iu;
 
 export function detectAgendaQuery(text: string): AgendaPeriod | null {
   const t = (text ?? "").trim();
