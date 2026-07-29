@@ -55,6 +55,14 @@ export async function updateMessageStatus(
 ) {
   const patch: Record<string, unknown> = { status };
   if (payload) patch.structured_payload = payload;
+  // SEGURANÇA MULTI-TENANT
+  // Este UPDATE não filtra por user_id. Só é seguro porque corre no cliente
+  // browser autenticado (`@/integrations/supabase/client`) e a RLS de
+  // assessor_messages (`auth.uid() = user_id`) rejeita linhas de outros
+  // donos. Se migrares este código para supabaseAdmin ou para um contexto
+  // que ignore RLS (edge function, cron, back-office), adiciona
+  // `.eq("user_id", <resolvedUserId>)` — caso contrário passa a permitir
+  // alterar mensagens de qualquer utilizador.
   const { error } = await supabase.from("assessor_messages").update(patch as never).eq("id", id);
   if (error) throw error;
 }
