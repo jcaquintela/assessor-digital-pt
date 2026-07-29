@@ -1,8 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { getMyEffectiveTier } from "@/lib/subscription/tier.functions";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { isModuleVisible } from "@/lib/subscription/tiers";
 import {
   CalendarDays,
@@ -39,14 +37,9 @@ const mobileNav = [
 
 export function AppShell({ children, fullBleed = false }: { children: ReactNode; fullBleed?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const fetchTier = useServerFn(getMyEffectiveTier);
   // Enquanto o tier ainda não carregou, assume 'base' — menos módulos visíveis,
   // nunca revela algo que o utilizador não tenha direito a ver.
-  const { data: tierData } = useQuery({
-    queryKey: ["subscription", "effectiveTier"],
-    queryFn: () => fetchTier(),
-    staleTime: 5 * 60_000,
-  });
+  const { data: tierData } = useEffectiveTier();
   const tier = tierData?.tier ?? "base";
   const visibleDesktopNav = desktopNav.filter((n) => isModuleVisible(n.to, tier));
   const visibleMobileNav = mobileNav.filter((n) => isModuleVisible(n.to, tier));
