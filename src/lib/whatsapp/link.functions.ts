@@ -8,19 +8,9 @@ export const WHATSAPP_CODE_TTL_MIN = 15;
 export const WHATSAPP_CODE_MAX_ATTEMPTS = 5;
 export const WHATSAPP_CODE_PATTERN = /LIGAR-\d{6}/i;
 
-export function hashLinkCode(code: string): string {
-  // Lazy require: this module is imported by client route code
-  // (definicoes.tsx) and node:crypto is externalized in the browser.
-  // Server-only callers (handlers, adapter) still resolve it fine.
-  const { createHash } = require("crypto") as typeof import("crypto");
-  return createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
-}
-
-function generateCode(): string {
-  const { randomInt } = require("crypto") as typeof import("crypto");
-  const n = randomInt(0, 1_000_000).toString().padStart(6, "0");
-  return `LIGAR-${n}`;
-}
+// hashLinkCode / generateLinkCode vivem em ./link-code.server.ts —
+// este módulo é importado por código de cliente (definicoes.tsx) e
+// node:crypto não pode ser referenciado no bundle do browser.
 
 // Fetch and cache the display phone number (E.164 digits) from Meta Graph.
 let _displayNumberCache: { value: string | null; expiresAt: number } | null = null;
@@ -138,7 +128,8 @@ export const startWhatsAppLink = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .is("used_at", null);
 
-    const code = generateCode();
+    const { generateLinkCode, hashLinkCode } = await import("./link-code.server");
+    const code = generateLinkCode();
     const expiresAt = new Date(Date.now() + WHATSAPP_CODE_TTL_MIN * 60_000).toISOString();
     const { error: insErr } = await supabaseAdmin
       .from("whatsapp_link_codes")

@@ -6,10 +6,11 @@
 import { normalizePhone } from "@/lib/whatsapp/phone";
 import { sendWhatsAppText } from "@/lib/whatsapp/send.server";
 import {
-  hashLinkCode,
   WHATSAPP_CODE_MAX_ATTEMPTS,
   WHATSAPP_CODE_PATTERN,
 } from "@/lib/whatsapp/link.functions";
+import { hashLinkCode } from "@/lib/whatsapp/link-code.server";
+import { canUseWhatsApp, normalizeTier } from "@/lib/subscription/tiers";
 import type {
   AdapterMediaBytes,
   AdapterSendResult,
@@ -31,6 +32,8 @@ const REPLY_ENGINE_ERROR =
 const REPLY_LINK_OK =
   "A tua conta ficou associada ao WhatsApp. Já podes começar a falar com o teu Assessor.";
 const REPLY_LINK_EXPIRED = "Este código expirou. Gera um novo código no dashboard.";
+const REPLY_LINK_TIER =
+  "Este código já não é válido: o teu plano actual não inclui WhatsApp. Podes continuar a usar o Assessor pelo Telegram.";
 const REPLY_LINK_INVALID =
   "Não consegui validar este código. Confirma o código no dashboard e tenta novamente.";
 
@@ -253,6 +256,26 @@ async function bumpAttempts(supabaseAdmin: any, id: string, current: number) {
   await supabaseAdmin.from("whatsapp_link_codes").update(patch as never).eq("id", id);
 }
 
+// Tier efectivo lido directamente do perfil (mesma regra de public.effective_tier):
+// beta activo e não expirado => 'hub', senão o tier real.
+async function effectiveTierOf(supabaseAdmin: any, userId: string): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("subscription_tier, is_beta_tester, beta_expires_at")
+    .eq("id", userId)
+    .maybeSingle();
+  const p = data as {
+    subscription_tier: string | null;
+    is_beta_tester: boolean | null;
+    beta_expires_at: string | null;
+  } | null;
+  if (!p) return "base";
+  const betaActive =
+    p.is_beta_tester === true &&
+    (!p.beta_expires_at || new Date(p.beta_expires_at).getTime() > Date.now());
+  return betaActive ? "hub" : normalizeTier(p.subscription_tier);
+}
+
 async function sendAndStoreWhatsAppAssistant(
   supabaseAdmin: any,
   toPhone: string,
@@ -305,6 +328,16 @@ async function tryLinkCode(
     if (row.phone !== senderPhone) {
       await bumpAttempts(supabaseAdmin, row.id, row.attempts);
       return { reply: REPLY_LINK_INVALID, userId: null };
+    }
+    // Revalidar o tier no momento do consumo: quem gerou o código como
+    // 'consultor' e entretanto desceu para 'base' não pode ligar WhatsApp.
+    const tier = await effectiveTierOf(supabaseAdmin, row.user_id);
+    if (!canUseWhatsApp(tier)) {
+      await supabaseAdmin
+        .from("whatsapp_link_codes")
+        .update({ used_at: nowIso } as never)
+        .eq("id", row.id);
+      return { reply: REPLY_LINK_TIER, userId: null };
     }
     const { data: takenBy } = await supabaseAdmin
       .from("profiles")
