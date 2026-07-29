@@ -45,7 +45,7 @@ export function MetricCard({
   return (
     <Card className="admin-card gap-0 border-0 p-5 shadow-none">
       <CardHeader className="mb-0 gap-0 p-0">
-        <CardTitle asChild>
+        <CardTitle>
           <h3>{label}</h3>
         </CardTitle>
       </CardHeader>
