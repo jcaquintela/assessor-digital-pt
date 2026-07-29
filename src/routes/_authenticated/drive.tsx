@@ -34,9 +34,9 @@ export const Route = createFileRoute("/_authenticated/drive")({
       { property: "og:description", content: "Todos os teus ficheiros, organizados automaticamente." },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>) => ({
-    tab: (s.tab as Tab) ?? "recentes",
-    q: (s.q as string) ?? "",
+  validateSearch: (s: Record<string, unknown>): { tab?: Tab; q?: string } => ({
+    tab: (s.tab as Tab | undefined) ?? undefined,
+    q: (s.q as string | undefined) ?? undefined,
   }),
   component: DrivePage,
 });
@@ -81,8 +81,10 @@ const ENTITY_LABEL: Record<string, string> = {
 
 function DrivePage() {
   const search = Route.useSearch();
+  const tab: Tab = (search.tab ?? "recentes") as Tab;
+  const qParam = search.q ?? "";
   const navigate = Route.useNavigate();
-  const [q, setQ] = useState(search.q);
+  const [q, setQ] = useState(qParam);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchList = useServerFn(listDriveFiles);
@@ -90,8 +92,8 @@ function DrivePage() {
   const upload = useServerFn(uploadDriveFile);
 
   const listQ = useQuery({
-    queryKey: ["drive", "list", search.tab, search.q],
-    queryFn: () => fetchList({ data: { tab: search.tab, q: search.q } }),
+    queryKey: ["drive", "list", tab, qParam],
+    queryFn: () => fetchList({ data: { tab, q: qParam } }),
   });
   const countsQ = useQuery({
     queryKey: ["drive", "counts"],
@@ -158,7 +160,7 @@ function DrivePage() {
 
       <div className="mb-4 flex flex-wrap gap-1.5 overflow-x-auto">
         {TABS.map((t) => {
-          const active = search.tab === t.key;
+          const active = tab === t.key;
           const count =
             t.key === "recentes"
               ? countsQ.data?.recentes
@@ -192,7 +194,7 @@ function DrivePage() {
       {!listQ.isLoading && files.length === 0 && (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            {search.tab === "por_tratar"
+            {tab === "por_tratar"
               ? "Nada por tratar. Bom trabalho."
               : "Sem ficheiros nesta vista. Envia pelo WhatsApp ou usa Carregar."}
           </CardContent>
