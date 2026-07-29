@@ -14,7 +14,7 @@ function makeSupabase(rows: Record<string, any[]>) {
       lte: (col: string, val: any) => { data = data.filter((r) => new Date(r[col]) <= new Date(val)); return api; },
       order: () => api,
       limit: () => api,
-      then: (fn: any) => Promise.resolve({ data }).then(fn),
+      then: (resolve: any, reject: any) => Promise.resolve({ data }).then(resolve, reject),
     };
     return api;
   };
