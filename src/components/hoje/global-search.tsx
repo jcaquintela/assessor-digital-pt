@@ -14,7 +14,7 @@ const ROUTE = {
   seguimento: (id: string) => ({ to: "/seguimentos/$id", params: { id } }),
 } as const;
 
-export function GlobalSearch() {
+export function GlobalSearch({ size = "default" }: { size?: "default" | "lg" }) {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
@@ -62,15 +62,20 @@ export function GlobalSearch() {
   }, [hits]);
 
   return (
-    <div ref={ref} className="relative w-full max-w-md">
+    <div ref={ref} className={size === "lg" ? "relative w-full" : "relative w-full max-w-md"}>
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search
+          className={cn(
+            "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground",
+            size === "lg" ? "h-5 w-5" : "h-4 w-4",
+          )}
+        />
         <Input
           value={q}
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
-          placeholder="Pesquisa pessoas, imóveis, notas ou compromissos"
-          className="h-9 pl-9"
+          placeholder="Pesquisar pessoas, imóveis, notas ou compromissos…"
+          className={cn(size === "lg" ? "h-12 pl-11 text-base md:text-base" : "h-9 pl-9")}
         />
         {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
       </div>
