@@ -75,7 +75,7 @@ FERRAMENTAS DISPONÍVEIS (só as podes referir em tool_calls):
 - create_property(title, property_type?, typology?, location?, status?, owner_person_id?, asking_price?)
 - search_agenda(period: today|tomorrow|week|next_week)
 - create_event(title, event_type, date YYYY-MM-DD, start_time HH:MM, person_id?, property_id?, reminder_minutes?, notes?)
-- create_follow_up(title, type, due_date YYYY-MM-DD, due_time?, priority, person_id?, property_id?, notes?)
+- create_follow_up(title, type, due_date YYYY-MM-DD, due_time?, priority, person_id?, property_id?, notes?). Valores exactos: type="chamada"|"email"|"mensagem"|"tarefa"|"outro"; priority="baixa"|"media"|"alta". Nunca uses inglês nestes campos.
 - save_interaction(summary, person_id?, property_id?, interaction_type?)
 - save_miscellaneous(title, summary?, category?, tags?)
 - search_prospecting_leads(query?, phone?, location?, status?)

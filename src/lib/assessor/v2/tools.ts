@@ -72,6 +72,45 @@ export type SearchAgendaArgs = z.infer<typeof SearchAgendaArgs>;
 const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD");
 const HhMm = z.string().regex(/^\d{2}:\d{2}$/, "HH:MM");
 
+const FollowUpType = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    call: "chamada",
+    phone: "chamada",
+    phone_call: "chamada",
+    chamada: "chamada",
+    email: "email",
+    e_mail: "email",
+    message: "mensagem",
+    mensagem: "mensagem",
+    sms: "mensagem",
+    whatsapp: "mensagem",
+    task: "tarefa",
+    todo: "tarefa",
+    tarefa: "tarefa",
+    other: "outro",
+    outro: "outro",
+  };
+  return aliases[normalized] ?? normalized;
+}, z.enum(["chamada", "email", "mensagem", "tarefa", "outro"]));
+
+const FollowUpPriority = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    low: "baixa",
+    baixa: "baixa",
+    normal: "media",
+    medium: "media",
+    média: "media",
+    media: "media",
+    high: "alta",
+    alta: "alta",
+  };
+  return aliases[normalized] ?? normalized;
+}, z.enum(["baixa", "media", "alta"]));
+
 export const CreateEventArgs = z.object({
   title: z.string().min(1),
   event_type: z.enum(["visita", "reuniao_angariacao", "chamada", "outro"]).default("visita"),
@@ -88,10 +127,10 @@ export type CreateEventArgs = z.infer<typeof CreateEventArgs>;
 
 export const CreateFollowUpArgs = z.object({
   title: z.string().min(1),
-  type: z.enum(["chamada", "email", "mensagem", "tarefa", "outro"]).default("tarefa"),
+  type: FollowUpType.default("tarefa"),
   due_date: IsoDate,
   due_time: HhMm.optional().nullable(),
-  priority: z.enum(["baixa", "media", "alta"]).default("media"),
+  priority: FollowUpPriority.default("media"),
   person_id: z.string().uuid().optional().nullable(),
   property_id: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
