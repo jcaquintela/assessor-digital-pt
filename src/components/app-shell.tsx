@@ -10,6 +10,7 @@ import {
   Building2,
   Users,
   Wallet,
+  FolderOpen,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ const desktopNav = [
   { to: "/pessoas", label: "Pessoas", icon: Users },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/calendario", label: "Agenda", icon: CalendarDays },
+  { to: "/drive", label: "Drive", icon: FolderOpen },
   { to: "/negocio", label: "O Meu Negócio", icon: Wallet },
   { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/definicoes", label: "Definições", icon: Settings },
