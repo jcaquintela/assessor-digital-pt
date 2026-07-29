@@ -23,9 +23,23 @@ import {
   CreateProspectingLeadArgs,
   SearchProspectingLeadsArgs,
   UpdateProspectingLeadArgs,
+  RescheduleReminderArgs,
+  SearchActiveRemindersArgs,
+  CancelReminderArgs,
+  SendReminderNowArgs,
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
+import {
+  upsertReminder,
+  rescheduleReminder,
+  cancelReminder,
+  sendReminderNow,
+  searchActiveReminders,
+  isTimeInPast,
+  nowLisbonYmd,
+  nowLisbonHhMm,
+} from "../v3/reminders.server";
 
 // Converte uma data+hora locais em Europe/Lisbon para um ISO absoluto (UTC).
 // Sem isto, `${date}T${time}:00` sem offset é interpretado pelo Postgres como
