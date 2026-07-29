@@ -179,7 +179,7 @@ async function deliverReply(
   channel: "telegram",
   chatId: string,
   userId: string,
-  outcome: { reply: string; messageType?: string },
+  outcome: { reply: string; messageType?: string | null },
   replyTo: string | null,
 ) {
   const alreadyPersisted = outcome.messageType === "__ALREADY_PERSISTED__";
