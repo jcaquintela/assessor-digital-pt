@@ -8,9 +8,17 @@ import { dispatchToolCall, type DomainContext } from "./domain.server";
 // já existe uma linha com o mesmo pending id.
 function makeFakeSupabase() {
   const rows: any[] = [];
+  // Tabelas primárias contadas por `_rows`. Auxiliares (reminders, etc.)
+  // são simuladas em silêncio para não interferir com os testes de
+  // idempotência de follow_ups/events.
+  const PRIMARY = new Set(["follow_ups", "events"]);
+  const auxRows: any[] = [];
   const client: any = {
     _rows: rows,
-    from(_table: string) {
+    _aux: auxRows,
+    from(table: string) {
+      const primary = PRIMARY.has(table);
+      const target = primary ? rows : auxRows;
       const state = {
         filters: [] as [string, any][],
         op: null as null | "insert" | "update",
@@ -19,24 +27,36 @@ function makeFakeSupabase() {
       const chain: any = {
         select(_cols?: string) { return chain; },
         eq(col: string, v: any) { state.filters.push([col, v]); return chain; },
+        neq() { return chain; },
+        in() { return chain; },
+        is() { return chain; },
+        not() { return chain; },
+        ilike() { return chain; },
+        gte() { return chain; },
+        lte() { return chain; },
         order() { return chain; },
         limit() { return chain; },
         insert(row: any) { state.op = "insert"; state.payload = row; return chain; },
         update(row: any) { state.op = "update"; state.payload = row; return chain; },
         async single() {
           if (state.op === "insert") {
+            if (!primary) {
+              const stub = { id: `aux-${auxRows.length + 1}`, ...state.payload };
+              auxRows.push(stub);
+              return { data: stub, error: null };
+            }
             const pid = state.payload.source_pending_action_id;
-            if (pid && rows.some((r) => r.source_pending_action_id === pid)) {
+            if (pid && target.some((r) => r.source_pending_action_id === pid)) {
               return { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint" } };
             }
-            const inserted = { id: `id-${rows.length + 1}`, ...state.payload };
-            rows.push(inserted);
+            const inserted = { id: `id-${target.length + 1}`, ...state.payload };
+            target.push(inserted);
             return { data: inserted, error: null };
           }
           return { data: null, error: null };
         },
         async maybeSingle() {
-          const match = rows.find((r) => state.filters.every(([c, v]) => r[c] === v));
+          const match = target.find((r) => state.filters.every(([c, v]) => r[c] === v));
           return { data: match ?? null, error: null };
         },
       };

@@ -25,7 +25,9 @@ const TECH_VOCAB_RE =
   /\b(intent|payload|tool|backend|schema|endpoint|token|status\s+code|id\s*[:=]|uuid|json|api|database|tabela|coluna|policy|rls|migration)\b/gi;
 
 // Aberturas que fingem execução antes do backend confirmar.
-const PRECLAIM_RE = /^\s*(feito|pronto|registei|guardei|criei|marquei|apaguei|actualizei|atualizei)\b[^\n]*[.!]?\s*/i;
+// Inclui verbos de reagendamento ("passo", "reagendei", "adiei", "mudei",
+// "movi") — o Assessor não pode dizer que reagendou sem UPDATE verificado.
+const PRECLAIM_RE = /^\s*(feito|pronto|registei|guardei|criei|marquei|apaguei|actualizei|atualizei|reagendei|reagendo|passo|passei|adiei|adio|mudei|mudo|movi|movo|remarquei|remarco)\b[^\n]*[.!?]?\s*/i;
 
 // Confirmação em linguagem de formulário ("Confirmas os seguintes campos: …").
 const FORM_CONFIRM_RE = /confirmas?\s+os?\s+seguintes?\s+(campos|dados|itens)\s*:/i;

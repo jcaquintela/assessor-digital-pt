@@ -23,9 +23,23 @@ import {
   CreateProspectingLeadArgs,
   SearchProspectingLeadsArgs,
   UpdateProspectingLeadArgs,
+  RescheduleReminderArgs,
+  SearchActiveRemindersArgs,
+  CancelReminderArgs,
+  SendReminderNowArgs,
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
+import {
+  upsertReminder,
+  rescheduleReminder,
+  cancelReminder,
+  sendReminderNow,
+  searchActiveReminders,
+  isTimeInPast,
+  nowLisbonYmd,
+  nowLisbonHhMm,
+} from "../v3/reminders.server";
 
 // Converte uma data+hora locais em Europe/Lisbon para um ISO absoluto (UTC).
 // Sem isto, `${date}T${time}:00` sem offset é interpretado pelo Postgres como
@@ -272,6 +286,27 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
       .select("id")
       .single();
     reminderId = (rem as { id: string } | null)?.id ?? null;
+    // Registo canónico em `reminders` para o dispatcher robusto.
+    if (reminderId) {
+      await upsertReminder(ctx.supabase, {
+        userId: ctx.userId,
+        related_resource_type: "follow_up",
+        related_resource_id: reminderId,
+        scheduled_for: remindAt.toISOString(),
+        message_preview: `Lembrete: ${v.title.trim()}`,
+      });
+    }
+  }
+  // Regista também um `reminder` para o próprio evento (à hora de início),
+  // para o consultor ser avisado se pediu confirmação.
+  if ((data as any)?.id) {
+    await upsertReminder(ctx.supabase, {
+      userId: ctx.userId,
+      related_resource_type: "follow_up",
+      related_resource_id: (data as any).id,
+      scheduled_for: dueIsoDate,
+      message_preview: `Lembrete: ${v.title.trim()} (${v.start_time}).`,
+    });
   }
   return ok({ event: data, reminderId });
 }
@@ -345,6 +380,16 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
       .update({ next_follow_up_at: dueIsoDate } as never)
       .eq("id", activeProspectingLead.id)
       .eq("user_id", ctx.userId);
+  }
+  // Cria o lembrete canónico para o dispatcher.
+  if ((data as any)?.id && v.due_time) {
+    await upsertReminder(ctx.supabase, {
+      userId: ctx.userId,
+      related_resource_type: "follow_up",
+      related_resource_id: (data as any).id,
+      scheduled_for: dueIsoDate,
+      message_preview: `Lembrete: ${v.title.trim()} (${v.due_time}).`,
+    });
   }
   return ok({ follow_up: data });
 }
@@ -521,6 +566,78 @@ async function execUpdateProspectingLead(ctx: DomainContext, args: unknown): Pro
 
 export type ToolExecutor = (ctx: DomainContext, args: unknown) => Promise<DomainResult>;
 
+// ---------- Executores de lembretes ----------
+
+async function execRescheduleReminder(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(RescheduleReminderArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  if (isTimeInPast(v.new_date, v.new_time)) {
+    return ok({ ok: false, past: true, requested_date: v.new_date, requested_time: v.new_time });
+  }
+  const r = await rescheduleReminder(ctx.supabase, {
+    userId: ctx.userId,
+    channel: ctx.channel,
+    reminder_id: v.reminder_id ?? null,
+    related_resource_type: (v.related_resource_type as any) ?? null,
+    related_resource_id: v.related_resource_id ?? null,
+    subject_hint: v.subject_hint ?? null,
+    new_date: v.new_date,
+    new_time: v.new_time,
+    timezone: v.timezone ?? "Europe/Lisbon",
+    reason: v.reason ?? undefined,
+  });
+  if (!r.ok && r.candidates) return ok({ ambiguous: true, candidates: r.candidates });
+  if (!r.ok) return fail(r.error ?? "reschedule_failed");
+  return ok({ reminder: r.reminder });
+}
+
+async function execSearchActiveReminders(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(SearchActiveRemindersArgs, args); if (!p.ok) return fail(p.error);
+  const rows = await searchActiveReminders(ctx.supabase, {
+    userId: ctx.userId,
+    query: p.value.query ?? null,
+    related_resource_type: (p.value.related_resource_type as any) ?? null,
+    related_resource_id: p.value.related_resource_id ?? null,
+  });
+  return ok({ results: rows });
+}
+
+async function execCancelReminder(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(CancelReminderArgs, args); if (!p.ok) return fail(p.error);
+  const r = await cancelReminder(ctx.supabase, ctx.userId, p.value.reminder_id);
+  if (!r.ok) return fail(r.error ?? "cancel_failed");
+  return ok({ cancelled: true });
+}
+
+async function execSendReminderNow(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(SendReminderNowArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  let reminderId = v.reminder_id ?? null;
+  if (!reminderId && v.subject_hint) {
+    const rows = await searchActiveReminders(ctx.supabase, {
+      userId: ctx.userId,
+      query: v.subject_hint,
+    });
+    if (rows.length === 1) reminderId = rows[0].id;
+    else if (rows.length > 1) {
+      return ok({
+        ambiguous: true,
+        candidates: rows.map((r) => ({
+          reminder_id: r.id, title: r.title, scheduled_for: r.scheduled_for,
+        })),
+      });
+    }
+  }
+  if (!reminderId) return fail("reminder_not_found");
+  const r = await sendReminderNow(ctx.supabase, {
+    userId: ctx.userId,
+    reminder_id: reminderId,
+    overrideText: v.override_text ?? null,
+  });
+  if (!r.ok) return fail(r.error ?? "send_failed");
+  return ok({ sent: true, external_message_id: r.external_message_id ?? null });
+}
+
 export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   search_people: execSearchPeople,
   create_person: execCreatePerson,
@@ -534,6 +651,10 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   create_prospecting_lead: execCreateProspectingLead,
   search_prospecting_leads: execSearchProspectingLeads,
   update_prospecting_lead: execUpdateProspectingLead,
+  reschedule_reminder: execRescheduleReminder,
+  search_active_reminders: execSearchActiveReminders,
+  cancel_reminder: execCancelReminder,
+  send_reminder_now: execSendReminderNow,
 };
 
 export async function dispatchToolCall(

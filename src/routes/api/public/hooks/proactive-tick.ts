@@ -19,8 +19,9 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { generateNudgesForUser, persistNudges, dispatchPendingNudges, dispatchDueFollowUpReminders } =
+        const { generateNudgesForUser, persistNudges, dispatchPendingNudges } =
           await import("@/lib/assessor/v3/proactivity.server");
+        const { dispatchDueReminders } = await import("@/lib/assessor/v3/reminders.server");
         const { generateSupremeNudges } = await import("@/lib/assessor/supreme/briefing.server");
         const { listSupremeUsers } = await import("@/lib/assessor/supreme/feature-flag.server");
 
@@ -51,7 +52,7 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
           }
         }
         const dispatched = await dispatchPendingNudges(supabaseAdmin as any, {});
-        const reminders = await dispatchDueFollowUpReminders(supabaseAdmin as any, {});
+        const reminders = await dispatchDueReminders(supabaseAdmin as any, {});
 
         return new Response(
           JSON.stringify({
@@ -62,6 +63,7 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
             supremeGenerated,
             ...dispatched,
             remindersSent: reminders.sent,
+            remindersFailed: reminders.failed,
             remindersSkipped: reminders.skipped,
           }),
           { headers: { "Content-Type": "application/json" } },

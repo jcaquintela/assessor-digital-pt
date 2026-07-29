@@ -1893,6 +1893,66 @@ export type Database = {
           },
         ]
       }
+      reminders: {
+        Row: {
+          channel: string
+          created_at: string
+          external_message_id: string | null
+          failed_at: string | null
+          id: string
+          idempotency_key: string | null
+          last_error: string | null
+          message_preview: string | null
+          related_resource_id: string | null
+          related_resource_type: string
+          retry_count: number
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          external_message_id?: string | null
+          failed_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          last_error?: string | null
+          message_preview?: string | null
+          related_resource_id?: string | null
+          related_resource_type: string
+          retry_count?: number
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          external_message_id?: string | null
+          failed_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          last_error?: string | null
+          message_preview?: string | null
+          related_resource_id?: string | null
+          related_resource_type?: string
+          retry_count?: number
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       routines: {
         Row: {
           active: boolean
