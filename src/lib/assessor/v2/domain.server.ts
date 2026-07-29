@@ -211,6 +211,9 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
   let reminderId: string | null = null;
   if (v.reminder_minutes && v.reminder_minutes > 0) {
     const remindAt = new Date(new Date(dueIsoDate).getTime() - v.reminder_minutes * 60_000);
+    const lisbonHm = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Lisbon", hour12: false, hour: "2-digit", minute: "2-digit",
+    }).format(remindAt);
     const { data: rem } = await ctx.supabase
       .from("follow_ups")
       .insert({
@@ -218,7 +221,7 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
         title: `Lembrete: ${v.title.trim()}`,
         type: "tarefa",
         due_date: remindAt.toISOString(),
-        due_time: `${String(remindAt.getUTCHours()).padStart(2, "0")}:${String(remindAt.getUTCMinutes()).padStart(2, "0")}`,
+        due_time: lisbonHm,
         status: "pendente",
         priority: "alta",
         person_id: v.person_id ?? null,
