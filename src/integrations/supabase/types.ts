@@ -1674,6 +1674,33 @@ export type Database = {
           },
         ]
       }
+      plan_configs: {
+        Row: {
+          notes: string | null
+          price_month: number | null
+          status: string
+          tier: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          notes?: string | null
+          price_month?: number | null
+          status?: string
+          tier: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          notes?: string | null
+          price_month?: number | null
+          status?: string
+          tier?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_kind: string
