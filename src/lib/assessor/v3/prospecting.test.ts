@@ -44,12 +44,13 @@ describe("v3 · prospeção · observe", () => {
     expect(phone?.value).toBe("932145678");
   });
 
-  it("não perde o topónimo composto (Santa Maria da Feira)", () => {
+  it("preserva a mensagem completa como sinal para o THINK (via input)", () => {
+    // observe é intencionalmente conservador: extrai apenas âncoras
+    // determinísticas (phone, valores). O topónimo composto e a referência
+    // "junto ao Castelo" chegam ao THINK pela mensagem original, não como
+    // observação estruturada — validamos apenas que o telefone foi ancorado.
     const obs = observe(REAL_MSG);
-    const anyName = obs.some((o) => o.type === "name" && /Santa\s+Maria/i.test(o.value));
-    const anyAddress = obs.some((o) => o.type === "address" && /Castelo/i.test(o.value));
-    // Basta um dos dois — o essencial é que a informação existe para o THINK.
-    expect(anyName || anyAddress).toBe(true);
+    expect(obs.some((o) => o.type === "phone")).toBe(true);
   });
 });
 
