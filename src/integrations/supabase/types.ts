@@ -1466,45 +1466,136 @@ export type Database = {
       }
       people: {
         Row: {
+          budget_max: number | null
+          budget_min: number | null
+          company: string | null
           created_at: string
           email: string | null
+          email_normalized: string | null
           id: string
+          job_title: string | null
           name: string
           next_action: string | null
           next_action_date: string | null
           phone: string | null
+          preferences: Json
+          referred_by_person_id: string | null
           relationship_type: string
+          roles: Database["public"]["Enums"]["person_role"][]
+          search_location: string | null
+          search_property_type: string | null
+          source_channel: string | null
+          source_file_id: string | null
+          source_message_id: string | null
           summary: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          budget_max?: number | null
+          budget_min?: number | null
+          company?: string | null
           created_at?: string
           email?: string | null
+          email_normalized?: string | null
           id?: string
+          job_title?: string | null
           name: string
           next_action?: string | null
           next_action_date?: string | null
           phone?: string | null
+          preferences?: Json
+          referred_by_person_id?: string | null
           relationship_type?: string
+          roles?: Database["public"]["Enums"]["person_role"][]
+          search_location?: string | null
+          search_property_type?: string | null
+          source_channel?: string | null
+          source_file_id?: string | null
+          source_message_id?: string | null
           summary?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          budget_max?: number | null
+          budget_min?: number | null
+          company?: string | null
           created_at?: string
           email?: string | null
+          email_normalized?: string | null
           id?: string
+          job_title?: string | null
           name?: string
           next_action?: string | null
           next_action_date?: string | null
           phone?: string | null
+          preferences?: Json
+          referred_by_person_id?: string | null
           relationship_type?: string
+          roles?: Database["public"]["Enums"]["person_role"][]
+          search_location?: string | null
+          search_property_type?: string | null
+          source_channel?: string | null
+          source_file_id?: string | null
+          source_message_id?: string | null
           summary?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "people_referred_by_person_id_fkey"
+            columns: ["referred_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_phones: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          e164: string | null
+          id: string
+          is_primary: boolean
+          kind: string
+          person_id: string
+          raw: string
+          user_id: string
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          e164?: string | null
+          id?: string
+          is_primary?: boolean
+          kind?: string
+          person_id: string
+          raw: string
+          user_id: string
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          e164?: string | null
+          id?: string
+          is_primary?: boolean
+          kind?: string
+          person_id?: string
+          raw?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_phones_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -2046,6 +2137,17 @@ export type Database = {
         | "wrong_execution"
         | "other"
       assistant_reflection_trigger: "low_aqs" | "low_ats" | "user_correction"
+      person_role:
+        | "owner"
+        | "potential_owner"
+        | "buyer"
+        | "potential_buyer"
+        | "client"
+        | "reference"
+        | "partner"
+        | "supplier"
+        | "colleague"
+        | "other"
       prospecting_listing_type:
         | "owner_sale"
         | "other_agency"
@@ -2205,6 +2307,18 @@ export const Constants = {
         "other",
       ],
       assistant_reflection_trigger: ["low_aqs", "low_ats", "user_correction"],
+      person_role: [
+        "owner",
+        "potential_owner",
+        "buyer",
+        "potential_buyer",
+        "client",
+        "reference",
+        "partner",
+        "supplier",
+        "colleague",
+        "other",
+      ],
       prospecting_listing_type: [
         "owner_sale",
         "other_agency",
