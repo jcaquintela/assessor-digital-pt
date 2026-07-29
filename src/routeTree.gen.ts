@@ -41,6 +41,7 @@ import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authentic
 import { Route as AuthenticatedDiversosRouteImport } from './routes/_authenticated/diversos'
 import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
+import { Route as AuthenticatedAssessorRouteImport } from './routes/_authenticated/assessor'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
@@ -223,6 +224,11 @@ const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
   path: '/calendario',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAssessorRoute = AuthenticatedAssessorRouteImport.update({
+  id: '/assessor',
+  path: '/assessor',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/diversos': typeof AuthenticatedDiversosRouteWithChildren
@@ -399,6 +406,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/diversos': typeof AuthenticatedDiversosRouteWithChildren
@@ -454,6 +462,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/_authenticated/assessor': typeof AuthenticatedAssessorRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
   '/_authenticated/diversos': typeof AuthenticatedDiversosRouteWithChildren
@@ -509,6 +518,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/assessor'
     | '/calendario'
     | '/definicoes'
     | '/diversos'
@@ -561,6 +571,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/assessor'
     | '/calendario'
     | '/definicoes'
     | '/diversos'
@@ -615,6 +626,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/_authenticated/assessor'
     | '/_authenticated/calendario'
     | '/_authenticated/definicoes'
     | '/_authenticated/diversos'
@@ -899,6 +911,13 @@ declare module '@tanstack/react-router' {
       path: '/calendario'
       fullPath: '/calendario'
       preLoaderRoute: typeof AuthenticatedCalendarioRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/assessor': {
+      id: '/_authenticated/assessor'
+      path: '/assessor'
+      fullPath: '/assessor'
+      preLoaderRoute: typeof AuthenticatedAssessorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/.well-known/oauth-protected-resource': {
@@ -1207,6 +1226,7 @@ const AuthenticatedSeguimentosRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAssessorRoute: typeof AuthenticatedAssessorRoute
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
   AuthenticatedDiversosRoute: typeof AuthenticatedDiversosRouteWithChildren
@@ -1224,6 +1244,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAssessorRoute: AuthenticatedAssessorRoute,
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
   AuthenticatedDiversosRoute: AuthenticatedDiversosRouteWithChildren,
