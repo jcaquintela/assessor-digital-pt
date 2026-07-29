@@ -1,76 +1,104 @@
-# Registo natural de contactos — Plano
 
-Feature grande com muitas ramificações. Proponho entregar em 3 fases dentro deste turno, focando o núcleo (17. Critérios de aceitação) e deixando integrações externas para depois (importação CSV/Google/Microsoft — ponto 14 fica fora).
+## Wireframe textual da página Hoje
 
-## Fase 1 — Modelo de dados e deduplicação
+### Mobile (uma coluna)
 
-**Migração `people` + `person_phones`:**
-- Novo enum `person_role`: `owner`, `potential_owner`, `buyer`, `potential_buyer`, `client`, `reference`, `partner`, `supplier`, `colleague`, `other`.
-- `people.roles person_role[]` (mantém `relationship_type` como papel primário para compatibilidade; deriva do primeiro elemento).
-- Colunas novas em `people`: `company text`, `job_title text`, `source_channel text`, `source_message_id uuid`, `source_file_id uuid`, `search_location text`, `search_property_type text`, `budget_min numeric`, `budget_max numeric`, `referred_by_person_id uuid`, `preferences jsonb`.
-- Nova tabela `person_phones` (id, person_id, raw, e164, country_code, kind: mobile|landline|whatsapp|unknown, is_primary, created_at).
-- RLS por `user_id` do dono; grants para authenticated + service_role.
-- Índices em `e164` e `email` (normalizado).
+```text
+┌─────────────────────────────────────────┐
+│ Bom dia, Júlio.                         │
+│ Hoje tens 2 compromissos e 3 prioridades│
+│ quarta-feira, 29 de julho               │
+│ [Falar com Alfred]   [+ Adicionar]      │
+├─────────────────────────────────────────┤
+│ 🔎 Pesquisa pessoas, imóveis, notas…    │
+├─────────────────────────────────────────┤
+│ AS MINHAS PRIORIDADES                   │
+│ ┌─────────────────────────────────────┐ │
+│ │ Preparar visita com Paulo           │ │
+│ │ 15:00 · Rua Sá da Bandeira · atraso │ │
+│ │ [Concluir] [Adiar] [Abrir] [Falar]  │ │
+│ └─────────────────────────────────────┘ │
+│ (até 5 cartões)                         │
+├─────────────────────────────────────────┤
+│ PRÓXIMOS COMPROMISSOS                   │
+│ 15:00 · Visita T3 Boavista · Paulo   ›  │
+│ 17:30 · Avaliação · Sofia            ›  │
+├─────────────────────────────────────────┤
+│ AGUARDAM RESULTADO                      │
+│ Visita ontem · Ana Silva                │
+│ [Correu bem][Seguimento][Sem interesse] │
+│ [Nota]                                  │
+├─────────────────────────────────────────┤
+│ ATENÇÃO (só se existir)                 │
+│ 3 seguimentos em atraso              ›  │
+│ 2 documentos por classificar         ›  │
+└─────────────────────────────────────────┘
+        [ Falar com Alfred ]  (FAB fixo)
+```
 
-**`src/lib/people/normalize.ts`** (novo):
-- `normalizePhoneE164(raw, defaultCountry='PT')` → { e164, country_code, kind } (heurística: começa por `9`/`2` → PT +351; `+xx` respeitado).
-- `normalizeEmail(raw)` → lowercase trimmed.
-- `similarName(a,b)` → normalize (lower + sem acentos + tokens ordenados) e retorna score 0-1.
+### Desktop (duas colunas)
 
-**`src/lib/people/dedupe.functions.ts`** (server fn autenticada):
-- Input: `{ name?, phone?, email?, company? }`.
-- Prioridade: e164 exato > email exato > (nome≥0.8 + contexto) > nome≥0.9.
-- Retorna `{ match: person | null, confidence, reason }`.
+```text
+┌───────────────────────────────────────────────────────────────┐
+│ Bom dia, Júlio.  Hoje: 2 compromissos · 3 prioridades         │
+│ [Falar com Alfred]                          [+ Adicionar]     │
+│ 🔎 Pesquisa pessoas, imóveis, notas ou compromissos           │
+├────────────────────────────────┬──────────────────────────────┤
+│ AS MINHAS PRIORIDADES (5)      │ AGUARDAM RESULTADO           │
+│ [cartões clicáveis com ações]  │ [itens com ações rápidas]    │
+│                                │                              │
+│ PRÓXIMOS COMPROMISSOS          │ ATENÇÃO                      │
+│ timeline cronológica clicável  │ apenas alertas ativos        │
+│ → abre drawer lateral com      │                              │
+│   pessoa, imóvel, docs, notas, │                              │
+│   localização, histórico       │                              │
+└────────────────────────────────┴──────────────────────────────┘
+```
 
-## Fase 2 — Motor conversacional
+Navegação principal reduzida: **Hoje · Pessoas · Imóveis · Agenda · O Meu Negócio · Diversos · Definições**. Seguimentos, Oportunidades, Interações, Ficheiros e Rotinas passam a ser acessíveis a partir de fichas, pesquisa, filtros e cartões de /hoje (não desaparecem, deixam o menu principal).
 
-**Extração no motor v3 (`src/lib/assessor/v3/`)** — reforço, não substituição:
-- `extractors/person.ts` novo: dado texto (ou já transcrito), extrai `name, phones[], emails[], roles[], company, location, property_type, budget, referredBy, nextAction` via IA (Gemini) com JSON prompt (sem enums grandes em schema). Não inventa: campos ausentes = null.
-- No `decide.server.ts` (ou equivalente), quando intent = criar/atualizar pessoa:
-  1. chamar dedupe;
-  2. se match forte (telefone/email idêntico) → propor "Já tens X. Atualizo o contacto?" com merge não-destrutivo (só preenche campos vazios; adiciona papéis; adiciona telefones novos);
-  3. se sem match e há nome + contacto/contexto → propor criação;
-  4. se só nome vago → registar como rascunho e perguntar naturalmente.
-- `pending_actions` já suporta o ciclo colecting/pending_confirmation/executed — reutilizar.
-- Se preferência `autonomy_level = 'proativo'` **e** confiança alta **e** telefone válido → auto-criar sem confirmação (respeita ponto 3).
-- Atualizações de notas de baixo risco vão direto (append em `notes`, sem confirmação).
-- Enriquecimento progressivo: quando `conversation_states.active_person_id` está setado, novas mensagens actualizam essa ficha em vez de criar nova.
+## Componentes reutilizados (sem alteração visual estrutural)
 
-**Ficheiros (cartão visita / vCard):**
-- `src/lib/people/vcard.ts`: parser mínimo (FN, TEL, EMAIL, ORG, TITLE).
-- Em `files.server.ts` classification: novo tipo `business_card` e `vcard`. Para `business_card` chama Gemini vision (JSON schema pequeno: name/phone/email/company/title). Para `.vcf` usa parser. Cria `pending_action` a propor pessoa com `source_file_id` e responde "Encontrei X, Y. Crio o contacto?".
+- `AppShell` (só ajuste da lista de navegação).
+- `GlobalSearch` (`src/components/hoje/global-search.tsx`).
+- `QuickAdd` (`src/components/hoje/quick-add.tsx`) — já cobre o menu "Adicionar" + campo de linguagem natural.
+- `EventDrawer` (`src/components/hoje/event-drawer.tsx`) para compromissos.
+- Cartões de Prioridades, Aguardam resultado e Alertas já existentes em `hoje.tsx` (mantêm lógica de mutações `outcome`, `dismiss`, `snoozePriority`).
+- Fichas `/pessoas/$id`, `/imoveis/$id`, `/seguimentos/$id`, `/oportunidades/$id` — sem alterações.
 
-**Áudio:** já é transcrito; o texto entra pelo mesmo pipeline. Se transcrição incluir "lembra-me de …" o motor cria pessoa **e** follow-up ligado (`follow_ups.person_id`).
+## Componentes a redesenhar / remover
 
-## Fase 3 — UI
+- `hoje.tsx`: remover a grelha **Módulos** (Pessoas/Imóveis/Agenda/Seguimentos/Oportunidades/Negócio/Diversos/Rotinas) e a faixa "Escolher nome do Assessor" da coluna lateral. O dashboard fica só com os 5 blocos (Cabeçalho, Prioridades, Compromissos, Aguardam resultado, Atenção). Cabeçalho passa a mostrar data por extenso e limpar contadores decorativos.
+- `AppShell` (`src/components/app-shell.tsx`): reduzir a navegação desktop e a bottom-bar mobile ao core (Hoje, Pessoas, Imóveis, Agenda, O Meu Negócio, Diversos, Definições). Manter FAB "Falar com Alfred" no mobile.
+- `EventDrawer`: garantir que expõe pessoa, imóvel, documentos, notas, localização, histórico e próximas ações (adicionar secções em falta se necessário — leitura antes de editar).
+- Estados vazios: substituir textos genéricos pelas frases pedidas ("Não tens compromissos para hoje.", etc.) e esconder cartões inteiros quando não há dados (regra "sem cards vazios").
 
-**Ficha `/pessoas/$id`** (refactor):
-- Cabeçalho: nome, badges de papéis, telefone principal (clicável `tel:`), botão WhatsApp (`https://wa.me/<e164>`), botão "Adicionar nota", próxima ação.
-- Secção Contexto: resumo, origem, necessidades (localização/tipo/orçamento), preferências (jsonb livre), notas — editáveis inline.
-- Secção Relações: imóveis (owner + interesse), oportunidades, visitas (via follow_ups tipo visita), seguimentos, interações, ficheiros de origem.
-- Secção Histórico: timeline a partir de `interactions` + created_at + updated_at + follow-ups + messages associadas (via `assessor_messages.related_resource_id`).
+## Canais conversacionais (WhatsApp + Telegram)
 
-**Quick add em `/hoje`:**
-- `QuickAdd` já existe com "Pessoa"; substituir modal por 2 tabs:
-  - **Natural**: textarea "Quem queres registar?" → envia para `/assessor` com prefill (comportamento atual mantido).
-  - **Manual**: nome, telefones (múltiplos), email, papéis (multi-select), empresa, notas → server fn `createPersonManual`.
+Camada nova `src/lib/assessor/channels/` com:
 
-**Não fazer nesta fase:**
-- Importação CSV/Google/Microsoft (ponto 14) — deixar TODO no código com `docs/pessoas-importacao.md` stub.
-- Interações timeline avançada (versionamento de alterações) — só append.
+- `interactive.ts`: tipo `AssistantReply = { text: string; options?: { id: string; label: string }[] }` e helper `buildOptions()`.
+- `whatsapp.ts`: envio via WhatsApp Cloud API usando `interactive` (reply buttons até 3, list message quando >3), fallback para opções numeradas na mesma mensagem quando fora da janela de 24h ou sem template aprovado.
+- `telegram.ts`: envio com `inline_keyboard`; `callback_data` = id curto opaco (sem PII), resolvido via tabela `channel_callbacks` (id → intent + subject_id + expiry).
+- Webhooks (`src/routes/api/public/whatsapp-webhook.ts` já existe; adicionar equivalente Telegram `telegram-webhook.ts`) tratam clique em botão como mensagem de texto equivalente ao label, entrando no motor v3 como qualquer resposta livre. Regra: **as opções aceleram, nunca limitam** — utilizador pode escrever texto livre e o motor interpreta.
+- Pontos onde o motor propõe opções: proposta de agenda (Registar/Alterar/Cancelar), pergunta de lembrete (15 min/30 min/1 hora/Personalizar), ficheiro recebido (Criar imóvel/Associar/Diversos), pós-evento (Correu bem/Criar seguimento/Sem interesse/Escrever nota).
 
-## Detalhes técnicos
+## Rotas afetadas
 
-- Sem `.min/.max/format` nos schemas de IA (regra `ai-sdk-agent-patterns`).
-- Modelo IA: `openai/gpt-5.6-sol` com `reasoningEffort: "none"` para extração (JSON via prompt + parse).
-- Vision cartão visita: `google/gemini-3.1-flash` (rápido, barato) via `/v1/chat/completions` com `image_url`.
-- Merge não-destrutivo: só preenche campos NULL; concatena `notes` com timestamp; `person_phones` faz UPSERT por `e164`.
-- Todas as queries por `user_id = auth.uid()` (RLS já ativa).
-- Preservar contract com store legacy: `relationship_type` continua populado (primeiro role).
-- Teste rápido: 5 casos naturais nos testes existentes (`culture.test.ts` padrão).
+- `src/routes/_authenticated/hoje.tsx` — redesenho conforme wireframe.
+- `src/routes/_authenticated/route.tsx` / `app-shell.tsx` — nova navegação.
+- `src/routes/api/public/whatsapp-webhook.ts` — suporte a `interactive` payloads inbound.
+- `src/routes/api/public/telegram-webhook.ts` — **novo**.
+- `src/lib/assessor/v3/act.server.ts` (ou equivalente na camada de resposta) — passar `options` do motor para o adapter de canal.
+- Sem alterações em `/pessoas`, `/imoveis`, `/agenda`, `/negocio`, `/diversos`, `/definicoes` além de garantir que continuam alcançáveis.
 
-## Fora de scope
+## Ordem de implementação
 
-Ponto 14 (importação em massa) e histórico com diff auditável — ficam para iteração seguinte com nota no código.
+1. Reduzir navegação (`AppShell`) e limpar `hoje.tsx` (remover Módulos + faixa nome).
+2. Ajustar cabeçalho, estados vazios e drawer de compromissos.
+3. Camada `channels/interactive.ts` + adapter WhatsApp com reply buttons e fallback numerado.
+4. Adapter Telegram + webhook + tabela `channel_callbacks`.
+5. Ligar opções aos momentos-chave do motor v3 (agenda, lembretes, ficheiros, pós-evento).
+6. QA manual mobile/desktop contra os 12 critérios de aceitação.
 
-Confirmas para arrancar? Se quiseres reduzir para uma fase única mais pequena (por exemplo, só extração de texto + dedupe + ficha), diz-me.
+Confirma este plano (ou aponta ajustes) e avanço com a implementação.
