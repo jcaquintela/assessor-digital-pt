@@ -4,18 +4,20 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizePhone } from "./phone";
 import { canUseWhatsApp, normalizeTier, tierLabel } from "@/lib/subscription/tiers";
 
-// Regenerate crypto helpers per request; nodejs_compat is enabled.
-import { createHash, randomInt } from "crypto";
-
 export const WHATSAPP_CODE_TTL_MIN = 15;
 export const WHATSAPP_CODE_MAX_ATTEMPTS = 5;
 export const WHATSAPP_CODE_PATTERN = /LIGAR-\d{6}/i;
 
 export function hashLinkCode(code: string): string {
+  // Lazy require: this module is imported by client route code
+  // (definicoes.tsx) and node:crypto is externalized in the browser.
+  // Server-only callers (handlers, adapter) still resolve it fine.
+  const { createHash } = require("crypto") as typeof import("crypto");
   return createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
 }
 
 function generateCode(): string {
+  const { randomInt } = require("crypto") as typeof import("crypto");
   const n = randomInt(0, 1_000_000).toString().padStart(6, "0");
   return `LIGAR-${n}`;
 }
