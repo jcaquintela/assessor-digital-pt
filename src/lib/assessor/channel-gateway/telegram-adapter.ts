@@ -138,7 +138,7 @@ export const telegramAdapter: ChannelAdapter = {
           receivedAt: new Date(),
         }];
       }
-      media = { externalFileId: fileId, fileName, mimeType: null, size: null, caption };
+      media = { externalFileId: fileId, fileName: fileName ?? null, mimeType: null, size: null, caption };
       text = caption;
     } else {
       text = `[${raw}]`;
