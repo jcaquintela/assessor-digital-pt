@@ -217,7 +217,12 @@ function SupremeSection() {
     autonomy_level?: string;
     max_daily_nudges?: number;
   };
-  const level = prefs.autonomy_level ?? "balanced";
+  // Fonte de verdade para gating: efectiveAutonomy (já capado ao tier)
+  // e autonomyAllowed (níveis desbloqueados). Backend recusa se subires.
+  const level = (data as any).effectiveAutonomy ?? prefs.autonomy_level ?? "conservador";
+  const allowed = new Set<string>(((data as any).autonomyAllowed as string[]) ?? ["conservador"]);
+  const tier = (data as any).tier as string | undefined;
+  const clamped = Boolean((data as any).autonomyClamped);
   return (
     <Card className="md:col-span-2 border-primary/30 bg-primary/5">
       <CardHeader>
@@ -227,20 +232,31 @@ function SupremeSection() {
         <div className="space-y-2">
           <Label>Autonomia do meu Assessor</Label>
           <div className="flex flex-wrap gap-2">
-            {(["conservador", "balanced", "proativo"] as const).map((lvl) => (
-              <Button
-                key={lvl}
-                size="sm"
-                variant={level === lvl ? "default" : "outline"}
-                onClick={() => save.mutate({ autonomy_level: lvl })}
-              >
-                {lvl === "balanced" ? "Equilibrado" : lvl === "conservador" ? "Conservador" : "Proativo"}
-              </Button>
-            ))}
+            {(["conservador", "balanced", "proativo"] as const).map((lvl) => {
+              const isAllowed = allowed.has(lvl);
+              return (
+                <Button
+                  key={lvl}
+                  size="sm"
+                  variant={level === lvl ? "default" : "outline"}
+                  disabled={!isAllowed}
+                  title={isAllowed ? undefined : `Disponível a partir de um plano superior (tens ${tier ?? "base"}).`}
+                  onClick={() => save.mutate({ autonomy_level: lvl })}
+                >
+                  {lvl === "balanced" ? "Equilibrado" : lvl === "conservador" ? "Conservador" : "Proativo"}
+                  {!isAllowed ? " 🔒" : ""}
+                </Button>
+              );
+            })}
           </div>
           <p className="text-xs text-muted-foreground">
             Conservador pede confirmação para quase tudo. Equilibrado executa ações de baixo risco. Proativo actua dentro dos limites permitidos. Ações sensíveis pedem sempre confirmação.
           </p>
+          {clamped ? (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              A tua preferência guardada é mais alta que o teu plano actual permite. O Assessor está a operar em <strong>{level}</strong>. Se subires de plano, a preferência original volta a aplicar-se.
+            </p>
+          ) : null}
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
