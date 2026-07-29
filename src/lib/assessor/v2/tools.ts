@@ -154,6 +154,41 @@ export const SaveMiscellaneousArgs = z.object({
 });
 export type SaveMiscellaneousArgs = z.infer<typeof SaveMiscellaneousArgs>;
 
+// ---------- Lembretes (reminders) ----------
+
+const ReminderResource = z.enum(["follow_up", "event", "prospecting_lead", "other"]);
+
+export const RescheduleReminderArgs = z.object({
+  reminder_id: z.string().uuid().optional().nullable(),
+  related_resource_type: ReminderResource.optional().nullable(),
+  related_resource_id: z.string().uuid().optional().nullable(),
+  subject_hint: z.string().min(2).max(120).optional().nullable(),
+  new_date: IsoDate,
+  new_time: HhMm,
+  timezone: z.string().default("Europe/Lisbon"),
+  reason: z.string().optional().nullable(),
+});
+export type RescheduleReminderArgs = z.infer<typeof RescheduleReminderArgs>;
+
+export const SearchActiveRemindersArgs = z.object({
+  query: z.string().optional().nullable(),
+  related_resource_type: ReminderResource.optional().nullable(),
+  related_resource_id: z.string().uuid().optional().nullable(),
+});
+export type SearchActiveRemindersArgs = z.infer<typeof SearchActiveRemindersArgs>;
+
+export const CancelReminderArgs = z.object({
+  reminder_id: z.string().uuid(),
+});
+export type CancelReminderArgs = z.infer<typeof CancelReminderArgs>;
+
+export const SendReminderNowArgs = z.object({
+  reminder_id: z.string().uuid().optional().nullable(),
+  subject_hint: z.string().min(2).max(120).optional().nullable(),
+  override_text: z.string().optional().nullable(),
+});
+export type SendReminderNowArgs = z.infer<typeof SendReminderNowArgs>;
+
 // ---------- Prospeção imobiliária ----------
 
 const SourceType = z.enum([
