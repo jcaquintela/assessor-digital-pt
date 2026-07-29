@@ -5,10 +5,7 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { formatData } from "@/lib/demo-data";
-import { Plus } from "lucide-react";
-import { NewPersonDialog } from "@/components/pessoas/new-person-dialog";
 
 export const Route = createFileRoute("/_authenticated/pessoas")({
   head: () => ({
@@ -25,7 +22,6 @@ export const Route = createFileRoute("/_authenticated/pessoas")({
 function PessoasPage() {
   const { pessoas, loading } = useStore();
   const [q, setQ] = useState("");
-  const [novoOpen, setNovoOpen] = useState(false);
 
   const filtradas = pessoas.filter((p) =>
     (p.nome + p.email + p.telefone + p.resumo).toLowerCase().includes(q.toLowerCase()),
@@ -36,11 +32,7 @@ function PessoasPage() {
       <PageHeader
         title="Pessoas"
         subtitle={`${pessoas.length} contactos`}
-        action={
-          <Button onClick={() => setNovoOpen(true)}><Plus className="mr-1.5 h-4 w-4" /> Nova pessoa</Button>
-        }
       />
-      <NewPersonDialog open={novoOpen} onOpenChange={setNovoOpen} />
       <Input
         value={q}
         onChange={(e) => setQ(e.target.value)}
@@ -52,7 +44,7 @@ function PessoasPage() {
       )}
       {!loading && pessoas.length === 0 && (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          Ainda não tem contactos. Crie o primeiro com <strong>Nova pessoa</strong>, ou carregue dados de demonstração em Definições.
+          Ainda não tens contactos. Fala com o teu assessor por WhatsApp para os registar.
         </div>
       )}
 
