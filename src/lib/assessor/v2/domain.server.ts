@@ -27,6 +27,31 @@ import {
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
 
+// Converte uma data+hora locais em Europe/Lisbon para um ISO absoluto (UTC).
+// Sem isto, `${date}T${time}:00` sem offset é interpretado pelo Postgres como
+// UTC, fazendo com que "hoje às 12:10" fique guardado como 13:10 Lisbon
+// (uma hora depois do que o consultor pediu).
+function lisbonLocalToUtcIso(dateYmd: string, timeHm: string): string {
+  const [hh, mm] = timeHm.split(":").map((n) => parseInt(n, 10));
+  const [y, mo, d] = dateYmd.split("-").map((n) => parseInt(n, 10));
+  const naiveUtc = Date.UTC(y, mo - 1, d, hh, mm, 0);
+  // Descobre o offset de Lisbon nessa instância (minutos).
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Lisbon",
+    hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(new Date(naiveUtc));
+  const m: Record<string, string> = {};
+  for (const p of parts) m[p.type] = p.value;
+  const asLisbonUtc = Date.UTC(
+    parseInt(m.year, 10), parseInt(m.month, 10) - 1, parseInt(m.day, 10),
+    parseInt(m.hour === "24" ? "0" : m.hour, 10), parseInt(m.minute, 10), parseInt(m.second, 10),
+  );
+  const offsetMin = (asLisbonUtc - naiveUtc) / 60_000;
+  return new Date(naiveUtc - offsetMin * 60_000).toISOString();
+}
+
 function agendaRange(period: "today" | "tomorrow" | "week" | "next_week"): { startIso: string; endIso: string; label: string } {
   const now = new Date();
   const { ymd, weekday } = lisbonParts(now);
@@ -160,7 +185,7 @@ async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<Doma
 async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
-  const dueIsoDate = `${v.date}T${v.start_time}:00`;
+  const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   const { data, error } = await ctx.supabase
     .from("follow_ups")
     .insert({
@@ -186,6 +211,9 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
   let reminderId: string | null = null;
   if (v.reminder_minutes && v.reminder_minutes > 0) {
     const remindAt = new Date(new Date(dueIsoDate).getTime() - v.reminder_minutes * 60_000);
+    const lisbonHm = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Lisbon", hour12: false, hour: "2-digit", minute: "2-digit",
+    }).format(remindAt);
     const { data: rem } = await ctx.supabase
       .from("follow_ups")
       .insert({
@@ -193,7 +221,7 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
         title: `Lembrete: ${v.title.trim()}`,
         type: "tarefa",
         due_date: remindAt.toISOString(),
-        due_time: `${String(remindAt.getUTCHours()).padStart(2, "0")}:${String(remindAt.getUTCMinutes()).padStart(2, "0")}`,
+        due_time: lisbonHm,
         status: "pendente",
         priority: "alta",
         person_id: v.person_id ?? null,
@@ -235,7 +263,7 @@ async function findActiveProspectingLead(ctx: DomainContext): Promise<{ id: stri
 async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateFollowUpArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
-  const dueIsoDate = v.due_time ? `${v.due_date}T${v.due_time}:00` : `${v.due_date}T09:00:00`;
+  const dueIsoDate = lisbonLocalToUtcIso(v.due_date, v.due_time ?? "09:00");
   const activeProspectingLead = (!v.person_id && !v.property_id)
     ? await findActiveProspectingLead(ctx)
     : null;
