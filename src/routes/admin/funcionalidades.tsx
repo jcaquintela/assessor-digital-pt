@@ -30,10 +30,6 @@ const KNOWN_FLAGS: Record<string, { label: string; readAt: string | null }> = {
     label: "Assessor Supremo (prioridades + autonomia)",
     readAt: "isSupremeEnabled → priorities.functions.ts, autonomy.functions.ts",
   },
-  "drive.v1": {
-    label: "Drive Inteligente",
-    readAt: null,
-  },
 };
 
 function FlagsPage() {
