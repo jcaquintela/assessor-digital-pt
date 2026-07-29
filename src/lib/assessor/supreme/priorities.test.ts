@@ -25,7 +25,7 @@ describe("computePriorities", () => {
   it("sinaliza follow-up atrasado com razão legível", async () => {
     const supabase = makeSupabase({
       follow_ups: [{
-        id: "f1", title: "Ligar ao Paulo", type: "Tarefa",
+        id: "f1", user_id: "u1", title: "Ligar ao Paulo", type: "Tarefa",
         due_date: new Date(Date.now() - 2 * 864e5).toISOString(),
         status: "Pendente", priority: "Alta", person_id: "p1", outcome: null,
       }],
@@ -42,8 +42,8 @@ describe("computePriorities", () => {
   it("prioridade alta fica em primeiro", async () => {
     const supabase = makeSupabase({
       follow_ups: [
-        { id: "f1", title: "A", type: "Tarefa", due_date: new Date().toISOString(), status: "Pendente", priority: "Média", outcome: null },
-        { id: "f2", title: "B", type: "Tarefa", due_date: new Date(Date.now() - 5 * 864e5).toISOString(), status: "Pendente", priority: "Alta", outcome: null },
+        { id: "f1", user_id: "u1", title: "A", type: "Tarefa", due_date: new Date().toISOString(), status: "Pendente", priority: "Média", outcome: null },
+        { id: "f2", user_id: "u1", title: "B", type: "Tarefa", due_date: new Date(Date.now() - 5 * 864e5).toISOString(), status: "Pendente", priority: "Alta", outcome: null },
       ],
       opportunities: [],
       people: [],
