@@ -22,12 +22,16 @@ import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
 import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
 import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
+import { Route as AdminNegocioRouteImport } from './routes/admin/negocio'
 import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes'
 import { Route as AdminGoldensRouteImport } from './routes/admin/goldens'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
+import { Route as AdminFaturacaoRouteImport } from './routes/admin/faturacao'
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
+import { Route as AdminCustosRouteImport } from './routes/admin/custos'
 import { Route as AdminConvitesRouteImport } from './routes/admin/convites'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
+import { Route as AdminAquisicaoRouteImport } from './routes/admin/aquisicao'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
@@ -129,6 +133,11 @@ const AdminQualidadeRoute = AdminQualidadeRouteImport.update({
   path: '/qualidade',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminNegocioRoute = AdminNegocioRouteImport.update({
+  id: '/negocio',
+  path: '/negocio',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminIntegracoesRoute = AdminIntegracoesRouteImport.update({
   id: '/integracoes',
   path: '/integracoes',
@@ -144,9 +153,19 @@ const AdminFuncionalidadesRoute = AdminFuncionalidadesRouteImport.update({
   path: '/funcionalidades',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminFaturacaoRoute = AdminFaturacaoRouteImport.update({
+  id: '/faturacao',
+  path: '/faturacao',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminDefinicoesRoute = AdminDefinicoesRouteImport.update({
   id: '/definicoes',
   path: '/definicoes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminCustosRoute = AdminCustosRouteImport.update({
+  id: '/custos',
+  path: '/custos',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminConvitesRoute = AdminConvitesRouteImport.update({
@@ -157,6 +176,11 @@ const AdminConvitesRoute = AdminConvitesRouteImport.update({
 const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
   id: '/auditoria',
   path: '/auditoria',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAquisicaoRoute = AdminAquisicaoRouteImport.update({
+  id: '/aquisicao',
+  path: '/aquisicao',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AuthenticatedSeguimentosRoute =
@@ -381,12 +405,16 @@ export interface FileRoutesByFullPath {
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
+  '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/convites': typeof AdminConvitesRoute
+  '/admin/custos': typeof AdminCustosRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
+  '/admin/faturacao': typeof AdminFaturacaoRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/negocio': typeof AdminNegocioRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
@@ -436,12 +464,16 @@ export interface FileRoutesByTo {
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
+  '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/convites': typeof AdminConvitesRoute
+  '/admin/custos': typeof AdminCustosRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
+  '/admin/faturacao': typeof AdminFaturacaoRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/negocio': typeof AdminNegocioRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
@@ -494,12 +526,16 @@ export interface FileRoutesById {
   '/_authenticated/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
+  '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/convites': typeof AdminConvitesRoute
+  '/admin/custos': typeof AdminCustosRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
+  '/admin/faturacao': typeof AdminFaturacaoRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/negocio': typeof AdminNegocioRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
@@ -552,12 +588,16 @@ export interface FileRouteTypes {
     | '/pessoas'
     | '/rotinas'
     | '/seguimentos'
+    | '/admin/aquisicao'
     | '/admin/auditoria'
     | '/admin/convites'
+    | '/admin/custos'
     | '/admin/definicoes'
+    | '/admin/faturacao'
     | '/admin/funcionalidades'
     | '/admin/goldens'
     | '/admin/integracoes'
+    | '/admin/negocio'
     | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
@@ -607,12 +647,16 @@ export interface FileRouteTypes {
     | '/pessoas'
     | '/rotinas'
     | '/seguimentos'
+    | '/admin/aquisicao'
     | '/admin/auditoria'
     | '/admin/convites'
+    | '/admin/custos'
     | '/admin/definicoes'
+    | '/admin/faturacao'
     | '/admin/funcionalidades'
     | '/admin/goldens'
     | '/admin/integracoes'
+    | '/admin/negocio'
     | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
@@ -664,12 +708,16 @@ export interface FileRouteTypes {
     | '/_authenticated/pessoas'
     | '/_authenticated/rotinas'
     | '/_authenticated/seguimentos'
+    | '/admin/aquisicao'
     | '/admin/auditoria'
     | '/admin/convites'
+    | '/admin/custos'
     | '/admin/definicoes'
+    | '/admin/faturacao'
     | '/admin/funcionalidades'
     | '/admin/goldens'
     | '/admin/integracoes'
+    | '/admin/negocio'
     | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
@@ -806,6 +854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminQualidadeRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/negocio': {
+      id: '/admin/negocio'
+      path: '/negocio'
+      fullPath: '/admin/negocio'
+      preLoaderRoute: typeof AdminNegocioRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/integracoes': {
       id: '/admin/integracoes'
       path: '/integracoes'
@@ -827,11 +882,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFuncionalidadesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/faturacao': {
+      id: '/admin/faturacao'
+      path: '/faturacao'
+      fullPath: '/admin/faturacao'
+      preLoaderRoute: typeof AdminFaturacaoRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/definicoes': {
       id: '/admin/definicoes'
       path: '/definicoes'
       fullPath: '/admin/definicoes'
       preLoaderRoute: typeof AdminDefinicoesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/custos': {
+      id: '/admin/custos'
+      path: '/custos'
+      fullPath: '/admin/custos'
+      preLoaderRoute: typeof AdminCustosRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/convites': {
@@ -846,6 +915,13 @@ declare module '@tanstack/react-router' {
       path: '/auditoria'
       fullPath: '/admin/auditoria'
       preLoaderRoute: typeof AdminAuditoriaRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/aquisicao': {
+      id: '/admin/aquisicao'
+      path: '/aquisicao'
+      fullPath: '/admin/aquisicao'
+      preLoaderRoute: typeof AdminAquisicaoRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/_authenticated/seguimentos': {
@@ -1305,12 +1381,16 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface AdminRouteRouteChildren {
+  AdminAquisicaoRoute: typeof AdminAquisicaoRoute
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminConvitesRoute: typeof AdminConvitesRoute
+  AdminCustosRoute: typeof AdminCustosRoute
   AdminDefinicoesRoute: typeof AdminDefinicoesRoute
+  AdminFaturacaoRoute: typeof AdminFaturacaoRoute
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
   AdminGoldensRoute: typeof AdminGoldensRoute
   AdminIntegracoesRoute: typeof AdminIntegracoesRoute
+  AdminNegocioRoute: typeof AdminNegocioRoute
   AdminQualidadeRoute: typeof AdminQualidadeRoute
   AdminSegurancaRoute: typeof AdminSegurancaRoute
   AdminSubscricoesRoute: typeof AdminSubscricoesRoute
@@ -1321,12 +1401,16 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAquisicaoRoute: AdminAquisicaoRoute,
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminConvitesRoute: AdminConvitesRoute,
+  AdminCustosRoute: AdminCustosRoute,
   AdminDefinicoesRoute: AdminDefinicoesRoute,
+  AdminFaturacaoRoute: AdminFaturacaoRoute,
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
   AdminGoldensRoute: AdminGoldensRoute,
   AdminIntegracoesRoute: AdminIntegracoesRoute,
+  AdminNegocioRoute: AdminNegocioRoute,
   AdminQualidadeRoute: AdminQualidadeRoute,
   AdminSegurancaRoute: AdminSegurancaRoute,
   AdminSubscricoesRoute: AdminSubscricoesRoute,
