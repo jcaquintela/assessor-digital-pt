@@ -8,20 +8,13 @@ import {
   getWhatsAppStatus,
   listWhatsAppSendLogs,
   sendWhatsAppTestMessage,
+  getIntegrationsOverview,
 } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin/integracoes")({
   head: () => ({ meta: [{ title: "Integrações — Admin" }] }),
   component: IntegracoesPage,
 });
-
-const items = [
-  { name: "WhatsApp", status: "Ativo (webhook)" },
-  { name: "Google Calendar", status: "Planeado" },
-  { name: "Microsoft Outlook", status: "Planeado" },
-  { name: "Stripe", status: "Planeado" },
-  { name: "OpenAI", status: "Planeado" },
-];
 
 function fmt(dt: string | null) {
   if (!dt) return "—";
@@ -177,6 +170,11 @@ function WhatsAppStatusCard() {
 }
 
 function IntegracoesPage() {
+  const fetchIntegrations = useServerFn(getIntegrationsOverview);
+  const { data: items } = useQuery({
+    queryKey: ["admin", "integrations"],
+    queryFn: () => fetchIntegrations(),
+  });
   return (
     <div className="space-y-6">
       <div>
@@ -185,10 +183,12 @@ function IntegracoesPage() {
       </div>
       <WhatsAppStatusCard />
       <div className="grid gap-3 md:grid-cols-2">
-        {items.map((i) => (
+        {(items ?? []).map((i) => (
           <Card key={i.name}>
             <CardHeader><CardTitle className="text-base">{i.name}</CardTitle></CardHeader>
-            <CardContent className="text-sm text-muted-foreground">{i.status}</CardContent>
+            <CardContent className={`text-sm ${i.status === "active" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+              {i.status === "active" ? i.detail : "Planeado"}
+            </CardContent>
           </Card>
         ))}
       </div>
