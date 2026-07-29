@@ -78,6 +78,19 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   const userFirstName = String((prof as any)?.name ?? "").split(/\s+/)[0] || "";
   const historyPreview = toHistoryPreview((recentRows as any[]) ?? []);
 
+  // Heurística de contexto conversacional aberto: se a última mensagem do
+  // Assessor terminou em "?" e foi há menos de 10 minutos, uma resposta
+  // curta ("sim", "ok") DEVE ser tratada como continuação da pergunta e
+  // NUNCA como confirmação órfã. Sem isto, o Assessor responderia
+  // "Claro. A que te referes?" mesmo quando acabou de perguntar algo.
+  const lastAssistant0 = ((recentRows as any[]) ?? []).find((r) => r?.role === "assistant");
+  const lastAssistantContent0 = String(lastAssistant0?.content ?? "").trim();
+  const lastAssistantAt0 = lastAssistant0?.created_at ? new Date(lastAssistant0.created_at) : null;
+  const lastAssistantAskedQuestion =
+    /\?\s*$/.test(lastAssistantContent0) &&
+    !!lastAssistantAt0 &&
+    (Date.now() - lastAssistantAt0.getTime()) < 10 * 60_000;
+
   // Fast-path prospeção — se existe uma proposta pendente de placa e o
   // consultor confirma/cancela, resolvemos sem passar por THINK/DECIDE.
   // Garante que o "Feito" só sai depois da persistência real.
@@ -103,6 +116,40 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
               last_entity_id: leadId,
               last_intent: "create_prospecting_lead",
             } as never, { onConflict: "user_id,channel,external_conversation_id" });
+          } catch { /* noop */ }
+          // Materializa também como Imóvel para aparecer na área /imoveis
+          // com o estado "por_angariar" (oportunidade a captar). O consultor
+          // pode enriquecer depois. Falhas aqui não bloqueiam a resposta.
+          try {
+            const payload: any = pending.structured_payload ?? {};
+            const composedTitle = String(
+              payload.title ??
+                [payload.property_type ?? "Imóvel", payload.address_hint, payload.location]
+                  .filter(Boolean).join(" · "),
+            ).trim().slice(0, 200) || "Imóvel de prospeção";
+            const { data: propRow } = await supabase
+              .from("properties")
+              .insert({
+                user_id: userId,
+                title: composedTitle,
+                property_type: payload.property_type ?? null,
+                typology: payload.typology ?? null,
+                location: payload.location ?? null,
+                address: payload.address_hint ?? null,
+                status: "por_angariar",
+                notes: payload.notes ?? null,
+                source_channel: channel,
+              } as never)
+              .select("id")
+              .maybeSingle();
+            const propertyId = (propRow as any)?.id ?? null;
+            if (propertyId) {
+              await supabase
+                .from("prospecting_leads")
+                .update({ related_property_id: propertyId } as never)
+                .eq("id", leadId)
+                .eq("user_id", userId);
+            }
           } catch { /* noop */ }
         }
         const reply = okOk
@@ -150,7 +197,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
 
     // (b) Confirmação curta sem contexto pendente → pede referência.
-    if (saIsConfirmation(trimmed) && !hasValidPendingContext(pending)) {
+    if (
+      saIsConfirmation(trimmed) &&
+      !hasValidPendingContext(pending) &&
+      !lastAssistantAskedQuestion
+    ) {
       try {
         await supabase.from("assessor_ai_logs").insert({
           user_id: userId, channel, model: "reasoning-engine-v3",
@@ -217,7 +268,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     (t) => (t.name === "create_follow_up" || t.name === "create_event")
       && t.ok && (t.data as any)?.idempotent === true,
   );
-  if (idemHit) reply = "Já estava registado.";
+  if (idemHit) {
+    reply = (idemHit.data as any)?.rescheduled
+      ? "Já tinhas esse seguimento. Passei-o para o novo horário."
+      : "Já estava registado.";
+  }
 
   // Override natural para prospeção executada dentro do DECIDE (turno único).
   const leadTool = toolResults.find((t) => t.name === "create_prospecting_lead");

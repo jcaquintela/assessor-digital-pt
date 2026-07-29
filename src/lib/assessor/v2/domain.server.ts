@@ -114,6 +114,40 @@ async function findFollowUpByPending(
   return (data as any) ?? null;
 }
 
+// Normalização barata para comparar títulos ("Ligar ao Paulo!" ==
+// "ligar ao paulo"). Retira pontuação, acentos e artigos ligeiros.
+function normalizeTitleKey(raw: string): string {
+  return String(raw ?? "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\b(o|a|os|as|ao|à|de|do|da|para|pra)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Procura um follow_up aberto com o mesmo assunto (mesma pessoa/imóvel
+// quando aplicável). Usado para reagendar em vez de duplicar.
+async function findOpenFollowUpByTitle(
+  ctx: DomainContext,
+  args: { title: string; person_id: string | null; property_id: string | null },
+): Promise<{ id: string; title: string } | null> {
+  const key = normalizeTitleKey(args.title);
+  if (!key) return null;
+  let q = ctx.supabase
+    .from("follow_ups")
+    .select("id, title, person_id, related_property_id, status, created_at")
+    .eq("user_id", ctx.userId)
+    .in("status", ["pendente", "agendado"])
+    .order("created_at", { ascending: false })
+    .limit(25);
+  if (args.person_id) q = q.eq("person_id", args.person_id);
+  if (args.property_id) q = q.eq("related_property_id", args.property_id);
+  const { data } = await q;
+  const rows = ((data as any[]) ?? []).filter((r) => normalizeTitleKey(r.title) === key);
+  return rows[0] ?? null;
+}
+
 // Trata violação do índice único parcial como sucesso idempotente.
 function isUniqueViolation(err: any): boolean {
   if (!err) return false;
@@ -341,6 +375,47 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
   if (ctx.pendingActionId) {
     const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
     if (existing) return ok({ follow_up: existing, idempotent: true });
+  }
+  // Anti-duplicação por assunto (só quando não há pendingActionId — nesse
+  // caso a idempotência forte já é feita pelo índice único parcial).
+  // Se já existir um seguimento aberto com o mesmo título normalizado e
+  // mesma pessoa/imóvel, reagendamo-lo em vez de criar um novo.
+  const existingOpen = ctx.pendingActionId
+    ? null
+    : await findOpenFollowUpByTitle(ctx, {
+        title: v.title,
+        person_id: v.person_id ?? null,
+        property_id: v.property_id ?? null,
+      });
+  if (existingOpen) {
+    await ctx.supabase
+      .from("follow_ups")
+      .update({
+        due_date: dueIsoDate,
+        due_time: v.due_time ?? null,
+        status: "pendente",
+        priority: v.priority,
+      } as never)
+      .eq("id", existingOpen.id)
+      .eq("user_id", ctx.userId);
+    if (v.due_time) {
+      try {
+        await rescheduleReminder(ctx.supabase, {
+          userId: ctx.userId,
+          channel: ctx.channel,
+          related_resource_type: "follow_up",
+          related_resource_id: existingOpen.id,
+          new_date: v.due_date,
+          new_time: v.due_time,
+          timezone: "Europe/Lisbon",
+        });
+      } catch { /* noop */ }
+    }
+    return ok({
+      follow_up: { id: existingOpen.id, title: v.title, due_date: dueIsoDate },
+      idempotent: true,
+      rescheduled: true,
+    });
   }
   const activeProspectingLead = (!v.person_id && !v.property_id)
     ? await findActiveProspectingLead(ctx)
