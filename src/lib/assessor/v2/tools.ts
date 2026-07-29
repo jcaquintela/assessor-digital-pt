@@ -561,6 +561,89 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
   },
 ];
 
+// Ferramentas de lembretes (reminders) — SEMPRE que o consultor pedir
+// para reagendar, cancelar, ver ou enviar-lhe já um aviso.
+TOOL_SPECS.push(
+  {
+    type: "function",
+    function: {
+      name: "reschedule_reminder",
+      description:
+        "Reagenda um lembrete activo do consultor. Usa sempre que o consultor pedir 'passa para X', 'adia para Y', 'muda o aviso para Z'. Podes identificar o lembrete por reminder_id (se souberes), por (related_resource_type, related_resource_id), ou por subject_hint (texto livre com o assunto do seguimento, ex.: 'ligar ao Paulo'). Se houver ambiguidade, o sistema devolve candidatos e responde pedindo desambiguação — não crias novo aviso.",
+      parameters: {
+        type: "object",
+        properties: {
+          reminder_id: { type: ["string", "null"], format: "uuid" },
+          related_resource_type: {
+            type: ["string", "null"],
+            enum: ["follow_up", "event", "prospecting_lead", "other", null],
+          },
+          related_resource_id: { type: ["string", "null"], format: "uuid" },
+          subject_hint: {
+            type: ["string", "null"],
+            description: "Assunto do aviso em linguagem natural, ex.: 'ligar ao Paulo'.",
+          },
+          new_date: { type: "string", description: "YYYY-MM-DD (Europe/Lisbon)" },
+          new_time: { type: "string", description: "HH:MM (24h, Europe/Lisbon)" },
+          timezone: { type: "string", enum: ["Europe/Lisbon"] },
+          reason: { type: ["string", "null"] },
+        },
+        required: ["new_date", "new_time", "timezone"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_active_reminders",
+      description:
+        "Procura lembretes activos do consultor (agendados ou falhados). Usa antes de reagendar quando não sabes o id, ou quando o consultor pergunta 'que avisos tenho?'. Devolve id, assunto, data/hora agendada e estado.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: ["string", "null"], description: "Texto livre no assunto." },
+          related_resource_type: {
+            type: ["string", "null"],
+            enum: ["follow_up", "event", "prospecting_lead", "other", null],
+          },
+          related_resource_id: { type: ["string", "null"], format: "uuid" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cancel_reminder",
+      description:
+        "Cancela um lembrete activo. Usa quando o consultor pede 'esquece o aviso', 'cancela o lembrete'.",
+      parameters: {
+        type: "object",
+        properties: {
+          reminder_id: { type: "string", format: "uuid" },
+        },
+        required: ["reminder_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "send_reminder_now",
+      description:
+        "Envia um lembrete imediatamente pelo WhatsApp do consultor. Usa quando o consultor diz 'avisa-me já', 'manda agora' ou quando um lembrete falhou e o consultor pede para ser avisado agora.",
+      parameters: {
+        type: "object",
+        properties: {
+          reminder_id: { type: ["string", "null"], format: "uuid" },
+          subject_hint: { type: ["string", "null"] },
+          override_text: { type: ["string", "null"] },
+        },
+      },
+    },
+  },
+);
+
 // ---------- registo Zod (nome → schema) ----------
 
 export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
@@ -576,6 +659,10 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   create_prospecting_lead: CreateProspectingLeadArgs,
   search_prospecting_leads: SearchProspectingLeadsArgs,
   update_prospecting_lead: UpdateProspectingLeadArgs,
+  reschedule_reminder: RescheduleReminderArgs,
+  search_active_reminders: SearchActiveRemindersArgs,
+  cancel_reminder: CancelReminderArgs,
+  send_reminder_now: SendReminderNowArgs,
 };
 
 export const TOOL_NAMES = Object.keys(ZOD_BY_TOOL);
