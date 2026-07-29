@@ -1,77 +1,157 @@
-# Trust Mode v1 — Plano de implementação
+# Assessor Supremo v1 — Plano de entrega
 
-Objectivo: transformar o AQS num sistema de confiança (ATS) que sabe onde falha, aprende com correções do consultor e bloqueia regressões antes de expandir.
+Alinhado com a Constituição e o pedido (secção 20): apresento primeiro o diagnóstico + desenho, e proponho implementar nesta iteração apenas o subconjunto MVP (briefing manhã, priorização, outcomes, autonomia de lembretes, dashboard "Hoje", KPIs Closed Loop / Proactive Usefulness). Tudo por trás da flag `assessor.supreme.v1`, activa só para o Júlio.
 
-Faseado em 4 releases para não colocar tudo online de uma vez. Motor v3 continua atrás da flag `assessor.engine.v3` (só Júlio).
+## 1. Diagnóstico do que já existe
+
+**Motor v3 (`src/lib/assessor/v3/`)** — Reasoning Engine (Observe→Think→Search→Decide→Act→Remember→Reply), Trust Mode (ATS, corrections, reflections), AQS, Golden Conversations, Shadow Mode, sanitize, feature flags. Não mexer na estrutura.
+
+**Proatividade actual (`proactivity.server.ts` + cron `api/public/hooks/proactive-tick`, 30 min)** — já gera nudges para silêncio de clientes e follow-ups vencidos, com dedupe_key em `assessor_nudges`. Base sólida para expandir para Daily Loop.
+
+**Domínio já modelado:** `follow_ups` (com status, priority, due_date, due_time, timezone), `interactions`, `opportunities` (next_action, next_action_date, probability), `properties`, `people`, `miscellaneous_items`, `routines` (materializa recorrências), `calendar_connections` (schema pronto, sem Google/Outlook ligados).
+
+**Dashboard `/hoje`** — actualmente lê do `useStore` (dados locais/demo mistos). Precisa passar a ler dados reais via server fn.
+
+**Gaps face ao pedido:**
+- Sem motor de prioridade explícito (score + razões).
+- Sem `outcome` estruturado nos follow_ups (só `status`).
+- Sem preferências de autonomia por tipo de acção.
+- Sem origem/confiança/staleness nas informações-chave.
+- Sem KPIs Closed Loop / Proactive Usefulness / Suggestion Acceptance.
+- Cron único de 30 min; não há janelas horárias por utilizador (briefing manhã, quiet hours).
+
+## 2. Componentes reutilizáveis
+
+- `reasoning-engine.server.ts` — orquestrador central; adiciona-se contexto de prioridades ao SEARCH.
+- `proactivity.server.ts` + `assessor_nudges` — extender com novos `kind` (`daily_briefing`, `pre_event`, `outcome_check`, `daily_wrap`, `stale_info`).
+- `quality.server.ts` + `/admin/qualidade` — adicionar novas métricas ao mesmo painel.
+- `send.server.ts` (WhatsApp) — canal já pronto para enviar nudges.
+- `feature-flag.server.ts` (v3) — clonar padrão para `assessor.supreme.v1`.
+- Golden Conversations infra — adicionar novos casos (secção 17).
+
+## 3. Novas tabelas / colunas
+
+Migrações (sempre com GRANT + RLS por `auth.uid()`):
+
+```
+-- Preferências operacionais e de autonomia
+CREATE TABLE consultant_preferences (
+  user_id uuid PK,
+  morning_briefing_enabled bool, morning_time time, morning_days int[],
+  evening_wrap_enabled bool, evening_time time,
+  quiet_hours_start time, quiet_hours_end time, timezone text,
+  primary_channel text,               -- 'whatsapp' | 'app'
+  max_daily_nudges int default 6,
+  autonomy_level text default 'balanced', -- conservador|equilibrado|proativo
+  updated_at timestamptz
+);
+
+CREATE TABLE autonomy_rules (
+  user_id uuid, action_type text,     -- 'create_reminder', 'save_note', 'merge_person', ...
+  requires_confirmation bool,
+  updated_at timestamptz,
+  PRIMARY KEY (user_id, action_type)
+);
+
+-- Prioridades calculadas (materializadas por job para "As minhas prioridades")
+CREATE TABLE daily_priorities (
+  id uuid PK, user_id uuid, subject_type text, subject_id uuid,
+  action text, reason text[], priority_score numeric,
+  due_at timestamptz, calculated_at timestamptz,
+  dismissed_at timestamptz, completed_at timestamptz
+);
+
+-- Outcome tracking
+ALTER TABLE follow_ups
+  ADD outcome text,                   -- concluído|não_realizado|adiado|sem_resposta|precisa_nova_ação|cancelado
+  ADD outcome_notes text,
+  ADD outcome_recorded_at timestamptz,
+  ADD next_action_created_id uuid;
+
+-- Origem/confiança nas entidades-chave (properties, opportunities, people)
+-- coluna JSONB `field_provenance` por tabela:
+--   { price: {source, source_id, confidence, confirmed_at, last_verified_at, stale_after} }
+ALTER TABLE properties     ADD field_provenance jsonb default '{}';
+ALTER TABLE opportunities  ADD field_provenance jsonb default '{}';
+ALTER TABLE people         ADD field_provenance jsonb default '{}';
+
+-- Feedback implícito sobre nudges
+ALTER TABLE assessor_nudges
+  ADD outcome text,                   -- accepted|dismissed|ignored|snoozed|stop_topic
+  ADD outcome_at timestamptz,
+  ADD urgency text default 'useful';  -- urgent|important|useful|info
+```
+
+Nova flag em `feature_flags`: `assessor.supreme.v1` (só Júlio via `feature_flag_users`).
+
+## 4. Novos Domain Services (server fns determinísticos)
+
+`get_daily_priorities`, `get_pre_event_brief`, `save_event_outcome`, `save_follow_up_outcome`, `propose_next_action`, `create_next_action`, `get_stale_information`, `confirm_information`, `calculate_priorities` (job), `get_daily_summary`, `update_autonomy_preference`, `update_working_preference`. Todas validam `user_id`, respeitam RLS, auditam, e nunca respondem "Feito" antes do sucesso real.
+
+## 5. Alterações no orchestrator
+
+- **Feature-flag gate**: `isSupremeEnabled(userId)` decide se se activa o Supreme; caso contrário, comportamento actual mantém-se.
+- **SEARCH**: injecta top-3 prioridades + outcomes pendentes + info stale relevante ao contexto activo.
+- **DECIDE**: prompt reforçado para (a) referir prioridade real ao responder "por onde começo?", (b) perguntar outcome quando compromisso já terminou sem resultado, (c) confirmar info stale antes de reutilizar.
+- **ACT**: consulta `autonomy_rules` antes de executar; se `requires_confirmation=false` para o `action_type`, executa sem confirmação; caso contrário mantém pending_action.
+- **REMEMBER**: qualquer escrita passa `source_type` + `confidence` para `field_provenance`.
+
+## 6. Daily Operating Loop
+
+Substituir o cron único por um "tick" que corre a cada 15 min e, por utilizador com Supreme activo:
+
+```
+tick(now):
+  for user in supreme_users:
+    prefs = consultant_preferences(user)
+    if within(prefs.morning_time, ±10min) and today in morning_days:
+        emit nudge 'daily_briefing'  (usa get_daily_priorities)
+    for event in events_starting_in(user, 45–75min):
+        emit nudge 'pre_event'       (usa get_pre_event_brief)
+    for event in events_ended_between(30–90min ago) without outcome:
+        emit nudge 'outcome_check'
+    if within(prefs.evening_time, ±10min):
+        emit nudge 'daily_wrap'      (usa get_daily_summary)
+    stale = get_stale_information(user, limit=1)
+    if stale and cooldown_ok: emit nudge 'stale_info'
+```
+
+Cada `emit` respeita: quiet hours, `max_daily_nudges`, cooldown por assunto, dedupe_key, urgência (só urgent+important vão a WhatsApp por defeito).
+
+## 7. Política de autonomia
+
+Três presets (conservador/equilibrado/proativo) que apenas semeiam `autonomy_rules`; o consultor pode override por `action_type`. Whitelist executável sem confirmação limita-se ao definido na secção 7 (notas, interacções, Diversos, associação de ficheiros inequívocos, concluir tarefa quando explícito, criar lembretes, updates não sensíveis). Blacklist absoluta (merge, preço, proprietário, delete, cancelar compromissos, mensagens a clientes, financeiro) exige sempre confirmação — não é configurável para além disso.
+
+## 8. Modelo de prioridade
+
+`priority_score = clamp(0..100, w1·urgency + w2·commitment + w3·value_potential + w4·decision_proximity − w5·recency_penalty)` calculado por `calculate_priorities` (job de 15 min ou on-demand). Cada componente devolve também uma `reason` legível → gravada em `priority_reasons text[]`. O DECIDE recebe as top-N com razões, para poder verbalizar em PT-PT ("Começaria pelo Paulo — está em atraso desde ontem e a oportunidade continua activa").
+
+## 9. Riscos
+
+- **Excesso de notificações no WhatsApp** → limites por dia + quiet hours + urgência.
+- **Prioridades erradas** → razões visíveis + feedback implícito (dismiss/snooze) alimenta ajuste; Priority Accuracy no painel.
+- **Autonomia mal configurada a executar acções sensíveis** → blacklist fixa, testes Golden dedicados, kill switch.
+- **Info stale usada como facto** → provenance obriga a confirmar antes de reutilizar em respostas.
+- **Regressão do motor v3** → tudo por trás da flag; sem flag, código antigo intacto; Golden Conversations correm nas duas variantes.
+
+## 10. Rollout
+
+Etapa 1 (esta entrega): só Júlio, 7 dias mínimos, com métricas Closed Loop Rate, Proactive Usefulness, Suggestion Acceptance, Autonomy Error Rate a aparecerem em `/admin/qualidade`. Etapas 2–4 conforme secção 19 do pedido, sempre com gates ATS ≥90, AQS ≥90, Task Success ≥95%, Closed Loop ≥80%, Autonomy Error =0.
 
 ---
 
-## Fase 1 — Fundação de dados (migração única)
+## Escopo desta iteração (após aprovação)
 
-Novas tabelas + colunas, com RLS e GRANT:
+1. Migração: `feature_flags` (`assessor.supreme.v1`), `consultant_preferences`, `autonomy_rules`, `daily_priorities`, colunas de outcome em `follow_ups`, colunas `urgency`/`outcome` em `assessor_nudges`.
+2. Domain services: `get_daily_priorities`, `calculate_priorities`, `get_pre_event_brief`, `save_follow_up_outcome`, `save_event_outcome`, `update_autonomy_preference`.
+3. Extensão do `proactive-tick`: briefing manhã, pré-evento, outcome-check (por trás da flag).
+4. Orchestrator: gate + injecção de prioridades no SEARCH + consulta a `autonomy_rules` no ACT (só para `create_reminder` nesta iteração).
+5. `/hoje`: novos blocos "As minhas prioridades", "Aguardam resultado", "Riscos", ligados a dados reais via server fn (mantém dashboard actual quando flag off).
+6. Definições: secção "Autonomia do meu Assessor" (preset + toggle lembretes) e horas de briefing.
+7. `/admin/qualidade`: cartões Closed Loop Rate e Proactive Usefulness Rate.
+8. Golden Conversations novos: manhã, prioridade, pré-evento, outcome, autonomia lembretes, "não me voltes a lembrar".
+9. Testes Vitest para prioridade, outcomes e autonomia.
 
-- `assistant_user_corrections`
-  - `conversation_id` (external_conversation_id), `turn_id` (uuid → `assessor_reasoning_traces.id`), `category` (enum: `wrong_person`, `wrong_property`, `wrong_date`, `wrong_document`, `lost_context`, `unnatural_reply`, `unnecessary_question`, `wrong_execution`, `other`), `original_message`, `correction_message`, `final_result`, `resolved bool`, `user_id`, timestamps.
-- `assistant_trust_scores` (por turno, agregável)
-  - `trace_id` FK, `task_success 0|1|null`, `aqs_score numeric`, `corrections_count int`, `context_preservation 0..1`, `safe_decisions 0..1`, `ats numeric` (0..100), timestamps.
-- `assistant_reflections`
-  - `trace_id` FK, `trigger` (`low_aqs` | `low_ats` | `user_correction`), `analysis jsonb` (porquê falhei, o que faltou, resposta ideal), `model`, timestamps. Nunca exposto ao consultor.
-- `assistant_golden_conversations`
-  - `id`, `slug`, `title`, `turns jsonb` (mensagens + expectativas por turno), `tags text[]`, `active bool`.
-- `assistant_golden_runs`
-  - `golden_id` FK, `release_ref` (git sha/timestamp), `passed bool`, `ats numeric`, `aqs numeric`, `task_success numeric`, `diffs jsonb`, `created_at`.
-- `assistant_shadow_runs`
-  - `trace_id` FK (produção), `strategy text` (nome da variante), `reply text`, `ats`, `aqs`, `task_success`, `latency_ms`, `created_at`. Nunca envia ao consultor.
+Fora deste primeiro corte (fases seguintes): personalização observada, Google/Outlook, staleness detection completa, evening wrap, next-best-action em `/pessoas` e `/imoveis`, todos os KPIs restantes.
 
-RLS: tudo bloqueado ao consultor; só admins leem. Escrita apenas via service role dentro de handlers.
-
-## Fase 2 — Cálculo do ATS
-
-`src/lib/assessor/v3/trust.server.ts`:
-- `computeTaskSuccess(trace, toolResults)` — 1 se decisão `act` teve todas as tools ok e o recurso persistiu (re-select), 0 se falhou, null para `acknowledge`/`ask`.
-- `computeContextPreservation(trace, history)` — heurística determinística: penaliza se DECIDE fez `ask` sobre campo já presente no `conversation_state` ou historial recente; se criou duplicado (mesmo `dedupe_key`); se referiu entidade errada vs `active_person_id`/`last_property_id`.
-- `computeSafeDecisions(trace, toolResults, reply)` — 1 por defeito; 0 se resposta afirmou sucesso sem tool_calls ok, se prometeu ação futura não agendada, ou se sanitize teve de reescrever "Feito".
-- `computeATS({task, aqs, corrections, context, safe})` com pesos 35/25/15/15/10.
-
-Integrar no fim de `reasoning-engine.server.ts` a seguir ao AQS; gravar em `assistant_trust_scores`.
-
-## Fase 3 — Captura de correções
-
-Detector local no `reasoning-engine`: quando a mensagem do consultor no turno N segue < 90 s um turno assistente e contém padrões de correção (`não é`, `errado`, `queria dizer`, `esse não`, `não era o/a`, `não hoje`, `mudei`, `apaga`, `cancela`), classifica com pequeno prompt no `openai/gpt-5.6-sol` (categoria fechada) e insere em `assistant_user_corrections` ligando ao `trace_id` anterior. Usa `resolved=false`; passa a `true` quando o turno seguinte terminar com sucesso na mesma entidade.
-
-Reflection Engine: sempre que `AQS<80` OU `ATS<85` OU nova correção, dispara `reflect(trace, correction?)` (Lovable AI, prompt em PT-PT com 5 perguntas do brief) e grava em `assistant_reflections`. Assíncrono, sem bloquear a resposta ao consultor.
-
-## Fase 4 — Painel `/admin/qualidade` (extensão)
-
-Novos cartões:
-- ATS diário (14 dias) + breakdown por pilar.
-- Top 10 motivos de falha: agrega `assistant_user_corrections.category` + heurísticas do trust score (ask desnecessária, contexto perdido, duplicado, execução errada, resposta pouco natural). Percentagens.
-- Últimas 20 correções + reflexão associada (colapsável).
-- Barra "Definição de Pronto" com semáforos: ATS≥90, AQS≥90, TaskSuccess≥95%, Corrections<3%, Duplicados<1%, PerdaContexto<2%, Golden sem regressão.
-
-Server fns em `quality.functions.ts` (extensão).
-
-## Fase 5 — Golden Conversations + Shadow Mode (arquitetura, sem UI de execução ainda)
-
-- Seed inicial de ~30 golden conversations em `supabase/migrations` (JSON) cobrindo: criar seguimento, criar contacto, associar documento, consulta de agenda, referência ambígua, negação, correção de data.
-- CLI `bun run golden:check` (script em `scripts/golden-check.ts`) que corre cada golden contra `runReasoningEngine` com um user fake e compara ATS/AQS/TaskSuccess com o último `assistant_golden_runs`. Falha se regride. Documentado em `docs/golden-conversations.md`.
-- Shadow Mode: em `reasoning-engine.server.ts`, se flag `assessor.engine.v3.shadow` estiver on para o utilizador, corre `runShadowStrategy(trace)` em `waitUntil`-style (fire-and-forget) que executa uma segunda `decide()` com prompt/variante alternativa e grava em `assistant_shadow_runs`. Nunca responde ao consultor.
-
----
-
-## Detalhes técnicos
-
-- Todas as escritas passam pela camada de domínio já existente — IA nunca escreve directamente.
-- Tabelas novas: `GRANT ALL ... TO service_role` + `GRANT SELECT` a `authenticated` só onde admins precisam ler via `is_admin`.
-- Prompts do Reflection Engine e Shadow Mode isolados em `src/lib/assessor/v3/prompts.ts` para versionamento.
-- Toda a lógica de correção/reflexão é assíncrona e não pode atrasar a resposta ao consultor (>200 ms extra é bloqueador).
-- Kill switch por flag continua a valer; ATS respeita a mesma flag do v3.
-
-## Fora de âmbito desta iteração
-
-- UI para os consultores verem correções (é interno).
-- Auto-substituição da estratégia produtiva pela shadow (só recolha comparativa).
-- Golden Conversations >30 (subimos para 200 depois de validar formato).
-- Alterações ao motor v2/legacy.
-
-Se aprovares, começo pela Fase 1 (migração) e Fase 2 (cálculo ATS + integração no engine) neste turno; Fases 3–5 na sequência.
+Confirmas que avanço com este escopo mínimo?

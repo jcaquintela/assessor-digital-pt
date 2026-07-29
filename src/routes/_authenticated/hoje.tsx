@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, CalendarClock, CheckCircle2, Clock, Sparkles } from "lucide-react";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { Link } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { dismissPriority, getHojeSupreme } from "@/lib/assessor/supreme/priorities.functions";
+import { saveFollowUpOutcome } from "@/lib/assessor/supreme/outcomes.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/hoje")({
   head: () => ({
@@ -29,6 +34,17 @@ function HojePage() {
   const { seguimentos, oportunidades, pessoas, concluirSeguimento } = useStore();
   const { name: assessorName } = useAssessorName();
   const now = new Date();
+  const supremeQ = useServerFn(getHojeSupreme);
+  const dismissFn = useServerFn(dismissPriority);
+  const outcomeFn = useServerFn(saveFollowUpOutcome);
+  const qc = useQueryClient();
+  const supreme = useQuery({ queryKey: ["supreme", "hoje"], queryFn: () => supremeQ() });
+  void dismissFn; // reservado para dismiss inline (próxima iteração)
+  const outcome = useMutation({
+    mutationFn: (v: { id: string; outcome: string }) => outcomeFn({ data: v }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["supreme", "hoje"] }); toast.success("Resultado registado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const eventosHoje = seguimentos.filter(
     (s) => s.tipo === "Evento" && isSameDay(new Date(s.data), now) && s.estado !== "Concluído",
@@ -52,6 +68,61 @@ function HojePage() {
         title={assessorName === "Assessor" ? "Bom dia, Consultor" : `Olá. Sou ${assessorName}.`}
         subtitle={new Intl.DateTimeFormat("pt-PT", { weekday: "long", day: "2-digit", month: "long" }).format(now)}
       />
+      {supreme.data?.enabled && (
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
+          <Card className="border-primary/30 bg-primary/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="h-4 w-4 text-primary" /> As minhas prioridades
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {supreme.data.priorities.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nada urgente agora. Bom trabalho.</p>
+              )}
+              {supreme.data.priorities.map((p: any) => (
+                <div key={`${p.subject_type}:${p.subject_id}`} className="rounded-lg border border-border bg-background p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{p.action}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {p.reasons?.slice(0, 2).join(" · ") || "—"}
+                        {p.entity_label ? ` · ${p.entity_label}` : ""}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="shrink-0">{Math.round(p.priority_score)}</Badge>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Clock className="h-4 w-4 text-muted-foreground" /> Aguardam resultado
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {supreme.data.awaitingOutcome.length === 0 && (
+                <p className="text-sm text-muted-foreground">Sem ações à espera de desfecho.</p>
+              )}
+              {supreme.data.awaitingOutcome.map((a: any) => (
+                <div key={a.id} className="rounded-lg border border-border p-3">
+                  <div className="text-sm font-medium">{a.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatData(a.due_at)}{a.entity_label ? ` · ${a.entity_label}` : ""}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => outcome.mutate({ id: a.id, outcome: "concluido" })}>Concluído</Button>
+                    <Button size="sm" variant="ghost" onClick={() => outcome.mutate({ id: a.id, outcome: "adiado" })}>Adiado</Button>
+                    <Button size="sm" variant="ghost" onClick={() => outcome.mutate({ id: a.id, outcome: "sem_resposta" })}>Sem resposta</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {assessorName === "Assessor" && (
         <Card className="mb-4 border-dashed">
           <CardContent className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">

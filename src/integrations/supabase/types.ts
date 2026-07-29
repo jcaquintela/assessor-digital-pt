@@ -202,6 +202,8 @@ export type Database = {
           dedupe_key: string | null
           id: string
           kind: string
+          outcome: string | null
+          outcome_at: string | null
           reason: string
           scheduled_for: string
           sent_at: string | null
@@ -210,6 +212,7 @@ export type Database = {
           subject_type: string | null
           suggested_reply: string
           updated_at: string
+          urgency: string
           user_id: string
         }
         Insert: {
@@ -217,6 +220,8 @@ export type Database = {
           dedupe_key?: string | null
           id?: string
           kind: string
+          outcome?: string | null
+          outcome_at?: string | null
           reason: string
           scheduled_for?: string
           sent_at?: string | null
@@ -225,6 +230,7 @@ export type Database = {
           subject_type?: string | null
           suggested_reply: string
           updated_at?: string
+          urgency?: string
           user_id: string
         }
         Update: {
@@ -232,6 +238,8 @@ export type Database = {
           dedupe_key?: string | null
           id?: string
           kind?: string
+          outcome?: string | null
+          outcome_at?: string | null
           reason?: string
           scheduled_for?: string
           sent_at?: string | null
@@ -240,6 +248,7 @@ export type Database = {
           subject_type?: string | null
           suggested_reply?: string
           updated_at?: string
+          urgency?: string
           user_id?: string
         }
         Relationships: []
@@ -692,6 +701,30 @@ export type Database = {
           },
         ]
       }
+      autonomy_rules: {
+        Row: {
+          action_type: string
+          created_at: string
+          requires_confirmation: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          requires_confirmation?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          requires_confirmation?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_connections: {
         Row: {
           connected_at: string
@@ -732,6 +765,57 @@ export type Database = {
           provider?: string
           refresh_token_encrypted?: string | null
           scopes?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      consultant_preferences: {
+        Row: {
+          autonomy_level: string
+          created_at: string
+          evening_time: string
+          evening_wrap_enabled: boolean
+          max_daily_nudges: number
+          morning_briefing_enabled: boolean
+          morning_days: number[]
+          morning_time: string
+          primary_channel: string
+          quiet_hours_end: string
+          quiet_hours_start: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          autonomy_level?: string
+          created_at?: string
+          evening_time?: string
+          evening_wrap_enabled?: boolean
+          max_daily_nudges?: number
+          morning_briefing_enabled?: boolean
+          morning_days?: number[]
+          morning_time?: string
+          primary_channel?: string
+          quiet_hours_end?: string
+          quiet_hours_start?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          autonomy_level?: string
+          created_at?: string
+          evening_time?: string
+          evening_wrap_enabled?: boolean
+          max_daily_nudges?: number
+          morning_briefing_enabled?: boolean
+          morning_days?: number[]
+          morning_time?: string
+          primary_channel?: string
+          quiet_hours_end?: string
+          quiet_hours_start?: string
+          timezone?: string
           updated_at?: string
           user_id?: string
         }
@@ -824,6 +908,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      daily_priorities: {
+        Row: {
+          action: string
+          calculated_at: string
+          completed_at: string | null
+          created_at: string
+          dismissed_at: string | null
+          due_at: string | null
+          id: string
+          priority_score: number
+          reasons: string[]
+          subject_id: string | null
+          subject_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          calculated_at?: string
+          completed_at?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          due_at?: string | null
+          id?: string
+          priority_score?: number
+          reasons?: string[]
+          subject_id?: string | null
+          subject_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          calculated_at?: string
+          completed_at?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          due_at?: string | null
+          id?: string
+          priority_score?: number
+          reasons?: string[]
+          subject_id?: string | null
+          subject_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       feature_flag_users: {
         Row: {
@@ -952,8 +1084,12 @@ export type Database = {
           due_time: string | null
           external_reference: string | null
           id: string
+          next_action_created_id: string | null
           notes: string | null
           opportunity_id: string | null
+          outcome: string | null
+          outcome_notes: string | null
+          outcome_recorded_at: string | null
           person_id: string | null
           priority: string
           related_file_id: string | null
@@ -975,8 +1111,12 @@ export type Database = {
           due_time?: string | null
           external_reference?: string | null
           id?: string
+          next_action_created_id?: string | null
           notes?: string | null
           opportunity_id?: string | null
+          outcome?: string | null
+          outcome_notes?: string | null
+          outcome_recorded_at?: string | null
           person_id?: string | null
           priority?: string
           related_file_id?: string | null
@@ -998,8 +1138,12 @@ export type Database = {
           due_time?: string | null
           external_reference?: string | null
           id?: string
+          next_action_created_id?: string | null
           notes?: string | null
           opportunity_id?: string | null
+          outcome?: string | null
+          outcome_notes?: string | null
+          outcome_recorded_at?: string | null
           person_id?: string | null
           priority?: string
           related_file_id?: string | null
