@@ -1,82 +1,76 @@
+# Registo natural de contactos — Plano
 
-# Redesenho do `/hoje` como Centro de Comando
+Feature grande com muitas ramificações. Proponho entregar em 3 fases dentro deste turno, focando o núcleo (17. Critérios de aceitação) e deixando integrações externas para depois (importação CSV/Google/Microsoft — ponto 14 fica fora).
 
-Transformar a página inicial num centro de comando acionável, sem duplicar o CRM. Reutilizar o motor Supremo v1 já implementado (prioridades, aguardam-resultado, autonomia, motor conversacional do Assessor). Ativação sem depender da feature flag Supremo — o novo dashboard passa a ser a experiência-padrão, com fallback para dados demo (`useStore`) quando o motor real não devolve nada.
+## Fase 1 — Modelo de dados e deduplicação
 
-## 1. Página `/hoje` — cinco blocos
+**Migração `people` + `person_phones`:**
+- Novo enum `person_role`: `owner`, `potential_owner`, `buyer`, `potential_buyer`, `client`, `reference`, `partner`, `supplier`, `colleague`, `other`.
+- `people.roles person_role[]` (mantém `relationship_type` como papel primário para compatibilidade; deriva do primeiro elemento).
+- Colunas novas em `people`: `company text`, `job_title text`, `source_channel text`, `source_message_id uuid`, `source_file_id uuid`, `search_location text`, `search_property_type text`, `budget_min numeric`, `budget_max numeric`, `referred_by_person_id uuid`, `preferences jsonb`.
+- Nova tabela `person_phones` (id, person_id, raw, e164, country_code, kind: mobile|landline|whatsapp|unknown, is_primary, created_at).
+- RLS por `user_id` do dono; grants para authenticated + service_role.
+- Índices em `e164` e `email` (normalizado).
 
-Reescrever `src/routes/_authenticated/hoje.tsx`:
+**`src/lib/people/normalize.ts`** (novo):
+- `normalizePhoneE164(raw, defaultCountry='PT')` → { e164, country_code, kind } (heurística: começa por `9`/`2` → PT +351; `+xx` respeitado).
+- `normalizeEmail(raw)` → lowercase trimmed.
+- `similarName(a,b)` → normalize (lower + sem acentos + tokens ordenados) e retorna score 0-1.
 
-**A. Cabeçalho diário**
-- Saudação temporal (Bom dia/Boa tarde/Boa noite) + nome do consultor.
-- Frase natural: "Hoje tens N prioridade(s) e M compromisso(s)."
-- Data por extenso (PT-PT).
-- Botões: `Falar com o Alfred` (→ `/assessor`) e `Adicionar` (abre popover).
+**`src/lib/people/dedupe.functions.ts`** (server fn autenticada):
+- Input: `{ name?, phone?, email?, company? }`.
+- Prioridade: e164 exato > email exato > (nome≥0.8 + contexto) > nome≥0.9.
+- Retorna `{ match: person | null, confidence, reason }`.
 
-**B. As minhas prioridades** (máx. 5)
-- Fonte: `getHojeSupreme` → fallback para prioridades derivadas de seguimentos/oportunidades locais quando vazio ou motor desligado.
-- Cartão com título, tipo, hora/prazo, entidade, motivo curto.
-- Ações inline: `Concluir`, `Adiar`, `Abrir`, `Falar`. `Concluir`/`Adiar` chamam `saveFollowUpOutcome` para follow-ups; para oportunidades, `Abrir` navega à ficha. `Adiar` mostra popover com opções (+1h, amanhã, próxima semana) — apenas UI nesta iteração usando o campo `dismissed_at`/refresh; adiamento profundo fica marcado como TODO.
-- Estado vazio: "Nenhuma prioridade urgente."
+## Fase 2 — Motor conversacional
 
-**C. Próximos compromissos (timeline)**
-- Lista cronológica dos eventos de hoje (fonte: `follow_ups` tipo Evento + fallback demo).
-- Cada item: hora, título, pessoa, imóvel, estado.
-- Click → drawer lateral (shadcn `Sheet`) com contexto: última interação, notas, botões "Abrir ficha da pessoa", "Abrir imóvel", "Registar resultado".
+**Extração no motor v3 (`src/lib/assessor/v3/`)** — reforço, não substituição:
+- `extractors/person.ts` novo: dado texto (ou já transcrito), extrai `name, phones[], emails[], roles[], company, location, property_type, budget, referredBy, nextAction` via IA (Gemini) com JSON prompt (sem enums grandes em schema). Não inventa: campos ausentes = null.
+- No `decide.server.ts` (ou equivalente), quando intent = criar/atualizar pessoa:
+  1. chamar dedupe;
+  2. se match forte (telefone/email idêntico) → propor "Já tens X. Atualizo o contacto?" com merge não-destrutivo (só preenche campos vazios; adiciona papéis; adiciona telefones novos);
+  3. se sem match e há nome + contacto/contexto → propor criação;
+  4. se só nome vago → registar como rascunho e perguntar naturalmente.
+- `pending_actions` já suporta o ciclo colecting/pending_confirmation/executed — reutilizar.
+- Se preferência `autonomy_level = 'proativo'` **e** confiança alta **e** telefone válido → auto-criar sem confirmação (respeita ponto 3).
+- Atualizações de notas de baixo risco vão direto (append em `notes`, sem confirmação).
+- Enriquecimento progressivo: quando `conversation_states.active_person_id` está setado, novas mensagens actualizam essa ficha em vez de criar nova.
 
-**D. Aguardam resultado**
-- Fonte: `supreme.awaitingOutcome` + fallback local (eventos passados sem outcome).
-- Cartão com título, quando aconteceu, entidade.
-- 4 ações rápidas: `Correu bem` (→ `concluido`), `Precisa seguimento` (→ `precisa_nova_acao`), `Sem efeito` (→ `nao_realizado`), `Nota` (abre modal simples para `outcome_notes`).
-- Depois de responder → invalidar query; item desaparece.
+**Ficheiros (cartão visita / vCard):**
+- `src/lib/people/vcard.ts`: parser mínimo (FN, TEL, EMAIL, ORG, TITLE).
+- Em `files.server.ts` classification: novo tipo `business_card` e `vcard`. Para `business_card` chama Gemini vision (JSON schema pequeno: name/phone/email/company/title). Para `.vcf` usa parser. Cria `pending_action` a propor pessoa com `source_file_id` e responde "Encontrei X, Y. Crio o contacto?".
 
-**E. Alertas úteis** (só aparece se houver conteúdo)
-- Seguimentos em atraso (contagem + link).
-- Oportunidades sem próxima ação.
-- Documentos por classificar (`uploaded_files` com `classification` null, apenas contagem + link para `/documentos`).
-- Cada alerta é clicável e leva à listagem filtrada. Sem cartões vazios.
+**Áudio:** já é transcrito; o texto entra pelo mesmo pipeline. Se transcrição incluir "lembra-me de …" o motor cria pessoa **e** follow-up ligado (`follow_ups.person_id`).
 
-## 2. Ações rápidas (botão `Adicionar`)
+## Fase 3 — UI
 
-Popover no cabeçalho com opções: Pessoa, Imóvel, Compromisso, Seguimento, Despesa, Comissão, Nota. Cada opção navega para a rota correspondente (`/pessoas`, `/imoveis`, `/seguimentos`, `/negocio/despesas`, `/negocio/comissoes`, `/diversos`). No topo, campo "O que queres registar?" que, ao submeter, navega para `/assessor?prefill=<texto>` — o Assessor mobile já reutiliza o motor central.
+**Ficha `/pessoas/$id`** (refactor):
+- Cabeçalho: nome, badges de papéis, telefone principal (clicável `tel:`), botão WhatsApp (`https://wa.me/<e164>`), botão "Adicionar nota", próxima ação.
+- Secção Contexto: resumo, origem, necessidades (localização/tipo/orçamento), preferências (jsonb livre), notas — editáveis inline.
+- Secção Relações: imóveis (owner + interesse), oportunidades, visitas (via follow_ups tipo visita), seguimentos, interações, ficheiros de origem.
+- Secção Histórico: timeline a partir de `interactions` + created_at + updated_at + follow-ups + messages associadas (via `assessor_messages.related_resource_id`).
 
-## 3. Pesquisa global
+**Quick add em `/hoje`:**
+- `QuickAdd` já existe com "Pessoa"; substituir modal por 2 tabs:
+  - **Natural**: textarea "Quem queres registar?" → envia para `/assessor` com prefill (comportamento atual mantido).
+  - **Manual**: nome, telefones (múltiplos), email, papéis (multi-select), empresa, notas → server fn `createPersonManual`.
 
-Componente `GlobalSearch` no `PageHeader` do `/hoje` (e futuramente noutras páginas):
-- Input com `Cmd+K` opcional.
-- Pesquisa em `people.name`, `properties.title`, `miscellaneous_items.title`, `follow_ups.title` (queries paralelas, limit 5 cada).
-- Resultados agrupados por tipo com ícone e link para ficha. Debounce 250ms.
+**Não fazer nesta fase:**
+- Importação CSV/Google/Microsoft (ponto 14) — deixar TODO no código com `docs/pessoas-importacao.md` stub.
+- Interações timeline avançada (versionamento de alterações) — só append.
 
-## 4. Navegação
+## Detalhes técnicos
 
-Reduzir `desktopNav` em `src/components/app-shell.tsx` para:
-- Hoje, Assessor, Pessoas, Imóveis, Agenda (`/calendario`), O Meu Negócio, Diversos, Definições.
-- Remover do menu: Oportunidades, Seguimentos, Rotinas, Interações, Documentos (mantêm rotas + ficam acessíveis via fichas, pesquisa e link "ver mais" dentro de `/hoje`).
-- `mobileNav`: Assessor, Hoje, Pessoas, Mais.
+- Sem `.min/.max/format` nos schemas de IA (regra `ai-sdk-agent-patterns`).
+- Modelo IA: `openai/gpt-5.6-sol` com `reasoningEffort: "none"` para extração (JSON via prompt + parse).
+- Vision cartão visita: `google/gemini-3.1-flash` (rápido, barato) via `/v1/chat/completions` com `image_url`.
+- Merge não-destrutivo: só preenche campos NULL; concatena `notes` com timestamp; `person_phones` faz UPSERT por `e164`.
+- Todas as queries por `user_id = auth.uid()` (RLS já ativa).
+- Preservar contract com store legacy: `relationship_type` continua populado (primeiro role).
+- Teste rápido: 5 casos naturais nos testes existentes (`culture.test.ts` padrão).
 
-## 5. Fichas
-Já existem (`/pessoas/$id`, `/imoveis/$id`). Esta iteração garante que cada cartão do dashboard tem link para a ficha correspondente. Melhorias profundas às fichas ficam fora do âmbito.
+## Fora de scope
 
-## 6. Detalhes técnicos
-- Novo componente `src/components/hoje/*` (Header, PrioritiesBlock, Timeline, AwaitingBlock, AlertsBlock, QuickAdd, EventDrawer, GlobalSearch).
-- Todas as ações usam `useMutation` + `invalidateQueries(["supreme","hoje"])`.
-- Estado vazio explícito em cada bloco.
-- Responsivo: 2 colunas em desktop (prioridades + timeline à esquerda, aguardam+alertas à direita), 1 coluna em mobile com FAB `Falar com o Alfred`.
-- Tokens semânticos existentes (`bg-card`, `border-border`, `text-primary`); sem cores hardcoded.
+Ponto 14 (importação em massa) e histórico com diff auditável — ficam para iteração seguinte com nota no código.
 
-## 7. Fora do âmbito (para não inflar esta iteração)
-- Redesenho profundo das fichas de pessoa/imóvel/compromisso.
-- Integração real com Google/Outlook.
-- Novo motor de linguagem natural no botão "Adicionar" (usa o Assessor já existente).
-- Melhorar performance de pesquisa com índices dedicados.
-
-## 8. Critérios de aceitação
-1. Abrir `/hoje` mostra imediatamente prioridades, compromissos, aguardam-resultado, alertas.
-2. Concluir/adiar prioridade sem mudar de página.
-3. Cartões clicáveis com contexto no drawer ou ficha.
-4. Registar resultado num compromisso (correu bem / precisa seguimento / sem efeito / nota).
-5. Botão `Adicionar` com opções rápidas + campo linguagem natural.
-6. Pesquisa global funcional.
-7. Menu principal reduzido.
-8. Nenhum cartão vazio decorativo.
-9. Build + testes verdes.
+Confirmas para arrancar? Se quiseres reduzir para uma fase única mais pequena (por exemplo, só extração de texto + dedupe + ficha), diz-me.

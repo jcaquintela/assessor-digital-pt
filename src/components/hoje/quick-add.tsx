@@ -4,21 +4,23 @@ import { Plus, User, Building2, CalendarPlus, ListChecks, Receipt, Coins, Sticky
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { NewPersonDialog } from "@/components/pessoas/new-person-dialog";
 
 const OPTIONS = [
-  { label: "Pessoa", icon: User, to: "/pessoas" },
-  { label: "Imóvel", icon: Building2, to: "/imoveis" },
-  { label: "Compromisso", icon: CalendarPlus, to: "/calendario" },
-  { label: "Seguimento", icon: ListChecks, to: "/seguimentos" },
-  { label: "Despesa", icon: Receipt, to: "/negocio/despesas" },
-  { label: "Comissão", icon: Coins, to: "/negocio/comissoes" },
-  { label: "Nota", icon: StickyNote, to: "/diversos" },
-] as const;
+  { label: "Pessoa", icon: User, action: "person" as const },
+  { label: "Imóvel", icon: Building2, to: "/imoveis" as const },
+  { label: "Compromisso", icon: CalendarPlus, to: "/calendario" as const },
+  { label: "Seguimento", icon: ListChecks, to: "/seguimentos" as const },
+  { label: "Despesa", icon: Receipt, to: "/negocio/despesas" as const },
+  { label: "Comissão", icon: Coins, to: "/negocio/comissoes" as const },
+  { label: "Nota", icon: StickyNote, to: "/diversos" as const },
+];
 
 export function QuickAdd() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  const [personOpen, setPersonOpen] = useState(false);
 
   const submitNatural = () => {
     const t = text.trim();
@@ -30,6 +32,7 @@ export function QuickAdd() {
   };
 
   return (
+    <>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Adicionar</Button>
@@ -56,7 +59,11 @@ export function QuickAdd() {
             <button
               key={o.label}
               type="button"
-              onClick={() => { setOpen(false); navigate({ to: o.to }); }}
+              onClick={() => {
+                setOpen(false);
+                if ("action" in o && o.action === "person") setPersonOpen(true);
+                else if ("to" in o && o.to) navigate({ to: o.to });
+              }}
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
             >
               <o.icon className="h-4 w-4 text-muted-foreground" />
@@ -66,5 +73,7 @@ export function QuickAdd() {
         </div>
       </PopoverContent>
     </Popover>
+    <NewPersonDialog open={personOpen} onOpenChange={setPersonOpen} defaultText={text} />
+    </>
   );
 }
