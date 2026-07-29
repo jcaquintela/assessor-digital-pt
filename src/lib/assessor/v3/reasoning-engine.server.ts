@@ -33,6 +33,100 @@ import {
 
 const HISTORY_LIMIT = 6;
 
+function parsePtAmount(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const cleaned = raw
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/euros?|eur|€/g, "");
+  const multiplier = /k$/.test(cleaned) ? 1000 : /m$/.test(cleaned) ? 1_000_000 : 1;
+  const withoutSuffix = cleaned.replace(/[km]$/, "");
+  const normalized = withoutSuffix.includes(",")
+    ? withoutSuffix.replace(/\./g, "").replace(",", ".")
+    : /\.\d{3}(?!\d)/.test(withoutSuffix)
+      ? withoutSuffix.replace(/\./g, "")
+      : withoutSuffix;
+  const value = Number(normalized);
+  return Number.isFinite(value) ? Math.round(value * multiplier) : null;
+}
+
+function formatPtMoney(value: number): string {
+  return new Intl.NumberFormat("pt-PT", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function todayLisbonYmd(): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Lisbon",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const m: Record<string, string> = {};
+  for (const part of parts) m[part.type] = part.value;
+  return `${m.year}-${m.month}-${m.day}`;
+}
+
+function extractFinanceCommission(content: string): Record<string, unknown> | null {
+  const text = content.trim();
+  const lower = text.toLowerCase();
+  if (!/\bcomiss(?:ã|a)o|\bcomiss(?:õ|o)es/.test(lower)) return null;
+  const commissionRaw = text.match(/comiss(?:ã|a)o(?:\s+[^\d€]{0,30})?\s*(\d[\d.\s]*(?:,\d+)?\s*(?:k€|m€|€|eur|euros?|k\b|m\b)?)/i)?.[1] ?? null;
+  const amount = parsePtAmount(commissionRaw);
+  if (amount == null) return null;
+  const productionRaw = text.match(/produ(?:ç|c)[aã]o(?:\s+de)?\s*(\d[\d.\s]*(?:,\d+)?\s*(?:k€|m€|€|eur|euros?|k\b|m\b)?)/i)?.[1] ?? null;
+  const dealRaw = text.match(/neg[óo]cio\s+(?:do|da|de|dos|das)?\s*[^,.;]*?\s+por\s*(\d[\d.\s]*(?:,\d+)?\s*(?:k€|m€|€|eur|euros?|k\b|m\b)?)/i)?.[1]
+    ?? text.match(/\bpor\s*(\d[\d.\s]*(?:,\d+)?\s*(?:k€|m€|€|eur|euros?|k\b|m\b)?)/i)?.[1]
+    ?? null;
+  const productionAmount = parsePtAmount(productionRaw);
+  const dealValue = parsePtAmount(dealRaw);
+  const propertyReference = text.match(/neg[óo]cio\s+(?:do|da|de|dos|das)\s+([^,.;]+?)(?:\s+por\s|,|$)/i)?.[1]?.trim() ?? null;
+  const status = /\b(recebid[ao]|paga|pago)\b/i.test(text)
+    ? "Recebida"
+    : /\b(faturad[ao]|facturad[ao])\b/i.test(text)
+      ? "Faturada"
+      : "Prevista";
+  const descriptionParts = [
+    `Comissão ${propertyReference ? `do ${propertyReference}` : "do negócio"}`,
+    dealValue != null ? `valor do negócio ${formatPtMoney(dealValue)}` : null,
+    productionAmount != null ? `produção ${formatPtMoney(productionAmount)} + IVA` : null,
+  ].filter(Boolean);
+  return {
+    type: "commission",
+    amount,
+    description: descriptionParts.join(" · "),
+    status,
+    movement_date: todayLisbonYmd(),
+    category: "Comissão",
+    deal_value: dealValue,
+    production_amount: productionAmount,
+    property_reference: propertyReference,
+    opportunity_title: propertyReference ? `Negócio ${propertyReference}` : "Negócio fechado",
+  };
+}
+
+async function saveFailedActionAsMiscellaneous(
+  ctx: DomainContext,
+  content: string,
+  reason: string,
+): Promise<void> {
+  const title = content.length > 120 ? `${content.slice(0, 117)}...` : content;
+  await ctx.supabase.from("miscellaneous_items").insert({
+    user_id: ctx.userId,
+    title,
+    original_content: content,
+    summary: `Falhou a gravação automática: ${reason}`,
+    category: "Por tratar",
+    source_channel: ctx.channel,
+    occurred_at: new Date().toISOString(),
+    status: "inbox",
+    tags: ["falha_assessor"],
+  } as never);
+}
+
 function nowLisbonHuman(): string {
   return new Intl.DateTimeFormat("pt-PT", {
     timeZone: "Europe/Lisbon",
@@ -175,6 +269,31 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       }
     }
 
+    const commissionArgs = extractFinanceCommission(trimmed);
+    if (commissionArgs) {
+      const t0 = Date.now();
+      const result = await TOOL_REGISTRY.create_financial_movement(ctx, commissionArgs);
+      if (!result.ok) {
+        try { await saveFailedActionAsMiscellaneous(ctx, trimmed, result.error ?? "financial_failed"); }
+        catch { /* noop */ }
+      }
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "create_financial_movement_fast_path", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: Date.now() - t0, success: !!result.ok, error: result.ok ? null : (result.error ?? null),
+          domain: "financial", route: "v3-deterministic", fallback_used: !result.ok,
+          tool_name: "create_financial_movement", tool_success: !!result.ok,
+        } as never);
+      } catch { /* noop */ }
+      const amount = Number((commissionArgs as any).amount ?? 0);
+      const reference = String((commissionArgs as any).property_reference ?? "negócio");
+      return result.ok
+        ? { reply: `Feito. Registei a comissão de ${formatPtMoney(amount)} no ${reference}.` }
+        : { reply: "Tentei guardar a comissão e não consegui. Deixei em Diversos para não se perder." };
+    }
+
     // ---------- Router determinístico ----------
     // (a) Consulta de agenda → chama search_agenda directamente.
     const agendaPeriod = detectAgendaQuery(trimmed);
@@ -258,6 +377,10 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
   let reply = sanitizeReply(decideR.decision.natural_reply);
   if (shouldAct && !allOk) {
+    try {
+      const reason = toolResults.filter((r) => !r.ok).map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ");
+      await saveFailedActionAsMiscellaneous(ctx, trimmed, reason || "tool_failed");
+    } catch { /* noop */ }
     reply = "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
   }
 
