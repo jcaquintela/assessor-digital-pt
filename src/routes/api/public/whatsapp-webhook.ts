@@ -192,16 +192,25 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
 
   const body: string = msg?.text?.body ?? "";
 
-  await supabaseAdmin.from("assessor_messages").insert({
-    user_id: userId,
-    role: "user",
-    content: body,
-    message_type: "whatsapp_text",
-    status: "received",
-    channel: "whatsapp",
-    sender_phone: senderPhone,
-    whatsapp_message_id: waMessageId,
-  });
+  // Insert and capture the row UUID — downstream columns like
+  // pending_actions.source_message_id and prospecting_leads.source_message_id
+  // are UUID, so we must never pass the raw wamid string there.
+  const { data: insertedMsg } = await supabaseAdmin
+    .from("assessor_messages")
+    .insert({
+      user_id: userId,
+      role: "user",
+      content: body,
+      message_type: "whatsapp_text",
+      status: "received",
+      channel: "whatsapp",
+      sender_phone: senderPhone,
+      whatsapp_message_id: waMessageId,
+    })
+    .select("id")
+    .single();
+  const sourceMessageUuid =
+    (insertedMsg as { id?: string } | null)?.id ?? null;
 
   // Attempt link-code validation before generic replies.
   const codeMatch = body.match(WHATSAPP_CODE_PATTERN);
@@ -224,7 +233,7 @@ async function handleMessage(supabaseAdmin: any, msg: any) {
       channel: "whatsapp",
       content: body,
       receivedAt: new Date(),
-      sourceMessageId: waMessageId ?? null,
+      sourceMessageId: sourceMessageUuid,
     });
     const alreadyPersisted = outcome.messageType === "__ALREADY_PERSISTED__";
     if (alreadyPersisted) {
