@@ -22,6 +22,7 @@ import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
 import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
 import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
+import { Route as AdminPlanosRouteImport } from './routes/admin/planos'
 import { Route as AdminNegocioRouteImport } from './routes/admin/negocio'
 import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes'
 import { Route as AdminGoldensRouteImport } from './routes/admin/goldens'
@@ -131,6 +132,11 @@ const AdminSegurancaRoute = AdminSegurancaRouteImport.update({
 const AdminQualidadeRoute = AdminQualidadeRouteImport.update({
   id: '/qualidade',
   path: '/qualidade',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPlanosRoute = AdminPlanosRouteImport.update({
+  id: '/planos',
+  path: '/planos',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminNegocioRoute = AdminNegocioRouteImport.update({
@@ -415,6 +421,7 @@ export interface FileRoutesByFullPath {
   '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/negocio': typeof AdminNegocioRoute
+  '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
@@ -474,6 +481,7 @@ export interface FileRoutesByTo {
   '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/negocio': typeof AdminNegocioRoute
+  '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
@@ -536,6 +544,7 @@ export interface FileRoutesById {
   '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/negocio': typeof AdminNegocioRoute
+  '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
@@ -598,6 +607,7 @@ export interface FileRouteTypes {
     | '/admin/goldens'
     | '/admin/integracoes'
     | '/admin/negocio'
+    | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
@@ -657,6 +667,7 @@ export interface FileRouteTypes {
     | '/admin/goldens'
     | '/admin/integracoes'
     | '/admin/negocio'
+    | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
@@ -718,6 +729,7 @@ export interface FileRouteTypes {
     | '/admin/goldens'
     | '/admin/integracoes'
     | '/admin/negocio'
+    | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/seguranca'
     | '/admin/subscricoes'
@@ -852,6 +864,13 @@ declare module '@tanstack/react-router' {
       path: '/qualidade'
       fullPath: '/admin/qualidade'
       preLoaderRoute: typeof AdminQualidadeRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/planos': {
+      id: '/admin/planos'
+      path: '/planos'
+      fullPath: '/admin/planos'
+      preLoaderRoute: typeof AdminPlanosRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/negocio': {
@@ -1391,6 +1410,7 @@ interface AdminRouteRouteChildren {
   AdminGoldensRoute: typeof AdminGoldensRoute
   AdminIntegracoesRoute: typeof AdminIntegracoesRoute
   AdminNegocioRoute: typeof AdminNegocioRoute
+  AdminPlanosRoute: typeof AdminPlanosRoute
   AdminQualidadeRoute: typeof AdminQualidadeRoute
   AdminSegurancaRoute: typeof AdminSegurancaRoute
   AdminSubscricoesRoute: typeof AdminSubscricoesRoute
@@ -1411,6 +1431,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminGoldensRoute: AdminGoldensRoute,
   AdminIntegracoesRoute: AdminIntegracoesRoute,
   AdminNegocioRoute: AdminNegocioRoute,
+  AdminPlanosRoute: AdminPlanosRoute,
   AdminQualidadeRoute: AdminQualidadeRoute,
   AdminSegurancaRoute: AdminSegurancaRoute,
   AdminSubscricoesRoute: AdminSubscricoesRoute,
