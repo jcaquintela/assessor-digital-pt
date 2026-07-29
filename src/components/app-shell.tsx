@@ -4,7 +4,6 @@ import {
   CalendarDays,
   Home,
   Inbox,
-  MessageSquare,
   MoreHorizontal,
   Settings,
   Sparkles,
@@ -17,7 +16,6 @@ import { cn } from "@/lib/utils";
 
 const desktopNav = [
   { to: "/hoje", label: "Hoje", icon: Home },
-  { to: "/assessor", label: "Assessor", icon: MessageSquare },
   { to: "/pessoas", label: "Pessoas", icon: Users },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/calendario", label: "Agenda", icon: CalendarDays },
@@ -27,9 +25,9 @@ const desktopNav = [
 ] as const;
 
 const mobileNav = [
-  { to: "/assessor", label: "Assessor", icon: MessageSquare },
   { to: "/hoje", label: "Hoje", icon: Home },
   { to: "/pessoas", label: "Pessoas", icon: Users },
+  { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/mais", label: "Mais", icon: MoreHorizontal },
 ] as const;
 
