@@ -7,6 +7,12 @@ import { decide } from "./decide.server";
 import { sanitizeReply, enforceHumanTone, enforceSingleQuestion } from "../culture/sanitize";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
 import type { SearchResults } from "./types";
+import {
+  detectAgendaQuery,
+  formatAgendaReply,
+  BARE_CONFIRMATION_REPLY,
+} from "./deterministic.server";
+import { isConfirmation as saIsConfirmation } from "../culture/short-answers";
 
 export interface GoldenExpect {
   action?: "act" | "ask" | "acknowledge" | "do_nothing" | "search_more";
@@ -75,6 +81,34 @@ export async function runGolden(
 
   for (let i = 0; i < turns.length; i++) {
     const t = turns[i];
+    // Router determinístico — replica o comportamento do runtime real
+    // para agenda e "sim" sem contexto, sem depender da IA.
+    const agendaPeriod = detectAgendaQuery(t.user);
+    if (agendaPeriod) {
+      const reply = formatAgendaReply(agendaPeriod, []);
+      const failures = evaluateTurn(reply, "act", ["search_agenda"], t.expect);
+      results.push({
+        turn: i + 1, user: t.user, reply,
+        action: "act", tools: ["search_agenda"],
+        passed: failures.length === 0, failures,
+      });
+      historyLines.push(`consultor: ${t.user}`);
+      historyLines.push(`assessor: ${reply}`);
+      continue;
+    }
+    if (saIsConfirmation(t.user)) {
+      const reply = BARE_CONFIRMATION_REPLY;
+      const failures = evaluateTurn(reply, "ask", [], t.expect);
+      results.push({
+        turn: i + 1, user: t.user, reply,
+        action: "ask", tools: [],
+        passed: failures.length === 0, failures,
+      });
+      historyLines.push(`consultor: ${t.user}`);
+      historyLines.push(`assessor: ${reply}`);
+      continue;
+    }
+
     const obs = observe(t.user);
     const historyPreview = historyLines.slice(-6).join("\n");
     const thinkR = await think({ content: t.user, observations: obs, historyPreview });
