@@ -73,9 +73,6 @@ export function safeReply(
 // Verifica se a resposta parece humana: sem vocabulário técnico, sem
 // linguagem de formulário, ≤ 2 frases. Usado pelo AQS.
 export function hasHumanTone(reply?: string | null): boolean {
-  const s0 = String(reply ?? "");
-  const { masked } = maskQuoted(s0);
-  void masked;
   const s = String(reply ?? "").trim();
   if (!s) return false;
   if (TECH_VOCAB_RE.test(s)) return false;
