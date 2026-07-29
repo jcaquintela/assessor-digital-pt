@@ -90,6 +90,13 @@ function AssessorPage() {
     loadMessages().then((rows) => {
       setMsgs(rows.map(toMsg));
       setCarregando(false);
+      try {
+        const prefill = sessionStorage.getItem("assessor:prefill");
+        if (prefill) {
+          sessionStorage.removeItem("assessor:prefill");
+          setTexto(prefill);
+        }
+      } catch { /* noop */ }
     }).catch((e) => { toast.error((e as Error).message); setCarregando(false); });
   }, []);
 
