@@ -566,6 +566,78 @@ async function execUpdateProspectingLead(ctx: DomainContext, args: unknown): Pro
 
 export type ToolExecutor = (ctx: DomainContext, args: unknown) => Promise<DomainResult>;
 
+// ---------- Executores de lembretes ----------
+
+async function execRescheduleReminder(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(RescheduleReminderArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  if (isTimeInPast(v.new_date, v.new_time)) {
+    return ok({ ok: false, past: true, requested_date: v.new_date, requested_time: v.new_time });
+  }
+  const r = await rescheduleReminder(ctx.supabase, {
+    userId: ctx.userId,
+    channel: ctx.channel,
+    reminder_id: v.reminder_id ?? null,
+    related_resource_type: (v.related_resource_type as any) ?? null,
+    related_resource_id: v.related_resource_id ?? null,
+    subject_hint: v.subject_hint ?? null,
+    new_date: v.new_date,
+    new_time: v.new_time,
+    timezone: v.timezone ?? "Europe/Lisbon",
+    reason: v.reason ?? null,
+  });
+  if (!r.ok && r.candidates) return ok({ ambiguous: true, candidates: r.candidates });
+  if (!r.ok) return fail(r.error ?? "reschedule_failed");
+  return ok({ reminder: r.reminder });
+}
+
+async function execSearchActiveReminders(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(SearchActiveRemindersArgs, args); if (!p.ok) return fail(p.error);
+  const rows = await searchActiveReminders(ctx.supabase, {
+    userId: ctx.userId,
+    query: p.value.query ?? null,
+    related_resource_type: (p.value.related_resource_type as any) ?? null,
+    related_resource_id: p.value.related_resource_id ?? null,
+  });
+  return ok({ results: rows });
+}
+
+async function execCancelReminder(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(CancelReminderArgs, args); if (!p.ok) return fail(p.error);
+  const r = await cancelReminder(ctx.supabase, ctx.userId, p.value.reminder_id);
+  if (!r.ok) return fail(r.error ?? "cancel_failed");
+  return ok({ cancelled: true });
+}
+
+async function execSendReminderNow(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(SendReminderNowArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  let reminderId = v.reminder_id ?? null;
+  if (!reminderId && v.subject_hint) {
+    const rows = await searchActiveReminders(ctx.supabase, {
+      userId: ctx.userId,
+      query: v.subject_hint,
+    });
+    if (rows.length === 1) reminderId = rows[0].id;
+    else if (rows.length > 1) {
+      return ok({
+        ambiguous: true,
+        candidates: rows.map((r) => ({
+          reminder_id: r.id, title: r.title, scheduled_for: r.scheduled_for,
+        })),
+      });
+    }
+  }
+  if (!reminderId) return fail("reminder_not_found");
+  const r = await sendReminderNow(ctx.supabase, {
+    userId: ctx.userId,
+    reminder_id: reminderId,
+    overrideText: v.override_text ?? null,
+  });
+  if (!r.ok) return fail(r.error ?? "send_failed");
+  return ok({ sent: true, external_message_id: r.external_message_id ?? null });
+}
+
 export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   search_people: execSearchPeople,
   create_person: execCreatePerson,
