@@ -26,6 +26,7 @@ import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes
 import { Route as AdminGoldensRouteImport } from './routes/admin/goldens'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
+import { Route as AdminConvitesRouteImport } from './routes/admin/convites'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
@@ -58,6 +59,7 @@ import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDriveIdRouteImport } from './routes/_authenticated/drive.$id'
 import { Route as AuthenticatedDiversosIdRouteImport } from './routes/_authenticated/diversos.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
 import { Route as AuthenticatedOportunidadesProspecaoIdRouteImport } from './routes/_authenticated/oportunidades.prospecao.$id'
 import { Route as AuthenticatedNegocioDespesasIdRouteImport } from './routes/_authenticated/negocio.despesas.$id'
@@ -145,6 +147,11 @@ const AdminFuncionalidadesRoute = AdminFuncionalidadesRouteImport.update({
 const AdminDefinicoesRoute = AdminDefinicoesRouteImport.update({
   id: '/definicoes',
   path: '/definicoes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminConvitesRoute = AdminConvitesRouteImport.update({
+  id: '/convites',
+  path: '/convites',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
@@ -320,6 +327,12 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram/webhook',
+    path: '/api/public/telegram/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksProactiveTickRoute =
   ApiPublicHooksProactiveTickRouteImport.update({
     id: '/api/public/hooks/proactive-tick',
@@ -369,6 +382,7 @@ export interface FileRoutesByFullPath {
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/convites': typeof AdminConvitesRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
@@ -398,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -422,6 +437,7 @@ export interface FileRoutesByTo {
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/convites': typeof AdminConvitesRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
@@ -451,6 +467,7 @@ export interface FileRoutesByTo {
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -478,6 +495,7 @@ export interface FileRoutesById {
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/convites': typeof AdminConvitesRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
@@ -507,6 +525,7 @@ export interface FileRoutesById {
   '/_authenticated/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/_authenticated/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -534,6 +553,7 @@ export interface FileRouteTypes {
     | '/rotinas'
     | '/seguimentos'
     | '/admin/auditoria'
+    | '/admin/convites'
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/goldens'
@@ -563,6 +583,7 @@ export interface FileRouteTypes {
     | '/negocio/despesas/$id'
     | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/proactive-tick'
+    | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -587,6 +608,7 @@ export interface FileRouteTypes {
     | '/rotinas'
     | '/seguimentos'
     | '/admin/auditoria'
+    | '/admin/convites'
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/goldens'
@@ -616,6 +638,7 @@ export interface FileRouteTypes {
     | '/negocio/despesas/$id'
     | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/proactive-tick'
+    | '/api/public/telegram/webhook'
   id:
     | '__root__'
     | '/'
@@ -642,6 +665,7 @@ export interface FileRouteTypes {
     | '/_authenticated/rotinas'
     | '/_authenticated/seguimentos'
     | '/admin/auditoria'
+    | '/admin/convites'
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/goldens'
@@ -671,6 +695,7 @@ export interface FileRouteTypes {
     | '/_authenticated/negocio/despesas/$id'
     | '/_authenticated/oportunidades/prospecao/$id'
     | '/api/public/hooks/proactive-tick'
+    | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -685,6 +710,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -806,6 +832,13 @@ declare module '@tanstack/react-router' {
       path: '/definicoes'
       fullPath: '/admin/definicoes'
       preLoaderRoute: typeof AdminDefinicoesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/convites': {
+      id: '/admin/convites'
+      path: '/convites'
+      fullPath: '/admin/convites'
+      preLoaderRoute: typeof AdminConvitesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/auditoria': {
@@ -1030,6 +1063,13 @@ declare module '@tanstack/react-router' {
       path: '/.mcp/invoke-tool/$tool'
       fullPath: '/.mcp/invoke-tool/$tool'
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/telegram/webhook': {
+      id: '/api/public/telegram/webhook'
+      path: '/api/public/telegram/webhook'
+      fullPath: '/api/public/telegram/webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/proactive-tick': {
@@ -1266,6 +1306,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface AdminRouteRouteChildren {
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
+  AdminConvitesRoute: typeof AdminConvitesRoute
   AdminDefinicoesRoute: typeof AdminDefinicoesRoute
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
   AdminGoldensRoute: typeof AdminGoldensRoute
@@ -1281,6 +1322,7 @@ interface AdminRouteRouteChildren {
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuditoriaRoute: AdminAuditoriaRoute,
+  AdminConvitesRoute: AdminConvitesRoute,
   AdminDefinicoesRoute: AdminDefinicoesRoute,
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
   AdminGoldensRoute: AdminGoldensRoute,
@@ -1311,6 +1353,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

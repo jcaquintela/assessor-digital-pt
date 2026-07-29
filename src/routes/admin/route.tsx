@@ -23,6 +23,7 @@ const nav: { to: string; label: string; exact?: boolean }[] = [
   { to: "/admin/utilizacao", label: "Utilização" },
   { to: "/admin/suporte", label: "Suporte" },
   { to: "/admin/integracoes", label: "Integrações" },
+  { to: "/admin/convites", label: "Convites Telegram" },
   { to: "/admin/funcionalidades", label: "Funcionalidades" },
   { to: "/admin/qualidade", label: "Qualidade" },
   { to: "/admin/goldens", label: "Goldens" },
