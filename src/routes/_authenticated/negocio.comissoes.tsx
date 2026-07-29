@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatData, formatEUR, type Comissao } from "@/lib/demo-data";
 import { Plus, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { TierGate } from "@/components/tier-gate";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 
@@ -23,7 +24,11 @@ export const Route = createFileRoute("/_authenticated/negocio/comissoes")({
       { property: "og:description", content: "CRUD de comissões por oportunidade." },
     ],
   }),
-  component: ComissoesPage,
+  component: () => (
+    <TierGate min="pro" title="Comissões">
+      <ComissoesPage />
+    </TierGate>
+  ),
 });
 
 function ComissoesPage() {

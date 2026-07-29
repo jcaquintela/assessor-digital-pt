@@ -4,6 +4,7 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatEUR } from "@/lib/demo-data";
 import { Receipt, Wallet, FileText, ArrowRight } from "lucide-react";
+import { TierGate } from "@/components/tier-gate";
 
 export const Route = createFileRoute("/_authenticated/negocio")({
   head: () => ({
@@ -14,7 +15,11 @@ export const Route = createFileRoute("/_authenticated/negocio")({
       { property: "og:description", content: "Visão geral do negócio do consultor." },
     ],
   }),
-  component: NegocioPage,
+  component: () => (
+    <TierGate min="pro" title="O Meu Negócio">
+      <NegocioPage />
+    </TierGate>
+  ),
 });
 
 function NegocioPage() {

@@ -20,6 +20,7 @@ import {
 } from "@/lib/prospecting/prospecting.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { formatData } from "@/lib/demo-data";
+import { TierGate } from "@/components/tier-gate";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/prospecao")({
   head: () => ({
@@ -30,7 +31,11 @@ export const Route = createFileRoute("/_authenticated/oportunidades/prospecao")(
       { property: "og:description", content: "Placas na rua e leads para contactar." },
     ],
   }),
-  component: ProspecaoPage,
+  component: () => (
+    <TierGate min="consultor" title="Prospeção">
+      <ProspecaoPage />
+    </TierGate>
+  ),
 });
 
 const GROUPS: LeadStatus[] = ["to_contact", "contact_attempted", "contacted", "opportunity", "converted", "no_interest", "archived"];

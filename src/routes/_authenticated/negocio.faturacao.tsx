@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatData, formatEUR, type Comissao } from "@/lib/demo-data";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { TierGate } from "@/components/tier-gate";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 
@@ -20,7 +21,11 @@ export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
       { property: "og:description", content: "Gestão do ciclo de faturação de comissões." },
     ],
   }),
-  component: FaturacaoPage,
+  component: () => (
+    <TierGate min="pro" title="Faturação">
+      <FaturacaoPage />
+    </TierGate>
+  ),
 });
 
 function FaturacaoPage() {

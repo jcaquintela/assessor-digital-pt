@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatData, formatEUR, type Despesa } from "@/lib/demo-data";
 import { Plus, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { TierGate } from "@/components/tier-gate";
 
 const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escritório", "Formação", "Outros"];
 
@@ -22,7 +23,11 @@ export const Route = createFileRoute("/_authenticated/negocio/despesas")({
       { property: "og:description", content: "CRUD de despesas com categorias e valores." },
     ],
   }),
-  component: DespesasPage,
+  component: () => (
+    <TierGate min="pro" title="Despesas">
+      <DespesasPage />
+    </TierGate>
+  ),
 });
 
 function DespesasPage() {

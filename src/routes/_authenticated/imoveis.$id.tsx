@@ -15,6 +15,7 @@ import { PROPERTY_STATUSES, propertyStatusLabel } from "@/lib/assessor/propertie
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatEUR } from "@/lib/demo-data";
 import { FileText, ChevronLeft, Eye, Download, Archive } from "lucide-react";
+import { TierGate } from "@/components/tier-gate";
 
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   head: () => ({
@@ -25,7 +26,11 @@ export const Route = createFileRoute("/_authenticated/imoveis/$id")({
       { property: "og:description", content: "Detalhes, documentos e seguimentos do imóvel." },
     ],
   }),
-  component: PropertyDetail,
+  component: () => (
+    <TierGate min="consultor" title="Imóveis">
+      <PropertyDetail />
+    </TierGate>
+  ),
 });
 
 function PropertyDetail() {

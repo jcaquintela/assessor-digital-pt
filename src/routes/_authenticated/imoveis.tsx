@@ -8,6 +8,7 @@ import { formatEUR } from "@/lib/demo-data";
 import { listProperties } from "@/lib/assessor/properties.functions";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
 import { ChevronRight, FileText } from "lucide-react";
+import { TierGate } from "@/components/tier-gate";
 
 export const Route = createFileRoute("/_authenticated/imoveis")({
   head: () => ({
@@ -18,7 +19,11 @@ export const Route = createFileRoute("/_authenticated/imoveis")({
       { property: "og:description", content: "Carteira de imóveis em angariação." },
     ],
   }),
-  component: ImoveisPage,
+  component: () => (
+    <TierGate min="consultor" title="Imóveis">
+      <ImoveisPage />
+    </TierGate>
+  ),
 });
 
 function ImoveisPage() {
