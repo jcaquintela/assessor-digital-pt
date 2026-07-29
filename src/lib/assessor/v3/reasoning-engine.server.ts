@@ -281,9 +281,15 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           reply: `Já tinha uma ${(commissionArgs as any).type === "expense" ? "despesa" : "comissão"} de ${formatPtMoney(amount)} registada hoje. É a mesma ou queres registar outra?`,
         };
       }
-      return result.ok
-        ? { reply: `Feito. Registei a comissão de ${formatPtMoney(amount)} no ${reference}.` }
-        : { reply: "Tentei guardar a comissão e não consegui. Deixei em Diversos para não se perder." };
+      const finReply = await applySafetyNet(ctx, {
+        content: trimmed,
+        outcome: result.ok ? "executed_ok" : "tool_failed",
+        reason: result.error ?? "financial_failed",
+        reply: result.ok
+          ? `Feito. Registei a comissão de ${formatPtMoney(amount)} no ${reference}.`
+          : "Tentei guardar a comissão e não consegui.",
+      });
+      return { reply: finReply };
     }
 
     // ---------- Router determinístico ----------
