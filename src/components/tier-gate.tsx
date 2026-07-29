@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
-import { getMyEffectiveTier } from "@/lib/subscription/tier.functions";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { tierAtLeast, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -19,12 +17,7 @@ export function TierGate({
   title: string;
   children: ReactNode;
 }) {
-  const fetchTier = useServerFn(getMyEffectiveTier);
-  const { data, isPending } = useQuery({
-    queryKey: ["subscription", "effectiveTier"],
-    queryFn: () => fetchTier(),
-    staleTime: 5 * 60_000,
-  });
+  const { data, isPending } = useEffectiveTier();
 
   // Enquanto não sabemos o tier, não mostramos o módulo.
   if (isPending) {
