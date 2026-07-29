@@ -30,6 +30,7 @@ import {
   hasValidPendingContext,
   type AgendaItem,
 } from "./deterministic.server";
+import { applySafetyNet } from "./safety-net.server";
 
 const HISTORY_LIMIT = 6;
 
@@ -106,25 +107,6 @@ function extractFinanceCommission(content: string): Record<string, unknown> | nu
     property_reference: propertyReference,
     opportunity_title: propertyReference ? `Negócio ${propertyReference}` : "Negócio fechado",
   };
-}
-
-async function saveFailedActionAsMiscellaneous(
-  ctx: DomainContext,
-  content: string,
-  reason: string,
-): Promise<void> {
-  const title = content.length > 120 ? `${content.slice(0, 117)}...` : content;
-  await ctx.supabase.from("miscellaneous_items").insert({
-    user_id: ctx.userId,
-    title,
-    original_content: content,
-    summary: `Falhou a gravação automática: ${reason}`,
-    category: "Por tratar",
-    source_channel: ctx.channel,
-    occurred_at: new Date().toISOString(),
-    status: "inbox",
-    tags: ["falha_assessor"],
-  } as never);
 }
 
 function nowLisbonHuman(): string {
