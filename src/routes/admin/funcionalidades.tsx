@@ -5,7 +5,6 @@ import { listFeatureFlags, upsertFeatureFlag } from "@/lib/admin.functions";
 import { useAdminRole } from "./route";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
