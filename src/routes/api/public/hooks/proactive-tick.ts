@@ -21,6 +21,8 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { generateNudgesForUser, persistNudges, dispatchPendingNudges } =
           await import("@/lib/assessor/v3/proactivity.server");
+        const { generateSupremeNudges } = await import("@/lib/assessor/supreme/briefing.server");
+        const { listSupremeUsers } = await import("@/lib/assessor/supreme/feature-flag.server");
 
         // Só corre para utilizadores com v3 activa.
         const { data: v3Users } = await supabaseAdmin
@@ -37,10 +39,28 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
             generated += created.length;
           }
         }
+
+        // Daily Operating Loop — só utilizadores com Assessor Supremo v1.
+        const supremeIds = await listSupremeUsers(supabaseAdmin as any);
+        let supremeGenerated = 0;
+        for (const uid of supremeIds) {
+          const drafts = await generateSupremeNudges(supabaseAdmin as any, uid);
+          if (drafts.length) {
+            const created = await persistNudges(supabaseAdmin as any, uid, drafts);
+            supremeGenerated += created.length;
+          }
+        }
         const dispatched = await dispatchPendingNudges(supabaseAdmin as any, {});
 
         return new Response(
-          JSON.stringify({ ok: true, users: userIds.length, generated, ...dispatched }),
+          JSON.stringify({
+            ok: true,
+            users: userIds.length,
+            generated,
+            supremeUsers: supremeIds.length,
+            supremeGenerated,
+            ...dispatched,
+          }),
           { headers: { "Content-Type": "application/json" } },
         );
       },
