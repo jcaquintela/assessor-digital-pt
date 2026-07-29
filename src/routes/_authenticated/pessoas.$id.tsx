@@ -227,24 +227,6 @@ function PessoaDetail() {
 
         <Card>
           <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold">Imóveis ({imoveisPessoa.length})</h3>
-            {imoveisPessoa.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sem imóveis associados como proprietário.</p>
-            ) : (
-              <div className="space-y-2">
-                {imoveisPessoa.map((i) => (
-                  <Link key={i.id} to="/imoveis/$id" params={{ id: i.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
-                    <div className="font-medium">{i.titulo}</div>
-                    <div className="text-xs text-muted-foreground">{i.localizacao} · {formatEUR(i.valor)}</div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
             <h3 className="mb-3 text-sm font-semibold">Seguimentos ({segsPessoa.length})</h3>
             {segsPessoa.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sem seguimentos.</p>
