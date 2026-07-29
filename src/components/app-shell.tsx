@@ -4,7 +4,6 @@ import {
   CalendarDays,
   Home,
   Inbox,
-  MessageSquare,
   MoreHorizontal,
   Settings,
   Sparkles,
