@@ -342,6 +342,44 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
     const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
     if (existing) return ok({ follow_up: existing, idempotent: true });
   }
+  // Anti-duplicação por assunto: se já existir um seguimento aberto com o
+  // mesmo título (normalizado) e mesma pessoa/imóvel, reagendamo-lo em vez
+  // de criar um novo. Evita 4 "Ligar ao Paulo" no dashboard.
+  const existingOpen = await findOpenFollowUpByTitle(ctx, {
+    title: v.title,
+    person_id: v.person_id ?? null,
+    property_id: v.property_id ?? null,
+  });
+  if (existingOpen) {
+    await ctx.supabase
+      .from("follow_ups")
+      .update({
+        due_date: dueIsoDate,
+        due_time: v.due_time ?? null,
+        status: "pendente",
+        priority: v.priority,
+      } as never)
+      .eq("id", existingOpen.id)
+      .eq("user_id", ctx.userId);
+    if (v.due_time) {
+      try {
+        await rescheduleReminder(ctx.supabase, {
+          userId: ctx.userId,
+          channel: ctx.channel,
+          related_resource_type: "follow_up",
+          related_resource_id: existingOpen.id,
+          new_date: v.due_date,
+          new_time: v.due_time,
+          timezone: "Europe/Lisbon",
+        });
+      } catch { /* noop */ }
+    }
+    return ok({
+      follow_up: { id: existingOpen.id, title: v.title, due_date: dueIsoDate },
+      idempotent: true,
+      rescheduled: true,
+    });
+  }
   const activeProspectingLead = (!v.person_id && !v.property_id)
     ? await findActiveProspectingLead(ctx)
     : null;
