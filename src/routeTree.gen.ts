@@ -47,6 +47,7 @@ import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/publi
 import { Route as AuthenticatedSeguimentosIdRouteImport } from './routes/_authenticated/seguimentos.$id'
 import { Route as AuthenticatedRotinasIdRouteImport } from './routes/_authenticated/rotinas.$id'
 import { Route as AuthenticatedPessoasIdRouteImport } from './routes/_authenticated/pessoas.$id'
+import { Route as AuthenticatedOportunidadesProspecaoRouteImport } from './routes/_authenticated/oportunidades.prospecao'
 import { Route as AuthenticatedOportunidadesIdRouteImport } from './routes/_authenticated/oportunidades.$id'
 import { Route as AuthenticatedNegocioFaturacaoRouteImport } from './routes/_authenticated/negocio.faturacao'
 import { Route as AuthenticatedNegocioDespesasRouteImport } from './routes/_authenticated/negocio.despesas'
@@ -56,6 +57,7 @@ import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDiversosIdRouteImport } from './routes/_authenticated/diversos.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
+import { Route as AuthenticatedOportunidadesProspecaoIdRouteImport } from './routes/_authenticated/oportunidades.prospecao.$id'
 import { Route as AuthenticatedNegocioDespesasIdRouteImport } from './routes/_authenticated/negocio.despesas.$id'
 import { Route as AuthenticatedNegocioComissoesIdRouteImport } from './routes/_authenticated/negocio.comissoes.$id'
 
@@ -254,6 +256,12 @@ const AuthenticatedPessoasIdRoute = AuthenticatedPessoasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedPessoasRoute,
 } as any)
+const AuthenticatedOportunidadesProspecaoRoute =
+  AuthenticatedOportunidadesProspecaoRouteImport.update({
+    id: '/prospecao',
+    path: '/prospecao',
+    getParentRoute: () => AuthenticatedOportunidadesRoute,
+  } as any)
 const AuthenticatedOportunidadesIdRoute =
   AuthenticatedOportunidadesIdRouteImport.update({
     id: '/$id',
@@ -305,6 +313,12 @@ const ApiPublicHooksProactiveTickRoute =
     id: '/api/public/hooks/proactive-tick',
     path: '/api/public/hooks/proactive-tick',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedOportunidadesProspecaoIdRoute =
+  AuthenticatedOportunidadesProspecaoIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedOportunidadesProspecaoRoute,
   } as any)
 const AuthenticatedNegocioDespesasIdRoute =
   AuthenticatedNegocioDespesasIdRouteImport.update({
@@ -361,12 +375,14 @@ export interface FileRoutesByFullPath {
   '/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/negocio/faturacao': typeof AuthenticatedNegocioFaturacaoRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
+  '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoRouteWithChildren
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
+  '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
 }
 export interface FileRoutesByTo {
@@ -410,12 +426,14 @@ export interface FileRoutesByTo {
   '/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/negocio/faturacao': typeof AuthenticatedNegocioFaturacaoRoute
   '/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
+  '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoRouteWithChildren
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
+  '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
 }
 export interface FileRoutesById {
@@ -462,12 +480,14 @@ export interface FileRoutesById {
   '/_authenticated/negocio/despesas': typeof AuthenticatedNegocioDespesasRouteWithChildren
   '/_authenticated/negocio/faturacao': typeof AuthenticatedNegocioFaturacaoRoute
   '/_authenticated/oportunidades/$id': typeof AuthenticatedOportunidadesIdRoute
+  '/_authenticated/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoRouteWithChildren
   '/_authenticated/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/_authenticated/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/_authenticated/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/_authenticated/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/_authenticated/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
+  '/_authenticated/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
 }
 export interface FileRouteTypes {
@@ -514,12 +534,14 @@ export interface FileRouteTypes {
     | '/negocio/despesas'
     | '/negocio/faturacao'
     | '/oportunidades/$id'
+    | '/oportunidades/prospecao'
     | '/pessoas/$id'
     | '/rotinas/$id'
     | '/seguimentos/$id'
     | '/api/public/whatsapp-webhook'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
+    | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/proactive-tick'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -563,12 +585,14 @@ export interface FileRouteTypes {
     | '/negocio/despesas'
     | '/negocio/faturacao'
     | '/oportunidades/$id'
+    | '/oportunidades/prospecao'
     | '/pessoas/$id'
     | '/rotinas/$id'
     | '/seguimentos/$id'
     | '/api/public/whatsapp-webhook'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
+    | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/proactive-tick'
   id:
     | '__root__'
@@ -614,12 +638,14 @@ export interface FileRouteTypes {
     | '/_authenticated/negocio/despesas'
     | '/_authenticated/negocio/faturacao'
     | '/_authenticated/oportunidades/$id'
+    | '/_authenticated/oportunidades/prospecao'
     | '/_authenticated/pessoas/$id'
     | '/_authenticated/rotinas/$id'
     | '/_authenticated/seguimentos/$id'
     | '/api/public/whatsapp-webhook'
     | '/_authenticated/negocio/comissoes/$id'
     | '/_authenticated/negocio/despesas/$id'
+    | '/_authenticated/oportunidades/prospecao/$id'
     | '/api/public/hooks/proactive-tick'
   fileRoutesById: FileRoutesById
 }
@@ -905,6 +931,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPessoasIdRouteImport
       parentRoute: typeof AuthenticatedPessoasRoute
     }
+    '/_authenticated/oportunidades/prospecao': {
+      id: '/_authenticated/oportunidades/prospecao'
+      path: '/prospecao'
+      fullPath: '/oportunidades/prospecao'
+      preLoaderRoute: typeof AuthenticatedOportunidadesProspecaoRouteImport
+      parentRoute: typeof AuthenticatedOportunidadesRoute
+    }
     '/_authenticated/oportunidades/$id': {
       id: '/_authenticated/oportunidades/$id'
       path: '/$id'
@@ -967,6 +1000,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/hooks/proactive-tick'
       preLoaderRoute: typeof ApiPublicHooksProactiveTickRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/oportunidades/prospecao/$id': {
+      id: '/_authenticated/oportunidades/prospecao/$id'
+      path: '/$id'
+      fullPath: '/oportunidades/prospecao/$id'
+      preLoaderRoute: typeof AuthenticatedOportunidadesProspecaoIdRouteImport
+      parentRoute: typeof AuthenticatedOportunidadesProspecaoRoute
     }
     '/_authenticated/negocio/despesas/$id': {
       id: '/_authenticated/negocio/despesas/$id'
@@ -1068,13 +1108,31 @@ const AuthenticatedNegocioRouteChildren: AuthenticatedNegocioRouteChildren = {
 const AuthenticatedNegocioRouteWithChildren =
   AuthenticatedNegocioRoute._addFileChildren(AuthenticatedNegocioRouteChildren)
 
+interface AuthenticatedOportunidadesProspecaoRouteChildren {
+  AuthenticatedOportunidadesProspecaoIdRoute: typeof AuthenticatedOportunidadesProspecaoIdRoute
+}
+
+const AuthenticatedOportunidadesProspecaoRouteChildren: AuthenticatedOportunidadesProspecaoRouteChildren =
+  {
+    AuthenticatedOportunidadesProspecaoIdRoute:
+      AuthenticatedOportunidadesProspecaoIdRoute,
+  }
+
+const AuthenticatedOportunidadesProspecaoRouteWithChildren =
+  AuthenticatedOportunidadesProspecaoRoute._addFileChildren(
+    AuthenticatedOportunidadesProspecaoRouteChildren,
+  )
+
 interface AuthenticatedOportunidadesRouteChildren {
   AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
+  AuthenticatedOportunidadesProspecaoRoute: typeof AuthenticatedOportunidadesProspecaoRouteWithChildren
 }
 
 const AuthenticatedOportunidadesRouteChildren: AuthenticatedOportunidadesRouteChildren =
   {
     AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
+    AuthenticatedOportunidadesProspecaoRoute:
+      AuthenticatedOportunidadesProspecaoRouteWithChildren,
   }
 
 const AuthenticatedOportunidadesRouteWithChildren =

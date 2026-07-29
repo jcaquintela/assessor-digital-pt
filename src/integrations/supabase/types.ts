@@ -1094,6 +1094,7 @@ export type Database = {
           priority: string
           related_file_id: string | null
           related_property_id: string | null
+          related_prospecting_lead_id: string | null
           source_channel: string | null
           source_message_id: string | null
           source_pending_action_id: string | null
@@ -1121,6 +1122,7 @@ export type Database = {
           priority?: string
           related_file_id?: string | null
           related_property_id?: string | null
+          related_prospecting_lead_id?: string | null
           source_channel?: string | null
           source_message_id?: string | null
           source_pending_action_id?: string | null
@@ -1148,6 +1150,7 @@ export type Database = {
           priority?: string
           related_file_id?: string | null
           related_property_id?: string | null
+          related_prospecting_lead_id?: string | null
           source_channel?: string | null
           source_message_id?: string | null
           source_pending_action_id?: string | null
@@ -1185,6 +1188,13 @@ export type Database = {
             columns: ["related_property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_ups_related_prospecting_lead_id_fkey"
+            columns: ["related_prospecting_lead_id"]
+            isOneToOne: false
+            referencedRelation: "prospecting_leads"
             referencedColumns: ["id"]
           },
         ]
@@ -1633,6 +1643,118 @@ export type Database = {
           },
         ]
       }
+      prospecting_leads: {
+        Row: {
+          address: string | null
+          agency_name: string | null
+          asking_price: number | null
+          contact_attempts: number
+          contact_name: string | null
+          created_at: string
+          extraction_confidence: number | null
+          extraction_raw: Json
+          id: string
+          image_file_id: string | null
+          last_contact_attempt_at: string | null
+          listing_type: Database["public"]["Enums"]["prospecting_listing_type"]
+          location: string | null
+          next_follow_up_at: string | null
+          notes: string | null
+          phone: string | null
+          property_type: string | null
+          related_person_id: string | null
+          related_property_id: string | null
+          source_channel: string
+          source_message_id: string | null
+          source_type: Database["public"]["Enums"]["prospecting_source_type"]
+          status: Database["public"]["Enums"]["prospecting_status"]
+          title: string
+          typology: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          agency_name?: string | null
+          asking_price?: number | null
+          contact_attempts?: number
+          contact_name?: string | null
+          created_at?: string
+          extraction_confidence?: number | null
+          extraction_raw?: Json
+          id?: string
+          image_file_id?: string | null
+          last_contact_attempt_at?: string | null
+          listing_type?: Database["public"]["Enums"]["prospecting_listing_type"]
+          location?: string | null
+          next_follow_up_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          property_type?: string | null
+          related_person_id?: string | null
+          related_property_id?: string | null
+          source_channel?: string
+          source_message_id?: string | null
+          source_type?: Database["public"]["Enums"]["prospecting_source_type"]
+          status?: Database["public"]["Enums"]["prospecting_status"]
+          title: string
+          typology?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          agency_name?: string | null
+          asking_price?: number | null
+          contact_attempts?: number
+          contact_name?: string | null
+          created_at?: string
+          extraction_confidence?: number | null
+          extraction_raw?: Json
+          id?: string
+          image_file_id?: string | null
+          last_contact_attempt_at?: string | null
+          listing_type?: Database["public"]["Enums"]["prospecting_listing_type"]
+          location?: string | null
+          next_follow_up_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          property_type?: string | null
+          related_person_id?: string | null
+          related_property_id?: string | null
+          source_channel?: string
+          source_message_id?: string | null
+          source_type?: Database["public"]["Enums"]["prospecting_source_type"]
+          status?: Database["public"]["Enums"]["prospecting_status"]
+          title?: string
+          typology?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospecting_leads_image_file_id_fkey"
+            columns: ["image_file_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospecting_leads_related_person_id_fkey"
+            columns: ["related_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospecting_leads_related_property_id_fkey"
+            columns: ["related_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routines: {
         Row: {
           active: boolean
@@ -1924,6 +2046,25 @@ export type Database = {
         | "wrong_execution"
         | "other"
       assistant_reflection_trigger: "low_aqs" | "low_ats" | "user_correction"
+      prospecting_listing_type:
+        | "owner_sale"
+        | "other_agency"
+        | "own_agency"
+        | "unknown"
+      prospecting_source_type:
+        | "street_sign"
+        | "referral"
+        | "online_listing"
+        | "direct_observation"
+        | "other"
+      prospecting_status:
+        | "to_contact"
+        | "contact_attempted"
+        | "contacted"
+        | "no_interest"
+        | "opportunity"
+        | "converted"
+        | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2064,6 +2205,28 @@ export const Constants = {
         "other",
       ],
       assistant_reflection_trigger: ["low_aqs", "low_ats", "user_correction"],
+      prospecting_listing_type: [
+        "owner_sale",
+        "other_agency",
+        "own_agency",
+        "unknown",
+      ],
+      prospecting_source_type: [
+        "street_sign",
+        "referral",
+        "online_listing",
+        "direct_observation",
+        "other",
+      ],
+      prospecting_status: [
+        "to_contact",
+        "contact_attempted",
+        "contacted",
+        "no_interest",
+        "opportunity",
+        "converted",
+        "archived",
+      ],
     },
   },
 } as const
