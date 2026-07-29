@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   AlertTriangle, CalendarClock, CheckCircle2, Clock, MessageSquare, Sparkles,
   FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote,
+  Users, Building2, CalendarDays, ListChecks, Wallet, Inbox, Repeat,
 } from "lucide-react";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -389,7 +390,7 @@ function HojePage() {
               </CardHeader>
               <CardContent className="space-y-1.5">
                 {atrasados.length > 0 && (
-                  <AlertRow to="/seguimentos" icon={AlertTriangle} label={`${atrasados.length} seguimento${atrasados.length === 1 ? "" : "s"} em atraso`} />
+                  <AlertRow to="/seguimentos" search={{ status: "overdue" }} icon={AlertTriangle} label={`${atrasados.length} seguimento${atrasados.length === 1 ? "" : "s"} em atraso`} />
                 )}
                 {oportSemAcao.length > 0 && (
                   <AlertRow to="/oportunidades" icon={Briefcase} label={`${oportSemAcao.length} oportunidade${oportSemAcao.length === 1 ? "" : "s"} sem próxima ação · ${formatEUR(oportSemAcao.reduce((s, o) => s + o.valor, 0))}`} />
@@ -400,6 +401,23 @@ function HojePage() {
               </CardContent>
             </Card>
           )}
+
+          {/* F. Módulos */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Módulos</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2">
+              <ModuleTile to="/pessoas" icon={Users} label="Pessoas" count={pessoas.length} />
+              <ModuleTile to="/imoveis" icon={Building2} label="Imóveis" count={imoveis.length} />
+              <ModuleTile to="/calendario" icon={CalendarDays} label="Agenda" count={eventosHoje.length} sub="hoje" />
+              <ModuleTile to="/seguimentos" icon={ListChecks} label="Seguimentos" count={seguimentos.filter((s) => s.estado !== "Concluído").length} />
+              <ModuleTile to="/oportunidades" icon={Briefcase} label="Oportunidades" count={oportunidades.length} />
+              <ModuleTile to="/negocio" icon={Wallet} label="O Meu Negócio" />
+              <ModuleTile to="/diversos" icon={Inbox} label="Diversos" />
+              <ModuleTile to="/rotinas" icon={Repeat} label="Rotinas" />
+            </CardContent>
+          </Card>
 
           {assessorName === "Assessor" && (
             <Card className="border-dashed">
@@ -446,12 +464,51 @@ function HojePage() {
   );
 }
 
-function AlertRow({ to, icon: Icon, label }: { to: string; icon: any; label: string }) {
+function AlertRow({
+  to, search, icon: Icon, label,
+}: {
+  to: string;
+  search?: Record<string, string>;
+  icon: any;
+  label: string;
+}) {
   return (
-    <Link to={to as any} className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted">
+    <Link
+      to={to as any}
+      search={search as any}
+      className="flex items-center gap-2 rounded-md px-2 py-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
+      aria-label={label}
+    >
       <Icon className="h-4 w-4 text-muted-foreground" />
       <span className="flex-1">{label}</span>
       <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    </Link>
+  );
+}
+
+function ModuleTile({
+  to, icon: Icon, label, count, sub,
+}: {
+  to: string; icon: any; label: string; count?: number; sub?: string;
+}) {
+  return (
+    <Link
+      to={to as any}
+      className="group flex min-h-[64px] items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 outline-none transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary"
+      aria-label={`Abrir ${label}`}
+    >
+      <div className="rounded-md bg-primary/10 p-2 text-primary">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium">{label}</div>
+        {typeof count === "number" && (
+          <div className="text-xs text-muted-foreground">
+            {count} {sub ?? (count === 1 ? "registo" : "registos")}
+          </div>
+        )}
+      </div>
+      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </Link>
   );
 }
