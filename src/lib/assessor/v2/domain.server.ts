@@ -20,6 +20,7 @@ import {
   CreateFollowUpArgs,
   SaveInteractionArgs,
   SaveMiscellaneousArgs,
+  CreateFinancialMovementArgs,
   CreateProspectingLeadArgs,
   SearchProspectingLeadsArgs,
   UpdateProspectingLeadArgs,
@@ -509,6 +510,75 @@ async function execSaveMiscellaneous(ctx: DomainContext, args: unknown): Promise
   return ok({ item: data });
 }
 
+function todayLisbonYmd(): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Lisbon",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const m: Record<string, string> = {};
+  for (const part of parts) m[part.type] = part.value;
+  return `${m.year}-${m.month}-${m.day}`;
+}
+
+function financialOpportunityNotes(v: CreateFinancialMovementArgs): string | null {
+  const notes: string[] = [];
+  if (v.deal_value != null) notes.push(`Valor do negócio: ${v.deal_value}€`);
+  if (v.production_amount != null) notes.push(`Produção: ${v.production_amount}€${v.vat_amount != null ? ` + IVA (${v.vat_amount}€)` : " + IVA"}`);
+  if (v.amount != null) notes.push(`Comissão: ${v.amount}€`);
+  if (v.description) notes.push(v.description);
+  return notes.length ? notes.join("\n") : null;
+}
+
+async function execCreateFinancialMovement(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(CreateFinancialMovementArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  let opportunityId = v.opportunity_id ?? null;
+
+  if (!opportunityId && v.type === "commission" && (v.deal_value != null || v.production_amount != null || v.property_reference)) {
+    const title = (v.opportunity_title?.trim()
+      || (v.property_reference ? `Negócio ${v.property_reference.trim()}` : "Negócio fechado"))
+      .slice(0, 200);
+    const { data: opportunity, error: opportunityError } = await ctx.supabase
+      .from("opportunities")
+      .insert({
+        user_id: ctx.userId,
+        property_id: v.property_id ?? null,
+        type: "venda",
+        status: "fechado",
+        value: v.deal_value ?? null,
+        probability: "alta",
+        notes: financialOpportunityNotes(v),
+        next_action: null,
+      } as never)
+      .select("id, value, notes")
+      .single();
+    if (opportunityError) return fail(`opportunity:${opportunityError.message}`);
+    opportunityId = (opportunity as any)?.id ?? null;
+  }
+
+  const movementDate = v.movement_date ?? todayLisbonYmd();
+  const { data, error } = await ctx.supabase
+    .from("financial_movements")
+    .insert({
+      user_id: ctx.userId,
+      opportunity_id: opportunityId,
+      property_id: v.property_id ?? null,
+      type: v.type,
+      description: v.description.trim(),
+      category: v.category ?? (v.type === "commission" ? "Comissão" : null),
+      amount: v.amount,
+      vat_amount: v.vat_amount ?? null,
+      status: v.status ?? (v.type === "expense" ? "Recebida" : "Prevista"),
+      movement_date: movementDate,
+    } as never)
+    .select("id, type, amount, status, opportunity_id, vat_amount")
+    .single();
+  if (error) return fail(`financial_movements:${error.message}`);
+  return ok({ movement: data, opportunity_id: opportunityId });
+}
+
 // ---------- prospeção ----------
 
 function normalizePhone(raw: string | null | undefined): string | null {
@@ -723,6 +793,7 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   create_follow_up: execCreateFollowUp,
   save_interaction: execSaveInteraction,
   save_miscellaneous: execSaveMiscellaneous,
+  create_financial_movement: execCreateFinancialMovement,
   create_prospecting_lead: execCreateProspectingLead,
   search_prospecting_leads: execSearchProspectingLeads,
   update_prospecting_lead: execUpdateProspectingLead,

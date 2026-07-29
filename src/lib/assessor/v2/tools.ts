@@ -154,6 +154,58 @@ export const SaveMiscellaneousArgs = z.object({
 });
 export type SaveMiscellaneousArgs = z.infer<typeof SaveMiscellaneousArgs>;
 
+const FinancialMovementType = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    commission: "commission",
+    comissao: "commission",
+    comissão: "commission",
+    comissoes: "commission",
+    comissões: "commission",
+    expense: "expense",
+    despesa: "expense",
+    despesas: "expense",
+  };
+  return aliases[normalized] ?? normalized;
+}, z.enum(["commission", "expense"]));
+
+const FinancialStatus = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    prevista: "Prevista",
+    previsto: "Prevista",
+    garantida: "Prevista",
+    garantido: "Prevista",
+    faturada: "Faturada",
+    facturada: "Faturada",
+    recebida: "Recebida",
+    recebido: "Recebida",
+    paid: "Recebida",
+    invoiced: "Faturada",
+    expected: "Prevista",
+  };
+  return aliases[normalized] ?? value;
+}, z.string().default("Prevista"));
+
+export const CreateFinancialMovementArgs = z.object({
+  type: FinancialMovementType,
+  amount: z.number().nonnegative(),
+  description: z.string().min(1),
+  status: FinancialStatus.optional(),
+  movement_date: IsoDate.optional().nullable(),
+  category: z.string().optional().nullable(),
+  vat_amount: z.number().nonnegative().optional().nullable(),
+  opportunity_id: z.string().uuid().optional().nullable(),
+  property_id: z.string().uuid().optional().nullable(),
+  deal_value: z.number().nonnegative().optional().nullable(),
+  production_amount: z.number().nonnegative().optional().nullable(),
+  property_reference: z.string().optional().nullable(),
+  opportunity_title: z.string().optional().nullable(),
+});
+export type CreateFinancialMovementArgs = z.infer<typeof CreateFinancialMovementArgs>;
+
 // ---------- Lembretes (reminders) ----------
 
 const ReminderResource = z.enum(["follow_up", "event", "prospecting_lead", "other"]);
@@ -451,6 +503,33 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
   {
     type: "function",
     function: {
+      name: "create_financial_movement",
+      description:
+        "Regista movimentos financeiros do consultor: comissões e despesas. Usa para frases como 'comissão 5.000€', 'produção 10.000€+IVA', 'fechei negócio por 200.000€', ou despesas pagas. Se houver valor do negócio/produção, cria ou associa uma oportunidade e guarda esses valores nas notas da oportunidade; a comissão/despesa fica em financial_movements.",
+      parameters: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["commission", "expense"] },
+          amount: { type: "number", description: "Valor da comissão ou despesa em euros." },
+          description: { type: "string" },
+          status: { type: "string", enum: ["Prevista", "Faturada", "Recebida"] },
+          movement_date: { type: ["string", "null"], description: "YYYY-MM-DD; se faltar, o backend usa hoje." },
+          category: { type: ["string", "null"] },
+          vat_amount: { type: ["number", "null"] },
+          opportunity_id: { type: ["string", "null"], format: "uuid" },
+          property_id: { type: ["string", "null"], format: "uuid" },
+          deal_value: { type: ["number", "null"], description: "Valor total do negócio, ex.: 200000." },
+          production_amount: { type: ["number", "null"], description: "Produção/faturação antes de IVA, se explícita." },
+          property_reference: { type: ["string", "null"], description: "Imóvel referido, ex.: terreno, T3, moradia." },
+          opportunity_title: { type: ["string", "null"] },
+        },
+        required: ["type", "amount", "description"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_prospecting_lead",
       description:
         "Regista uma oportunidade de prospeção (placa na rua, número visto de longe, referência, anúncio). Usa quando o consultor descreve um imóvel à venda que ainda NÃO angariou: 'placa', 'vende-se', 'vi um apartamento à venda', 'número na placa', 'regista para ligar', 'particular', 'outra agência'. NÃO uses create_person nem create_property nestes casos — o proprietário e o imóvel ainda são desconhecidos. Deixa em branco tudo o que não estiver explícito (nome, morada exacta, preço, tipologia). Antes de invocar, procura duplicados com search_prospecting_leads se tiveres o telefone.",
@@ -656,6 +735,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   create_follow_up: CreateFollowUpArgs,
   save_interaction: SaveInteractionArgs,
   save_miscellaneous: SaveMiscellaneousArgs,
+  create_financial_movement: CreateFinancialMovementArgs,
   create_prospecting_lead: CreateProspectingLeadArgs,
   search_prospecting_leads: SearchProspectingLeadsArgs,
   update_prospecting_lead: UpdateProspectingLeadArgs,
