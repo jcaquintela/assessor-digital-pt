@@ -2,20 +2,15 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import {
   CalendarDays,
-  FileText,
   Home,
   Inbox,
-  ListChecks,
   MessageSquare,
-  MessagesSquare,
   MoreHorizontal,
   Settings,
   Sparkles,
   Building2,
   Users,
   Wallet,
-  Briefcase,
-  Repeat,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -24,22 +19,17 @@ const desktopNav = [
   { to: "/hoje", label: "Hoje", icon: Home },
   { to: "/assessor", label: "Assessor", icon: MessageSquare },
   { to: "/pessoas", label: "Pessoas", icon: Users },
-  { to: "/oportunidades", label: "Oportunidades", icon: Briefcase },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
-  { to: "/seguimentos", label: "Seguimentos", icon: ListChecks },
-  { to: "/calendario", label: "Calendário", icon: CalendarDays },
-  { to: "/rotinas", label: "Rotinas", icon: Repeat },
-  { to: "/interacoes", label: "Interações", icon: MessagesSquare },
-  { to: "/documentos", label: "Documentos", icon: FileText },
-  { to: "/diversos", label: "Diversos", icon: Inbox },
+  { to: "/calendario", label: "Agenda", icon: CalendarDays },
   { to: "/negocio", label: "O Meu Negócio", icon: Wallet },
+  { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/definicoes", label: "Definições", icon: Settings },
 ] as const;
 
 const mobileNav = [
   { to: "/assessor", label: "Assessor", icon: MessageSquare },
   { to: "/hoje", label: "Hoje", icon: Home },
-  { to: "/seguimentos", label: "Seguimentos", icon: ListChecks },
+  { to: "/pessoas", label: "Pessoas", icon: Users },
   { to: "/mais", label: "Mais", icon: MoreHorizontal },
 ] as const;
 
