@@ -228,11 +228,20 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
             }
           } catch { /* noop */ }
         }
-        const reply = okOk
+        const dupLead = (result.data as any)?.duplicate === true;
+        const baseReply = okOk
           ? "Feito. Registei a placa para contactares. Queres que te lembre de ligar?"
-          : ((result.data as any)?.duplicate
+          : (dupLead
               ? "Já tinhas uma placa registada com esse número. Fica na mesma."
               : "Tentei mas não consegui guardar a placa. Podes tentar outra vez?");
+        // Rede de segurança: placa confirmada que não chegou a ser criada
+        // fica em Diversos > Por tratar (antes desaparecia sem rasto).
+        const reply = await applySafetyNet(ctx, {
+          content: pending.original_content || trimmed,
+          outcome: okOk ? "executed_ok" : (dupLead ? "duplicate" : "tool_failed"),
+          reason: result.error ?? "not_created",
+          reply: baseReply,
+        });
         try {
           await supabase.from("assessor_ai_logs").insert({
             user_id: userId, channel, model: "reasoning-engine-v3",
@@ -255,10 +264,6 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     if (commissionArgs) {
       const t0 = Date.now();
       const result = await TOOL_REGISTRY.create_financial_movement(ctx, commissionArgs);
-      if (!result.ok) {
-        try { await saveFailedActionAsMiscellaneous(ctx, trimmed, result.error ?? "financial_failed"); }
-        catch { /* noop */ }
-      }
       try {
         await supabase.from("assessor_ai_logs").insert({
           user_id: userId, channel, model: "reasoning-engine-v3",
