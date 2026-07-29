@@ -435,6 +435,26 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   }
   if (!reply) reply = NATURAL_FALLBACKS.didNotUnderstand;
 
+  // Rede de segurança final: quando o motor não executou nada e a resposta é
+  // um fallback de não-compreensão (ou o DECIDE/THINK falhou), a mensagem
+  // original fica em Diversos > Por tratar antes de responder.
+  if (archiveOutcome === "executed_ok" && !shouldAct) {
+    const isFallbackReply =
+      reply === NATURAL_FALLBACKS.didNotUnderstand ||
+      reply === NATURAL_FALLBACKS.aiDown ||
+      /^n[ãa]o percebi/i.test(reply);
+    if (isFallbackReply || decideR.error || thinkR.error) {
+      archiveOutcome = "not_understood";
+      archiveReason = decideR.error ?? thinkR.error ?? "não percebi a mensagem";
+    }
+  }
+  reply = await applySafetyNet(ctx, {
+    content: trimmed,
+    outcome: archiveOutcome,
+    reason: archiveReason,
+    reply,
+  });
+
   const totalLatencyMs = Date.now() - started;
   const inputTokens = thinkR.usage.inputTokens + decideR.usage.inputTokens;
   const outputTokens = thinkR.usage.outputTokens + decideR.usage.outputTokens;
