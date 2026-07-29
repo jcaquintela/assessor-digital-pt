@@ -17,7 +17,6 @@ import { dismissPriority, getHojeSupreme } from "@/lib/assessor/supreme/prioriti
 import { saveFollowUpOutcome } from "@/lib/assessor/supreme/outcomes.functions";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { GlobalSearch } from "@/components/hoje/global-search";
 import { EventDrawer, type EventDrawerItem } from "@/components/hoje/event-drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -250,7 +249,6 @@ function HojePage() {
             </Button>
           </div>
         </div>
-        <GlobalSearch />
       </header>
 
       <div className="grid gap-6 lg:grid-cols-2">
