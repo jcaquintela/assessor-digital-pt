@@ -150,6 +150,20 @@ export async function updatePendingActionPayload(
   payload: Record<string, any>,
   extra?: Partial<Pick<PendingActionRow, "status" | "pending_question" | "current_question" | "missing_fields">>,
 ): Promise<void> {
+  // SEGURANÇA MULTI-TENANT
+  // Este UPDATE (e o markPendingActionStatus abaixo, e o update para
+  // "expired" na linha ~68) usam apenas `.eq("id", ...)`. Hoje são seguros
+  // por dois motivos convergentes:
+  //   1. O `id` vem sempre de uma leitura anterior já filtrada por
+  //      user_id (ver findActivePendingAction, findLastExecutedAction).
+  //   2. Nos webhooks (WhatsApp/Telegram) o cliente é supabaseAdmin, mas
+  //      só se chega aqui depois de resolver o user via channel_link /
+  //      profiles.phone — não há como um consultor confirmar/cancelar um
+  //      draft de outro.
+  // Se algum caller passar a receber `id` de origem externa (URL, form,
+  // API pública) sem validação prévia, adiciona `.eq("user_id", ...)` a
+  // TODOS os três updates neste ficheiro para não depender só da
+  // disciplina do chamador.
   await supabase
     .from("pending_actions")
     .update({ structured_payload: payload as never, ...(extra ?? {}) } as never)
