@@ -381,6 +381,16 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
       .eq("id", activeProspectingLead.id)
       .eq("user_id", ctx.userId);
   }
+  // Cria o lembrete canónico para o dispatcher.
+  if ((data as any)?.id && v.due_time) {
+    await upsertReminder(ctx.supabase, {
+      userId: ctx.userId,
+      related_resource_type: "follow_up",
+      related_resource_id: (data as any).id,
+      scheduled_for: dueIsoDate,
+      message_preview: `Lembrete: ${v.title.trim()} (${v.due_time}).`,
+    });
+  }
   return ok({ follow_up: data });
 }
 
