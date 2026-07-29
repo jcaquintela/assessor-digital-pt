@@ -17,6 +17,12 @@ import { captureCorrection, looksLikeCorrection } from "./corrections.server";
 import { reflect, type ReflectionTrigger } from "./reflection.server";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
 import type { DomainContext } from "../v2/domain.server";
+import { TOOL_REGISTRY } from "../v2/domain.server";
+import {
+  findActivePendingAction,
+  markPendingActionStatus,
+} from "../memory.server";
+import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from "../culture/short-answers";
 
 const HISTORY_LIMIT = 6;
 
@@ -65,6 +71,57 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   const userFirstName = String((prof as any)?.name ?? "").split(/\s+/)[0] || "";
   const historyPreview = toHistoryPreview((recentRows as any[]) ?? []);
 
+  // Fast-path prospeção — se existe uma proposta pendente de placa e o
+  // consultor confirma/cancela, resolvemos sem passar por THINK/DECIDE.
+  // Garante que o "Feito" só sai depois da persistência real.
+  try {
+    const pending = await findActivePendingAction(supabase, userId, channel);
+    if (pending && pending.intent === "create_prospecting_lead") {
+      if (saIsConfirmation(trimmed)) {
+        const exec = TOOL_REGISTRY.create_prospecting_lead;
+        const t0 = Date.now();
+        const result = await exec(ctx, pending.structured_payload ?? {});
+        const okOk = !!result.ok && !(result.data as any)?.duplicate;
+        const leadId = (result.data as any)?.lead?.id ?? (result.data as any)?.existing?.id ?? null;
+        await markPendingActionStatus(supabase, pending.id, okOk ? "executed" : "failed", {
+          created_resource_type: okOk ? "prospecting_lead" : null,
+          created_resource_id: okOk ? leadId : null,
+          error_message: okOk ? null : (result.error ?? "not_created"),
+        });
+        if (okOk && leadId) {
+          try {
+            await supabase.from("conversation_states").upsert({
+              user_id: userId, channel, external_conversation_id: channel,
+              last_entity_type: "prospecting_lead",
+              last_entity_id: leadId,
+              last_intent: "create_prospecting_lead",
+            } as never, { onConflict: "user_id,channel,external_conversation_id" });
+          } catch { /* noop */ }
+        }
+        const reply = okOk
+          ? "Feito. Registei a placa para contactares. Queres que te lembre de ligar?"
+          : ((result.data as any)?.duplicate
+              ? "Já tinhas uma placa registada com esse número. Fica na mesma."
+              : "Tentei mas não consegui guardar a placa. Podes tentar outra vez?");
+        try {
+          await supabase.from("assessor_ai_logs").insert({
+            user_id: userId, channel, model: "reasoning-engine-v3",
+            intent: "prospecting_confirm_fast_path", confidence: 1,
+            input_tokens: 0, output_tokens: 0, total_tokens: 0,
+            latency_ms: Date.now() - t0, success: okOk, error: okOk ? null : (result.error ?? "not_created"),
+            domain: "assessor", route: "v3", fallback_used: false,
+            tool_name: "create_prospecting_lead", tool_success: okOk,
+          } as never);
+        } catch { /* noop */ }
+        return { reply };
+      }
+      if (saIsRejection(trimmed)) {
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        return { reply: "Está bem, não registei nada." };
+      }
+    }
+  } catch { /* noop — cai no fluxo normal */ }
+
   // Detecção de correção precoce — antes de gastar OBSERVE/THINK/DECIDE.
   const lastAssistantRow = ((recentRows as any[]) ?? []).find((r) => r?.role === "assistant");
   const lastAssistantAt: Date | null = lastAssistantRow?.created_at ? new Date(lastAssistantRow.created_at) : null;
@@ -109,9 +166,33 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   if (shouldAct && !allOk) {
     reply = "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
   }
+
+  // Override natural para prospeção executada dentro do DECIDE (turno único).
+  const leadTool = toolResults.find((t) => t.name === "create_prospecting_lead");
+  if (leadTool) {
+    const dup = (leadTool.data as any)?.duplicate === true;
+    const leadId = (leadTool.data as any)?.lead?.id ?? (leadTool.data as any)?.existing?.id ?? null;
+    if (leadTool.ok && !dup) {
+      reply = "Feito. Registei a placa para contactares. Queres que te lembre de ligar?";
+      if (leadId) {
+        try {
+          await supabase.from("conversation_states").upsert({
+            user_id: userId, channel, external_conversation_id: channel,
+            last_entity_type: "prospecting_lead",
+            last_entity_id: leadId,
+            last_intent: "create_prospecting_lead",
+          } as never, { onConflict: "user_id,channel,external_conversation_id" });
+        } catch { /* noop */ }
+      }
+    } else if (leadTool.ok && dup) {
+      reply = "Já tens uma placa registada com esse número. É a mesma?";
+    }
+  }
+
   // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
   // técnico, no máximo 2 frases, uma pergunta de cada vez.
-  reply = enforceHumanTone(reply, { actionExecutedOk: shouldAct && allOk });
+  const prospectingActed = !!leadTool && leadTool.ok && !(leadTool.data as any)?.duplicate;
+  reply = enforceHumanTone(reply, { actionExecutedOk: (shouldAct && allOk) || prospectingActed });
   if (decideR.decision.action === "ask") {
     reply = enforceSingleQuestion(reply);
   }
