@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   AlertTriangle, CalendarClock, CheckCircle2, Clock, MessageSquare, Sparkles,
   FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote,
-  Users, Building2, CalendarDays, ListChecks, Wallet, Inbox, Repeat,
 } from "lucide-react";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -62,6 +61,7 @@ type Awaiting = { id: string; title: string; due_at: string; entity_label: strin
 
 function HojePage() {
   const { seguimentos, oportunidades, pessoas, imoveis, concluirSeguimento, reagendarSeguimento } = useStore();
+  void oportunidades; void imoveis;
   const { name: assessorName } = useAssessorName();
   const now = new Date();
   const supremeQ = useServerFn(getHojeSupreme);
@@ -247,7 +247,7 @@ function HojePage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="secondary" size="sm" className="gap-1.5">
-              <Link to="/assessor"><MessageSquare className="h-4 w-4" /> Falar com o {assessorName}</Link>
+              <Link to="/assessor"><MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}</Link>
             </Button>
             <QuickAdd />
           </div>
@@ -255,9 +255,9 @@ function HojePage() {
         <GlobalSearch />
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Coluna principal */}
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-6">
           {/* B. As minhas prioridades */}
           <Card className="border-primary/30">
             <CardHeader className="pb-2">
@@ -386,12 +386,12 @@ function HojePage() {
             </CardContent>
           </Card>
 
-          {/* E. Alertas úteis */}
+          {/* E. Atenção */}
           {(atrasados.length > 0 || oportSemAcao.length > 0 || (docsPending.data ?? 0) > 0) && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <AlertTriangle className="h-4 w-4 text-destructive" /> Alertas úteis
+                  <AlertTriangle className="h-4 w-4 text-destructive" /> Atenção
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1.5">
@@ -407,32 +407,6 @@ function HojePage() {
               </CardContent>
             </Card>
           )}
-
-          {/* F. Módulos */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Módulos</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2">
-              <ModuleTile to="/pessoas" icon={Users} label="Pessoas" count={pessoas.length} />
-              <ModuleTile to="/imoveis" icon={Building2} label="Imóveis" count={imoveis.length} />
-              <ModuleTile to="/calendario" icon={CalendarDays} label="Agenda" count={eventosHoje.length} sub="hoje" />
-              <ModuleTile to="/seguimentos" icon={ListChecks} label="Seguimentos" count={seguimentos.filter((s) => s.estado !== "Concluído").length} />
-              <ModuleTile to="/oportunidades" icon={Briefcase} label="Oportunidades" count={oportunidades.length} />
-              <ModuleTile to="/negocio" icon={Wallet} label="O Meu Negócio" />
-              <ModuleTile to="/diversos" icon={Inbox} label="Diversos" />
-              <ModuleTile to="/rotinas" icon={Repeat} label="Rotinas" />
-            </CardContent>
-          </Card>
-
-          {assessorName === "Assessor" && (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-                <span>Como queres chamar o teu Assessor?</span>
-                <Button asChild size="sm" variant="outline"><Link to="/definicoes">Escolher nome</Link></Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
 
@@ -441,7 +415,7 @@ function HojePage() {
         to="/assessor"
         className="fixed bottom-20 right-4 z-10 flex h-12 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-lg md:hidden"
       >
-        <MessageSquare className="h-4 w-4" /> Alfred
+        <MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
       </Link>
 
       <EventDrawer item={drawer} onClose={() => setDrawer(null)} />
@@ -492,32 +466,6 @@ function AlertRow({
   );
 }
 
-function ModuleTile({
-  to, icon: Icon, label, count, sub,
-}: {
-  to: string; icon: any; label: string; count?: number; sub?: string;
-}) {
-  return (
-    <Link
-      to={to as any}
-      className="group flex min-h-[64px] items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 outline-none transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary"
-      aria-label={`Abrir ${label}`}
-    >
-      <div className="rounded-md bg-primary/10 p-2 text-primary">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{label}</div>
-        {typeof count === "number" && (
-          <div className="text-xs text-muted-foreground">
-            {count} {sub ?? (count === 1 ? "registo" : "registos")}
-          </div>
-        )}
-      </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-    </Link>
-  );
-}
-
 // Ícone reservado para futuras variantes; suprime aviso de import não usado.
 void MoreHorizontal;
+void pessoas;
