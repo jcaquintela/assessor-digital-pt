@@ -289,6 +289,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       } catch { /* noop */ }
       const amount = Number((commissionArgs as any).amount ?? 0);
       const reference = String((commissionArgs as any).property_reference ?? "negócio");
+      if (result.ok && (result.data as any)?.duplicate === true) {
+        return {
+          reply: `Já tinha uma ${(commissionArgs as any).type === "expense" ? "despesa" : "comissão"} de ${formatPtMoney(amount)} registada hoje. É a mesma ou queres registar outra?`,
+        };
+      }
       return result.ok
         ? { reply: `Feito. Registei a comissão de ${formatPtMoney(amount)} no ${reference}.` }
         : { reply: "Tentei guardar a comissão e não consegui. Deixei em Diversos para não se perder." };
