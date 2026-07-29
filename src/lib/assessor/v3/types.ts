@@ -44,11 +44,14 @@ export type SearchName =
   | "agenda_tomorrow"
   | "agenda_week"
   | "conversation_state"
-  | "pending_action";
+  | "pending_action"
+  | "prospecting_by_phone"
+  | "prospecting_by_location";
 
 export interface SearchResults {
   people?: unknown[];
   properties?: unknown[];
+  prospecting_leads?: unknown[];
   agenda?: unknown;
   conversation_state?: unknown | null;
   pending_action?: unknown | null;
