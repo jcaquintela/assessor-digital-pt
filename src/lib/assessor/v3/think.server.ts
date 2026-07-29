@@ -17,6 +17,7 @@ const VALID_SEARCHES: readonly SearchName[] = [
   "properties_by_location", "properties_by_title",
   "agenda_today", "agenda_tomorrow", "agenda_week",
   "conversation_state", "pending_action",
+  "prospecting_by_phone", "prospecting_by_location",
 ];
 
 function coerceMemoryValue(v: unknown): MemoryValue {
