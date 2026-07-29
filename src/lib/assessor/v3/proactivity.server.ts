@@ -263,3 +263,75 @@ export async function dispatchPendingNudges(
   }
   return { sent, skipped };
 }
+
+// Envia lembretes de follow-ups agendados pelo Assessor cuja hora chegou.
+// Dedupe: só envia se ainda não existir uma mensagem `followup_reminder`
+// ligada a esse follow-up.
+export async function dispatchDueFollowUpReminders(
+  supabase: any,
+  opts: { now?: Date; windowMinutes?: number; maxPerRun?: number } = {},
+): Promise<{ sent: number; skipped: number }> {
+  const now = opts.now ?? new Date();
+  const windowMin = opts.windowMinutes ?? 10;
+  const maxPerRun = opts.maxPerRun ?? 20;
+
+  const upper = new Date(now.getTime() + 60_000).toISOString();
+  const lower = new Date(now.getTime() - windowMin * 60_000).toISOString();
+
+  const openStatuses = ["Pendente", "pending", "aberto", "in_progress", "Atrasado"];
+  const { data: due } = await supabase
+    .from("follow_ups")
+    .select("id, user_id, title, due_date, related_prospecting_lead_id, person_id, opportunity_id")
+    .in("status", openStatuses)
+    .gte("due_date", lower)
+    .lte("due_date", upper)
+    .order("due_date", { ascending: true })
+    .limit(maxPerRun);
+  const rows = (due as any[]) ?? [];
+  if (!rows.length) return { sent: 0, skipped: 0 };
+
+  const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
+  const [{ data: profs }, { data: v3Users }, { data: already }] = await Promise.all([
+    supabase.from("profiles").select("id, phone, whatsapp_link_status").in("id", userIds),
+    supabase.from("feature_flag_users").select("user_id").eq("flag_key", "assessor.engine.v3").in("user_id", userIds),
+    supabase.from("assessor_messages")
+      .select("related_resource_id")
+      .eq("message_type", "followup_reminder")
+      .eq("related_resource_type", "follow_up")
+      .in("related_resource_id", rows.map((r) => r.id)),
+  ]);
+  const linked = new Map<string, string>();
+  for (const p of ((profs as any[]) ?? [])) {
+    if (p.whatsapp_link_status === "linked" && p.phone) linked.set(p.id, p.phone);
+  }
+  const v3Set = new Set(((v3Users as any[]) ?? []).map((u) => u.user_id));
+  const sentIds = new Set(((already as any[]) ?? []).map((r) => r.related_resource_id));
+
+  const { sendWhatsAppText } = await import("@/lib/whatsapp/send.server");
+  const { normalizePhone } = await import("@/lib/whatsapp/phone");
+
+  let sent = 0, skipped = 0;
+  for (const fu of rows) {
+    if (sentIds.has(fu.id)) { skipped++; continue; }
+    const phone = linked.get(fu.user_id);
+    if (!phone || !v3Set.has(fu.user_id)) { skipped++; continue; }
+    const to = normalizePhone(phone);
+    if (!to) { skipped++; continue; }
+    const hhmm = new Intl.DateTimeFormat("pt-PT", {
+      timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(new Date(fu.due_date));
+    const text = sanitizeReply(`Lembrete: ${fu.title} (${hhmm}).`);
+    const r = await sendWhatsAppText(to, text, { triggeredBy: fu.user_id, kind: "auto" });
+    if (r.ok) {
+      await supabase.from("assessor_messages").insert({
+        user_id: fu.user_id, channel: "whatsapp", role: "assistant",
+        content: text, message_type: "followup_reminder",
+        related_resource_type: "follow_up", related_resource_id: fu.id,
+      } as never);
+      sent++;
+    } else {
+      skipped++;
+    }
+  }
+  return { sent, skipped };
+}
