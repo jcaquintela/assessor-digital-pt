@@ -255,20 +255,22 @@ describe("stress — 'sim' em sequência rápida", () => {
       id: "canonical-fu", user_id: "u1", source_pending_action_id: "pa-stress-retry-fu",
       title: "Existente", due_date: "2026-07-30", due_time: null,
     });
-    // Cada dispatch: 1º maybeSingle (pre-check) devolve null → força INSERT → 23505.
+    // Cada iteração: apenas o pre-check devolve null (força INSERT → 23505);
+    // a lookup pós-conflito devolve a linha canónica.
+    let bypass = 0;
     const origFrom = sb.from.bind(sb);
     sb.from = (table: string) => {
       const chain = origFrom(table);
       const orig = chain.maybeSingle.bind(chain);
-      let firstCall = true;
       chain.maybeSingle = async () => {
-        if (firstCall) { firstCall = false; return { data: null, error: null }; }
+        if (bypass > 0) { bypass--; return { data: null, error: null }; }
         return orig();
       };
       return chain;
     };
     const ctx = baseCtx(sb, "pa-stress-retry-fu");
     for (let i = 0; i < 8; i++) {
+      bypass = 1;
       const r = await dispatchToolCall(ctx, "create_follow_up", JSON.stringify(followUpArgs));
       expect(r.ok).toBe(true);
       expect((r.data as any).idempotent).toBe(true);
@@ -283,19 +285,20 @@ describe("stress — 'sim' em sequência rápida", () => {
       id: "canonical-evt", user_id: "u1", source_pending_action_id: "pa-stress-retry-evt",
       title: "Existente",
     });
+    let bypass = 0;
     const origFrom = sb.from.bind(sb);
     sb.from = (table: string) => {
       const chain = origFrom(table);
       const orig = chain.maybeSingle.bind(chain);
-      let firstCall = true;
       chain.maybeSingle = async () => {
-        if (firstCall) { firstCall = false; return { data: null, error: null }; }
+        if (bypass > 0) { bypass--; return { data: null, error: null }; }
         return orig();
       };
       return chain;
     };
     const ctx = baseCtx(sb, "pa-stress-retry-evt");
     for (let i = 0; i < 8; i++) {
+      bypass = 1;
       const r = await dispatchToolCall(ctx, "create_event", JSON.stringify(eventArgs));
       expect(r.ok).toBe(true);
       expect((r.data as any).idempotent).toBe(true);
