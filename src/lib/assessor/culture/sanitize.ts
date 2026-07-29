@@ -73,11 +73,14 @@ export function safeReply(
 // Verifica se a resposta parece humana: sem vocabulário técnico, sem
 // linguagem de formulário, ≤ 2 frases. Usado pelo AQS.
 export function hasHumanTone(reply?: string | null): boolean {
+  const s0 = String(reply ?? "");
+  const { masked } = maskQuoted(s0);
+  void masked;
   const s = String(reply ?? "").trim();
   if (!s) return false;
   if (TECH_VOCAB_RE.test(s)) return false;
   if (FORM_CONFIRM_RE.test(s)) return false;
-  const sentences = s.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const sentences = maskQuoted(s).masked.split(/(?<=[.!?])\s+/).filter(Boolean);
   if (sentences.length > 3) return false;
   return true;
 }
@@ -94,19 +97,45 @@ export function enforceHumanTone(
   if (!opts.actionExecutedOk) out = out.replace(PRECLAIM_RE, "").trim();
   out = out.replace(TECH_VOCAB_RE, "").replace(/\s{2,}/g, " ").trim();
   out = out.replace(FORM_CONFIRM_RE, "Confirmas?").trim();
-  // Corta para no máximo 2 frases.
-  const parts = out.split(/(?<=[.!?])\s+/).filter(Boolean);
-  if (parts.length > 2) out = parts.slice(0, 2).join(" ");
-  return out.trim();
+  // Corta para no máximo 2 frases — mas texto entre aspas (ex.: um script
+  // que o consultor pediu) conta como parte da frase que o introduz.
+  const { masked, store } = maskQuoted(out);
+  const parts = masked.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const kept = parts.length > 2 ? parts.slice(0, 2).join(" ") : masked;
+  return unmaskQuoted(kept, store).trim();
 }
 
-// Se a resposta tem mais do que uma pergunta, mantém só a primeira.
-// Uma pergunta de cada vez é regra dura da cultura PT do assessor.
+// Texto entre aspas é conteúdo pedido pelo consultor (um script, uma
+// mensagem para enviar). Não deve ser cortado nem contar como pergunta.
+function maskQuoted(s: string): { masked: string; store: string[] } {
+  const store: string[] = [];
+  const masked = s.replace(/(['"“«])([^'"”»«]{3,}?)(['"”»])/g, (m) => {
+    store.push(m);
+    return `\u0000${store.length - 1}\u0000`;
+  });
+  return { masked, store };
+}
+
+function unmaskQuoted(s: string, store: string[]): string {
+  return s.replace(/\u0000(\d+)\u0000/g, (_m, i) => store[Number(i)] ?? "");
+}
+
+// Se a resposta tem mais do que uma pergunta, mantém só a primeira — mas
+// preserva as frases afirmativas que a acompanham (ex.: a sugestão de
+// script). Uma pergunta de cada vez, não uma frase de cada vez.
 export function enforceSingleQuestion(reply: string): string {
-  const s = reply.trim();
-  const qCount = (s.match(/\?/g) ?? []).length;
-  if (qCount <= 1) return s;
-  const parts = s.split(/(?<=\?)\s+/);
-  const first = parts.find((p) => p.includes("?")) ?? parts[0];
-  return first.trim();
+  const { masked, store } = maskQuoted(reply.trim());
+  const qCount = (masked.match(/\?/g) ?? []).length;
+  if (qCount <= 1) return unmaskQuoted(masked, store).trim();
+  const sentences = masked.split(/(?<=[.!?])\s+/).filter(Boolean);
+  let seenQuestion = false;
+  const kept: string[] = [];
+  for (const part of sentences) {
+    if (part.includes("?")) {
+      if (seenQuestion) continue;
+      seenQuestion = true;
+    }
+    kept.push(part);
+  }
+  return unmaskQuoted(kept.join(" "), store).trim();
 }
