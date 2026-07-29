@@ -4,6 +4,7 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatData, formatEUR } from "@/lib/demo-data";
+import { Camera, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/oportunidades")({
   head: () => ({
@@ -22,6 +23,20 @@ function OportunidadesPage() {
   return (
     <AppShell>
       <PageHeader title="Oportunidades" subtitle={`${oportunidades.length} em curso`} />
+      <Link to="/oportunidades/prospecao" className="mb-4 block">
+        <Card className="border-primary/30 bg-primary/5 transition-colors hover:border-primary/50">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+              <Camera className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold">Prospeção</div>
+              <div className="text-xs text-muted-foreground">Placas na rua e leads para contactar mais tarde.</div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </Link>
       {oportunidades.length === 0 && (
         <p className="text-sm text-muted-foreground">Ainda não há oportunidades. Fala com o Assessor para criar a primeira.</p>
       )}
