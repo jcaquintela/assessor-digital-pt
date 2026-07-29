@@ -76,7 +76,7 @@ export async function think(input: {
       { role: "user", content: JSON.stringify(userPayload) },
     ],
     temperature: 0.15,
-    maxTokens: 500,
+    maxTokens: 2000,
     responseFormat: { type: "json_object" },
   });
 
