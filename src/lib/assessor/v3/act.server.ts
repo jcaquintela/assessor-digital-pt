@@ -2,7 +2,7 @@
 
 import { TOOL_REGISTRY, type DomainContext, type DomainResult } from "../v2/domain.server";
 import { ZOD_BY_TOOL, CreateProspectingLeadArgs } from "../v2/tools";
-import { createPendingAction, markPendingActionStatus } from "../memory.server";
+import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
 import type { DecisionToolCall, MemoryWrite } from "./types";
 
 export interface ToolExecResult {
@@ -18,6 +18,19 @@ export async function executeToolCalls(
   toolCalls: DecisionToolCall[],
 ): Promise<ToolExecResult[]> {
   const out: ToolExecResult[] = [];
+  // Se estamos a criar seguimentos/eventos e ainda não temos pendingActionId
+  // no contexto, procuramos a pending activa desta conversa. Sem isto, dois
+  // "sim" seguidos gerariam dois registos (perde-se a idempotência dura).
+  let effectiveCtx: DomainContext = ctx;
+  const needsPending = !ctx.pendingActionId && toolCalls.some(
+    (t) => t.name === "create_follow_up" || t.name === "create_event",
+  );
+  if (needsPending) {
+    try {
+      const pending = await findActivePendingAction(ctx.supabase, ctx.userId, ctx.channel);
+      if (pending?.id) effectiveCtx = { ...ctx, pendingActionId: pending.id };
+    } catch { /* noop */ }
+  }
   for (const tc of toolCalls) {
     const t0 = Date.now();
     const exec = TOOL_REGISTRY[tc.name];
@@ -36,7 +49,7 @@ export async function executeToolCalls(
       continue;
     }
     let result: DomainResult;
-    try { result = await exec(ctx, tc.arguments); }
+    try { result = await exec(effectiveCtx, tc.arguments); }
     catch (err) {
       result = { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
