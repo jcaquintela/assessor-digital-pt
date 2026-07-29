@@ -36,6 +36,7 @@ import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/m
 import { Route as AuthenticatedInteracoesRouteImport } from './routes/_authenticated/interacoes'
 import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
 import { Route as AuthenticatedHojeRouteImport } from './routes/_authenticated/hoje'
+import { Route as AuthenticatedDriveRouteImport } from './routes/_authenticated/drive'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedDiversosRouteImport } from './routes/_authenticated/diversos'
 import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
@@ -197,6 +198,11 @@ const AuthenticatedHojeRoute = AuthenticatedHojeRouteImport.update({
   path: '/hoje',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDriveRoute = AuthenticatedDriveRouteImport.update({
+  id: '/drive',
+  path: '/drive',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDocumentosRoute = AuthenticatedDocumentosRouteImport.update({
   id: '/documentos',
   path: '/documentos',
@@ -346,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/diversos': typeof AuthenticatedDiversosRouteWithChildren
   '/documentos': typeof AuthenticatedDocumentosRoute
+  '/drive': typeof AuthenticatedDriveRoute
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
@@ -397,6 +404,7 @@ export interface FileRoutesByTo {
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/diversos': typeof AuthenticatedDiversosRouteWithChildren
   '/documentos': typeof AuthenticatedDocumentosRoute
+  '/drive': typeof AuthenticatedDriveRoute
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
@@ -451,6 +459,7 @@ export interface FileRoutesById {
   '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
   '/_authenticated/diversos': typeof AuthenticatedDiversosRouteWithChildren
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
+  '/_authenticated/drive': typeof AuthenticatedDriveRoute
   '/_authenticated/hoje': typeof AuthenticatedHojeRoute
   '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/_authenticated/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
@@ -505,6 +514,7 @@ export interface FileRouteTypes {
     | '/definicoes'
     | '/diversos'
     | '/documentos'
+    | '/drive'
     | '/hoje'
     | '/imoveis'
     | '/interacoes'
@@ -556,6 +566,7 @@ export interface FileRouteTypes {
     | '/definicoes'
     | '/diversos'
     | '/documentos'
+    | '/drive'
     | '/hoje'
     | '/imoveis'
     | '/interacoes'
@@ -609,6 +620,7 @@ export interface FileRouteTypes {
     | '/_authenticated/definicoes'
     | '/_authenticated/diversos'
     | '/_authenticated/documentos'
+    | '/_authenticated/drive'
     | '/_authenticated/hoje'
     | '/_authenticated/imoveis'
     | '/_authenticated/interacoes'
@@ -852,6 +864,13 @@ declare module '@tanstack/react-router' {
       path: '/hoje'
       fullPath: '/hoje'
       preLoaderRoute: typeof AuthenticatedHojeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/drive': {
+      id: '/_authenticated/drive'
+      path: '/drive'
+      fullPath: '/drive'
+      preLoaderRoute: typeof AuthenticatedDriveRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/documentos': {
@@ -1182,6 +1201,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
   AuthenticatedDiversosRoute: typeof AuthenticatedDiversosRouteWithChildren
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
+  AuthenticatedDriveRoute: typeof AuthenticatedDriveRoute
   AuthenticatedHojeRoute: typeof AuthenticatedHojeRoute
   AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
   AuthenticatedInteracoesRoute: typeof AuthenticatedInteracoesRouteWithChildren
@@ -1199,6 +1219,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
   AuthenticatedDiversosRoute: AuthenticatedDiversosRouteWithChildren,
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
+  AuthenticatedDriveRoute: AuthenticatedDriveRoute,
   AuthenticatedHojeRoute: AuthenticatedHojeRoute,
   AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
   AuthenticatedInteracoesRoute: AuthenticatedInteracoesRouteWithChildren,
