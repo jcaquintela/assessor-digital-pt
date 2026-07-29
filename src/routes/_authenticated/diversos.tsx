@@ -138,12 +138,17 @@ function DiversosPage() {
         ) : (
           <div className="grid gap-3">
             {filtered.map((r) => (
-              <Card key={r.id}>
+              <Link
+                key={r.id}
+                to="/diversos/$id"
+                params={{ id: r.id }}
+                className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label={`Abrir nota ${r.title}`}
+              >
+              <Card className="transition-colors group-hover:border-primary/40 group-focus-visible:border-primary/60">
                 <CardContent className="flex flex-col gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Link to="/diversos/$id" params={{ id: r.id }} className="text-sm font-medium hover:underline">
-                      {r.title}
-                    </Link>
+                    <span className="text-sm font-medium">{r.title}</span>
                     <Badge variant="outline" className="text-[10px]">
                       {STATUS_LABEL[r.status]}
                     </Badge>
@@ -167,7 +172,7 @@ function DiversosPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setStatus.mutate({ id: r.id, status: "reviewed" })}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatus.mutate({ id: r.id, status: "reviewed" }); }}
                       >
                         <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Marcar como revisto
                       </Button>
@@ -176,7 +181,7 @@ function DiversosPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setStatus.mutate({ id: r.id, status: "archived" })}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatus.mutate({ id: r.id, status: "archived" }); }}
                       >
                         <Archive className="mr-1 h-3.5 w-3.5" /> Arquivar
                       </Button>
@@ -185,13 +190,14 @@ function DiversosPage() {
                       size="sm"
                       variant="ghost"
                       className="text-destructive"
-                      onClick={() => setStatus.mutate({ id: r.id, status: "deleted" })}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatus.mutate({ id: r.id, status: "deleted" }); }}
                     >
                       <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
                     </Button>
                   </div>
                 </CardContent>
               </Card>
+              </Link>
             ))}
           </div>
         )}
