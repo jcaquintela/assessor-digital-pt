@@ -111,9 +111,31 @@ const FollowUpPriority = z.preprocess((value) => {
   return aliases[normalized] ?? normalized;
 }, z.enum(["baixa", "media", "alta"]));
 
+// O modelo inventa por vezes tipos de evento fora da lista ("prospeccao",
+// "bloco", "call"...). Isso não pode fazer a criação falhar: normalizamos
+// aliases conhecidos e tudo o resto cai em "outro".
+const EventType = z.preprocess((value) => {
+  if (typeof value !== "string") return value === undefined || value === null ? "visita" : value;
+  const normalized = value.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    visita: "visita",
+    visit: "visita",
+    viewing: "visita",
+    reuniao_angariacao: "reuniao_angariacao",
+    reuniao: "reuniao_angariacao",
+    meeting: "reuniao_angariacao",
+    angariacao: "reuniao_angariacao",
+    chamada: "chamada",
+    call: "chamada",
+    phone_call: "chamada",
+    chamadas: "chamada",
+  };
+  return aliases[normalized] ?? "outro";
+}, z.enum(["visita", "reuniao_angariacao", "chamada", "outro"]));
+
 export const CreateEventArgs = z.object({
   title: z.string().min(1),
-  event_type: z.enum(["visita", "reuniao_angariacao", "chamada", "outro"]).default("visita"),
+  event_type: EventType.default("visita"),
   date: IsoDate,
   start_time: HhMm,
   duration_minutes: z.number().int().positive().max(600).optional().nullable(),

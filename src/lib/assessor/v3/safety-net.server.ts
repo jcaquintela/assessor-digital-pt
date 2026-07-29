@@ -65,6 +65,38 @@ export async function archiveToMiscellaneous(
 // Frase honesta a acrescentar quando a mensagem ficou guardada.
 const SAVED_SUFFIX = "Deixei em Diversos, por tratar, para não se perder.";
 
+// Uma conversa constrói-se ao longo de várias mensagens. Se falharmos no
+// último turno ("09:30"), arquivar só essa palavra deita fora o pedido real.
+// Reconstruímos o conteúdo: a acção pendente (se existir) ou as últimas
+// mensagens do consultor, mais a pergunta que o Assessor tinha feito.
+export function buildArchiveContent(params: {
+  trimmed: string;
+  pendingContent?: string | null;
+  recentRows?: Array<{ role?: string | null; content?: string | null }>;
+}): string {
+  const last = String(params.trimmed ?? "").trim();
+  const pending = String(params.pendingContent ?? "").trim();
+  if (pending && pending !== last) return `${pending}\n(depois: ${last})`;
+
+  // `recentRows` vem por ordem decrescente (mais recente primeiro).
+  const rows = (params.recentRows ?? []).slice(0, 8);
+  const userMsgs = rows
+    .filter((r) => r?.role === "user")
+    .map((r) => String(r?.content ?? "").trim())
+    .filter(Boolean)
+    .filter((c) => c !== last)
+    .filter((c) => !isDisposableMessage(c))
+    .slice(0, 3)
+    .reverse();
+  const lastAssistantQuestion = rows
+    .find((r) => r?.role === "assistant" && /\?\s*$/.test(String(r?.content ?? "").trim()));
+  const question = String(lastAssistantQuestion?.content ?? "").trim();
+
+  if (userMsgs.length === 0 && !question) return last;
+  const context = [...userMsgs, question ? `Assessor: ${question}` : ""].filter(Boolean).join("\n");
+  return `${context}\n(depois: ${last})`;
+}
+
 export function withSavedNote(reply: string, saved: boolean): string {
   const base = String(reply ?? "").trim();
   if (!saved) return base;

@@ -30,7 +30,7 @@ import {
   hasValidPendingContext,
   type AgendaItem,
 } from "./deterministic.server";
-import { applySafetyNet } from "./safety-net.server";
+import { applySafetyNet, buildArchiveContent } from "./safety-net.server";
 
 const HISTORY_LIMIT = 6;
 
@@ -167,11 +167,16 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     !!lastAssistantAt0 &&
     (Date.now() - lastAssistantAt0.getTime()) < 10 * 60_000;
 
+  // Contexto acumulado para a rede de segurança: guardar só "09:30" perde
+  // o pedido real ("bloco de agenda amanhã para chamadas à rede").
+  let pendingForArchive: { original_content?: string | null; intent?: string | null } | null = null;
+
   // Fast-path prospeção — se existe uma proposta pendente de placa e o
   // consultor confirma/cancela, resolvemos sem passar por THINK/DECIDE.
   // Garante que o "Feito" só sai depois da persistência real.
   try {
     const pending = await findActivePendingAction(supabase, userId, channel);
+    pendingForArchive = pending ?? null;
     if (pending && pending.intent === "create_prospecting_lead") {
       if (saIsConfirmation(trimmed)) {
         const exec = TOOL_REGISTRY.create_prospecting_lead;
@@ -449,7 +454,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
   }
   reply = await applySafetyNet(ctx, {
-    content: trimmed,
+    content: buildArchiveContent({
+      trimmed,
+      pendingContent: pendingForArchive?.original_content ?? null,
+      recentRows: (recentRows as any[]) ?? [],
+    }),
     outcome: archiveOutcome,
     reason: archiveReason,
     reply,
