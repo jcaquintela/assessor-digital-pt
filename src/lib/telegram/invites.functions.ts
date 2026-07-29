@@ -23,7 +23,7 @@ export const listTelegramInvites = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("telegram_invites")
-      .select("code, plan_tier, note, expires_at, used_by, used_at, used_chat_id, created_at")
+      .select("code, subscription_tier, note, expires_at, used_by, used_at, used_chat_id, created_at")
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
@@ -32,11 +32,11 @@ export const listTelegramInvites = createServerFn({ method: "GET" })
 
 export const createTelegramInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { note?: string; planTier?: "free" | "pro"; ttlDays?: number }) =>
+  .inputValidator((d: { note?: string; subscriptionTier?: "base" | "consultor" | "pro" | "hub"; ttlDays?: number }) =>
     z
       .object({
         note: z.string().max(200).optional(),
-        planTier: z.enum(["free", "pro"]).optional(),
+        subscriptionTier: z.enum(["base", "consultor", "pro", "hub"]).optional(),
         ttlDays: z.number().int().min(1).max(365).optional(),
       })
       .parse(d),
@@ -54,7 +54,7 @@ export const createTelegramInvite = createServerFn({ method: "POST" })
         .insert({
           code,
           created_by: context.userId,
-          plan_tier: data.planTier ?? "free",
+          subscription_tier: data.subscriptionTier ?? "base",
           note: data.note ?? null,
           expires_at: expiresAt,
         })

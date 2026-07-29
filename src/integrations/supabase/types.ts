@@ -1678,14 +1678,16 @@ export type Database = {
         Row: {
           account_kind: string
           assessor_name: string
+          beta_expires_at: string | null
           created_at: string
           email: string | null
           id: string
+          is_beta_tester: boolean
           name: string | null
           phone: string | null
           phone_verified_at: string | null
-          plan_tier: string
           primary_channel: string
+          subscription_tier: string
           updated_at: string
           whatsapp_link_status: string
           whatsapp_linked_at: string | null
@@ -1693,14 +1695,16 @@ export type Database = {
         Insert: {
           account_kind?: string
           assessor_name?: string
+          beta_expires_at?: string | null
           created_at?: string
           email?: string | null
           id: string
+          is_beta_tester?: boolean
           name?: string | null
           phone?: string | null
           phone_verified_at?: string | null
-          plan_tier?: string
           primary_channel?: string
+          subscription_tier?: string
           updated_at?: string
           whatsapp_link_status?: string
           whatsapp_linked_at?: string | null
@@ -1708,14 +1712,16 @@ export type Database = {
         Update: {
           account_kind?: string
           assessor_name?: string
+          beta_expires_at?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_beta_tester?: boolean
           name?: string | null
           phone?: string | null
           phone_verified_at?: string | null
-          plan_tier?: string
           primary_channel?: string
+          subscription_tier?: string
           updated_at?: string
           whatsapp_link_status?: string
           whatsapp_linked_at?: string | null
@@ -2056,7 +2062,7 @@ export type Database = {
           created_by: string | null
           expires_at: string
           note: string | null
-          plan_tier: string
+          subscription_tier: string
           used_at: string | null
           used_by: string | null
           used_chat_id: string | null
@@ -2067,7 +2073,7 @@ export type Database = {
           created_by?: string | null
           expires_at?: string
           note?: string | null
-          plan_tier?: string
+          subscription_tier?: string
           used_at?: string | null
           used_by?: string | null
           used_chat_id?: string | null
@@ -2078,7 +2084,7 @@ export type Database = {
           created_by?: string | null
           expires_at?: string
           note?: string | null
-          plan_tier?: string
+          subscription_tier?: string
           used_at?: string | null
           used_by?: string | null
           used_chat_id?: string | null
@@ -2312,6 +2318,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      effective_tier: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2320,6 +2327,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      tier_at_least: {
+        Args: { _min: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "consultant" | "support_admin" | "super_admin"
