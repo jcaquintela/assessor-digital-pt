@@ -26,6 +26,7 @@ import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes
 import { Route as AdminGoldensRouteImport } from './routes/admin/goldens'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
+import { Route as AdminConvitesRouteImport } from './routes/admin/convites'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
@@ -146,6 +147,11 @@ const AdminFuncionalidadesRoute = AdminFuncionalidadesRouteImport.update({
 const AdminDefinicoesRoute = AdminDefinicoesRouteImport.update({
   id: '/definicoes',
   path: '/definicoes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminConvitesRoute = AdminConvitesRouteImport.update({
+  id: '/convites',
+  path: '/convites',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
@@ -376,6 +382,7 @@ export interface FileRoutesByFullPath {
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/convites': typeof AdminConvitesRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
@@ -430,6 +437,7 @@ export interface FileRoutesByTo {
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/convites': typeof AdminConvitesRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
@@ -487,6 +495,7 @@ export interface FileRoutesById {
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/convites': typeof AdminConvitesRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
@@ -544,6 +553,7 @@ export interface FileRouteTypes {
     | '/rotinas'
     | '/seguimentos'
     | '/admin/auditoria'
+    | '/admin/convites'
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/goldens'
@@ -598,6 +608,7 @@ export interface FileRouteTypes {
     | '/rotinas'
     | '/seguimentos'
     | '/admin/auditoria'
+    | '/admin/convites'
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/goldens'
@@ -654,6 +665,7 @@ export interface FileRouteTypes {
     | '/_authenticated/rotinas'
     | '/_authenticated/seguimentos'
     | '/admin/auditoria'
+    | '/admin/convites'
     | '/admin/definicoes'
     | '/admin/funcionalidades'
     | '/admin/goldens'
@@ -820,6 +832,13 @@ declare module '@tanstack/react-router' {
       path: '/definicoes'
       fullPath: '/admin/definicoes'
       preLoaderRoute: typeof AdminDefinicoesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/convites': {
+      id: '/admin/convites'
+      path: '/convites'
+      fullPath: '/admin/convites'
+      preLoaderRoute: typeof AdminConvitesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/auditoria': {
@@ -1287,6 +1306,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface AdminRouteRouteChildren {
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
+  AdminConvitesRoute: typeof AdminConvitesRoute
   AdminDefinicoesRoute: typeof AdminDefinicoesRoute
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
   AdminGoldensRoute: typeof AdminGoldensRoute
@@ -1302,6 +1322,7 @@ interface AdminRouteRouteChildren {
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuditoriaRoute: AdminAuditoriaRoute,
+  AdminConvitesRoute: AdminConvitesRoute,
   AdminDefinicoesRoute: AdminDefinicoesRoute,
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
   AdminGoldensRoute: AdminGoldensRoute,
