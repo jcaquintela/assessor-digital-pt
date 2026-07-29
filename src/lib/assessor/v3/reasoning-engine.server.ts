@@ -23,6 +23,13 @@ import {
   markPendingActionStatus,
 } from "../memory.server";
 import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from "../culture/short-answers";
+import {
+  detectAgendaQuery,
+  formatAgendaReply,
+  BARE_CONFIRMATION_REPLY,
+  hasValidPendingContext,
+  type AgendaItem,
+} from "./deterministic.server";
 
 const HISTORY_LIMIT = 6;
 
@@ -119,6 +126,42 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
         await markPendingActionStatus(supabase, pending.id, "cancelled");
         return { reply: "Está bem, não registei nada." };
       }
+    }
+
+    // ---------- Router determinístico ----------
+    // (a) Consulta de agenda → chama search_agenda directamente.
+    const agendaPeriod = detectAgendaQuery(trimmed);
+    if (agendaPeriod) {
+      const t0 = Date.now();
+      const r = await TOOL_REGISTRY.search_agenda(ctx, { period: agendaPeriod });
+      const items: AgendaItem[] = ((r.data as any)?.items as AgendaItem[]) ?? [];
+      const reply = formatAgendaReply(agendaPeriod, items);
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "agenda_query_fast_path", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
+          domain: "assessor", route: "v3-deterministic", fallback_used: false,
+          tool_name: "search_agenda", tool_success: !!r.ok,
+        } as never);
+      } catch { /* noop */ }
+      return { reply };
+    }
+
+    // (b) Confirmação curta sem contexto pendente → pede referência.
+    if (saIsConfirmation(trimmed) && !hasValidPendingContext(pending)) {
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "bare_confirmation_no_context", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: 0, success: true, error: null,
+          domain: "assessor", route: "v3-deterministic", fallback_used: false,
+          tool_name: null, tool_success: null,
+        } as never);
+      } catch { /* noop */ }
+      return { reply: BARE_CONFIRMATION_REPLY };
     }
   } catch { /* noop — cai no fluxo normal */ }
 
