@@ -362,20 +362,26 @@ function HojePage() {
                 <p className="text-sm text-muted-foreground">Não há nada a aguardar resultado.</p>
               )}
               {awaiting.map((a) => (
-                <div key={a.id} className="rounded-lg border border-border p-3">
+                <Link
+                  key={a.id}
+                  to="/seguimentos/$id"
+                  params={{ id: a.id }}
+                  className="group block rounded-lg border border-border p-3 outline-none transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary"
+                  aria-label={`Abrir ${a.title}`}
+                >
                   <div className="text-sm font-medium">{a.title}</div>
                   <div className="text-xs text-muted-foreground">
                     {formatDataHora(a.due_at)}{a.entity_label ? ` · ${a.entity_label}` : ""}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Button size="sm" variant="outline" onClick={() => outcome.mutate({ id: a.id, outcome: "concluido" })}>Correu bem</Button>
-                    <Button size="sm" variant="ghost" onClick={() => outcome.mutate({ id: a.id, outcome: "precisa_nova_acao" })}>Precisa seguimento</Button>
-                    <Button size="sm" variant="ghost" onClick={() => outcome.mutate({ id: a.id, outcome: "nao_realizado" })}>Sem efeito</Button>
-                    <Button size="sm" variant="ghost" onClick={() => { setNoteFor(a); setNoteText(""); }}>
+                    <Button size="sm" variant="outline" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "concluido" }); }}>Correu bem</Button>
+                    <Button size="sm" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "precisa_nova_acao" }); }}>Precisa seguimento</Button>
+                    <Button size="sm" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "nao_realizado" }); }}>Sem efeito</Button>
+                    <Button size="sm" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNoteFor(a); setNoteText(""); }}>
                       <StickyNote className="mr-1 h-3.5 w-3.5" /> Nota
                     </Button>
                   </div>
-                </div>
+                </Link>
               ))}
             </CardContent>
           </Card>
