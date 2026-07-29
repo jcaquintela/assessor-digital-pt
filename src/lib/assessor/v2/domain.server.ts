@@ -376,14 +376,17 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
     const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
     if (existing) return ok({ follow_up: existing, idempotent: true });
   }
-  // Anti-duplicação por assunto: se já existir um seguimento aberto com o
-  // mesmo título (normalizado) e mesma pessoa/imóvel, reagendamo-lo em vez
-  // de criar um novo. Evita 4 "Ligar ao Paulo" no dashboard.
-  const existingOpen = await findOpenFollowUpByTitle(ctx, {
-    title: v.title,
-    person_id: v.person_id ?? null,
-    property_id: v.property_id ?? null,
-  });
+  // Anti-duplicação por assunto (só quando não há pendingActionId — nesse
+  // caso a idempotência forte já é feita pelo índice único parcial).
+  // Se já existir um seguimento aberto com o mesmo título normalizado e
+  // mesma pessoa/imóvel, reagendamo-lo em vez de criar um novo.
+  const existingOpen = ctx.pendingActionId
+    ? null
+    : await findOpenFollowUpByTitle(ctx, {
+        title: v.title,
+        person_id: v.person_id ?? null,
+        property_id: v.property_id ?? null,
+      });
   if (existingOpen) {
     await ctx.supabase
       .from("follow_ups")
