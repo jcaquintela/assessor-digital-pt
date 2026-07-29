@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizePhone } from "./phone";
+import { canUseWhatsApp, normalizeTier, tierLabel } from "@/lib/subscription/tiers";
 
 // Regenerate crypto helpers per request; nodejs_compat is enabled.
 import { createHash, randomInt } from "crypto";
@@ -86,6 +87,18 @@ export const startWhatsAppLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => phoneSchema.parse(d))
   .handler(async ({ data, context }) => {
+    // Gating por tier: WhatsApp só a partir de 'consultor'.
+    // 'base' fica em Telegram (Nível 0). Beta activo => 'hub' via effective_tier.
+    const { data: tierRaw } = await context.supabase.rpc("effective_tier", {
+      _user_id: context.userId,
+    });
+    const tier = normalizeTier(tierRaw as string | null);
+    if (!canUseWhatsApp(tier)) {
+      throw new Error(
+        `WhatsApp disponível a partir do plano Consultor. O teu plano actual é ${tierLabel(tier)}. Podes continuar a usar o Assessor pelo Telegram.`,
+      );
+    }
+
     const normalized = normalizePhone(data.phone);
     if (!normalized || normalized.length < 8 || normalized.length > 15) {
       throw new Error("Número inválido. Usa formato internacional, por exemplo +351912345678.");
