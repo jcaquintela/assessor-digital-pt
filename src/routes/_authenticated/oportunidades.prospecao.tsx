@@ -57,7 +57,7 @@ function ProspecaoPage() {
       <PageHeader
         title="Prospeção"
         subtitle={`${leads.length} placa${leads.length === 1 ? "" : "s"} e leads`}
-        actions={<Button onClick={() => setOpen(true)}><Camera className="mr-1 h-4 w-4" /> Nova placa</Button>}
+        action={<Button onClick={() => setOpen(true)}><Camera className="mr-1 h-4 w-4" /> Nova placa</Button>}
       />
       {isLoading && <p className="text-sm text-muted-foreground">A carregar…</p>}
       {!isLoading && leads.length === 0 && (
