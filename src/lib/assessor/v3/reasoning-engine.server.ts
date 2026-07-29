@@ -210,6 +210,15 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     reply = "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
   }
 
+  // Idempotência: se `create_follow_up`/`create_event` devolveu um recurso
+  // pré-existente para a mesma pending_action, respondemos de forma explícita
+  // em vez de fingir que criámos algo novo.
+  const idemHit = toolResults.find(
+    (t) => (t.name === "create_follow_up" || t.name === "create_event")
+      && t.ok && (t.data as any)?.idempotent === true,
+  );
+  if (idemHit) reply = "Já estava registado.";
+
   // Override natural para prospeção executada dentro do DECIDE (turno único).
   const leadTool = toolResults.find((t) => t.name === "create_prospecting_lead");
   if (leadTool) {
