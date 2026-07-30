@@ -387,6 +387,13 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   let reply = sanitizeReply(decideR.decision.natural_reply);
   let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" = "executed_ok";
   let archiveReason: string | null = null;
+  // Executou e mesmo assim perguntou ("Marco a ação ... ?") — a pergunta faz o
+  // consultor responder "Sim" e o turno seguinte volta a executar o mesmo.
+  // Se a acção já foi feita, a resposta tem de ser afirmativa, nunca uma
+  // proposta.
+  if (shouldAct && allOk && /\?\s*$/.test(reply)) {
+    reply = "Feito.";
+  }
   if (shouldAct && !allOk) {
     archiveOutcome = "tool_failed";
     archiveReason = toolResults.filter((r) => !r.ok)

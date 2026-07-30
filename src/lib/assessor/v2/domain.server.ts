@@ -266,6 +266,49 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
     const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
     if (existing) return ok({ event: existing, reminderId: null, idempotent: true });
   }
+  // Anti-duplicação por assunto: o mesmo compromisso pode chegar duas vezes
+  // (o motor executa e ainda assim pergunta "marco?", e o "Sim" volta a
+  // executar). Se já existe um evento aberto com o mesmo título e a mesma
+  // pessoa/imóvel, devolvemo-lo — reagendando se a hora mudou.
+  const existingOpen = await findOpenFollowUpByTitle(ctx, {
+    title: v.title,
+    person_id: v.person_id ?? null,
+    property_id: v.property_id ?? null,
+  });
+  if (existingOpen) {
+    const { data: current } = await ctx.supabase
+      .from("follow_ups")
+      .select("id, title, due_date, due_time")
+      .eq("id", existingOpen.id)
+      .eq("user_id", ctx.userId)
+      .maybeSingle();
+    const sameSlot = (current as any)?.due_date
+      && new Date((current as any).due_date).getTime() === new Date(dueIsoDate).getTime();
+    if (!sameSlot) {
+      await ctx.supabase
+        .from("follow_ups")
+        .update({ due_date: dueIsoDate, due_time: v.start_time, status: "agendado" } as never)
+        .eq("id", existingOpen.id)
+        .eq("user_id", ctx.userId);
+      try {
+        await rescheduleReminder(ctx.supabase, {
+          userId: ctx.userId,
+          channel: ctx.channel,
+          related_resource_type: "follow_up",
+          related_resource_id: existingOpen.id,
+          new_date: v.date,
+          new_time: v.start_time,
+          timezone: "Europe/Lisbon",
+        });
+      } catch { /* noop */ }
+    }
+    return ok({
+      event: { id: existingOpen.id, title: v.title, due_date: dueIsoDate, due_time: v.start_time },
+      reminderId: null,
+      idempotent: true,
+      rescheduled: !sameSlot,
+    });
+  }
   const { data, error } = await ctx.supabase
     .from("follow_ups")
     .insert({
