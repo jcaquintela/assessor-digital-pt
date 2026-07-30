@@ -91,11 +91,15 @@ export function canUseWhatsApp(tier: string | null | undefined): boolean {
   return tierAtLeast(tier, "consultor");
 }
 
+// Nome visível do plano. O valor guardado na BD continua 'hub' — só a
+// etiqueta mostrada ao utilizador/admin muda para "Team".
+export const TIER_DISPLAY_NAME: Record<SubscriptionTier, string> = {
+  base: "Base",
+  consultor: "Consultor",
+  pro: "Pro",
+  hub: "Team",
+};
+
 export function tierLabel(t: string | null | undefined): string {
-  switch (normalizeTier(t)) {
-    case "consultor": return "Consultor";
-    case "pro": return "Pro";
-    case "hub": return "Hub";
-    default: return "Base";
-  }
+  return TIER_DISPLAY_NAME[normalizeTier(t)];
 }
