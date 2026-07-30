@@ -193,11 +193,11 @@ function OportunidadeDetail() {
         </Button>
       </div>
       <PageHeader
-        title={`${op.tipo}${pessoa ? ` · ${pessoa.nome}` : ""}`}
+        title={`${normTipo(op.tipo)}${pessoa ? ` · ${pessoa.nome}` : ""}`}
         subtitle={imovel?.titulo ?? "Sem imóvel associado"}
         action={
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={arquivar} disabled={busy || op.estado === "Arquivada"}>
+            <Button variant="ghost" onClick={arquivar} disabled={busy || normEstado(op.estado) === "Arquivada"}>
               <Archive className="mr-1 h-4 w-4" /> Arquivar
             </Button>
             <Button variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)} disabled={busy}>
@@ -210,7 +210,7 @@ function OportunidadeDetail() {
         }
       />
       <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <Badge variant="secondary">{op.estado}</Badge>
+        <Badge variant="secondary">{normEstado(op.estado)}</Badge>
         <span>Valor: <strong className="text-foreground">{formatEUR(op.valor)}</strong></span>
         <span>Produção: <strong className="text-foreground">{formatEUR(producao)}</strong></span>
         <span>Comissão recebida: <strong className="text-foreground">{formatEUR(comissaoRecebida)}</strong></span>
