@@ -1,11 +1,8 @@
 import type { EmailMessage, EmailProvider, EmailSendResult } from "./provider";
 
-// Remetente de teste do Resend.
-// ATENÇÃO: `onboarding@resend.dev` só entrega ao email do dono da conta Resend.
-// Para qualquer outro destinatário o Resend devolve 403.
-// >>> ISTO MUDA ASSIM QUE UM DOMÍNIO PRÓPRIO ESTIVER VERIFICADO NO RESEND:
-// trocar por algo como "Assessor do Consultor <assessor@teudominio.pt>".
-const FROM = "Assessor do Consultor <onboarding@resend.dev>";
+// Remetente real: domínio meuafonso.com verificado no Resend.
+// (Antes era `onboarding@resend.dev`, que só entregava ao dono da conta.)
+const FROM = "Assessor do Consultor <ola@meuafonso.com>";
 
 // Enviamos pelo connector gateway da Lovable (credenciais geridas pelo
 // conector Resend: LOVABLE_API_KEY + RESEND_API_KEY). Não há chave manual.
