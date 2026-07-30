@@ -17,6 +17,17 @@ import {
 } from "@/lib/whatsapp/link.functions";
 import { getSupremePreferences, updateSupremePreferences } from "@/lib/assessor/supreme/autonomy.functions";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import {
+  CALENDAR_PROVIDERS,
+  CALENDAR_PROVIDER_LABEL,
+  type CalendarProvider,
+} from "@/lib/calendar/providers";
+import {
+  getCalendarStatus,
+  startCalendarConnect,
+  disconnectCalendar,
+  syncCalendarNow,
+} from "@/lib/calendar/calendar.functions";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
   head: () => ({
