@@ -13,6 +13,7 @@ export interface Pessoa {
   resumo: string;
   proximaAcao?: string;
   proximaAcaoData?: string;
+  canal?: string;
 }
 
 export type OportunidadeTipo =
