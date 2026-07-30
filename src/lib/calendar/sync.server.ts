@@ -477,12 +477,16 @@ export async function pullFromProvider(
 }
 
 /** Corre o polling para um consultor, em todos os providers ligados. */
-export async function pullAllForUser(supabaseAdmin: any, userId: string) {
-  const out: Record<string, unknown> = {};
+export async function pullAllForUser(
+  supabaseAdmin: any,
+  userId: string,
+): Promise<Array<{ provider: CalendarProvider; applied: number; skipped: number; error: string | null }>> {
+  const out: Array<{ provider: CalendarProvider; applied: number; skipped: number; error: string | null }> = [];
   for (const provider of CALENDAR_PROVIDERS) {
     const key = await getConnectionKeyForUser(supabaseAdmin, userId, provider);
     if (!key) continue;
-    out[provider] = await pullFromProvider(supabaseAdmin, userId, provider);
+    const r = await pullFromProvider(supabaseAdmin, userId, provider);
+    out.push({ provider, applied: r.applied, skipped: r.skipped, error: r.error ?? null });
   }
   return out;
 }
