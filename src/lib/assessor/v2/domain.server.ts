@@ -391,6 +391,11 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
       message_preview: `Lembrete: ${v.title.trim()} (${v.start_time}).`,
     });
   }
+  if ((data as any)?.id) {
+    await pushEventToProviders(ctx.supabase, {
+      userId: ctx.userId, followUpId: (data as any).id, action: "upsert",
+    });
+  }
   return ok({ event: data, reminderId });
 }
 
