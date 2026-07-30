@@ -11,6 +11,8 @@ import {
   driveCounts,
   uploadDriveFile,
 } from "@/lib/drive/drive.functions";
+import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
+import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
 import {
   FileText,
   Image as ImageIcon,
@@ -19,6 +21,8 @@ import {
   Upload,
   AlertCircle,
   Search,
+  Eye,
+  Link2,
 } from "lucide-react";
 
 type Tab = "recentes" | "por_tratar" | "imoveis" | "pessoas" | "diversos" | "arquivados";
@@ -94,6 +98,21 @@ function DrivePage() {
   const fetchList = useServerFn(listDriveFiles);
   const fetchCounts = useServerFn(driveCounts);
   const upload = useServerFn(uploadDriveFile);
+  const signedUrl = useServerFn(getUploadedFileSignedUrl);
+  const [fixTarget, setFixTarget] = useState<{ id: string; name: string | null } | null>(null);
+
+  // "Ver": abre o documento original numa nova janela via URL assinada temporária.
+  const abrirFicheiro = async (id: string) => {
+    const win = window.open("", "_blank");
+    try {
+      const res = await signedUrl({ data: { id } });
+      if (win) win.location.href = res.url;
+      else window.location.href = res.url;
+    } catch (e: any) {
+      win?.close();
+      toast.error(e?.message ?? "Não foi possível abrir o ficheiro.");
+    }
+  };
 
   const listQ = useQuery({
     queryKey: ["drive", "list", tab, qParam],
@@ -239,6 +258,26 @@ function DrivePage() {
                         ))}
                       </div>
                     )}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="c-badge"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); abrirFicheiro(f.id); }}
+                      >
+                        <Eye className="h-3 w-3" /> Ver
+                      </button>
+                      <button
+                        type="button"
+                        className="c-badge"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setFixTarget({ id: f.id, name: f.original_file_name ?? null });
+                        }}
+                      >
+                        <Link2 className="h-3 w-3" /> Corrigir ligação
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -246,6 +285,13 @@ function DrivePage() {
           );
         })}
       </div>
+
+      <FixLinkDialog
+        fileId={fixTarget?.id ?? null}
+        fileName={fixTarget?.name}
+        open={!!fixTarget}
+        onOpenChange={(v) => { if (!v) setFixTarget(null); }}
+      />
 
       {/* Promessa visível do Drive Inteligente (flag drive.v1, ainda sem leitor no motor). */}
       <div className="c-note mt-5">
