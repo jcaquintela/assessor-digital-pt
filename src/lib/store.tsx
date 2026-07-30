@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { appSourceColumns } from "@/lib/assessor/follow-ups-source";
 import { isAgendaEvent } from "@/lib/agenda-kind";
+import { pushFollowUpToCalendars } from "@/lib/calendar/calendar.functions";
 import {
   type Comissao,
   type Despesa,
@@ -207,9 +208,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const invalidate = (key: string) => qc.invalidateQueries({ queryKey: [key] });
 
+  // Replica no Google Calendar / Outlook, se estiverem ligados. Falhar aqui
+  // nunca pode quebrar a operação local.
+  const syncCalendars = (followUpId: string, action: "upsert" | "delete") => {
+    void pushFollowUpToCalendars({ data: { followUpId, action } }).catch(() => {});
+  };
+
   const addSeguimento = useCallback(async (s: Omit<Seguimento, "id">) => {
     const uid = await currentUserId();
-    const { error } = await supabase.from("follow_ups").insert({
+    const { data, error } = await supabase.from("follow_ups").insert({
       user_id: uid,
       type: s.tipo,
       title: s.titulo,
@@ -221,8 +228,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       priority: s.prioridade ?? "Média",
       notes: s.notas ?? null,
       ...appSourceColumns(),
-    });
+    }).select("id").single();
     if (error) throw error;
+    if ((data as { id?: string } | null)?.id) syncCalendars((data as { id: string }).id, "upsert");
     invalidate("follow_ups");
   }, [qc]);
 
