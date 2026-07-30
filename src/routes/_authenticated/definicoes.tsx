@@ -224,7 +224,7 @@ function SupremeSection() {
                   size="sm"
                   variant={level === lvl ? "default" : "outline"}
                   disabled={!isAllowed}
-                  title={isAllowed ? undefined : `Disponível a partir de um plano superior (tens ${tier ?? "base"}).`}
+                  title={isAllowed ? undefined : `Disponível a partir de um plano superior (tens ${tierLabel(tier)}).`}
                   onClick={() => save.mutate({ autonomy_level: lvl })}
                 >
                   {lvl === "balanced" ? "Equilibrado" : lvl === "conservador" ? "Conservador" : "Proativo"}
