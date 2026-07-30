@@ -414,7 +414,8 @@ function HojePage() {
       {/* FAB mobile */}
       <Link
         to="/assessor"
-        className="fixed bottom-20 right-4 z-10 flex h-12 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-lg md:hidden"
+        className="fixed bottom-20 right-4 z-10 flex h-12 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-lg md:hidden"
+        style={{ background: "var(--brass)", color: "#241703" }}
       >
         <MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
       </Link>
