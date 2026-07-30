@@ -68,7 +68,7 @@ function Transcript({ traceId }: { traceId: string }) {
         <span>
           ferramentas:{" "}
           {data.tools.length
-            ? data.tools.map((t) => `${t.name}${t.ok ? "" : " ✗"}`).join(", ")
+            ? data.tools.map((t: { name: string; ok: boolean }) => `${t.name}${t.ok ? "" : " ✗"}`).join(", ")
             : "nenhuma"}
         </span>
         {data.error ? <span style={{ color: "var(--coral)" }}>erro: {data.error}</span> : null}
