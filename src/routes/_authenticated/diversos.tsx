@@ -2,10 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Archive, Trash2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +38,12 @@ const STATUS_LABEL: Record<MiscItem["status"], string> = {
   classified: "Classificado",
   archived: "Arquivado",
   deleted: "Eliminado",
+};
+
+const CANAL_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  telegram: "Telegram",
+  web: "Dashboard",
 };
 
 function DiversosPage() {
@@ -119,9 +123,7 @@ function DiversosPage() {
             <button
               key={k}
               onClick={() => setTab(k)}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                tab === k ? "bg-foreground text-background" : "bg-background text-foreground"
-              }`}
+              className={"c-pill" + (tab === k ? " active" : "")}
             >
               {k === "recentes"
                 ? "Recentes"
@@ -144,35 +146,36 @@ function DiversosPage() {
         {tab === "ficheiros" ? (
           <UploadedFilesList />
         ) : items.isLoading ? (
-          <p className="text-sm text-muted-foreground">A carregar…</p>
+          <p className="c-muted text-sm">A carregar…</p>
         ) : filtered.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              Nada por aqui. Sempre que enviares uma nota ou observação ao Assessor sem enquadramento
-              claro, aparece nesta área.
-            </CardContent>
-          </Card>
+          <div className="c-empty">
+            Nada por tratar neste momento.
+            <br />
+            <span className="text-[12.5px]">
+              sempre que o teu assessor não perceber algo, fica aqui — nunca desaparece
+            </span>
+          </div>
         ) : (
           <div className="grid gap-3">
             {filtered.map((r) => (
-              <Card key={r.id} className="transition-colors hover:border-primary/40">
-                <CardContent className="flex flex-col gap-2 p-4">
+              <div key={r.id} className="c-card c-card-hover">
+                <div className="flex flex-col gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       to="/diversos/$id"
                       params={{ id: r.id }}
-                      className="text-sm font-medium underline-offset-2 hover:underline focus-visible:underline outline-none"
+                      className="text-[14px] font-semibold underline-offset-2 outline-none hover:underline focus-visible:underline"
                       aria-label={`Abrir nota ${r.title}`}
                     >
                       {r.title}
                     </Link>
-                    <Badge variant="outline" className="text-[10px]">
+                    <span className={"c-badge" + (r.status === "inbox" ? " warn" : r.status === "archived" ? "" : " ok")}>
                       {STATUS_LABEL[r.status]}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[10px] uppercase">
-                      {r.source_channel}
-                    </Badge>
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    </span>
+                    <span className="c-badge">
+                      via {CANAL_LABEL[r.source_channel] ?? r.source_channel}
+                    </span>
+                    <span className="c-muted c-mono ml-auto text-[11px]">
                       {new Date(r.created_at).toLocaleDateString("pt-PT", {
                         day: "2-digit",
                         month: "short",
@@ -180,7 +183,7 @@ function DiversosPage() {
                     </span>
                   </div>
                   {r.original_content && r.original_content !== r.title ? (
-                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                    <p className="c-soft whitespace-pre-wrap text-[13px] leading-relaxed">
                       {r.original_content}
                     </p>
                   ) : null}
@@ -215,8 +218,8 @@ function DiversosPage() {
                       <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
