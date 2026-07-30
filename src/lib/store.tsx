@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, type ReactNode } from 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { appSourceColumns } from "@/lib/assessor/follow-ups-source";
+import { isAgendaEvent } from "@/lib/agenda-kind";
 import {
   type Comissao,
   type Despesa,
