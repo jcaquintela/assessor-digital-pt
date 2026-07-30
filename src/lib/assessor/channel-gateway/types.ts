@@ -79,7 +79,7 @@ export interface ChannelAdapter {
   onboardIfMissingUser?(
     supabaseAdmin: any,
     inbound: NormalizedInbound,
-  ): Promise<{ handled: boolean; userId?: string | null }>;
+  ): Promise<{ handled: boolean; userId?: string | null; stopPipeline?: boolean }>;
 
   // 4. Persistência do turno "user" com dedupe por externalMessageId.
   //    Devolve o UUID interno (usado como source_message_id do motor) ou null.
