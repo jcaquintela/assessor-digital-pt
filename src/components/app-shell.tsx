@@ -17,6 +17,7 @@ import {
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/hoje/global-search";
+import { AnnouncementBanner } from "@/components/announcement-banner";
 
 const desktopNav = [
   { to: "/hoje", label: "Hoje", icon: Home },
@@ -126,7 +127,10 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
               <GlobalSearch size="lg" />
             </div>
           </div>
-          <div className="mx-auto min-w-0 max-w-6xl px-4 py-6 md:px-8 md:py-8">{children}</div>
+          <div className="mx-auto min-w-0 max-w-6xl px-4 py-6 md:px-8 md:py-8">
+            <AnnouncementBanner />
+            {children}
+          </div>
         </main>
       )}
 

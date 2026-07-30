@@ -50,6 +50,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_broadcasts: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          created_by: string | null
+          error: string | null
+          id: string
+          recipients_count: number
+          segment: string
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          body: string
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          recipients_count?: number
+          segment?: string
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          recipients_count?: number
+          segment?: string
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
       admin_mfa_required: {
         Row: {
           required_at: string
@@ -987,6 +1026,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_announcements: {
+        Row: {
+          active: boolean
+          body: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          segment: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          segment?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          segment?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feature_flag_users: {
         Row: {
           flag_key: string
@@ -1752,6 +1827,48 @@ export type Database = {
           updated_at?: string
           whatsapp_link_status?: string
           whatsapp_linked_at?: string | null
+        }
+        Relationships: []
+      }
+      promo_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          grants_tier: string
+          id: string
+          max_uses: number
+          note: string | null
+          updated_at: string
+          used_count: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          grants_tier?: string
+          id?: string
+          max_uses?: number
+          note?: string | null
+          updated_at?: string
+          used_count?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          grants_tier?: string
+          id?: string
+          max_uses?: number
+          note?: string | null
+          updated_at?: string
+          used_count?: number
         }
         Relationships: []
       }

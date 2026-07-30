@@ -1,56 +1,77 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  listAdminUsers,
-  suspendUser,
-  reactivateUser,
-  sendPasswordReset,
-  inviteUser,
-  grantRole,
-  revokeRole,
-  startUserDeletion,
-  getMyAdminRole,
-} from "@/lib/admin.functions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+  listAccessUsers,
+  createAccess,
+  updateAccess,
+  deactivateAccess,
+  reactivateAccess,
+  listPromoCodes,
+  createPromoCode,
+  revokePromoCode,
+  type AccessUser,
+} from "@/lib/admin/acessos.functions";
+import { getMyAdminRole } from "@/lib/admin.functions";
+import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
+import { tierLabel, TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tiers";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin/utilizadores")({
-  head: () => ({ meta: [{ title: "Admin — Utilizadores" }] }),
-  component: UsersPage,
+  head: () => ({ meta: [{ title: "Utilizadores & planos — Afonso admin" }] }),
+  component: AcessosPage,
 });
 
-function UsersPage() {
+const TIERS: SubscriptionTier[] = ["base", "consultor", "pro", "hub"];
+
+function fmtDate(v: string | null) {
+  return v ? new Date(v).toLocaleDateString("pt-PT") : "—";
+}
+
+function betaLabel(u: AccessUser) {
+  if (!u.is_beta_tester) return "—";
+  return u.beta_expires_at ? `sim, até ${fmtDate(u.beta_expires_at)}` : "sim, sem prazo";
+}
+
+function AcessosPage() {
   const qc = useQueryClient();
-  const list = useServerFn(listAdminUsers);
   const roleFn = useServerFn(getMyAdminRole);
+  const listFn = useServerFn(listAccessUsers);
+  const promosFn = useServerFn(listPromoCodes);
+  const createFn = useServerFn(createAccess);
+  const updateFn = useServerFn(updateAccess);
+  const deactivateFn = useServerFn(deactivateAccess);
+  const reactivateFn = useServerFn(reactivateAccess);
+  const createPromoFn = useServerFn(createPromoCode);
+  const revokePromoFn = useServerFn(revokePromoCode);
+
   const { data: me } = useQuery({ queryKey: ["admin", "my-role"], queryFn: () => roleFn() });
-  const { data: users, isLoading } = useQuery({ queryKey: ["admin", "users"], queryFn: () => list() });
-  const [q, setQ] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
   const isSuper = me?.role === "super_admin";
+  const { data: users, isPending } = useQuery({ queryKey: ["admin", "access-users"], queryFn: () => listFn() });
+  const { data: promos } = useQuery({ queryKey: ["admin", "promo-codes"], queryFn: () => promosFn() });
 
-  const suspend = useServerFn(suspendUser);
-  const reactivate = useServerFn(reactivateUser);
-  const reset = useServerFn(sendPasswordReset);
-  const invite = useServerFn(inviteUser);
-  const grant = useServerFn(grantRole);
-  const revoke = useServerFn(revokeRole);
-  const del = useServerFn(startUserDeletion);
+  const [q, setQ] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<AccessUser | null>(null);
+  const [promoOpen, setPromoOpen] = useState(false);
 
-  const wrap = (name: string, p: Promise<any>) =>
-    p.then(() => { toast.success(name); qc.invalidateQueries({ queryKey: ["admin"] }); })
-     .catch((e) => toast.error(e.message ?? name + " falhou"));
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin", "access-users"] });
+    qc.invalidateQueries({ queryKey: ["admin", "promo-codes"] });
+  };
+
+  const run = (label: string, p: Promise<unknown>) =>
+    p.then(() => { toast.success(label); invalidate(); })
+     .catch((e: Error) => toast.error(e.message || "Não foi possível concluir."));
 
   const filtered = (users ?? []).filter((u) => {
     if (!q) return true;
@@ -59,103 +80,312 @@ function UsersPage() {
   });
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold">Utilizadores</h1>
-        <p className="text-sm text-slate-500">
-          Só administradores super_admin podem alterar planos, funções ou suspender contas.
-        </p>
+    <div>
+      <PageTitle
+        title="Utilizadores & planos"
+        sub="Quem tem acesso, com que plano, e por que canal entra. Produto teu, agnóstico — geres tudo aqui, sem depender do Stripe."
+      />
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <input
+          className="admin-input w-64"
+          placeholder="Procurar por nome ou email…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <button type="button" className="admin-btn-primary" disabled={!isSuper} onClick={() => setCreating(true)}>
+          + Criar acesso
+        </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Input placeholder="Pesquisar por nome ou email…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
-        <div className="ml-auto flex gap-2">
-          <Input placeholder="email@exemplo.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="w-64" />
-          <Button
-            onClick={() => inviteEmail && wrap("Convite enviado", invite({ data: { email: inviteEmail } }).then(() => setInviteEmail("")))}
-          >Convidar</Button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-slate-800">
-            <tr>
-              <th className="px-3 py-2">Nome / Email</th>
-              <th className="px-3 py-2">Função</th>
-              <th className="px-3 py-2">Criado</th>
-              <th className="px-3 py-2">Último acesso</th>
-              <th className="px-3 py-2">Estado</th>
-              <th className="px-3 py-2">Uso 30d</th>
-              <th className="px-3 py-2" />
+      <table>
+        <thead>
+          <tr><th>Nome</th><th>Plano</th><th>Canal</th><th>Beta</th><th>Estado</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          {isPending ? (
+            <tr><td colSpan={6} className="mini">A carregar…</td></tr>
+          ) : filtered.length === 0 ? (
+            <tr><td colSpan={6} className="mini">Sem utilizadores.</td></tr>
+          ) : filtered.map((u) => (
+            <tr key={u.id}>
+              <td>
+                {u.name || "—"}
+                <br />
+                <span className="mini" style={{ color: "var(--muted)" }}>{u.email}</span>
+              </td>
+              <td><Badge tone={u.tier === "base" ? "warn" : "ok"}>{tierLabel(u.tier)}</Badge></td>
+              <td className="mini">{u.channel}</td>
+              <td className="mini">{betaLabel(u)}</td>
+              <td>
+                <Badge tone={u.state === "active" ? "ok" : u.state === "test" ? "warn" : "bad"}>
+                  {u.state === "active" ? "Ativo" : u.state === "test" ? "Teste" : "Inativo"}
+                </Badge>
+              </td>
+              <td className="mini">
+                <button type="button" className="admin-link" disabled={!isSuper} onClick={() => setEditing(u)}>Alterar</button>
+                {" · "}
+                {u.state === "inactive" ? (
+                  <button
+                    type="button"
+                    className="admin-link"
+                    disabled={!isSuper}
+                    onClick={() => run("Conta reativada.", reactivateFn({ data: { target_user_id: u.id } }))}
+                  >Reativar</button>
+                ) : (
+                  <button
+                    type="button"
+                    className="admin-link-danger"
+                    disabled={!isSuper || me?.userId === u.id}
+                    onClick={() => {
+                      if (!confirm(`Desativar ${u.email}? Perde acesso imediato; os dados ficam guardados.`)) return;
+                      run("Conta desativada. Dados mantidos.", deactivateFn({ data: { target_user_id: u.id } }));
+                    }}
+                  >Eliminar</button>
+                )}
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">A carregar…</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">Sem utilizadores.</td></tr>
-            ) : filtered.map((u) => {
-              const isSelf = me?.userId === u.id;
-              return (
-                <tr key={u.id} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className="px-3 py-2">
-                    <div className="font-medium">{u.name || "—"}</div>
-                    <div className="text-xs text-slate-500">{u.email}</div>
-                  </td>
-                  <td className="px-3 py-2 capitalize">{u.role.replace("_", " ")}</td>
-                  <td className="px-3 py-2 text-xs">{new Date(u.created_at).toLocaleDateString("pt-PT")}</td>
-                  <td className="px-3 py-2 text-xs">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString("pt-PT") : "—"}</td>
-                  <td className="px-3 py-2 text-xs">
-                    <span className={u.banned ? "text-red-600" : "text-green-600"}>{u.banned ? "Suspenso" : "Ativo"}</span>
-                  </td>
-                  <td className="px-3 py-2 text-xs">{u.monthly_usage}</td>
-                  <td className="px-3 py-2 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => wrap("Email de recuperação enviado", reset({ data: { email: u.email } }))}>
-                          Enviar recuperação de palavra-passe
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          disabled={!isSuper || isSelf || u.banned}
-                          onClick={() => wrap("Utilizador suspenso", suspend({ data: { target_user_id: u.id } }))}
-                        >Suspender</DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={!isSuper || isSelf || !u.banned}
-                          onClick={() => wrap("Utilizador reativado", reactivate({ data: { target_user_id: u.id } }))}
-                        >Reativar</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          disabled={!isSuper || isSelf || u.role === "support_admin"}
-                          onClick={() => wrap("Função atribuída", grant({ data: { target_user_id: u.id, role: "support_admin" } }))}
-                        >Tornar support admin</DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={!isSuper || isSelf || u.role === "super_admin"}
-                          onClick={() => wrap("Função atribuída", grant({ data: { target_user_id: u.id, role: "super_admin" } }))}
-                        >Tornar super admin</DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={!isSuper || isSelf || u.role === "consultant"}
-                          onClick={() => wrap("Função revogada", revoke({ data: { target_user_id: u.id, role: u.role as any } }))}
-                        >Revogar função admin</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          disabled={!isSuper || isSelf}
-                          onClick={() => confirm("Iniciar eliminação desta conta?") && wrap("Eliminação iniciada", del({ data: { target_user_id: u.id } }))}
-                          className="text-red-600"
-                        >Iniciar eliminação</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+          ))}
+        </tbody>
+      </table>
+      <p className="mini mt-2" style={{ color: "var(--muted)" }}>
+        “Eliminar” desativa a conta — perde acesso, os dados ficam. Apagar dados em definitivo não está disponível.
+      </p>
+
+      <SectionTitle>Códigos promocionais</SectionTitle>
+      <div className="mb-2.5 flex justify-end">
+        <button type="button" className="admin-btn" disabled={!isSuper} onClick={() => setPromoOpen(true)}>+ Criar código</button>
       </div>
+      <table>
+        <thead>
+          <tr><th>Código</th><th>Concede</th><th>Usos</th><th>Validade</th><th>Estado</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          {(promos ?? []).length === 0 ? (
+            <tr><td colSpan={6} className="mini">Nenhum código criado.</td></tr>
+          ) : (promos ?? []).map((p) => {
+            const expired = !!p.expires_at && new Date(p.expires_at).getTime() < Date.now();
+            const exhausted = p.used_count >= p.max_uses;
+            const live = p.active && !expired && !exhausted;
+            return (
+              <tr key={p.id}>
+                <td className="mono">{p.code}</td>
+                <td className="mini">{tierLabel(p.grants_tier)}{p.note ? ` · ${p.note}` : ""}</td>
+                <td className="mini">{p.used_count} / {p.max_uses}</td>
+                <td className="mini">{fmtDate(p.expires_at)}</td>
+                <td>
+                  <Badge tone={live ? "ok" : "warn"}>
+                    {live ? "Ativo" : !p.active ? "Revogado" : expired ? "Expirado" : "Esgotado"}
+                  </Badge>
+                </td>
+                <td className="mini">
+                  <button
+                    type="button"
+                    className="admin-link-danger"
+                    disabled={!isSuper || !p.active}
+                    onClick={() => run("Código revogado.", revokePromoFn({ data: { id: p.id } }))}
+                  >Revogar</button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <Empty note="cada uso é registado na Auditoria, com quem criou e quem resgatou">
+        Um código promocional aplica o plano indicado quando alguém entra por Telegram ou WhatsApp — sem passar por checkout.
+      </Empty>
+
+      <CreateAccessDialog
+        open={creating}
+        onOpenChange={setCreating}
+        onSubmit={(payload) => run("Acesso criado.", createFn({ data: payload }).then(() => setCreating(false)))}
+      />
+      <EditAccessDialog
+        user={editing}
+        onOpenChange={(o) => !o && setEditing(null)}
+        onSubmit={(payload) => run("Utilizador atualizado.", updateFn({ data: payload }).then(() => setEditing(null)))}
+      />
+      <CreatePromoDialog
+        open={promoOpen}
+        onOpenChange={setPromoOpen}
+        onSubmit={(payload) => run("Código criado.", createPromoFn({ data: payload }).then(() => setPromoOpen(false)))}
+      />
     </div>
+  );
+}
+
+function TierSelect({ value, onChange }: { value: SubscriptionTier; onChange: (v: SubscriptionTier) => void }) {
+  return (
+    <select className="admin-input w-full" value={value} onChange={(e) => onChange(e.target.value as SubscriptionTier)}>
+      {TIERS.map((t) => <option key={t} value={t}>{TIER_DISPLAY_NAME[t]}</option>)}
+    </select>
+  );
+}
+
+function CreateAccessDialog({
+  open, onOpenChange, onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onSubmit: (p: { email: string; subscription_tier: SubscriptionTier; is_beta_tester?: boolean; beta_expires_at?: string | null }) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [tier, setTier] = useState<SubscriptionTier>("consultor");
+  const [beta, setBeta] = useState(false);
+  const [expires, setExpires] = useState("");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Criar acesso</DialogTitle>
+          <DialogDescription>Cria a conta e aplica o plano diretamente, sem checkout.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <label className="block text-sm">Email
+            <input className="admin-input mt-1 w-full" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@empresa.pt" />
+          </label>
+          <label className="block text-sm">Plano
+            <TierSelect value={tier} onChange={setTier} />
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
+            Beta tester
+          </label>
+          {beta ? (
+            <label className="block text-sm">Beta expira em (opcional)
+              <input className="admin-input mt-1 w-full" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+            </label>
+          ) : null}
+        </div>
+        <DialogFooter>
+          <button type="button" className="admin-btn" onClick={() => onOpenChange(false)}>Cancelar</button>
+          <button
+            type="button"
+            className="admin-btn-primary"
+            onClick={() => onSubmit({
+              email: email.trim(),
+              subscription_tier: tier,
+              is_beta_tester: beta,
+              beta_expires_at: beta && expires ? new Date(expires).toISOString() : null,
+            })}
+          >Criar acesso</button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditAccessDialog({
+  user, onOpenChange, onSubmit,
+}: {
+  user: AccessUser | null;
+  onOpenChange: (o: boolean) => void;
+  onSubmit: (p: { target_user_id: string; subscription_tier: SubscriptionTier; is_beta_tester: boolean; beta_expires_at: string | null }) => void;
+}) {
+  const [tier, setTier] = useState<SubscriptionTier>("base");
+  const [beta, setBeta] = useState(false);
+  const [expires, setExpires] = useState("");
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+
+  if (user && loadedFor !== user.id) {
+    setLoadedFor(user.id);
+    setTier((user.tier as SubscriptionTier) ?? "base");
+    setBeta(user.is_beta_tester);
+    setExpires(user.beta_expires_at ? user.beta_expires_at.slice(0, 10) : "");
+  }
+
+  return (
+    <Dialog open={!!user} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Alterar acesso</DialogTitle>
+          <DialogDescription>{user?.email}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <label className="block text-sm">Plano
+            <TierSelect value={tier} onChange={setTier} />
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
+            Beta tester
+          </label>
+          {beta ? (
+            <label className="block text-sm">Beta expira em (vazio = sem prazo)
+              <input className="admin-input mt-1 w-full" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+            </label>
+          ) : null}
+        </div>
+        <DialogFooter>
+          <button type="button" className="admin-btn" onClick={() => onOpenChange(false)}>Cancelar</button>
+          <button
+            type="button"
+            className="admin-btn-primary"
+            onClick={() => user && onSubmit({
+              target_user_id: user.id,
+              subscription_tier: tier,
+              is_beta_tester: beta,
+              beta_expires_at: beta && expires ? new Date(expires).toISOString() : null,
+            })}
+          >Guardar</button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreatePromoDialog({
+  open, onOpenChange, onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onSubmit: (p: { code: string; grants_tier: SubscriptionTier; max_uses: number; expires_at: string | null; note?: string }) => void;
+}) {
+  const [code, setCode] = useState("");
+  const [tier, setTier] = useState<SubscriptionTier>("consultor");
+  const [maxUses, setMaxUses] = useState("20");
+  const [expires, setExpires] = useState("");
+  const [note, setNote] = useState("");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Criar código promocional</DialogTitle>
+          <DialogDescription>Quem entrar por Telegram ou WhatsApp com este código recebe o plano indicado.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <label className="block text-sm">Código
+            <input className="admin-input mono mt-1 w-full" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ZOME-HD-2026" />
+          </label>
+          <label className="block text-sm">Concede
+            <TierSelect value={tier} onChange={setTier} />
+          </label>
+          <label className="block text-sm">Usos máximos
+            <input className="admin-input mt-1 w-full" type="number" min={1} value={maxUses} onChange={(e) => setMaxUses(e.target.value)} />
+          </label>
+          <label className="block text-sm">Validade (opcional)
+            <input className="admin-input mt-1 w-full" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+          </label>
+          <label className="block text-sm">Nota (opcional)
+            <input className="admin-input mt-1 w-full" value={note} onChange={(e) => setNote(e.target.value)} placeholder="3 meses grátis" />
+          </label>
+        </div>
+        <DialogFooter>
+          <button type="button" className="admin-btn" onClick={() => onOpenChange(false)}>Cancelar</button>
+          <button
+            type="button"
+            className="admin-btn-primary"
+            onClick={() => onSubmit({
+              code: code.trim(),
+              grants_tier: tier,
+              max_uses: Number(maxUses) || 1,
+              expires_at: expires ? new Date(expires).toISOString() : null,
+              note: note.trim() || undefined,
+            })}
+          >Criar código</button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
