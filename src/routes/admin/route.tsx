@@ -32,12 +32,18 @@ const navGroups: { group: string; items: NavItem[] }[] = [
     ],
   },
   {
+    group: "Pessoas e acesso",
+    items: [
+      { to: "/admin/utilizadores", label: "Utilizadores & planos" },
+      { to: "/admin/comunicacao", label: "Comunicação" },
+      { to: "/admin/suporte", label: "Suporte" },
+    ],
+  },
+  {
     group: "Outras páginas",
     items: [
-      { to: "/admin/utilizadores", label: "Utilizadores" },
       { to: "/admin/subscricoes", label: "Subscrições" },
       { to: "/admin/utilizacao", label: "Utilização" },
-      { to: "/admin/suporte", label: "Suporte" },
       { to: "/admin/integracoes", label: "Integrações" },
       { to: "/admin/convites", label: "Convites Telegram" },
       { to: "/admin/funcionalidades", label: "Funcionalidades" },
