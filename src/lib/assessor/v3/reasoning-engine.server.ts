@@ -438,16 +438,28 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   if (decideR.decision.action === "ask") {
     reply = enforceSingleQuestion(reply);
   }
+  // Ordem correcta: o outcome real (execução) manda sobre a frase gerada.
+  // Quando a ferramenta correu bem, a resposta NUNCA pode ser linguagem de
+  // incompreensão — nem por fallback, nem porque o passo de redacção falhou.
+  const executedOk = (shouldAct && allOk) || prospectingActed;
+  if (executedOk) {
+    const soundsLikeFailure =
+      !reply ||
+      reply === NATURAL_FALLBACKS.didNotUnderstand ||
+      reply === NATURAL_FALLBACKS.aiDown ||
+      NOT_UNDERSTOOD_RE.test(reply);
+    if (soundsLikeFailure) reply = NATURAL_FALLBACKS.done;
+  }
   if (!reply) reply = NATURAL_FALLBACKS.didNotUnderstand;
 
   // Rede de segurança final: quando o motor não executou nada e a resposta é
   // um fallback de não-compreensão (ou o DECIDE/THINK falhou), a mensagem
   // original fica em Diversos > Por tratar antes de responder.
-  if (archiveOutcome === "executed_ok" && !shouldAct) {
+  if (archiveOutcome === "executed_ok" && !shouldAct && !prospectingActed) {
     const isFallbackReply =
       reply === NATURAL_FALLBACKS.didNotUnderstand ||
       reply === NATURAL_FALLBACKS.aiDown ||
-      /^n[ãa]o percebi/i.test(reply);
+      NOT_UNDERSTOOD_RE.test(reply);
     if (isFallbackReply || decideR.error || thinkR.error) {
       archiveOutcome = "not_understood";
       archiveReason = decideR.error ?? thinkR.error ?? "não percebi a mensagem";
