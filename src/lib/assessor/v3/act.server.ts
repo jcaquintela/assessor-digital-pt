@@ -24,8 +24,46 @@ const LEAD_STATUS_VALUES = new Set([
   "to_contact", "contact_attempted", "contacted", "no_interest", "opportunity", "converted", "archived",
 ]);
 
+// O mesmo problema acontece com o tipo de relação de um contacto: o modelo
+// escreve "lead", "cliente" ou "vendedor" onde o domínio só aceita seis
+// valores. Sem esta tradução, "Adicionar o João Paulo aos contactos"
+// falhava na validação e o consultor via "não consegui guardar".
+const RELATIONSHIP_VALUES = new Set([
+  "proprietario", "comprador", "potencial_cliente", "parceiro", "referencia", "outro",
+]);
+
+const RELATIONSHIP_ALIASES: Record<string, string> = {
+  lead: "potencial_cliente", leads: "potencial_cliente",
+  "potencial cliente": "potencial_cliente", potencial: "potencial_cliente",
+  "potencial comprador": "comprador", "possivel cliente": "potencial_cliente",
+  cliente: "potencial_cliente", contacto: "outro", contact: "outro",
+  prospect: "potencial_cliente", prospeccao: "potencial_cliente",
+  buyer: "comprador", compradora: "comprador", "comprador potencial": "comprador",
+  owner: "proprietario", proprietaria: "proprietario", "proprietário": "proprietario",
+  vendedor: "proprietario", vendedora: "proprietario", seller: "proprietario",
+  partner: "parceiro", parceira: "parceiro", colega: "parceiro", fornecedor: "parceiro",
+  referral: "referencia", "referência": "referencia", recomendacao: "referencia",
+  amigo: "outro", familiar: "outro", other: "outro", unknown: "outro", desconhecido: "outro",
+};
+
+function normalizeRelationshipType(value: unknown): string {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (!raw) return "outro";
+  if (RELATIONSHIP_VALUES.has(raw)) return raw;
+  const noAccents = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (RELATIONSHIP_VALUES.has(noAccents)) return noAccents;
+  return RELATIONSHIP_ALIASES[raw] ?? RELATIONSHIP_ALIASES[noAccents] ?? "outro";
+}
+
 function normalizeToolArgs(name: string, args: unknown): unknown {
   if (!args || typeof args !== "object") return args;
+  if (name === "create_person") {
+    const a = { ...(args as Record<string, unknown>) };
+    a.relationship_type = normalizeRelationshipType(a.relationship_type);
+    // Email inválido não pode deitar abaixo a criação do contacto.
+    if (typeof a.email === "string" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email.trim())) a.email = null;
+    return a;
+  }
   if (name !== "search_prospecting_leads" && name !== "update_prospecting_lead") return args;
   const a = { ...(args as Record<string, unknown>) };
   const raw = typeof a.status === "string" ? a.status.trim().toLowerCase() : null;
