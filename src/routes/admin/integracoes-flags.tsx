@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
 import { useAdminRole } from "./route";
+import { runTelegramOnboardingSelfTest } from "@/lib/assessor/channel-gateway/e2e.functions";
 import {
   getWhatsAppStatus,
   listWhatsAppSendLogs,
@@ -142,6 +143,65 @@ function WhatsAppBlock() {
   );
 }
 
+function TelegramSelfTestBlock() {
+  const run = useServerFn(runTelegramOnboardingSelfTest);
+  const [report, setReport] = useState<any>(null);
+  const mut = useMutation({
+    mutationFn: () => run(),
+    onSuccess: (res: any) => {
+      setReport(res);
+      if (res?.ok) toast.success("Onboarding automático validado.");
+      else toast.error("Self-test falhou — vê os detalhes.");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  return (
+    <>
+      <p className="mini mb-2" style={{ color: "var(--muted)" }}>
+        Envia um update sintético de um chat_id novo, sem código, pela mesma pipeline do webhook e
+        contra a base de dados real. Valida criação de conta base + saudação única, e apaga a conta no fim.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          className="admin-btn"
+          onClick={() => { setReport(null); mut.mutate(); }}
+          disabled={mut.isPending}
+        >
+          {mut.isPending ? "A correr…" : "Correr self-test de onboarding"}
+        </button>
+        {report ? (
+          <Badge tone={report.ok ? "ok" : "bad"}>{report.ok ? "tudo OK" : "falhou"}</Badge>
+        ) : null}
+        {report && !report.cleanedUp ? <Badge tone="warn">limpeza incompleta</Badge> : null}
+      </div>
+      {report ? (
+        <>
+          <div className="mt-3 overflow-x-auto">
+            <table>
+              <thead><tr><th>Verificação</th><th>Estado</th><th>Detalhe</th></tr></thead>
+              <tbody>
+                {report.checks.map((c: any) => (
+                  <tr key={c.name}>
+                    <td>{c.name}</td>
+                    <td><Badge tone={c.ok ? "ok" : "bad"}>{c.ok ? "ok" : "falha"}</Badge></td>
+                    <td className="mini break-all">{c.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mini mt-2" style={{ color: "var(--muted)" }}>
+            chat_id {report.chatId} · {report.repliesSent.length} resposta(s) · {fmt(report.ranAt)}
+          </p>
+        </>
+      ) : null}
+      <Source>channel_links × profiles × assessor_messages (conta sintética, apagada no fim)</Source>
+    </>
+  );
+}
+
 function FlagRow({ flag, disabled, onSave }: { flag: any; disabled: boolean; onSave: (v: any) => void }) {
   const [enabled, setEnabled] = useState<boolean>(!!flag.enabled_globally);
   const inert = !flag.readAt;
@@ -222,6 +282,9 @@ function IntegracoesFlagsPage() {
 
       <SectionTitle first>WhatsApp</SectionTitle>
       <WhatsAppBlock />
+
+      <SectionTitle>Telegram — onboarding automático</SectionTitle>
+      <TelegramSelfTestBlock />
 
       <SectionTitle>Outras integrações</SectionTitle>
       <div className="overflow-x-auto">

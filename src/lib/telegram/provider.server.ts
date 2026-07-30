@@ -137,8 +137,17 @@ export const lovableTelegramProvider: TelegramProvider = {
   },
 };
 
+// Override em memória usado apenas pelo self-test end-to-end de onboarding
+// (evita chamadas reais ao Bot API para um chat_id sintético). Nunca deve
+// ficar activo fora da execução do teste — o teste repõe sempre a null.
+let providerOverride: TelegramProvider | null = null;
+
+export function setTelegramProviderOverride(p: TelegramProvider | null): void {
+  providerOverride = p;
+}
+
 export function getTelegramProvider(): TelegramProvider {
-  return lovableTelegramProvider;
+  return providerOverride ?? lovableTelegramProvider;
 }
 
 // Derived shared secret used by Telegram's X-Telegram-Bot-Api-Secret-Token header.
