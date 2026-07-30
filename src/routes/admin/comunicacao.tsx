@@ -188,9 +188,13 @@ function ComunicacaoPage() {
                   <Badge tone={b.status === "sent" ? "ok" : "warn"}>
                     {b.status === "sent"
                       ? "Enviado"
-                      : b.status === "bloqueado_sem_provider"
-                        ? "Bloqueado (sem provider)"
-                        : b.status}
+                      : b.status === "enviado_parcial"
+                        ? "Enviado em parte"
+                        : b.status === "falhou"
+                          ? "Falhou"
+                          : b.status === "bloqueado_sem_provider"
+                            ? "Bloqueado (sem provider)"
+                            : b.status}
                   </Badge>
                 </td>
               </tr>
