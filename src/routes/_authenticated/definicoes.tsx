@@ -1,63 +1,314 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useStore } from "@/lib/store";
-import { resetAccount } from "@/lib/seed-demo";
-import { LogOut, MessageCircle, Copy, ExternalLink, CheckCircle2, Clock } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, Check } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "@/lib/assessor/assessor-name";
-import { tierLabel } from "@/lib/subscription/tiers";
+import { tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
+import { CHANNEL_LABEL, maskContact, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
 import {
   getWhatsAppLink,
   startWhatsAppLink,
   unlinkWhatsApp,
 } from "@/lib/whatsapp/link.functions";
 import { getSupremePreferences, updateSupremePreferences } from "@/lib/assessor/supreme/autonomy.functions";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
   head: () => ({
     meta: [
       { title: "Definições — Assessor do Consultor" },
-      { name: "description", content: "Preferências e integrações do consultor." },
+      { name: "description", content: "O teu assessor, autonomia, canal ligado e conta." },
       { property: "og:title", content: "Definições — Assessor do Consultor" },
-      { property: "og:description", content: "Preferências e integrações do consultor." },
+      { property: "og:description", content: "O teu assessor, autonomia, canal ligado e conta." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: DefinicoesPage,
 });
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="c-card p-5">
+      <h2 className="c-section-title mb-4">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
 function DefinicoesPage() {
+  return (
+    <AppShell>
+      <PageHeader title="Definições" subtitle="O teu assessor, autonomia, canal e conta." />
+      <div className="flex flex-col gap-4">
+        <AssessorNameSection />
+        <SupremeSection />
+        <CanalSection />
+        <CalendarioSection />
+        <ContaSection />
+      </div>
+    </AppShell>
+  );
+}
+
+/* ---------------- O teu assessor ---------------- */
+
+function AssessorNameSection() {
+  const [uid, setUid] = useState("");
+  const [name, setName] = useState(ASSESSOR_NAME_DEFAULT);
+  const [draft, setDraft] = useState(ASSESSOR_NAME_DEFAULT);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return;
+      setUid(data.user.id);
+      const { data: prof } = await supabase
+        .from("profiles").select("assessor_name" as never).eq("id", data.user.id).maybeSingle();
+      const nm = (prof as { assessor_name?: string } | null)?.assessor_name || ASSESSOR_NAME_DEFAULT;
+      setName(nm); setDraft(nm);
+    })();
+  }, []);
+
+  const save = async () => {
+    if (!uid) return;
+    const v = validateAssessorName(draft);
+    if (!v.ok) { toast.error(v.error ?? "Nome inválido."); return; }
+    const { error } = await supabase.from("profiles").update({ assessor_name: v.value } as never).eq("id", uid);
+    if (error) { toast.error(error.message); return; }
+    setName(v.value); setDraft(v.value);
+    toast.success("Nome do teu assessor atualizado.");
+  };
+
+  const reset = async () => {
+    if (!uid) return;
+    const { error } = await supabase.from("profiles").update({ assessor_name: ASSESSOR_NAME_DEFAULT } as never).eq("id", uid);
+    if (error) { toast.error(error.message); return; }
+    setName(ASSESSOR_NAME_DEFAULT); setDraft(ASSESSOR_NAME_DEFAULT);
+    toast.success("Nome reposto.");
+  };
+
+  return (
+    <Section title="O teu assessor">
+      <div className="flex items-center gap-3">
+        <div className="c-avatar">{(name || "A").trim().charAt(0).toUpperCase()}</div>
+        <div className="min-w-0 flex-1">
+          <label htmlFor="assessor-name" className="c-eyebrow">Nome</label>
+          <input
+            id="assessor-name"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={ASSESSOR_NAME_MAX}
+            placeholder={ASSESSOR_NAME_DEFAULT}
+            className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px] text-[var(--ink)] outline-none focus-visible:border-[var(--brass)]"
+          />
+        </div>
+      </div>
+      <p className="c-muted mt-2 text-[12px]">
+        É assim que o tratas na conversa. Máx. {ASSESSOR_NAME_MAX} caracteres. Atual: {name}.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button className="c-cta" onClick={save} disabled={draft.trim() === name}>Guardar</button>
+        <button className="c-btn" onClick={reset} disabled={name === ASSESSOR_NAME_DEFAULT}>
+          Repor "{ASSESSOR_NAME_DEFAULT}"
+        </button>
+      </div>
+    </Section>
+  );
+}
+
+/* ---------------- Autonomia ---------------- */
+
+const AUTONOMY_META = [
+  { key: "conservador", label: "Conservador", desc: "Pede confirmação para quase tudo.", min: "base" as SubscriptionTier },
+  { key: "balanced", label: "Equilibrado", desc: "Executa ações de baixo risco sozinho.", min: "consultor" as SubscriptionTier },
+  { key: "proativo", label: "Proativo", desc: "Atua dentro dos limites permitidos.", min: "pro" as SubscriptionTier },
+];
+
+function SupremeSection() {
+  const qc = useQueryClient();
+  const fetchPrefs = useServerFn(getSupremePreferences);
+  const savePrefs = useServerFn(updateSupremePreferences);
+  const { data } = useQuery({ queryKey: ["supreme", "prefs"], queryFn: () => fetchPrefs() });
+  const { name: assessorName } = useAssessorNameLite();
+  const save = useMutation({
+    mutationFn: (patch: Record<string, unknown>) => savePrefs({ data: patch }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["supreme", "prefs"] }); toast.success("Guardado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  if (!data?.enabled) return null;
+
+  const prefs = (data.preferences ?? {}) as {
+    morning_briefing_enabled?: boolean; morning_time?: string;
+    autonomy_level?: string; max_daily_nudges?: number;
+  };
+  const level = (data as any).effectiveAutonomy ?? prefs.autonomy_level ?? "conservador";
+  const allowed = new Set<string>(((data as any).autonomyAllowed as string[]) ?? ["conservador"]);
+  const tier = (data as any).tier as string | undefined;
+  const clamped = Boolean((data as any).autonomyClamped);
+
+  return (
+    <Section title={`Autonomia do ${assessorName}`}>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {AUTONOMY_META.map((opt) => {
+          const isAllowed = allowed.has(opt.key);
+          const active = level === opt.key;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              disabled={!isAllowed}
+              onClick={() => save.mutate({ autonomy_level: opt.key })}
+              className="rounded-[13px] border p-4 text-left transition-colors"
+              style={{
+                borderColor: active ? "var(--brass)" : "var(--line)",
+                background: active ? "rgba(184,134,59,.10)" : isAllowed ? "#fff" : "var(--paper-2)",
+                opacity: isAllowed ? 1 : 0.7,
+                cursor: isAllowed ? "pointer" : "not-allowed",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[13.5px] font-semibold">{opt.label}</span>
+                {active ? <Check className="h-4 w-4 text-[var(--brass-dark)]" /> : null}
+                {!isAllowed ? <Lock className="c-muted h-3.5 w-3.5" /> : null}
+              </div>
+              <p className="c-muted mt-1.5 text-[12px] leading-relaxed">{opt.desc}</p>
+              {!isAllowed && (
+                <span className="c-badge mt-2 inline-flex">plano {tierLabel(opt.min)}+</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <p className="c-muted mt-3 text-[12px] leading-relaxed">
+        Ações sensíveis pedem sempre confirmação, seja qual for o nível. Plano atual: {tierLabel(tier)}.
+      </p>
+      {clamped ? (
+        <p className="mt-2 text-[12px]" style={{ color: "var(--amber)" }}>
+          A tua preferência guardada é mais alta do que o plano atual permite. Está a operar em <strong>{level}</strong> —
+          se subires de plano, volta ao que tinhas escolhido.
+        </p>
+      ) : null}
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="briefing-time" className="c-eyebrow">Hora do briefing da manhã</label>
+          <input
+            id="briefing-time" type="time" defaultValue={prefs.morning_time ?? "08:00"}
+            onBlur={(e) => save.mutate({ morning_time: e.target.value })}
+            className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
+          />
+          <button
+            className="c-btn mt-2"
+            onClick={() => save.mutate({ morning_briefing_enabled: !(prefs.morning_briefing_enabled ?? true) })}
+          >
+            {prefs.morning_briefing_enabled === false ? "Ativar briefing" : "Desativar briefing"}
+          </button>
+        </div>
+        <div>
+          <label htmlFor="max-nudges" className="c-eyebrow">Máx. de sugestões por dia</label>
+          <input
+            id="max-nudges" type="number" min={0} max={20} defaultValue={prefs.max_daily_nudges ?? 6}
+            onBlur={(e) => save.mutate({ max_daily_nudges: Number(e.target.value) })}
+            className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
+          />
+          <p className="c-muted mt-2 text-[12px]">Só as sugestões urgentes e importantes te chegam ao telemóvel.</p>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+// Leitura leve do nome (evita import circular de estilos/hooks pesados).
+function useAssessorNameLite() {
+  const [name, setName] = useState(ASSESSOR_NAME_DEFAULT);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return;
+      const { data: prof } = await supabase
+        .from("profiles").select("assessor_name" as never).eq("id", data.user.id).maybeSingle();
+      setName((prof as { assessor_name?: string } | null)?.assessor_name || ASSESSOR_NAME_DEFAULT);
+    })();
+  }, []);
+  return { name };
+}
+
+/* ---------------- Canal ligado ---------------- */
+
+function CanalSection() {
+  const { channel, externalId, linkedAt, loading } = useLinkedChannel();
+
+  if (loading) {
+    return <Section title="Canal ligado"><p className="c-muted text-sm">A carregar…</p></Section>;
+  }
+
+  if (channel && externalId) {
+    return (
+      <Section title="Canal ligado">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="c-avatar"><MessageCircle className="h-4 w-4" /></div>
+            <div>
+              <div className="text-[14px] font-semibold">{CHANNEL_LABEL[channel]}</div>
+              <div className="c-mono c-muted text-[12.5px]">{maskContact(channel, externalId)}</div>
+            </div>
+          </div>
+          <span className="c-badge ok">Ligado</span>
+        </div>
+        {linkedAt && (
+          <p className="c-muted mt-3 text-[12px]">
+            Ligado em {new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium", timeStyle: "short" }).format(new Date(linkedAt))}.
+          </p>
+        )}
+      </Section>
+    );
+  }
+
+  return <WhatsAppSection />;
+}
+
+/* ---------------- Calendário (em breve) ---------------- */
+
+function CalendarioSection() {
+  return (
+    <Section title="Calendário">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {["Google Calendar", "Microsoft Outlook"].map((nome) => (
+          <div key={nome} className="flex items-center justify-between rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
+            <div className="flex items-center gap-3">
+              <CalendarDays className="c-muted h-4 w-4" />
+              <div>
+                <div className="text-[13.5px] font-semibold">{nome}</div>
+                <span className="c-badge mt-1 inline-flex">Em breve</span>
+              </div>
+            </div>
+            <button className="c-btn" disabled>Ligar</button>
+          </div>
+        ))}
+      </div>
+      <p className="c-muted mt-3 text-[12px] leading-relaxed">
+        Quando ligares o calendário, os compromissos que combinares na conversa entram lá sozinhos.
+      </p>
+    </Section>
+  );
+}
+
+/* ---------------- Conta ---------------- */
+
+function ContaSection() {
   const navigate = useNavigate();
-  const { refresh } = useStore();
-  const [email, setEmail] = useState<string>("");
-  const [uid, setUid] = useState<string>("");
-  const [accountKind, setAccountKind] = useState<"real" | "demo">("real");
-  const [assessorName, setAssessorName] = useState<string>("Assessor");
-  const [assessorNameDraft, setAssessorNameDraft] = useState<string>("Assessor");
-  const [busy, setBusy] = useState(false);
+  const { data: tierData } = useEffectiveTier();
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getUser();
       setEmail(data.user?.email ?? "");
-      setUid(data.user?.id ?? "");
-      if (data.user?.id) {
-        const { data: prof } = await supabase.from("profiles").select("account_kind, assessor_name" as never).eq("id", data.user.id).maybeSingle();
-        if (prof && (prof as { account_kind?: string }).account_kind) {
-          setAccountKind(((prof as { account_kind?: string }).account_kind === "demo" ? "demo" : "real"));
-        }
-        const nm = (prof as { assessor_name?: string } | null)?.assessor_name || "Assessor";
-        setAssessorName(nm);
-        setAssessorNameDraft(nm);
-      }
     })();
   }, []);
 
@@ -66,216 +317,30 @@ function DefinicoesPage() {
     navigate({ to: "/auth", replace: true });
   };
 
-  const marcar = async (kind: "real" | "demo") => {
-    if (!uid) return;
-    const { error } = await supabase.from("profiles").update({ account_kind: kind } as never).eq("id", uid);
-    if (error) { toast.error(error.message); return; }
-    setAccountKind(kind);
-    toast.success(kind === "demo" ? "Conta marcada como demonstração." : "Conta marcada como real.");
-  };
-
-  const doReset = async () => {
-    if (!uid) return;
-    if (!confirm("Apagar todos os seus dados? Esta ação não pode ser revertida.")) return;
-    setBusy(true);
-    try {
-      await resetAccount(uid);
-      toast.success("Conta reposta.");
-      refresh();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const saveAssessorName = async () => {
-    if (!uid) return;
-    const v = validateAssessorName(assessorNameDraft);
-    if (!v.ok) { toast.error(v.error ?? "Nome inválido."); return; }
-    const { error } = await supabase.from("profiles").update({ assessor_name: v.value } as never).eq("id", uid);
-    if (error) { toast.error(error.message); return; }
-    setAssessorName(v.value);
-    setAssessorNameDraft(v.value);
-    toast.success("Nome do Assessor atualizado.");
-  };
-
-  const resetAssessorName = async () => {
-    if (!uid) return;
-    const { error } = await supabase.from("profiles").update({ assessor_name: ASSESSOR_NAME_DEFAULT } as never).eq("id", uid);
-    if (error) { toast.error(error.message); return; }
-    setAssessorName(ASSESSOR_NAME_DEFAULT);
-    setAssessorNameDraft(ASSESSOR_NAME_DEFAULT);
-    toast.success("Nome reposto.");
-  };
-
   return (
-    <AppShell>
-      <PageHeader title="Definições" subtitle="Preferências, conta e integrações." />
-      <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
-        <Badge variant="secondary">Beta</Badge>
-        <span>Revê sempre os rascunhos antes de confirmar. Os dados são reais e ficam na tua conta.</span>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Perfil</CardTitle>
-              <Badge variant={accountKind === "demo" ? "secondary" : "default"}>{accountKind === "demo" ? "Demonstração" : "Real"}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="text-sm space-y-1">
-            <p><strong>Email:</strong> {email || "—"}</p>
-            <p><strong>Idioma:</strong> Português (Portugal)</p>
-            <p><strong>Moeda:</strong> EUR</p>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" variant={accountKind === "real" ? "default" : "outline"} onClick={() => marcar("real")}>Marcar como real</Button>
-              <Button size="sm" variant={accountKind === "demo" ? "default" : "outline"} onClick={() => marcar("demo")}>Marcar como demo</Button>
-            </div>
-            <Button variant="outline" className="mt-3 w-full justify-start" onClick={signOut}>
-              <LogOut className="mr-2 h-4 w-4" /> Terminar sessão
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Assessor</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <Label htmlFor="assessor-name">Nome do meu Assessor</Label>
-            <Input
-              id="assessor-name"
-              value={assessorNameDraft}
-              onChange={(e) => setAssessorNameDraft(e.target.value)}
-              maxLength={ASSESSOR_NAME_MAX}
-              placeholder="Assessor"
-            />
-            <p className="text-xs text-muted-foreground">Ex: "Maria", "Alex". Máx. {ASSESSOR_NAME_MAX} caracteres. Atual: {assessorName}.</p>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={saveAssessorName} disabled={assessorNameDraft.trim() === assessorName}>Guardar</Button>
-              <Button size="sm" variant="outline" onClick={resetAssessorName} disabled={assessorName === ASSESSOR_NAME_DEFAULT}>Repor "{ASSESSOR_NAME_DEFAULT}"</Button>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Dados</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-start text-destructive" onClick={doReset} disabled={busy}>
-              Repor conta (apagar tudo)
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Integrações</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {["Google Calendar", "Microsoft Outlook", "Faturação (Stripe)"].map((name) => (
-              <div key={name} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                <span>{name}</span>
-                <Badge variant="outline" className="text-muted-foreground">Planeado</Badge>
-              </div>
-            ))}
-            <p className="text-xs text-muted-foreground">
-              O WhatsApp é a única integração activa — configura-a no cartão abaixo.
-            </p>
-          </CardContent>
-        </Card>
-        <WhatsAppSection />
-        <SupremeSection />
-      </div>
-    </AppShell>
+    <Section title="Conta">
+      <dl className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <dt className="c-eyebrow">Email</dt>
+          <dd className="mt-1 truncate text-[13.5px]">{email || "—"}</dd>
+        </div>
+        <div>
+          <dt className="c-eyebrow">Plano</dt>
+          <dd className="mt-1 text-[13.5px]">{tierLabel(tierData?.tier)}</dd>
+        </div>
+        <div>
+          <dt className="c-eyebrow">Idioma</dt>
+          <dd className="mt-1 text-[13.5px]">Português (Portugal) · EUR</dd>
+        </div>
+      </dl>
+      <button className="c-btn mt-4" onClick={signOut}>
+        <LogOut className="h-4 w-4" /> Terminar sessão
+      </button>
+    </Section>
   );
 }
 
-function SupremeSection() {
-  const qc = useQueryClient();
-  const fetchPrefs = useServerFn(getSupremePreferences);
-  const savePrefs = useServerFn(updateSupremePreferences);
-  const { data } = useQuery({ queryKey: ["supreme", "prefs"], queryFn: () => fetchPrefs() });
-  const save = useMutation({
-    mutationFn: (patch: Record<string, unknown>) => savePrefs({ data: patch }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["supreme", "prefs"] }); toast.success("Guardado."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  if (!data?.enabled) return null;
-  const prefs = (data.preferences ?? {}) as {
-    morning_briefing_enabled?: boolean;
-    morning_time?: string;
-    autonomy_level?: string;
-    max_daily_nudges?: number;
-  };
-  // Fonte de verdade para gating: efectiveAutonomy (já capado ao tier)
-  // e autonomyAllowed (níveis desbloqueados). Backend recusa se subires.
-  const level = (data as any).effectiveAutonomy ?? prefs.autonomy_level ?? "conservador";
-  const allowed = new Set<string>(((data as any).autonomyAllowed as string[]) ?? ["conservador"]);
-  const tier = (data as any).tier as string | undefined;
-  const clamped = Boolean((data as any).autonomyClamped);
-  return (
-    <Card className="md:col-span-2 border-primary/30 bg-primary/5">
-      <CardHeader>
-        <CardTitle className="text-base">Assessor Supremo</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Autonomia do meu Assessor</Label>
-          <div className="flex flex-wrap gap-2">
-            {(["conservador", "balanced", "proativo"] as const).map((lvl) => {
-              const isAllowed = allowed.has(lvl);
-              return (
-                <Button
-                  key={lvl}
-                  size="sm"
-                  variant={level === lvl ? "default" : "outline"}
-                  disabled={!isAllowed}
-                  title={isAllowed ? undefined : `Disponível a partir de um plano superior (tens ${tierLabel(tier)}).`}
-                  onClick={() => save.mutate({ autonomy_level: lvl })}
-                >
-                  {lvl === "balanced" ? "Equilibrado" : lvl === "conservador" ? "Conservador" : "Proativo"}
-                  {!isAllowed ? " 🔒" : ""}
-                </Button>
-              );
-            })}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Conservador pede confirmação para quase tudo. Equilibrado executa ações de baixo risco. Proativo actua dentro dos limites permitidos. Ações sensíveis pedem sempre confirmação.
-          </p>
-          {clamped ? (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              A tua preferência guardada é mais alta que o teu plano actual permite. O Assessor está a operar em <strong>{level}</strong>. Se subires de plano, a preferência original volta a aplicar-se.
-            </p>
-          ) : null}
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="briefing-time">Hora do briefing da manhã</Label>
-            <Input
-              id="briefing-time"
-              type="time"
-              defaultValue={prefs.morning_time ?? "08:00"}
-              onBlur={(e) => save.mutate({ morning_time: e.target.value })}
-            />
-            <Button
-              size="sm"
-              variant={prefs.morning_briefing_enabled === false ? "outline" : "default"}
-              onClick={() => save.mutate({ morning_briefing_enabled: !(prefs.morning_briefing_enabled ?? true) })}
-            >
-              {prefs.morning_briefing_enabled === false ? "Ativar briefing" : "Desativar briefing"}
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="max-nudges">Máx. de sugestões por dia</Label>
-            <Input
-              id="max-nudges"
-              type="number"
-              min={0}
-              max={20}
-              defaultValue={prefs.max_daily_nudges ?? 6}
-              onBlur={(e) => save.mutate({ max_daily_nudges: Number(e.target.value) })}
-            />
-            <p className="text-xs text-muted-foreground">Só as sugestões urgentes e importantes chegam ao WhatsApp.</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+/* ---------------- Associação de WhatsApp (só quando não há canal) ---------------- */
 
 function WhatsAppSection() {
   const qc = useQueryClient();
@@ -286,10 +351,7 @@ function WhatsAppSection() {
   const { data, isLoading } = useQuery({
     queryKey: ["whatsapp", "link"],
     queryFn: () => fetchStatus(),
-    refetchInterval: (q) => {
-      const s = (q.state.data as { status?: string } | undefined)?.status;
-      return s === "pending" ? 5000 : false;
-    },
+    refetchInterval: (q) => ((q.state.data as { status?: string } | undefined)?.status === "pending" ? 5000 : false),
   });
 
   const [phoneInput, setPhoneInput] = useState("");
@@ -299,7 +361,6 @@ function WhatsAppSection() {
     if (data?.phone && !phoneInput) setPhoneInput(formatDisplay(data.phone));
   }, [data?.phone, phoneInput]);
 
-  // Clear the freshly-generated code once the account transitions to linked.
   useEffect(() => {
     if (data?.status === "linked" && freshCode) setFreshCode(null);
   }, [data?.status, freshCode]);
@@ -316,134 +377,70 @@ function WhatsAppSection() {
 
   const unlink = useMutation({
     mutationFn: async () => doUnlink({ data: { keepPhone: true } }),
-    onSuccess: () => {
-      setFreshCode(null);
-      qc.invalidateQueries({ queryKey: ["whatsapp", "link"] });
-      toast.success("WhatsApp desassociado.");
-    },
+    onSuccess: () => { setFreshCode(null); qc.invalidateQueries({ queryKey: ["whatsapp", "link"] }); toast.success("WhatsApp desassociado."); },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const status = data?.status ?? "unlinked";
   const badge = useMemo(() => {
-    if (status === "linked") return { label: "Ligado", cls: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" };
-    if (status === "pending") return { label: "Pendente", cls: "bg-amber-500/15 text-amber-700 border-amber-500/30" };
-    return { label: "Não associado", cls: "bg-slate-500/10 text-slate-600 border-slate-500/30" };
+    if (status === "linked") return { label: "Ligado", cls: "c-badge ok" };
+    if (status === "pending") return { label: "Pendente", cls: "c-badge warn" };
+    return { label: "Não associado", cls: "c-badge" };
   }, [status]);
 
   return (
-    <Card className="md:col-span-2">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MessageCircle className="h-4 w-4" /> WhatsApp
-          </CardTitle>
-          <Badge variant="outline" className={badge.cls}>{badge.label}</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">A carregar…</p>
-        ) : status === "linked" ? (
-          <LinkedView data={data!} onUnlink={() => unlink.mutate()} pending={unlink.isPending} />
-        ) : (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="wa-phone">Número de WhatsApp</Label>
-              <Input
-                id="wa-phone"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                placeholder="+351 932 893 767"
-                value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value)}
-                maxLength={24}
-              />
-              <p className="text-xs text-muted-foreground">
-                Usa o formato internacional. Exemplo: +351932893767.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                onClick={() => start.mutate(phoneInput)}
-                disabled={start.isPending || phoneInput.replace(/\D+/g, "").length < 8}
-              >
-                {data?.phone ? "Alterar número" : "Associar WhatsApp"}
-              </Button>
-              {data?.phone && status === "pending" && (
-                <Button size="sm" variant="ghost" onClick={() => unlink.mutate()} disabled={unlink.isPending}>
-                  Cancelar
-                </Button>
-              )}
-            </div>
-
-            {(freshCode || data?.pendingCode) && (
-              <PendingCodeView
-                code={freshCode?.code ?? null}
-                expiresAt={freshCode?.expiresAt ?? data?.pendingCode?.expiresAt ?? null}
-                phone={data?.phone ?? null}
-                displayNumber={data?.displayNumber ?? null}
-                attempts={data?.pendingCode?.attempts ?? 0}
-                onRegenerate={() => start.mutate(phoneInput || data?.phone || "")}
-                regenerating={start.isPending}
-              />
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function LinkedView({
-  data,
-  onUnlink,
-  pending,
-}: {
-  data: { phone: string | null; linkedAt: string | null };
-  onUnlink: () => void;
-  pending: boolean;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-        <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
-        <div className="text-sm">
-          <div className="font-medium">Número associado: {formatDisplay(data.phone ?? "")}</div>
-          {data.linkedAt && (
-            <div className="text-xs text-muted-foreground">
-              Ligado em {new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium", timeStyle: "short" }).format(new Date(data.linkedAt))}
-            </div>
-          )}
-        </div>
+    <section className="c-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="c-section-title">Canal ligado</h2>
+        <span className={badge.cls}>{badge.label}</span>
       </div>
-      <Button size="sm" variant="outline" onClick={onUnlink} disabled={pending}>
-        Desassociar WhatsApp
-      </Button>
-    </div>
+      {isLoading ? (
+        <p className="c-muted text-sm">A carregar…</p>
+      ) : (
+        <>
+          <label htmlFor="wa-phone" className="c-eyebrow">Número de WhatsApp</label>
+          <input
+            id="wa-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+351 932 893 767"
+            value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} maxLength={24}
+            className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
+          />
+          <p className="c-muted mt-2 text-[12px]">Usa o formato internacional. Exemplo: +351932893767.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              className="c-cta"
+              onClick={() => start.mutate(phoneInput)}
+              disabled={start.isPending || phoneInput.replace(/\D+/g, "").length < 8}
+            >
+              {data?.phone ? "Alterar número" : "Associar WhatsApp"}
+            </button>
+            {data?.phone && status === "pending" && (
+              <button className="c-btn-ghost" onClick={() => unlink.mutate()} disabled={unlink.isPending}>Cancelar</button>
+            )}
+          </div>
+          {(freshCode || data?.pendingCode) && (
+            <PendingCodeView
+              code={freshCode?.code ?? null}
+              expiresAt={freshCode?.expiresAt ?? data?.pendingCode?.expiresAt ?? null}
+              phone={data?.phone ?? null}
+              displayNumber={data?.displayNumber ?? null}
+              attempts={data?.pendingCode?.attempts ?? 0}
+              onRegenerate={() => start.mutate(phoneInput || data?.phone || "")}
+              regenerating={start.isPending}
+            />
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
 function PendingCodeView({
-  code,
-  expiresAt,
-  phone,
-  displayNumber,
-  attempts,
-  onRegenerate,
-  regenerating,
+  code, expiresAt, phone, displayNumber, attempts, onRegenerate, regenerating,
 }: {
-  code: string | null;
-  expiresAt: string | null;
-  phone: string | null;
-  displayNumber: string | null;
-  attempts: number;
-  onRegenerate: () => void;
-  regenerating: boolean;
+  code: string | null; expiresAt: string | null; phone: string | null;
+  displayNumber: string | null; attempts: number; onRegenerate: () => void; regenerating: boolean;
 }) {
-  const [remaining, setRemaining] = useState<string>("");
+  const [remaining, setRemaining] = useState("");
   useEffect(() => {
     if (!expiresAt) return;
     const tick = () => {
@@ -459,58 +456,42 @@ function PendingCodeView({
   }, [expiresAt]);
 
   const message = code ? `Ligar a conta do Assessor. Código: ${code}` : "";
-  const waHref =
-    displayNumber && message
-      ? `https://wa.me/${displayNumber}?text=${encodeURIComponent(message)}`
-      : null;
+  const waHref = displayNumber && message ? `https://wa.me/${displayNumber}?text=${encodeURIComponent(message)}` : null;
 
   return (
-    <div className="space-y-3 rounded-lg border bg-muted/40 p-3">
-      <p className="text-sm">
-        Envia a mensagem abaixo, a partir do número <strong>{formatDisplay(phone ?? "")}</strong>, para o WhatsApp do Assessor.
+    <div className="mt-4 rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] p-3">
+      <p className="text-[13px]">
+        Envia a mensagem abaixo, a partir do número <strong>{formatDisplay(phone ?? "")}</strong>, para o WhatsApp do teu assessor.
       </p>
       {code ? (
-        <div className="flex items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
-          <code className="text-lg font-semibold tracking-wider">{code}</code>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              navigator.clipboard.writeText(code).then(() => toast.success("Código copiado."));
-            }}
-          >
-            <Copy className="mr-1 h-3.5 w-3.5" /> Copiar
-          </Button>
+        <div className="mt-2 flex items-center justify-between gap-2 rounded-[10px] border border-[var(--line)] bg-white px-3 py-2">
+          <code className="c-mono text-[17px] font-semibold tracking-wider">{code}</code>
+          <button className="c-btn-ghost" onClick={() => navigator.clipboard.writeText(code).then(() => toast.success("Código copiado."))}>
+            <Copy className="h-3.5 w-3.5" /> Copiar
+          </button>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">
+        <p className="c-muted mt-2 text-[12px]">
           Existe um pedido pendente. O código foi mostrado quando foi gerado — se já não o tens, gera um novo.
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {waHref && (
-          <Button size="sm" asChild>
-            <a href={waHref} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1 h-3.5 w-3.5" /> Abrir WhatsApp
-            </a>
-          </Button>
+          <a className="c-cta" href={waHref} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-3.5 w-3.5" /> Abrir WhatsApp
+          </a>
         )}
-        <Button size="sm" variant="outline" onClick={onRegenerate} disabled={regenerating}>
-          Gerar novo código
-        </Button>
-        <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+        <button className="c-btn" onClick={onRegenerate} disabled={regenerating}>Gerar novo código</button>
+        <div className="c-muted ml-auto flex items-center gap-1 text-[12px]">
           <Clock className="h-3.5 w-3.5" /> {remaining || "—"}
         </div>
       </div>
-      {attempts > 0 && (
-        <p className="text-xs text-amber-600">Tentativas usadas: {attempts} de 5.</p>
-      )}
+      {attempts > 0 && <p className="mt-2 text-[12px]" style={{ color: "var(--amber)" }}>Tentativas usadas: {attempts} de 5.</p>}
     </div>
   );
 }
 
 function formatDisplay(phone: string): string {
   const d = phone.replace(/\D+/g, "");
-  if (!d) return phone;
-  return `+${d}`;
+  return d ? `+${d}` : phone;
 }
