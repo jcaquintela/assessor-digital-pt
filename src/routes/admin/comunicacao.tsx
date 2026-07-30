@@ -7,6 +7,7 @@ import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admi
 import { getMyAdminRole } from "@/lib/admin.functions";
 import {
   countSegment,
+  getEmailProviderStatus,
   listBroadcasts,
   sendBroadcast,
   SEGMENTS,
@@ -39,6 +40,7 @@ function ComunicacaoPage() {
   const countFn = useServerFn(countSegment);
   const listFn = useServerFn(listBroadcasts);
   const sendFn = useServerFn(sendBroadcast);
+  const statusFn = useServerFn(getEmailProviderStatus);
 
   const { data: me } = useQuery({ queryKey: ["admin", "my-role"], queryFn: () => roleFn() });
   const isSuper = me?.role === "super_admin";
