@@ -112,7 +112,9 @@ function NegocioPage() {
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <span className={tone.cls}>{tone.label}</span>
                     <span className="c-badge">{isExpense ? "Despesa" : "Comissão"}</span>
-                    {m.category && <span className="c-badge">{m.category}</span>}
+                    {m.category && m.category.toLowerCase() !== (isExpense ? "despesa" : "comissão") && (
+                      <span className="c-badge">{m.category}</span>
+                    )}
                     {canal && CANAL_LABEL[canal] && <span className="c-badge">{CANAL_LABEL[canal]}</span>}
                   </div>
                 </div>
