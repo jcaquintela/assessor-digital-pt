@@ -4,7 +4,8 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { formatData } from "@/lib/demo-data";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Pencil, Search } from "lucide-react";
+import { EditPersonDialog } from "@/components/pessoas/edit-person-dialog";
 
 export const Route = createFileRoute("/_authenticated/pessoas")({
   head: () => ({
@@ -21,6 +22,8 @@ export const Route = createFileRoute("/_authenticated/pessoas")({
 function PessoasPage() {
   const { pessoas, loading } = useStore();
   const [q, setQ] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const emEdicao = pessoas.find((p) => p.id === editId) ?? null;
 
   const term = q.trim().toLowerCase();
   const digits = term.replace(/\D/g, "");
@@ -71,6 +74,14 @@ function PessoasPage() {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="c-badge">{p.relacao}</span>
+                <button
+                  type="button"
+                  aria-label={`Editar ${p.nome}`}
+                  className="c-badge"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditId(p.id); }}
+                >
+                  <Pencil className="h-3 w-3" /> Editar
+                </button>
                 <ChevronRight className="h-4 w-4" style={{ color: "var(--muted)" }} />
               </div>
             </div>
@@ -83,6 +94,11 @@ function PessoasPage() {
           </Link>
         ))}
       </div>
+      <EditPersonDialog
+        pessoa={emEdicao}
+        open={!!emEdicao}
+        onOpenChange={(v) => { if (!v) setEditId(null); }}
+      />
     </AppShell>
   );
 }
