@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDataHora } from "@/lib/demo-data";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
@@ -51,9 +50,12 @@ function CalendarioPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Integrações</CardTitle></CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <p className="text-muted-foreground">Sincronize com o seu calendário externo (disponível numa próxima fase).</p>
-            <Button variant="outline" className="w-full justify-start" onClick={() => toast.info("Ligação a Google — em breve.")}>Ligar a Google Calendar</Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => toast.info("Ligação a Microsoft — em breve.")}>Ligar a Microsoft Outlook</Button>
+            <p className="text-muted-foreground">
+              Liga o Google Calendar ou o Outlook e os compromissos passam a andar nos dois sentidos.
+            </p>
+            <Button asChild variant="outline" className="w-full justify-start">
+              <Link to="/definicoes">Gerir ligações de calendário</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
