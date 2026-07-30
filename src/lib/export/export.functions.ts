@@ -4,6 +4,30 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // Leituras dedicadas às exportações. Sempre com o cliente autenticado
 // (RLS aplica-se como o próprio consultor) e filtradas por user_id.
 
+type PropertyExportRow = {
+  title: string | null;
+  address: string | null;
+  city: string | null;
+  location: string | null;
+  property_type: string | null;
+  typology: string | null;
+  status: string | null;
+  asking_price: number | null;
+  value: number | null;
+  source_channel: string | null;
+  created_at: string;
+};
+
+type MovementExportRow = {
+  type: string;
+  description: string;
+  category: string | null;
+  amount: number;
+  status: string;
+  movement_date: string;
+  created_at: string;
+};
+
 export const exportPeople = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -36,7 +60,7 @@ export const exportProperties = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(5000);
     if (error) throw new Error(error.message);
-    return (data ?? []) as Array<Record<string, unknown>>;
+    return (data ?? []) as PropertyExportRow[];
   });
 
 export const exportMovements = createServerFn({ method: "GET" })
@@ -50,5 +74,5 @@ export const exportMovements = createServerFn({ method: "GET" })
       .order("movement_date", { ascending: false })
       .limit(5000);
     if (error) throw new Error(error.message);
-    return (data ?? []) as Array<Record<string, unknown>>;
+    return (data ?? []) as MovementExportRow[];
   });
