@@ -21,6 +21,21 @@ const TIPOS: OportunidadeTipo[] = ["Compra", "Venda", "Potencial Angariação", 
 const ESTADOS: OportunidadeEstado[] = ["Novo", "Em conversa", "Visita", "Proposta", "CPCV", "Escritura", "Perdida", "Arquivada"];
 const PROBS: Oportunidade["probabilidade"][] = ["Baixa", "Média", "Alta"];
 
+// Os registos criados pelo motor gravam em minúsculas ("venda", "fechado").
+// Normalizamos para os valores da ficha, senão os selects aparecem vazios.
+function pick<T extends string>(options: readonly T[], raw: unknown, fallback: T): T {
+  const v = String(raw ?? "").trim().toLowerCase();
+  return options.find((o) => o.toLowerCase() === v) ?? fallback;
+}
+const ESTADO_ALIAS: Record<string, OportunidadeEstado> = {
+  aberto: "Novo", aberta: "Novo", fechado: "Escritura", fechada: "Escritura",
+  ganho: "Escritura", ganha: "Escritura", perdido: "Perdida", arquivado: "Arquivada",
+};
+const normEstado = (raw: unknown): OportunidadeEstado =>
+  ESTADO_ALIAS[String(raw ?? "").trim().toLowerCase()] ?? pick(ESTADOS, raw, "Novo");
+const normTipo = (raw: unknown): OportunidadeTipo => pick(TIPOS, raw, "Compra");
+const normProb = (raw: unknown): Oportunidade["probabilidade"] => pick(PROBS, raw, "Média");
+
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
   head: () => ({
     meta: [
@@ -43,10 +58,10 @@ function OportunidadeDetail() {
 
   const op = useMemo(() => oportunidades.find((o) => o.id === id), [oportunidades, id]);
 
-  const [tipo, setTipo] = useState<OportunidadeTipo>(op?.tipo ?? "Compra");
-  const [estado, setEstado] = useState<OportunidadeEstado>(op?.estado ?? "Novo");
+  const [tipo, setTipo] = useState<OportunidadeTipo>(normTipo(op?.tipo));
+  const [estado, setEstado] = useState<OportunidadeEstado>(normEstado(op?.estado));
   const [valor, setValor] = useState<string>(String(op?.valor ?? 0));
-  const [probabilidade, setProbabilidade] = useState<Oportunidade["probabilidade"]>(op?.probabilidade ?? "Média");
+  const [probabilidade, setProbabilidade] = useState<Oportunidade["probabilidade"]>(normProb(op?.probabilidade));
   const [pessoaId, setPessoaId] = useState<string>(op?.pessoaId ?? "");
   const [imovelId, setImovelId] = useState<string>(op?.imovelId ?? "");
   const [proximaAcao, setProximaAcao] = useState(op?.proximaAcao ?? "");
@@ -55,6 +70,20 @@ function OportunidadeDetail() {
   const [interacao, setInteracao] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Os dados chegam em assíncrono: sincroniza o formulário quando a ficha carrega.
+  useEffect(() => {
+    if (!op) return;
+    setTipo(normTipo(op.tipo));
+    setEstado(normEstado(op.estado));
+    setValor(String(op.valor ?? 0));
+    setProbabilidade(normProb(op.probabilidade));
+    setPessoaId(op.pessoaId ?? "");
+    setImovelId(op.imovelId ?? "");
+    setProximaAcao(op.proximaAcao ?? "");
+    setProximaAcaoData(op.proximaAcaoData ?? "");
+    setNotas(op.notas ?? "");
+  }, [op?.id]);
 
   if (loading && !op) {
     return <AppShell><PageHeader title="A carregar…" /></AppShell>;
