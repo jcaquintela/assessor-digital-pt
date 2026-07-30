@@ -10,11 +10,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatData, formatEUR, type Oportunidade, type OportunidadeEstado, type OportunidadeTipo } from "@/lib/demo-data";
-import { ChevronLeft, Trash2, Save, MessageSquarePlus } from "lucide-react";
+import { ChevronLeft, Trash2, Save, MessageSquarePlus, Archive } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 const TIPOS: OportunidadeTipo[] = ["Compra", "Venda", "Potencial Angariação", "Arrendamento", "Investimento", "Recomendação"];
-const ESTADOS: OportunidadeEstado[] = ["Novo", "Em conversa", "Visita", "Proposta", "CPCV", "Escritura", "Perdida"];
+const ESTADOS: OportunidadeEstado[] = ["Novo", "Em conversa", "Visita", "Proposta", "CPCV", "Escritura", "Perdida", "Arquivada"];
 const PROBS: Oportunidade["probabilidade"][] = ["Baixa", "Média", "Alta"];
 
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
@@ -50,6 +54,7 @@ function OportunidadeDetail() {
   const [notas, setNotas] = useState(op?.notas ?? "");
   const [interacao, setInteracao] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (loading && !op) {
     return <AppShell><PageHeader title="A carregar…" /></AppShell>;
