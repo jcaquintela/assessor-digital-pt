@@ -24,6 +24,7 @@ import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
 import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
 import { Route as AdminPlanosRouteImport } from './routes/admin/planos'
 import { Route as AdminNegocioRouteImport } from './routes/admin/negocio'
+import { Route as AdminIntegracoesFlagsRouteImport } from './routes/admin/integracoes-flags'
 import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes'
 import { Route as AdminGoldensRouteImport } from './routes/admin/goldens'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
@@ -33,6 +34,7 @@ import { Route as AdminCustosRouteImport } from './routes/admin/custos'
 import { Route as AdminConvitesRouteImport } from './routes/admin/convites'
 import { Route as AdminComunicacaoRouteImport } from './routes/admin/comunicacao'
 import { Route as AdminAutonomasRouteImport } from './routes/admin/autonomas'
+import { Route as AdminAuditoriaSegurancaRouteImport } from './routes/admin/auditoria-seguranca'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AdminAquisicaoRouteImport } from './routes/admin/aquisicao'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
@@ -146,6 +148,11 @@ const AdminNegocioRoute = AdminNegocioRouteImport.update({
   path: '/negocio',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminIntegracoesFlagsRoute = AdminIntegracoesFlagsRouteImport.update({
+  id: '/integracoes-flags',
+  path: '/integracoes-flags',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminIntegracoesRoute = AdminIntegracoesRouteImport.update({
   id: '/integracoes',
   path: '/integracoes',
@@ -189,6 +196,11 @@ const AdminComunicacaoRoute = AdminComunicacaoRouteImport.update({
 const AdminAutonomasRoute = AdminAutonomasRouteImport.update({
   id: '/autonomas',
   path: '/autonomas',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAuditoriaSegurancaRoute = AdminAuditoriaSegurancaRouteImport.update({
+  id: '/auditoria-seguranca',
+  path: '/auditoria-seguranca',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
@@ -425,6 +437,7 @@ export interface FileRoutesByFullPath {
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
   '/admin/autonomas': typeof AdminAutonomasRoute
   '/admin/comunicacao': typeof AdminComunicacaoRoute
   '/admin/convites': typeof AdminConvitesRoute
@@ -434,6 +447,7 @@ export interface FileRoutesByFullPath {
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/integracoes-flags': typeof AdminIntegracoesFlagsRoute
   '/admin/negocio': typeof AdminNegocioRoute
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
@@ -487,6 +501,7 @@ export interface FileRoutesByTo {
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
   '/admin/autonomas': typeof AdminAutonomasRoute
   '/admin/comunicacao': typeof AdminComunicacaoRoute
   '/admin/convites': typeof AdminConvitesRoute
@@ -496,6 +511,7 @@ export interface FileRoutesByTo {
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/integracoes-flags': typeof AdminIntegracoesFlagsRoute
   '/admin/negocio': typeof AdminNegocioRoute
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
@@ -552,6 +568,7 @@ export interface FileRoutesById {
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
   '/admin/autonomas': typeof AdminAutonomasRoute
   '/admin/comunicacao': typeof AdminComunicacaoRoute
   '/admin/convites': typeof AdminConvitesRoute
@@ -561,6 +578,7 @@ export interface FileRoutesById {
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
   '/admin/goldens': typeof AdminGoldensRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
+  '/admin/integracoes-flags': typeof AdminIntegracoesFlagsRoute
   '/admin/negocio': typeof AdminNegocioRoute
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
@@ -617,6 +635,7 @@ export interface FileRouteTypes {
     | '/seguimentos'
     | '/admin/aquisicao'
     | '/admin/auditoria'
+    | '/admin/auditoria-seguranca'
     | '/admin/autonomas'
     | '/admin/comunicacao'
     | '/admin/convites'
@@ -626,6 +645,7 @@ export interface FileRouteTypes {
     | '/admin/funcionalidades'
     | '/admin/goldens'
     | '/admin/integracoes'
+    | '/admin/integracoes-flags'
     | '/admin/negocio'
     | '/admin/planos'
     | '/admin/qualidade'
@@ -679,6 +699,7 @@ export interface FileRouteTypes {
     | '/seguimentos'
     | '/admin/aquisicao'
     | '/admin/auditoria'
+    | '/admin/auditoria-seguranca'
     | '/admin/autonomas'
     | '/admin/comunicacao'
     | '/admin/convites'
@@ -688,6 +709,7 @@ export interface FileRouteTypes {
     | '/admin/funcionalidades'
     | '/admin/goldens'
     | '/admin/integracoes'
+    | '/admin/integracoes-flags'
     | '/admin/negocio'
     | '/admin/planos'
     | '/admin/qualidade'
@@ -743,6 +765,7 @@ export interface FileRouteTypes {
     | '/_authenticated/seguimentos'
     | '/admin/aquisicao'
     | '/admin/auditoria'
+    | '/admin/auditoria-seguranca'
     | '/admin/autonomas'
     | '/admin/comunicacao'
     | '/admin/convites'
@@ -752,6 +775,7 @@ export interface FileRouteTypes {
     | '/admin/funcionalidades'
     | '/admin/goldens'
     | '/admin/integracoes'
+    | '/admin/integracoes-flags'
     | '/admin/negocio'
     | '/admin/planos'
     | '/admin/qualidade'
@@ -904,6 +928,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNegocioRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/integracoes-flags': {
+      id: '/admin/integracoes-flags'
+      path: '/integracoes-flags'
+      fullPath: '/admin/integracoes-flags'
+      preLoaderRoute: typeof AdminIntegracoesFlagsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/integracoes': {
       id: '/admin/integracoes'
       path: '/integracoes'
@@ -965,6 +996,13 @@ declare module '@tanstack/react-router' {
       path: '/autonomas'
       fullPath: '/admin/autonomas'
       preLoaderRoute: typeof AdminAutonomasRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/auditoria-seguranca': {
+      id: '/admin/auditoria-seguranca'
+      path: '/auditoria-seguranca'
+      fullPath: '/admin/auditoria-seguranca'
+      preLoaderRoute: typeof AdminAuditoriaSegurancaRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/auditoria': {
@@ -1440,6 +1478,7 @@ const AuthenticatedRouteRouteWithChildren =
 interface AdminRouteRouteChildren {
   AdminAquisicaoRoute: typeof AdminAquisicaoRoute
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
+  AdminAuditoriaSegurancaRoute: typeof AdminAuditoriaSegurancaRoute
   AdminAutonomasRoute: typeof AdminAutonomasRoute
   AdminComunicacaoRoute: typeof AdminComunicacaoRoute
   AdminConvitesRoute: typeof AdminConvitesRoute
@@ -1449,6 +1488,7 @@ interface AdminRouteRouteChildren {
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
   AdminGoldensRoute: typeof AdminGoldensRoute
   AdminIntegracoesRoute: typeof AdminIntegracoesRoute
+  AdminIntegracoesFlagsRoute: typeof AdminIntegracoesFlagsRoute
   AdminNegocioRoute: typeof AdminNegocioRoute
   AdminPlanosRoute: typeof AdminPlanosRoute
   AdminQualidadeRoute: typeof AdminQualidadeRoute
@@ -1463,6 +1503,7 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAquisicaoRoute: AdminAquisicaoRoute,
   AdminAuditoriaRoute: AdminAuditoriaRoute,
+  AdminAuditoriaSegurancaRoute: AdminAuditoriaSegurancaRoute,
   AdminAutonomasRoute: AdminAutonomasRoute,
   AdminComunicacaoRoute: AdminComunicacaoRoute,
   AdminConvitesRoute: AdminConvitesRoute,
@@ -1472,6 +1513,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
   AdminGoldensRoute: AdminGoldensRoute,
   AdminIntegracoesRoute: AdminIntegracoesRoute,
+  AdminIntegracoesFlagsRoute: AdminIntegracoesFlagsRoute,
   AdminNegocioRoute: AdminNegocioRoute,
   AdminPlanosRoute: AdminPlanosRoute,
   AdminQualidadeRoute: AdminQualidadeRoute,
