@@ -77,7 +77,7 @@ const toImovel = (r: Row): Imovel => ({
 
 const toSeguimento = (r: Row): Seguimento => ({
   id: r.id,
-  tipo: (r.type === "Evento" ? "Evento" : "Tarefa") as Seguimento["tipo"],
+  tipo: (isAgendaEvent(r.type, r.due_time) ? "Evento" : "Tarefa") as Seguimento["tipo"],
   titulo: r.title,
   data: r.due_date,
   hora: r.due_time ?? undefined,
