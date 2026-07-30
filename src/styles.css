@@ -423,3 +423,32 @@ html[data-keyboard="open"] .mobile-bottom-nav {
 }
 .consult-root .c-pill:hover { background: var(--paper-2); color: var(--ink); }
 .consult-root .c-pill.active { background: rgba(184,134,59,.13); border-color: transparent; color: var(--brass-dark); }
+
+/* Conversa: balões assimétricos. Consultor em creme/âmbar à direita,
+ * Assessor em verde-sálvia à esquerda. */
+.consult-root .c-bubble {
+  max-width: 76%; padding: 10px 13px; font-size: 13.5px; line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+}
+.consult-root .c-bubble.bot {
+  background: var(--sage-bg); color: var(--ink);
+  border: 1px solid #CFDCD3; border-radius: 14px 14px 14px 4px;
+}
+.consult-root .c-bubble.user {
+  background: var(--amber-bg); color: #4A3410;
+  border: 1px solid #EADFC2; border-radius: 14px 14px 4px 14px;
+}
+.consult-root .c-bubble .c-when { display: block; margin-top: 4px; font-size: 10px; opacity: .6; }
+.consult-root .c-daysep {
+  text-align: center; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--muted); font-weight: 600; margin: 16px 0 10px;
+}
+.consult-root .c-chatbar {
+  background: var(--paper-2); border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 12.5px; padding: 12px 16px; text-align: center;
+}
+.consult-root .c-avatar {
+  width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center;
+  background: rgba(184,134,59,.15); color: var(--brass-dark);
+  font-family: "Fraunces", ui-serif, Georgia, serif; font-size: 15px; font-weight: 600;
+}
