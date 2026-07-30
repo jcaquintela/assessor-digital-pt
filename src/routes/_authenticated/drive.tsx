@@ -3,10 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   listDriveFiles,
@@ -77,6 +75,12 @@ const ENTITY_LABEL: Record<string, string> = {
   miscellaneous: "Diversos",
   prospecting_lead: "Prospeção",
   interaction: "Interação",
+};
+
+const CANAL_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  telegram: "Telegram",
+  web: "Dashboard",
 };
 
 function DrivePage() {
@@ -173,12 +177,7 @@ function DrivePage() {
             <button
               key={t.key}
               onClick={() => navigate({ search: (s: any) => ({ ...s, tab: t.key }) })}
-              className={
-                "shrink-0 rounded-full border px-3 py-1 text-sm transition " +
-                (active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background hover:bg-muted")
-              }
+              className={"c-pill shrink-0" + (active ? " active" : "")}
             >
               {t.label}
               {typeof count === "number" && count > 0 && (
@@ -189,16 +188,14 @@ function DrivePage() {
         })}
       </div>
 
-      {listQ.isLoading && <div className="text-sm text-muted-foreground">A carregar…</div>}
+      {listQ.isLoading && <div className="c-muted text-sm">A carregar…</div>}
 
       {!listQ.isLoading && files.length === 0 && (
-        <Card>
-          <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            {tab === "por_tratar"
-              ? "Nada por tratar. Bom trabalho."
-              : "Sem ficheiros nesta vista. Envia pelo WhatsApp ou usa Carregar."}
-          </CardContent>
-        </Card>
+        <div className="c-empty">
+          {tab === "por_tratar"
+            ? "Nada por tratar. Bom trabalho."
+            : "Sem ficheiros nesta vista. Envia pelo WhatsApp ou usa Carregar."}
+        </div>
       )}
 
       <div className="space-y-2">
@@ -211,42 +208,49 @@ function DrivePage() {
               f.processing_status,
             );
           return (
-            <Link key={f.id} to="/drive/$id" params={{ id: f.id }} className="block">
-              <Card className="transition hover:bg-muted/50">
-                <CardContent className="flex items-start justify-between gap-3 p-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="truncate text-sm font-medium">
-                          {f.original_file_name ?? "Ficheiro"}
-                        </div>
-                        {needsReview && (
-                          <Badge variant="outline" className="gap-1 text-xs">
-                            <AlertCircle className="h-3 w-3" /> Por tratar
-                          </Badge>
-                        )}
+            <Link key={f.id} to="/drive/$id" params={{ id: f.id }} className="c-card c-card-hover block p-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <Icon className="c-muted mt-0.5 h-5 w-5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="truncate text-[14px] font-semibold">
+                        {f.original_file_name ?? "Ficheiro"}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {f.document_type ?? f.classification ?? "Ficheiro"} ·{" "}
-                        {formatDate(f.created_at)} · {formatSize(f.size_bytes ?? 0)} · {f.channel}
-                      </div>
-                      {links.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {links.slice(0, 3).map((l) => (
-                            <Badge key={l.entity_id + l.entity_type} variant="secondary" className="text-xs">
-                              {ENTITY_LABEL[l.entity_type] ?? l.entity_type}
-                            </Badge>
-                          ))}
-                        </div>
+                      {needsReview && (
+                        <span className="c-badge warn">
+                          <AlertCircle className="h-3 w-3" /> Por tratar
+                        </span>
                       )}
                     </div>
+                    <div className="c-muted mt-1 text-[11.5px]">
+                      {f.document_type ?? f.classification ?? "Ficheiro"} ·{" "}
+                      <span className="c-mono">{formatDate(f.created_at)}</span> ·{" "}
+                      <span className="c-mono">{formatSize(f.size_bytes ?? 0)}</span> · recebido via{" "}
+                      {CANAL_LABEL[f.channel] ?? f.channel}
+                    </div>
+                    {links.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className="c-muted text-[11px]">Ligado a</span>
+                        {links.slice(0, 3).map((l) => (
+                          <span key={l.entity_id + l.entity_type} className="c-badge">
+                            {ENTITY_LABEL[l.entity_type] ?? l.entity_type}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </Link>
           );
         })}
+      </div>
+
+      {/* Promessa visível do Drive Inteligente (flag drive.v1, ainda sem leitor no motor). */}
+      <div className="c-note mt-5">
+        Drive Inteligente a caminho — um ficheiro poderá ligar-se a mais do que um registo
+        (ex.: uma escritura ligada à Pessoa e ao Imóvel ao mesmo tempo).
       </div>
     </AppShell>
   );
