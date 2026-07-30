@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, Check } from "lucide-react";
+import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, Check, AlertTriangle, CreditCard } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "@/lib/assessor/assessor-name";
-import { tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
+import { MODULE_LABEL, planSummary, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
+import { isPlaceholderEmail, isValidEmail } from "@/lib/profile/email";
 import { CHANNEL_LABEL, maskContact, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
 import {
   getWhatsAppLink,
@@ -45,13 +46,154 @@ function DefinicoesPage() {
     <AppShell>
       <PageHeader title="Definições" subtitle="O teu assessor, autonomia, canal e conta." />
       <div className="flex flex-col gap-4">
+        <PerfilSection />
         <AssessorNameSection />
+        <PlanoSection />
         <SupremeSection />
         <CanalSection />
         <CalendarioSection />
         <ContaSection />
       </div>
     </AppShell>
+  );
+}
+
+/* ---------------- O teu perfil ---------------- */
+
+function PerfilSection() {
+  const [uid, setUid] = useState("");
+  const [saved, setSaved] = useState<{ name: string; email: string }>({ name: "", email: "" });
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) { setLoading(false); return; }
+      setUid(data.user.id);
+      const { data: prof } = await supabase
+        .from("profiles").select("name, email" as never).eq("id", data.user.id).maybeSingle();
+      const p = (prof as { name?: string | null; email?: string | null } | null) ?? {};
+      const next = { name: p.name ?? "", email: p.email ?? data.user.email ?? "" };
+      setSaved(next); setName(next.name); setEmail(next.email);
+      setLoading(false);
+    })();
+  }, []);
+
+  const placeholder = isPlaceholderEmail(saved.email);
+  const dirty = name.trim() !== saved.name || email.trim() !== saved.email;
+
+  const save = async () => {
+    if (!uid) return;
+    const nm = name.trim();
+    const em = email.trim();
+    if (!nm) { toast.error("Diz-nos como te chamas."); return; }
+    if (!isValidEmail(em)) { toast.error("Escreve um email válido que uses mesmo."); return; }
+    setSaving(true);
+    const { error } = await supabase.from("profiles").update({ name: nm, email: em } as never).eq("id", uid);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    setSaved({ name: nm, email: em });
+    toast.success("Perfil atualizado.");
+  };
+
+  return (
+    <Section title="O teu perfil">
+      {loading ? (
+        <p className="c-muted text-sm">A carregar…</p>
+      ) : (
+        <>
+          {placeholder && (
+            <div
+              className="mb-4 flex items-start gap-2 rounded-[13px] border px-3 py-2.5 text-[13px]"
+              style={{ borderColor: "var(--amber)", background: "rgba(214,158,46,.10)", color: "var(--amber)" }}
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Falta confirmar o teu email — sem ele não recebes comunicações importantes.</span>
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="perfil-nome" className="c-eyebrow">O teu nome</label>
+              <input
+                id="perfil-nome" value={name} onChange={(e) => setName(e.target.value)}
+                maxLength={80} placeholder="Como te chamas"
+                className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px] text-[var(--ink)] outline-none focus-visible:border-[var(--brass)]"
+              />
+            </div>
+            <div>
+              <label htmlFor="perfil-email" className="c-eyebrow">O teu email</label>
+              <input
+                id="perfil-email" type="email" inputMode="email" autoComplete="email"
+                value={placeholder && email === saved.email ? "" : email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={placeholder ? "email@exemplo.pt" : undefined}
+                className="mt-1 w-full rounded-[10px] border bg-white px-3 py-2 text-[14px] text-[var(--ink)] outline-none focus-visible:border-[var(--brass)]"
+                style={{ borderColor: placeholder ? "var(--amber)" : "var(--line)" }}
+              />
+            </div>
+          </div>
+          <p className="c-muted mt-2 text-[12px]">
+            Este é o teu nome e o teu email — não o do teu assessor.
+          </p>
+          <button className="c-cta mt-3" onClick={save} disabled={saving || !dirty}>Guardar</button>
+        </>
+      )}
+    </Section>
+  );
+}
+
+/* ---------------- Plano e subscrição ---------------- */
+
+function PlanoSection() {
+  const { data: tierData } = useEffectiveTier();
+  const summary = planSummary(tierData?.tier);
+  const incluidos = summary.modules.filter((m) => m.available);
+  const bloqueados = summary.modules.filter((m) => !m.available);
+
+  return (
+    <Section title="Plano e subscrição">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="c-badge ok">{tierLabel(summary.tier)}</span>
+        <span className="c-muted text-[13px]">Autonomia até <strong>{summary.autonomyLabel}</strong>.</span>
+      </div>
+
+      <p className="c-eyebrow mt-4">Áreas disponíveis</p>
+      <ul className="mt-1.5 flex flex-wrap gap-1.5">
+        {incluidos.map((m) => (
+          <li key={m.path} className="c-pill inline-flex items-center gap-1.5">
+            <Check className="h-3.5 w-3.5" /> {MODULE_LABEL[m.path]}
+          </li>
+        ))}
+      </ul>
+      {bloqueados.length > 0 && (
+        <>
+          <p className="c-eyebrow mt-4">Só em planos superiores</p>
+          <ul className="mt-1.5 flex flex-wrap gap-1.5">
+            {bloqueados.map((m) => (
+              <li key={m.path} className="c-pill c-muted inline-flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5" /> {MODULE_LABEL[m.path]} · {tierLabel(m.min)}+
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <a className="c-cta" href="/planos#planos" target="_blank" rel="noopener noreferrer">
+          <ExternalLink className="h-3.5 w-3.5" /> Comparar planos
+        </a>
+        <button className="c-btn" disabled>
+          <CreditCard className="h-4 w-4" /> Faturação
+        </button>
+        <span className="c-badge">Em breve</span>
+      </div>
+      <p className="c-muted mt-3 text-[12px] leading-relaxed">
+        A mudança de plano ainda não é automática. Quando a faturação estiver ligada, tratas de tudo por aqui.
+      </p>
+    </Section>
   );
 }
 
