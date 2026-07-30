@@ -109,6 +109,19 @@ export async function createPendingAction(
   // MVP invariant: only one active pending action per (user, channel).
   // Any older draft is cancelled BEFORE the new one is inserted, so a
   // confirmation/refusal cannot possibly land on a stale row.
+  // Uma proposta por confirmar que é substituída nunca pode desaparecer em
+  // silêncio (caso real: "Casa Teste A" perdida quando chegou "Casa Teste B").
+  // Guardamos o que se perdeu em Diversos.
+  const { data: superseded } = await supabase
+    .from("pending_actions")
+    .select("id, intent, structured_payload, original_content")
+    .eq("user_id", input.userId)
+    .eq("channel", input.channel)
+    .in("status", [
+      "pending_confirmation",
+      "collecting_information",
+      "correction_pending",
+    ]);
   await supabase
     .from("pending_actions")
     .update({
@@ -122,6 +135,22 @@ export async function createPendingAction(
       "collecting_information",
       "correction_pending",
     ]);
+  for (const row of (superseded as any[]) ?? []) {
+    if (row.intent === "classify_file") continue;
+    const payload = row.structured_payload ?? {};
+    const label = payload.title || payload.description || row.original_content || row.intent;
+    try {
+      await supabase.from("miscellaneous_items").insert({
+        user_id: input.userId,
+        title: `Proposta não confirmada: ${String(label).slice(0, 80)}`,
+        original_content: JSON.stringify(payload),
+        summary: "Ficou por confirmar porque entretanto chegou outro assunto.",
+        category: "por_tratar",
+        source_channel: input.channel,
+        status: "por_tratar",
+      } as never);
+    } catch { /* nunca bloquear o turno por causa do registo de segurança */ }
+  }
   const { data, error } = await supabase
     .from("pending_actions")
     .insert({

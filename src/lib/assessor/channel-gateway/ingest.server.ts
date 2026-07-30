@@ -5,8 +5,17 @@
 import { findUserIdByChannel } from "@/lib/assessor/channels.server";
 import type { AdapterSendResult, ChannelAdapter, NormalizedInbound } from "./types";
 import type { EngineOutcome } from "@/lib/assessor/engine.server";
+import { withConversationLock } from "./lock.server";
 
 export async function runInboundPipeline(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+): Promise<void> {
+  return runInboundPipelineInner(adapter, supabaseAdmin, inbound);
+}
+
+async function runInboundPipelineInner(
   adapter: ChannelAdapter,
   supabaseAdmin: any,
   inbound: NormalizedInbound,
@@ -53,6 +62,21 @@ export async function runInboundPipeline(
     return;
   }
 
+  // 7b. A partir daqui há estado conversacional em jogo (rascunhos, memória).
+  // Um turno de cada vez por consultor+canal — mensagens seguidas ficam em
+  // fila em vez de correrem em paralelo sobre o mesmo rascunho.
+  await withConversationLock(supabaseAdmin, userId, inbound.channel, () =>
+    routeInbound(adapter, supabaseAdmin, inbound, userId as string, persistedUuid),
+  );
+}
+
+async function routeInbound(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  persistedUuid: string | null,
+): Promise<void> {
   // 8. Rotear por tipo.
   if (inbound.messageType === "text" || inbound.messageType === "callback") {
     const content =

@@ -890,6 +890,30 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_locks: {
+        Row: {
+          channel: string
+          created_at: string
+          holder: string | null
+          locked_until: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          holder?: string | null
+          locked_until: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          holder?: string | null
+          locked_until?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversation_states: {
         Row: {
           active_person_id: string | null
@@ -2471,8 +2495,21 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      release_conversation_lock: {
+        Args: { _channel: string; _holder?: string; _user_id: string }
+        Returns: undefined
+      }
       tier_at_least: {
         Args: { _min: string; _user_id: string }
+        Returns: boolean
+      }
+      try_acquire_conversation_lock: {
+        Args: {
+          _channel: string
+          _holder?: string
+          _ttl_seconds?: number
+          _user_id: string
+        }
         Returns: boolean
       }
     }
