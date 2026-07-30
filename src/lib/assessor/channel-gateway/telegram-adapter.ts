@@ -195,6 +195,33 @@ export const telegramAdapter: ChannelAdapter = {
     const text = inbound.text ?? "";
     const code = text ? extractInviteCode(text) : null;
     if (!code) {
+      // Código promocional: alternativa ao convite normal, aplica o tier do código.
+      const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY } = await import("@/lib/admin/promo.server");
+      if (text && looksLikePromoCode(text)) {
+        const promo = await redeemPromoCode(supabaseAdmin, text);
+        if (!promo.ok) {
+          if (promo.reason !== "not_found") {
+            await provider.sendText({ chatId: inbound.externalConversationId, text: PROMO_REPLY[promo.reason] });
+            return { handled: true };
+          }
+        } else {
+          const claimed = await createShadowAccount(
+            supabaseAdmin,
+            inbound.externalConversationId,
+            inbound.sender,
+            promo.tier,
+          );
+          if (!claimed.ok) {
+            await provider.sendText({ chatId: inbound.externalConversationId, text: claimed.reply });
+            return { handled: true };
+          }
+          await provider.sendText({
+            chatId: inbound.externalConversationId,
+            text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
+          });
+          return { handled: true, userId: claimed.userId };
+        }
+      }
       await provider.sendText({ chatId: inbound.externalConversationId, text: REPLY_PRIVATE });
       return { handled: true };
     }
@@ -260,6 +287,25 @@ async function claimInvite(
     return { ok: false, reply: REPLY_INVITE_EXPIRED };
   }
 
+  const created = await createShadowAccount(supabaseAdmin, chatId, sender, invite.subscription_tier ?? "base");
+  if (!created.ok) return created;
+  const userId = created.userId;
+
+  await supabaseAdmin
+    .from("telegram_invites")
+    .update({ used_by: userId, used_at: new Date().toISOString(), used_chat_id: chatId })
+    .eq("code", code);
+
+  return { ok: true, userId };
+}
+
+// Cria a shadow account de Telegram com o tier indicado (convite ou código promocional).
+async function createShadowAccount(
+  supabaseAdmin: any,
+  chatId: string,
+  sender: NormalizedInbound["sender"],
+  tier: string,
+): Promise<{ ok: true; userId: string } | { ok: false; reply: string }> {
   const email = `tg-${chatId}@shadow.assessor.local`;
   const displayName =
     [sender?.firstName, sender?.lastName].filter(Boolean).join(" ").trim() ||
@@ -284,7 +330,7 @@ async function claimInvite(
   await supabaseAdmin
     .from("profiles")
     .update({
-      subscription_tier: invite.subscription_tier ?? "base",
+      subscription_tier: tier,
       primary_channel: "telegram",
       name: displayName,
     })
@@ -298,11 +344,6 @@ async function claimInvite(
     );
 
   await linkChannelToUser(supabaseAdmin, "telegram", chatId, userId, displayName);
-
-  await supabaseAdmin
-    .from("telegram_invites")
-    .update({ used_by: userId, used_at: new Date().toISOString(), used_chat_id: chatId })
-    .eq("code", code);
 
   return { ok: true, userId };
 }
