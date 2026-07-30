@@ -272,7 +272,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [qc]);
 
   const eliminarSeguimento = useCallback(async (id: string) => {
-    syncCalendars(id, "delete");
+    // Espera pela remoção externa antes de apagar localmente: o registo de
+    // ligação desaparece em cascata com o compromisso.
+    await pushFollowUpToCalendars({ data: { followUpId: id, action: "delete" } }).catch(() => {});
     const { error } = await supabase.from("follow_ups").delete().eq("id", id);
     if (error) throw error;
     invalidate("follow_ups");
