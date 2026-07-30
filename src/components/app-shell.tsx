@@ -71,7 +71,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
   return (
     <div
       className={cn(
-        "bg-background text-foreground",
+        "consult-root text-foreground",
         // Mobile: fixed viewport grid (header?/main/nav). Desktop: normal flow.
         "grid md:block",
         fullBleed
