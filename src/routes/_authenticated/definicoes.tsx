@@ -444,7 +444,6 @@ function CalendarioSection() {
 
 function ContaSection() {
   const navigate = useNavigate();
-  const { data: tierData } = useEffectiveTier();
   const [email, setEmail] = useState("");
 
   useEffect(() => {
@@ -461,14 +460,10 @@ function ContaSection() {
 
   return (
     <Section title="Conta">
-      <dl className="grid gap-3 sm:grid-cols-3">
+      <dl className="grid gap-3 sm:grid-cols-2">
         <div>
-          <dt className="c-eyebrow">Email</dt>
+          <dt className="c-eyebrow">Email de acesso</dt>
           <dd className="mt-1 truncate text-[13.5px]">{email || "—"}</dd>
-        </div>
-        <div>
-          <dt className="c-eyebrow">Plano</dt>
-          <dd className="mt-1 text-[13.5px]">{tierLabel(tierData?.tier)}</dd>
         </div>
         <div>
           <dt className="c-eyebrow">Idioma</dt>
