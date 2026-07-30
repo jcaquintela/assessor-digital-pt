@@ -222,11 +222,25 @@ export const telegramAdapter: ChannelAdapter = {
             chatId: inbound.externalConversationId,
             text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
           });
-          return { handled: true, userId: claimed.userId };
+          return { handled: true, userId: claimed.userId, stopPipeline: true };
         }
       }
-      await provider.sendText({ chatId: inbound.externalConversationId, text: REPLY_PRIVATE });
-      return { handled: true };
+      // Nível 0 grátis: registo automático na primeira mensagem, sem convite.
+      const auto = await createShadowAccount(
+        supabaseAdmin,
+        inbound.externalConversationId,
+        inbound.sender,
+        "base",
+      );
+      if (!auto.ok) {
+        await provider.sendText({ chatId: inbound.externalConversationId, text: auto.reply });
+        return { handled: true };
+      }
+      await provider.sendText({
+        chatId: inbound.externalConversationId,
+        text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
+      });
+      return { handled: true, userId: auto.userId, stopPipeline: true };
     }
     const claim = await claimInvite(supabaseAdmin, code, inbound.externalConversationId, inbound.sender);
     if (!claim.ok) {
@@ -238,7 +252,7 @@ export const telegramAdapter: ChannelAdapter = {
       chatId: inbound.externalConversationId,
       text: REPLY_ONBOARDING(firstName),
     });
-    return { handled: true, userId: claim.userId };
+    return { handled: true, userId: claim.userId, stopPipeline: true };
   },
 
   async fetchMedia(inbound: NormalizedInbound): Promise<AdapterMediaBytes> {
