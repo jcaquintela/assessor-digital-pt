@@ -240,23 +240,22 @@ function HojePage() {
       <header className="mb-6 space-y-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              {greeting(now)}{assessorName !== "Assessor" ? "" : ", Consultor"}
-              {assessorName !== "Assessor" ? "." : ""}
+            <h1 className="c-serif text-[26px] font-medium md:text-[34px]">
+              {greeting(now)}{firstName ? `, ${firstName}` : ""}.
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Hoje tens <strong className="text-foreground">{prioridadesCount}</strong> prioridade{prioridadesCount === 1 ? "" : "s"} e{" "}
-              <strong className="text-foreground">{compromissosCount}</strong> compromisso{compromissosCount === 1 ? "" : "s"}.
+            <p className="c-soft mt-1 text-sm">
+              Hoje tens <strong style={{ color: "var(--ink)" }}>{prioridadesCount}</strong> prioridade{prioridadesCount === 1 ? "" : "s"} e{" "}
+              <strong style={{ color: "var(--ink)" }}>{compromissosCount}</strong> compromisso{compromissosCount === 1 ? "" : "s"}.
               {" "}
-              <span className="text-muted-foreground">
+              <span className="c-mono c-muted text-xs">
                 {new Intl.DateTimeFormat("pt-PT", { weekday: "long", day: "2-digit", month: "long" }).format(now)}
               </span>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="secondary" size="sm" className="gap-1.5">
-              <Link to="/assessor"><MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}</Link>
-            </Button>
+            <Link to="/assessor" className="c-cta">
+              <MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
+            </Link>
           </div>
         </div>
       </header>
