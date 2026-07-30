@@ -124,15 +124,37 @@ function OportunidadeDetail() {
   };
 
   const apagar = async () => {
-    if (!confirm("Apagar esta oportunidade?")) return;
+    setBusy(true);
     try {
+      // Apagar = apagar tudo o que está ligado (movimentos e ligações de ficheiros).
+      await supabase.from("financial_movements").delete().eq("opportunity_id", op.id);
+      await supabase.from("file_links").delete().eq("entity_type", "opportunity").eq("entity_id", op.id);
       await deleteOportunidade(op.id);
-      toast.success("Oportunidade apagada.");
+      toast.success("Oportunidade e registos ligados apagados.");
       navigate({ to: "/oportunidades" });
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+      setConfirmDelete(false);
     }
   };
+
+  const arquivar = async () => {
+    setBusy(true);
+    try {
+      await updateOportunidade(op.id, { estado: "Arquivada" });
+      setEstado("Arquivada");
+      toast.success("Oportunidade arquivada. Comissões e ficheiros mantêm-se.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const producao = comsOp.reduce((s, c) => s + c.valor, 0);
+  const comissaoRecebida = comsOp.filter((c) => c.estado === "Recebida").reduce((s, c) => s + c.valor, 0);
 
   return (
     <AppShell>
@@ -146,8 +168,11 @@ function OportunidadeDetail() {
         subtitle={imovel?.titulo ?? "Sem imóvel associado"}
         action={
           <div className="flex gap-2">
-            <Button variant="ghost" className="text-destructive" onClick={apagar}>
-              <Trash2 className="mr-1 h-4 w-4" /> Apagar
+            <Button variant="ghost" onClick={arquivar} disabled={busy || op.estado === "Arquivada"}>
+              <Archive className="mr-1 h-4 w-4" /> Arquivar
+            </Button>
+            <Button variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)} disabled={busy}>
+              <Trash2 className="mr-1 h-4 w-4" /> Eliminar
             </Button>
             <Button onClick={guardar} disabled={!dirty || busy}>
               <Save className="mr-1 h-4 w-4" /> Guardar
@@ -158,6 +183,8 @@ function OportunidadeDetail() {
       <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <Badge variant="secondary">{op.estado}</Badge>
         <span>Valor: <strong className="text-foreground">{formatEUR(op.valor)}</strong></span>
+        <span>Produção: <strong className="text-foreground">{formatEUR(producao)}</strong></span>
+        <span>Comissão recebida: <strong className="text-foreground">{formatEUR(comissaoRecebida)}</strong></span>
         <span>Probabilidade: <strong className="text-foreground">{op.probabilidade}</strong></span>
       </div>
 
@@ -324,6 +351,23 @@ function OportunidadeDetail() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar esta oportunidade?</DialogTitle>
+            <DialogDescription>
+              Apaga também {comsOp.length} movimento{comsOp.length === 1 ? "" : "s"} financeiro
+              {comsOp.length === 1 ? "" : "s"} e as ligações de ficheiros associadas. Não há forma de recuperar.
+              Se só queres tirar isto da frente, usa Arquivar.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)} disabled={busy}>Cancelar</Button>
+            <Button variant="destructive" onClick={apagar} disabled={busy}>Eliminar tudo</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
