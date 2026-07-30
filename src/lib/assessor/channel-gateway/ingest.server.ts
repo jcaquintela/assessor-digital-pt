@@ -249,8 +249,7 @@ async function handleInboundMedia(
               content: engineText,
               receivedAt: inbound.receivedAt,
               sourceMessageId: persistedUuid,
-              fileId: result.fileId ?? null,
-            } as any);
+            });
             await deliverReply(adapter, supabaseAdmin, {
               userId,
               externalConversationId: inbound.externalConversationId,
