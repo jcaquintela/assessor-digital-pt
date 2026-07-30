@@ -117,3 +117,23 @@ export const syncCalendarNow = createServerFn({ method: "POST" })
     const { pullAllForUser } = await import("./sync.server");
     return await pullAllForUser(supabaseAdmin, context.userId);
   });
+
+// Replica no Google/Outlook uma alteração feita no Afonso (dashboard ou motor).
+export const pushFollowUpToCalendars = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      followUpId: z.string().uuid(),
+      action: z.enum(["upsert", "delete"]).default("upsert"),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { pushEventToProviders } = await import("./sync.server");
+    await pushEventToProviders(supabaseAdmin, {
+      userId: context.userId,
+      followUpId: data.followUpId,
+      action: data.action,
+    });
+    return { ok: true };
+  });

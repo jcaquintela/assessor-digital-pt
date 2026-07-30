@@ -31,6 +31,7 @@ import {
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
+import { pushEventToProviders } from "@/lib/calendar/sync.server";
 import {
   upsertReminder,
   rescheduleReminder,
