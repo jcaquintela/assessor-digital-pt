@@ -1,12 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEUR } from "@/lib/demo-data";
-import { Receipt, Wallet, FileText, ChevronRight, Pencil } from "lucide-react";
+import { Receipt, Wallet, FileText, ChevronRight, Pencil, Download } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
 import { EditMovementDialog } from "@/components/negocio/edit-movement-dialog";
+import { exportMovements } from "@/lib/export/export.functions";
+import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 
 export const Route = createFileRoute("/_authenticated/negocio/")({
   head: () => ({
@@ -79,6 +82,29 @@ function NegocioPage() {
   const despesas = rows.filter((m) => m.type === "expense");
   const [editId, setEditId] = useState<string | null>(null);
   const emEdicao = rows.find((m) => m.id === editId) ?? null;
+  const fetchExport = useServerFn(exportMovements);
+  const [aExportar, setAExportar] = useState(false);
+
+  async function exportarCsv() {
+    setAExportar(true);
+    try {
+      const data = await fetchExport();
+      const csv = toCsv(
+        ["Tipo", "Valor (EUR)", "Estado", "Data", "Descrição", "Categoria"],
+        data.map((m) => [
+          m.type === "expense" ? "Despesa" : "Comissão",
+          Number(m.amount ?? 0),
+          statusTone(m.status).label,
+          csvDate(m.movement_date),
+          m.description,
+          m.category ?? "",
+        ]),
+      );
+      downloadText(`negocio-afonso-${dateStamp()}.csv`, "text/csv", csv);
+    } finally {
+      setAExportar(false);
+    }
+  }
 
   return (
     <AppShell>
@@ -94,6 +120,9 @@ function NegocioPage() {
         <Link to="/negocio/faturacao" className="c-btn">
           <FileText className="h-4 w-4" /> Faturação
         </Link>
+        <button type="button" className="c-btn" onClick={exportarCsv} disabled={aExportar}>
+          <Download className="h-4 w-4" /> {aExportar ? "A gerar…" : "CSV"}
+        </button>
       </div>
 
       {movs.isLoading && <div className="c-muted text-sm">A carregar…</div>}

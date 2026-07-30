@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { formatData } from "@/lib/demo-data";
-import { ChevronRight, Pencil, Search } from "lucide-react";
+import { ChevronRight, Download, Pencil, Search } from "lucide-react";
 import { EditPersonDialog } from "@/components/pessoas/edit-person-dialog";
+import { exportPeople } from "@/lib/export/export.functions";
+import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 
 export const Route = createFileRoute("/_authenticated/pessoas")({
   head: () => ({
@@ -24,6 +27,30 @@ function PessoasPage() {
   const [q, setQ] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const emEdicao = pessoas.find((p) => p.id === editId) ?? null;
+  const fetchPeople = useServerFn(exportPeople);
+  const [aExportar, setAExportar] = useState<"csv" | "vcf" | null>(null);
+
+  async function exportar(tipo: "csv" | "vcf") {
+    setAExportar(tipo);
+    try {
+      const rows = await fetchPeople();
+      const stamp = dateStamp();
+      if (tipo === "csv") {
+        const csv = toCsv(
+          ["Nome", "Telefone", "Email", "Relação", "Notas", "Criado em"],
+          rows.map((p) => [p.name, p.phone, p.email, p.relationship_type, p.summary, csvDate(p.created_at)]),
+        );
+        downloadText(`pessoas-afonso-${stamp}.csv`, "text/csv", csv);
+      } else {
+        const vcf = buildVCards(
+          rows.map((p) => ({ name: p.name, phone: p.phone, email: p.email, note: p.summary })),
+        );
+        downloadText(`contactos-afonso-${stamp}.vcf`, "text/vcard", vcf);
+      }
+    } finally {
+      setAExportar(null);
+    }
+  }
 
   const term = q.trim().toLowerCase();
   const digits = term.replace(/\D/g, "");
@@ -40,6 +67,14 @@ function PessoasPage() {
         title="Pessoas"
         subtitle={`${pessoas.length} contacto${pessoas.length === 1 ? "" : "s"} · registados por conversa`}
       />
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button type="button" className="c-btn" onClick={() => exportar("csv")} disabled={aExportar !== null}>
+          <Download className="h-4 w-4" /> {aExportar === "csv" ? "A gerar…" : "CSV"}
+        </button>
+        <button type="button" className="c-btn" onClick={() => exportar("vcf")} disabled={aExportar !== null}>
+          <Download className="h-4 w-4" /> {aExportar === "vcf" ? "A gerar…" : "Contactos (.vcf)"}
+        </button>
+      </div>
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} />
         <Input
