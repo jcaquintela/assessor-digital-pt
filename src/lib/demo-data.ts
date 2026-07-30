@@ -31,7 +31,8 @@ export type OportunidadeEstado =
   | "Proposta"
   | "CPCV"
   | "Escritura"
-  | "Perdida";
+  | "Perdida"
+  | "Arquivada";
 
 export interface Oportunidade {
   id: string;

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,12 +10,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatData, formatEUR, type Oportunidade, type OportunidadeEstado, type OportunidadeTipo } from "@/lib/demo-data";
-import { ChevronLeft, Trash2, Save, MessageSquarePlus } from "lucide-react";
+import { ChevronLeft, Trash2, Save, MessageSquarePlus, Archive } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 const TIPOS: OportunidadeTipo[] = ["Compra", "Venda", "Potencial Angariação", "Arrendamento", "Investimento", "Recomendação"];
-const ESTADOS: OportunidadeEstado[] = ["Novo", "Em conversa", "Visita", "Proposta", "CPCV", "Escritura", "Perdida"];
+const ESTADOS: OportunidadeEstado[] = ["Novo", "Em conversa", "Visita", "Proposta", "CPCV", "Escritura", "Perdida", "Arquivada"];
 const PROBS: Oportunidade["probabilidade"][] = ["Baixa", "Média", "Alta"];
+
+// Os registos criados pelo motor gravam em minúsculas ("venda", "fechado").
+// Normalizamos para os valores da ficha, senão os selects aparecem vazios.
+function pick<T extends string>(options: readonly T[], raw: unknown, fallback: T): T {
+  const v = String(raw ?? "").trim().toLowerCase();
+  return options.find((o) => o.toLowerCase() === v) ?? fallback;
+}
+const ESTADO_ALIAS: Record<string, OportunidadeEstado> = {
+  aberto: "Novo", aberta: "Novo", fechado: "Escritura", fechada: "Escritura",
+  ganho: "Escritura", ganha: "Escritura", perdido: "Perdida", arquivado: "Arquivada",
+};
+const normEstado = (raw: unknown): OportunidadeEstado =>
+  ESTADO_ALIAS[String(raw ?? "").trim().toLowerCase()] ?? pick(ESTADOS, raw, "Novo");
+const normTipo = (raw: unknown): OportunidadeTipo => pick(TIPOS, raw, "Compra");
+const normProb = (raw: unknown): Oportunidade["probabilidade"] => pick(PROBS, raw, "Média");
 
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
   head: () => ({
@@ -39,10 +58,10 @@ function OportunidadeDetail() {
 
   const op = useMemo(() => oportunidades.find((o) => o.id === id), [oportunidades, id]);
 
-  const [tipo, setTipo] = useState<OportunidadeTipo>(op?.tipo ?? "Compra");
-  const [estado, setEstado] = useState<OportunidadeEstado>(op?.estado ?? "Novo");
+  const [tipo, setTipo] = useState<OportunidadeTipo>(normTipo(op?.tipo));
+  const [estado, setEstado] = useState<OportunidadeEstado>(normEstado(op?.estado));
   const [valor, setValor] = useState<string>(String(op?.valor ?? 0));
-  const [probabilidade, setProbabilidade] = useState<Oportunidade["probabilidade"]>(op?.probabilidade ?? "Média");
+  const [probabilidade, setProbabilidade] = useState<Oportunidade["probabilidade"]>(normProb(op?.probabilidade));
   const [pessoaId, setPessoaId] = useState<string>(op?.pessoaId ?? "");
   const [imovelId, setImovelId] = useState<string>(op?.imovelId ?? "");
   const [proximaAcao, setProximaAcao] = useState(op?.proximaAcao ?? "");
@@ -50,6 +69,21 @@ function OportunidadeDetail() {
   const [notas, setNotas] = useState(op?.notas ?? "");
   const [interacao, setInteracao] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Os dados chegam em assíncrono: sincroniza o formulário quando a ficha carrega.
+  useEffect(() => {
+    if (!op) return;
+    setTipo(normTipo(op.tipo));
+    setEstado(normEstado(op.estado));
+    setValor(String(op.valor ?? 0));
+    setProbabilidade(normProb(op.probabilidade));
+    setPessoaId(op.pessoaId ?? "");
+    setImovelId(op.imovelId ?? "");
+    setProximaAcao(op.proximaAcao ?? "");
+    setProximaAcaoData(op.proximaAcaoData ?? "");
+    setNotas(op.notas ?? "");
+  }, [op?.id]);
 
   if (loading && !op) {
     return <AppShell><PageHeader title="A carregar…" /></AppShell>;
@@ -72,10 +106,10 @@ function OportunidadeDetail() {
   const comsOp = comissoes.filter((c) => c.oportunidadeId === op.id);
 
   const dirty =
-    tipo !== op.tipo ||
-    estado !== op.estado ||
+    tipo !== normTipo(op.tipo) ||
+    estado !== normEstado(op.estado) ||
     Number(valor) !== op.valor ||
-    probabilidade !== op.probabilidade ||
+    probabilidade !== normProb(op.probabilidade) ||
     (pessoaId || "") !== (op.pessoaId || "") ||
     (imovelId || "") !== (op.imovelId || "") ||
     (proximaAcao || "") !== (op.proximaAcao || "") ||
@@ -119,15 +153,37 @@ function OportunidadeDetail() {
   };
 
   const apagar = async () => {
-    if (!confirm("Apagar esta oportunidade?")) return;
+    setBusy(true);
     try {
+      // Apagar = apagar tudo o que está ligado (movimentos e ligações de ficheiros).
+      await supabase.from("financial_movements").delete().eq("opportunity_id", op.id);
+      await supabase.from("file_links").delete().eq("entity_type", "opportunity").eq("entity_id", op.id);
       await deleteOportunidade(op.id);
-      toast.success("Oportunidade apagada.");
+      toast.success("Oportunidade e registos ligados apagados.");
       navigate({ to: "/oportunidades" });
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+      setConfirmDelete(false);
     }
   };
+
+  const arquivar = async () => {
+    setBusy(true);
+    try {
+      await updateOportunidade(op.id, { estado: "Arquivada" });
+      setEstado("Arquivada");
+      toast.success("Oportunidade arquivada. Comissões e ficheiros mantêm-se.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const producao = comsOp.reduce((s, c) => s + c.valor, 0);
+  const comissaoRecebida = comsOp.filter((c) => c.estado === "Recebida").reduce((s, c) => s + c.valor, 0);
 
   return (
     <AppShell>
@@ -137,12 +193,15 @@ function OportunidadeDetail() {
         </Button>
       </div>
       <PageHeader
-        title={`${op.tipo}${pessoa ? ` · ${pessoa.nome}` : ""}`}
+        title={`${normTipo(op.tipo)}${pessoa ? ` · ${pessoa.nome}` : ""}`}
         subtitle={imovel?.titulo ?? "Sem imóvel associado"}
         action={
           <div className="flex gap-2">
-            <Button variant="ghost" className="text-destructive" onClick={apagar}>
-              <Trash2 className="mr-1 h-4 w-4" /> Apagar
+            <Button variant="ghost" onClick={arquivar} disabled={busy || normEstado(op.estado) === "Arquivada"}>
+              <Archive className="mr-1 h-4 w-4" /> Arquivar
+            </Button>
+            <Button variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)} disabled={busy}>
+              <Trash2 className="mr-1 h-4 w-4" /> Eliminar
             </Button>
             <Button onClick={guardar} disabled={!dirty || busy}>
               <Save className="mr-1 h-4 w-4" /> Guardar
@@ -151,9 +210,11 @@ function OportunidadeDetail() {
         }
       />
       <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <Badge variant="secondary">{op.estado}</Badge>
+        <Badge variant="secondary">{normEstado(op.estado)}</Badge>
         <span>Valor: <strong className="text-foreground">{formatEUR(op.valor)}</strong></span>
-        <span>Probabilidade: <strong className="text-foreground">{op.probabilidade}</strong></span>
+        <span>Produção: <strong className="text-foreground">{formatEUR(producao)}</strong></span>
+        <span>Comissão recebida: <strong className="text-foreground">{formatEUR(comissaoRecebida)}</strong></span>
+        <span>Probabilidade: <strong className="text-foreground">{normProb(op.probabilidade)}</strong></span>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -319,6 +380,23 @@ function OportunidadeDetail() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar esta oportunidade?</DialogTitle>
+            <DialogDescription>
+              Apaga também {comsOp.length} movimento{comsOp.length === 1 ? "" : "s"} financeiro
+              {comsOp.length === 1 ? "" : "s"} e as ligações de ficheiros associadas. Não há forma de recuperar.
+              Se só queres tirar isto da frente, usa Arquivar.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)} disabled={busy}>Cancelar</Button>
+            <Button variant="destructive" onClick={apagar} disabled={busy}>Eliminar tudo</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
