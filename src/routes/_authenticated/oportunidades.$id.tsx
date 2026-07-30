@@ -106,10 +106,10 @@ function OportunidadeDetail() {
   const comsOp = comissoes.filter((c) => c.oportunidadeId === op.id);
 
   const dirty =
-    tipo !== op.tipo ||
-    estado !== op.estado ||
+    tipo !== normTipo(op.tipo) ||
+    estado !== normEstado(op.estado) ||
     Number(valor) !== op.valor ||
-    probabilidade !== op.probabilidade ||
+    probabilidade !== normProb(op.probabilidade) ||
     (pessoaId || "") !== (op.pessoaId || "") ||
     (imovelId || "") !== (op.imovelId || "") ||
     (proximaAcao || "") !== (op.proximaAcao || "") ||
