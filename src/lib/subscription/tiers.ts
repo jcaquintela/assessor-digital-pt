@@ -26,12 +26,12 @@ export function tierAtLeast(
 // -------- Autonomia --------
 // base       → conservador
 // consultor  → equilibrado (balanced)
-// pro        → equilibrado (balanced)
+// pro        → proativo
 // hub / beta → proativo
 export const AUTONOMY_CAP_BY_TIER: Record<SubscriptionTier, AutonomyLevel> = {
   base: "conservador",
   consultor: "balanced",
-  pro: "balanced",
+  pro: "proativo",
   hub: "proativo",
 };
 
