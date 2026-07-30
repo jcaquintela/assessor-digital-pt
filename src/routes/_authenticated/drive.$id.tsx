@@ -11,6 +11,8 @@ import {
   setDriveFileStatus,
   removeFileLink,
 } from "@/lib/drive/drive.functions";
+import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
+import { useState } from "react";
 import {
   ChevronLeft,
   Download,
@@ -58,6 +60,7 @@ function DriveDetail() {
   const fetchOne = useServerFn(getDriveFile);
   const setStatus = useServerFn(setDriveFileStatus);
   const removeLink = useServerFn(removeFileLink);
+  const [fixOpen, setFixOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["drive", "one", id],
@@ -201,9 +204,14 @@ function DriveDetail() {
                 <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Relações
                 </div>
-                <Badge variant="outline" className="text-xs">
-                  {data?.links.length ?? 0}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {data?.links.length ?? 0}
+                  </Badge>
+                  <Button variant="outline" size="sm" onClick={() => setFixOpen(true)}>
+                    Corrigir ligação
+                  </Button>
+                </div>
               </div>
               {(!data?.links || data.links.length === 0) && (
                 <p className="text-sm text-muted-foreground">
@@ -257,6 +265,13 @@ function DriveDetail() {
           )}
         </div>
       </div>
+
+      <FixLinkDialog
+        fileId={id}
+        fileName={file.original_file_name}
+        open={fixOpen}
+        onOpenChange={setFixOpen}
+      />
     </AppShell>
   );
 }
