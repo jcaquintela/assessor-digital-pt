@@ -34,6 +34,11 @@ import { applySafetyNet, buildArchiveContent } from "./safety-net.server";
 
 const HISTORY_LIMIT = 6;
 
+// Padrão de linguagem de incompreensão. Usado (a) para nunca comunicar
+// falha depois de uma execução bem sucedida e (b) para reclassificar o
+// outcome apenas quando nada foi executado.
+const NOT_UNDERSTOOD_RE = /n[ãa]o\s+(percebi|entendi|compreendi)|podes\s+explicar\s+de\s+outra\s+forma/i;
+
 function parsePtAmount(raw: string | null | undefined): number | null {
   if (!raw) return null;
   const cleaned = raw
