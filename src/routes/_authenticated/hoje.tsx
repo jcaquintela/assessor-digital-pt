@@ -84,6 +84,16 @@ function HojePage() {
     },
   });
 
+  // Primeiro nome do consultor para a saudação pessoal.
+  const profileQ = useQuery({
+    queryKey: ["profile", "first-name"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("name").maybeSingle();
+      return (data?.name as string | null) ?? null;
+    },
+  });
+  const firstName = (profileQ.data ?? "").trim().split(/\s+/)[0] || "";
+
   const outcome = useMutation({
     mutationFn: (v: { id: string; outcome: string; notes?: string }) => outcomeFn({ data: v }),
     onSuccess: () => {
