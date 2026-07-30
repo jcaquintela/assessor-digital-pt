@@ -204,5 +204,72 @@ async function handleInboundMedia(
     }
   }
 
+  // Imagem → o modelo lê o texto visível (placas "Vende-se") e o motor
+  // segue o fluxo normal, como se o consultor tivesse escrito o número.
+  if (result.ok && inbound.messageType === "image") {
+    try {
+      const { readImage, readingToEngineText, supportsVision } = await import("@/lib/ai/vision.server");
+      if (supportsVision(mimeType)) {
+        const vision = await readImage(dl.bytes, mimeType);
+        if (vision.ok) {
+          const reading = vision.reading;
+          if (result.fileId) {
+            await supabaseAdmin
+              .from("uploaded_files")
+              .update({
+                extracted_text: reading.visible_text,
+                extracted_metadata: reading as unknown as Record<string, unknown>,
+                classification: reading.is_sign ? "prospecao" : "imagem",
+              })
+              .eq("id", result.fileId);
+          }
+          const engineText = readingToEngineText(reading, inbound.media?.caption ?? inbound.text);
+          if (engineText) {
+            // A pergunta "A que se refere?" deixa de fazer sentido: já sabemos.
+            const { findActivePendingAction, markPendingActionStatus } =
+              await import("@/lib/assessor/memory.server");
+            const prev = await findActivePendingAction(supabaseAdmin, userId, adapter.channel);
+            if (prev?.intent === "classify_file") {
+              await markPendingActionStatus(supabaseAdmin, prev.id, "cancelled");
+            }
+            await supabaseAdmin.from("assessor_messages").insert({
+              user_id: userId,
+              role: "user",
+              content: engineText,
+              message_type: `${adapter.channel}_image_reading`,
+              status: "received",
+              channel: adapter.channel,
+              sender_phone: inbound.externalConversationId,
+            });
+            const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
+            const outcome = await processAssessorMessage({
+              supabase: supabaseAdmin,
+              userId,
+              channel: adapter.channel,
+              content: engineText,
+              receivedAt: inbound.receivedAt,
+              sourceMessageId: persistedUuid,
+              fileId: result.fileId ?? null,
+            } as any);
+            await deliverReply(adapter, supabaseAdmin, {
+              userId,
+              externalConversationId: inbound.externalConversationId,
+              outcome,
+              replyTo: inbound.replyToMessageId ?? null,
+            });
+            return;
+          }
+        } else {
+          console.error(`[channel-gateway/${adapter.channel}] vision:`, vision.error);
+        }
+      }
+    } catch (err) {
+      console.error(
+        `[channel-gateway/${adapter.channel}] vision:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   await adapter.sendText(inbound.externalConversationId, result.reply);
 }
