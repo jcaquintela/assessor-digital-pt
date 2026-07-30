@@ -54,10 +54,16 @@ function ComunicacaoPage() {
     queryFn: () => countFn({ data: { segment } }),
   });
   const { data: history } = useQuery({ queryKey: ["admin", "broadcasts"], queryFn: () => listFn() });
+  const { data: emailStatus } = useQuery({
+    queryKey: ["admin", "email-provider"],
+    queryFn: () => statusFn(),
+  });
 
   const blocked =
     channel === "email"
-      ? "Provider de email não ligado. A mensagem é composta e fica registada no histórico como bloqueada, mas não sai."
+      ? emailStatus && !emailStatus.configured
+        ? "Provider de email não ligado. A mensagem é composta e fica registada no histórico como bloqueada, mas não sai."
+        : null
       : channel === "whatsapp"
         ? "Sem templates aprovados pela Meta. Fora da janela de 24h o envio em massa está bloqueado."
         : null;
@@ -72,10 +78,14 @@ function ComunicacaoPage() {
         toast.warning(
           `Provider de email não ligado — nada saiu. Mensagem registada no histórico para ${res.recipients} destinatários.`,
         );
+      } else if (channel === "email" && !res.ok) {
+        toast.error(`Nada foi enviado. ${res.error ?? "erro desconhecido"}`);
+      } else if (channel === "email" && res.sent !== undefined && res.sent < res.recipients) {
+        toast.warning(`Enviado a ${res.sent} de ${res.recipients}. Último erro: ${res.error ?? "—"}`);
       } else {
         toast.success(
           channel === "email"
-            ? `Email enviado para ${res.recipients} consultores.`
+            ? `Email enviado para ${res.sent ?? res.recipients} consultores.`
             : `Aviso publicado para ${res.recipients} consultores.`,
         );
       }
