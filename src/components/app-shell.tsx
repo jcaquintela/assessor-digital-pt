@@ -71,7 +71,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
   return (
     <div
       className={cn(
-        "bg-background text-foreground",
+        "consult-root text-foreground",
         // Mobile: fixed viewport grid (header?/main/nav). Desktop: normal flow.
         "grid md:block",
         fullBleed
@@ -80,14 +80,14 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
       )}
     >
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-border bg-card/60 px-4 py-6 md:flex">
+      <aside className="consult-nav fixed inset-y-0 left-0 z-20 hidden w-64 flex-col px-4 py-6 md:flex">
         <Link to="/hoje" className="mb-8 flex items-center gap-2 px-2">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl" style={{ background: "var(--brass)", color: "#241703" }}>
             <Sparkles className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold leading-tight">Assessor</div>
-            <div className="truncate text-xs text-muted-foreground">do Consultor</div>
+            <div className="brand text-[15px] font-medium leading-tight">Assessor</div>
+            <div className="c-muted truncate text-xs">do Consultor</div>
           </div>
         </Link>
         <nav className="flex flex-col gap-0.5">
@@ -97,12 +97,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
               <Link
                 key={to}
                 to={to}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  active
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
+                className={cn("navitem", active && "active")}
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 <span className="truncate">{label}</span>
@@ -110,8 +105,8 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
             );
           })}
         </nav>
-        <div className="mt-auto rounded-xl border border-dashed border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-          Modo demo — dados fictícios.
+        <div className="navfoot mt-auto">
+          Tudo o que entra, entra por conversa.
         </div>
       </aside>
 
@@ -122,8 +117,11 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         </main>
       ) : (
         <main className="min-h-0 min-w-0 md:ml-64 md:pb-8">
-          <div className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-            <div className="mx-auto min-w-0 max-w-6xl px-4 py-3 md:px-8 md:py-4">
+          <div
+            className="sticky top-0 z-30 backdrop-blur"
+            style={{ background: "color-mix(in srgb, var(--paper) 88%, transparent)", borderBottom: "1px solid var(--line)" }}
+          >
+            <div className="c-search mx-auto min-w-0 max-w-6xl px-4 py-3 md:px-8 md:py-4">
               <GlobalSearch size="lg" />
             </div>
           </div>
@@ -136,8 +134,8 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
 
       {/* Mobile bottom nav */}
       <nav
-        className="mobile-bottom-nav border-t border-border bg-card/95 backdrop-blur md:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="mobile-bottom-nav backdrop-blur md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)", background: "var(--paper-2)", borderTop: "1px solid var(--line)" }}
       >
         <div
           className="mx-auto grid max-w-lg"
@@ -151,8 +149,9 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
                 to={to}
                 className={cn(
                   "flex flex-col items-center gap-1 py-2.5 text-[11px]",
-                  active ? "text-primary" : "text-muted-foreground",
+                  active ? "font-semibold" : "c-muted",
                 )}
+                style={active ? { color: "var(--brass-dark)" } : undefined}
               >
                 <Icon className="h-5 w-5" />
                 <span>{label}</span>
@@ -177,8 +176,8 @@ export function PageHeader({
   return (
     <header className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="truncate text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+        <h1 className="c-serif truncate text-2xl font-medium md:text-[30px]">{title}</h1>
+        {subtitle ? <p className="c-muted mt-1 text-sm">{subtitle}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>

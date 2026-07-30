@@ -7,7 +7,7 @@ export const listProperties = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("properties")
-      .select("id, title, typology, property_type, city, location, asking_price, status, owner_person_id, updated_at")
+      .select("id, title, typology, property_type, city, location, address, source_channel, asking_price, status, owner_person_id, updated_at")
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
       .limit(200);

@@ -84,6 +84,16 @@ function HojePage() {
     },
   });
 
+  // Primeiro nome do consultor para a saudação pessoal.
+  const profileQ = useQuery({
+    queryKey: ["profile", "first-name"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("name").maybeSingle();
+      return (data?.name as string | null) ?? null;
+    },
+  });
+  const firstName = (profileQ.data ?? "").trim().split(/\s+/)[0] || "";
+
   const outcome = useMutation({
     mutationFn: (v: { id: string; outcome: string; notes?: string }) => outcomeFn({ data: v }),
     onSuccess: () => {
@@ -230,23 +240,22 @@ function HojePage() {
       <header className="mb-6 space-y-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              {greeting(now)}{assessorName !== "Assessor" ? "" : ", Consultor"}
-              {assessorName !== "Assessor" ? "." : ""}
+            <h1 className="c-serif text-[26px] font-medium md:text-[34px]">
+              {greeting(now)}{firstName ? `, ${firstName}` : ""}.
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Hoje tens <strong className="text-foreground">{prioridadesCount}</strong> prioridade{prioridadesCount === 1 ? "" : "s"} e{" "}
-              <strong className="text-foreground">{compromissosCount}</strong> compromisso{compromissosCount === 1 ? "" : "s"}.
+            <p className="c-soft mt-1 text-sm">
+              Hoje tens <strong style={{ color: "var(--ink)" }}>{prioridadesCount}</strong> prioridade{prioridadesCount === 1 ? "" : "s"} e{" "}
+              <strong style={{ color: "var(--ink)" }}>{compromissosCount}</strong> compromisso{compromissosCount === 1 ? "" : "s"}.
               {" "}
-              <span className="text-muted-foreground">
+              <span className="c-mono c-muted text-xs">
                 {new Intl.DateTimeFormat("pt-PT", { weekday: "long", day: "2-digit", month: "long" }).format(now)}
               </span>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="secondary" size="sm" className="gap-1.5">
-              <Link to="/assessor"><MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}</Link>
-            </Button>
+            <Link to="/assessor" className="c-cta">
+              <MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
+            </Link>
           </div>
         </div>
       </header>
@@ -255,22 +264,22 @@ function HojePage() {
         {/* Coluna principal */}
         <div className="space-y-6">
           {/* B. As minhas prioridades */}
-          <Card className="border-primary/30">
+          <Card className="c-card border-0 shadow-none">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4 text-primary" /> As minhas prioridades
+              <CardTitle className="c-section-title flex items-center gap-2">
+                <Sparkles className="h-4 w-4" style={{ color: "var(--brass)" }} /> As minhas prioridades
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {priorities.length === 0 && (
-                <p className="text-sm text-muted-foreground">Nenhuma prioridade urgente. Bom trabalho.</p>
+                <p className="c-muted text-sm">Nenhuma prioridade urgente. Bom trabalho.</p>
               )}
               {priorities.map((p) => (
-                <div key={`${p.subject_type}:${p.subject_id}`} className="rounded-lg border border-border bg-card p-3">
+                <div key={`${p.subject_type}:${p.subject_id}`} className="c-card c-card-hover p-3.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-sm font-medium">{p.action}</div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">
+                      <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{p.action}</div>
+                      <div className="c-muted mt-0.5 text-xs">
                         {[
                           p.reasons?.slice(0, 2).join(" · "),
                           p.entity_label,
@@ -278,15 +287,15 @@ function HojePage() {
                         ].filter(Boolean).join(" · ")}
                       </div>
                     </div>
-                    <Badge variant="outline" className="shrink-0">{Math.round(p.priority_score)}</Badge>
+                    <span className="c-badge c-mono shrink-0">{Math.round(p.priority_score)}</span>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <Button size="sm" variant="outline" onClick={() => savePriorityDone(p)}>
-                      <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Concluir
-                    </Button>
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
+                    </button>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button size="sm" variant="ghost">Adiar</Button>
+                        <button type="button" className="c-btn-ghost">Adiar</button>
                       </PopoverTrigger>
                       <PopoverContent align="start" className="w-40 p-1">
                         <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "1h")}>+1 hora</button>
@@ -295,15 +304,13 @@ function HojePage() {
                       </PopoverContent>
                     </Popover>
                     {p.subject_type === "opportunity" ? (
-                      <Button asChild size="sm" variant="ghost">
-                        <Link to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir</Link>
-                      </Button>
+                      <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir</Link>
                     ) : (
-                      <Button size="sm" variant="ghost" onClick={() => openPriority(p)}>Abrir</Button>
+                      <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir</button>
                     )}
-                    <Button asChild size="sm" variant="ghost" className="ml-auto">
-                      <Link to="/assessor"><MessageSquare className="mr-1 h-3.5 w-3.5" /> Falar</Link>
-                    </Button>
+                    <Link className="c-btn-ghost ml-auto" to="/assessor">
+                      <MessageSquare className="h-3.5 w-3.5" /> Falar
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -311,33 +318,33 @@ function HojePage() {
           </Card>
 
           {/* C. Próximos compromissos */}
-          <Card>
+          <Card className="c-card border-0 shadow-none">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <CalendarClock className="h-4 w-4 text-muted-foreground" /> Próximos compromissos
+              <CardTitle className="c-section-title flex items-center gap-2">
+                <CalendarClock className="h-4 w-4" style={{ color: "var(--muted)" }} /> Próximos compromissos
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {eventosHoje.length === 0 && (
-                <p className="text-sm text-muted-foreground">Não tens compromissos para hoje.</p>
+                <p className="c-muted text-sm">Não tens compromissos para hoje.</p>
               )}
               {eventosHoje.map((e) => (
                 <button
                   key={e.id}
                   type="button"
                   onClick={() => openEvent(e.id)}
-                  className="flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted"
+                  className="c-card c-card-hover flex w-full items-start gap-3 p-3 text-left"
                 >
-                  <div className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                  <div className="c-mono shrink-0 rounded-md px-2 py-1 text-xs font-semibold" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}>
                     {e.hora ?? "—"}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{e.titulo}</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{e.titulo}</div>
+                    <div className="c-muted text-xs">
                       {[nomePessoa(e.pessoaId), tituloImovel((e as any).imovelId)].filter(Boolean).join(" · ") || "—"}
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "var(--muted)" }} />
                 </button>
               ))}
             </CardContent>
@@ -347,69 +354,68 @@ function HojePage() {
         {/* Coluna lateral */}
         <div className="space-y-6">
           {/* D. Aguardam resultado */}
-          <Card>
+          <Card className="c-card border-0 shadow-none">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Clock className="h-4 w-4 text-muted-foreground" /> Aguardam resultado
+              <CardTitle className="c-section-title flex items-center gap-2">
+                <Clock className="h-4 w-4" style={{ color: "var(--muted)" }} /> Aguardam resultado
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {awaiting.length === 0 && (
-                <p className="text-sm text-muted-foreground">Não há nada a aguardar resultado.</p>
+                <p className="c-muted text-sm">Não há nada a aguardar resultado.</p>
               )}
               {awaiting.map((a) => (
                 <Link
                   key={a.id}
                   to="/seguimentos/$id"
                   params={{ id: a.id }}
-                  className="group block rounded-lg border border-border p-3 outline-none transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary"
+                  className="c-card c-card-hover group block p-3 outline-none"
                   aria-label={`Abrir ${a.title}`}
                 >
-                  <div className="text-sm font-medium">{a.title}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{a.title}</div>
+                  <div className="c-mono c-muted text-xs">
                     {formatDataHora(a.due_at)}{a.entity_label ? ` · ${a.entity_label}` : ""}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Button size="sm" variant="outline" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "concluido" }); }}>Correu bem</Button>
-                    <Button size="sm" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "precisa_nova_acao" }); }}>Precisa seguimento</Button>
-                    <Button size="sm" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "nao_realizado" }); }}>Sem efeito</Button>
-                    <Button size="sm" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNoteFor(a); setNoteText(""); }}>
-                      <StickyNote className="mr-1 h-3.5 w-3.5" /> Nota
-                    </Button>
+                    <button type="button" className="c-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "concluido" }); }}>Correu bem</button>
+                    <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "precisa_nova_acao" }); }}>Precisa seguimento</button>
+                    <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "nao_realizado" }); }}>Sem efeito</button>
+                    <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNoteFor(a); setNoteText(""); }}>
+                      <StickyNote className="h-3.5 w-3.5" /> Nota
+                    </button>
                   </div>
                 </Link>
               ))}
             </CardContent>
           </Card>
-
-          {/* E. Atenção */}
-          {(atrasados.length > 0 || oportSemAcao.length > 0 || (docsPending.data ?? 0) > 0) && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <AlertTriangle className="h-4 w-4 text-destructive" /> Atenção
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1.5">
-                {atrasados.length > 0 && (
-                  <AlertRow to="/seguimentos" search={{ status: "overdue" }} icon={AlertTriangle} label={`${atrasados.length} seguimento${atrasados.length === 1 ? "" : "s"} em atraso`} />
-                )}
-                {oportSemAcao.length > 0 && (
-                  <AlertRow to="/oportunidades" icon={Briefcase} label={`${oportSemAcao.length} oportunidade${oportSemAcao.length === 1 ? "" : "s"} sem próxima ação · ${formatEUR(oportSemAcao.reduce((s, o) => s + o.valor, 0))}`} />
-                )}
-                {(docsPending.data ?? 0) > 0 && (
-                  <AlertRow to="/documentos" icon={FileText} label={`${docsPending.data} documento${docsPending.data === 1 ? "" : "s"} por classificar`} />
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
+
+      {/* E. Banner de atenção agregado, no fundo da página */}
+      {(atrasados.length > 0 || oportSemAcao.length > 0 || (docsPending.data ?? 0) > 0) && (
+        <section className="c-alert mt-6">
+          <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
+            <AlertTriangle className="h-4 w-4" /> A precisar de atenção
+          </div>
+          <div className="grid gap-1">
+            {atrasados.length > 0 && (
+              <AlertRow to="/seguimentos" search={{ status: "overdue" }} icon={AlertTriangle} label={`${atrasados.length} seguimento${atrasados.length === 1 ? "" : "s"} em atraso`} />
+            )}
+            {oportSemAcao.length > 0 && (
+              <AlertRow to="/oportunidades" icon={Briefcase} label={`${oportSemAcao.length} oportunidade${oportSemAcao.length === 1 ? "" : "s"} sem próxima ação · ${formatEUR(oportSemAcao.reduce((s, o) => s + o.valor, 0))} em risco`} />
+            )}
+            {(docsPending.data ?? 0) > 0 && (
+              <AlertRow to="/documentos" icon={FileText} label={`${docsPending.data} documento${docsPending.data === 1 ? "" : "s"} por classificar`} />
+            )}
+          </div>
+        </section>
+      )}
 
       {/* FAB mobile */}
       <Link
         to="/assessor"
-        className="fixed bottom-20 right-4 z-10 flex h-12 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-lg md:hidden"
+        className="fixed bottom-20 right-4 z-10 flex h-12 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-lg md:hidden"
+        style={{ background: "var(--brass)", color: "#241703" }}
       >
         <MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
       </Link>
@@ -452,12 +458,12 @@ function AlertRow({
     <Link
       to={to as any}
       search={search as any}
-      className="flex items-center gap-2 rounded-md px-2 py-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
+      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13.5px] outline-none transition-colors hover:bg-white/50"
       aria-label={label}
     >
-      <Icon className="h-4 w-4 text-muted-foreground" />
+      <Icon className="h-4 w-4 shrink-0 opacity-70" />
       <span className="flex-1">{label}</span>
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      <ChevronRight className="h-4 w-4 opacity-70" />
     </Link>
   );
 }

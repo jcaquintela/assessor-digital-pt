@@ -145,10 +145,15 @@ function PessoaDetail() {
           </div>
         }
       />
-      <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+      <div className="c-muted mb-4 flex flex-wrap items-center gap-3 text-xs">
         <Badge variant="secondary">{pessoa.relacao}</Badge>
-        {pessoa.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{pessoa.telefone}</span>}
+        {pessoa.telefone && <span className="c-mono flex items-center gap-1"><Phone className="h-3 w-3" />{pessoa.telefone}</span>}
         {pessoa.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{pessoa.email}</span>}
+        {pessoa.canal && (
+          <span className="c-badge">
+            criada via {pessoa.canal === "whatsapp" ? "WhatsApp" : pessoa.canal === "telegram" ? "Telegram" : pessoa.canal === "web" ? "Dashboard" : pessoa.canal}
+          </span>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

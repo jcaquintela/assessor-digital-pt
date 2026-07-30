@@ -1,14 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { formatEUR } from "@/lib/demo-data";
 import { listProperties } from "@/lib/assessor/properties.functions";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
-import { ChevronRight, FileText } from "lucide-react";
+import { ChevronRight, FileText, Search } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
+
+const ORIGEM: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  telegram: "Telegram",
+  web: "Dashboard",
+  placa: "placa",
+  prospecting: "placa",
+};
 
 export const Route = createFileRoute("/_authenticated/imoveis")({
   head: () => ({
@@ -32,47 +40,64 @@ function ImoveisPage() {
     queryKey: ["properties", "list"],
     queryFn: () => fetchList(),
   });
-  const list = rows ?? [];
+  const all = (rows ?? []) as any[];
+  const [q, setQ] = useState("");
+  const term = q.trim().toLowerCase();
+  const list = all.filter((i) =>
+    !term ||
+    [i.title, i.address, i.city, i.location, i.typology, i.property_type]
+      .filter(Boolean).join(" ").toLowerCase().includes(term),
+  );
   return (
     <AppShell>
-      <PageHeader title="Imóveis" subtitle={`${list.length} em carteira`} />
+      <PageHeader title="Imóveis" subtitle={`${all.length} em carteira`} />
+      <div className="relative mb-4">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Procurar por morada, cidade ou tipo…"
+          className="h-11 rounded-xl pl-9"
+          style={{ background: "#fff", borderColor: "var(--line)" }}
+        />
+      </div>
+      {all.length === 0 && (
+        <div className="c-empty">
+          Ainda não tens imóveis. Envia um documento ou descreve o imóvel ao teu assessor por WhatsApp.
+        </div>
+      )}
+      {all.length > 0 && list.length === 0 && (
+        <div className="c-empty">Nenhum imóvel corresponde a “{q}”.</div>
+      )}
       <div className="grid gap-3 md:grid-cols-2">
-        {list.length === 0 && (
-          <div className="text-sm text-muted-foreground">
-            Ainda não tens imóveis. Envia um documento ou descreve o imóvel ao Assessor.
-          </div>
-        )}
         {list.map((i: any) => {
           const localizacao = i.city || i.location || "";
           const tipo = i.typology || i.property_type || "";
+          const origem = i.source_channel ? (ORIGEM[i.source_channel] ?? i.source_channel) : null;
+          const angariado = i.status && i.status !== "em_angariacao" && i.status !== "por_angariar";
           return (
-            <Link key={i.id} to="/imoveis/$id" params={{ id: i.id }}>
-              <Card className="hover:bg-muted/30 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{i.title}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {[tipo, localizacao].filter(Boolean).join(" · ") || "Sem detalhes"}
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0 flex items-center gap-2">
-                      <div>
-                        {i.asking_price != null && (
-                          <div className="text-sm font-semibold">{formatEUR(Number(i.asking_price))}</div>
-                        )}
-                        <Badge variant="outline" className="mt-1">{propertyStatusLabel(i.status)}</Badge>
-                        {i.file_count > 0 && (
-                          <div className="mt-1 flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                            <FileText className="h-3 w-3" /> {i.file_count}
-                          </div>
-                        )}
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
+            <Link key={i.id} to="/imoveis/$id" params={{ id: i.id }} className="c-card c-card-hover block p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-[15px] font-semibold" style={{ color: "var(--ink)" }}>{i.title}</div>
+                  <div className="c-muted mt-0.5 text-xs">
+                    {[tipo, i.address || localizacao].filter(Boolean).join(" · ") || "Sem detalhes"}
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className={`c-badge ${angariado ? "ok" : "warn"}`}>{propertyStatusLabel(i.status)}</span>
+                    {origem && <span className="c-badge">via {origem}</span>}
+                    {i.file_count > 0 && (
+                      <span className="c-badge c-mono"><FileText className="h-3 w-3" /> {i.file_count}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 text-right">
+                  {i.asking_price != null && (
+                    <div className="c-mono text-sm font-semibold" style={{ color: "var(--ink)" }}>{formatEUR(Number(i.asking_price))}</div>
+                  )}
+                  <ChevronRight className="h-4 w-4" style={{ color: "var(--muted)" }} />
+                </div>
+              </div>
             </Link>
           );
         })}
