@@ -40,17 +40,21 @@ const navGroups: { group: string; items: NavItem[] }[] = [
     ],
   },
   {
+    group: "Sistema",
+    items: [
+      { to: "/admin/qualidade", label: "Qualidade" },
+      { to: "/admin/autonomas", label: "Ações autónomas" },
+      { to: "/admin/integracoes-flags", label: "Integrações & flags" },
+      { to: "/admin/auditoria-seguranca", label: "Auditoria & segurança" },
+    ],
+  },
+  {
     group: "Outras páginas",
     items: [
       { to: "/admin/subscricoes", label: "Subscrições" },
       { to: "/admin/utilizacao", label: "Utilização" },
-      { to: "/admin/integracoes", label: "Integrações" },
       { to: "/admin/convites", label: "Convites Telegram" },
-      { to: "/admin/funcionalidades", label: "Funcionalidades" },
-      { to: "/admin/qualidade", label: "Qualidade" },
       { to: "/admin/goldens", label: "Goldens" },
-      { to: "/admin/auditoria", label: "Auditoria" },
-      { to: "/admin/seguranca", label: "Segurança" },
       { to: "/admin/definicoes", label: "Definições" },
     ],
   },

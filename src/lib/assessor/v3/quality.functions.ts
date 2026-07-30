@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function assertAdmin(supabase: any, userId: string) {
@@ -52,6 +53,80 @@ export const getQualityOverview = createServerFn({ method: "GET" })
       .limit(20);
 
     return { total, daily, dist, low: (lowRows as any[]) ?? [] };
+  });
+
+// Transcrição real de um turno: a prova ao lado da pontuação.
+// Sem isto, um AQS baixo é só um número — com isto vê-se a mensagem do
+// consultor, a resposta do Assessor, as ferramentas e o erro real.
+export const getTurnTranscript = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ traceId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: trace } = await supabaseAdmin
+      .from("assessor_reasoning_traces")
+      .select(
+        "id, created_at, user_id, channel, input_content, reply, decision, tool_calls, error, success, total_latency_ms",
+      )
+      .eq("id", data.traceId)
+      .maybeSingle();
+
+    if (!trace) return { found: false as const, traceId: data.traceId };
+
+    const t = trace as any;
+    const from = new Date(new Date(t.created_at).getTime() - 15 * 60_000).toISOString();
+    const to = new Date(new Date(t.created_at).getTime() + 5 * 60_000).toISOString();
+
+    const [{ data: msgs }, { data: corrections }] = await Promise.all([
+      supabaseAdmin
+        .from("assessor_messages")
+        .select("id, role, content, created_at, channel")
+        .eq("user_id", t.user_id)
+        .eq("channel", t.channel)
+        .gte("created_at", from)
+        .lte("created_at", to)
+        .order("created_at", { ascending: true })
+        .limit(40),
+      supabaseAdmin
+        .from("assistant_user_corrections")
+        .select("id, created_at, category, correction_message")
+        .eq("turn_id", data.traceId)
+        .order("created_at", { ascending: true }),
+    ]);
+
+    const toolCalls = Array.isArray(t.tool_calls) ? t.tool_calls : [];
+    return {
+      found: true as const,
+      traceId: t.id,
+      createdAt: t.created_at as string,
+      channel: t.channel as string,
+      userMessage: t.input_content as string,
+      reply: (t.reply as string) ?? null,
+      action: (t.decision as any)?.action ?? null,
+      confidence: (t.decision as any)?.confidence ?? null,
+      error: (t.error as string) ?? null,
+      success: !!t.success,
+      latencyMs: t.total_latency_ms as number | null,
+      tools: toolCalls.map((c: any) => ({
+        name: c?.name ?? "—",
+        ok: c?.ok !== false,
+        error: c?.error ?? null,
+      })),
+      messages: ((msgs as any[]) ?? []).map((m) => ({
+        id: m.id,
+        role: m.role as string,
+        content: m.content as string,
+        createdAt: m.created_at as string,
+      })),
+      corrections: ((corrections as any[]) ?? []).map((c) => ({
+        id: c.id,
+        createdAt: c.created_at as string,
+        category: c.category as string,
+        message: c.correction_message as string,
+      })),
+    };
   });
 
 // Trust Mode v1 — ATS + Top failures + Últimas correções + Definição de Pronto.
