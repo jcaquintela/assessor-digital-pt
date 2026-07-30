@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEUR } from "@/lib/demo-data";
-import { Receipt, Wallet, FileText, ChevronRight } from "lucide-react";
+import { Receipt, Wallet, FileText, ChevronRight, Pencil } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
+import { EditMovementDialog } from "@/components/negocio/edit-movement-dialog";
 
 export const Route = createFileRoute("/_authenticated/negocio")({
   head: () => ({
@@ -75,6 +77,8 @@ function NegocioPage() {
   const rows = movs.data ?? [];
   const comissoes = rows.filter((m) => m.type === "commission");
   const despesas = rows.filter((m) => m.type === "expense");
+  const [editId, setEditId] = useState<string | null>(null);
+  const emEdicao = rows.find((m) => m.id === editId) ?? null;
 
   return (
     <AppShell>
@@ -130,6 +134,14 @@ function NegocioPage() {
                     </div>
                     <div className="c-muted c-mono mt-0.5 text-[11px]">{formatDia(m.movement_date)}</div>
                   </div>
+                  <button
+                    type="button"
+                    aria-label={`Editar ${m.description}`}
+                    className="c-badge"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditId(m.id); }}
+                  >
+                    <Pencil className="h-3 w-3" /> Editar
+                  </button>
                   <ChevronRight className="c-muted h-4 w-4" />
                 </div>
               </div>
@@ -137,6 +149,11 @@ function NegocioPage() {
           );
         })}
       </div>
+      <EditMovementDialog
+        movement={emEdicao}
+        open={!!emEdicao}
+        onOpenChange={(v) => { if (!v) setEditId(null); }}
+      />
     </AppShell>
   );
 }

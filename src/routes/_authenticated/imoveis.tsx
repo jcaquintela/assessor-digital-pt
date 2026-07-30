@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { formatEUR } from "@/lib/demo-data";
 import { listProperties } from "@/lib/assessor/properties.functions";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
-import { ChevronRight, FileText, Search } from "lucide-react";
+import { ChevronRight, FileText, Pencil, Search } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
+import { EditPropertyDialog } from "@/components/imoveis/edit-property-dialog";
 
 const ORIGEM: Record<string, string> = {
   whatsapp: "WhatsApp",
@@ -42,6 +43,8 @@ function ImoveisPage() {
   });
   const all = (rows ?? []) as any[];
   const [q, setQ] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const emEdicao = all.find((p) => p.id === editId) ?? null;
   const term = q.trim().toLowerCase();
   const list = all.filter((i) =>
     !term ||
@@ -95,6 +98,14 @@ function ImoveisPage() {
                   {i.asking_price != null && (
                     <div className="c-mono text-sm font-semibold" style={{ color: "var(--ink)" }}>{formatEUR(Number(i.asking_price))}</div>
                   )}
+                  <button
+                    type="button"
+                    aria-label={`Editar ${i.title}`}
+                    className="c-badge"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditId(i.id); }}
+                  >
+                    <Pencil className="h-3 w-3" /> Editar
+                  </button>
                   <ChevronRight className="h-4 w-4" style={{ color: "var(--muted)" }} />
                 </div>
               </div>
@@ -102,6 +113,11 @@ function ImoveisPage() {
           );
         })}
       </div>
+      <EditPropertyDialog
+        property={emEdicao}
+        open={!!emEdicao}
+        onOpenChange={(v) => { if (!v) setEditId(null); }}
+      />
     </AppShell>
   );
 }
