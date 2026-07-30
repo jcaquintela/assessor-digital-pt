@@ -63,6 +63,7 @@ function AcessosPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AccessUser | null>(null);
   const [promoOpen, setPromoOpen] = useState(false);
+  const [deleting, setDeleting] = useState<AccessUser | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["admin", "access-users"] });
@@ -137,10 +138,7 @@ function AcessosPage() {
                     type="button"
                     className="admin-link-danger"
                     disabled={!isSuper || me?.userId === u.id}
-                    onClick={() => {
-                      if (!confirm(`Desativar ${u.email}? Perde acesso imediato; os dados ficam guardados.`)) return;
-                      run("Conta desativada. Dados mantidos.", deactivateFn({ data: { target_user_id: u.id } }));
-                    }}
+                    onClick={() => setDeleting(u)}
                   >Eliminar</button>
                 )}
               </td>
@@ -210,6 +208,30 @@ function AcessosPage() {
         onOpenChange={setPromoOpen}
         onSubmit={(payload) => run("Código criado.", createPromoFn({ data: payload }).then(() => setPromoOpen(false)))}
       />
+
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Desativar acesso</DialogTitle>
+            <DialogDescription>
+              {deleting?.email} perde acesso imediato. Os dados ficam guardados e a conta pode ser reativada.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button type="button" className="admin-btn" onClick={() => setDeleting(null)}>Cancelar</button>
+            <button
+              type="button"
+              className="admin-btn-danger"
+              onClick={() => {
+                const target = deleting;
+                if (!target) return;
+                setDeleting(null);
+                run("Conta desativada. Dados mantidos.", deactivateFn({ data: { target_user_id: target.id } }));
+              }}
+            >Desativar</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
