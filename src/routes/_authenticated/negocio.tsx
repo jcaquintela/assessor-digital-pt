@@ -50,6 +50,10 @@ const CANAL_LABEL: Record<string, string> = {
   web: "via Dashboard",
 };
 
+function norm(s: string) {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+}
+
 function formatDia(iso: string) {
   return new Date(iso).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" });
 }
@@ -112,7 +116,7 @@ function NegocioPage() {
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <span className={tone.cls}>{tone.label}</span>
                     <span className="c-badge">{isExpense ? "Despesa" : "Comissão"}</span>
-                    {m.category && m.category.toLowerCase() !== (isExpense ? "despesa" : "comissão") && (
+                    {m.category && norm(m.category) !== (isExpense ? "despesa" : "comissao") && (
                       <span className="c-badge">{m.category}</span>
                     )}
                     {canal && CANAL_LABEL[canal] && <span className="c-badge">{CANAL_LABEL[canal]}</span>}
