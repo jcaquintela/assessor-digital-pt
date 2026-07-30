@@ -72,14 +72,25 @@ const SAVED_SUFFIX = "Deixei em Diversos, por tratar, para não se perder.";
 export function buildArchiveContent(params: {
   trimmed: string;
   pendingContent?: string | null;
-  recentRows?: Array<{ role?: string | null; content?: string | null }>;
+  recentRows?: Array<{ role?: string | null; content?: string | null; created_at?: string | null }>;
+  // Só mensagens da mesma conversa contam como contexto. Sem isto, uma
+  // conversa de há duas horas ("Casa Final B") era colada a um assunto
+  // novo ("João Paulo 934 555 444") e o registo em Diversos ficava
+  // ilegível.
+  contextWindowMs?: number;
 }): string {
   const last = String(params.trimmed ?? "").trim();
   const pending = String(params.pendingContent ?? "").trim();
   if (pending && pending !== last) return `${pending}\n(depois: ${last})`;
 
   // `recentRows` vem por ordem decrescente (mais recente primeiro).
-  const rows = (params.recentRows ?? []).slice(0, 8);
+  const windowMs = params.contextWindowMs ?? 20 * 60 * 1000;
+  const now = Date.now();
+  const rows = (params.recentRows ?? []).slice(0, 8).filter((r) => {
+    const ts = r?.created_at ? Date.parse(String(r.created_at)) : NaN;
+    if (Number.isNaN(ts)) return true;
+    return now - ts <= windowMs;
+  });
   const userMsgs = rows
     .filter((r) => r?.role === "user")
     .map((r) => String(r?.content ?? "").trim())

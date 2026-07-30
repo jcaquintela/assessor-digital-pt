@@ -5,7 +5,24 @@ import {
   archiveToMiscellaneous,
   withSavedNote,
   applySafetyNet,
+  buildArchiveContent,
 } from "./safety-net.server";
+
+describe("safety net — contexto arquivado", () => {
+  it("ignora mensagens antigas de outra conversa", () => {
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const out = buildArchiveContent({
+      trimmed: "Sim",
+      recentRows: [
+        { role: "assistant", content: "Queres que adicione o João Paulo?", created_at: new Date().toISOString() },
+        { role: "user", content: "João Paulo 934 555 444", created_at: new Date().toISOString() },
+        { role: "user", content: "Casa Final B", created_at: old },
+      ],
+    });
+    expect(out).toContain("João Paulo");
+    expect(out).not.toContain("Casa Final B");
+  });
+});
 
 const PRO_MSG = "Fechei o negócio do terreno por 200.000€, comissão 5.000€";
 
