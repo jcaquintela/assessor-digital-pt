@@ -235,3 +235,95 @@ export const removeFileLink = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Alvos possíveis para "Corrigir ligação" (pessoas, imóveis, oportunidades).
+// Só devolve registos do próprio utilizador — RLS aplica-se na mesma.
+export const listLinkTargets = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const [people, props, opps] = await Promise.all([
+      supabase.from("people").select("id, name").eq("user_id", userId).order("name").limit(300),
+      supabase.from("properties").select("id, title").eq("user_id", userId).order("updated_at", { ascending: false }).limit(300),
+      supabase.from("opportunities").select("id, type, status").eq("user_id", userId).order("updated_at", { ascending: false }).limit(300),
+    ]);
+    return {
+      person: ((people.data ?? []) as any[]).map((r) => ({ id: r.id, label: r.name ?? "Sem nome" })),
+      property: ((props.data ?? []) as any[]).map((r) => ({ id: r.id, label: r.title ?? "Sem título" })),
+      opportunity: ((opps.data ?? []) as any[]).map((r) => ({
+        id: r.id,
+        label: [r.type, r.status].filter(Boolean).join(" · ") || "Oportunidade",
+      })),
+    };
+  });
+
+// Corrigir a ligação de um ficheiro existente. Não cria nem apaga ficheiros.
+export const setFileLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      fileId: string;
+      entityType: "person" | "property" | "opportunity";
+      entityId: string;
+      replaceLinkId?: string | null;
+    }) => data,
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+
+    // O ficheiro tem de ser do próprio utilizador.
+    const { data: file, error: fErr } = await supabase
+      .from("uploaded_files")
+      .select("id")
+      .eq("id", data.fileId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (fErr) throw new Error(fErr.message);
+    if (!file) throw new Error("Ficheiro não encontrado.");
+
+    // A entidade destino também.
+    const table =
+      data.entityType === "person"
+        ? "people"
+        : data.entityType === "property"
+          ? "properties"
+          : "opportunities";
+    const { data: target } = await (supabase as any)
+      .from(table)
+      .select("id")
+      .eq("id", data.entityId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!target) throw new Error("Registo não encontrado.");
+
+    if (data.replaceLinkId) {
+      await supabase
+        .from("file_links")
+        .delete()
+        .eq("id", data.replaceLinkId)
+        .eq("user_id", userId);
+    }
+
+    const { error } = await (supabase as any).from("file_links").upsert(
+      {
+        user_id: userId,
+        file_id: data.fileId,
+        entity_type: data.entityType,
+        entity_id: data.entityId,
+        relation_type: "related_to",
+        source: "user",
+        confirmed_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,file_id,entity_type,entity_id,relation_type" },
+    );
+    if (error) throw new Error(error.message);
+
+    // Manter o atalho legado coerente com a correção feita à mão.
+    await (supabase as any)
+      .from("uploaded_files")
+      .update({ related_resource_type: data.entityType, related_resource_id: data.entityId })
+      .eq("id", data.fileId)
+      .eq("user_id", userId);
+
+    return { ok: true };
+  });
