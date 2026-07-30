@@ -5,14 +5,14 @@ import { describe, it, expect } from "vitest";
 import { stripAssessorVocative } from "../assessor-name";
 
 describe("cultura: saudação com nome do Assessor", () => {
-  it("'Olá Alfred' remove o vocativo do Assessor mantendo a saudação", () => {
-    expect(stripAssessorVocative("Olá Alfred", "Alfred")).toBe("Olá");
+  it("'Olá Afonso' remove o vocativo do Assessor mantendo a saudação", () => {
+    expect(stripAssessorVocative("Olá Afonso", "Afonso")).toBe("Olá");
   });
-  it("'Bom dia Alfred' mantém apenas a saudação", () => {
-    expect(stripAssessorVocative("Bom dia Alfred", "Alfred")).toBe("Bom dia");
+  it("'Bom dia Afonso' mantém apenas a saudação", () => {
+    expect(stripAssessorVocative("Bom dia Afonso", "Afonso")).toBe("Bom dia");
   });
   it("não remove o nome se não for o Assessor", () => {
-    expect(stripAssessorVocative("Olá Paulo", "Alfred")).toBe("Olá Paulo");
+    expect(stripAssessorVocative("Olá Paulo", "Afonso")).toBe("Olá Paulo");
   });
 });
 
