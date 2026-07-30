@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
