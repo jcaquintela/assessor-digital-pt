@@ -35,6 +35,12 @@ export const AUTONOMY_CAP_BY_TIER: Record<SubscriptionTier, AutonomyLevel> = {
   hub: "proativo",
 };
 
+export const AUTONOMY_LABEL: Record<AutonomyLevel, string> = {
+  conservador: "Conservador",
+  balanced: "Equilibrado",
+  proativo: "Proativo",
+};
+
 const AUTONOMY_RANK: Record<AutonomyLevel, number> = {
   conservador: 0,
   balanced: 1,
@@ -83,6 +89,40 @@ export function isModuleVisible(
   const min = MODULE_MIN_TIER[path];
   if (!min) return true;
   return tierAtLeast(tier, min);
+}
+
+// Etiquetas dos módulos que o plano pode abrir/fechar (mesmos paths do menu).
+export const MODULE_LABEL: Record<string, string> = {
+  "/hoje": "Hoje",
+  "/pessoas": "Pessoas",
+  "/drive": "Drive",
+  "/diversos": "Diversos",
+  "/imoveis": "Imóveis",
+  "/prospecao": "Prospeção",
+  "/negocio": "O Meu Negócio",
+};
+
+// Resumo do que um plano inclui. Deriva TUDO de MODULE_MIN_TIER e
+// AUTONOMY_CAP_BY_TIER — não duplicar estas regras em componentes.
+export function planSummary(tier: string | null | undefined): {
+  tier: SubscriptionTier;
+  autonomyCap: AutonomyLevel;
+  autonomyLabel: string;
+  modules: { path: string; label: string; available: boolean; min: SubscriptionTier }[];
+} {
+  const t = normalizeTier(tier);
+  const cap = AUTONOMY_CAP_BY_TIER[t];
+  return {
+    tier: t,
+    autonomyCap: cap,
+    autonomyLabel: AUTONOMY_LABEL[cap],
+    modules: Object.keys(MODULE_LABEL).map((path) => ({
+      path,
+      label: MODULE_LABEL[path],
+      available: isModuleVisible(path, t),
+      min: MODULE_MIN_TIER[path] ?? "base",
+    })),
+  };
 }
 
 // -------- Canais permitidos --------
