@@ -264,22 +264,22 @@ function HojePage() {
         {/* Coluna principal */}
         <div className="space-y-6">
           {/* B. As minhas prioridades */}
-          <Card className="border-primary/30">
+          <Card className="c-card border-0 shadow-none">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4 text-primary" /> As minhas prioridades
+              <CardTitle className="c-section-title flex items-center gap-2">
+                <Sparkles className="h-4 w-4" style={{ color: "var(--brass)" }} /> As minhas prioridades
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {priorities.length === 0 && (
-                <p className="text-sm text-muted-foreground">Nenhuma prioridade urgente. Bom trabalho.</p>
+                <p className="c-muted text-sm">Nenhuma prioridade urgente. Bom trabalho.</p>
               )}
               {priorities.map((p) => (
-                <div key={`${p.subject_type}:${p.subject_id}`} className="rounded-lg border border-border bg-card p-3">
+                <div key={`${p.subject_type}:${p.subject_id}`} className="c-card c-card-hover p-3.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-sm font-medium">{p.action}</div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">
+                      <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{p.action}</div>
+                      <div className="c-muted mt-0.5 text-xs">
                         {[
                           p.reasons?.slice(0, 2).join(" · "),
                           p.entity_label,
@@ -287,15 +287,15 @@ function HojePage() {
                         ].filter(Boolean).join(" · ")}
                       </div>
                     </div>
-                    <Badge variant="outline" className="shrink-0">{Math.round(p.priority_score)}</Badge>
+                    <span className="c-badge c-mono shrink-0">{Math.round(p.priority_score)}</span>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <Button size="sm" variant="outline" onClick={() => savePriorityDone(p)}>
-                      <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Concluir
-                    </Button>
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
+                    </button>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button size="sm" variant="ghost">Adiar</Button>
+                        <button type="button" className="c-btn-ghost">Adiar</button>
                       </PopoverTrigger>
                       <PopoverContent align="start" className="w-40 p-1">
                         <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "1h")}>+1 hora</button>
@@ -304,15 +304,13 @@ function HojePage() {
                       </PopoverContent>
                     </Popover>
                     {p.subject_type === "opportunity" ? (
-                      <Button asChild size="sm" variant="ghost">
-                        <Link to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir</Link>
-                      </Button>
+                      <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir</Link>
                     ) : (
-                      <Button size="sm" variant="ghost" onClick={() => openPriority(p)}>Abrir</Button>
+                      <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir</button>
                     )}
-                    <Button asChild size="sm" variant="ghost" className="ml-auto">
-                      <Link to="/assessor"><MessageSquare className="mr-1 h-3.5 w-3.5" /> Falar</Link>
-                    </Button>
+                    <Link className="c-btn-ghost ml-auto" to="/assessor">
+                      <MessageSquare className="h-3.5 w-3.5" /> Falar
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -320,33 +318,33 @@ function HojePage() {
           </Card>
 
           {/* C. Próximos compromissos */}
-          <Card>
+          <Card className="c-card border-0 shadow-none">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <CalendarClock className="h-4 w-4 text-muted-foreground" /> Próximos compromissos
+              <CardTitle className="c-section-title flex items-center gap-2">
+                <CalendarClock className="h-4 w-4" style={{ color: "var(--muted)" }} /> Próximos compromissos
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {eventosHoje.length === 0 && (
-                <p className="text-sm text-muted-foreground">Não tens compromissos para hoje.</p>
+                <p className="c-muted text-sm">Não tens compromissos para hoje.</p>
               )}
               {eventosHoje.map((e) => (
                 <button
                   key={e.id}
                   type="button"
                   onClick={() => openEvent(e.id)}
-                  className="flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted"
+                  className="c-card c-card-hover flex w-full items-start gap-3 p-3 text-left"
                 >
-                  <div className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                  <div className="c-mono shrink-0 rounded-md px-2 py-1 text-xs font-semibold" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}>
                     {e.hora ?? "—"}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{e.titulo}</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{e.titulo}</div>
+                    <div className="c-muted text-xs">
                       {[nomePessoa(e.pessoaId), tituloImovel((e as any).imovelId)].filter(Boolean).join(" · ") || "—"}
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "var(--muted)" }} />
                 </button>
               ))}
             </CardContent>
