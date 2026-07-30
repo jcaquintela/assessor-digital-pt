@@ -57,7 +57,7 @@ function ComunicacaoPage() {
 
   const blocked =
     channel === "email"
-      ? "Provider de email não ligado (Resend/SendGrid). Podes escrever, mas o envio está bloqueado."
+      ? "Provider de email não ligado. A mensagem é composta e fica registada no histórico como bloqueada, mas não sai."
       : channel === "whatsapp"
         ? "Sem templates aprovados pela Meta. Fora da janela de 24h o envio em massa está bloqueado."
         : null;
@@ -68,7 +68,17 @@ function ComunicacaoPage() {
       const res = await sendFn({
         data: { channel, segment, subject: subject.trim() || undefined, body: body.trim() },
       });
-      toast.success(`Aviso publicado para ${res.recipients} consultores.`);
+      if (res.blocked) {
+        toast.warning(
+          `Provider de email não ligado — nada saiu. Mensagem registada no histórico para ${res.recipients} destinatários.`,
+        );
+      } else {
+        toast.success(
+          channel === "email"
+            ? `Email enviado para ${res.recipients} consultores.`
+            : `Aviso publicado para ${res.recipients} consultores.`,
+        );
+      }
       setSubject("");
       setBody("");
       qc.invalidateQueries({ queryKey: ["admin", "broadcasts"] });
@@ -146,7 +156,7 @@ function ComunicacaoPage() {
           <button
             type="button"
             className="admin-btn-primary"
-            disabled={!isSuper || sending || body.trim().length < 3 || channel !== "dashboard"}
+            disabled={!isSuper || sending || body.trim().length < 3 || channel === "whatsapp"}
             onClick={send}
           >
             {sending ? "A enviar…" : "Enviar"}
@@ -174,7 +184,15 @@ function ComunicacaoPage() {
                 <td className="mini">{segmentLabel(b.segment as Segment)}</td>
                 <td className="mini">{b.recipients_count}</td>
                 <td className="mini">{(b.subject ? `${b.subject} — ` : "") + b.body.slice(0, 80)}</td>
-                <td><Badge tone={b.status === "sent" ? "ok" : "warn"}>{b.status === "sent" ? "Enviado" : b.status}</Badge></td>
+                <td>
+                  <Badge tone={b.status === "sent" ? "ok" : "warn"}>
+                    {b.status === "sent"
+                      ? "Enviado"
+                      : b.status === "bloqueado_sem_provider"
+                        ? "Bloqueado (sem provider)"
+                        : b.status}
+                  </Badge>
+                </td>
               </tr>
             ))}
           </tbody>
