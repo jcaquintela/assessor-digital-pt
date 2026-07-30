@@ -48,6 +48,7 @@ const toPessoa = (r: Row): Pessoa => ({
   resumo: r.summary ?? "",
   proximaAcao: r.next_action ?? undefined,
   proximaAcaoData: r.next_action_date ?? undefined,
+  canal: r.source_channel ?? undefined,
 });
 
 const toOportunidade = (r: Row): Oportunidade => ({
