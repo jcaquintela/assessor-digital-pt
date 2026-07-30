@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "@/lib/assessor/assessor-name";
+import { tierLabel } from "@/lib/subscription/tiers";
 import {
   getWhatsAppLink,
   startWhatsAppLink,
