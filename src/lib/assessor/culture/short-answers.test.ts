@@ -100,7 +100,7 @@ describe("short-answers: classificador agregador", () => {
   });
   it("respeita limites Unicode em nomes com acentos", () => {
     // Não deve marcar como saudação — contém conteúdo depois do vocativo.
-    expect(classifyShortAnswer("Olá Alfred, tenho visita amanhã", NOW).kind).not.toBe("greeting");
+    expect(classifyShortAnswer("Olá Afonso, tenho visita amanhã", NOW).kind).not.toBe("greeting");
   });
 });
 
