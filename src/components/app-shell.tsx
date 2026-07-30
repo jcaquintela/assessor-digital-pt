@@ -134,8 +134,8 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
 
       {/* Mobile bottom nav */}
       <nav
-        className="mobile-bottom-nav border-t border-border bg-card/95 backdrop-blur md:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="mobile-bottom-nav backdrop-blur md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)", background: "var(--paper-2)", borderTop: "1px solid var(--line)" }}
       >
         <div
           className="mx-auto grid max-w-lg"
@@ -149,8 +149,9 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
                 to={to}
                 className={cn(
                   "flex flex-col items-center gap-1 py-2.5 text-[11px]",
-                  active ? "text-primary" : "text-muted-foreground",
+                  active ? "font-semibold" : "c-muted",
                 )}
+                style={active ? { color: "var(--brass-dark)" } : undefined}
               >
                 <Icon className="h-5 w-5" />
                 <span>{label}</span>
@@ -175,8 +176,8 @@ export function PageHeader({
   return (
     <header className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="truncate text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+        <h1 className="c-serif truncate text-2xl font-medium md:text-[30px]">{title}</h1>
+        {subtitle ? <p className="c-muted mt-1 text-sm">{subtitle}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
