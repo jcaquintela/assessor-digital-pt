@@ -51,6 +51,14 @@ async function runInboundPipelineInner(
       return;
     }
     userId = onboard.userId ?? null;
+
+    // Conta acabada de criar: a saudação de boas-vindas já foi enviada e é a
+    // única resposta deste turno — a mensagem original (ex.: "/start CÓDIGO")
+    // não volta a entrar no motor.
+    if (userId && onboard.stopPipeline) {
+      await adapter.persistInbound(supabaseAdmin, inbound, userId);
+      return;
+    }
   }
 
   // 6. Persistir turno do utilizador (uma única vez, agora que sabemos userId).

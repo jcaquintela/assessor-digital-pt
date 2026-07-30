@@ -13,11 +13,14 @@ import type {
   NormalizedMessageType,
 } from "./types";
 
-const REPLY_PRIVATE =
-  "Este bot é privado (piloto). Precisas de um código de convite para começar. Envia-o no formato /start <código> ou apenas o código.";
-const REPLY_INVITE_INVALID = "Não reconheci esse código de convite. Confirma-o com quem te enviou.";
-const REPLY_INVITE_EXPIRED = "Esse convite já expirou. Pede um novo à equipa.";
-const REPLY_INVITE_USED = "Esse convite já foi resgatado por outra conta.";
+// Apresentação curta usada nas portas com código (equipa, planos pagos).
+// O registo normal (Nível 0 grátis) é automático e não passa por aqui.
+const INTRO_2_LINHAS =
+  "Sou o Afonso, o teu assessor digital para o dia a dia imobiliário: organizo pessoas, imóveis, agenda e prospeção a partir do que me escreves.\n" +
+  "Para este acesso preciso de um código — envia-o no formato /start <código> ou apenas o código.";
+const REPLY_INVITE_INVALID = `${INTRO_2_LINHAS}\n\nNão reconheci esse código. Confirma-o com quem to enviou.`;
+const REPLY_INVITE_EXPIRED = `${INTRO_2_LINHAS}\n\nEsse convite já expirou. Pede um novo à equipa.`;
+const REPLY_INVITE_USED = `${INTRO_2_LINHAS}\n\nEsse convite já foi resgatado por outra conta.`;
 const REPLY_ENGINE_ERROR = "Recebi a tua mensagem mas não consegui processá-la agora. Tenta daqui a pouco.";
 const REPLY_UNSUPPORTED = "Ainda não sei processar este tipo de conteúdo aqui.";
 const REPLY_MEDIA_ERROR = "Recebi o teu ficheiro mas não consegui descarregá-lo. Tenta reenviar.";
@@ -74,7 +77,7 @@ function guessMime(path: string): string {
 
 export const telegramAdapter: ChannelAdapter = {
   channel: "telegram",
-  replyUnassociated: REPLY_PRIVATE,
+  replyUnassociated: REPLY_ENGINE_ERROR,
   replyUnsupported: REPLY_UNSUPPORTED,
   replyEngineError: REPLY_ENGINE_ERROR,
   replyMediaError: REPLY_MEDIA_ERROR,
@@ -219,11 +222,25 @@ export const telegramAdapter: ChannelAdapter = {
             chatId: inbound.externalConversationId,
             text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
           });
-          return { handled: true, userId: claimed.userId };
+          return { handled: true, userId: claimed.userId, stopPipeline: true };
         }
       }
-      await provider.sendText({ chatId: inbound.externalConversationId, text: REPLY_PRIVATE });
-      return { handled: true };
+      // Nível 0 grátis: registo automático na primeira mensagem, sem convite.
+      const auto = await createShadowAccount(
+        supabaseAdmin,
+        inbound.externalConversationId,
+        inbound.sender,
+        "base",
+      );
+      if (!auto.ok) {
+        await provider.sendText({ chatId: inbound.externalConversationId, text: auto.reply });
+        return { handled: true };
+      }
+      await provider.sendText({
+        chatId: inbound.externalConversationId,
+        text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
+      });
+      return { handled: true, userId: auto.userId, stopPipeline: true };
     }
     const claim = await claimInvite(supabaseAdmin, code, inbound.externalConversationId, inbound.sender);
     if (!claim.ok) {
@@ -235,7 +252,7 @@ export const telegramAdapter: ChannelAdapter = {
       chatId: inbound.externalConversationId,
       text: REPLY_ONBOARDING(firstName),
     });
-    return { handled: true, userId: claim.userId };
+    return { handled: true, userId: claim.userId, stopPipeline: true };
   },
 
   async fetchMedia(inbound: NormalizedInbound): Promise<AdapterMediaBytes> {
