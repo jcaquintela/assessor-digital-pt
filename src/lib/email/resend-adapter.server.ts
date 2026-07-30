@@ -7,7 +7,9 @@ import type { EmailMessage, EmailProvider, EmailSendResult } from "./provider";
 // trocar por algo como "Assessor do Consultor <assessor@teudominio.pt>".
 const FROM = "Assessor do Consultor <onboarding@resend.dev>";
 
-const ENDPOINT = "https://api.resend.com/emails";
+// Enviamos pelo connector gateway da Lovable (credenciais geridas pelo
+// conector Resend: LOVABLE_API_KEY + RESEND_API_KEY). Não há chave manual.
+const ENDPOINT = "https://connector-gateway.lovable.dev/resend/emails";
 
 function escapeHtml(s: string): string {
   return s
@@ -28,16 +30,20 @@ function toHtml(body: string): string {
 export const resendEmailProvider: EmailProvider = {
   name: "resend",
   async send(message: EmailMessage): Promise<EmailSendResult> {
-    // A chave é lida sempre aqui dentro — nunca no topo do módulo.
-    const apiKey = process.env.EMAIL_PROVIDER_API_KEY;
-    if (!apiKey) return { success: false, error: "EMAIL_PROVIDER_API_KEY não configurada" };
+    // As chaves são lidas sempre aqui dentro — nunca no topo do módulo.
+    const lovableKey = process.env.LOVABLE_API_KEY;
+    const connectionKey = process.env.RESEND_API_KEY;
+    if (!lovableKey || !connectionKey) {
+      return { success: false, error: "conector Resend não ligado ao projeto" };
+    }
 
     try {
       const res = await fetch(ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${lovableKey}`,
+          "X-Connection-Api-Key": connectionKey,
         },
         body: JSON.stringify({
           from: FROM,
