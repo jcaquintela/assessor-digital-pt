@@ -5,6 +5,39 @@ import { ZOD_BY_TOOL, CreateProspectingLeadArgs } from "../v2/tools";
 import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
 import type { DecisionToolCall, MemoryWrite } from "./types";
 
+// O modelo escreve por vezes o estado em português ("por contactar") onde o
+// domínio espera o valor canónico. Sem isto, uma leitura perfeitamente
+// válida rebentava na validação e o consultor via "não consegui guardar".
+const LEAD_STATUS_ALIASES: Record<string, string> = {
+  "por contactar": "to_contact", "para contactar": "to_contact", "a contactar": "to_contact",
+  "por ligar": "to_contact", "nova": "to_contact", "novas": "to_contact",
+  "new": "to_contact", "pending": "to_contact", "por_contactar": "to_contact", "to contact": "to_contact",
+  "tentativa de contacto": "contact_attempted", "tentado": "contact_attempted",
+  "attempted": "contact_attempted", "contact attempted": "contact_attempted",
+  "contactada": "contacted", "contactado": "contacted", "contactadas": "contacted",
+  "sem interesse": "no_interest", "recusou": "no_interest", "no interest": "no_interest",
+  "oportunidade": "opportunity", "convertida": "converted", "convertido": "converted",
+  "arquivada": "archived", "arquivado": "archived",
+};
+
+const LEAD_STATUS_VALUES = new Set([
+  "to_contact", "contact_attempted", "contacted", "no_interest", "opportunity", "converted", "archived",
+]);
+
+function normalizeToolArgs(name: string, args: unknown): unknown {
+  if (!args || typeof args !== "object") return args;
+  if (name !== "search_prospecting_leads" && name !== "update_prospecting_lead") return args;
+  const a = { ...(args as Record<string, unknown>) };
+  const raw = typeof a.status === "string" ? a.status.trim().toLowerCase() : null;
+  if (raw) {
+    if (LEAD_STATUS_VALUES.has(raw)) a.status = raw;
+    else if (LEAD_STATUS_ALIASES[raw]) a.status = LEAD_STATUS_ALIASES[raw];
+    // Estado desconhecido numa LEITURA: melhor devolver tudo do que falhar.
+    else if (name === "search_prospecting_leads") a.status = null;
+  }
+  return a;
+}
+
 export interface ToolExecResult {
   name: string;
   ok: boolean;
@@ -39,7 +72,8 @@ export async function executeToolCalls(
       continue;
     }
     const schema = ZOD_BY_TOOL[tc.name];
-    const parsed = schema?.safeParse(tc.arguments);
+    const args = normalizeToolArgs(tc.name, tc.arguments);
+    const parsed = schema?.safeParse(args);
     if (schema && parsed && !parsed.success) {
       out.push({
         name: tc.name, ok: false,
@@ -49,7 +83,7 @@ export async function executeToolCalls(
       continue;
     }
     let result: DomainResult;
-    try { result = await exec(effectiveCtx, tc.arguments); }
+    try { result = await exec(effectiveCtx, args); }
     catch (err) {
       result = { ok: false, error: err instanceof Error ? err.message : String(err) };
     }

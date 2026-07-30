@@ -31,6 +31,7 @@ import {
   type AgendaItem,
 } from "./deterministic.server";
 import { applySafetyNet, buildArchiveContent } from "./safety-net.server";
+import { formatQueryResults, isQueryTool } from "./query-results";
 
 const HISTORY_LIMIT = 6;
 
@@ -439,9 +440,20 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
   // técnico, no máximo 2 frases, uma pergunta de cada vez.
   const prospectingActed = !!leadTool && leadTool.ok && !(leadTool.data as any)?.duplicate;
-  reply = enforceHumanTone(reply, { actionExecutedOk: (shouldAct && allOk) || prospectingActed });
-  if (decideR.decision.action === "ask") {
-    reply = enforceSingleQuestion(reply);
+  // Leituras bem sucedidas: o consultor pediu para VER. A resposta tem de
+  // trazer os dados devolvidos pela ferramenta — nunca "Feito." nem uma
+  // frase de intenção ("Vou procurar…"). O bloco de resultados substitui a
+  // frase gerada e não passa pelo corte de 2 frases (cortaria a lista).
+  const queryReply = toolResults.some((t) => t.ok && isQueryTool(t.name))
+    ? formatQueryResults(toolResults)
+    : null;
+  if (queryReply) {
+    reply = queryReply;
+  } else {
+    reply = enforceHumanTone(reply, { actionExecutedOk: (shouldAct && allOk) || prospectingActed });
+    if (decideR.decision.action === "ask") {
+      reply = enforceSingleQuestion(reply);
+    }
   }
   // Ordem correcta: o outcome real (execução) manda sobre a frase gerada.
   // Quando a ferramenta correu bem, a resposta NUNCA pode ser linguagem de
