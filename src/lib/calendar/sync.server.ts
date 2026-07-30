@@ -136,10 +136,11 @@ function jsonInit(method: string, payload: unknown): RequestInit {
  * sincronização não pode quebrar a criação do evento.
  */
 export async function pushEventToProviders(
-  supabaseAdmin: any,
   opts: { userId: string; followUpId: string; action: "upsert" | "delete" },
 ): Promise<void> {
   try {
+    // Usa sempre o cliente de serviço: `app_user_connections` é server-only.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const providers = CALENDAR_PROVIDERS;
     const ev = opts.action === "delete" ? null : await fetchLocalEvent(supabaseAdmin, opts.userId, opts.followUpId);
     if (opts.action === "upsert") {
