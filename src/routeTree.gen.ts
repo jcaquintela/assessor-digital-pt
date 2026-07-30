@@ -32,6 +32,7 @@ import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
 import { Route as AdminCustosRouteImport } from './routes/admin/custos'
 import { Route as AdminConvitesRouteImport } from './routes/admin/convites'
 import { Route as AdminComunicacaoRouteImport } from './routes/admin/comunicacao'
+import { Route as AdminAutonomasRouteImport } from './routes/admin/autonomas'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AdminAquisicaoRouteImport } from './routes/admin/aquisicao'
 import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenticated/seguimentos'
@@ -183,6 +184,11 @@ const AdminConvitesRoute = AdminConvitesRouteImport.update({
 const AdminComunicacaoRoute = AdminComunicacaoRouteImport.update({
   id: '/comunicacao',
   path: '/comunicacao',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAutonomasRoute = AdminAutonomasRouteImport.update({
+  id: '/autonomas',
+  path: '/autonomas',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
@@ -419,6 +425,7 @@ export interface FileRoutesByFullPath {
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/autonomas': typeof AdminAutonomasRoute
   '/admin/comunicacao': typeof AdminComunicacaoRoute
   '/admin/convites': typeof AdminConvitesRoute
   '/admin/custos': typeof AdminCustosRoute
@@ -480,6 +487,7 @@ export interface FileRoutesByTo {
   '/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/autonomas': typeof AdminAutonomasRoute
   '/admin/comunicacao': typeof AdminComunicacaoRoute
   '/admin/convites': typeof AdminConvitesRoute
   '/admin/custos': typeof AdminCustosRoute
@@ -544,6 +552,7 @@ export interface FileRoutesById {
   '/_authenticated/seguimentos': typeof AuthenticatedSeguimentosRouteWithChildren
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/autonomas': typeof AdminAutonomasRoute
   '/admin/comunicacao': typeof AdminComunicacaoRoute
   '/admin/convites': typeof AdminConvitesRoute
   '/admin/custos': typeof AdminCustosRoute
@@ -608,6 +617,7 @@ export interface FileRouteTypes {
     | '/seguimentos'
     | '/admin/aquisicao'
     | '/admin/auditoria'
+    | '/admin/autonomas'
     | '/admin/comunicacao'
     | '/admin/convites'
     | '/admin/custos'
@@ -669,6 +679,7 @@ export interface FileRouteTypes {
     | '/seguimentos'
     | '/admin/aquisicao'
     | '/admin/auditoria'
+    | '/admin/autonomas'
     | '/admin/comunicacao'
     | '/admin/convites'
     | '/admin/custos'
@@ -732,6 +743,7 @@ export interface FileRouteTypes {
     | '/_authenticated/seguimentos'
     | '/admin/aquisicao'
     | '/admin/auditoria'
+    | '/admin/autonomas'
     | '/admin/comunicacao'
     | '/admin/convites'
     | '/admin/custos'
@@ -946,6 +958,13 @@ declare module '@tanstack/react-router' {
       path: '/comunicacao'
       fullPath: '/admin/comunicacao'
       preLoaderRoute: typeof AdminComunicacaoRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/autonomas': {
+      id: '/admin/autonomas'
+      path: '/autonomas'
+      fullPath: '/admin/autonomas'
+      preLoaderRoute: typeof AdminAutonomasRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/auditoria': {
@@ -1421,6 +1440,7 @@ const AuthenticatedRouteRouteWithChildren =
 interface AdminRouteRouteChildren {
   AdminAquisicaoRoute: typeof AdminAquisicaoRoute
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
+  AdminAutonomasRoute: typeof AdminAutonomasRoute
   AdminComunicacaoRoute: typeof AdminComunicacaoRoute
   AdminConvitesRoute: typeof AdminConvitesRoute
   AdminCustosRoute: typeof AdminCustosRoute
@@ -1443,6 +1463,7 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAquisicaoRoute: AdminAquisicaoRoute,
   AdminAuditoriaRoute: AdminAuditoriaRoute,
+  AdminAutonomasRoute: AdminAutonomasRoute,
   AdminComunicacaoRoute: AdminComunicacaoRoute,
   AdminConvitesRoute: AdminConvitesRoute,
   AdminCustosRoute: AdminCustosRoute,
