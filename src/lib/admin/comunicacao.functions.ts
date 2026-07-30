@@ -2,7 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { auditAccess } from "./acessos.functions";
-import { getEmailProvider } from "@/lib/email/provider";
+import { getEmailProvider, isEmailProviderConfigured } from "@/lib/email/provider";
+
+// Estado do provider de email, para a UI dizer a verdade em vez de assumir
+// que está sempre bloqueado.
+export const getEmailProviderStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const provider = await getEmailProvider();
+    return { configured: isEmailProviderConfigured(), provider: provider.name };
+  });
 
 type Role = "consultant" | "support_admin" | "super_admin";
 
