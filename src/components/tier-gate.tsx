@@ -4,7 +4,6 @@ import { Lock } from "lucide-react";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { tierAtLeast, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
 
 // Guard de rota por tier. Esconder o link no menu não chega — o acesso
 // directo por URL tem de dar um estado coerente, não conteúdo do módulo.
@@ -23,7 +22,7 @@ export function TierGate({
   if (isPending) {
     return (
       <AppShell>
-        <div className="py-16 text-center text-sm text-muted-foreground">A carregar…</div>
+        <div className="c-muted py-16 text-center text-sm">A carregar…</div>
       </AppShell>
     );
   }
@@ -32,16 +31,19 @@ export function TierGate({
     return (
       <AppShell>
         <PageHeader title={title} />
-        <div className="mx-auto max-w-md rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
-          <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-muted text-muted-foreground">
-            <Lock className="h-4 w-4" />
+        <div className="c-lock">
+          <div className="c-lock-icon">
+            <Lock className="h-4.5 w-4.5" />
           </div>
-          <p className="text-sm text-muted-foreground">
-            {title} faz parte do plano {tierLabel(min)}. O teu plano actual é {tierLabel(data?.tier)}.
+          <div className="c-serif text-lg">
+            {title} faz parte do plano {tierLabel(min)}
+          </div>
+          <p className="c-muted mt-2 text-[13px] leading-relaxed">
+            O teu plano atual é {tierLabel(data?.tier)}. Fala com o Afonso para saberes mais.
           </p>
-          <Button asChild variant="outline" className="mt-4">
-            <Link to="/hoje">Voltar ao Hoje</Link>
-          </Button>
+          <Link to="/assessor" className="c-cta mt-5">
+            Saber mais
+          </Link>
         </div>
       </AppShell>
     );
