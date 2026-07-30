@@ -267,10 +267,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (patch.notas !== undefined) p.notes = patch.notas;
     const { error } = await supabase.from("follow_ups").update(p as never).eq("id", id);
     if (error) throw error;
+    syncCalendars(id, "upsert");
     invalidate("follow_ups");
   }, [qc]);
 
   const eliminarSeguimento = useCallback(async (id: string) => {
+    syncCalendars(id, "delete");
     const { error } = await supabase.from("follow_ups").delete().eq("id", id);
     if (error) throw error;
     invalidate("follow_ups");
@@ -285,6 +287,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const reagendarSeguimento = useCallback(async (id: string, novaData: string) => {
     const { error } = await supabase.from("follow_ups").update({ due_date: novaData, status: "Pendente" }).eq("id", id);
     if (error) throw error;
+    syncCalendars(id, "upsert");
     invalidate("follow_ups");
   }, [qc]);
 
