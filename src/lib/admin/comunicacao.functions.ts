@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { auditAccess } from "./acessos.functions";
+import { getEmailProvider } from "@/lib/email/provider";
 
 type Role = "consultant" | "support_admin" | "super_admin";
 
@@ -109,9 +110,54 @@ export const sendBroadcast = createServerFn({ method: "POST" })
     const ids = await resolveSegment(supabaseAdmin, data.segment);
 
     if (data.channel === "email") {
-      throw new Error(
-        "Provider de email não ligado. Escolhe Resend/SendGrid primeiro — a mensagem não foi enviada.",
-      );
+      // Todo o envio de email passa sempre por esta interface — nunca por uma
+      // API de provider hardcoded. Ver src/lib/email/provider.ts.
+      const provider = getEmailProvider();
+      const { data: recipients } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email")
+        .in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
+      const emails = ((recipients ?? []) as { email: string | null }[])
+        .map((r) => r.email)
+        .filter((e): e is string => !!e);
+
+      const subject = data.subject || data.body.split("\n")[0].slice(0, 120);
+      let sent = 0;
+      let lastError: string | undefined;
+      for (const to of emails) {
+        const res = await provider.send({ to, subject, body: data.body });
+        if (res.success) sent += 1;
+        else lastError = res.error ?? "envio falhou";
+      }
+
+      const blocked = sent === 0;
+      await supabaseAdmin.from("admin_broadcasts").insert({
+        channel: "email",
+        segment: data.segment,
+        subject: data.subject || null,
+        body: data.body,
+        recipients_count: ids.length,
+        status: blocked ? "bloqueado_sem_provider" : "sent",
+        created_by: context.userId,
+      } as never);
+
+      await auditAccess(context.userId, "broadcast.email", {
+        resource_type: "admin_broadcast",
+        before: null,
+        after: {
+          segment: data.segment,
+          recipients: ids.length,
+          provider: provider.name,
+          status: blocked ? "bloqueado_sem_provider" : "sent",
+        },
+      });
+
+      return {
+        ok: !blocked,
+        blocked,
+        recipients: ids.length,
+        error: blocked ? (lastError ?? "provider não configurado") : undefined,
+      };
     }
     if (data.channel === "whatsapp") {
       throw new Error(
@@ -144,7 +190,7 @@ export const sendBroadcast = createServerFn({ method: "POST" })
       before: null,
       after: { segment: data.segment, recipients: ids.length, title },
     });
-    return { ok: true, recipients: ids.length };
+    return { ok: true, blocked: false, recipients: ids.length };
   });
 
 // Anúncios ativos relevantes para o consultor autenticado.
