@@ -130,7 +130,7 @@ export const pushFollowUpToCalendars = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { pushEventToProviders } = await import("./sync.server");
-    await pushEventToProviders(supabaseAdmin, {
+    await pushEventToProviders({
       userId: context.userId,
       followUpId: data.followUpId,
       action: data.action,

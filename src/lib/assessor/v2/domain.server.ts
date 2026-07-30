@@ -304,7 +304,7 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
       } catch { /* noop */ }
     }
     // Espelha a alteração nos calendários ligados (nunca bloqueia).
-    await pushEventToProviders(ctx.supabase, {
+    await pushEventToProviders({
       userId: ctx.userId, followUpId: existingOpen.id, action: "upsert",
     });
     return ok({
@@ -392,7 +392,7 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
     });
   }
   if ((data as any)?.id) {
-    await pushEventToProviders(ctx.supabase, {
+    await pushEventToProviders({
       userId: ctx.userId, followUpId: (data as any).id, action: "upsert",
     });
   }
