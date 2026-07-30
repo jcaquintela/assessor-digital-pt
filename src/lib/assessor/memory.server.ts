@@ -140,16 +140,24 @@ export async function createPendingAction(
     const payload = row.structured_payload ?? {};
     const label = payload.title || payload.description || row.original_content || row.intent;
     try {
-      await supabase.from("miscellaneous_items").insert({
+      // status/category TÊM de respeitar o CHECK de miscellaneous_items
+      // (status ∈ inbox|reviewed|classified|archived|deleted). Um valor
+      // inválido fazia o insert falhar em silêncio e a proposta perdia-se
+      // mesmo assim (caso real: "Casa Final A", 30/07).
+      const { error: miscError } = await supabase.from("miscellaneous_items").insert({
         user_id: input.userId,
         title: `Proposta não confirmada: ${String(label).slice(0, 80)}`,
         original_content: JSON.stringify(payload),
         summary: "Ficou por confirmar porque entretanto chegou outro assunto.",
-        category: "por_tratar",
+        category: "Por tratar",
         source_channel: input.channel,
-        status: "por_tratar",
+        status: "inbox",
       } as never);
-    } catch { /* nunca bloquear o turno por causa do registo de segurança */ }
+      if (miscError) console.error("[memory] falha a guardar proposta substituída em Diversos", miscError);
+    } catch (err) {
+      // nunca bloquear o turno por causa do registo de segurança
+      console.error("[memory] excepção a guardar proposta substituída", err);
+    }
   }
   const { data, error } = await supabase
     .from("pending_actions")
