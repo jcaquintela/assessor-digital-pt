@@ -2,7 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { auditAccess } from "./acessos.functions";
-import { getEmailProvider } from "@/lib/email/provider";
+import { getEmailProvider, isEmailProviderConfigured } from "@/lib/email/provider";
+
+// Estado do provider de email, para a UI dizer a verdade em vez de assumir
+// que está sempre bloqueado.
+export const getEmailProviderStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const provider = await getEmailProvider();
+    return { configured: isEmailProviderConfigured(), provider: provider.name };
+  });
 
 type Role = "consultant" | "support_admin" | "super_admin";
 
@@ -112,7 +122,7 @@ export const sendBroadcast = createServerFn({ method: "POST" })
     if (data.channel === "email") {
       // Todo o envio de email passa sempre por esta interface — nunca por uma
       // API de provider hardcoded. Ver src/lib/email/provider.ts.
-      const provider = getEmailProvider();
+      const provider = await getEmailProvider();
       const { data: recipients } = await supabaseAdmin
         .from("profiles")
         .select("id, email")
@@ -130,14 +140,25 @@ export const sendBroadcast = createServerFn({ method: "POST" })
         else lastError = res.error ?? "envio falhou";
       }
 
-      const blocked = sent === 0;
+      // Com provider ligado, o histórico grava o resultado real do envio.
+      // "bloqueado_sem_provider" fica reservado para o caso de não haver chave.
+      const noProvider = provider.name === "null";
+      const failedAll = sent === 0 && emails.length > 0;
+      const status = noProvider
+        ? "bloqueado_sem_provider"
+        : sent === 0
+          ? "falhou"
+          : sent < emails.length
+            ? "enviado_parcial"
+            : "sent";
+      const blocked = noProvider || failedAll || emails.length === 0;
       await supabaseAdmin.from("admin_broadcasts").insert({
         channel: "email",
         segment: data.segment,
         subject: data.subject || null,
         body: data.body,
-        recipients_count: ids.length,
-        status: blocked ? "bloqueado_sem_provider" : "sent",
+        recipients_count: emails.length || ids.length,
+        status,
         created_by: context.userId,
       } as never);
 
@@ -148,15 +169,21 @@ export const sendBroadcast = createServerFn({ method: "POST" })
           segment: data.segment,
           recipients: ids.length,
           provider: provider.name,
-          status: blocked ? "bloqueado_sem_provider" : "sent",
+          status,
+          sent,
+          error: lastError ?? null,
         },
       });
 
       return {
-        ok: !blocked,
-        blocked,
-        recipients: ids.length,
-        error: blocked ? (lastError ?? "provider não configurado") : undefined,
+        ok: sent > 0,
+        blocked: noProvider,
+        recipients: emails.length || ids.length,
+        sent,
+        error:
+          sent === emails.length && sent > 0
+            ? undefined
+            : (lastError ?? (emails.length === 0 ? "nenhum destinatário com email" : "provider não configurado")),
       };
     }
     if (data.channel === "whatsapp") {
