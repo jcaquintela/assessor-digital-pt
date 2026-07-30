@@ -4,6 +4,7 @@ import { Lock } from "lucide-react";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { tierAtLeast, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { AppShell, PageHeader } from "@/components/app-shell";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 
 // Guard de rota por tier. Esconder o link no menu não chega — o acesso
 // directo por URL tem de dar um estado coerente, não conteúdo do módulo.
@@ -17,6 +18,7 @@ export function TierGate({
   children: ReactNode;
 }) {
   const { data, isPending } = useEffectiveTier();
+  const { name: assessorName } = useAssessorName();
 
   // Enquanto não sabemos o tier, não mostramos o módulo.
   if (isPending) {
@@ -39,7 +41,7 @@ export function TierGate({
             {title} faz parte do plano {tierLabel(min)}
           </div>
           <p className="c-muted mt-2 text-[13px] leading-relaxed">
-            O teu plano atual é {tierLabel(data?.tier)}. Fala com o Afonso para saberes mais.
+            O teu plano atual é {tierLabel(data?.tier)}. Fala com o {assessorName} para saberes mais.
           </p>
           <Link to="/assessor" className="c-cta mt-5">
             Saber mais
