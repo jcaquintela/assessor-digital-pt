@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { formatEUR } from "@/lib/demo-data";
 import { listProperties } from "@/lib/assessor/properties.functions";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
-import { ChevronRight, FileText, Pencil, Search } from "lucide-react";
+import { ChevronRight, Download, FileText, Pencil, Search } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
 import { EditPropertyDialog } from "@/components/imoveis/edit-property-dialog";
+import { exportProperties } from "@/lib/export/export.functions";
+import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 
 const ORIGEM: Record<string, string> = {
   whatsapp: "WhatsApp",
@@ -45,6 +47,30 @@ function ImoveisPage() {
   const [q, setQ] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const emEdicao = all.find((p) => p.id === editId) ?? null;
+  const fetchExport = useServerFn(exportProperties);
+  const [aExportar, setAExportar] = useState(false);
+
+  async function exportarCsv() {
+    setAExportar(true);
+    try {
+      const rows = await fetchExport();
+      const csv = toCsv(
+        ["Morada", "Tipo", "Estado", "Preço (EUR)", "Origem", "Criado em"],
+        rows.map((r) => [
+          [r.address, r.city || r.location].filter(Boolean).join(", ") || r.title || "",
+          [r.typology, r.property_type].filter(Boolean).join(" "),
+          propertyStatusLabel(r.status),
+          r.asking_price ?? r.value ?? "",
+          r.source_channel ? (ORIGEM[r.source_channel] ?? r.source_channel) : "",
+          csvDate(r.created_at),
+        ]),
+      );
+      downloadText(`imoveis-afonso-${dateStamp()}.csv`, "text/csv", csv);
+    } finally {
+      setAExportar(false);
+    }
+  }
+
   const term = q.trim().toLowerCase();
   const list = all.filter((i) =>
     !term ||
@@ -54,6 +80,11 @@ function ImoveisPage() {
   return (
     <AppShell>
       <PageHeader title="Imóveis" subtitle={`${all.length} em carteira`} />
+      <div className="mb-4">
+        <button type="button" className="c-btn" onClick={exportarCsv} disabled={aExportar}>
+          <Download className="h-4 w-4" /> {aExportar ? "A gerar…" : "CSV"}
+        </button>
+      </div>
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} />
         <Input
