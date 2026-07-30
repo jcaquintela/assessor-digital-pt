@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
 import {
   getQualityOverview,
@@ -206,9 +206,8 @@ function QualidadePage() {
               {data.low.map((r: any) => {
                 const open = openTrace === r.trace_id;
                 return (
-                  <>
+                  <Fragment key={r.id}>
                     <tr
-                      key={r.id}
                       className={`qa-row ${open ? "open" : ""}`}
                       onClick={() => r.trace_id && setOpenTrace(open ? null : r.trace_id)}
                     >
@@ -227,11 +226,11 @@ function QualidadePage() {
                       <td className="mono mini">{r.trace_id ? r.trace_id.slice(0, 8) : "—"}</td>
                     </tr>
                     {open && r.trace_id ? (
-                      <tr key={`${r.id}-t`} className="qa-transcript">
+                      <tr className="qa-transcript">
                         <td colSpan={8}><Transcript traceId={r.trace_id} /></td>
                       </tr>
                     ) : null}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>
