@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatData, formatEUR } from "@/lib/demo-data";
 import { Camera, ChevronRight } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/oportunidades")({
+export const Route = createFileRoute("/_authenticated/oportunidades/")({
   head: () => ({
     meta: [
       { title: "Oportunidades — Assessor do Consultor" },

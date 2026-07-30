@@ -8,7 +8,7 @@ import { Receipt, Wallet, FileText, ChevronRight, Pencil } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
 import { EditMovementDialog } from "@/components/negocio/edit-movement-dialog";
 
-export const Route = createFileRoute("/_authenticated/negocio")({
+export const Route = createFileRoute("/_authenticated/negocio/")({
   head: () => ({
     meta: [
       { title: "O Meu Negócio — Assessor do Consultor" },

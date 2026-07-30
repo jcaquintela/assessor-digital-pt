@@ -22,7 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatData } from "@/lib/demo-data";
 import { TierGate } from "@/components/tier-gate";
 
-export const Route = createFileRoute("/_authenticated/oportunidades/prospecao")({
+export const Route = createFileRoute("/_authenticated/oportunidades/prospecao/")({
   head: () => ({
     meta: [
       { title: "Prospeção — Placas e leads" },
