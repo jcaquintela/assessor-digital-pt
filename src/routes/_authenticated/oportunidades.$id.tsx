@@ -214,7 +214,7 @@ function OportunidadeDetail() {
         <span>Valor: <strong className="text-foreground">{formatEUR(op.valor)}</strong></span>
         <span>Produção: <strong className="text-foreground">{formatEUR(producao)}</strong></span>
         <span>Comissão recebida: <strong className="text-foreground">{formatEUR(comissaoRecebida)}</strong></span>
-        <span>Probabilidade: <strong className="text-foreground">{op.probabilidade}</strong></span>
+        <span>Probabilidade: <strong className="text-foreground">{normProb(op.probabilidade)}</strong></span>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
