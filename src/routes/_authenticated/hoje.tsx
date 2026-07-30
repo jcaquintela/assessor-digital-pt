@@ -354,64 +354,62 @@ function HojePage() {
         {/* Coluna lateral */}
         <div className="space-y-6">
           {/* D. Aguardam resultado */}
-          <Card>
+          <Card className="c-card border-0 shadow-none">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Clock className="h-4 w-4 text-muted-foreground" /> Aguardam resultado
+              <CardTitle className="c-section-title flex items-center gap-2">
+                <Clock className="h-4 w-4" style={{ color: "var(--muted)" }} /> Aguardam resultado
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {awaiting.length === 0 && (
-                <p className="text-sm text-muted-foreground">Não há nada a aguardar resultado.</p>
+                <p className="c-muted text-sm">Não há nada a aguardar resultado.</p>
               )}
               {awaiting.map((a) => (
                 <Link
                   key={a.id}
                   to="/seguimentos/$id"
                   params={{ id: a.id }}
-                  className="group block rounded-lg border border-border p-3 outline-none transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary"
+                  className="c-card c-card-hover group block p-3 outline-none"
                   aria-label={`Abrir ${a.title}`}
                 >
-                  <div className="text-sm font-medium">{a.title}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{a.title}</div>
+                  <div className="c-mono c-muted text-xs">
                     {formatDataHora(a.due_at)}{a.entity_label ? ` · ${a.entity_label}` : ""}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Button size="sm" variant="outline" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "concluido" }); }}>Correu bem</Button>
-                    <Button size="sm" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "precisa_nova_acao" }); }}>Precisa seguimento</Button>
-                    <Button size="sm" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "nao_realizado" }); }}>Sem efeito</Button>
-                    <Button size="sm" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNoteFor(a); setNoteText(""); }}>
-                      <StickyNote className="mr-1 h-3.5 w-3.5" /> Nota
-                    </Button>
+                    <button type="button" className="c-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "concluido" }); }}>Correu bem</button>
+                    <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "precisa_nova_acao" }); }}>Precisa seguimento</button>
+                    <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "nao_realizado" }); }}>Sem efeito</button>
+                    <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNoteFor(a); setNoteText(""); }}>
+                      <StickyNote className="h-3.5 w-3.5" /> Nota
+                    </button>
                   </div>
                 </Link>
               ))}
             </CardContent>
           </Card>
-
-          {/* E. Atenção */}
-          {(atrasados.length > 0 || oportSemAcao.length > 0 || (docsPending.data ?? 0) > 0) && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <AlertTriangle className="h-4 w-4 text-destructive" /> Atenção
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1.5">
-                {atrasados.length > 0 && (
-                  <AlertRow to="/seguimentos" search={{ status: "overdue" }} icon={AlertTriangle} label={`${atrasados.length} seguimento${atrasados.length === 1 ? "" : "s"} em atraso`} />
-                )}
-                {oportSemAcao.length > 0 && (
-                  <AlertRow to="/oportunidades" icon={Briefcase} label={`${oportSemAcao.length} oportunidade${oportSemAcao.length === 1 ? "" : "s"} sem próxima ação · ${formatEUR(oportSemAcao.reduce((s, o) => s + o.valor, 0))}`} />
-                )}
-                {(docsPending.data ?? 0) > 0 && (
-                  <AlertRow to="/documentos" icon={FileText} label={`${docsPending.data} documento${docsPending.data === 1 ? "" : "s"} por classificar`} />
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
+
+      {/* E. Banner de atenção agregado, no fundo da página */}
+      {(atrasados.length > 0 || oportSemAcao.length > 0 || (docsPending.data ?? 0) > 0) && (
+        <section className="c-alert mt-6">
+          <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
+            <AlertTriangle className="h-4 w-4" /> A precisar de atenção
+          </div>
+          <div className="grid gap-1">
+            {atrasados.length > 0 && (
+              <AlertRow to="/seguimentos" search={{ status: "overdue" }} icon={AlertTriangle} label={`${atrasados.length} seguimento${atrasados.length === 1 ? "" : "s"} em atraso`} />
+            )}
+            {oportSemAcao.length > 0 && (
+              <AlertRow to="/oportunidades" icon={Briefcase} label={`${oportSemAcao.length} oportunidade${oportSemAcao.length === 1 ? "" : "s"} sem próxima ação · ${formatEUR(oportSemAcao.reduce((s, o) => s + o.valor, 0))} em risco`} />
+            )}
+            {(docsPending.data ?? 0) > 0 && (
+              <AlertRow to="/documentos" icon={FileText} label={`${docsPending.data} documento${docsPending.data === 1 ? "" : "s"} por classificar`} />
+            )}
+          </div>
+        </section>
+      )}
 
       {/* FAB mobile */}
       <Link
@@ -459,12 +457,12 @@ function AlertRow({
     <Link
       to={to as any}
       search={search as any}
-      className="flex items-center gap-2 rounded-md px-2 py-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
+      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13.5px] outline-none transition-colors hover:bg-white/50"
       aria-label={label}
     >
-      <Icon className="h-4 w-4 text-muted-foreground" />
+      <Icon className="h-4 w-4 shrink-0 opacity-70" />
       <span className="flex-1">{label}</span>
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      <ChevronRight className="h-4 w-4 opacity-70" />
     </Link>
   );
 }
