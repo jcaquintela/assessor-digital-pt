@@ -1,9 +1,10 @@
 // Interface única de envio de email da aplicação.
 //
-// PROVIDER ACTUAL: Resend (`src/lib/email/resend-adapter.server.ts`).
-// A chave vive na secret `EMAIL_PROVIDER_API_KEY` e é lida dentro do `send()`,
-// nunca no topo de um módulo. Sem chave, cai no `nullEmailProvider` e o envio
-// fica bloqueado — nunca falha silenciosamente.
+// PROVIDER ACTUAL: Resend via conector Lovable
+// (`src/lib/email/resend-adapter.server.ts`). As credenciais são geridas pelo
+// conector (LOVABLE_API_KEY + RESEND_API_KEY) e lidas dentro do `send()`,
+// nunca no topo de um módulo. Sem conector, cai no `nullEmailProvider` e o
+// envio fica bloqueado — nunca falha silenciosamente.
 // Para trocar de provider basta criar outro `<provider>-adapter.server.ts` e
 // mudar o import dinâmico em `getEmailProvider()`. A UI de Comunicação, os
 // segmentos e o histórico falam apenas com esta interface.
@@ -36,11 +37,11 @@ export const nullEmailProvider: EmailProvider = {
 // Só pode ser chamado de código servidor (lê `process.env`). O import do
 // adapter é dinâmico para o módulo `.server` nunca entrar no bundle do browser.
 export async function getEmailProvider(): Promise<EmailProvider> {
-  if (!process.env.EMAIL_PROVIDER_API_KEY) return nullEmailProvider;
+  if (!isEmailProviderConfigured()) return nullEmailProvider;
   const { resendEmailProvider } = await import("./resend-adapter.server");
   return resendEmailProvider;
 }
 
 export function isEmailProviderConfigured(): boolean {
-  return !!process.env.EMAIL_PROVIDER_API_KEY;
+  return !!process.env.LOVABLE_API_KEY && !!process.env.RESEND_API_KEY;
 }
