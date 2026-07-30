@@ -107,6 +107,33 @@ export type Database = {
         }
         Relationships: []
       }
+      app_user_connections: {
+        Row: {
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connection_key_ciphertext?: string
+          connector_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       assessor_ai_logs: {
         Row: {
           channel: string
@@ -804,6 +831,143 @@ export type Database = {
           provider?: string
           refresh_token_encrypted?: string | null
           scopes?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      calendar_event_links: {
+        Row: {
+          created_at: string
+          deleted: boolean
+          external_calendar_id: string | null
+          external_event_id: string
+          external_updated_at: string | null
+          follow_up_id: string
+          id: string
+          last_origin: string | null
+          last_synced_at: string
+          local_updated_at: string | null
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted?: boolean
+          external_calendar_id?: string | null
+          external_event_id: string
+          external_updated_at?: string | null
+          follow_up_id: string
+          id?: string
+          last_origin?: string | null
+          last_synced_at?: string
+          local_updated_at?: string | null
+          provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted?: boolean
+          external_calendar_id?: string | null
+          external_event_id?: string
+          external_updated_at?: string | null
+          follow_up_id?: string
+          id?: string
+          last_origin?: string | null
+          last_synced_at?: string
+          local_updated_at?: string | null
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_event_links_follow_up_id_fkey"
+            columns: ["follow_up_id"]
+            isOneToOne: false
+            referencedRelation: "follow_ups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_sync_log: {
+        Row: {
+          action: string
+          created_at: string
+          detail: string | null
+          direction: string
+          external_event_id: string | null
+          follow_up_id: string | null
+          id: string
+          origin: string
+          provider: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          detail?: string | null
+          direction: string
+          external_event_id?: string | null
+          follow_up_id?: string | null
+          id?: string
+          origin: string
+          provider: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: string | null
+          direction?: string
+          external_event_id?: string | null
+          follow_up_id?: string | null
+          id?: string
+          origin?: string
+          provider?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      calendar_sync_state: {
+        Row: {
+          calendar_id: string | null
+          created_at: string
+          delta_link: string | null
+          enabled: boolean
+          id: string
+          last_error: string | null
+          last_polled_at: string | null
+          provider: string
+          sync_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calendar_id?: string | null
+          created_at?: string
+          delta_link?: string | null
+          enabled?: boolean
+          id?: string
+          last_error?: string | null
+          last_polled_at?: string | null
+          provider: string
+          sync_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calendar_id?: string | null
+          created_at?: string
+          delta_link?: string | null
+          enabled?: boolean
+          id?: string
+          last_error?: string | null
+          last_polled_at?: string | null
+          provider?: string
+          sync_token?: string | null
           updated_at?: string
           user_id?: string
         }

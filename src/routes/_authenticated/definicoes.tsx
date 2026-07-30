@@ -17,6 +17,17 @@ import {
 } from "@/lib/whatsapp/link.functions";
 import { getSupremePreferences, updateSupremePreferences } from "@/lib/assessor/supreme/autonomy.functions";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import {
+  CALENDAR_PROVIDERS,
+  CALENDAR_PROVIDER_LABEL,
+  type CalendarProvider,
+} from "@/lib/calendar/providers";
+import {
+  getCalendarStatus,
+  startCalendarConnect,
+  disconnectCalendar,
+  syncCalendarNow,
+} from "@/lib/calendar/calendar.functions";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
   head: () => ({
@@ -414,27 +425,136 @@ function CanalSection() {
   return <WhatsAppSection />;
 }
 
-/* ---------------- Calendário (em breve) ---------------- */
+/* ---------------- Calendário ---------------- */
 
 function CalendarioSection() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<CalendarProvider | null>(null);
+
+  const status = useQuery({
+    queryKey: ["calendar-status"],
+    queryFn: () => getCalendarStatus(),
+  });
+
+  const waitForPopup = (popup: Window, provider: CalendarProvider) =>
+    new Promise<void>((resolve, reject) => {
+      let poll: number | undefined;
+      const cleanup = () => {
+        window.removeEventListener("message", onMessage);
+        if (poll !== undefined) window.clearInterval(poll);
+      };
+      const onMessage = (event: MessageEvent) => {
+        const type = event.data?.type;
+        if (
+          event.origin !== window.location.origin ||
+          event.source !== popup ||
+          event.data?.connectorId !== provider ||
+          (type !== "appUserConnectorOAuthComplete" && type !== "appUserConnectorOAuthFailed")
+        ) return;
+        cleanup();
+        if (type === "appUserConnectorOAuthComplete") { resolve(); return; }
+        popup.close();
+        reject(new Error("A autorização não foi concluída."));
+      };
+      window.addEventListener("message", onMessage);
+      poll = window.setInterval(() => {
+        if (!popup.closed) return;
+        cleanup();
+        reject(new Error("A janela foi fechada antes de concluir."));
+      }, 500);
+    });
+
+  const ligar = async (provider: CalendarProvider) => {
+    const popup = window.open("", "afonso-calendar-oauth", "width=620,height=760");
+    if (!popup) { toast.error("Permite janelas pop-up para ligares o calendário."); return; }
+    setBusy(provider);
+    try {
+      const { authorizationUrl } = await startCalendarConnect({ data: { provider } });
+      const done = waitForPopup(popup, provider);
+      popup.location.href = authorizationUrl;
+      await done;
+      await qc.invalidateQueries({ queryKey: ["calendar-status"] });
+      await qc.invalidateQueries({ queryKey: ["follow_ups"] });
+      toast.success(`${CALENDAR_PROVIDER_LABEL[provider]} ligado.`);
+    } catch (e) {
+      popup.close();
+      toast.error(e instanceof Error ? e.message : "Não consegui ligar o calendário.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const desligar = async (provider: CalendarProvider) => {
+    setBusy(provider);
+    try {
+      await disconnectCalendar({ data: { provider } });
+      await qc.invalidateQueries({ queryKey: ["calendar-status"] });
+      toast.success(`${CALENDAR_PROVIDER_LABEL[provider]} desligado.`);
+    } catch {
+      toast.error("Não consegui desligar.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const sincronizar = async () => {
+    setBusy("google_calendar");
+    try {
+      const r = await syncCalendarNow();
+      const applied = r.reduce((n, x) => n + x.applied, 0);
+      await qc.invalidateQueries({ queryKey: ["follow_ups"] });
+      await qc.invalidateQueries({ queryKey: ["calendar-status"] });
+      toast.success(applied > 0 ? `${applied} alteração(ões) trazida(s) do calendário.` : "Já estava tudo em dia.");
+    } catch {
+      toast.error("Não consegui sincronizar agora.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const rows = status.data ?? CALENDAR_PROVIDERS.map((p) => ({
+    provider: p, connected: false, lastPolledAt: null as string | null, lastError: null as string | null,
+  }));
+  const algumLigado = rows.some((r) => r.connected);
+
   return (
     <Section title="Calendário">
       <div className="grid gap-3 sm:grid-cols-2">
-        {["Google Calendar", "Microsoft Outlook"].map((nome) => (
-          <div key={nome} className="flex items-center justify-between rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
+        {rows.map((r) => (
+          <div key={r.provider} className="flex items-center justify-between rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
             <div className="flex items-center gap-3">
               <CalendarDays className="c-muted h-4 w-4" />
               <div>
-                <div className="text-[13.5px] font-semibold">{nome}</div>
-                <span className="c-badge mt-1 inline-flex">Em breve</span>
+                <div className="text-[13.5px] font-semibold">{CALENDAR_PROVIDER_LABEL[r.provider as CalendarProvider]}</div>
+                <span className={`c-badge mt-1 inline-flex${r.connected ? " ok" : ""}`}>
+                  {r.connected ? "Ligado" : "Não ligado"}
+                </span>
               </div>
             </div>
-            <button className="c-btn" disabled>Ligar</button>
+            {r.connected ? (
+              <button className="c-btn" disabled={busy !== null} onClick={() => desligar(r.provider as CalendarProvider)}>
+                Desligar
+              </button>
+            ) : (
+              <button className="c-btn" disabled={busy !== null} onClick={() => ligar(r.provider as CalendarProvider)}>
+                {busy === r.provider ? "A ligar…" : "Ligar"}
+              </button>
+            )}
           </div>
         ))}
       </div>
+      {algumLigado && (
+        <div className="mt-3 flex items-center gap-3">
+          <button className="c-btn" disabled={busy !== null} onClick={sincronizar}>Sincronizar agora</button>
+          <span className="c-muted text-[12px]">
+            A verificação automática corre sozinha de 10 em 10 minutos.
+          </span>
+        </div>
+      )}
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
-        Quando ligares o calendário, os compromissos que combinares na conversa entram lá sozinhos.
+        Os compromissos que combinares na conversa entram no teu calendário sozinhos, e o que marcares
+        directamente no calendário aparece aqui. Se editares dos dois lados ao mesmo tempo, fica a
+        alteração mais recente.
       </p>
     </Section>
   );

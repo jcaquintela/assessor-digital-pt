@@ -31,6 +31,7 @@ import {
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
+import { pushEventToProviders } from "@/lib/calendar/sync.server";
 import {
   upsertReminder,
   rescheduleReminder,
@@ -302,6 +303,10 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
         });
       } catch { /* noop */ }
     }
+    // Espelha a alteração nos calendários ligados (nunca bloqueia).
+    await pushEventToProviders({
+      userId: ctx.userId, followUpId: existingOpen.id, action: "upsert",
+    });
     return ok({
       event: { id: existingOpen.id, title: v.title, due_date: dueIsoDate, due_time: v.start_time },
       reminderId: null,
@@ -384,6 +389,11 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
       related_resource_id: (data as any).id,
       scheduled_for: dueIsoDate,
       message_preview: `Lembrete: ${v.title.trim()} (${v.start_time}).`,
+    });
+  }
+  if ((data as any)?.id) {
+    await pushEventToProviders({
+      userId: ctx.userId, followUpId: (data as any).id, action: "upsert",
     });
   }
   return ok({ event: data, reminderId });
