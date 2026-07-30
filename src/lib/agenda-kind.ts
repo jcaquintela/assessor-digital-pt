@@ -12,7 +12,7 @@ const EVENT_TYPES = new Set([
   "almoco", "jantar", "cafe", "encontro",
 ]);
 
-const TASK_TYPES = new Set(["tarefa", "task", "todo", "email", "mensagem", "sms"]);
+const TASK_TYPES = new Set(["tarefa", "task", "todo", "email", "mensagem", "sms", "chamada", "call", "phone_call", "lembrete", "outro"]);
 
 function norm(raw: unknown): string {
   return String(raw ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
