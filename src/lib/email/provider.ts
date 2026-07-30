@@ -1,15 +1,12 @@
 // Interface única de envio de email da aplicação.
 //
-// COMO LIGAR UM PROVIDER REAL (quando for decidido):
-// 1. Criar o adapter concreto em `src/lib/email/<provider>-adapter.server.ts`,
-//    exportando um objecto que satisfaça `EmailProvider`.
-// 2. Guardar a chave do provider como secret com o nome `EMAIL_PROVIDER_API_KEY`
-//    (ler sempre dentro do `send()`, nunca no topo do módulo).
-// 3. Em `getEmailProvider()` abaixo, devolver esse adapter quando
-//    `process.env.EMAIL_PROVIDER_API_KEY` existir; caso contrário manter o
-//    `nullEmailProvider`.
-// Nada mais precisa de mudar: a UI de Comunicação, os segmentos e o histórico
-// já falam apenas com esta interface.
+// PROVIDER ACTUAL: Resend (`src/lib/email/resend-adapter.server.ts`).
+// A chave vive na secret `EMAIL_PROVIDER_API_KEY` e é lida dentro do `send()`,
+// nunca no topo de um módulo. Sem chave, cai no `nullEmailProvider` e o envio
+// fica bloqueado — nunca falha silenciosamente.
+// Para trocar de provider basta criar outro `<provider>-adapter.server.ts` e
+// mudar o import dinâmico em `getEmailProvider()`. A UI de Comunicação, os
+// segmentos e o histórico falam apenas com esta interface.
 
 export type EmailMessage = {
   to: string;
@@ -36,11 +33,14 @@ export const nullEmailProvider: EmailProvider = {
   },
 };
 
-export function getEmailProvider(): EmailProvider {
-  // Passo 3 do comentário acima entra aqui.
-  return nullEmailProvider;
+// Só pode ser chamado de código servidor (lê `process.env`). O import do
+// adapter é dinâmico para o módulo `.server` nunca entrar no bundle do browser.
+export async function getEmailProvider(): Promise<EmailProvider> {
+  if (!process.env.EMAIL_PROVIDER_API_KEY) return nullEmailProvider;
+  const { resendEmailProvider } = await import("./resend-adapter.server");
+  return resendEmailProvider;
 }
 
 export function isEmailProviderConfigured(): boolean {
-  return getEmailProvider().name !== "null";
+  return !!process.env.EMAIL_PROVIDER_API_KEY;
 }
