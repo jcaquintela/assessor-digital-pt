@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 import { formatDataHora } from "@/lib/demo-data";
 import { CalendarClock, User, Building2, ExternalLink } from "lucide-react";
+import { useAssessorName, ASSESSOR_NAME_DEFAULT } from "@/lib/assessor/assessor-name";
 
 export interface EventDrawerItem {
   id: string;
@@ -18,6 +19,7 @@ export interface EventDrawerItem {
 }
 
 export function EventDrawer({ item, onClose }: { item: EventDrawerItem | null; onClose: () => void }) {
+  const { name: assessorName } = useAssessorName();
   return (
     <Sheet open={!!item} onOpenChange={(o) => { if (!o) onClose(); }}>
       <SheetContent className="w-full sm:max-w-md">
@@ -55,7 +57,9 @@ export function EventDrawer({ item, onClose }: { item: EventDrawerItem | null; o
                   <Link to="/seguimentos/$id" params={{ id: item.id }}>Abrir ficha</Link>
                 </Button>
                 <Button asChild size="sm" variant="secondary" className="flex-1">
-                  <Link to="/assessor">Falar com o Alfred</Link>
+                  <Link to="/assessor">
+                    Falar com {assessorName === ASSESSOR_NAME_DEFAULT ? "o Assessor" : assessorName}
+                  </Link>
                 </Button>
               </div>
             </div>
