@@ -55,6 +55,8 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedOportunidadesIndexRouteImport } from './routes/_authenticated/oportunidades.index'
 import { Route as AuthenticatedNegocioIndexRouteImport } from './routes/_authenticated/negocio.index'
+import { Route as OauthOutlookReturnRouteImport } from './routes/oauth/outlook/return'
+import { Route as OauthGoogleCalendarReturnRouteImport } from './routes/oauth/google-calendar/return'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
 import { Route as AuthenticatedSeguimentosIdRouteImport } from './routes/_authenticated/seguimentos.$id'
 import { Route as AuthenticatedRotinasIdRouteImport } from './routes/_authenticated/rotinas.$id'
@@ -71,6 +73,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as AuthenticatedOportunidadesProspecaoIndexRouteImport } from './routes/_authenticated/oportunidades.prospecao.index'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
+import { Route as ApiPublicHooksCalendarPollRouteImport } from './routes/api/public/hooks/calendar-poll'
 import { Route as AuthenticatedOportunidadesProspecaoIdRouteImport } from './routes/_authenticated/oportunidades.prospecao.$id'
 import { Route as AuthenticatedNegocioDespesasIdRouteImport } from './routes/_authenticated/negocio.despesas.$id'
 import { Route as AuthenticatedNegocioComissoesIdRouteImport } from './routes/_authenticated/negocio.comissoes.$id'
@@ -309,6 +312,17 @@ const AuthenticatedNegocioIndexRoute =
     path: '/negocio/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const OauthOutlookReturnRoute = OauthOutlookReturnRouteImport.update({
+  id: '/oauth/outlook/return',
+  path: '/oauth/outlook/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthGoogleCalendarReturnRoute =
+  OauthGoogleCalendarReturnRouteImport.update({
+    id: '/oauth/google-calendar/return',
+    path: '/oauth/google-calendar/return',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWhatsappWebhookRoute =
   ApiPublicWhatsappWebhookRouteImport.update({
     id: '/api/public/whatsapp-webhook',
@@ -400,6 +414,12 @@ const ApiPublicHooksProactiveTickRoute =
     path: '/api/public/hooks/proactive-tick',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksCalendarPollRoute =
+  ApiPublicHooksCalendarPollRouteImport.update({
+    id: '/api/public/hooks/calendar-poll',
+    path: '/api/public/hooks/calendar-poll',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedOportunidadesProspecaoIdRoute =
   AuthenticatedOportunidadesProspecaoIdRouteImport.update({
     id: '/oportunidades/prospecao/$id',
@@ -476,11 +496,14 @@ export interface FileRoutesByFullPath {
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
+  '/oauth/outlook/return': typeof OauthOutlookReturnRoute
   '/negocio/': typeof AuthenticatedNegocioIndexRoute
   '/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
+  '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -541,11 +564,14 @@ export interface FileRoutesByTo {
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
+  '/oauth/outlook/return': typeof OauthOutlookReturnRoute
   '/negocio': typeof AuthenticatedNegocioIndexRoute
   '/oportunidades': typeof AuthenticatedOportunidadesIndexRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
+  '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -609,11 +635,14 @@ export interface FileRoutesById {
   '/_authenticated/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/_authenticated/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
+  '/oauth/outlook/return': typeof OauthOutlookReturnRoute
   '/_authenticated/negocio/': typeof AuthenticatedNegocioIndexRoute
   '/_authenticated/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
   '/_authenticated/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/_authenticated/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/_authenticated/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
+  '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -677,11 +706,14 @@ export interface FileRouteTypes {
     | '/rotinas/$id'
     | '/seguimentos/$id'
     | '/api/public/whatsapp-webhook'
+    | '/oauth/google-calendar/return'
+    | '/oauth/outlook/return'
     | '/negocio/'
     | '/oportunidades/'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
     | '/oportunidades/prospecao/$id'
+    | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao/'
@@ -742,11 +774,14 @@ export interface FileRouteTypes {
     | '/rotinas/$id'
     | '/seguimentos/$id'
     | '/api/public/whatsapp-webhook'
+    | '/oauth/google-calendar/return'
+    | '/oauth/outlook/return'
     | '/negocio'
     | '/oportunidades'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
     | '/oportunidades/prospecao/$id'
+    | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao'
@@ -809,11 +844,14 @@ export interface FileRouteTypes {
     | '/_authenticated/rotinas/$id'
     | '/_authenticated/seguimentos/$id'
     | '/api/public/whatsapp-webhook'
+    | '/oauth/google-calendar/return'
+    | '/oauth/outlook/return'
     | '/_authenticated/negocio/'
     | '/_authenticated/oportunidades/'
     | '/_authenticated/negocio/comissoes/$id'
     | '/_authenticated/negocio/despesas/$id'
     | '/_authenticated/oportunidades/prospecao/$id'
+    | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/telegram/webhook'
     | '/_authenticated/oportunidades/prospecao/'
@@ -831,6 +869,9 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
+  OauthGoogleCalendarReturnRoute: typeof OauthGoogleCalendarReturnRoute
+  OauthOutlookReturnRoute: typeof OauthOutlookReturnRoute
+  ApiPublicHooksCalendarPollRoute: typeof ApiPublicHooksCalendarPollRoute
   ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -1159,6 +1200,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNegocioIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/oauth/outlook/return': {
+      id: '/oauth/outlook/return'
+      path: '/oauth/outlook/return'
+      fullPath: '/oauth/outlook/return'
+      preLoaderRoute: typeof OauthOutlookReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/google-calendar/return': {
+      id: '/oauth/google-calendar/return'
+      path: '/oauth/google-calendar/return'
+      fullPath: '/oauth/google-calendar/return'
+      preLoaderRoute: typeof OauthGoogleCalendarReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/whatsapp-webhook': {
       id: '/api/public/whatsapp-webhook'
       path: '/api/public/whatsapp-webhook'
@@ -1269,6 +1324,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/proactive-tick'
       fullPath: '/api/public/hooks/proactive-tick'
       preLoaderRoute: typeof ApiPublicHooksProactiveTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/calendar-poll': {
+      id: '/api/public/hooks/calendar-poll'
+      path: '/api/public/hooks/calendar-poll'
+      fullPath: '/api/public/hooks/calendar-poll'
+      preLoaderRoute: typeof ApiPublicHooksCalendarPollRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/oportunidades/prospecao/$id': {
@@ -1530,6 +1592,9 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
+  OauthGoogleCalendarReturnRoute: OauthGoogleCalendarReturnRoute,
+  OauthOutlookReturnRoute: OauthOutlookReturnRoute,
+  ApiPublicHooksCalendarPollRoute: ApiPublicHooksCalendarPollRoute,
   ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
