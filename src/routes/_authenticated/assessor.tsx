@@ -7,7 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { CHANNEL_LABEL, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
 import { cn } from "@/lib/utils";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, SendHorizonal, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { sendDashboardMessage, DASHBOARD_CHAT_MIN_TIER } from "@/lib/assessor/dashboard-chat.functions";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { tierAtLeast } from "@/lib/subscription/tiers";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
   head: () => ({
@@ -42,6 +46,13 @@ function AssessorPage() {
   const [msgs, setMsgs] = useState<MensagemDb[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { data: tierData } = useEffectiveTier();
+  // Escrita no painel é Pro e Team. Base e Consultor mantêm a vista de só
+  // leitura — não mostramos caixa de texto nem promessa de resposta.
+  const canWrite = tierAtLeast(tierData?.tier, DASHBOARD_CHAT_MIN_TIER);
+  const send = useServerFn(sendDashboardMessage);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +75,21 @@ function AssessorPage() {
 
   const canalLabel = channel ? CHANNEL_LABEL[channel] : "WhatsApp";
 
+  const enviar = async () => {
+    const text = draft.trim();
+    if (!text || sending) return;
+    setSending(true);
+    setDraft("");
+    try {
+      await send({ data: { text } });
+    } catch (e) {
+      setDraft(text);
+      toast.error((e as Error).message);
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <AppShell fullBleed>
       <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] md:h-[calc(100vh-7rem)] md:overflow-hidden md:rounded-[16px] md:border md:border-[var(--line)] md:bg-white md:shadow-[var(--c-shadow)]">
@@ -75,7 +101,9 @@ function AssessorPage() {
           <div className="c-avatar">{(assessorName || "A").trim().charAt(0).toUpperCase()}</div>
           <div className="min-w-0">
             <div className="c-serif truncate text-[15px]">{assessorName}</div>
-            <div className="c-muted text-[11.5px]">Conversa via {canalLabel} — só leitura</div>
+            <div className="c-muted text-[11.5px]">
+              {canWrite ? `Escreve aqui ou pelo ${canalLabel}` : `Conversa via ${canalLabel} — só leitura`}
+            </div>
           </div>
         </div>
 
@@ -87,7 +115,9 @@ function AssessorPage() {
               <MessageCircle className="mx-auto mb-2 h-5 w-5" />
               Ainda não há mensagens.
               <br />
-              Fala com {assessorName === "Assessor" ? "o teu assessor" : `o ${assessorName}`} pelo {canalLabel}. O histórico aparece aqui.
+              {canWrite
+                ? <>Escreve aqui em baixo ou pelo {canalLabel}. É a mesma conversa.</>
+                : <>Fala com {assessorName === "Assessor" ? "o teu assessor" : `o ${assessorName}`} pelo {canalLabel}. O histórico aparece aqui.</>}
             </div>
           )}
           <div className="mx-auto flex max-w-3xl flex-col gap-2">
@@ -112,7 +142,34 @@ function AssessorPage() {
 
         {/* Rodapé fixo */}
         <div className="c-chatbar" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}>
-          Continua a conversa no {canalLabel}
+          {canWrite ? (
+            <form
+              className="mx-auto flex w-full max-w-3xl items-end gap-2"
+              onSubmit={(e) => { e.preventDefault(); void enviar(); }}
+            >
+              <textarea
+                rows={1}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void enviar(); }
+                }}
+                placeholder={`Escreve ao ${assessorName}…`}
+                aria-label="Mensagem para o assessor"
+                className="max-h-32 min-h-[2.5rem] flex-1 resize-none rounded-[12px] border border-[var(--line)] bg-white px-3 py-2 text-[15px] outline-none focus:border-[var(--ink-3,#999)]"
+              />
+              <button
+                type="submit"
+                disabled={!draft.trim() || sending}
+                aria-label="Enviar"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--ink)] text-white disabled:opacity-40"
+              >
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
+              </button>
+            </form>
+          ) : (
+            <>Continua a conversa no {canalLabel}</>
+          )}
         </div>
       </div>
     </AppShell>

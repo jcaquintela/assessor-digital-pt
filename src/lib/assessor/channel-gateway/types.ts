@@ -3,7 +3,10 @@
 // NormalizedInbound e implementam ChannelAdapter. O motor v3 nunca conhece
 // diferenças de canal: recebe sempre user_id + content e devolve reply.
 
-export type Channel = "whatsapp" | "telegram";
+// "dashboard" é um canal reativo (o consultor escreve no painel e lê a
+// resposta ali). Não participa na regra de canal principal para saídas
+// proativas — essa continua a ser WhatsApp > Telegram.
+export type Channel = "whatsapp" | "telegram" | "dashboard";
 
 export type NormalizedMessageType =
   | "text"
