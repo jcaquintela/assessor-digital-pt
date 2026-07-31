@@ -11,6 +11,7 @@
 
 import { z } from "zod";
 import { isAgendaEvent } from "@/lib/agenda-kind";
+import { ensureTitle } from "../titles";
 import {
   SearchPeopleArgs,
   CreatePersonArgs,
@@ -266,7 +267,8 @@ async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<Doma
 
 async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
-  const v = p.value;
+  // Última linha de defesa: a string "null" nunca pode chegar à BD.
+  const v = { ...p.value, title: ensureTitle(p.value.title, "Compromisso") };
   const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   // Idempotência: um pending_action só pode criar um recurso.
   if (ctx.pendingActionId) {
@@ -441,7 +443,7 @@ async function findActiveProspectingLead(ctx: DomainContext): Promise<{ id: stri
 
 async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateFollowUpArgs, args); if (!p.ok) return fail(p.error);
-  const v = p.value;
+  const v = { ...p.value, title: ensureTitle(p.value.title, "Lembrete") };
   const dueIsoDate = lisbonLocalToUtcIso(v.due_date, v.due_time ?? "09:00");
   // Idempotência: se já existe um follow_up para esta pending_action, devolve-o.
   if (ctx.pendingActionId) {
