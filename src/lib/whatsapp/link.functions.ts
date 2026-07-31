@@ -174,6 +174,15 @@ export const unlinkWhatsApp = createServerFn({ method: "POST" })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
 
+    // Sem WhatsApp, o canal principal volta ao Telegram (se estiver ligado).
+    await supabaseAdmin
+      .from("channel_links")
+      .delete()
+      .eq("channel", "whatsapp")
+      .eq("user_id", context.userId);
+    const { recomputePrimaryChannel } = await import("@/lib/assessor/primary-channel.server");
+    await recomputePrimaryChannel(supabaseAdmin, context.userId);
+
     await supabaseAdmin
       .from("whatsapp_link_codes")
       .update({ used_at: new Date().toISOString() } as never)

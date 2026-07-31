@@ -51,7 +51,17 @@ async function resolveSegment(supabaseAdmin: any, segment: Segment): Promise<str
     const ch = segment.split(":")[1];
     if (ch === "telegram") {
       const { data } = await supabaseAdmin.from("channel_links").select("user_id").eq("channel", "telegram");
-      return Array.from(new Set((data ?? []).map((r: any) => r.user_id))) as string[];
+      const ids = Array.from(new Set((data ?? []).map((r: any) => r.user_id))) as string[];
+      if (!ids.length) return ids;
+      // Regra de prioridade de canal: quem tem WhatsApp ligado recebe por lá.
+      // Fica fora do segmento Telegram para não duplicar a mesma mensagem.
+      const { data: waProfiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .in("id", ids)
+        .eq("primary_channel", "whatsapp");
+      const excluded = new Set(((waProfiles ?? []) as any[]).map((p) => p.id));
+      return ids.filter((id) => !excluded.has(id));
     }
     const { data } = await supabaseAdmin.from("profiles").select("id").eq("whatsapp_link_status", "linked");
     return (data ?? []).map((r: any) => r.id);

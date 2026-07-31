@@ -355,15 +355,10 @@ export async function sendReminderNow(
   const row = (locked as ReminderRow | null) ?? null;
   if (!row) return { ok: false, error: "reminder_not_available" };
 
-  // Descobre telefone do consultor.
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("phone, whatsapp_link_status")
-    .eq("id", input.userId)
-    .maybeSingle();
-  const phone = (prof as any)?.phone;
-  const linked = (prof as any)?.whatsapp_link_status === "linked";
-  if (!phone || !linked) {
+  // Canal de saída: sempre o principal (WhatsApp quando ligado).
+  const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
+  const target = await resolveOutboundTarget(supabase, input.userId);
+  if (!target) {
     await supabase.from("reminders").update({
       status: "failed", failed_at: new Date().toISOString(),
       last_error: "user_not_linked", retry_count: row.retry_count + 1,
@@ -384,18 +379,8 @@ export async function sendReminderNow(
   }
   if (!text) text = "Lembrete.";
 
-  const { sendWhatsAppText } = await import("@/lib/whatsapp/send.server");
-  const { normalizePhone } = await import("@/lib/whatsapp/phone");
-  const to = normalizePhone(String(phone));
-  if (!to) {
-    await supabase.from("reminders").update({
-      status: "failed", failed_at: new Date().toISOString(),
-      last_error: "invalid_phone", retry_count: row.retry_count + 1,
-    } as never).eq("id", row.id);
-    return { ok: false, error: "invalid_phone" };
-  }
-
-  const r = await sendWhatsAppText(to, text, { triggeredBy: input.userId, kind: "auto" });
+  const { sendOutbound } = await import("@/lib/assessor/primary-channel.server");
+  const r = await sendOutbound(supabase, input.userId, text);
   if (r.ok) {
     await supabase.from("reminders").update({
       status: "sent",
@@ -406,7 +391,7 @@ export async function sendReminderNow(
     // Regista no histórico do chat para o consultor ver na app.
     try {
       await supabase.from("assessor_messages").insert({
-        user_id: input.userId, channel: "whatsapp", role: "assistant",
+        user_id: input.userId, channel: r.channel ?? target.channel, role: "assistant",
         content: text, message_type: "followup_reminder",
         related_resource_type: row.related_resource_type,
         related_resource_id: row.related_resource_id,

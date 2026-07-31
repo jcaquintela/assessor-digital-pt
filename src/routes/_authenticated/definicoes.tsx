@@ -395,31 +395,43 @@ function useAssessorNameLite() {
 /* ---------------- Canal ligado ---------------- */
 
 function CanalSection() {
-  const { channel, externalId, linkedAt, loading } = useLinkedChannel();
+  const { channels, primary, loading } = useLinkedChannel();
 
   if (loading) {
     return <Section title="Canal ligado"><p className="c-muted text-sm">A carregar…</p></Section>;
   }
 
-  if (channel && externalId) {
+  if (channels.length > 0) {
     return (
       <>
         <Section title="Canal ligado">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="c-avatar"><MessageCircle className="h-4 w-4" /></div>
-              <div>
-                <div className="text-[14px] font-semibold">{CHANNEL_LABEL[channel]}</div>
-                <div className="c-mono c-muted text-[12.5px]">{maskContact(channel, externalId)}</div>
+          <div className="space-y-3">
+            {channels.map((c) => (
+              <div key={c.channel} className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="c-avatar"><MessageCircle className="h-4 w-4" /></div>
+                  <div>
+                    <div className="flex items-center gap-2 text-[14px] font-semibold">
+                      {CHANNEL_LABEL[c.channel]}
+                      {c.channel === primary && <span className="c-badge ok">Principal</span>}
+                    </div>
+                    <div className="c-mono c-muted text-[12.5px]">{maskContact(c.channel, c.externalId)}</div>
+                    {c.linkedAt && (
+                      <div className="c-muted text-[12px]">
+                        Ligado em {new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium", timeStyle: "short" }).format(new Date(c.linkedAt))}.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <span className="c-badge">Ligado</span>
               </div>
-            </div>
-            <span className="c-badge ok">Ligado</span>
+            ))}
           </div>
-          {linkedAt && (
-            <p className="c-muted mt-3 text-[12px]">
-              Ligado em {new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium", timeStyle: "short" }).format(new Date(linkedAt))}.
-            </p>
-          )}
+          <p className="c-muted mt-3 text-[12px]">
+            {primary === "whatsapp"
+              ? "Lembretes e avisos que eu inicio vão sempre por WhatsApp. O Telegram continua a funcionar para o que me escreveres por lá."
+              : "Lembretes e avisos que eu inicio vão por Telegram. Se ligares o WhatsApp, passa a ser o canal principal."}
+          </p>
         </Section>
         <TelegramSection />
       </>
