@@ -382,14 +382,14 @@ export const listLinkTargets = createServerFn({ method: "GET" })
     const [people, props, opps] = await Promise.all([
       supabase.from("people").select("id, name").eq("user_id", userId).order("name").limit(300),
       supabase.from("properties").select("id, title").eq("user_id", userId).order("updated_at", { ascending: false }).limit(300),
-      supabase.from("opportunities").select("id, type, status").eq("user_id", userId).order("updated_at", { ascending: false }).limit(300),
+      supabase.from("opportunities").select("id, title, deal_kind, type, stage").eq("user_id", userId).order("updated_at", { ascending: false }).limit(300),
     ]);
     return {
       person: ((people.data ?? []) as any[]).map((r) => ({ id: r.id, label: r.name ?? "Sem nome" })),
       property: ((props.data ?? []) as any[]).map((r) => ({ id: r.id, label: r.title ?? "Sem título" })),
       opportunity: ((opps.data ?? []) as any[]).map((r) => ({
         id: r.id,
-        label: [r.type, r.status].filter(Boolean).join(" · ") || "Oportunidade",
+        label: r.title || [r.deal_kind ?? r.type, r.stage].filter(Boolean).join(" · ") || "Negócio",
       })),
     };
   });
