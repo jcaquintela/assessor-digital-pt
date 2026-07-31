@@ -284,18 +284,29 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
   if (existingOpen) {
     const { data: current } = await ctx.supabase
       .from("follow_ups")
-      .select("id, title, due_date, due_time")
+      .select("id, title, type, due_date, due_time")
       .eq("id", existingOpen.id)
       .eq("user_id", ctx.userId)
       .maybeSingle();
     const sameSlot = (current as any)?.due_date
       && new Date((current as any).due_date).getTime() === new Date(dueIsoDate).getTime();
-    if (!sameSlot) {
+    // O registo existente pode ter sido gravado como seguimento (tipo
+    // errado) — nesse caso não aparece na agenda nem no calendário.
+    // Promovemo-lo a compromisso em vez de dizer só "já estava registado".
+    const typeCorrected = !isAgendaEvent((current as any)?.type, (current as any)?.due_time);
+    if (!sameSlot || typeCorrected) {
       await ctx.supabase
         .from("follow_ups")
-        .update({ due_date: dueIsoDate, due_time: v.start_time, status: "agendado" } as never)
+        .update({
+          due_date: dueIsoDate,
+          due_time: v.start_time,
+          status: "agendado",
+          ...(typeCorrected ? { type: v.event_type } : {}),
+        } as never)
         .eq("id", existingOpen.id)
         .eq("user_id", ctx.userId);
+    }
+    if (!sameSlot) {
       try {
         await rescheduleReminder(ctx.supabase, {
           userId: ctx.userId,
@@ -317,6 +328,7 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
       reminderId: null,
       idempotent: true,
       rescheduled: !sameSlot,
+      typeCorrected,
     });
   }
   const { data, error } = await ctx.supabase
