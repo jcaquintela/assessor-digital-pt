@@ -118,7 +118,7 @@ function PessoasPage() {
       )}
       {!loading && pessoas.length === 0 && (
         <div className="c-empty">
-          Ainda não tens contactos. Fala com o teu assessor por WhatsApp para os registar.
+          Ainda não tens contactos. Usa "+ Adicionar" ou fala com o teu assessor por WhatsApp.
         </div>
       )}
       {!loading && pessoas.length > 0 && filtradas.length === 0 && (
