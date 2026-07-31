@@ -56,7 +56,10 @@ export const runGoldenSuite = createServerFn({ method: "POST" })
     if (data.goldenId) query = query.eq("id", data.goldenId);
     const { data: goldens } = await query;
 
-    const summaries: Array<{ id: string; slug: string; passed: boolean; failures: number }> = [];
+    const summaries: Array<{
+      id: string; slug: string; passed: boolean; failures: number;
+      inconclusive?: boolean; unavailableReason?: string | null;
+    }> = [];
     for (const g of ((goldens as any[]) ?? [])) {
       const turns = (g.turns as GoldenTurn[]) ?? [];
       let result;
@@ -73,11 +76,20 @@ export const runGoldenSuite = createServerFn({ method: "POST" })
         ats: null,
         aqs: null,
         task_success: null,
-        diffs: { turns: result.turns } as unknown,
+        diffs: {
+          turns: result.turns,
+          inconclusive: (result as any).inconclusive === true,
+          unavailable_reason: (result as any).unavailableReason ?? null,
+        } as unknown,
       } as never);
-      summaries.push({ id: g.id, slug: g.slug, passed: result.passed, failures: failureCount });
+      summaries.push({
+        id: g.id, slug: g.slug, passed: result.passed, failures: failureCount,
+        inconclusive: (result as any).inconclusive === true,
+        unavailableReason: (result as any).unavailableReason ?? null,
+      });
     }
-    return { releaseRef: data.releaseRef, total: summaries.length, summaries };
+    const inconclusive = summaries.filter((s) => s.inconclusive).length;
+    return { releaseRef: data.releaseRef, total: summaries.length, inconclusive, summaries };
   });
 
 export const getGoldenRunDetails = createServerFn({ method: "GET" })
