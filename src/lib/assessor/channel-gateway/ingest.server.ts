@@ -490,6 +490,15 @@ async function handleInboundMediaInner(
                     : "imagem",
               })
               .eq("id", result.fileId);
+            const { refineFileName } = await import("@/lib/assessor/files.server");
+            await refineFileName(
+              supabaseAdmin,
+              result.fileId,
+              "imagem",
+              reading.person_name
+                ? `cartão de ${reading.person_name}`
+                : (reading.visible_text ?? reading.description),
+            );
           }
 
           // Cartão de visita → proposta de contacto (com botões), antes de
