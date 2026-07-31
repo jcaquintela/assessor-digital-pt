@@ -106,7 +106,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
           })}
         </nav>
         <div className="navfoot mt-auto">
-          Tudo o que entra, entra por conversa.
+          Por conversa ou aqui no dashboard.
         </div>
       </aside>
 
