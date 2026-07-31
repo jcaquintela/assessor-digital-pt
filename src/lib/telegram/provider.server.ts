@@ -3,6 +3,8 @@
 // tocar no webhook ou no motor. Nesta fase usamos o connector Lovable
 // (gateway) autenticado com LOVABLE_API_KEY + TELEGRAM_API_KEY.
 
+import { formatForTelegram, TELEGRAM_PARSE_MODE } from "./telegram-format";
+
 export interface TelegramSendResult {
   ok: boolean;
   messageId?: string;
@@ -10,7 +12,6 @@ export interface TelegramSendResult {
   status?: number;
 }
 
-import { formatForTelegram, TELEGRAM_PARSE_MODE } from "./telegram-format";
 
 export interface TelegramProvider {
   sendText(input: {
