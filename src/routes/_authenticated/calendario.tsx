@@ -2,9 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,29 +102,26 @@ function CalendarioPage() {
     <AppShell>
       <PageHeader title="Calendário" subtitle="Vista interna dos compromissos." />
       <div className="grid gap-4 md:grid-cols-[1fr_320px]">
-        <Card>
-          <CardHeader className="gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+        <div className="c-card p-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarMes(-1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <CardTitle className="min-w-[9.5rem] text-center text-base sm:text-left">
+              <div className="min-w-[9.5rem] text-center text-[15px] font-semibold sm:text-left">
                 {monthLabel(month)}
-              </CardTitle>
+              </div>
               <Button variant="ghost" size="icon" aria-label="Mês seguinte" onClick={() => mudarMes(1)}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="flex rounded-md border border-border p-0.5">
-                <Button size="sm" variant="secondary" className="h-7 px-3 text-xs">Mês</Button>
-                <Button size="sm" variant="ghost" className="h-7 px-3 text-xs" disabled>Semana</Button>
-                <Button size="sm" variant="ghost" className="h-7 px-3 text-xs" disabled>Lista</Button>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs"
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button type="button" className="c-pill active">Mês</button>
+              <button type="button" className="c-pill" disabled>Semana</button>
+              <button type="button" className="c-pill" disabled>Lista</button>
+              <button
+                type="button"
+                className="c-pill"
                 onClick={() => {
                   const n = new Date();
                   setMonth(new Date(n.getFullYear(), n.getMonth(), 1));
@@ -134,10 +129,10 @@ function CalendarioPage() {
                 }}
               >
                 Hoje
-              </Button>
+              </button>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          </div>
+          <div className="space-y-4">
             <MonthGrid
               month={month}
               selectedKey={selectedKey}
@@ -152,28 +147,25 @@ function CalendarioPage() {
             />
 
             <div className="space-y-2 border-t border-border pt-4">
-              <h3 className="text-sm font-medium capitalize">{selectedLabel}</h3>
+              <div className="c-section-title capitalize">{selectedLabel}</div>
               {doDia.length === 0 && (
-                <p className="text-sm text-muted-foreground">Sem compromissos neste dia.</p>
+                <div className="c-empty">Sem compromissos neste dia.</div>
               )}
               {doDia.map((e) => (
-              <div
-                key={e.id}
-                className="rounded-lg border border-border p-3 transition-colors hover:border-primary/40"
-              >
+              <div key={e.id} className="c-card c-card-hover p-3.5">
                 <div className="flex items-center justify-between gap-3">
                   <Link to="/seguimentos/$id" params={{ id: e.id }} className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{e.titulo}</div>
-                    <div className="text-xs text-muted-foreground">{formatDataHora(e.data)}</div>
+                    <div className="truncate text-[14px] font-semibold">{e.titulo}</div>
+                    <div className="c-muted c-mono mt-1 text-[11.5px]">{formatDataHora(e.data)}</div>
                   </Link>
-                  <Badge variant="outline" className="shrink-0">
-                    <CalendarIcon className="mr-1 h-3 w-3" />{e.hora ?? "—"}
-                  </Badge>
+                  <span className="c-badge shrink-0">
+                    <CalendarIcon className="h-3 w-3" /> {e.hora ?? "—"}
+                  </span>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="outline"
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    className="c-badge"
                     onClick={() => setEditing({
                       id: e.id,
                       titulo: e.titulo,
@@ -182,28 +174,28 @@ function CalendarioPage() {
                       notas: e.notas ?? "",
                     })}
                   >
-                    <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => remover(e.id, e.titulo)}>
-                    <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
-                  </Button>
+                    <Pencil className="h-3 w-3" /> Editar
+                  </button>
+                  <button type="button" className="c-badge text-destructive" onClick={() => remover(e.id, e.titulo)}>
+                    <Trash2 className="h-3 w-3" /> Eliminar
+                  </button>
                 </div>
               </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Integrações</CardTitle></CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p className="text-muted-foreground">
+          </div>
+        </div>
+        <div className="c-card h-fit p-4">
+          <div className="c-section-title mb-2">Integrações</div>
+          <div className="space-y-3 text-sm">
+            <p className="c-muted text-[13px]">
               Liga o Google Calendar ou o Outlook e os compromissos passam a andar nos dois sentidos.
             </p>
-            <Button asChild variant="outline" className="w-full justify-start">
-              <Link to="/definicoes">Gerir ligações de calendário</Link>
-            </Button>
-          </CardContent>
-        </Card>
+            <Link to="/definicoes" className="c-btn w-full justify-start">
+              Gerir ligações de calendário
+            </Link>
+          </div>
+        </div>
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null); }}>
