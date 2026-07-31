@@ -8,6 +8,12 @@ type Tab = "recentes" | "por_tratar" | "imoveis" | "pessoas" | "diversos" | "arq
 // document_type) mantém-se sempre como sugestão inicial: a categoria manual é
 // um campo separado (custom_category_id) e nunca a substitui na base de dados.
 
+const CATEGORY_COLORS = [
+  "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e",
+  "#14b8a6", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6",
+  "#d946ef", "#f43f5e", "#78716c", "#64748b",
+];
+
 function cleanCategoryName(v: unknown): string {
   const s = String(v ?? "").trim();
   if (!s) throw new Error("O nome da categoria não pode ficar vazio.");
@@ -15,44 +21,59 @@ function cleanCategoryName(v: unknown): string {
   return s;
 }
 
+function cleanCategoryColor(v: unknown): string | null {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  if (!/^#[0-9a-fA-F]{6}$/.test(s)) return null;
+  return s.toLowerCase();
+}
+
 export const listFileCategories = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { data, error } = await (supabase.from("file_categories") as any)
-      .select("id, name")
+      .select("id, name, color")
       .eq("user_id", userId)
       .order("name");
     if (error) throw new Error(error.message);
-    return (data ?? []) as { id: string; name: string }[];
+    return (data ?? []) as { id: string; name: string; color: string | null }[];
   });
 
 export const createFileCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { name: string }) => ({ name: cleanCategoryName(data?.name) }))
+  .inputValidator((data: { name: string; color?: string | null }) => ({
+    name: cleanCategoryName(data?.name),
+    color: cleanCategoryColor(data?.color),
+  }))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const insert: any = { user_id: userId, name: data.name };
+    if (data.color) insert.color = data.color;
     const { data: row, error } = await (supabase.from("file_categories") as any)
-      .insert({ user_id: userId, name: data.name })
-      .select("id, name")
+      .insert(insert)
+      .select("id, name, color")
       .single();
     if (error) {
       if (error.code === "23505") throw new Error("Já tens uma categoria com esse nome.");
       throw new Error(error.message);
     }
-    return row as { id: string; name: string };
+    return row as { id: string; name: string; color: string | null };
   });
 
 export const renameFileCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string; name: string }) => ({
+  .inputValidator((data: { id: string; name: string; color?: string | null }) => ({
     id: String(data?.id ?? ""),
     name: cleanCategoryName(data?.name),
+    color: cleanCategoryColor(data?.color),
   }))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const update: any = { name: data.name };
+    if (data.color !== undefined) update.color = data.color;
     const { error } = await (supabase.from("file_categories") as any)
-      .update({ name: data.name })
+      .update(update)
       .eq("id", data.id)
       .eq("user_id", userId);
     if (error) {
