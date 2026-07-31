@@ -17,4 +17,10 @@ describe("isAgendaEvent", () => {
     expect(isAgendaEvent("formacao", "09:30")).toBe(true);
     expect(isAgendaEvent("formacao", null)).toBe(false);
   });
+  // Regressão real: "Team building" foi gravado com type "outro" às 09:30 e
+  // desaparecia da agenda e do /calendario.
+  it("tipo genérico 'outro' com hora é compromisso, sem hora é tarefa", () => {
+    expect(isAgendaEvent("outro", "09:30")).toBe(true);
+    expect(isAgendaEvent("outro", null)).toBe(false);
+  });
 });
