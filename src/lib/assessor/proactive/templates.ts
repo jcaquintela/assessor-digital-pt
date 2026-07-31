@@ -9,7 +9,16 @@ export const TEMPLATE_MORNING = "afonso_prioridades_dia";
 export const TEMPLATE_CHECKIN = "afonso_resultado_seguimento";
 export const TEMPLATE_LANG = "pt_PT";
 
-/** Corpo do template da manhã: {{1}} = nome, {{2}} = lista de prioridades. */
+/**
+ * Corpo do template da manhã: {{1}} = nome, {{2}} = lista de prioridades.
+ *
+ * Texto exato a submeter à Meta para aprovação:
+ * "Bom dia, {{1}}. As tuas prioridades de hoje: {{2}}. Bom trabalho."
+ *
+ * Nota: o WhatsApp rejeita templates cujo corpo comece ou termine numa
+ * variável. O sufixo ". Bom trabalho." garante que o template termina em
+ * texto fixo.
+ */
 export function morningTemplatePayload(name: string, list: string) {
   return {
     type: "template",
