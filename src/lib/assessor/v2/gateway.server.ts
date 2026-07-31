@@ -48,6 +48,10 @@ export interface GatewayCallResult {
   latencyMs: number;
   error?: string;
   httpStatus?: number;
+  // true quando a falha é do serviço (créditos esgotados, rate limit, rede,
+  // erro do provedor) e não do nosso pedido. Distinguir isto é o que permite
+  // ao Assessor dizer "estou indisponível" em vez de "não percebi".
+  unavailable?: boolean;
 }
 
 export interface GatewayCallInput {
