@@ -6,6 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Check, Pencil, Plus, Tag, Trash2, X } from "lucide-react";
+
+function CategoryCheck({ active }: { active: boolean }) {
+  return (
+    <span className="c-category-check flex-shrink-0">
+      {active ? <Check className="h-3 w-3" /> : null}
+    </span>
+  );
+}
 import {
   listFileCategories,
   createFileCategory,
@@ -235,24 +243,29 @@ export function FileCategoryDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap gap-1.5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <button
             type="button"
-            className={"c-pill" + (!currentId ? " active" : "")}
+            className={"c-category-box" + (!currentId ? " active" : "")}
             onClick={() => escolher(null)}
             disabled={busy}
           >
-            Automática{autoLabel ? ` (${autoLabel})` : ""}
+            <span className="text-left">
+              <span className="block text-[11px] font-semibold uppercase tracking-wide opacity-70">Automática</span>
+              <span className="block truncate">{autoLabel ? autoLabel : "Sugestão do Assessor"}</span>
+            </span>
+            <CategoryCheck active={!currentId} />
           </button>
           {categories.map((c) => (
             <button
               key={c.id}
               type="button"
-              className={"c-pill" + (currentId === c.id ? " active" : "")}
+              className={"c-category-box" + (currentId === c.id ? " active" : "")}
               onClick={() => escolher(c.id)}
               disabled={busy}
             >
-              {c.name}
+              <span className="truncate">{c.name}</span>
+              <CategoryCheck active={currentId === c.id} />
             </button>
           ))}
         </div>
