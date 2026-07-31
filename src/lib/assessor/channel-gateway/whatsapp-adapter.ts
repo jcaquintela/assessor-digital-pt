@@ -233,7 +233,7 @@ export const whatsappAdapter: ChannelAdapter = {
     const text = (inbound.text ?? "").trim();
     if (inbound.messageType !== "text" || !text) return { handled: false };
 
-    const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY } = await import(
+    const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY, applyPromoBeta } = await import(
       "@/lib/admin/promo.server"
     );
     if (!looksLikePromoCode(text)) return { handled: false };
@@ -255,6 +255,7 @@ export const whatsappAdapter: ChannelAdapter = {
       await sendAndStoreWhatsAppAssistant(supabaseAdmin, phone, null, REPLY_ENGINE_ERROR);
       return { handled: true };
     }
+    await applyPromoBeta(supabaseAdmin, created.userId!, promo.betaDays);
     const { TIER_DISPLAY_NAME } = await import("@/lib/subscription/tiers");
     await sendAndStoreWhatsAppAssistant(
       supabaseAdmin,

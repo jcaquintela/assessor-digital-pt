@@ -225,7 +225,7 @@ export const telegramAdapter: ChannelAdapter = {
       // Códigos de convite/promo continuam a ter precedência no primeiro
       // contacto (equipa e planos pagos entram directos).
       if (!pairing && text) {
-        const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY } = await import("@/lib/admin/promo.server");
+        const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY, applyPromoBeta } = await import("@/lib/admin/promo.server");
         if (looksLikePromoCode(text)) {
           const promo = await redeemPromoCode(supabaseAdmin, text);
           if (!promo.ok) {
@@ -239,6 +239,7 @@ export const telegramAdapter: ChannelAdapter = {
               await provider.sendText({ chatId, text: claimed.reply });
               return { handled: true };
             }
+            if (claimed.userId) await applyPromoBeta(supabaseAdmin, claimed.userId, promo.betaDays);
             await provider.sendText({
               chatId,
               text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),

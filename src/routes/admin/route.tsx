@@ -35,6 +35,7 @@ const navGroups: { group: string; items: NavItem[] }[] = [
     group: "Pessoas e acesso",
     items: [
       { to: "/admin/utilizadores", label: "Utilizadores & planos" },
+      { to: "/admin/beta", label: "Beta testers" },
       { to: "/admin/comunicacao", label: "Comunicação" },
       { to: "/admin/suporte", label: "Suporte" },
     ],
