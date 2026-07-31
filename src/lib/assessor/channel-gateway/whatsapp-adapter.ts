@@ -354,13 +354,6 @@ async function createWhatsAppAccount(
   return { ok: true, userId };
 }
 
-async function bumpAttemptsLegacy(supabaseAdmin: any, id: string, current: number) {
-  const next = current + 1;
-  const patch: Record<string, unknown> = { attempts: next };
-  if (next >= WHATSAPP_CODE_MAX_ATTEMPTS) patch.used_at = new Date().toISOString();
-  await supabaseAdmin.from("whatsapp_link_codes").update(patch as never).eq("id", id);
-}
-
 // Tier efectivo lido directamente do perfil (mesma regra de public.effective_tier):
 // beta activo e não expirado => 'hub', senão o tier real.
 async function effectiveTierOf(supabaseAdmin: any, userId: string): Promise<string> {
