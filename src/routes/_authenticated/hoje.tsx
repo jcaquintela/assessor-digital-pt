@@ -311,6 +311,7 @@ function HojePage() {
                         <Link
                           to="/oportunidades/$id"
                           params={{ id: p.deal_id }}
+                          search={p.subject_type === "follow_up" ? { destaque: `seguimento:${p.subject_id}` } : {}}
                           className="c-badge mt-1.5 inline-flex max-w-full truncate text-xs"
                         >
                           Negócio: {p.deal_label}
@@ -339,7 +340,12 @@ function HojePage() {
                       <>
                         <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir</button>
                         {p.deal_id ? (
-                          <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.deal_id }}>
+                          <Link
+                            className="c-btn-ghost"
+                            to="/oportunidades/$id"
+                            params={{ id: p.deal_id }}
+                            search={{ destaque: `seguimento:${p.subject_id}` }}
+                          >
                             Abrir negócio
                           </Link>
                         ) : null}
