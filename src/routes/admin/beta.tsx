@@ -108,16 +108,23 @@ function BetaPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const fillTemplate = (g: BetaInviteResult) =>
+    template
+      .replace(/{\s*nome\s*}/g, g.name)
+      .replace(/{\s*codigo\s*}/g, g.code)
+      .replace(/{\s*dias\s*}/g, String(g.days))
+      .replace(/{\s*plano\s*}/g, TIER_DISPLAY_NAME[g.tier as SubscriptionTier] ?? g.tier);
+
+  const copyMessage = (g: BetaInviteResult) => {
+    navigator.clipboard.writeText(fillTemplate(g)).then(() => toast.success(`Mensagem para ${g.name} copiada.`));
+  };
+
   const copyAll = () => {
     if (!generated) return;
-    const txt = generated
-      .map(
-        (g) =>
-          `${g.name}${g.whatsapp ? ` (${g.whatsapp})` : ""} — ${TIER_DISPLAY_NAME[g.tier as SubscriptionTier]}, ${g.days} dias — código: ${g.code}`,
-      )
-      .join("\n");
-    navigator.clipboard.writeText(txt).then(() => toast.success("Copiado."));
+    const txt = generated.map((g) => fillTemplate(g)).join("\n\n---\n\n");
+    navigator.clipboard.writeText(txt).then(() => toast.success("Todas as mensagens copiadas."));
   };
+
 
   return (
     <div>
