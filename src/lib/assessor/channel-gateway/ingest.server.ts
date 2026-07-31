@@ -6,7 +6,7 @@ import { findUserIdByChannel } from "@/lib/assessor/channels.server";
 import type { AdapterSendResult, ChannelAdapter, NormalizedInbound } from "./types";
 import type { EngineOutcome } from "@/lib/assessor/engine.server";
 import { withConversationLock } from "./lock.server";
-import { deriveInteractivePrompt } from "@/lib/assessor/interactive";
+import { deriveInteractivePrompt, parseOutcomeCommand } from "@/lib/assessor/interactive";
 
 export async function runInboundPipeline(
   adapter: ChannelAdapter,
@@ -106,6 +106,31 @@ async function routeInbound(
         ? inbound.callback?.data ?? ""
         : inbound.text ?? "";
     if (!content.trim()) return;
+
+    // Botão de resultado do check-in da tarde: actualiza o seguimento na
+    // hora e responde curto. Não passa pelo motor.
+    const outcomeCmd = parseOutcomeCommand(content);
+    if (outcomeCmd) {
+      const { applyFollowUpOutcome, outcomeAck } = await import("@/lib/assessor/proactive/outcomes.server");
+      const r = await applyFollowUpOutcome(
+        supabaseAdmin, userId, outcomeCmd.followUpId, outcomeCmd.outcome,
+      );
+      const ack = r.ok
+        ? outcomeAck(outcomeCmd.outcome, r.title)
+        : "Não encontrei esse seguimento. Deve ter sido fechado entretanto.";
+      const send = await adapter.sendText(inbound.externalConversationId, ack);
+      await supabaseAdmin.from("assessor_messages").insert({
+        user_id: userId, role: "assistant", content: ack,
+        message_type: "outcome_ack", channel: adapter.channel,
+        status: send.ok ? "sent" : "failed",
+        related_resource_type: "follow_up", related_resource_id: outcomeCmd.followUpId,
+      } as never);
+      if (inbound.callback && adapter.answerInteraction) {
+        try { await adapter.answerInteraction(inbound.callback.callbackQueryId); } catch { /* best-effort */ }
+      }
+      return;
+    }
+
     try {
       const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
       const outcome = await processAssessorMessage({
