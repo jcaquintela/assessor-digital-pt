@@ -12,8 +12,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { formatDataHora } from "@/lib/demo-data";
-import { Calendar as CalendarIcon, Pencil, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-grid";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
@@ -33,6 +34,9 @@ function CalendarioPage() {
     id: string; titulo: string; data: string; hora: string; notas: string;
   }>(null);
   const [saving, setSaving] = useState(false);
+  const hoje = new Date();
+  const [month, setMonth] = useState(() => new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+  const [selectedKey, setSelectedKey] = useState(() => dayKey(new Date()));
 
   // Compromissos = registos classificados como Evento (ver src/lib/agenda-kind.ts),
   // excluindo os já concluídos/cancelados.
@@ -46,6 +50,26 @@ function CalendarioPage() {
       .sort((a, b) => a.data.localeCompare(b.data)),
     [seguimentos],
   );
+
+  // Eventos agrupados por dia local, para o ponto indicador e a lista do dia.
+  const porDia = useMemo(() => {
+    const map = new Map<string, typeof eventos>();
+    for (const e of eventos) {
+      const k = dayKey(e.data);
+      const list = map.get(k) ?? [];
+      list.push(e);
+      map.set(k, list);
+    }
+    return map;
+  }, [eventos]);
+
+  const doDia = porDia.get(selectedKey) ?? [];
+  const selectedLabel = new Date(`${selectedKey}T12:00:00`).toLocaleDateString("pt-PT", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+
+  const mudarMes = (delta: number) =>
+    setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
 
   const remover = async (id: string, titulo: string) => {
     if (!window.confirm(`Eliminar “${titulo}”? Esta ação não pode ser desfeita.`)) return;
@@ -81,12 +105,58 @@ function CalendarioPage() {
       <PageHeader title="Calendário" subtitle="Vista interna dos compromissos." />
       <div className="grid gap-4 md:grid-cols-[1fr_320px]">
         <Card>
-          <CardHeader><CardTitle className="text-base">Próximos compromissos</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {eventos.length === 0 && (
-              <p className="text-sm text-muted-foreground">Não tens compromissos agendados.</p>
-            )}
-            {eventos.map((e) => (
+          <CardHeader className="gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarMes(-1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <CardTitle className="min-w-[9.5rem] text-center text-base sm:text-left">
+                {monthLabel(month)}
+              </CardTitle>
+              <Button variant="ghost" size="icon" aria-label="Mês seguinte" onClick={() => mudarMes(1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="flex rounded-md border border-border p-0.5">
+                <Button size="sm" variant="secondary" className="h-7 px-3 text-xs">Mês</Button>
+                <Button size="sm" variant="ghost" className="h-7 px-3 text-xs" disabled>Semana</Button>
+                <Button size="sm" variant="ghost" className="h-7 px-3 text-xs" disabled>Lista</Button>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => {
+                  const n = new Date();
+                  setMonth(new Date(n.getFullYear(), n.getMonth(), 1));
+                  setSelectedKey(dayKey(n));
+                }}
+              >
+                Hoje
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <MonthGrid
+              month={month}
+              selectedKey={selectedKey}
+              markedKeys={new Set(porDia.keys())}
+              onSelect={(k) => {
+                setSelectedKey(k);
+                const d = new Date(`${k}T12:00:00`);
+                if (d.getMonth() !== month.getMonth() || d.getFullYear() !== month.getFullYear()) {
+                  setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                }
+              }}
+            />
+
+            <div className="space-y-2 border-t border-border pt-4">
+              <h3 className="text-sm font-medium capitalize">{selectedLabel}</h3>
+              {doDia.length === 0 && (
+                <p className="text-sm text-muted-foreground">Sem compromissos neste dia.</p>
+              )}
+              {doDia.map((e) => (
               <div
                 key={e.id}
                 className="rounded-lg border border-border p-3 transition-colors hover:border-primary/40"
@@ -119,7 +189,8 @@ function CalendarioPage() {
                   </Button>
                 </div>
               </div>
-            ))}
+              ))}
+            </div>
           </CardContent>
         </Card>
         <Card>
