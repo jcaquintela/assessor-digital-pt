@@ -99,3 +99,40 @@ export const updatePropertyFields = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// O dashboard pode criar imóveis diretamente (já não só por conversa).
+export const createProperty = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { address: string; typology?: string; asking_price?: number | null; status?: string }) => {
+    const address = String(data?.address ?? "").trim();
+    if (!address) throw new Error("A morada é obrigatória.");
+    return { ...data, address };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: row, error } = await (supabase.from("properties") as any)
+      .insert({
+        user_id: userId,
+        title: data.address,
+        address: data.address,
+        typology: data.typology?.trim() || null,
+        asking_price: data.asking_price ?? null,
+        status: data.status || "por_angariar",
+        source_channel: "web",
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return row as { id: string };
+  });
+
+export const deleteProperty = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { error } = await (supabase.from("properties") as any)
+      .delete().eq("id", data.id).eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
