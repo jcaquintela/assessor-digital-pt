@@ -62,7 +62,11 @@ function BetaPage() {
   const [days, setDays] = useState(14);
   const [batchOpen, setBatchOpen] = useState(false);
   const [raw, setRaw] = useState("");
+  const [template, setTemplate] = useState(
+    "Olá {nome}! 👋\n\nTens acesso ao Afonso — o teu Assessor pessoal — durante {dias} dias no plano {plano}.\n\nEnvia este código por WhatsApp ou Telegram ao Afonso para começares:\n\n{codigo}\n\nFica à vontade para responder com dúvidas.",
+  );
   const [generated, setGenerated] = useState<BetaInviteResult[] | null>(null);
+
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "beta-testers"] });
   const run = (label: string, p: Promise<unknown>) =>
