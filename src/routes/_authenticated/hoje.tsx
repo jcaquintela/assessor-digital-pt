@@ -53,6 +53,8 @@ type Priority = {
   priority_score: number;
   due_at: string | null;
   entity_label: string | null;
+  deal_id?: string | null;
+  deal_label?: string | null;
 };
 
 type Awaiting = { id: string; title: string; due_at: string; entity_label: string | null };
@@ -143,6 +145,8 @@ function HojePage() {
         priority_score: 80,
         due_at: s.data,
         entity_label: nomePessoa(s.pessoaId) || null,
+        deal_id: null,
+        deal_label: null,
       });
     }
     for (const e of eventosHoje.slice(0, 2)) {
@@ -154,6 +158,8 @@ function HojePage() {
         priority_score: 70,
         due_at: e.data,
         entity_label: nomePessoa(e.pessoaId) || null,
+        deal_id: null,
+        deal_label: null,
       });
     }
     for (const o of oportSemAcao.slice(0, 2)) {
@@ -166,6 +172,8 @@ function HojePage() {
         priority_score: 55,
         due_at: null,
         entity_label: nome || null,
+        deal_id: o.id,
+        deal_label: o.titulo ?? o.tipo ?? "Negócio",
       });
     }
     return items.slice(0, 5);
@@ -299,6 +307,15 @@ function HojePage() {
                           p.due_at ? formatData(p.due_at) : null,
                         ].filter(Boolean).join(" · ")}
                       </div>
+                      {p.deal_id && p.deal_label ? (
+                        <Link
+                          to="/oportunidades/$id"
+                          params={{ id: p.deal_id }}
+                          className="c-badge mt-1.5 inline-flex max-w-full truncate text-xs"
+                        >
+                          Negócio: {p.deal_label}
+                        </Link>
+                      ) : null}
                     </div>
                     <span className="c-badge c-mono shrink-0">{Math.round(p.priority_score)}</span>
                   </div>
