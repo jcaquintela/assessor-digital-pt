@@ -28,6 +28,54 @@ export interface InteractivePrompt {
 
 const ID_PREFIX = "afonso:t:";
 
+/**
+ * Comando canónico de resultado de seguimento. Vai codificado no id do botão
+ * e é interceptado na ingestão antes do motor — o registo é actualizado na
+ * hora, tal como nas confirmações de placa.
+ */
+export const OUTCOME_COMMAND_PREFIX = "#resultado:";
+
+export type FollowUpOutcome = "concluido" | "precisa_nova_acao" | "nao_realizado";
+
+export const OUTCOME_LABEL: Record<FollowUpOutcome, string> = {
+  concluido: "Correu bem",
+  precisa_nova_acao: "Precisa seguimento",
+  nao_realizado: "Sem efeito",
+};
+
+export function encodeOutcomeCommand(followUpId: string, outcome: FollowUpOutcome): string {
+  return `${OUTCOME_COMMAND_PREFIX}${followUpId}:${outcome}`;
+}
+
+export function parseOutcomeCommand(
+  text: string | null | undefined,
+): { followUpId: string; outcome: FollowUpOutcome } | null {
+  const raw = String(text ?? "").trim();
+  if (!raw.startsWith(OUTCOME_COMMAND_PREFIX)) return null;
+  const [followUpId, outcome] = raw.slice(OUTCOME_COMMAND_PREFIX.length).split(":");
+  if (!followUpId || !outcome) return null;
+  if (!(outcome in OUTCOME_LABEL)) return null;
+  return { followUpId, outcome: outcome as FollowUpOutcome };
+}
+
+/** Pergunta de check-in da tarde: 3 botões, os mesmos estados de "Aguardam resultado". */
+export function buildOutcomeCheckinPrompt(item: {
+  id: string;
+  title: string;
+  entity_label?: string | null;
+}): InteractivePrompt {
+  const who = item.entity_label ? ` (${item.entity_label})` : "";
+  return {
+    kind: "buttons",
+    body: `Como correu "${item.title}"${who}?`,
+    options: (Object.keys(OUTCOME_LABEL) as FollowUpOutcome[]).map((o) => ({
+      id: encodeInteractiveId(encodeOutcomeCommand(item.id, o)),
+      label: OUTCOME_LABEL[o],
+      description: null,
+    })),
+  };
+}
+
 export const BUTTON_LABEL_MAX = 20;
 export const LIST_LABEL_MAX = 24;
 export const LIST_DESCRIPTION_MAX = 72;
