@@ -449,7 +449,7 @@ function TelegramSection() {
   });
 
   const link = useMutation({
-    mutationFn: async () => createToken({ data: {} }),
+    mutationFn: async () => createToken(),
     onSuccess: (r) => {
       window.open(r.url, "_blank", "noopener,noreferrer");
       toast.success("Abre o Telegram e carrega em Iniciar — ligo à tua conta automaticamente.");
@@ -459,7 +459,7 @@ function TelegramSection() {
   });
 
   const unlink = useMutation({
-    mutationFn: async () => doUnlink({ data: {} }),
+    mutationFn: async () => doUnlink(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["telegram", "link"] });
       toast.success("Telegram desligado desta conta.");
