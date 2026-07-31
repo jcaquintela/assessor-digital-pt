@@ -282,6 +282,10 @@ function PropertyDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="mt-4">
+        <DealsOf propertyId={id} />
+      </div>
     </AppShell>
   );
 }
