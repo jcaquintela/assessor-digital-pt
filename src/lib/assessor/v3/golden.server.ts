@@ -247,6 +247,23 @@ export async function runGolden(
     if (decideR.decision.action === "ask") reply = enforceSingleQuestion(reply);
 
     const tools = decideR.decision.tool_calls.map((c) => c.name);
+
+    // Gateway em baixo: o turno é inconclusivo, não uma regressão. Avaliar
+    // uma resposta vazia produzida por um 402/429/5xx daria um falso negativo
+    // e mandaria alguém procurar um bug de comportamento que não existe.
+    if (thinkR.unavailable === true || decideR.unavailable === true) {
+      const reason = decideR.error ?? thinkR.error ?? "gateway indisponível";
+      results.push({
+        turn: i + 1, user: t.user, reply,
+        action: decideR.decision.action, tools,
+        passed: false, failures: [`gateway_indisponivel:${reason}`],
+        unavailable: true, unavailableReason: reason,
+      });
+      historyLines.push(`consultor: ${t.user}`);
+      historyLines.push(`assessor: ${reply}`);
+      continue;
+    }
+
     const failures = evaluateTurn(reply, decideR.decision.action, tools, t.expect);
     results.push({
       turn: i + 1, user: t.user, reply,
@@ -258,6 +275,16 @@ export async function runGolden(
     historyLines.push(`assessor: ${reply}`);
   }
 
-  const passed = results.every((r) => r.passed);
-  return { passed, turns: results, aqsAvg: null };
+  const unavailableTurn = results.find((r) => r.unavailable);
+  const inconclusive = !!unavailableTurn;
+  // Um guião com turnos inconclusivos não passa nem reprova por
+  // comportamento — quem lê o resultado tem de ver que foi o serviço.
+  const passed = !inconclusive && results.every((r) => r.passed);
+  return {
+    passed,
+    turns: results,
+    aqsAvg: null,
+    inconclusive,
+    unavailableReason: unavailableTurn?.unavailableReason ?? null,
+  };
 }
