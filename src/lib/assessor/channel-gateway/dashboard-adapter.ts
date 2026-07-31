@@ -48,6 +48,12 @@ export const dashboardAdapter: ChannelAdapter = {
     return [];
   },
 
+  // O consultor já vem autenticado da sessão do painel: o "external id" é o
+  // próprio user_id, por isso não há resolução por channel_links.
+  async onboardIfMissingUser(_supabaseAdmin: any, inbound: NormalizedInbound) {
+    return { handled: false, userId: inbound.externalConversationId };
+  },
+
   async persistInbound(supabaseAdmin: any, inbound: NormalizedInbound, userId: string | null) {
     if (!userId) return null;
     const { data, error } = await supabaseAdmin
