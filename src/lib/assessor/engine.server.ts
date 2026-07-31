@@ -5,6 +5,7 @@
 // reais após confirmação explícita do utilizador.
 
 import { callAssessorAi, type AiInterpretation, type AiContextMessage } from "./ai.server";
+import { cleanTitle } from "./titles";
 import {
   interpretAssessorMessage,
   ROUTER_MIN_CONFIDENCE,
@@ -289,6 +290,8 @@ function buildProposalReply(
   ent: Record<string, any>,
   personName: string | null,
 ): string {
+  // Higiene: nunca deixar placeholders ("null", "undefined") chegarem à resposta.
+  ent = { ...ent, title: cleanTitle(ent.title), event_type: cleanTitle(ent.event_type) };
   const hasDate = !!ent.date && /^\d{4}-\d{2}-\d{2}$/.test(String(ent.date));
   // Nunca propomos sem data. Se a data é inválida ou está em falta,
   // pedimos a data em primeiro lugar — o slot-fill vai completar o
