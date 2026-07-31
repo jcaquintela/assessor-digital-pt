@@ -422,6 +422,13 @@ function BetaPage() {
                   placeholder="Usa {nome}, {codigo}, {dias} e {plano}."
                 />
               </label>
+              <div className="space-y-2">
+                <p className="mini">Pré-visualização com exemplo:</p>
+                <ChannelPreview
+                  whatsapp={formatForWhatsApp(fillTemplate(PREVIEW_SAMPLE))}
+                  telegram={formatForTelegram(fillTemplate(PREVIEW_SAMPLE))}
+                />
+              </div>
               <p className="mini">Variáveis disponíveis: {"{nome}"}, {"{codigo}"}, {"{dias}"}, {"{plano}"}.</p>
             </div>
           )}
