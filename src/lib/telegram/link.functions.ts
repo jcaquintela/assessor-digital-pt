@@ -3,6 +3,20 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const TELEGRAM_TOKEN_TTL_MIN = 15;
 
+// Algum canal ligado? Usado logo após o registo para levar o consultor ao
+// ecrã de ligação em vez do painel vazio.
+export const hasLinkedChannel = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("channel_links")
+      .select("channel")
+      .eq("user_id", context.userId)
+      .limit(1);
+    return { linked: ((data as unknown[]) ?? []).length > 0 };
+  });
+
 // Estado do canal Telegram do consultor autenticado.
 export const getTelegramLink = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
