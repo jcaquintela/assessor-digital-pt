@@ -224,36 +224,33 @@ export async function dispatchPendingNudges(
   const rows = (pending as any[]) ?? [];
   if (!rows.length) return { sent: 0, skipped: 0 };
 
-  // Só envia a consultores com WhatsApp ligado e v3 activa.
+  // Só envia a consultores com canal ligado e v3 activa. O canal é sempre o
+  // principal (WhatsApp quando existe), nunca o da última mensagem recebida.
   const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
-  const [{ data: profs }, { data: v3Users }] = await Promise.all([
-    supabase.from("profiles").select("id, phone, whatsapp_link_status").in("id", userIds),
+  const [, { data: v3Users }] = await Promise.all([
+    Promise.resolve(null),
     supabase.from("feature_flag_users").select("user_id").eq("flag_key", "assessor.engine.v3").in("user_id", userIds),
   ]);
-  const linked = new Map<string, string>();
-  for (const p of ((profs as any[]) ?? [])) {
-    if (p.whatsapp_link_status === "linked" && p.phone) linked.set(p.id, p.phone);
-  }
   const v3Set = new Set(((v3Users as any[]) ?? []).map((u) => u.user_id));
 
   let sent = 0, skipped = 0;
-  const { sendWhatsAppText } = await import("@/lib/whatsapp/send.server");
-  const { normalizePhone } = await import("@/lib/whatsapp/phone");
+  const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
+  const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+  const targets = new Map<string, { channel: "whatsapp" | "telegram"; externalId: string } | null>();
+  for (const uid of userIds) targets.set(uid, await resolveOutboundTarget(supabase, uid));
   for (const row of rows) {
-    const phone = linked.get(row.user_id);
-    if (!phone || !v3Set.has(row.user_id)) {
+    const target = targets.get(row.user_id) ?? null;
+    if (!target || !v3Set.has(row.user_id)) {
       await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
       skipped++;
       continue;
     }
-    const to = normalizePhone(phone);
-    if (!to) { await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id); skipped++; continue; }
-    const r = await sendWhatsAppText(to, row.suggested_reply, { triggeredBy: row.user_id, kind: "auto" });
+    const r = await sendReplyForChannel(target.channel, target.externalId, row.suggested_reply);
     if (r.ok) {
       await supabase.from("assessor_nudges").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", row.id);
       // Persiste no histórico do chat para o consultor ver na app.
       await supabase.from("assessor_messages").insert({
-        user_id: row.user_id, channel: "whatsapp", role: "assistant",
+        user_id: row.user_id, channel: target.channel, role: "assistant",
         content: row.suggested_reply, message_type: "proactive_nudge",
       } as never);
       sent++;
