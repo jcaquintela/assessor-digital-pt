@@ -16,7 +16,24 @@ export const Route = createFileRoute("/api/public/hooks/proactive-push")({
           });
         }
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { runProactivePushTick } = await import("@/lib/assessor/proactive/push.server");
+        const body = (await request.json().catch(() => ({}))) as {
+          userId?: string; mode?: "morning" | "checkin"; force?: boolean;
+        };
+        const {
+          runProactivePushTick, sendMorningPush, sendEveningCheckin,
+        } = await import("@/lib/assessor/proactive/push.server");
+
+        // Modo de teste dirigido (usado para validar numa conta específica).
+        if (body?.userId) {
+          const force = body.force === true;
+          const result = body.mode === "checkin"
+            ? await sendEveningCheckin(supabaseAdmin as any, body.userId, { force })
+            : await sendMorningPush(supabaseAdmin as any, body.userId, { force });
+          return new Response(JSON.stringify({ ok: true, mode: body.mode ?? "morning", result }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
         const result = await runProactivePushTick(supabaseAdmin as any, {});
         return new Response(JSON.stringify({ ok: true, ...result }), {
           headers: { "Content-Type": "application/json" },
