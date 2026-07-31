@@ -11,7 +11,7 @@ const tag = "ZZTEST" + Date.now();
 const { data: person } = await sb.from("people").insert({ user_id: userId, name: `Mariana ${tag}` }).select("id").single();
 const { data: prop } = await sb.from("properties").insert({ user_id: userId, title: `T3 Avenida ${tag}` }).select("id").single();
 const { data: file, error: fErr } = await sb.from("uploaded_files").insert({
-  user_id: userId, original_file_name: "escritura.pdf", channel: "whatsapp",
+  user_id: userId, original_file_name: "escritura.pdf", internal_file_name: "escritura.pdf", channel: "whatsapp",
   extracted_text: `Escritura de compra e venda do imóvel T3 Avenida ${tag}, proprietária Mariana ${tag}, residente em Gaia.`,
 }).select("id").single();
 console.log("FERR", fErr);
