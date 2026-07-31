@@ -303,6 +303,61 @@ export const whatsappAdapter: ChannelAdapter = {
     if (r.ok) return { ok: true, messageId: r.messageId ?? null };
     return { ok: false, messageId: null, error: r.error };
   },
+
+  async sendDocument(
+    externalConversationId: string,
+    doc: { bytes: Uint8Array; fileName: string; mimeType: string; caption?: string | null },
+  ): Promise<AdapterSendResult> {
+    const { uploadWhatsAppMedia } = await import("@/lib/whatsapp/media.server");
+    const up = await uploadWhatsAppMedia(doc.bytes, doc.mimeType, doc.fileName);
+    if (!up.ok || !up.mediaId) {
+      return { ok: false, messageId: null, error: up.error ?? "upload falhou" };
+    }
+    const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
+    const r = await sendWhatsAppPayload(
+      externalConversationId,
+      {
+        type: "document",
+        document: {
+          id: up.mediaId,
+          filename: doc.fileName,
+          ...(doc.caption ? { caption: doc.caption } : {}),
+        },
+      },
+      { kind: "auto" },
+    );
+    if (r.ok) return { ok: true, messageId: r.messageId ?? null };
+    return { ok: false, messageId: null, error: r.error };
+  },
+
+  async sendContact(
+    externalConversationId: string,
+    contact: { name: string; phone: string | null; email?: string | null; company?: string | null },
+  ): Promise<AdapterSendResult> {
+    const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
+    const parts = contact.name.trim().split(/\s+/);
+    const last = parts.length > 1 ? parts[parts.length - 1] : "";
+    const first = parts.length > 1 ? parts.slice(0, -1).join(" ") : contact.name.trim();
+    const r = await sendWhatsAppPayload(
+      externalConversationId,
+      {
+        type: "contacts",
+        contacts: [
+          {
+            name: { formatted_name: contact.name, first_name: first, last_name: last || undefined },
+            ...(contact.phone
+              ? { phones: [{ phone: contact.phone, type: "CELL", wa_id: contact.phone.replace(/\D/g, "") }] }
+              : {}),
+            ...(contact.email ? { emails: [{ email: contact.email, type: "WORK" }] } : {}),
+            ...(contact.company ? { org: { company: contact.company } } : {}),
+          },
+        ],
+      },
+      { kind: "auto" },
+    );
+    if (r.ok) return { ok: true, messageId: r.messageId ?? null };
+    return { ok: false, messageId: null, error: r.error };
+  },
 };
 
 // -------------- LIGAR-XXXXXX (legado, específico WhatsApp) -----------------

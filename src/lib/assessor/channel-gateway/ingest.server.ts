@@ -131,6 +131,16 @@ async function routeInbound(
       return;
     }
 
+    // Confirmação de um cartão de visita lido numa foto: cria o contacto e
+    // devolve o ficheiro pronto a guardar. Não passa pelo motor.
+    if (await handleBusinessCardAnswer(adapter, supabaseAdmin, inbound, userId, content)) {
+      if (inbound.callback && adapter.answerInteraction) {
+        try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
+        catch { /* best-effort */ }
+      }
+      return;
+    }
+
     try {
       const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
       const outcome = await processAssessorMessage({
@@ -257,6 +267,129 @@ async function handleInboundMedia(
   userId: string,
   persistedUuid: string | null,
 ): Promise<void> {
+  return handleInboundMediaInner(adapter, supabaseAdmin, inbound, userId, persistedUuid);
+}
+
+/**
+ * Resposta a uma proposta de contacto a partir de cartão de visita.
+ * Devolve true quando tratou o turno (e já respondeu).
+ */
+async function handleBusinessCardAnswer(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  content: string,
+): Promise<boolean> {
+  try {
+    const { findActivePendingAction, markPendingActionStatus } = await import(
+      "@/lib/assessor/memory.server"
+    );
+    const pending = await findActivePendingAction(supabaseAdmin, userId, adapter.channel);
+    const { BUSINESS_CARD_INTENT, confirmBusinessCardContact } = await import(
+      "@/lib/assessor/business-card.server"
+    );
+    if (!pending || pending.intent !== BUSINESS_CARD_INTENT) return false;
+
+    const { isConfirmation, isRejection } = await import(
+      "@/lib/assessor/culture/short-answers"
+    );
+    if (isRejection(content)) {
+      await markPendingActionStatus(supabaseAdmin, pending.id, "cancelled");
+      await adapter.sendText(
+        inbound.externalConversationId,
+        "Está bem, não registei nada. Guardei a foto em Diversos.",
+      );
+      return true;
+    }
+    if (!isConfirmation(content)) return false;
+
+    const payload = (pending.structured_payload ?? {}) as any;
+    const card = payload.card ?? null;
+    if (!card?.name) {
+      await markPendingActionStatus(supabaseAdmin, pending.id, "cancelled");
+      return false;
+    }
+
+    const res = await confirmBusinessCardContact({
+      supabase: supabaseAdmin,
+      userId,
+      channel: adapter.channel,
+      card,
+      fileId: payload.file_id ?? null,
+    });
+    await markPendingActionStatus(supabaseAdmin, pending.id, res.ok ? "executed" : "failed");
+
+    const send = await adapter.sendText(inbound.externalConversationId, res.reply);
+    await supabaseAdmin.from("assessor_messages").insert({
+      user_id: userId,
+      role: "assistant",
+      content: res.reply,
+      message_type: `${adapter.channel}_text`,
+      status: send.ok ? "sent" : "failed",
+      channel: adapter.channel,
+      sender_phone: inbound.externalConversationId,
+    } as never);
+
+    if (res.ok && res.vcard && res.card) {
+      await deliverContactCard(adapter, inbound.externalConversationId, res.card, res.vcard);
+    }
+    return true;
+  } catch (err) {
+    console.error(
+      `[channel-gateway/${adapter.channel}] business-card:`,
+      err instanceof Error ? err.message : err,
+    );
+    return false;
+  }
+}
+
+/** Envia o contacto: cartão nativo quando existir, .vcf como alternativa. */
+async function deliverContactCard(
+  adapter: ChannelAdapter,
+  externalConversationId: string,
+  card: { name: string; phone: string | null; email?: string | null; company?: string | null },
+  vcard: { fileName: string; content: string; signedUrl: string | null },
+): Promise<void> {
+  const bytes = new TextEncoder().encode(vcard.content);
+
+  if (adapter.channel === "telegram" && adapter.sendContact && card.phone) {
+    const r = await adapter.sendContact(externalConversationId, { ...card, vcard: vcard.content });
+    if (r.ok) return;
+  }
+
+  if (adapter.sendDocument) {
+    const r = await adapter.sendDocument(externalConversationId, {
+      bytes,
+      fileName: vcard.fileName,
+      mimeType: "text/vcard",
+      caption: `Cartão de ${card.name}`,
+      url: vcard.signedUrl,
+    });
+    if (r.ok) return;
+    console.error(`[channel-gateway/${adapter.channel}] vcf falhou:`, r.error);
+  }
+
+  if (adapter.sendContact && card.phone) {
+    const r = await adapter.sendContact(externalConversationId, { ...card, vcard: vcard.content });
+    if (r.ok) return;
+    console.error(`[channel-gateway/${adapter.channel}] contacto nativo falhou:`, r.error);
+  }
+
+  const linha = [card.name, card.phone, card.email].filter(Boolean).join(" · ");
+  await adapter.sendText(
+    externalConversationId,
+    `Não consegui enviar o ficheiro do contacto. Fica aqui: ${linha}`,
+  );
+}
+
+async function handleInboundMediaInner(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  persistedUuid: string | null,
+): Promise<void> {
   const dl = await adapter.fetchMedia(inbound);
   if (!dl.ok || !dl.bytes) {
     console.error(
@@ -341,10 +474,39 @@ async function handleInboundMedia(
               .update({
                 extracted_text: reading.visible_text,
                 extracted_metadata: reading as unknown as Record<string, unknown>,
-                classification: reading.is_sign ? "prospecao" : "imagem",
+                classification: reading.is_sign
+                  ? "prospecao"
+                  : reading.is_business_card
+                    ? "cartao_visita"
+                    : "imagem",
               })
               .eq("id", result.fileId);
           }
+
+          // Cartão de visita → proposta de contacto (com botões), antes de
+          // qualquer leitura genérica.
+          const { extractBusinessCard, proposeBusinessCardContact } = await import(
+            "@/lib/assessor/business-card.server"
+          );
+          const card = extractBusinessCard(reading);
+          if (card) {
+            const question = await proposeBusinessCardContact({
+              supabase: supabaseAdmin,
+              userId,
+              channel: adapter.channel,
+              card,
+              fileId: result.fileId,
+              sourceMessageId: persistedUuid,
+            });
+            await deliverReply(adapter, supabaseAdmin, {
+              userId,
+              externalConversationId: inbound.externalConversationId,
+              outcome: { reply: question },
+              replyTo: inbound.replyToMessageId ?? null,
+            });
+            return;
+          }
+
           const engineText = readingToEngineText(reading, inbound.media?.caption ?? inbound.text);
           if (engineText) {
             // A pergunta "A que se refere?" deixa de fazer sentido: já sabemos.

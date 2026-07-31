@@ -32,6 +32,23 @@ export interface TelegramProvider {
     showAlert?: boolean;
   }): Promise<{ ok: boolean; error?: string }>;
 
+  /** Cartão de contacto nativo (mais polido do que um ficheiro). */
+  sendContact?(input: {
+    chatId: string;
+    phone: string;
+    firstName: string;
+    lastName?: string | null;
+    vcard?: string | null;
+  }): Promise<TelegramSendResult>;
+
+  /** Envia um ficheiro a partir de um URL acessível (ex.: URL assinado). */
+  sendDocumentByUrl?(input: {
+    chatId: string;
+    url: string;
+    fileName?: string | null;
+    caption?: string | null;
+  }): Promise<TelegramSendResult>;
+
   getFile(input: { fileId: string }): Promise<{
     ok: boolean;
     filePath?: string;
@@ -134,6 +151,36 @@ export const lovableTelegramProvider: TelegramProvider = {
       ...(showAlert ? { show_alert: true } : {}),
     });
     return { ok: r.ok, error: r.error };
+  },
+
+  async sendContact({ chatId, phone, firstName, lastName, vcard }) {
+    const r = await gatewayCall("sendContact", {
+      chat_id: chatId,
+      phone_number: phone,
+      first_name: firstName,
+      ...(lastName ? { last_name: lastName } : {}),
+      ...(vcard ? { vcard } : {}),
+    });
+    return {
+      ok: r.ok,
+      messageId: r.result?.message_id ? String(r.result.message_id) : undefined,
+      error: r.error,
+      status: r.status,
+    };
+  },
+
+  async sendDocumentByUrl({ chatId, url, caption }) {
+    const r = await gatewayCall("sendDocument", {
+      chat_id: chatId,
+      document: url,
+      ...(caption ? { caption } : {}),
+    });
+    return {
+      ok: r.ok,
+      messageId: r.result?.message_id ? String(r.result.message_id) : undefined,
+      error: r.error,
+      status: r.status,
+    };
   },
 
   async getFile({ fileId }) {

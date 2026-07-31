@@ -319,6 +319,39 @@ export const telegramAdapter: ChannelAdapter = {
     });
     return { ok: r.ok, messageId: r.messageId ?? null, error: r.error };
   },
+
+  // Cartão nativo do Telegram (tocar → guardar nos contactos).
+  async sendContact(externalConversationId, contact): Promise<AdapterSendResult> {
+    const provider = getTelegramProvider();
+    if (!provider.sendContact || !contact.phone) {
+      return { ok: false, messageId: null, error: "sendContact indisponível" };
+    }
+    const parts = contact.name.trim().split(/\s+/);
+    const last = parts.length > 1 ? parts[parts.length - 1] : null;
+    const first = parts.length > 1 ? parts.slice(0, -1).join(" ") : contact.name.trim();
+    const r = await provider.sendContact({
+      chatId: externalConversationId,
+      phone: contact.phone,
+      firstName: first,
+      lastName: last,
+      vcard: contact.vcard ?? null,
+    });
+    return { ok: r.ok, messageId: r.messageId ?? null, error: r.error };
+  },
+
+  async sendDocument(externalConversationId, doc): Promise<AdapterSendResult> {
+    const provider = getTelegramProvider();
+    if (!provider.sendDocumentByUrl || !doc.url) {
+      return { ok: false, messageId: null, error: "sendDocument indisponível" };
+    }
+    const r = await provider.sendDocumentByUrl({
+      chatId: externalConversationId,
+      url: doc.url,
+      fileName: doc.fileName,
+      caption: doc.caption ?? null,
+    });
+    return { ok: r.ok, messageId: r.messageId ?? null, error: r.error };
+  },
 };
 
 async function claimInvite(

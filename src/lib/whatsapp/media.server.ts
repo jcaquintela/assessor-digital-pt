@@ -10,6 +10,47 @@ export type WhatsAppMedia = {
 };
 
 export async function downloadWhatsAppMedia(mediaId: string): Promise<WhatsAppMedia> {
+  return downloadWhatsAppMediaInner(mediaId);
+}
+
+/**
+ * Carrega bytes para a Cloud API e devolve o media id, para depois enviar
+ * como documento. Multipart directo ao Graph (o token nunca é registado).
+ */
+export async function uploadWhatsAppMedia(
+  bytes: Uint8Array,
+  mimeType: string,
+  fileName: string,
+): Promise<{ ok: boolean; mediaId?: string; error?: string }> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneNumberId) return { ok: false, error: "Credenciais WhatsApp em falta" };
+  try {
+    const form = new FormData();
+    form.append("messaging_product", "whatsapp");
+    form.append("type", mimeType);
+    form.append(
+      "file",
+      new Blob([bytes as unknown as BlobPart], { type: mimeType }),
+      fileName,
+    );
+    const res = await fetch(`${GRAPH_BASE}/${phoneNumberId}/media`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const text = await res.text().catch(() => "");
+    if (!res.ok) return { ok: false, error: `Meta media upload ${res.status}: ${text.slice(0, 200)}` };
+    let json: any = {};
+    try { json = text ? JSON.parse(text) : {}; } catch { /* noop */ }
+    if (!json?.id) return { ok: false, error: "Meta media upload sem id" };
+    return { ok: true, mediaId: String(json.id) };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+async function downloadWhatsAppMediaInner(mediaId: string): Promise<WhatsAppMedia> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token) throw new Error("WHATSAPP_ACCESS_TOKEN not set");
 

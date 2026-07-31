@@ -115,6 +115,31 @@ export interface ChannelAdapter {
 
   answerInteraction?(callbackQueryId: string, feedback?: string): Promise<void>;
 
+  // 7c. Envio de um ficheiro (ex.: .vcf de um cartão de visita). Opcional.
+  sendDocument?(
+    externalConversationId: string,
+    doc: {
+      bytes: Uint8Array;
+      fileName: string;
+      mimeType: string;
+      caption?: string | null;
+      /** URL assinado alternativo, para canais que enviam ficheiros por link. */
+      url?: string | null;
+    },
+  ): Promise<AdapterSendResult>;
+
+  // 7d. Cartão de contacto nativo, quando o canal suportar (Telegram/WhatsApp).
+  sendContact?(
+    externalConversationId: string,
+    contact: {
+      name: string;
+      phone: string | null;
+      email?: string | null;
+      company?: string | null;
+      vcard?: string | null;
+    },
+  ): Promise<AdapterSendResult>;
+
   // 8. Strings padrão por canal (podem partilhar copy, ficam no adapter
   //    para permitir tom/emoji/HTML específico).
   replyUnassociated: string;
