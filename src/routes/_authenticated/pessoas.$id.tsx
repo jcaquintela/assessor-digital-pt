@@ -14,6 +14,7 @@ import { ChevronLeft, Mail, Phone, Trash2, Save, MessageSquarePlus } from "lucid
 import { toast } from "sonner";
 import { PersonExtrasCard } from "@/components/pessoas/person-extras-card";
 import { PersonLinkedCard } from "@/components/pessoas/person-linked-card";
+import { DealsOf } from "@/components/negocios/deals-of";
 
 const RELACOES: Relacao[] = ["Cliente", "Potencial", "Proprietário", "Referenciador", "Colega"];
 
@@ -208,26 +209,7 @@ function PessoaDetail() {
       <PersonLinkedCard personId={pessoa.id} />
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold">Oportunidades ({opsPessoa.length})</h3>
-            {opsPessoa.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sem oportunidades.</p>
-            ) : (
-              <div className="space-y-2">
-                {opsPessoa.map((o) => (
-                  <div key={o.id} className="rounded-lg border border-border p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{o.tipo}</span>
-                      <span>{formatEUR(o.valor)}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">{o.estado} · Prob. {o.probabilidade}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <DealsOf personId={pessoa.id} />
 
         <Card>
           <CardContent className="p-4">

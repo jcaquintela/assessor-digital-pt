@@ -58,6 +58,7 @@ import { Route as AuthenticatedAssessorRouteImport } from './routes/_authenticat
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedOportunidadesIndexRouteImport } from './routes/_authenticated/oportunidades.index'
+import { Route as AuthenticatedNegociosIndexRouteImport } from './routes/_authenticated/negocios.index'
 import { Route as AuthenticatedNegocioIndexRouteImport } from './routes/_authenticated/negocio.index'
 import { Route as OauthOutlookReturnRouteImport } from './routes/oauth/outlook/return'
 import { Route as OauthGoogleCalendarReturnRouteImport } from './routes/oauth/google-calendar/return'
@@ -333,6 +334,12 @@ const AuthenticatedOportunidadesIndexRoute =
     path: '/oportunidades/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedNegociosIndexRoute =
+  AuthenticatedNegociosIndexRouteImport.update({
+    id: '/negocios/',
+    path: '/negocios/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedNegocioIndexRoute =
   AuthenticatedNegocioIndexRouteImport.update({
     id: '/negocio/',
@@ -548,6 +555,7 @@ export interface FileRoutesByFullPath {
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
   '/negocio/': typeof AuthenticatedNegocioIndexRoute
+  '/negocios/': typeof AuthenticatedNegociosIndexRoute
   '/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
@@ -623,6 +631,7 @@ export interface FileRoutesByTo {
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
   '/negocio': typeof AuthenticatedNegocioIndexRoute
+  '/negocios': typeof AuthenticatedNegociosIndexRoute
   '/oportunidades': typeof AuthenticatedOportunidadesIndexRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
@@ -701,6 +710,7 @@ export interface FileRoutesById {
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
   '/_authenticated/negocio/': typeof AuthenticatedNegocioIndexRoute
+  '/_authenticated/negocios/': typeof AuthenticatedNegociosIndexRoute
   '/_authenticated/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
   '/_authenticated/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/_authenticated/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
@@ -779,6 +789,7 @@ export interface FileRouteTypes {
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
     | '/negocio/'
+    | '/negocios/'
     | '/oportunidades/'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
@@ -854,6 +865,7 @@ export interface FileRouteTypes {
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
     | '/negocio'
+    | '/negocios'
     | '/oportunidades'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
@@ -931,6 +943,7 @@ export interface FileRouteTypes {
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
     | '/_authenticated/negocio/'
+    | '/_authenticated/negocios/'
     | '/_authenticated/oportunidades/'
     | '/_authenticated/negocio/comissoes/$id'
     | '/_authenticated/negocio/despesas/$id'
@@ -1313,6 +1326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOportunidadesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/negocios/': {
+      id: '/_authenticated/negocios/'
+      path: '/negocios'
+      fullPath: '/negocios/'
+      preLoaderRoute: typeof AuthenticatedNegociosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/negocio/': {
       id: '/_authenticated/negocio/'
       path: '/negocio'
@@ -1631,6 +1651,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNegocioFaturacaoRoute: typeof AuthenticatedNegocioFaturacaoRoute
   AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
   AuthenticatedNegocioIndexRoute: typeof AuthenticatedNegocioIndexRoute
+  AuthenticatedNegociosIndexRoute: typeof AuthenticatedNegociosIndexRoute
   AuthenticatedOportunidadesIndexRoute: typeof AuthenticatedOportunidadesIndexRoute
   AuthenticatedOportunidadesProspecaoIdRoute: typeof AuthenticatedOportunidadesProspecaoIdRoute
   AuthenticatedOportunidadesProspecaoIndexRoute: typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -1658,6 +1679,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNegocioFaturacaoRoute: AuthenticatedNegocioFaturacaoRoute,
   AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
   AuthenticatedNegocioIndexRoute: AuthenticatedNegocioIndexRoute,
+  AuthenticatedNegociosIndexRoute: AuthenticatedNegociosIndexRoute,
   AuthenticatedOportunidadesIndexRoute: AuthenticatedOportunidadesIndexRoute,
   AuthenticatedOportunidadesProspecaoIdRoute:
     AuthenticatedOportunidadesProspecaoIdRoute,

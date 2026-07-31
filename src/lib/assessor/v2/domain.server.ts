@@ -635,6 +635,10 @@ async function execCreateFinancialMovement(ctx: DomainContext, args: unknown): P
       .insert({
         user_id: ctx.userId,
         property_id: v.property_id ?? null,
+        title,
+        deal_kind: "venda",
+        stage: "escritura",
+        stage_changed_at: new Date().toISOString(),
         type: "venda",
         status: "fechado",
         value: v.deal_value ?? null,

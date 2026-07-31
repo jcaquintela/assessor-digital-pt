@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/mais")({
 
 const items = [
   { to: "/pessoas", label: "Pessoas", icon: Users },
-  { to: "/oportunidades", label: "Oportunidades", icon: Briefcase },
+  { to: "/negocios", label: "Negócios", icon: Briefcase },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/calendario", label: "Calendário", icon: CalendarDays },
   { to: "/rotinas", label: "Rotinas", icon: Repeat },

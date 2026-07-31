@@ -1,257 +1,258 @@
+// Ficha do Negócio: a história completa numa página — quem, que imóveis,
+// em que fase, o que já aconteceu e o que vem a seguir.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatData, formatEUR, type Oportunidade, type OportunidadeEstado, type OportunidadeTipo } from "@/lib/demo-data";
-import { ChevronLeft, Trash2, Save, MessageSquarePlus, Archive } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-
-const TIPOS: OportunidadeTipo[] = ["Compra", "Venda", "Potencial Angariação", "Arrendamento", "Investimento", "Recomendação"];
-const ESTADOS: OportunidadeEstado[] = ["Novo", "Em conversa", "Visita", "Proposta", "CPCV", "Escritura", "Perdida", "Arquivada"];
-const PROBS: Oportunidade["probabilidade"][] = ["Baixa", "Média", "Alta"];
-
-// Os registos criados pelo motor gravam em minúsculas ("venda", "fechado").
-// Normalizamos para os valores da ficha, senão os selects aparecem vazios.
-function pick<T extends string>(options: readonly T[], raw: unknown, fallback: T): T {
-  const v = String(raw ?? "").trim().toLowerCase();
-  return options.find((o) => o.toLowerCase() === v) ?? fallback;
-}
-const ESTADO_ALIAS: Record<string, OportunidadeEstado> = {
-  aberto: "Novo", aberta: "Novo", fechado: "Escritura", fechada: "Escritura",
-  ganho: "Escritura", ganha: "Escritura", perdido: "Perdida", arquivado: "Arquivada",
-};
-const normEstado = (raw: unknown): OportunidadeEstado =>
-  ESTADO_ALIAS[String(raw ?? "").trim().toLowerCase()] ?? pick(ESTADOS, raw, "Novo");
-const normTipo = (raw: unknown): OportunidadeTipo => pick(TIPOS, raw, "Compra");
-const normProb = (raw: unknown): Oportunidade["probabilidade"] => pick(PROBS, raw, "Média");
+import { toast } from "sonner";
+import {
+  ChevronLeft, Save, Archive, Trash2, MessageSquarePlus, AlertTriangle, Plus, X,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/lib/store";
+import { formatData, formatDataHora, formatEUR } from "@/lib/demo-data";
+import {
+  addDealNote, archiveDeal, getDeal, linkDealProperty, setDealStage,
+  unlinkDealProperty, updateDeal,
+} from "@/lib/deals/deals.functions";
+import {
+  DEAL_KINDS, DEAL_STAGES, KIND_LABEL, PROPERTY_ROLE_LABEL, STAGE_LABEL, stageIndex,
+} from "@/lib/deals/stages";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha da oportunidade — Assessor do Consultor" },
-      { name: "description", content: "Pessoa, imóvel, estado, comissões, seguimentos e histórico." },
-      { property: "og:title", content: "Ficha da oportunidade — Assessor do Consultor" },
-      { property: "og:description", content: "Memória organizada por oportunidade." },
+      { title: "Negócio — Assessor do Consultor" },
+      { name: "description", content: "Pessoa, imóveis, fase, histórico, seguimentos e comissões de um negócio." },
+      { property: "og:title", content: "Negócio — Assessor do Consultor" },
+      { property: "og:description", content: "A história completa do negócio numa página." },
     ],
   }),
-  component: OportunidadeDetail,
+  component: DealDetail,
 });
 
-function OportunidadeDetail() {
+function DealDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const {
-    oportunidades, pessoas, imoveis, seguimentos, comissoes,
-    updateOportunidade, deleteOportunidade, addInteracao, loading,
-  } = useStore();
+  const qc = useQueryClient();
+  const { pessoas, imoveis, deleteOportunidade } = useStore();
 
-  const op = useMemo(() => oportunidades.find((o) => o.id === id), [oportunidades, id]);
+  const getFn = useServerFn(getDeal);
+  const updateFn = useServerFn(updateDeal);
+  const stageFn = useServerFn(setDealStage);
+  const noteFn = useServerFn(addDealNote);
+  const archiveFn = useServerFn(archiveDeal);
+  const linkFn = useServerFn(linkDealProperty);
+  const unlinkFn = useServerFn(unlinkDealProperty);
 
-  const [tipo, setTipo] = useState<OportunidadeTipo>(normTipo(op?.tipo));
-  const [estado, setEstado] = useState<OportunidadeEstado>(normEstado(op?.estado));
-  const [valor, setValor] = useState<string>(String(op?.valor ?? 0));
-  const [probabilidade, setProbabilidade] = useState<Oportunidade["probabilidade"]>(normProb(op?.probabilidade));
-  const [pessoaId, setPessoaId] = useState<string>(op?.pessoaId ?? "");
-  const [imovelId, setImovelId] = useState<string>(op?.imovelId ?? "");
-  const [proximaAcao, setProximaAcao] = useState(op?.proximaAcao ?? "");
-  const [proximaAcaoData, setProximaAcaoData] = useState(op?.proximaAcaoData ?? "");
-  const [notas, setNotas] = useState(op?.notas ?? "");
-  const [interacao, setInteracao] = useState("");
-  const [busy, setBusy] = useState(false);
+  const deal = useQuery({ queryKey: ["deal", id], queryFn: () => getFn({ data: { id } }), retry: false });
+  const d = deal.data ?? null;
+
+  const [titulo, setTitulo] = useState("");
+  const [kind, setKind] = useState("venda");
+  const [valor, setValor] = useState("0");
+  const [prazo, setPrazo] = useState("");
+  const [pessoaId, setPessoaId] = useState("");
+  const [notas, setNotas] = useState("");
+  const [nota, setNota] = useState("");
+  const [novoImovel, setNovoImovel] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Os dados chegam em assíncrono: sincroniza o formulário quando a ficha carrega.
   useEffect(() => {
-    if (!op) return;
-    setTipo(normTipo(op.tipo));
-    setEstado(normEstado(op.estado));
-    setValor(String(op.valor ?? 0));
-    setProbabilidade(normProb(op.probabilidade));
-    setPessoaId(op.pessoaId ?? "");
-    setImovelId(op.imovelId ?? "");
-    setProximaAcao(op.proximaAcao ?? "");
-    setProximaAcaoData(op.proximaAcaoData ?? "");
-    setNotas(op.notas ?? "");
-  }, [op?.id]);
+    if (!d) return;
+    setTitulo(d.rawTitle || d.title);
+    setKind(d.kind);
+    setValor(String(d.value ?? 0));
+    setPrazo((d.deadline ?? "").slice(0, 10));
+    setPessoaId(d.person?.id ?? "");
+    setNotas(d.notes ?? "");
+  }, [d?.id]);
 
-  if (loading && !op) {
-    return <AppShell><PageHeader title="A carregar…" /></AppShell>;
-  }
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["deal", id] });
+    qc.invalidateQueries({ queryKey: ["deals"] });
+    qc.invalidateQueries({ queryKey: ["opportunities"] });
+  };
 
-  if (!op) {
+  const guardar = useMutation({
+    mutationFn: () => updateFn({
+      data: {
+        id, title: titulo, kind, value: Number(valor) || 0,
+        notes: notas, personId: pessoaId || null, deadline: prazo || null,
+      },
+    }),
+    onSuccess: () => { refresh(); toast.success("Alterações guardadas."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const mudarFase = useMutation({
+    mutationFn: (stage: string) => stageFn({ data: { id, stage } }),
+    onSuccess: () => { refresh(); toast.success("Fase atualizada."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const registarNota = useMutation({
+    mutationFn: () => noteFn({ data: { id, note: nota } }),
+    onSuccess: () => { setNota(""); refresh(); toast.success("Registado no histórico."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const arquivar = useMutation({
+    mutationFn: (archived: boolean) => archiveFn({ data: { id, archived } }),
+    onSuccess: () => { refresh(); toast.success("Feito."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const ligarImovel = useMutation({
+    mutationFn: (propertyId: string) => linkFn({ data: { id, propertyId } }),
+    onSuccess: () => { setNovoImovel(""); refresh(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const desligarImovel = useMutation({
+    mutationFn: (propertyId: string) => unlinkFn({ data: { id, propertyId } }),
+    onSuccess: () => refresh(),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (deal.isLoading) return <AppShell><PageHeader title="A carregar…" /></AppShell>;
+
+  if (!d) {
     return (
       <AppShell>
-        <PageHeader title="Oportunidade não encontrada" subtitle="Pode ter sido apagada." />
-        <Button variant="ghost" onClick={() => navigate({ to: "/oportunidades" })}>
+        <PageHeader title="Negócio não encontrado" subtitle="Pode ter sido apagado." />
+        <Button variant="ghost" onClick={() => navigate({ to: "/negocios" })}>
           <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
         </Button>
       </AppShell>
     );
   }
 
-  const pessoa = pessoas.find((p) => p.id === op.pessoaId);
-  const imovel = imoveis.find((i) => i.id === op.imovelId);
-  const segsOp = seguimentos.filter((s) => s.oportunidadeId === op.id);
-  const comsOp = comissoes.filter((c) => c.oportunidadeId === op.id);
-
-  const dirty =
-    tipo !== normTipo(op.tipo) ||
-    estado !== normEstado(op.estado) ||
-    Number(valor) !== op.valor ||
-    probabilidade !== normProb(op.probabilidade) ||
-    (pessoaId || "") !== (op.pessoaId || "") ||
-    (imovelId || "") !== (op.imovelId || "") ||
-    (proximaAcao || "") !== (op.proximaAcao || "") ||
-    (proximaAcaoData || "") !== (op.proximaAcaoData || "") ||
-    (notas || "") !== (op.notas || "");
-
-  const guardar = async () => {
-    setBusy(true);
-    try {
-      await updateOportunidade(op.id, {
-        tipo, estado,
-        valor: Number(valor) || 0,
-        probabilidade,
-        pessoaId: pessoaId || undefined,
-        imovelId: imovelId || undefined,
-        proximaAcao: proximaAcao.trim() || undefined,
-        proximaAcaoData: proximaAcaoData || undefined,
-        notas: notas.trim() || undefined,
-      });
-      toast.success("Alterações guardadas.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const registarInteracao = async () => {
-    const texto = interacao.trim();
-    if (!texto) return;
-    setBusy(true);
-    try {
-      await addInteracao({ oportunidadeId: op.id, pessoaId: op.pessoaId || undefined, conteudoOriginal: texto });
-      setInteracao("");
-      toast.success("Interação registada.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const apagar = async () => {
-    setBusy(true);
     try {
-      // Apagar = apagar tudo o que está ligado (movimentos e ligações de ficheiros).
-      await supabase.from("financial_movements").delete().eq("opportunity_id", op.id);
-      await supabase.from("file_links").delete().eq("entity_type", "opportunity").eq("entity_id", op.id);
-      await deleteOportunidade(op.id);
-      toast.success("Oportunidade e registos ligados apagados.");
-      navigate({ to: "/oportunidades" });
+      await supabase.from("financial_movements").delete().eq("opportunity_id", d.id);
+      await supabase.from("file_links").delete().eq("entity_type", "opportunity").eq("entity_id", d.id);
+      await deleteOportunidade(d.id);
+      toast.success("Negócio e registos ligados apagados.");
+      navigate({ to: "/negocios" });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
-      setBusy(false);
       setConfirmDelete(false);
     }
   };
 
-  const arquivar = async () => {
-    setBusy(true);
-    try {
-      await updateOportunidade(op.id, { estado: "Arquivada" });
-      setEstado("Arquivada");
-      toast.success("Oportunidade arquivada. Comissões e ficheiros mantêm-se.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const producao = comsOp.reduce((s, c) => s + c.valor, 0);
-  const comissaoRecebida = comsOp.filter((c) => c.estado === "Recebida").reduce((s, c) => s + c.valor, 0);
+  const comissaoPrevista = d.movements.filter((m) => m.type === "commission").reduce((s, m) => s + m.amount, 0);
+  const comissaoRecebida = d.movements
+    .filter((m) => m.type === "commission" && String(m.status ?? "").toLowerCase().startsWith("receb"))
+    .reduce((s, m) => s + m.amount, 0);
+  const pendentes = d.followUps.filter((f) => !String(f.status ?? "").toLowerCase().startsWith("conclu"));
+  const propIds = new Set(d.properties.map((p) => p.id));
+  const atual = stageIndex(d.stage);
 
   return (
     <AppShell>
       <div className="mb-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/oportunidades" })}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Oportunidades
+        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/negocios" })}>
+          <ChevronLeft className="mr-1 h-4 w-4" /> Negócios
         </Button>
       </div>
+
       <PageHeader
-        title={`${normTipo(op.tipo)}${pessoa ? ` · ${pessoa.nome}` : ""}`}
-        subtitle={imovel?.titulo ?? "Sem imóvel associado"}
+        title={d.title}
+        subtitle={[KIND_LABEL[d.kind], d.person?.name, d.properties[0]?.title].filter(Boolean).join(" · ")}
         action={
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={arquivar} disabled={busy || normEstado(op.estado) === "Arquivada"}>
-              <Archive className="mr-1 h-4 w-4" /> Arquivar
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" onClick={() => arquivar.mutate(!d.archivedAt)}>
+              <Archive className="mr-1 h-4 w-4" /> {d.archivedAt ? "Reabrir" : "Arquivar"}
             </Button>
-            <Button variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)} disabled={busy}>
+            <Button variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)}>
               <Trash2 className="mr-1 h-4 w-4" /> Eliminar
             </Button>
-            <Button onClick={guardar} disabled={!dirty || busy}>
+            <Button onClick={() => guardar.mutate()} disabled={guardar.isPending}>
               <Save className="mr-1 h-4 w-4" /> Guardar
             </Button>
           </div>
         }
       />
-      <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <Badge variant="secondary">{normEstado(op.estado)}</Badge>
-        <span>Valor: <strong className="text-foreground">{formatEUR(op.valor)}</strong></span>
-        <span>Produção: <strong className="text-foreground">{formatEUR(producao)}</strong></span>
-        <span>Comissão recebida: <strong className="text-foreground">{formatEUR(comissaoRecebida)}</strong></span>
-        <span>Probabilidade: <strong className="text-foreground">{normProb(op.probabilidade)}</strong></span>
-      </div>
+
+      {d.alert && (
+        <div className={`mb-4 flex items-center gap-2 rounded-lg border p-3 text-sm ${
+          d.alert.level === "risco"
+            ? "border-destructive/30 bg-destructive/5 text-destructive"
+            : "border-amber-500/30 bg-amber-500/5 text-amber-700"
+        }`}>
+          <AlertTriangle className="h-4 w-4" /> {d.alert.label}
+        </div>
+      )}
+
+      {/* Linha do tempo das fases */}
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <h3 className="mb-3 text-sm font-semibold">Fase</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {DEAL_STAGES.map((s, i) => {
+              const passou = i <= atual;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => mudarFase.mutate(s)}
+                  disabled={mudarFase.isPending || s === d.stage}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    s === d.stage
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : passou
+                        ? "border-primary/30 bg-primary/10 text-foreground"
+                        : "border-border text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {STAGE_LABEL[s]}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
+            <span>Valor: <strong className="text-foreground">{formatEUR(d.value)}</strong></span>
+            <span>Comissão prevista: <strong className="text-foreground">{formatEUR(comissaoPrevista)}</strong></span>
+            <span>Recebida: <strong className="text-foreground">{formatEUR(comissaoRecebida)}</strong></span>
+            {d.stageChangedAt && <span>Nesta fase desde {formatData(d.stageChangedAt)}</span>}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="space-y-3 p-4">
             <h3 className="text-sm font-semibold">Dados</h3>
             <div className="grid gap-2">
-              <Label>Tipo</Label>
-              <Select value={tipo} onValueChange={(v) => setTipo(v as OportunidadeTipo)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TIPOS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>Estado</Label>
-              <Select value={estado} onValueChange={(v) => setEstado(v as OportunidadeEstado)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ESTADOS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="titulo">Título</Label>
+              <Input id="titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="grid gap-2">
-                <Label htmlFor="valor">Valor (€)</Label>
-                <Input id="valor" type="number" value={valor} onChange={(e) => setValor(e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Probabilidade</Label>
-                <Select value={probabilidade} onValueChange={(v) => setProbabilidade(v as Oportunidade["probabilidade"])}>
+                <Label>Tipo</Label>
+                <Select value={kind} onValueChange={setKind}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PROBS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    {DEAL_KINDS.map((k) => <SelectItem key={k} value={k}>{KIND_LABEL[k]}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="valor">Valor (€)</Label>
+                <Input id="valor" type="number" value={valor} onChange={(e) => setValor(e.target.value)} />
               </div>
             </div>
             <div className="grid gap-2">
@@ -265,28 +266,8 @@ function OportunidadeDetail() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Imóvel</Label>
-              <Select value={imovelId || "__none"} onValueChange={(v) => setImovelId(v === "__none" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">— sem imóvel —</SelectItem>
-                  {imoveis.map((i) => <SelectItem key={i.id} value={i.id}>{i.titulo}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <h3 className="text-sm font-semibold">Próxima ação & notas</h3>
-            <div className="grid gap-2">
-              <Label htmlFor="pa">Próxima ação</Label>
-              <Input id="pa" value={proximaAcao} onChange={(e) => setProximaAcao(e.target.value)} placeholder="Ex: Enviar proposta" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pad">Data</Label>
-              <Input id="pad" type="date" value={(proximaAcaoData ?? "").slice(0, 10)} onChange={(e) => setProximaAcaoData(e.target.value)} />
+              <Label htmlFor="prazo">Prazo importante</Label>
+              <Input id="prazo" type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="notas">Notas</Label>
@@ -294,47 +275,100 @@ function OportunidadeDetail() {
             </div>
           </CardContent>
         </Card>
+
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 text-sm font-semibold">Imóveis ({d.properties.length})</h3>
+              <div className="space-y-2">
+                {d.properties.length === 0 && <p className="text-sm text-muted-foreground">Sem imóveis ligados.</p>}
+                {d.properties.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm">
+                    <Link to="/imoveis/$id" params={{ id: p.id }} className="min-w-0 flex-1 hover:underline">
+                      <div className="truncate font-medium">{p.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {[p.location, formatEUR(p.price), PROPERTY_ROLE_LABEL[p.role] ?? p.role].filter(Boolean).join(" · ")}
+                      </div>
+                    </Link>
+                    <button
+                      type="button"
+                      aria-label={`Desligar ${p.title}`}
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => desligarImovel.mutate(p.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Select value={novoImovel} onValueChange={setNovoImovel}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Ligar imóvel…" /></SelectTrigger>
+                  <SelectContent>
+                    {imoveis.filter((i) => !propIds.has(i.id)).map((i) => (
+                      <SelectItem key={i.id} value={i.id}>{i.titulo}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="ghost" disabled={!novoImovel} onClick={() => ligarImovel.mutate(novoImovel)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 text-sm font-semibold">Pessoa</h3>
+              {d.person ? (
+                <Link to="/pessoas/$id" params={{ id: d.person.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
+                  <div className="font-medium">{d.person.name}</div>
+                  <div className="text-xs text-muted-foreground">{[d.person.phone, d.person.email].filter(Boolean).join(" · ") || "—"}</div>
+                </Link>
+              ) : <p className="text-sm text-muted-foreground">Sem pessoa associada.</p>}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-3">
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold">Pessoa</h3>
-            {pessoa ? (
-              <Link to="/pessoas/$id" params={{ id: pessoa.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
-                <div className="font-medium">{pessoa.nome}</div>
-                <div className="text-xs text-muted-foreground">{pessoa.relacao}</div>
-              </Link>
-            ) : <p className="text-sm text-muted-foreground">Sem pessoa associada.</p>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold">Imóvel</h3>
-            {imovel ? (
-              <Link to="/imoveis/$id" params={{ id: imovel.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
-                <div className="font-medium">{imovel.titulo}</div>
-                <div className="text-xs text-muted-foreground">{imovel.localizacao} · {formatEUR(imovel.valor)}</div>
-              </Link>
-            ) : <p className="text-sm text-muted-foreground">Sem imóvel associado.</p>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold">Comissões ({comsOp.length})</h3>
-            {comsOp.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sem comissões.</p>
+            <h3 className="mb-3 text-sm font-semibold">O que vem a seguir ({pendentes.length})</h3>
+            {pendentes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nada agendado. Combina o próximo passo.</p>
             ) : (
               <div className="space-y-2">
-                {comsOp.map((c) => (
-                  <div key={c.id} className="rounded-lg border border-border p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span>{formatData(c.data)}</span>
-                      <span className="font-medium">{formatEUR(c.valor)}</span>
+                {pendentes.map((f) => (
+                  <Link key={f.id} to="/seguimentos/$id" params={{ id: f.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate">{f.title}</span>
+                      <Badge variant="outline" className="shrink-0">{f.status}</Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground">{c.estado}</div>
+                    <div className="text-xs text-muted-foreground">{formatDataHora(f.dueAt)}</div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="mb-3 text-sm font-semibold">Comissões e despesas ({d.movements.length})</h3>
+            {d.movements.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem movimentos ligados.</p>
+            ) : (
+              <div className="space-y-2">
+                {d.movements.map((m) => (
+                  <div key={m.id} className="rounded-lg border border-border p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate">{m.description}</span>
+                      <span className={m.type === "expense" ? "shrink-0 text-destructive" : "shrink-0"}>
+                        {m.type === "expense" ? "−" : "+"}{formatEUR(m.amount)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">{formatData(m.date)} · {m.status}</div>
                   </div>
                 ))}
               </div>
@@ -344,56 +378,78 @@ function OportunidadeDetail() {
       </div>
 
       <Card className="mt-4">
-        <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-semibold">Seguimentos ({segsOp.length})</h3>
-          {segsOp.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sem seguimentos.</p>
-          ) : (
-            <div className="space-y-2">
-              {segsOp.map((s) => (
-                <div key={s.id} className="rounded-lg border border-border p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>{s.titulo}</span>
-                    <Badge variant="outline">{s.estado}</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">{formatData(s.data)}{s.hora ? ` · ${s.hora}` : ""}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="mt-4">
         <CardContent className="space-y-3 p-4">
-          <h3 className="text-sm font-semibold">Registar interação</h3>
+          <h3 className="text-sm font-semibold">Histórico</h3>
           <Textarea
             rows={3}
-            value={interacao}
-            onChange={(e) => setInteracao(e.target.value)}
-            placeholder="Ex: Cliente pediu para rever a proposta amanhã."
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Ex: Proprietário aceitou baixar para 320.000 €."
           />
           <div className="flex justify-end">
-            <Button onClick={registarInteracao} disabled={!interacao.trim() || busy}>
+            <Button onClick={() => registarNota.mutate()} disabled={!nota.trim() || registarNota.isPending}>
               <MessageSquarePlus className="mr-1 h-4 w-4" /> Registar
             </Button>
+          </div>
+
+          <div className="space-y-2">
+            {d.events.length === 0 && d.interactions.length === 0 && (
+              <p className="text-sm text-muted-foreground">Ainda não há histórico neste negócio.</p>
+            )}
+            {d.events.map((e) => (
+              <div key={e.id} className="rounded-lg border border-border p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0">{e.summary}</span>
+                  <Badge variant="secondary" className="shrink-0">{e.kind}</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {formatDataHora(e.occurredAt)}{e.source ? ` · ${e.source}` : ""}
+                </div>
+              </div>
+            ))}
+            {d.interactions.map((i) => (
+              <div key={i.id} className="rounded-lg border border-border p-3 text-sm">
+                <div>{i.content}</div>
+                <div className="text-xs text-muted-foreground">
+                  {formatDataHora(i.occurredAt)}{i.channel ? ` · ${i.channel}` : ""}
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
+      {d.files.length > 0 && (
+        <Card className="mt-4">
+          <CardContent className="p-4">
+            <h3 className="mb-3 text-sm font-semibold">Documentos ({d.files.length})</h3>
+            <div className="space-y-2">
+              {d.files.map((f) => (
+                <Link key={f.id} to="/drive/$id" params={{ id: f.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
+                  <div className="truncate font-medium">{f.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {[f.classification, formatData(f.createdAt)].filter(Boolean).join(" · ")}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Eliminar esta oportunidade?</DialogTitle>
+            <DialogTitle>Eliminar este negócio?</DialogTitle>
             <DialogDescription>
-              Apaga também {comsOp.length} movimento{comsOp.length === 1 ? "" : "s"} financeiro
-              {comsOp.length === 1 ? "" : "s"} e as ligações de ficheiros associadas. Não há forma de recuperar.
+              Apaga também {d.movements.length} movimento{d.movements.length === 1 ? "" : "s"} financeiro
+              {d.movements.length === 1 ? "" : "s"} e as ligações de ficheiros. Não há forma de recuperar.
               Se só queres tirar isto da frente, usa Arquivar.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)} disabled={busy}>Cancelar</Button>
-            <Button variant="destructive" onClick={apagar} disabled={busy}>Eliminar tudo</Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={apagar}>Eliminar tudo</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
