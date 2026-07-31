@@ -155,7 +155,7 @@ function DiversosPage() {
             </span>
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid gap-2">
             {filtered.map((r) => (
               <div key={r.id} className="c-card c-card-hover p-3.5">
                 <div className="flex flex-col gap-2">
