@@ -24,7 +24,7 @@ const items = [
   { to: "/interacoes", label: "Interações", icon: MessagesSquare },
   { to: "/documentos", label: "Documentos", icon: FileText },
   { to: "/diversos", label: "Diversos", icon: Inbox },
-  { to: "/negocio", label: "O Meu Negócio", icon: Wallet },
+  { to: "/negocio", label: "Faturação", icon: Wallet },
   { to: "/definicoes", label: "Definições", icon: Settings },
 ] as const;
 

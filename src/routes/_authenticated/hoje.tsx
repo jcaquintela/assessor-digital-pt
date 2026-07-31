@@ -173,7 +173,7 @@ function HojePage() {
         due_at: null,
         entity_label: nome || null,
         deal_id: o.id,
-        deal_label: o.titulo ?? o.tipo ?? "Negócio",
+        deal_label: o.tipo ?? "Negócio",
       });
     }
     return items.slice(0, 5);
