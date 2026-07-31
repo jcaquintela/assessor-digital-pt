@@ -64,6 +64,10 @@ export async function linkChannelToUser(
     },
     { onConflict: "channel,external_id" },
   );
+
+  // Regra de prioridade: WhatsApp ganha sempre que existir.
+  const { recomputePrimaryChannel } = await import("./primary-channel.server");
+  await recomputePrimaryChannel(supabaseAdmin, userId);
 }
 
 export async function sendReplyForChannel(
