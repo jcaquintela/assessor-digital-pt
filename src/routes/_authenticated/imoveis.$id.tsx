@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatEUR } from "@/lib/demo-data";
 import { FileText, ChevronLeft, Eye, Download, Archive } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
+import { DealsOf } from "@/components/negocios/deals-of";
 
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   head: () => ({
