@@ -427,14 +427,21 @@ html[data-keyboard="open"] .mobile-bottom-nav {
 /* Caixas de categoria: visíveis como “cartões” pequenos em vez de pílulas. */
 .consult-root .c-category-box {
   border-radius: 10px; border: 1px solid var(--line); background: #fff;
-  padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--ink-soft);
+  padding: 12px 16px; font-size: 13px; font-weight: 600; color: var(--ink-soft);
   cursor: pointer; box-shadow: 0 1px 0 rgba(20,33,61,.03);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .consult-root .c-category-box:hover { background: var(--paper-2); color: var(--ink); }
 .consult-root .c-category-box.active {
   background: rgba(184,134,59,.13); border-color: transparent; color: var(--brass-dark);
   box-shadow: inset 0 0 0 1px rgba(184,134,59,.25);
 }
+.consult-root .c-category-box .c-category-check {
+  width: 16px; height: 16px; border-radius: 999px;
+  border: 1.5px solid currentColor; display: grid; place-items: center;
+}
+.consult-root .c-category-box.active .c-category-check { background: currentColor; }
+.consult-root .c-category-box.active .c-category-check svg { color: #fff; }
 
 /* Conversa: balões assimétricos. Consultor em creme/âmbar à direita,
  * Assessor em verde-sálvia à esquerda. */
