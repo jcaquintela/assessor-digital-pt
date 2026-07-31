@@ -420,7 +420,7 @@ function HojePage() {
               <AlertRow to="/seguimentos" search={{ status: "overdue" }} icon={AlertTriangle} label={`${atrasados.length} seguimento${atrasados.length === 1 ? "" : "s"} em atraso`} />
             )}
             {oportSemAcao.length > 0 && (
-              <AlertRow to="/oportunidades" icon={Briefcase} label={`${oportSemAcao.length} oportunidade${oportSemAcao.length === 1 ? "" : "s"} sem próxima ação · ${formatEUR(oportSemAcao.reduce((s, o) => s + o.valor, 0))} em risco`} />
+              <AlertRow to="/negocios" icon={Briefcase} label={`${oportSemAcao.length} negócio${oportSemAcao.length === 1 ? "" : "s"} sem próxima ação · ${formatEUR(oportSemAcao.reduce((s, o) => s + o.valor, 0))} em risco`} />
             )}
             {(docsPending.data ?? 0) > 0 && (
               <AlertRow to="/documentos" icon={FileText} label={`${docsPending.data} documento${docsPending.data === 1 ? "" : "s"} por classificar`} />
