@@ -229,20 +229,7 @@ function PessoaDetail() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold">Documentos ({docsPessoa.length})</h3>
-            {docsPessoa.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sem documentos.</p>
-            ) : (
-              <div className="space-y-2">
-                {docsPessoa.map((d) => (
-                  <div key={d.id} className="rounded-lg border border-border p-3 text-sm">{d.nome}</div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <EntityFilesCard entityType="person" entityId={pessoa.id} />
       </div>
 
       <Card className="mt-4">
