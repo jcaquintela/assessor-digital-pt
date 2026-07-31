@@ -107,6 +107,7 @@ export async function createPendingAction(
   },
 ): Promise<PendingActionRow | null> {
   // MVP invariant: only one active pending action per (user, channel).
+  // (helper describePendingPt definido no fim do ficheiro)
   // Any older draft is cancelled BEFORE the new one is inserted, so a
   // confirmation/refusal cannot possibly land on a stale row.
   // Uma proposta por confirmar que é substituída nunca pode desaparecer em
