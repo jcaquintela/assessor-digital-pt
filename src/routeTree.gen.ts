@@ -36,6 +36,7 @@ import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
 import { Route as AdminCustosRouteImport } from './routes/admin/custos'
 import { Route as AdminConvitesRouteImport } from './routes/admin/convites'
 import { Route as AdminComunicacaoRouteImport } from './routes/admin/comunicacao'
+import { Route as AdminBetaRouteImport } from './routes/admin/beta'
 import { Route as AdminAutonomasRouteImport } from './routes/admin/autonomas'
 import { Route as AdminAuditoriaSegurancaRouteImport } from './routes/admin/auditoria-seguranca'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
@@ -77,6 +78,7 @@ import { Route as AuthenticatedOportunidadesProspecaoIndexRouteImport } from './
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
 import { Route as ApiPublicHooksCalendarPollRouteImport } from './routes/api/public/hooks/calendar-poll'
+import { Route as ApiPublicHooksBetaExpiryRouteImport } from './routes/api/public/hooks/beta-expiry'
 import { Route as AuthenticatedOportunidadesProspecaoIdRouteImport } from './routes/_authenticated/oportunidades.prospecao.$id'
 import { Route as AuthenticatedNegocioDespesasIdRouteImport } from './routes/_authenticated/negocio.despesas.$id'
 import { Route as AuthenticatedNegocioComissoesIdRouteImport } from './routes/_authenticated/negocio.comissoes.$id'
@@ -213,6 +215,11 @@ const AdminConvitesRoute = AdminConvitesRouteImport.update({
 const AdminComunicacaoRoute = AdminComunicacaoRouteImport.update({
   id: '/comunicacao',
   path: '/comunicacao',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminBetaRoute = AdminBetaRouteImport.update({
+  id: '/beta',
+  path: '/beta',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAutonomasRoute = AdminAutonomasRouteImport.update({
@@ -438,6 +445,12 @@ const ApiPublicHooksCalendarPollRoute =
     path: '/api/public/hooks/calendar-poll',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksBetaExpiryRoute =
+  ApiPublicHooksBetaExpiryRouteImport.update({
+    id: '/api/public/hooks/beta-expiry',
+    path: '/api/public/hooks/beta-expiry',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedOportunidadesProspecaoIdRoute =
   AuthenticatedOportunidadesProspecaoIdRouteImport.update({
     id: '/oportunidades/prospecao/$id',
@@ -486,6 +499,7 @@ export interface FileRoutesByFullPath {
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
   '/admin/autonomas': typeof AdminAutonomasRoute
+  '/admin/beta': typeof AdminBetaRoute
   '/admin/comunicacao': typeof AdminComunicacaoRoute
   '/admin/convites': typeof AdminConvitesRoute
   '/admin/custos': typeof AdminCustosRoute
@@ -524,6 +538,7 @@ export interface FileRoutesByFullPath {
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
+  '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -557,6 +572,7 @@ export interface FileRoutesByTo {
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
   '/admin/autonomas': typeof AdminAutonomasRoute
+  '/admin/beta': typeof AdminBetaRoute
   '/admin/comunicacao': typeof AdminComunicacaoRoute
   '/admin/convites': typeof AdminConvitesRoute
   '/admin/custos': typeof AdminCustosRoute
@@ -595,6 +611,7 @@ export interface FileRoutesByTo {
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
+  '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -631,6 +648,7 @@ export interface FileRoutesById {
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
   '/admin/autonomas': typeof AdminAutonomasRoute
+  '/admin/beta': typeof AdminBetaRoute
   '/admin/comunicacao': typeof AdminComunicacaoRoute
   '/admin/convites': typeof AdminConvitesRoute
   '/admin/custos': typeof AdminCustosRoute
@@ -669,6 +687,7 @@ export interface FileRoutesById {
   '/_authenticated/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/_authenticated/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/_authenticated/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
+  '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -705,6 +724,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/auditoria-seguranca'
     | '/admin/autonomas'
+    | '/admin/beta'
     | '/admin/comunicacao'
     | '/admin/convites'
     | '/admin/custos'
@@ -743,6 +763,7 @@ export interface FileRouteTypes {
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
     | '/oportunidades/prospecao/$id'
+    | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/telegram/webhook'
@@ -776,6 +797,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/auditoria-seguranca'
     | '/admin/autonomas'
+    | '/admin/beta'
     | '/admin/comunicacao'
     | '/admin/convites'
     | '/admin/custos'
@@ -814,6 +836,7 @@ export interface FileRouteTypes {
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
     | '/oportunidades/prospecao/$id'
+    | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/telegram/webhook'
@@ -849,6 +872,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/auditoria-seguranca'
     | '/admin/autonomas'
+    | '/admin/beta'
     | '/admin/comunicacao'
     | '/admin/convites'
     | '/admin/custos'
@@ -887,6 +911,7 @@ export interface FileRouteTypes {
     | '/_authenticated/negocio/comissoes/$id'
     | '/_authenticated/negocio/despesas/$id'
     | '/_authenticated/oportunidades/prospecao/$id'
+    | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/telegram/webhook'
@@ -909,6 +934,7 @@ export interface RootRouteChildren {
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   OauthGoogleCalendarReturnRoute: typeof OauthGoogleCalendarReturnRoute
   OauthOutlookReturnRoute: typeof OauthOutlookReturnRoute
+  ApiPublicHooksBetaExpiryRoute: typeof ApiPublicHooksBetaExpiryRoute
   ApiPublicHooksCalendarPollRoute: typeof ApiPublicHooksCalendarPollRoute
   ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
@@ -1103,6 +1129,13 @@ declare module '@tanstack/react-router' {
       path: '/comunicacao'
       fullPath: '/admin/comunicacao'
       preLoaderRoute: typeof AdminComunicacaoRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/beta': {
+      id: '/admin/beta'
+      path: '/beta'
+      fullPath: '/admin/beta'
+      preLoaderRoute: typeof AdminBetaRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/autonomas': {
@@ -1392,6 +1425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksCalendarPollRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/beta-expiry': {
+      id: '/api/public/hooks/beta-expiry'
+      path: '/api/public/hooks/beta-expiry'
+      fullPath: '/api/public/hooks/beta-expiry'
+      preLoaderRoute: typeof ApiPublicHooksBetaExpiryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/oportunidades/prospecao/$id': {
       id: '/_authenticated/oportunidades/prospecao/$id'
       path: '/oportunidades/prospecao/$id'
@@ -1591,6 +1631,7 @@ interface AdminRouteRouteChildren {
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminAuditoriaSegurancaRoute: typeof AdminAuditoriaSegurancaRoute
   AdminAutonomasRoute: typeof AdminAutonomasRoute
+  AdminBetaRoute: typeof AdminBetaRoute
   AdminComunicacaoRoute: typeof AdminComunicacaoRoute
   AdminConvitesRoute: typeof AdminConvitesRoute
   AdminCustosRoute: typeof AdminCustosRoute
@@ -1616,6 +1657,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminAuditoriaSegurancaRoute: AdminAuditoriaSegurancaRoute,
   AdminAutonomasRoute: AdminAutonomasRoute,
+  AdminBetaRoute: AdminBetaRoute,
   AdminComunicacaoRoute: AdminComunicacaoRoute,
   AdminConvitesRoute: AdminConvitesRoute,
   AdminCustosRoute: AdminCustosRoute,
@@ -1657,6 +1699,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   OauthGoogleCalendarReturnRoute: OauthGoogleCalendarReturnRoute,
   OauthOutlookReturnRoute: OauthOutlookReturnRoute,
+  ApiPublicHooksBetaExpiryRoute: ApiPublicHooksBetaExpiryRoute,
   ApiPublicHooksCalendarPollRoute: ApiPublicHooksCalendarPollRoute,
   ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,

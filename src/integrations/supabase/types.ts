@@ -17,7 +17,7 @@ export type Database = {
       admin_audit_logs: {
         Row: {
           action: string
-          admin_user_id: string
+          admin_user_id: string | null
           created_at: string
           id: string
           metadata: Json
@@ -28,7 +28,7 @@ export type Database = {
         }
         Insert: {
           action: string
-          admin_user_id: string
+          admin_user_id?: string | null
           created_at?: string
           id?: string
           metadata?: Json
@@ -39,7 +39,7 @@ export type Database = {
         }
         Update: {
           action?: string
-          admin_user_id?: string
+          admin_user_id?: string | null
           created_at?: string
           id?: string
           metadata?: Json
@@ -2190,12 +2190,17 @@ export type Database = {
       promo_codes: {
         Row: {
           active: boolean
+          beta_days: number | null
           code: string
           created_at: string
           created_by: string | null
           expires_at: string | null
           grants_tier: string
           id: string
+          invitee_email: string | null
+          invitee_name: string | null
+          invitee_whatsapp: string | null
+          is_beta: boolean
           max_uses: number
           note: string | null
           updated_at: string
@@ -2203,12 +2208,17 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          beta_days?: number | null
           code: string
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
           grants_tier?: string
           id?: string
+          invitee_email?: string | null
+          invitee_name?: string | null
+          invitee_whatsapp?: string | null
+          is_beta?: boolean
           max_uses?: number
           note?: string | null
           updated_at?: string
@@ -2216,12 +2226,17 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          beta_days?: number | null
           code?: string
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
           grants_tier?: string
           id?: string
+          invitee_email?: string | null
+          invitee_name?: string | null
+          invitee_whatsapp?: string | null
+          is_beta?: boolean
           max_uses?: number
           note?: string | null
           updated_at?: string
@@ -2923,6 +2938,7 @@ export type Database = {
     }
     Functions: {
       effective_tier: { Args: { _user_id: string }; Returns: string }
+      expire_beta_testers: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
