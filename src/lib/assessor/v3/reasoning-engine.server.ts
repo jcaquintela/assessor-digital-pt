@@ -409,9 +409,16 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       && t.ok && (t.data as any)?.idempotent === true,
   );
   if (idemHit) {
-    reply = (idemHit.data as any)?.rescheduled
-      ? "Já tinhas esse seguimento. Passei-o para o novo horário."
-      : "Já estava registado.";
+    const d = idemHit.data as any;
+    if (d?.typeCorrected) {
+      reply = d?.rescheduled
+        ? "Já tinhas isso como lembrete, não como compromisso. Corrigi e passei para o novo horário — já aparece na agenda."
+        : "Já tinhas isso como lembrete, não como compromisso. Corrigi — já aparece na agenda.";
+    } else {
+      reply = d?.rescheduled
+        ? "Já tinhas esse seguimento. Passei-o para o novo horário."
+        : "Já estava registado.";
+    }
   }
 
   // Override natural para prospeção executada dentro do DECIDE (turno único).
