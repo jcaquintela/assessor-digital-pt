@@ -11,6 +11,7 @@ import {
 } from "@/lib/whatsapp/link.functions";
 import { hashLinkCode } from "@/lib/whatsapp/link-code.server";
 import { canUseWhatsApp, normalizeTier } from "@/lib/subscription/tiers";
+import { resolveInteractiveReply, type InteractivePrompt } from "@/lib/assessor/interactive";
 import type {
   AdapterMediaBytes,
   AdapterSendResult,
@@ -76,7 +77,9 @@ function extractCallback(msg: any): { text: string; id: string } | null {
     btn?.payload ??
     msg?.id ??
     "";
-  const text = String(label ?? "").trim();
+  // A decisão vem do id do botão — nunca reinterpretamos o texto do rótulo
+  // quando o id é nosso. É isto que elimina a ambiguidade "Sim"/"Ainda não".
+  const text = resolveInteractiveReply(id, label);
   if (!text) return null;
   return { text, id: String(id ?? "") };
 }
@@ -242,6 +245,16 @@ export const whatsappAdapter: ChannelAdapter = {
     text: string,
   ): Promise<AdapterSendResult> {
     const r = await sendWhatsAppText(externalConversationId, text, { kind: "auto" });
+    if (r.ok) return { ok: true, messageId: r.messageId ?? null };
+    return { ok: false, messageId: null, error: r.error };
+  },
+
+  async sendInteractive(
+    externalConversationId: string,
+    prompt: InteractivePrompt,
+  ): Promise<AdapterSendResult> {
+    const { sendWhatsAppInteractive } = await import("@/lib/whatsapp/interactive.server");
+    const r = await sendWhatsAppInteractive(externalConversationId, prompt, { kind: "auto" });
     if (r.ok) return { ok: true, messageId: r.messageId ?? null };
     return { ok: false, messageId: null, error: r.error };
   },
