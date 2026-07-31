@@ -244,13 +244,18 @@ async function execCreateProperty(ctx: DomainContext, args: unknown): Promise<Do
 async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(SearchAgendaArgs, args); if (!p.ok) return fail(p.error);
   const range = agendaRange(p.value.period);
+  // `due_date` é timestamptz. Comparar com "YYYY-MM-DD" faz o Postgres ler
+  // meia-noite, pelo que um compromisso das 09:30 de hoje ficava FORA do
+  // `lte`. Usamos o intervalo real do dia em Lisboa [00:00, dia+1 00:00).
+  const fromIso = lisbonLocalToUtcIso(range.startIso, "00:00");
+  const toIso = lisbonLocalToUtcIso(addDaysYmd(range.endIso, 1), "00:00");
   const { data, error } = await ctx.supabase
     .from("follow_ups")
     .select("id, title, type, due_date, due_time, priority, status, related_property_id, person_id")
     .eq("user_id", ctx.userId)
     .in("status", ["pendente", "em_progresso", "agendado"])
-    .gte("due_date", range.startIso)
-    .lte("due_date", range.endIso)
+    .gte("due_date", fromIso)
+    .lt("due_date", toIso)
     .order("due_date", { ascending: true })
     .order("due_time", { ascending: true, nullsFirst: true })
     .limit(50);
