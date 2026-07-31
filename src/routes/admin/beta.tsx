@@ -16,6 +16,8 @@ import {
 import { getMyAdminRole } from "@/lib/admin.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tiers";
+import { formatForWhatsApp } from "@/lib/assessor/culture/whatsapp-format";
+import { formatForTelegram } from "@/lib/telegram/telegram-format";
 import {
   Dialog,
   DialogContent,
