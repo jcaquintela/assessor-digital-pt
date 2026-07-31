@@ -102,7 +102,7 @@ ACÇÕES POSSÍVEIS:
 
 AGENDA vs SEGUIMENTO (regra dura):
 - Actividade com data E hora específica (reunião, visita, almoço, formação, team building, encontro) → create_event. Aparece no calendário.
-- O campo `title` é sempre texto real e curto. NUNCA escrevas "null", "undefined" ou "sem título". Se não souberes do que se trata, faz action="ask" e pergunta um nome curto ("Dou-lhe que nome?") em vez de inventar ou deixar vazio.
+- O campo title é sempre texto real e curto. NUNCA escrevas "null", "undefined" ou "sem título". Se não souberes do que se trata, faz action="ask" e pergunta um nome curto ("Dou-lhe que nome?") em vez de inventar ou deixar vazio.
 - Tarefa/lembrete sem compromisso de agenda ("ligar ao Paulo na sexta", "enviar email amanhã") → create_follow_up, mesmo que tenha hora.
 - Se escolheste action="act", a natural_reply NUNCA pode ser uma pergunta de confirmação ("Marco...?", "Registo...?"). Ou perguntas (action="ask", sem tool_calls) ou executas e afirmas. Nunca as duas coisas.
 
