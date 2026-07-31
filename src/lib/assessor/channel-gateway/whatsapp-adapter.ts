@@ -373,6 +373,9 @@ async function tryLinkCode(
       resource_type: "whatsapp",
       metadata: { phone: senderPhone } as never,
     } as never);
+    // WhatsApp passa a canal principal, mesmo que já houvesse Telegram ligado.
+    const { linkChannelToUser } = await import("@/lib/assessor/channels.server");
+    await linkChannelToUser(supabaseAdmin, "whatsapp", senderPhone, row.user_id);
     return { reply: REPLY_LINK_OK, userId: row.user_id };
   }
 
