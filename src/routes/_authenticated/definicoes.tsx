@@ -433,7 +433,7 @@ function CanalSection() {
               : "Lembretes e avisos que eu inicio vão por Telegram. Se ligares o WhatsApp, passa a ser o canal principal."}
           </p>
         </Section>
-        {!channels.some((c) => c.channel === "telegram") && <TelegramSection />}
+        <TelegramSection />
       </>
     );
   }
