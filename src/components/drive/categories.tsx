@@ -235,20 +235,21 @@ export function FileCategoryDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap gap-1.5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <button
             type="button"
-            className={"c-pill" + (!currentId ? " active" : "")}
+            className={"c-category-box text-left" + (!currentId ? " active" : "")}
             onClick={() => escolher(null)}
             disabled={busy}
           >
-            Automática{autoLabel ? ` (${autoLabel})` : ""}
+            <span className="block text-[11px] font-semibold uppercase tracking-wide opacity-70">Automática</span>
+            <span className="block truncate">{autoLabel ? autoLabel : "Sugestão do Assessor"}</span>
           </button>
           {categories.map((c) => (
             <button
               key={c.id}
               type="button"
-              className={"c-pill" + (currentId === c.id ? " active" : "")}
+              className={"c-category-box text-left" + (currentId === c.id ? " active" : "")}
               onClick={() => escolher(c.id)}
               disabled={busy}
             >
