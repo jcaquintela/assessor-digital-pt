@@ -193,7 +193,8 @@ export async function processIncomingFile(
   input: ProcessIncomingFileInput,
 ): Promise<ProcessIncomingFileResult> {
   const { supabase, userId, channel, mimeType, size, sourceMessageId } = input;
-  const originalName = safeName(input.fileName);
+  // Nome real enviado pelo canal; se não houver, um nome identificável nosso.
+  const originalName = safeName(input.fileName) ?? fallbackName(classifyByMime(mimeType));
 
   // 1. Validar MIME/extensão bloqueada
   if (BLOCKED_MIME_PREFIXES.some((p) => mimeType.startsWith(p))) {
