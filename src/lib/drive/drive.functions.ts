@@ -8,11 +8,24 @@ type Tab = "recentes" | "por_tratar" | "imoveis" | "pessoas" | "diversos" | "arq
 // document_type) mantém-se sempre como sugestão inicial: a categoria manual é
 // um campo separado (custom_category_id) e nunca a substitui na base de dados.
 
+const CATEGORY_COLORS = [
+  "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e",
+  "#14b8a6", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6",
+  "#d946ef", "#f43f5e", "#78716c", "#64748b",
+];
+
 function cleanCategoryName(v: unknown): string {
   const s = String(v ?? "").trim();
   if (!s) throw new Error("O nome da categoria não pode ficar vazio.");
   if (s.length > 40) throw new Error("Nome demasiado longo (máx. 40).");
   return s;
+}
+
+function cleanCategoryColor(v: unknown): string | null {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  if (!/^#[0-9a-fA-F]{6}$/.test(s)) return null;
+  return s.toLowerCase();
 }
 
 export const listFileCategories = createServerFn({ method: "GET" })
