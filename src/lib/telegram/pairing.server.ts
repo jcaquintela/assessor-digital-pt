@@ -39,7 +39,7 @@ export interface PairingOutcome {
 /* ---------------- Textos (PT-PT, curtos, sem jargão) ---------------- */
 
 const ASK_WHATSAPP =
-  "Olá! Sou o Afonso, o teu assessor digital.\n\n" +
+  "Olá! Sou o Afonso, o assessor digital de quem trabalha em imobiliário: guardo pessoas, imóveis, visitas e seguimentos a partir do que me escreves, em linguagem normal.\n\n" +
   "Antes de começarmos: já falas comigo pelo WhatsApp? Responde só sim ou não.";
 
 const ASK_PHONE =
