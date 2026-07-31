@@ -196,8 +196,75 @@ export const telegramAdapter: ChannelAdapter = {
   async onboardIfMissingUser(supabaseAdmin, inbound) {
     const provider = getTelegramProvider();
     const text = inbound.text ?? "";
+    const chatId = inbound.externalConversationId;
+    const displayName =
+      [inbound.sender?.firstName, inbound.sender?.lastName].filter(Boolean).join(" ").trim() || null;
+    const {
+      extractLinkToken,
+      consumeLinkToken,
+      loadPairing,
+      stepPairing,
+    } = await import("@/lib/telegram/pairing.server");
+
+    // B) Deep link a partir das Definições: liga já à conta certa.
+    const token = extractLinkToken(text);
+    if (token) {
+      const r = await consumeLinkToken(supabaseAdmin, token, chatId, displayName);
+      if (r.reply) await provider.sendText({ chatId, text: r.reply });
+      return { handled: true, userId: r.userId ?? null, stopPipeline: r.stopPipeline ?? false };
+    }
+
+    // A) Emparelhamento explícito. Se já há conversa de emparelhamento a
+    // decorrer, ela manda — nunca cai em criação de conta pelo caminho.
+    const pairing = await loadPairing(supabaseAdmin, chatId);
     const code = text ? extractInviteCode(text) : null;
-    if (!code) {
+    if (pairing || !code) {
+      // Códigos de convite/promo continuam a ter precedência no primeiro
+      // contacto (equipa e planos pagos entram directos).
+      if (!pairing && text) {
+        const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY } = await import("@/lib/admin/promo.server");
+        if (looksLikePromoCode(text)) {
+          const promo = await redeemPromoCode(supabaseAdmin, text);
+          if (!promo.ok) {
+            if (promo.reason !== "not_found") {
+              await provider.sendText({ chatId, text: PROMO_REPLY[promo.reason] });
+              return { handled: true };
+            }
+          } else {
+            const claimed = await createShadowAccount(supabaseAdmin, chatId, inbound.sender, promo.tier);
+            if (!claimed.ok) {
+              await provider.sendText({ chatId, text: claimed.reply });
+              return { handled: true };
+            }
+            await provider.sendText({
+              chatId,
+              text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
+            });
+            return { handled: true, userId: claimed.userId, stopPipeline: true };
+          }
+        }
+      }
+
+      const step = await stepPairing(supabaseAdmin, chatId, text, displayName);
+      if (step.reply) await provider.sendText({ chatId, text: step.reply });
+      if (step.userId) {
+        return { handled: true, userId: step.userId, stopPipeline: step.stopPipeline ?? true };
+      }
+      if (!step.createAccount) return { handled: true };
+
+      // Respondeu que não tem conta: fluxo antigo, conta nova 'base'.
+      const auto = await createShadowAccount(supabaseAdmin, chatId, inbound.sender, "base");
+      if (!auto.ok) {
+        await provider.sendText({ chatId, text: auto.reply });
+        return { handled: true };
+      }
+      await provider.sendText({
+        chatId,
+        text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
+      });
+      return { handled: true, userId: auto.userId, stopPipeline: true };
+    }
+    if (false) {
       // Código promocional: alternativa ao convite normal, aplica o tier do código.
       const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY } = await import("@/lib/admin/promo.server");
       if (text && looksLikePromoCode(text)) {
