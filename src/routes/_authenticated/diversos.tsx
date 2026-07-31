@@ -5,6 +5,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { Archive, Trash2, CheckCircle2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { UploadedFilesList } from "@/components/uploaded-files-list";
 
@@ -51,6 +52,7 @@ function DiversosPage() {
   const [tab, setTab] = useState<
     "recentes" | "tratar" | "classificados" | "arquivados" | "ficheiros"
   >("recentes");
+  const [selected, setSelected] = useState<string[]>([]);
 
   const items = useQuery({
     queryKey: ["misc"],
@@ -92,6 +94,25 @@ function DiversosPage() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar."),
   });
 
+  // Arquivar em lote reutiliza a mesma escrita da ação individual.
+  const archiveMany = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { data, error } = await supabase
+        .from("miscellaneous_items")
+        .update({ status: "archived" })
+        .in("id", ids)
+        .select("id");
+      if (error) throw error;
+      return data ?? [];
+    },
+    onSuccess: (rows) => {
+      qc.invalidateQueries({ queryKey: ["misc"] });
+      setSelected([]);
+      toast.success(rows.length === 1 ? "1 nota arquivada." : `${rows.length} notas arquivadas.`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao arquivar."),
+  });
+
   const filtered = useMemo(() => {
     const rows = items.data ?? [];
     const byTab = rows.filter((r) => {
@@ -109,6 +130,12 @@ function DiversosPage() {
         (r.summary ?? "").toLowerCase().includes(needle),
     );
   }, [items.data, tab, q]);
+
+  const selectable = filtered.filter((r) => r.status !== "archived");
+  const selectedVisible = selected.filter((id) => selectable.some((r) => r.id === id));
+  const allSelected = selectable.length > 0 && selectedVisible.length === selectable.length;
+  const toggleOne = (id: string, on: boolean) =>
+    setSelected((prev) => (on ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
 
   return (
     <AppShell>
@@ -156,10 +183,46 @@ function DiversosPage() {
           </div>
         ) : (
           <div className="grid gap-2">
+            {selectable.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 px-1">
+                <label className="c-muted flex cursor-pointer items-center gap-2 text-[12.5px]">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(v) =>
+                      setSelected(v === true ? selectable.map((r) => r.id) : [])
+                    }
+                    aria-label="Selecionar todas as notas visíveis"
+                  />
+                  Selecionar tudo
+                </label>
+                {selectedVisible.length > 0 ? (
+                  <>
+                    <span className="c-muted text-[12.5px]">
+                      {selectedVisible.length} selecionada{selectedVisible.length === 1 ? "" : "s"}
+                    </span>
+                    <button
+                      type="button"
+                      className="c-badge"
+                      disabled={archiveMany.isPending}
+                      onClick={() => archiveMany.mutate(selectedVisible)}
+                    >
+                      <Archive className="h-3 w-3" /> Arquivar selecionados
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
             {filtered.map((r) => (
               <div key={r.id} className="c-card c-card-hover p-3.5">
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-wrap items-center gap-2">
+                    {r.status !== "archived" ? (
+                      <Checkbox
+                        checked={selected.includes(r.id)}
+                        onCheckedChange={(v) => toggleOne(r.id, v === true)}
+                        aria-label={`Selecionar nota ${r.title}`}
+                      />
+                    ) : null}
                     <Link
                       to="/diversos/$id"
                       params={{ id: r.id }}
