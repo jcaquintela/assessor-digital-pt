@@ -1271,6 +1271,33 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_login_tokens: {
+        Row: {
+          channel: string
+          created_at: string
+          expires_at: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          expires_at: string
+          token: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          expires_at?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       entity_tags: {
         Row: {
           created_at: string
