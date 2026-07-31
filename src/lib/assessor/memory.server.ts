@@ -147,7 +147,8 @@ export async function createPendingAction(
       const { error: miscError } = await supabase.from("miscellaneous_items").insert({
         user_id: input.userId,
         title: `Proposta não confirmada: ${String(label).slice(0, 80)}`,
-        original_content: JSON.stringify(payload),
+        // NUNCA JSON em bruto: o consultor lê isto no dashboard em português.
+        original_content: describePendingPt(row.intent, payload, row.original_content),
         summary: "Ficou por confirmar porque entretanto chegou outro assunto.",
         category: "Por tratar",
         source_channel: input.channel,
