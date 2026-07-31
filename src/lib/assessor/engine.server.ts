@@ -530,6 +530,21 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
     if (fileFlow) return fileFlow;
   }
 
+  // 0.link) Sugestão de ligação extra de um documento (Drive Inteligente).
+  if (pending && pending.intent === "suggest_file_link") {
+    const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+    if (isConfirmText(trimmed)) {
+      const { applyLinkSuggestion } = await import("@/lib/drive/link-suggestions.server");
+      const reply = await applyLinkSuggestion(supabase, userId, payload);
+      await markPendingActionStatus(supabase, pending.id, "executed");
+      return { reply };
+    }
+    if (isCancelText(trimmed)) {
+      await markPendingActionStatus(supabase, pending.id, "cancelled");
+      return { reply: "Sem problema, deixo a ligação como está." };
+    }
+  }
+
   // 0.slot) Slot-fill determinístico. Se existe pending em
   // `collecting_information` para create_event/create_follow_up, a próxima
   // mensagem preenche APENAS o campo em falta (data/hora) e nunca é
