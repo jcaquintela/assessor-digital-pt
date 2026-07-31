@@ -67,8 +67,8 @@ function BetaPage() {
   );
   const [generated, setGenerated] = useState<BetaInviteResult[] | null>(null);
 
-
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "beta-testers"] });
+
   const run = (label: string, p: Promise<unknown>) =>
     p
       .then(() => {
