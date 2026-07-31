@@ -338,7 +338,13 @@ function DealDetail() {
               <div className="space-y-2">
                 {d.properties.length === 0 && <p className="text-sm text-muted-foreground">Sem imóveis ligados.</p>}
                 {d.properties.map((p) => (
-                  <div key={p.id} className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm">
+                  <div
+                    key={p.id}
+                    id={cardId("imovel", p.id)}
+                    className={`flex scroll-mt-24 items-center gap-2 rounded-lg border border-border p-3 text-sm transition-shadow ${
+                      alvo === cardId("imovel", p.id) ? RING : ""
+                    }`}
+                  >
                     <Link to="/imoveis/$id" params={{ id: p.id }} className="min-w-0 flex-1 hover:underline">
                       <div className="truncate font-medium">{p.title}</div>
                       <div className="text-xs text-muted-foreground">
@@ -376,7 +382,14 @@ function DealDetail() {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold">Pessoa</h3>
               {d.person ? (
-                <Link to="/pessoas/$id" params={{ id: d.person.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
+                <Link
+                  to="/pessoas/$id"
+                  params={{ id: d.person.id }}
+                  id={cardId("pessoa", d.person.id)}
+                  className={`block scroll-mt-24 rounded-lg border border-border p-3 text-sm transition-shadow hover:border-primary/40 ${
+                    alvo === cardId("pessoa", d.person.id) ? RING : ""
+                  }`}
+                >
                   <div className="font-medium">{d.person.name}</div>
                   <div className="text-xs text-muted-foreground">{[d.person.phone, d.person.email].filter(Boolean).join(" · ") || "—"}</div>
                 </Link>
@@ -395,7 +408,15 @@ function DealDetail() {
             ) : (
               <div className="space-y-2">
                 {pendentes.map((f) => (
-                  <Link key={f.id} to="/seguimentos/$id" params={{ id: f.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
+                  <Link
+                    key={f.id}
+                    to="/seguimentos/$id"
+                    params={{ id: f.id }}
+                    id={cardId("seguimento", f.id)}
+                    className={`block scroll-mt-24 rounded-lg border border-border p-3 text-sm transition-shadow hover:border-primary/40 ${
+                      alvo === cardId("seguimento", f.id) ? RING : ""
+                    }`}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span className="min-w-0 truncate">{f.title}</span>
                       <Badge variant="outline" className="shrink-0">{f.status}</Badge>
@@ -416,7 +437,13 @@ function DealDetail() {
             ) : (
               <div className="space-y-2">
                 {d.movements.map((m) => (
-                  <div key={m.id} className="rounded-lg border border-border p-3 text-sm">
+                  <div
+                    key={m.id}
+                    id={cardId("movimento", m.id)}
+                    className={`scroll-mt-24 rounded-lg border border-border p-3 text-sm transition-shadow ${
+                      alvo === cardId("movimento", m.id) ? RING : ""
+                    }`}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span className="min-w-0 truncate">{m.description}</span>
                       <span className={m.type === "expense" ? "shrink-0 text-destructive" : "shrink-0"}>
@@ -480,7 +507,15 @@ function DealDetail() {
             <h3 className="mb-3 text-sm font-semibold">Documentos ({d.files.length})</h3>
             <div className="space-y-2">
               {d.files.map((f) => (
-                <Link key={f.id} to="/drive/$id" params={{ id: f.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
+                <Link
+                  key={f.id}
+                  to="/drive/$id"
+                  params={{ id: f.id }}
+                  id={cardId("documento", f.id)}
+                  className={`block scroll-mt-24 rounded-lg border border-border p-3 text-sm transition-shadow hover:border-primary/40 ${
+                    alvo === cardId("documento", f.id) ? RING : ""
+                  }`}
+                >
                   <div className="truncate font-medium">{f.name}</div>
                   <div className="text-xs text-muted-foreground">
                     {[f.classification, formatData(f.createdAt)].filter(Boolean).join(" · ")}
