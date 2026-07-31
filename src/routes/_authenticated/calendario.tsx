@@ -117,8 +117,8 @@ function CalendarioPage() {
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <button type="button" className="c-pill active">Mês</button>
-              <button type="button" className="c-pill" disabled>Semana</button>
-              <button type="button" className="c-pill" disabled>Lista</button>
+              <button type="button" className="c-pill opacity-50" disabled>Semana</button>
+              <button type="button" className="c-pill opacity-50" disabled>Lista</button>
               <button
                 type="button"
                 className="c-pill"
