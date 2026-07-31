@@ -54,9 +54,87 @@ export type ProcessIncomingFileResult = {
   errorCode?: string;
 };
 
-function safeName(original?: string | null): string {
-  if (!original) return "ficheiro";
-  return original.replace(/[^a-zA-Z0-9._\- ]+/g, "_").slice(0, 120);
+function safeName(original?: string | null): string | null {
+  if (!original) return null;
+  const clean = original.replace(/[^a-zA-Z0-9._\- ]+/g, "_").slice(0, 120).trim();
+  // Nomes genéricos dos canais ("file", "ficheiro", "audio.ogg") não contam.
+  if (!clean || /^(ficheiro|file|image|photo|audio|voice|document|untitled)([._-]?\d*)?(\.[a-z0-9]+)?$/i.test(clean)) {
+    return null;
+  }
+  return clean;
+}
+
+const MONTHS_PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/**
+ * Nome identificável quando o canal não envia nome nenhum: tipo + data/hora.
+ * Nunca devolve o genérico "ficheiro" — é sempre reconhecível na lista.
+ */
+function fallbackName(classification: string, when = new Date()): string {
+  const base: Record<string, string> = {
+    audio: "Mensagem de voz",
+    imagem: "Foto",
+    documento_pdf: "Documento PDF",
+    documento_docx: "Documento Word",
+    planilha: "Folha de cálculo",
+    texto: "Nota de texto",
+  };
+  const dia = String(when.getDate()).padStart(2, "0");
+  const mes = MONTHS_PT[when.getMonth()];
+  const hora = `${String(when.getHours()).padStart(2, "0")}h${String(when.getMinutes()).padStart(2, "0")}`;
+  return `${base[classification] ?? "Ficheiro recebido"} ${dia} ${mes} ${hora}`;
+}
+
+/** Um nome só gerado por nós (não veio do canal) pode ser melhorado depois. */
+export function isAutoName(name: string | null | undefined): boolean {
+  if (!name) return true;
+  const n = name.trim();
+  if (/^ficheiro$/i.test(n)) return true;
+  return /^(Mensagem de voz|Foto|Documento PDF|Documento Word|Folha de cálculo|Nota de texto|Ficheiro recebido) \d{2} [a-z]{3} \d{2}h\d{2}$/.test(n);
+}
+
+/**
+ * Descrição curta a partir do conteúdo (transcrição/texto lido), para dar um
+ * nome humano ao ficheiro quando o canal não enviou nome — ex.: "Áudio sobre
+ * despesa da Rua das Flores".
+ */
+export function describeFromContent(classification: string, text: string | null | undefined): string | null {
+  const raw = (text ?? "").replace(/\s+/g, " ").trim();
+  if (raw.length < 8) return null;
+  const words = raw.split(" ").slice(0, 8).join(" ").replace(/[.,;:!?]+$/, "");
+  if (words.length < 6) return null;
+  const prefix =
+    classification === "audio" ? "Áudio sobre " : classification === "imagem" ? "Foto de " : "";
+  const body = prefix ? words.charAt(0).toLowerCase() + words.slice(1) : words.charAt(0).toUpperCase() + words.slice(1);
+  return `${prefix}${body}`.slice(0, 90);
+}
+
+/**
+ * Renomeia o ficheiro depois de haver conteúdo lido, mas só quando o nome
+ * actual foi gerado por nós — um nome real enviado pelo canal nunca é tocado.
+ */
+export async function refineFileName(
+  supabase: any,
+  fileId: string,
+  classification: string,
+  text: string | null | undefined,
+): Promise<void> {
+  try {
+    const description = describeFromContent(classification, text);
+    if (!description) return;
+    const { data } = await supabase
+      .from("uploaded_files")
+      .select("original_file_name")
+      .eq("id", fileId)
+      .maybeSingle();
+    if (!isAutoName((data as { original_file_name: string | null } | null)?.original_file_name)) return;
+    await supabase
+      .from("uploaded_files")
+      .update({ original_file_name: description } as never)
+      .eq("id", fileId);
+  } catch (err) {
+    console.error("[files] refineFileName:", err instanceof Error ? err.message : err);
+  }
 }
 
 function extensionFor(mime: string): string {
