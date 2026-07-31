@@ -30,20 +30,39 @@ export const startCalendarConnect = createServerFn({ method: "POST" })
     const returnUrl = new URL(CALENDAR_RETURN_PATH[provider], request.url).toString();
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getConnectionKeyForUser } = await import("./connections.server");
+    const {
+      getConnectionKeyForUser,
+      getAppUserIdForConnector,
+      rotateAppUserIdForConnector,
+    } = await import("./connections.server");
     const { authorizeAppUserOAuth } = await import("@/integrations/lovable/appUserConnector");
 
     const existing = await getConnectionKeyForUser(supabaseAdmin, context.userId, provider);
-    const { authorizationUrl } = await authorizeAppUserOAuth({
-      gatewayBaseUrl: GATEWAY_BASE_URL,
-      connectorId: provider,
-      appUserId: context.userId,
-      clientAPIKey,
-      returnUrl,
-      connectionAPIKey: existing ?? undefined,
-      credentialsConfiguration: { scopes: CALENDAR_SCOPES[provider] },
-    });
-    return { authorizationUrl };
+    const start = (appUserId: string) =>
+      authorizeAppUserOAuth({
+        gatewayBaseUrl: GATEWAY_BASE_URL,
+        connectorId: provider,
+        appUserId,
+        clientAPIKey,
+        returnUrl,
+        connectionAPIKey: existing ?? undefined,
+        credentialsConfiguration: { scopes: CALENDAR_SCOPES[provider] },
+      });
+
+    const appUserId = await getAppUserIdForConnector(supabaseAdmin, context.userId, provider);
+    try {
+      const { authorizationUrl } = await start(appUserId);
+      return { authorizationUrl };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Ligação órfã no gateway (existe lá, mas a chave local desapareceu):
+      // recomeça com um identificador novo em vez de bloquear o consultor.
+      const orphan = !existing && /Reconnect requires/i.test(msg);
+      if (!orphan) throw err;
+      const fresh = await rotateAppUserIdForConnector(supabaseAdmin, context.userId, provider);
+      const { authorizationUrl } = await start(fresh);
+      return { authorizationUrl };
+    }
   });
 
 export const completeCalendarConnect = createServerFn({ method: "POST" })
