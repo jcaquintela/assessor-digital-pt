@@ -10,6 +10,7 @@
 // política conversacional. Isso é do orquestrador.
 
 import { z } from "zod";
+import { isAgendaEvent } from "@/lib/agenda-kind";
 import {
   SearchPeopleArgs,
   CreatePersonArgs,
