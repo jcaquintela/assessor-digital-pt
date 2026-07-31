@@ -518,7 +518,9 @@ function DealDetail() {
                 >
                   <div className="truncate font-medium">{f.name}</div>
                   <div className="text-xs text-muted-foreground">
-                    {[f.classification, formatData(f.createdAt)].filter(Boolean).join(" · ")}
+                    {[f.classification, f.via ? `via ${f.via}` : null, formatData(f.createdAt)]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </div>
                 </Link>
               ))}
