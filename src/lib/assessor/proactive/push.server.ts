@@ -11,8 +11,23 @@ import { buildOutcomeCheckinPrompt } from "@/lib/assessor/interactive";
 import { sanitizeReply } from "@/lib/assessor/culture/sanitize";
 import { morningTemplatePayload } from "./templates";
 
-export function templatesApproved(): boolean {
-  return String(process.env.WHATSAPP_TEMPLATES_APPROVED ?? "").toLowerCase() === "true";
+/**
+ * Autorização para enviar fora da janela de 24h.
+ *
+ * Fonte principal: feature flag `whatsapp.templates.approved`, ligada
+ * automaticamente pela corrida que consulta o estado na Meta. A variável
+ * de ambiente continua a servir de interruptor manual de emergência.
+ */
+export async function templatesApproved(supabase?: any): Promise<boolean> {
+  if (String(process.env.WHATSAPP_TEMPLATES_APPROVED ?? "").toLowerCase() === "true") return true;
+  if (!supabase) return false;
+  const { TEMPLATES_APPROVED_FLAG } = await import("@/lib/whatsapp/template-status.server");
+  const { data } = await supabase
+    .from("feature_flags")
+    .select("enabled_globally")
+    .eq("key", TEMPLATES_APPROVED_FLAG)
+    .maybeSingle();
+  return Boolean((data as any)?.enabled_globally);
 }
 
 function lisbonParts(now: Date) {
@@ -131,7 +146,7 @@ export async function sendMorningPush(
 
   const inWindow = await isWithin24hWindow(supabase, userId, target.channel);
   if (target.channel === "whatsapp" && !inWindow) {
-    if (!templatesApproved()) return { sent: false, reason: "template_pending" };
+    if (!(await templatesApproved(supabase))) return { sent: false, reason: "template_pending" };
     const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
     const lines = priorities.map((p) => `${p.action}${p.entity_label ? ` — ${p.entity_label}` : ""}`).join("; ");
     const r = await sendWhatsAppPayload(
@@ -162,7 +177,7 @@ export async function sendEveningCheckin(
   if (!target) return { sent: 0, skipped: 0, reason: "no_channel" };
 
   const inWindow = await isWithin24hWindow(supabase, userId, target.channel);
-  if (target.channel === "whatsapp" && !inWindow && !templatesApproved()) {
+  if (target.channel === "whatsapp" && !inWindow && !(await templatesApproved(supabase))) {
     return { sent: 0, skipped: 0, reason: "template_pending" };
   }
 
