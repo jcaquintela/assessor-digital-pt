@@ -127,6 +127,101 @@ export const listAccessUsers = createServerFn({ method: "GET" })
 
 const tierSchema = z.enum(["base", "consultor", "pro", "hub"]);
 
+/* ---------------- Contas possivelmente duplicadas ---------------- */
+// Só sinaliza — nunca funde. Homónimos existem; a decisão é humana.
+
+export type DuplicateAccountAlert = {
+  key: string;
+  name: string;
+  reason: "shadow_account" | "same_name_other_channel";
+  accounts: {
+    id: string;
+    email: string;
+    name: string | null;
+    tier: string;
+    channels: string[];
+    created_at: string;
+    activity: number;
+  }[];
+};
+
+function normName(v: string | null | undefined): string {
+  return (v ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export const listDuplicateAccountAlerts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<DuplicateAccountAlert[]> => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [{ data: profs }, { data: links }, { data: msgs }] = await Promise.all([
+      supabaseAdmin.from("profiles").select("id, name, email, subscription_tier, created_at"),
+      supabaseAdmin.from("channel_links").select("user_id, channel"),
+      supabaseAdmin.from("assessor_messages").select("user_id"),
+    ]);
+
+    const chanMap = new Map<string, string[]>();
+    (links ?? []).forEach((l: any) => {
+      chanMap.set(l.user_id, [...(chanMap.get(l.user_id) ?? []), l.channel]);
+    });
+    const actMap = new Map<string, number>();
+    (msgs ?? []).forEach((m: any) => {
+      if (m.user_id) actMap.set(m.user_id, (actMap.get(m.user_id) ?? 0) + 1);
+    });
+
+    const rows = (profs ?? []).map((p: any) => ({
+      id: p.id as string,
+      email: (p.email ?? "") as string,
+      name: (p.name ?? null) as string | null,
+      tier: (p.subscription_tier ?? "base") as string,
+      channels: chanMap.get(p.id) ?? [],
+      created_at: p.created_at as string,
+      activity: actMap.get(p.id) ?? 0,
+    }));
+
+    const alerts: DuplicateAccountAlert[] = [];
+
+    // 1) Qualquer conta-sombra que ainda exista é, por definição, suspeita.
+    for (const r of rows) {
+      if (!r.email.endsWith("@shadow.assessor.local")) continue;
+      const twins = rows.filter((o) => o.id !== r.id && normName(o.name) && normName(o.name) === normName(r.name));
+      alerts.push({
+        key: `shadow:${r.id}`,
+        name: r.name ?? r.email,
+        reason: "shadow_account",
+        accounts: [r, ...twins],
+      });
+    }
+
+    // 2) Mesmo nome em contas distintas com canais diferentes.
+    const byName = new Map<string, typeof rows>();
+    for (const r of rows) {
+      const n = normName(r.name);
+      if (!n) continue;
+      byName.set(n, [...(byName.get(n) ?? []), r]);
+    }
+    for (const [n, group] of byName) {
+      if (group.length < 2) continue;
+      if (group.some((g) => g.email.endsWith("@shadow.assessor.local"))) continue; // já coberto acima
+      const channels = new Set(group.flatMap((g) => g.channels));
+      if (channels.size < 2) continue;
+      alerts.push({
+        key: `name:${n}`,
+        name: group[0].name ?? n,
+        reason: "same_name_other_channel",
+        accounts: group,
+      });
+    }
+
+    return alerts.sort((a, b) => a.name.localeCompare(b.name, "pt"));
+  });
+
 const createSchema = z.object({
   email: z.string().trim().email().max(255),
   subscription_tier: tierSchema,
