@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Archive, Trash2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -158,8 +157,8 @@ function DiversosPage() {
         ) : (
           <div className="grid gap-3">
             {filtered.map((r) => (
-              <div key={r.id} className="c-card c-card-hover">
-                <div className="flex flex-col gap-2 p-4">
+              <div key={r.id} className="c-card c-card-hover p-3.5">
+                <div className="flex flex-col gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       to="/diversos/$id"
@@ -187,36 +186,35 @@ function DiversosPage() {
                       {r.original_content}
                     </p>
                   ) : null}
-                  <div className="flex flex-wrap gap-2 pt-1">
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {r.status !== "reviewed" && r.status !== "classified" ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
+                      <button
+                        type="button"
+                        className="c-badge"
                         disabled={setStatus.isPending}
                         onClick={() => setStatus.mutate({ id: r.id, status: "reviewed" })}
                       >
-                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Marcar como revisto
-                      </Button>
+                        <CheckCircle2 className="h-3 w-3" /> Marcar como revisto
+                      </button>
                     ) : null}
                     {r.status !== "archived" ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
+                      <button
+                        type="button"
+                        className="c-badge"
                         disabled={setStatus.isPending}
                         onClick={() => setStatus.mutate({ id: r.id, status: "archived" })}
                       >
-                        <Archive className="mr-1 h-3.5 w-3.5" /> Arquivar
-                      </Button>
+                        <Archive className="h-3 w-3" /> Arquivar
+                      </button>
                     ) : null}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
+                    <button
+                      type="button"
+                      className="c-badge text-destructive"
                       disabled={setStatus.isPending}
                       onClick={() => setStatus.mutate({ id: r.id, status: "deleted" })}
                     >
-                      <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
-                    </Button>
+                      <Trash2 className="h-3 w-3" /> Eliminar
+                    </button>
                   </div>
                 </div>
               </div>
