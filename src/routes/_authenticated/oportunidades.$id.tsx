@@ -1,7 +1,7 @@
 // Ficha do Negócio: a história completa numa página — quem, que imóveis,
 // em que fase, o que já aconteceu e o que vem a seguir.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -68,6 +68,23 @@ function DealDetail() {
   const [nota, setNota] = useState("");
   const [novoImovel, setNovoImovel] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [destacado, setDestacado] = useState(false);
+
+  // Ao abrir a ficha (badge "Negócio: X", "Abrir negócio", cartão do quadro),
+  // garantimos que o consultor cai no topo da ficha certa — sobretudo em mobile,
+  // onde a navegação pode manter o scroll da página anterior.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      const el = headerRef.current;
+      if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
+      else window.scrollTo({ top: 0, behavior: "auto" });
+    });
+    setDestacado(true);
+    const t = window.setTimeout(() => setDestacado(false), 1600);
+    return () => window.clearTimeout(t);
+  }, [id]);
 
   useEffect(() => {
     if (!d) return;
@@ -169,8 +186,14 @@ function DealDetail() {
         </Button>
       </div>
 
-      <PageHeader
-        title={d.title}
+      <div
+        ref={headerRef}
+        className={`scroll-mt-20 rounded-xl transition-shadow duration-500 ${
+          destacado ? "ring-2 ring-primary/50 ring-offset-2 ring-offset-background" : ""
+        }`}
+      >
+        <PageHeader
+          title={d.title}
         subtitle={[KIND_LABEL[d.kind], d.person?.name, d.properties[0]?.title].filter(Boolean).join(" · ")}
         action={
           <div className="flex flex-wrap gap-2">
@@ -184,8 +207,9 @@ function DealDetail() {
               <Save className="mr-1 h-4 w-4" /> Guardar
             </Button>
           </div>
-        }
-      />
+          }
+        />
+      </div>
 
       {d.alert && (
         <div className={`mb-4 flex items-center gap-2 rounded-lg border p-3 text-sm ${
