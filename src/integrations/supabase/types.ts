@@ -2423,6 +2423,69 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_link_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          token: string
+          used_at: string | null
+          used_chat_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          token: string
+          used_at?: string | null
+          used_chat_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          token?: string
+          used_at?: string | null
+          used_chat_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      telegram_pairings: {
+        Row: {
+          attempts: number
+          chat_id: string
+          code_hash: string | null
+          created_at: string
+          expires_at: string
+          phone: string | null
+          step: string
+          target_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          chat_id: string
+          code_hash?: string | null
+          created_at?: string
+          expires_at?: string
+          phone?: string | null
+          step?: string
+          target_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          chat_id?: string
+          code_hash?: string | null
+          created_at?: string
+          expires_at?: string
+          phone?: string | null
+          step?: string
+          target_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       uploaded_files: {
         Row: {
           ai_summary: string | null

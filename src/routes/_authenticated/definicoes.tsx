@@ -10,6 +10,7 @@ import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "
 import { MODULE_LABEL, planSummary, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { isPlaceholderEmail, isValidEmail } from "@/lib/profile/email";
 import { CHANNEL_LABEL, maskContact, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
+import { createTelegramLinkToken, getTelegramLink, unlinkTelegram } from "@/lib/telegram/link.functions";
 import {
   getWhatsAppLink,
   startWhatsAppLink,
@@ -402,27 +403,108 @@ function CanalSection() {
 
   if (channel && externalId) {
     return (
-      <Section title="Canal ligado">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="c-avatar"><MessageCircle className="h-4 w-4" /></div>
-            <div>
-              <div className="text-[14px] font-semibold">{CHANNEL_LABEL[channel]}</div>
-              <div className="c-mono c-muted text-[12.5px]">{maskContact(channel, externalId)}</div>
+      <>
+        <Section title="Canal ligado">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="c-avatar"><MessageCircle className="h-4 w-4" /></div>
+              <div>
+                <div className="text-[14px] font-semibold">{CHANNEL_LABEL[channel]}</div>
+                <div className="c-mono c-muted text-[12.5px]">{maskContact(channel, externalId)}</div>
+              </div>
             </div>
+            <span className="c-badge ok">Ligado</span>
           </div>
-          <span className="c-badge ok">Ligado</span>
-        </div>
-        {linkedAt && (
-          <p className="c-muted mt-3 text-[12px]">
-            Ligado em {new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium", timeStyle: "short" }).format(new Date(linkedAt))}.
-          </p>
-        )}
-      </Section>
+          {linkedAt && (
+            <p className="c-muted mt-3 text-[12px]">
+              Ligado em {new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium", timeStyle: "short" }).format(new Date(linkedAt))}.
+            </p>
+          )}
+        </Section>
+        <TelegramSection />
+      </>
     );
   }
 
-  return <WhatsAppSection />;
+  return (
+    <>
+      <WhatsAppSection />
+      <TelegramSection />
+    </>
+  );
+}
+
+/* ---------------- Telegram (deep link com token de uso único) ---------------- */
+
+function TelegramSection() {
+  const qc = useQueryClient();
+  const fetchStatus = useServerFn(getTelegramLink);
+  const createToken = useServerFn(createTelegramLinkToken);
+  const doUnlink = useServerFn(unlinkTelegram);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["telegram", "link"],
+    queryFn: () => fetchStatus(),
+    refetchInterval: (q) => ((q.state.data as { linked?: boolean } | undefined)?.linked ? false : 5000),
+  });
+
+  const link = useMutation({
+    mutationFn: async () => createToken(),
+    onSuccess: (r) => {
+      window.open(r.url, "_blank", "noopener,noreferrer");
+      toast.success("Abre o Telegram e carrega em Iniciar — ligo à tua conta automaticamente.");
+      qc.invalidateQueries({ queryKey: ["telegram", "link"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const unlink = useMutation({
+    mutationFn: async () => doUnlink(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["telegram", "link"] });
+      toast.success("Telegram desligado desta conta.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <section className="c-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="c-section-title">Telegram</h2>
+        <span className={data?.linked ? "c-badge ok" : "c-badge"}>
+          {data?.linked ? "Ligado" : "Não ligado"}
+        </span>
+      </div>
+      {isLoading ? (
+        <p className="c-muted text-sm">A carregar…</p>
+      ) : data?.linked ? (
+        <>
+          <p className="text-[13px]">
+            O teu Telegram{data.displayName ? ` (${data.displayName})` : ""} está ligado a esta conta — falas comigo
+            pelos dois canais e é sempre a mesma memória.
+          </p>
+          <div className="mt-3">
+            <button className="c-btn-ghost" onClick={() => unlink.mutate()} disabled={unlink.isPending}>
+              Desligar Telegram
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-[13px]">
+            Liga o Telegram a <strong>esta</strong> conta. Sem perguntas e sem risco de criares uma conta separada — o
+            botão abre o Afonso já identificado.
+          </p>
+          <div className="mt-3">
+            <button className="c-cta" onClick={() => link.mutate()} disabled={link.isPending}>
+              <ExternalLink className="h-3.5 w-3.5" /> Ligar Telegram
+            </button>
+          </div>
+          <p className="c-muted mt-2 text-[12px]">A ligação é válida durante 15 minutos e só pode ser usada uma vez.</p>
+        </>
+      )}
+    </section>
+  );
 }
 
 /* ---------------- Calendário ---------------- */
