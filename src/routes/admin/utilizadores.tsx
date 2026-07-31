@@ -12,6 +12,7 @@ import {
   listPromoCodes,
   createPromoCode,
   revokePromoCode,
+  listDuplicateAccountAlerts,
   type AccessUser,
 } from "@/lib/admin/acessos.functions";
 import { getMyAdminRole } from "@/lib/admin.functions";
@@ -47,6 +48,7 @@ function AcessosPage() {
   const roleFn = useServerFn(getMyAdminRole);
   const listFn = useServerFn(listAccessUsers);
   const promosFn = useServerFn(listPromoCodes);
+  const dupsFn = useServerFn(listDuplicateAccountAlerts);
   const createFn = useServerFn(createAccess);
   const updateFn = useServerFn(updateAccess);
   const deactivateFn = useServerFn(deactivateAccess);
@@ -58,6 +60,7 @@ function AcessosPage() {
   const isSuper = me?.role === "super_admin";
   const { data: users, isPending } = useQuery({ queryKey: ["admin", "access-users"], queryFn: () => listFn() });
   const { data: promos } = useQuery({ queryKey: ["admin", "promo-codes"], queryFn: () => promosFn() });
+  const { data: dups } = useQuery({ queryKey: ["admin", "duplicate-accounts"], queryFn: () => dupsFn() });
 
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(false);
@@ -149,6 +152,37 @@ function AcessosPage() {
       <p className="mini mt-2" style={{ color: "var(--muted)" }}>
         “Eliminar” desativa a conta — perde acesso, os dados ficam. Apagar dados em definitivo não está disponível.
       </p>
+
+      <SectionTitle>Contas a rever (possíveis duplicados)</SectionTitle>
+      <table>
+        <thead>
+          <tr><th>Pessoa</th><th>Motivo</th><th>Contas</th></tr>
+        </thead>
+        <tbody>
+          {(dups ?? []).length === 0 ? (
+            <tr><td colSpan={3} className="mini">Nada a rever — nenhuma conta-sombra nem nomes repetidos em canais diferentes.</td></tr>
+          ) : (dups ?? []).map((d) => (
+            <tr key={d.key}>
+              <td>{d.name}</td>
+              <td>
+                <Badge tone={d.reason === "shadow_account" ? "bad" : "warn"}>
+                  {d.reason === "shadow_account" ? "Conta-sombra por ligar" : "Mesmo nome, canais diferentes"}
+                </Badge>
+              </td>
+              <td className="mini">
+                {d.accounts.map((a) => (
+                  <div key={a.id}>
+                    {a.email} · {tierLabel(a.tier)} · {a.channels.join(", ") || "sem canal"} · {a.activity} mensagens · desde {fmtDate(a.created_at)}
+                  </div>
+                ))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Empty note="nunca funde sozinho — homónimos existem e a decisão é humana">
+        Sinaliza contas que podem ser a mesma pessoa em canais diferentes. A fusão é feita manualmente, caso a caso.
+      </Empty>
 
       <SectionTitle>Códigos promocionais</SectionTitle>
       <div className="mb-2.5 flex justify-end">
