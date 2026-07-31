@@ -60,5 +60,7 @@ export const unlinkTelegram = createServerFn({ method: "POST" })
       .delete()
       .eq("channel", "telegram")
       .eq("user_id", context.userId);
+    const { recomputePrimaryChannel } = await import("@/lib/assessor/primary-channel.server");
+    await recomputePrimaryChannel(supabaseAdmin, context.userId);
     return { ok: true };
   });
