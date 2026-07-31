@@ -143,6 +143,19 @@ function AuthPage() {
             <Button type="button" variant="outline" className="w-full" onClick={google} disabled={busy}>
               Continuar com Google
             </Button>
+            <div className="mt-4 rounded-lg border border-border p-3">
+              <p className="text-[13px] font-medium">Ainda não tens conta?</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Cria a tua conta no plano Base — grátis e activo de imediato.
+              </p>
+              <Button asChild variant="secondary" className="mt-2 w-full">
+                <Link to="/registo">Criar conta</Link>
+              </Button>
+            </div>
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Só falas comigo pelo Telegram e não tens palavra-passe? Escreve{" "}
+              <strong>entrar</strong> ao Afonso — ele envia-te um link de acesso válido por 15 minutos.
+            </p>
             <p className="mt-4 text-center text-xs text-muted-foreground">
               <Link to="/" className="underline-offset-2 hover:underline">Voltar à página inicial</Link>
             </p>

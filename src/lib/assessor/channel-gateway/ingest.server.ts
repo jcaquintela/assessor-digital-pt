@@ -72,6 +72,19 @@ async function runInboundPipelineInner(
   }
 
   // 7b. A partir daqui há estado conversacional em jogo (rascunhos, memória).
+  // Pedido de entrada no painel ("entrar"/"login"): link temporário e fim de
+  // turno — não passa pelo motor.
+  if (inbound.messageType === "text") {
+    const { looksLikeLoginRequest, issueDashboardLoginLink, LOGIN_LINK_REPLY } = await import(
+      "@/lib/auth/dashboard-login.server"
+    );
+    if (looksLikeLoginRequest(inbound.text)) {
+      const { url } = await issueDashboardLoginLink(supabaseAdmin, userId, inbound.channel);
+      await adapter.sendText(inbound.externalConversationId, LOGIN_LINK_REPLY(url));
+      return;
+    }
+  }
+
   // Um turno de cada vez por consultor+canal — mensagens seguidas ficam em
   // fila em vez de correrem em paralelo sobre o mesmo rascunho.
   await withConversationLock(supabaseAdmin, userId, inbound.channel, () =>

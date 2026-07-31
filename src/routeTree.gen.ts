@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RegistoRouteImport } from './routes/registo'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -42,6 +44,7 @@ import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
+import { Route as AuthenticatedLigarCanalRouteImport } from './routes/_authenticated/ligar-canal'
 import { Route as AuthenticatedInteracoesRouteImport } from './routes/_authenticated/interacoes'
 import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
 import { Route as AuthenticatedHojeRouteImport } from './routes/_authenticated/hoje'
@@ -83,6 +86,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegistoRoute = RegistoRouteImport.update({
+  id: '/registo',
+  path: '/registo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlanosRoute = PlanosRouteImport.update({
   id: '/planos',
   path: '/planos',
@@ -91,6 +99,11 @@ const PlanosRoute = PlanosRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EntrarRoute = EntrarRouteImport.update({
+  id: '/entrar',
+  path: '/entrar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -241,6 +254,11 @@ const AuthenticatedPessoasRoute = AuthenticatedPessoasRouteImport.update({
 const AuthenticatedMaisRoute = AuthenticatedMaisRouteImport.update({
   id: '/mais',
   path: '/mais',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLigarCanalRoute = AuthenticatedLigarCanalRouteImport.update({
+  id: '/ligar-canal',
+  path: '/ligar-canal',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedInteracoesRoute = AuthenticatedInteracoesRouteImport.update({
@@ -443,8 +461,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/entrar': typeof EntrarRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
+  '/registo': typeof RegistoRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -457,6 +477,7 @@ export interface FileRoutesByFullPath {
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
+  '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
@@ -511,8 +532,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/entrar': typeof EntrarRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
+  '/registo': typeof RegistoRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -525,6 +548,7 @@ export interface FileRoutesByTo {
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
+  '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
@@ -582,8 +606,10 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/entrar': typeof EntrarRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
+  '/registo': typeof RegistoRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -596,6 +622,7 @@ export interface FileRoutesById {
   '/_authenticated/hoje': typeof AuthenticatedHojeRoute
   '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/_authenticated/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
+  '/_authenticated/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
   '/_authenticated/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
@@ -653,8 +680,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/entrar'
     | '/mcp'
     | '/planos'
+    | '/registo'
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -667,6 +696,7 @@ export interface FileRouteTypes {
     | '/hoje'
     | '/imoveis'
     | '/interacoes'
+    | '/ligar-canal'
     | '/mais'
     | '/pessoas'
     | '/rotinas'
@@ -721,8 +751,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/entrar'
     | '/mcp'
     | '/planos'
+    | '/registo'
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -735,6 +767,7 @@ export interface FileRouteTypes {
     | '/hoje'
     | '/imoveis'
     | '/interacoes'
+    | '/ligar-canal'
     | '/mais'
     | '/pessoas'
     | '/rotinas'
@@ -791,8 +824,10 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin'
     | '/auth'
+    | '/entrar'
     | '/mcp'
     | '/planos'
+    | '/registo'
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -805,6 +840,7 @@ export interface FileRouteTypes {
     | '/_authenticated/hoje'
     | '/_authenticated/imoveis'
     | '/_authenticated/interacoes'
+    | '/_authenticated/ligar-canal'
     | '/_authenticated/mais'
     | '/_authenticated/pessoas'
     | '/_authenticated/rotinas'
@@ -862,8 +898,10 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  EntrarRoute: typeof EntrarRoute
   McpRoute: typeof McpRoute
   PlanosRoute: typeof PlanosRoute
+  RegistoRoute: typeof RegistoRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -885,6 +923,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/registo': {
+      id: '/registo'
+      path: '/registo'
+      fullPath: '/registo'
+      preLoaderRoute: typeof RegistoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/planos': {
       id: '/planos'
       path: '/planos'
@@ -897,6 +942,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/entrar': {
+      id: '/entrar'
+      path: '/entrar'
+      fullPath: '/entrar'
+      preLoaderRoute: typeof EntrarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -1107,6 +1159,13 @@ declare module '@tanstack/react-router' {
       path: '/mais'
       fullPath: '/mais'
       preLoaderRoute: typeof AuthenticatedMaisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ligar-canal': {
+      id: '/_authenticated/ligar-canal'
+      path: '/ligar-canal'
+      fullPath: '/ligar-canal'
+      preLoaderRoute: typeof AuthenticatedLigarCanalRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/interacoes': {
@@ -1480,6 +1539,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHojeRoute: typeof AuthenticatedHojeRoute
   AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
   AuthenticatedInteracoesRoute: typeof AuthenticatedInteracoesRouteWithChildren
+  AuthenticatedLigarCanalRoute: typeof AuthenticatedLigarCanalRoute
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedPessoasRoute: typeof AuthenticatedPessoasRouteWithChildren
   AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
@@ -1504,6 +1564,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHojeRoute: AuthenticatedHojeRoute,
   AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
   AuthenticatedInteracoesRoute: AuthenticatedInteracoesRouteWithChildren,
+  AuthenticatedLigarCanalRoute: AuthenticatedLigarCanalRoute,
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedPessoasRoute: AuthenticatedPessoasRouteWithChildren,
   AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
@@ -1584,8 +1645,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  EntrarRoute: EntrarRoute,
   McpRoute: McpRoute,
   PlanosRoute: PlanosRoute,
+  RegistoRoute: RegistoRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
