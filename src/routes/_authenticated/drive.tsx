@@ -107,7 +107,7 @@ function DrivePage() {
   >(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const { categories } = useFileCategories();
-  const catNameById = new Map(categories.map((c) => [c.id, c.name]));
+  const catById = new Map(categories.map((c) => [c.id, c]));
 
   // "Ver": abre o documento original numa nova janela via URL assinada temporária.
   const abrirFicheiro = async (id: string) => {
@@ -239,7 +239,8 @@ function DrivePage() {
               f.processing_status,
             );
           const autoLabel = f.document_type ?? f.classification ?? "Ficheiro";
-          const catName = f.custom_category_id ? catNameById.get(f.custom_category_id) ?? null : null;
+          const cat = f.custom_category_id ? catById.get(f.custom_category_id) ?? null : null;
+          const catName = cat?.name ?? null;
           return (
             <Link key={f.id} to="/drive/$id" params={{ id: f.id }} className="c-card c-card-hover block p-3.5">
               <div className="flex items-start justify-between gap-3">
@@ -255,9 +256,29 @@ function DrivePage() {
                           <AlertCircle className="h-3 w-3" /> Por tratar
                         </span>
                       )}
+                      {catName && (
+                        <span
+                          className="c-badge shrink-0"
+                          style={
+                            cat?.color
+                              ? {
+                                  borderColor: cat.color,
+                                  color: cat.color,
+                                  backgroundColor: `color-mix(in srgb, ${cat.color} 12%, transparent)`,
+                                }
+                              : undefined
+                          }
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: cat?.color ?? "currentColor" }}
+                          />
+                          {catName}
+                        </span>
+                      )}
                     </div>
                     <div className="c-muted mt-1 text-[11.5px]">
-                      {catName ?? autoLabel} ·{" "}
+                      {autoLabel} ·{" "}
                       <span className="c-mono">{formatDate(f.created_at)}</span> ·{" "}
                       <span className="c-mono">{formatSize(f.size_bytes ?? 0)}</span> · recebido via{" "}
                       {CANAL_LABEL[f.channel] ?? f.channel}
