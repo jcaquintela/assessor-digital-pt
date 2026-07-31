@@ -60,6 +60,9 @@ export async function sendWhatsAppText(
 ): Promise<SendResult> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? null;
+  // Formatação consistente: sintaxe WhatsApp (não Markdown), listas com "- ".
+  const { formatForWhatsApp } = await import("@/lib/assessor/culture/whatsapp-format");
+  const text = formatForWhatsApp(body) || body;
 
   const baseTelemetry: SendTelemetry = {
     ok: false,
@@ -102,7 +105,7 @@ export async function sendWhatsAppText(
         recipient_type: "individual",
         to,
         type: "text",
-        text: { preview_url: false, body },
+        text: { preview_url: false, body: text },
       }),
     });
     const rawText = await res.text().catch(() => "");

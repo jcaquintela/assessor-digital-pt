@@ -6,6 +6,7 @@
 // ferramentas de leitura em texto natural com os dados.
 
 import type { ToolExecResult } from "./act.server";
+import { boldWa, italicWa } from "../culture/whatsapp-format";
 
 // Ferramentas que só lêem. Nunca escrevem na BD.
 export const QUERY_TOOLS = new Set([
@@ -56,21 +57,25 @@ function lineFor(tool: string, row: Record<string, unknown>): string {
   if (tool === "search_prospecting_leads") {
     const head = s(row.title) || s(row.address) || s(row.location) || "Placa";
     return joinParts([
-      head,
-      phonePt(row.phone),
+      boldWa(head),
+      s(row.phone) ? boldWa(phonePt(row.phone)) : null,
       s(row.location) && s(row.location) !== head ? s(row.location) : null,
-      LEAD_STATUS_LABEL[s(row.status)] ?? s(row.status),
+      italicWa(LEAD_STATUS_LABEL[s(row.status)] ?? s(row.status)),
     ]);
   }
   if (tool === "search_people") {
-    return joinParts([s(row.name) || "Contacto", phonePt(row.phone), s(row.relationship_type)]);
+    return joinParts([
+      boldWa(s(row.name) || "Contacto"),
+      s(row.phone) ? boldWa(phonePt(row.phone)) : null,
+      italicWa(s(row.relationship_type)),
+    ]);
   }
   if (tool === "search_properties") {
     return joinParts([
-      s(row.title) || "Imóvel",
+      boldWa(s(row.title) || "Imóvel"),
       s(row.typology),
       s(row.location) || s(row.city),
-      money(row.asking_price),
+      money(row.asking_price) ? boldWa(money(row.asking_price)) : null,
     ]);
   }
   if (tool === "search_active_reminders") {
@@ -80,13 +85,13 @@ function lineFor(tool: string, row: Record<string, unknown>): string {
           timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
         }).format(new Date(when))
       : "";
-    return joinParts([human, s(row.message_preview) || "lembrete"], " — ");
+    return joinParts([human ? boldWa(human) : null, s(row.message_preview) || "lembrete"], " — ");
   }
   if (tool === "search_agenda") {
     const t = s(row.due_time).slice(0, 5);
-    return joinParts([t ? t.replace(":", "h") : null, s(row.title) || "compromisso"], " — ");
+    return joinParts([t ? boldWa(t.replace(":", "h")) : null, boldWa(s(row.title) || "compromisso")], " — ");
   }
-  return joinParts([s(row.title) || s(row.name)]);
+  return joinParts([boldWa(s(row.title) || s(row.name))]);
 }
 
 const HEADER: Record<string, { one: string; many: (n: number) => string; empty: string }> = {
@@ -143,9 +148,9 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
       continue;
     }
     const shown = rows.slice(0, MAX_ITEMS);
-    const lines = shown.map((row) => `• ${lineFor(r.name, row)}`.trim());
+    const lines = shown.map((row) => `- ${lineFor(r.name, row)}`.trim());
     const header = rows.length === 1 ? head.one : head.many(rows.length);
-    const more = rows.length > shown.length ? `\n(mostro os primeiros ${shown.length})` : "";
+    const more = rows.length > shown.length ? `\n${italicWa(`mostro os primeiros ${shown.length}`)}` : "";
     blocks.push(`${header}\n${lines.join("\n")}${more}`);
   }
   return blocks.join("\n\n").trim() || null;

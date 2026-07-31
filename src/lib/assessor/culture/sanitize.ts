@@ -94,6 +94,8 @@ export function enforceHumanTone(
   if (!opts.actionExecutedOk) out = out.replace(PRECLAIM_RE, "").trim();
   out = out.replace(TECH_VOCAB_RE, "").replace(/\s{2,}/g, " ").trim();
   out = out.replace(FORM_CONFIRM_RE, "Confirmas?").trim();
+  // Listas ("- item" por linha) nunca são cortadas — o consultor pediu para ver.
+  if (/^\s*-\s+/m.test(out)) return out;
   // Corta para no máximo 2 frases — mas texto entre aspas (ex.: um script
   // que o consultor pediu) conta como parte da frase que o introduz.
   const { masked, store } = maskQuoted(out);
