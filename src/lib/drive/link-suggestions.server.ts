@@ -146,14 +146,6 @@ export async function autoLinkAndSuggest(args: {
     currentQuestion: "confirm_extra_link",
     sourceMessageId: args.sourceMessageId ?? null,
   });
-  await supabase
-    .from("pending_actions")
-    .update({ status: "pending_confirmation" })
-    .eq("user_id", userId)
-    .eq("channel", channel)
-    .eq("intent", SUGGEST_LINK_INTENT)
-    .in("status", ["collecting_information"]);
-
   return { linked, suggested, reply };
 }
 
