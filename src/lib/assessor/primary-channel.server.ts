@@ -84,7 +84,12 @@ export async function sendOutbound(
   if (target.channel === "whatsapp") {
     const { sendWhatsAppText } = await import("@/lib/whatsapp/send.server");
     const r = await sendWhatsAppText(target.externalId, text, { triggeredBy: userId, kind: "auto" });
-    return { ok: !!r?.ok, channel: "whatsapp", messageId: r?.messageId ?? null, error: r?.ok ? undefined : "whatsapp_send_failed" };
+    return {
+      ok: !!r?.ok,
+      channel: "whatsapp",
+      messageId: r?.ok ? (r.messageId ?? null) : null,
+      error: r?.ok ? undefined : "whatsapp_send_failed",
+    };
   }
 
   const { getTelegramProvider } = await import("@/lib/telegram/provider.server");
