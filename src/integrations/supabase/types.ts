@@ -1852,7 +1852,10 @@ export type Database = {
       }
       opportunities: {
         Row: {
+          archived_at: string | null
           created_at: string
+          deadline: string | null
+          deal_kind: string
           id: string
           next_action: string | null
           next_action_date: string | null
@@ -1860,14 +1863,20 @@ export type Database = {
           person_id: string | null
           probability: string
           property_id: string | null
+          stage: Database["public"]["Enums"]["deal_stage"]
+          stage_changed_at: string
           status: string
+          title: string | null
           type: string
           updated_at: string
           user_id: string
           value: number | null
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
+          deadline?: string | null
+          deal_kind?: string
           id?: string
           next_action?: string | null
           next_action_date?: string | null
@@ -1875,14 +1884,20 @@ export type Database = {
           person_id?: string | null
           probability?: string
           property_id?: string | null
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          stage_changed_at?: string
           status?: string
+          title?: string | null
           type?: string
           updated_at?: string
           user_id: string
           value?: number | null
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
+          deadline?: string | null
+          deal_kind?: string
           id?: string
           next_action?: string | null
           next_action_date?: string | null
@@ -1890,7 +1905,10 @@ export type Database = {
           person_id?: string | null
           probability?: string
           property_id?: string | null
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          stage_changed_at?: string
           status?: string
+          title?: string | null
           type?: string
           updated_at?: string
           user_id?: string
@@ -1906,6 +1924,98 @@ export type Database = {
           },
           {
             foreignKeyName: "opportunities_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunity_events: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          occurred_at: string
+          opportunity_id: string
+          payload: Json
+          source: string
+          summary: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          occurred_at?: string
+          opportunity_id: string
+          payload?: Json
+          source?: string
+          summary: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          occurred_at?: string
+          opportunity_id?: string
+          payload?: Json
+          source?: string
+          summary?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_events_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunity_properties: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          opportunity_id: string
+          property_id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opportunity_id: string
+          property_id: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opportunity_id?: string
+          property_id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_properties_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_properties_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
@@ -2727,6 +2837,7 @@ export type Database = {
           id: string
           internal_file_name: string
           mime_type: string
+          opportunity_id: string | null
           original_file_name: string | null
           processing_status: string
           related_pending_action_id: string | null
@@ -2761,6 +2872,7 @@ export type Database = {
           id?: string
           internal_file_name: string
           mime_type: string
+          opportunity_id?: string | null
           original_file_name?: string | null
           processing_status?: string
           related_pending_action_id?: string | null
@@ -2795,6 +2907,7 @@ export type Database = {
           id?: string
           internal_file_name?: string
           mime_type?: string
+          opportunity_id?: string | null
           original_file_name?: string | null
           processing_status?: string
           related_pending_action_id?: string | null
@@ -2815,6 +2928,13 @@ export type Database = {
             columns: ["custom_category_id"]
             isOneToOne: false
             referencedRelation: "file_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_files_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
             referencedColumns: ["id"]
           },
           {
@@ -2987,6 +3107,15 @@ export type Database = {
         | "wrong_execution"
         | "other"
       assistant_reflection_trigger: "low_aqs" | "low_ats" | "user_correction"
+      deal_stage:
+        | "preparacao"
+        | "angariacao"
+        | "promocao"
+        | "visitas"
+        | "proposta"
+        | "cpcv"
+        | "escritura"
+        | "concluido"
       person_role:
         | "owner"
         | "potential_owner"
@@ -3157,6 +3286,16 @@ export const Constants = {
         "other",
       ],
       assistant_reflection_trigger: ["low_aqs", "low_ats", "user_correction"],
+      deal_stage: [
+        "preparacao",
+        "angariacao",
+        "promocao",
+        "visitas",
+        "proposta",
+        "cpcv",
+        "escritura",
+        "concluido",
+      ],
       person_role: [
         "owner",
         "potential_owner",
