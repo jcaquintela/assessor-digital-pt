@@ -10,6 +10,7 @@ export interface ThinkResult {
   usage: GatewayUsage;
   latencyMs: number;
   error?: string;
+  unavailable?: boolean;
 }
 
 const VALID_SEARCHES: readonly SearchName[] = [
@@ -88,7 +89,11 @@ export async function think(input: {
   };
 
   if (!call.ok || !call.message?.content) {
-    return { ok: false, output: empty, usage: call.usage, latencyMs: Date.now() - started, error: call.error ?? "think_gateway_failed" };
+    return {
+      ok: false, output: empty, usage: call.usage, latencyMs: Date.now() - started,
+      error: call.error ?? "think_gateway_failed",
+      unavailable: call.unavailable === true,
+    };
   }
 
   const parsed = parseJsonLoose(call.message.content) ?? {};

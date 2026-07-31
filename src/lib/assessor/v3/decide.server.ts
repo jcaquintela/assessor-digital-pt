@@ -10,6 +10,7 @@ export interface DecideResult {
   usage: GatewayUsage;
   latencyMs: number;
   error?: string;
+  unavailable?: boolean;
 }
 
 function parseJsonLoose(raw: string): any | null {
@@ -91,7 +92,11 @@ export async function decide(input: {
   };
 
   if (!call.ok || !call.message?.content) {
-    return { ok: false, decision: fallback, usage: call.usage, latencyMs: Date.now() - started, error: call.error ?? "decide_gateway_failed" };
+    return {
+      ok: false, decision: fallback, usage: call.usage, latencyMs: Date.now() - started,
+      error: call.error ?? "decide_gateway_failed",
+      unavailable: call.unavailable === true,
+    };
   }
 
   const parsed = parseJsonLoose(call.message.content) ?? {};

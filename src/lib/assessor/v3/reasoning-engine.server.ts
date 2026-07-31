@@ -385,8 +385,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   await applyMemoryWrites(ctx, decideR.decision.memory_writes);
 
   let reply = sanitizeReply(decideR.decision.natural_reply);
-  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" = "executed_ok";
+  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" | "service_down" = "executed_ok";
   let archiveReason: string | null = null;
+  // A IA esteve em baixo (créditos, rate limit, timeout, erro do provedor).
+  // Isto NÃO é incompreensão: o consultor tem de perceber a diferença.
+  const aiUnavailable = thinkR.unavailable === true || decideR.unavailable === true;
   // Executou e mesmo assim perguntou ("Marco a ação ... ?") — a pergunta faz o
   // consultor responder "Sim" e o turno seguinte volta a executar o mesmo.
   // Se a acção já foi feita, a resposta tem de ser afirmativa, nunca uma
@@ -481,12 +484,26 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       NOT_UNDERSTOOD_RE.test(reply);
     if (soundsLikeFailure) reply = NATURAL_FALLBACKS.done;
   }
-  if (!reply) reply = NATURAL_FALLBACKS.didNotUnderstand;
+  if (!reply) {
+    // Sem execução e sem resposta: a origem manda no texto. Se a IA esteve
+    // indisponível, dizemos isso; só dizemos "não percebi" quando o serviço
+    // respondeu e mesmo assim não chegámos a lado nenhum.
+    reply = aiUnavailable ? NATURAL_FALLBACKS.aiDown : NATURAL_FALLBACKS.didNotUnderstand;
+  }
+  // Mesmo que o modelo tenha devolvido texto parcial de incompreensão numa
+  // falha de serviço, a mensagem honesta é a de indisponibilidade.
+  if (aiUnavailable && !shouldAct && !prospectingActed && NOT_UNDERSTOOD_RE.test(reply)) {
+    reply = NATURAL_FALLBACKS.aiDown;
+  }
 
   // Rede de segurança final: quando o motor não executou nada e a resposta é
   // um fallback de não-compreensão (ou o DECIDE/THINK falhou), a mensagem
   // original fica em Diversos > Por tratar antes de responder.
   if (archiveOutcome === "executed_ok" && !shouldAct && !prospectingActed) {
+    if (aiUnavailable) {
+      archiveOutcome = "service_down";
+      archiveReason = decideR.error ?? thinkR.error ?? "serviço de IA indisponível";
+    } else {
     const isFallbackReply =
       reply === NATURAL_FALLBACKS.didNotUnderstand ||
       reply === NATURAL_FALLBACKS.aiDown ||
@@ -494,6 +511,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     if (isFallbackReply || decideR.error || thinkR.error) {
       archiveOutcome = "not_understood";
       archiveReason = decideR.error ?? thinkR.error ?? "não percebi a mensagem";
+    }
     }
   }
   reply = await applySafetyNet(ctx, {
