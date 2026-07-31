@@ -10,6 +10,7 @@ const SUPPORTED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp",
 
 export interface ImageReading {
   is_sign: boolean;
+  is_business_card: boolean;
   visible_text: string | null;
   phones: string[];
   agency_name: string | null;
@@ -19,6 +20,10 @@ export interface ImageReading {
   location: string | null;
   price: number | null;
   description: string | null;
+  person_name: string | null;
+  email: string | null;
+  company: string | null;
+  job_title: string | null;
 }
 
 export type ReadImageResult =
@@ -30,6 +35,7 @@ Lê TODO o texto visível na imagem (placas, letreiros, cartazes, anúncios, doc
 Responde apenas com JSON válido, sem markdown, com estas chaves:
 {
   "is_sign": boolean,            // true se for uma placa/letreiro de venda ou arrendamento
+  "is_business_card": boolean,   // true se for um cartão de visita pessoal (nome + contactos), e não uma placa nem um documento
   "visible_text": string|null,   // todo o texto legível, tal como aparece
   "phones": string[],            // números de telefone visíveis, só dígitos e +
   "agency_name": string|null,    // nome da agência/imobiliária, se aparecer
@@ -38,7 +44,11 @@ Responde apenas com JSON válido, sem markdown, com estas chaves:
   "typology": string|null,       // T2, T3...
   "location": string|null,       // localidade/rua visível
   "price": number|null,          // valor em euros, só o número
-  "description": string|null     // 1 frase em PT-PT a descrever a foto
+  "description": string|null,    // 1 frase em PT-PT a descrever a foto
+  "person_name": string|null,    // nome da pessoa no cartão de visita
+  "email": string|null,          // email visível
+  "company": string|null,        // empresa visível
+  "job_title": string|null       // cargo/função visível
 }
 Não inventes: o que não estiver visível fica null ou lista vazia.`;
 
@@ -65,6 +75,7 @@ function coerce(parsed: any): ImageReading {
   };
   return {
     is_sign: parsed?.is_sign === true,
+    is_business_card: parsed?.is_business_card === true,
     visible_text: str(parsed?.visible_text, 1500),
     phones,
     agency_name: str(parsed?.agency_name, 120),
@@ -74,6 +85,10 @@ function coerce(parsed: any): ImageReading {
     location: str(parsed?.location, 120),
     price: Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : null,
     description: str(parsed?.description, 300),
+    person_name: str(parsed?.person_name, 120),
+    email: str(parsed?.email, 160),
+    company: str(parsed?.company, 120),
+    job_title: str(parsed?.job_title, 120),
   };
 }
 
