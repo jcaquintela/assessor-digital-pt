@@ -3,10 +3,106 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type Tab = "recentes" | "por_tratar" | "imoveis" | "pessoas" | "diversos" | "arquivados";
 
+// ---- Categorias personalizadas do Drive -------------------------------
+// Criadas pelo próprio consultor. A classificação automática (classification /
+// document_type) mantém-se sempre como sugestão inicial: a categoria manual é
+// um campo separado (custom_category_id) e nunca a substitui na base de dados.
+
+function cleanCategoryName(v: unknown): string {
+  const s = String(v ?? "").trim();
+  if (!s) throw new Error("O nome da categoria não pode ficar vazio.");
+  if (s.length > 40) throw new Error("Nome demasiado longo (máx. 40).");
+  return s;
+}
+
+export const listFileCategories = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await (supabase.from("file_categories") as any)
+      .select("id, name")
+      .eq("user_id", userId)
+      .order("name");
+    if (error) throw new Error(error.message);
+    return (data ?? []) as { id: string; name: string }[];
+  });
+
+export const createFileCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { name: string }) => ({ name: cleanCategoryName(data?.name) }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: row, error } = await (supabase.from("file_categories") as any)
+      .insert({ user_id: userId, name: data.name })
+      .select("id, name")
+      .single();
+    if (error) {
+      if (error.code === "23505") throw new Error("Já tens uma categoria com esse nome.");
+      throw new Error(error.message);
+    }
+    return row as { id: string; name: string };
+  });
+
+export const renameFileCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; name: string }) => ({
+    id: String(data?.id ?? ""),
+    name: cleanCategoryName(data?.name),
+  }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { error } = await (supabase.from("file_categories") as any)
+      .update({ name: data.name })
+      .eq("id", data.id)
+      .eq("user_id", userId);
+    if (error) {
+      if (error.code === "23505") throw new Error("Já tens uma categoria com esse nome.");
+      throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+// Apagar a categoria não apaga ficheiros: ficam sem categoria manual e voltam a
+// mostrar a classificação automática.
+export const deleteFileCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { error } = await (supabase.from("file_categories") as any)
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// Reclassificação manual de um ficheiro (categoryId=null volta ao automático).
+export const setFileCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { fileId: string; categoryId: string | null }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    if (data.categoryId) {
+      const { data: cat } = await (supabase.from("file_categories") as any)
+        .select("id")
+        .eq("id", data.categoryId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!cat) throw new Error("Categoria não encontrada.");
+    }
+    const { error } = await (supabase.from("uploaded_files") as any)
+      .update({ custom_category_id: data.categoryId })
+      .eq("id", data.fileId)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // Lista principal do Drive. Aplica filtro simples por tab.
 export const listDriveFiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { tab?: Tab; q?: string }) => data)
+  .inputValidator((data: { tab?: Tab; q?: string; categoryId?: string | null }) => data)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const tab = (data.tab ?? "recentes") as Tab;
@@ -14,7 +110,7 @@ export const listDriveFiles = createServerFn({ method: "POST" })
     let query = supabase
       .from("uploaded_files")
       .select(
-        "id, channel, original_file_name, mime_type, size_bytes, processing_status, classification, document_type, ai_summary, classification_confidence, requires_review, archived_at, deleted_at, created_at",
+        "id, channel, original_file_name, mime_type, size_bytes, processing_status, classification, document_type, ai_summary, classification_confidence, requires_review, archived_at, deleted_at, created_at, custom_category_id",
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
@@ -24,6 +120,10 @@ export const listDriveFiles = createServerFn({ method: "POST" })
       query = query.not("archived_at", "is", null).is("deleted_at", null);
     } else {
       query = query.is("archived_at", null).is("deleted_at", null);
+    }
+
+    if (data.categoryId) {
+      query = (query as any).eq("custom_category_id", data.categoryId);
     }
 
     if (tab === "por_tratar") {
