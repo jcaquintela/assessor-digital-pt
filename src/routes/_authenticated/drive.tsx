@@ -13,6 +13,7 @@ import {
 } from "@/lib/drive/drive.functions";
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
+import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import {
   FileText,
   Image as ImageIcon,
@@ -23,6 +24,7 @@ import {
   Search,
   Eye,
   Link2,
+  Tag,
 } from "lucide-react";
 
 type Tab = "recentes" | "por_tratar" | "imoveis" | "pessoas" | "diversos" | "arquivados";
@@ -100,6 +102,12 @@ function DrivePage() {
   const upload = useServerFn(uploadDriveFile);
   const signedUrl = useServerFn(getUploadedFileSignedUrl);
   const [fixTarget, setFixTarget] = useState<{ id: string; name: string | null } | null>(null);
+  const [catTarget, setCatTarget] = useState<
+    { id: string; name: string | null; auto: string | null; current: string | null } | null
+  >(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const { categories } = useFileCategories();
+  const catNameById = new Map(categories.map((c) => [c.id, c.name]));
 
   // "Ver": abre o documento original numa nova janela via URL assinada temporária.
   const abrirFicheiro = async (id: string) => {
@@ -115,8 +123,8 @@ function DrivePage() {
   };
 
   const listQ = useQuery({
-    queryKey: ["drive", "list", tab, qParam],
-    queryFn: () => fetchList({ data: { tab, q: qParam } }),
+    queryKey: ["drive", "list", tab, qParam, categoryId],
+    queryFn: () => fetchList({ data: { tab, q: qParam, categoryId } }),
   });
   const countsQ = useQuery({
     queryKey: ["drive", "counts"],
