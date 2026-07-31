@@ -931,7 +931,7 @@ async function saveMiscellaneous(
   return { reply: aiReply || "Fica registado." };
 }
 
-async function queryMisc(supabase: any, userId: string, text: string): Promise<string> {
+export async function queryMisc(supabase: any, userId: string, text: string): Promise<string> {
   const t = text.toLowerCase();
   const now = new Date();
   let sinceIso: string | null = null;

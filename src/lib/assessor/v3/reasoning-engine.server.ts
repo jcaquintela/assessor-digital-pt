@@ -25,6 +25,7 @@ import {
 import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from "../culture/short-answers";
 import {
   detectAgendaQuery,
+  detectMiscQuery,
   formatAgendaReply,
   BARE_CONFIRMATION_REPLY,
   hasValidPendingContext,
@@ -340,6 +341,24 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           latency_ms: Date.now() - t0, success: okBrief, error: okBrief ? null : "person_brief_failed",
           domain: "assessor", route: "v3-deterministic", fallback_used: !okBrief,
           tool_name: "person_brief", tool_success: okBrief,
+        } as never);
+      } catch { /* noop */ }
+      return { reply };
+    }
+
+    // (a0) Consulta explícita a Diversos → nunca é agenda.
+    if (detectMiscQuery(trimmed)) {
+      const t0 = Date.now();
+      const { queryMisc } = await import("../engine.server");
+      const reply = await queryMisc(supabase, userId, trimmed);
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "misc_query_fast_path", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: Date.now() - t0, success: true, error: null,
+          domain: "assessor", route: "v3-deterministic", fallback_used: false,
+          tool_name: "query_miscellaneous", tool_success: true,
         } as never);
       } catch { /* noop */ }
       return { reply };

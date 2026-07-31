@@ -41,3 +41,18 @@ describe("intenção: Diversos não é agenda", () => {
     expect(detectAgendaQuery("E amanhã?")).toBe("tomorrow");
   });
 });
+
+import { detectMiscQuery } from "./v3/deterministic.server";
+
+describe("fast-path de Diversos", () => {
+  it("apanha perguntas sobre Diversos", () => {
+    expect(detectMiscQuery("Diversos o que tenho?")).toBe(true);
+    expect(detectMiscQuery("mostra-me as notas")).toBe(true);
+    expect(detectMiscQuery("o que tenho em diversos hoje?")).toBe(true);
+  });
+  it("não apanha agenda nem registos novos", () => {
+    expect(detectMiscQuery("O que tenho hoje?")).toBe(false);
+    expect(detectMiscQuery("que reuniões tenho hoje?")).toBe(false);
+    expect(detectMiscQuery("nota: falar com o Paulo")).toBe(false);
+  });
+});

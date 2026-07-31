@@ -34,6 +34,20 @@ const WEEK_RE = /\b(esta\s+semana|na\s+semana|semana)\b/iu;
 // Referência explícita ao módulo Diversos/notas — nunca é consulta de agenda.
 const MISC_MODULE_RE = /\b(diversos|notas?|ideias?|apontamentos?)\b/i;
 
+// Pergunta explícita sobre o módulo Diversos ("Diversos o que tenho?",
+// "que notas tenho?"). Bug real: caía no ramo da agenda e respondia
+// "Hoje não tens nada agendado".
+const MISC_QUESTION_RE =
+  /\b(?:(?:o\s+)?que\s+(?:tenho|h[áa]|est[áa])|tenho|mostra(?:-me)?|lista(?:r|-me)?|ver)\b/i;
+
+export function detectMiscQuery(text: string): boolean {
+  const t = (text ?? "").trim();
+  if (!t) return false;
+  if (!MISC_MODULE_RE.test(t)) return false;
+  if (AGENDA_WORD_RE.test(t)) return false;
+  return MISC_QUESTION_RE.test(t) || /\?\s*$/.test(t);
+}
+
 export function detectAgendaQuery(text: string): AgendaPeriod | null {
   const t = (text ?? "").trim();
   if (!t) return null;
