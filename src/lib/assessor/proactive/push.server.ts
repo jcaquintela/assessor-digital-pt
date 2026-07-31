@@ -1,0 +1,221 @@
+// Notificações proativas: push da manhã (prioridades) e check-in da tarde
+// (resultado dos seguimentos). Canal: sempre o principal da conta
+// (WhatsApp > Telegram).
+//
+// Restrição Meta: fora da janela de 24h só passa template aprovado. Enquanto
+// `WHATSAPP_TEMPLATES_APPROVED` não estiver a "true", o envio fora da janela
+// é saltado — dentro da janela funciona sempre (é assim que testamos).
+
+import { computePriorities, findAwaitingOutcome } from "@/lib/assessor/supreme/priorities.server";
+import { buildOutcomeCheckinPrompt } from "@/lib/assessor/interactive";
+import { sanitizeReply } from "@/lib/assessor/culture/sanitize";
+import { morningTemplatePayload } from "./templates";
+
+export function templatesApproved(): boolean {
+  return String(process.env.WHATSAPP_TEMPLATES_APPROVED ?? "").toLowerCase() === "true";
+}
+
+function lisbonParts(now: Date) {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Lisbon",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(now);
+  const m: Record<string, string> = {};
+  for (const x of p) m[x.type] = x.value;
+  return { date: `${m.year}-${m.month}-${m.day}`, hour: Number(m.hour ?? "0") };
+}
+
+function hourOf(time: string | null | undefined, fallback: number): number {
+  const n = Number(String(time ?? "").slice(0, 2));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Última mensagem do consultor há menos de 24h nesse canal. */
+export async function isWithin24hWindow(
+  supabase: any,
+  userId: string,
+  channel: "whatsapp" | "telegram",
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("assessor_messages")
+    .select("created_at")
+    .eq("user_id", userId)
+    .eq("role", "user")
+    .eq("channel", channel)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const at = (data as any)?.created_at ? new Date((data as any).created_at) : null;
+  if (!at) return false;
+  return Date.now() - at.getTime() < 24 * 3600_000;
+}
+
+async function alreadySentToday(
+  supabase: any,
+  userId: string,
+  messageType: string,
+  relatedId?: string,
+): Promise<boolean> {
+  const since = new Date(Date.now() - 20 * 3600_000).toISOString();
+  let q = supabase
+    .from("assessor_messages")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("message_type", messageType)
+    .gte("created_at", since)
+    .limit(1);
+  if (relatedId) q = q.eq("related_resource_id", relatedId);
+  const { data } = await q;
+  return Boolean(((data as any[]) ?? []).length);
+}
+
+async function logOutbound(
+  supabase: any,
+  userId: string,
+  channel: string,
+  content: string,
+  messageType: string,
+  related?: { type: string; id: string },
+) {
+  await supabase.from("assessor_messages").insert({
+    user_id: userId,
+    role: "assistant",
+    content,
+    channel,
+    message_type: messageType,
+    status: "sent",
+    ...(related ? { related_resource_type: related.type, related_resource_id: related.id } : {}),
+  } as never);
+}
+
+export interface PushUser {
+  user_id: string;
+  morning_time: string | null;
+  evening_checkin_time: string | null;
+  morning_briefing_enabled: boolean;
+  evening_checkin_enabled: boolean;
+}
+
+export async function listPushUsers(supabase: any): Promise<PushUser[]> {
+  const { data } = await supabase
+    .from("consultant_preferences")
+    .select("user_id, morning_time, evening_checkin_time, morning_briefing_enabled, evening_checkin_enabled")
+    .eq("proactive_push_enabled", true);
+  return ((data as any[]) ?? []) as PushUser[];
+}
+
+function formatPriorities(name: string, items: Array<{ action: string; entity_label: string | null }>): string {
+  const lines = items.map((it) => `- ${it.action}${it.entity_label ? ` — ${it.entity_label}` : ""}`);
+  return sanitizeReply(`Bom dia${name ? `, ${name}` : ""}. Hoje o que interessa é isto:\n${lines.join("\n")}`);
+}
+
+/** Push da manhã para um consultor. Devolve o que aconteceu (para logs/testes). */
+export async function sendMorningPush(
+  supabase: any,
+  userId: string,
+  opts: { force?: boolean } = {},
+): Promise<{ sent: boolean; reason?: string }> {
+  if (!opts.force && (await alreadySentToday(supabase, userId, "proactive_morning"))) {
+    return { sent: false, reason: "already_sent" };
+  }
+  const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
+  const target = await resolveOutboundTarget(supabase, userId);
+  if (!target) return { sent: false, reason: "no_channel" };
+
+  const priorities = await computePriorities(supabase, userId, { limit: 5 });
+  if (!priorities.length) return { sent: false, reason: "no_priorities" };
+
+  const { data: prof } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
+  const text = formatPriorities(((prof as any)?.name ?? "").split(" ")[0] ?? "", priorities);
+
+  const inWindow = await isWithin24hWindow(supabase, userId, target.channel);
+  if (target.channel === "whatsapp" && !inWindow) {
+    if (!templatesApproved()) return { sent: false, reason: "template_pending" };
+    const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
+    const lines = priorities.map((p) => `${p.action}${p.entity_label ? ` — ${p.entity_label}` : ""}`).join("; ");
+    const r = await sendWhatsAppPayload(
+      target.externalId,
+      morningTemplatePayload(((prof as any)?.name ?? "").split(" ")[0] || "Olá", lines),
+      { kind: "auto" },
+    );
+    if (!r.ok) return { sent: false, reason: "send_failed" };
+    await logOutbound(supabase, userId, target.channel, text, "proactive_morning");
+    return { sent: true };
+  }
+
+  const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+  const r = await sendReplyForChannel(target.channel, target.externalId, text);
+  if (!r.ok) return { sent: false, reason: "send_failed" };
+  await logOutbound(supabase, userId, target.channel, text, "proactive_morning");
+  return { sent: true };
+}
+
+/** Check-in da tarde: botões de resultado para cada item pendente. */
+export async function sendEveningCheckin(
+  supabase: any,
+  userId: string,
+  opts: { maxItems?: number; force?: boolean } = {},
+): Promise<{ sent: number; skipped: number; reason?: string }> {
+  const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
+  const target = await resolveOutboundTarget(supabase, userId);
+  if (!target) return { sent: 0, skipped: 0, reason: "no_channel" };
+
+  const inWindow = await isWithin24hWindow(supabase, userId, target.channel);
+  if (target.channel === "whatsapp" && !inWindow && !templatesApproved()) {
+    return { sent: 0, skipped: 0, reason: "template_pending" };
+  }
+
+  const items = (await findAwaitingOutcome(supabase, userId)).slice(0, opts.maxItems ?? 3);
+  if (!items.length) return { sent: 0, skipped: 0, reason: "nothing_awaiting" };
+
+  let sent = 0, skipped = 0;
+  for (const item of items) {
+    if (!opts.force && (await alreadySentToday(supabase, userId, "outcome_checkin", item.id))) {
+      skipped++;
+      continue;
+    }
+    const prompt = buildOutcomeCheckinPrompt(item);
+    let ok = false;
+    if (target.channel === "whatsapp") {
+      const { sendWhatsAppInteractive } = await import("@/lib/whatsapp/interactive.server");
+      ok = (await sendWhatsAppInteractive(target.externalId, prompt, { kind: "auto" })).ok;
+    } else {
+      const { getTelegramProvider } = await import("@/lib/telegram/provider.server");
+      const r = await getTelegramProvider().sendOptions({
+        chatId: target.externalId,
+        text: prompt.body,
+        options: prompt.options.map((o) => ({ label: o.label, callbackData: o.id })),
+      });
+      ok = r.ok;
+    }
+    if (!ok) { skipped++; continue; }
+    await logOutbound(supabase, userId, target.channel, prompt.body, "outcome_checkin", {
+      type: "follow_up", id: item.id,
+    });
+    sent++;
+  }
+  return { sent, skipped };
+}
+
+/** Corrida horária: decide quem recebe o quê nesta hora (Europe/Lisbon). */
+export async function runProactivePushTick(
+  supabase: any,
+  opts: { now?: Date } = {},
+): Promise<{ morning: number; checkins: number; users: number }> {
+  const now = opts.now ?? new Date();
+  const { hour } = lisbonParts(now);
+  const users = await listPushUsers(supabase);
+  let morning = 0, checkins = 0;
+  for (const u of users) {
+    if (u.morning_briefing_enabled !== false && hour === hourOf(u.morning_time, 8)) {
+      const r = await sendMorningPush(supabase, u.user_id);
+      if (r.sent) morning++;
+    }
+    if (u.evening_checkin_enabled !== false && hour === hourOf(u.evening_checkin_time, 18)) {
+      const r = await sendEveningCheckin(supabase, u.user_id);
+      checkins += r.sent;
+    }
+  }
+  return { morning, checkins, users: users.length };
+}
