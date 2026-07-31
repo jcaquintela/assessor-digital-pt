@@ -355,15 +355,10 @@ export async function sendReminderNow(
   const row = (locked as ReminderRow | null) ?? null;
   if (!row) return { ok: false, error: "reminder_not_available" };
 
-  // Descobre telefone do consultor.
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("phone, whatsapp_link_status")
-    .eq("id", input.userId)
-    .maybeSingle();
-  const phone = (prof as any)?.phone;
-  const linked = (prof as any)?.whatsapp_link_status === "linked";
-  if (!phone || !linked) {
+  // Canal de saída: sempre o principal (WhatsApp quando ligado).
+  const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
+  const target = await resolveOutboundTarget(supabase, input.userId);
+  if (!target) {
     await supabase.from("reminders").update({
       status: "failed", failed_at: new Date().toISOString(),
       last_error: "user_not_linked", retry_count: row.retry_count + 1,
