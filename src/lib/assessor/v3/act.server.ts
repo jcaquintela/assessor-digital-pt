@@ -3,6 +3,7 @@
 import { TOOL_REGISTRY, type DomainContext, type DomainResult } from "../v2/domain.server";
 import { ZOD_BY_TOOL, CreateProspectingLeadArgs } from "../v2/tools";
 import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
+import { cleanTitle } from "../titles";
 import type { DecisionToolCall, MemoryWrite } from "./types";
 
 // O modelo escreve por vezes o estado em português ("por contactar") onde o
@@ -57,6 +58,14 @@ function normalizeRelationshipType(value: unknown): string {
 
 function normalizeToolArgs(name: string, args: unknown): unknown {
   if (!args || typeof args !== "object") return args;
+  // O modelo escreve por vezes a string "null" (ou "sem título") no campo
+  // título. Isso passava o `min(1)` do Zod e chegava à BD como texto.
+  if (name === "create_follow_up" || name === "create_event" || name === "create_reminder") {
+    const a = { ...(args as Record<string, unknown>) };
+    const fallback = name === "create_event" ? "Compromisso" : "Lembrete";
+    a.title = cleanTitle(a.title) ?? fallback;
+    return a;
+  }
   if (name === "create_person") {
     const a = { ...(args as Record<string, unknown>) };
     a.relationship_type = normalizeRelationshipType(a.relationship_type);
