@@ -1359,6 +1359,30 @@ export type Database = {
         }
         Relationships: []
       }
+      file_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       file_links: {
         Row: {
           confidence: number | null
@@ -2638,6 +2662,7 @@ export type Database = {
           classification_confidence: number | null
           created_at: string
           custom_category: string | null
+          custom_category_id: string | null
           deleted_at: string | null
           document_type: string | null
           error_code: string | null
@@ -2671,6 +2696,7 @@ export type Database = {
           classification_confidence?: number | null
           created_at?: string
           custom_category?: string | null
+          custom_category_id?: string | null
           deleted_at?: string | null
           document_type?: string | null
           error_code?: string | null
@@ -2704,6 +2730,7 @@ export type Database = {
           classification_confidence?: number | null
           created_at?: string
           custom_category?: string | null
+          custom_category_id?: string | null
           deleted_at?: string | null
           document_type?: string | null
           error_code?: string | null
@@ -2729,6 +2756,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "uploaded_files_custom_category_id_fkey"
+            columns: ["custom_category_id"]
+            isOneToOne: false
+            referencedRelation: "file_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "uploaded_files_related_pending_action_id_fkey"
             columns: ["related_pending_action_id"]
