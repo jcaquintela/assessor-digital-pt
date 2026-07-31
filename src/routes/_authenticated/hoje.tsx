@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   AlertTriangle, CalendarClock, CheckCircle2, Clock, MessageSquare, Sparkles,
-  FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote,
+  FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote, Trash2,
 } from "lucide-react";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -58,7 +58,7 @@ type Priority = {
 type Awaiting = { id: string; title: string; due_at: string; entity_label: string | null };
 
 function HojePage() {
-  const { seguimentos, oportunidades, pessoas, imoveis, concluirSeguimento, reagendarSeguimento } = useStore();
+  const { seguimentos, oportunidades, pessoas, imoveis, concluirSeguimento, reagendarSeguimento, eliminarSeguimento } = useStore();
   void oportunidades; void imoveis;
   const { name: assessorName } = useAssessorName();
   const now = new Date();
@@ -231,6 +231,19 @@ function HojePage() {
       .catch((e) => toast.error(e.message));
   };
 
+  // Eliminar é sempre acção do dashboard — nunca do chat.
+  const deletePriority = async (p: Priority) => {
+    if (p.subject_type !== "follow_up") return;
+    if (!window.confirm(`Eliminar “${p.action}”? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await eliminarSeguimento(p.subject_id);
+      qc.invalidateQueries({ queryKey: ["supreme", "hoje"] });
+      toast.success("Eliminado.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
   const compromissosCount = eventosHoje.length;
   const prioridadesCount = priorities.length;
 
@@ -311,6 +324,11 @@ function HojePage() {
                     <Link className="c-btn-ghost ml-auto" to="/assessor">
                       <MessageSquare className="h-3.5 w-3.5" /> Falar
                     </Link>
+                    {p.subject_type === "follow_up" && (
+                      <button type="button" className="c-btn-ghost" onClick={() => deletePriority(p)}>
+                        <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
