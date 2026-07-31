@@ -50,12 +50,28 @@ export const createFileCategory = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const insert: any = { user_id: userId, name: data.name };
     if (data.color) insert.color = data.color;
+
+    // Idempotente: se já existir uma categoria com o mesmo nome, devolve-a.
+    const { data: existing } = await (supabase.from("file_categories") as any)
+      .select("id, name, color")
+      .eq("user_id", userId)
+      .ilike("name", data.name)
+      .maybeSingle();
+    if (existing) return existing as { id: string; name: string; color: string | null };
+
     const { data: row, error } = await (supabase.from("file_categories") as any)
       .insert(insert)
       .select("id, name, color")
       .single();
     if (error) {
-      if (error.code === "23505") throw new Error("Já tens uma categoria com esse nome.");
+      if (error.code === "23505") {
+        const { data: dup } = await (supabase.from("file_categories") as any)
+          .select("id, name, color")
+          .eq("user_id", userId)
+          .ilike("name", data.name)
+          .maybeSingle();
+        if (dup) return dup as { id: string; name: string; color: string | null };
+      }
       throw new Error(error.message);
     }
     return row as { id: string; name: string; color: string | null };
