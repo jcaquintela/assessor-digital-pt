@@ -13,6 +13,8 @@ describe("escrita no painel (canal dashboard)", () => {
     const userId = (prof as any).id as string;
     const inbound = buildDashboardInbound({ userId, text: "placa em Lisboa, 912345678", messageId: `dash_test_${Date.now()}` });
     await runInboundPipeline(dashboardAdapter, admin as any, inbound);
+    await runInboundPipeline(dashboardAdapter, admin as any,
+      buildDashboardInbound({ userId, text: "sim", messageId: `dash_test_${Date.now()}_2` }));
 
     const { data: msgs } = await admin
       .from("assessor_messages").select("role, content, channel, message_type, created_at")
