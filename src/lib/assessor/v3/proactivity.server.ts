@@ -227,10 +227,11 @@ export async function dispatchPendingNudges(
   // Só envia a consultores com canal ligado e v3 activa. O canal é sempre o
   // principal (WhatsApp quando existe), nunca o da última mensagem recebida.
   const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
-  const [, { data: v3Users }] = await Promise.all([
-    Promise.resolve(null),
-    supabase.from("feature_flag_users").select("user_id").eq("flag_key", "assessor.engine.v3").in("user_id", userIds),
-  ]);
+  const { data: v3Users } = await supabase
+    .from("feature_flag_users")
+    .select("user_id")
+    .eq("flag_key", "assessor.engine.v3")
+    .in("user_id", userIds);
   const v3Set = new Set(((v3Users as any[]) ?? []).map((u) => u.user_id));
 
   let sent = 0, skipped = 0;
