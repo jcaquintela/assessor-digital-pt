@@ -52,6 +52,9 @@ export const NATURAL_FALLBACKS = {
 export function sanitizeReply(reply?: string | null): string {
   if (!reply) return "";
   let out = String(reply).replace(TECH_PREFIX_RE, "").trim();
+  // "tens um null" → "tens um lembrete". Apagar o token deixaria a frase
+  // truncada ("tens um."); aqui damos-lhe um nome genérico legível.
+  out = out.replace(/\b(um|uma|o|a|este|esta|esse|essa)\s+(null|undefined)\b/gi, "$1 lembrete");
   for (const re of FORBIDDEN_TOKENS) out = out.replace(re, "").trim();
   // Colapsar duplos espaços e pontuação pendurada.
   out = out.replace(/\s{2,}/g, " ").replace(/\s+([,.?!;:])/g, "$1").trim();
