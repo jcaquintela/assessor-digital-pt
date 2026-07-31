@@ -307,7 +307,7 @@ export const getDriveFile = createServerFn({ method: "POST" })
         const map: Record<string, [string, string]> = {
           person: ["people", "name"],
           property: ["properties", "title"],
-          opportunity: ["opportunities", "type"],
+          opportunity: ["opportunities", "title"],
           follow_up: ["follow_ups", "title"],
           miscellaneous: ["miscellaneous_items", "title"],
           prospecting_lead: ["prospecting_leads", "title"],
@@ -512,12 +512,21 @@ export const setFileLink = createServerFn({ method: "POST" })
     );
     if (error) throw new Error(error.message);
 
-    // Manter o atalho legado coerente com a correção feita à mão.
-    await (supabase as any)
+    // Atalho legado: só preenche se estiver vazio ou se substituímos a ligação
+    // antiga. Adicionar uma ligação extra nunca "rouba" a principal.
+    const { data: current } = await (supabase as any)
       .from("uploaded_files")
-      .update({ related_resource_type: data.entityType, related_resource_id: data.entityId })
+      .select("related_resource_id")
       .eq("id", data.fileId)
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (data.replaceLinkId || !current?.related_resource_id) {
+      await (supabase as any)
+        .from("uploaded_files")
+        .update({ related_resource_type: data.entityType, related_resource_id: data.entityId })
+        .eq("id", data.fileId)
+        .eq("user_id", userId);
+    }
 
     return { ok: true };
   });
