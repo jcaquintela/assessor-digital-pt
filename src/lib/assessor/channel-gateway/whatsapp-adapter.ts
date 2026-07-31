@@ -37,6 +37,12 @@ const REPLY_LINK_TIER =
   "Este código já não é válido: o teu plano actual não inclui WhatsApp. Podes continuar a usar o Assessor pelo Telegram.";
 const REPLY_LINK_INVALID =
   "Não consegui validar este código. Confirma o código no dashboard e tenta novamente.";
+const REPLY_PROMO_WELCOME = (tierLabel: string) =>
+  `Bem-vindo! Sou o Afonso, o teu assessor digital.\n\n` +
+  `O teu código ficou activo no plano ${tierLabel}. A partir de agora é só falares comigo por aqui, em linguagem normal: pessoas, imóveis, visitas, seguimentos — eu guardo e lembro-te.\n\n` +
+  `Para abrires o painel no computador, escreve *entrar* e envio-te um link.`;
+const REPLY_PROMO_TIER_NO_WHATSAPP =
+  "Esse código dá um plano que ainda não inclui WhatsApp. Fala comigo pelo Telegram e eu trato de tudo por lá.";
 
 function classifyType(type: string | undefined): NormalizedMessageType {
   switch (type) {
@@ -221,6 +227,44 @@ export const whatsappAdapter: ChannelAdapter = {
     return { handled: true };
   },
 
+  // Número novo + código promocional = conta criada já no plano do código.
+  // É o caminho dos convites externos (não passa pelo dashboard).
+  async onboardIfMissingUser(supabaseAdmin: any, inbound: NormalizedInbound) {
+    const text = (inbound.text ?? "").trim();
+    if (inbound.messageType !== "text" || !text) return { handled: false };
+
+    const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY } = await import(
+      "@/lib/admin/promo.server"
+    );
+    if (!looksLikePromoCode(text)) return { handled: false };
+
+    const phone = inbound.externalConversationId;
+    const promo = await redeemPromoCode(supabaseAdmin, text);
+    if (!promo.ok) {
+      if (promo.reason === "not_found") return { handled: false };
+      await sendAndStoreWhatsAppAssistant(supabaseAdmin, phone, null, PROMO_REPLY[promo.reason]);
+      return { handled: true };
+    }
+    if (!canUseWhatsApp(promo.tier)) {
+      await sendAndStoreWhatsAppAssistant(supabaseAdmin, phone, null, REPLY_PROMO_TIER_NO_WHATSAPP);
+      return { handled: true };
+    }
+
+    const created = await createWhatsAppAccount(supabaseAdmin, phone, promo.tier);
+    if (!created.ok) {
+      await sendAndStoreWhatsAppAssistant(supabaseAdmin, phone, null, REPLY_ENGINE_ERROR);
+      return { handled: true };
+    }
+    const { TIER_DISPLAY_NAME } = await import("@/lib/subscription/tiers");
+    await sendAndStoreWhatsAppAssistant(
+      supabaseAdmin,
+      phone,
+      created.userId,
+      REPLY_PROMO_WELCOME(TIER_DISPLAY_NAME[normalizeTier(promo.tier)]),
+    );
+    return { handled: true, userId: created.userId, stopPipeline: true };
+  },
+
   async fetchMedia(inbound: NormalizedInbound): Promise<AdapterMediaBytes> {
     if (!inbound.media?.externalFileId) return { ok: false, error: "no_media" };
     try {
@@ -267,6 +311,47 @@ async function bumpAttempts(supabaseAdmin: any, id: string, current: number) {
   const patch: Record<string, unknown> = { attempts: next };
   if (next >= WHATSAPP_CODE_MAX_ATTEMPTS) patch.used_at = new Date().toISOString();
   await supabaseAdmin.from("whatsapp_link_codes").update(patch as never).eq("id", id);
+}
+
+// Conta nova criada a partir do WhatsApp (código promocional). O email é
+// sintético e não entregável: a entrada no painel faz-se pelo link mágico.
+async function createWhatsAppAccount(
+  supabaseAdmin: any,
+  phone: string,
+  tier: string,
+): Promise<{ ok: true; userId: string } | { ok: false }> {
+  const email = `wa-${phone.replace(/\D/g, "")}@shadow.assessor.local`;
+  const nowIso = new Date().toISOString();
+  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { source: "whatsapp_promo", phone, name: `WhatsApp ${phone}` },
+  });
+  const userId = created?.user?.id as string | undefined;
+  if (error || !userId) {
+    console.error("[whatsapp-adapter] createUser:", error);
+    return { ok: false };
+  }
+  await supabaseAdmin
+    .from("profiles")
+    .update({
+      subscription_tier: normalizeTier(tier),
+      phone,
+      whatsapp_link_status: "linked",
+      whatsapp_linked_at: nowIso,
+      phone_verified_at: nowIso,
+      primary_channel: "whatsapp",
+    } as never)
+    .eq("id", userId);
+  await supabaseAdmin
+    .from("consultant_preferences")
+    .upsert(
+      { user_id: userId, autonomy_level: "conservative", primary_channel: "whatsapp" },
+      { onConflict: "user_id" },
+    );
+  const { linkChannelToUser } = await import("@/lib/assessor/channels.server");
+  await linkChannelToUser(supabaseAdmin, "whatsapp", phone, userId);
+  return { ok: true, userId };
 }
 
 // Tier efectivo lido directamente do perfil (mesma regra de public.effective_tier):
