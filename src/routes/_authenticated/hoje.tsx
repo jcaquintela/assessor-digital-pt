@@ -336,7 +336,14 @@ function HojePage() {
                     {p.subject_type === "opportunity" ? (
                       <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir</Link>
                     ) : (
-                      <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir</button>
+                      <>
+                        <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir</button>
+                        {p.deal_id ? (
+                          <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.deal_id }}>
+                            Abrir negócio
+                          </Link>
+                        ) : null}
+                      </>
                     )}
                     <Link className="c-btn-ghost ml-auto" to="/assessor">
                       <MessageSquare className="h-3.5 w-3.5" /> Falar
