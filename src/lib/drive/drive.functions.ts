@@ -33,27 +33,32 @@ export const listFileCategories = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { data, error } = await (supabase.from("file_categories") as any)
-      .select("id, name")
+      .select("id, name, color")
       .eq("user_id", userId)
       .order("name");
     if (error) throw new Error(error.message);
-    return (data ?? []) as { id: string; name: string }[];
+    return (data ?? []) as { id: string; name: string; color: string | null }[];
   });
 
 export const createFileCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { name: string }) => ({ name: cleanCategoryName(data?.name) }))
+  .inputValidator((data: { name: string; color?: string | null }) => ({
+    name: cleanCategoryName(data?.name),
+    color: cleanCategoryColor(data?.color),
+  }))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const insert: any = { user_id: userId, name: data.name };
+    if (data.color) insert.color = data.color;
     const { data: row, error } = await (supabase.from("file_categories") as any)
-      .insert({ user_id: userId, name: data.name })
-      .select("id, name")
+      .insert(insert)
+      .select("id, name, color")
       .single();
     if (error) {
       if (error.code === "23505") throw new Error("Já tens uma categoria com esse nome.");
       throw new Error(error.message);
     }
-    return row as { id: string; name: string };
+    return row as { id: string; name: string; color: string | null };
   });
 
 export const renameFileCategory = createServerFn({ method: "POST" })
