@@ -227,6 +227,44 @@ export const whatsappAdapter: ChannelAdapter = {
     return { handled: true };
   },
 
+  // Número novo + código promocional = conta criada já no plano do código.
+  // É o caminho dos convites externos (não passa pelo dashboard).
+  async onboardIfMissingUser(supabaseAdmin: any, inbound: NormalizedInbound) {
+    const text = (inbound.text ?? "").trim();
+    if (inbound.messageType !== "text" || !text) return { handled: false };
+
+    const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY } = await import(
+      "@/lib/admin/promo.server"
+    );
+    if (!looksLikePromoCode(text)) return { handled: false };
+
+    const phone = inbound.externalConversationId;
+    const promo = await redeemPromoCode(supabaseAdmin, text);
+    if (!promo.ok) {
+      if (promo.reason === "not_found") return { handled: false };
+      await sendAndStoreWhatsAppAssistant(supabaseAdmin, phone, null, PROMO_REPLY[promo.reason]);
+      return { handled: true };
+    }
+    if (!canUseWhatsApp(promo.tier)) {
+      await sendAndStoreWhatsAppAssistant(supabaseAdmin, phone, null, REPLY_PROMO_TIER_NO_WHATSAPP);
+      return { handled: true };
+    }
+
+    const created = await createWhatsAppAccount(supabaseAdmin, phone, promo.tier);
+    if (!created.ok) {
+      await sendAndStoreWhatsAppAssistant(supabaseAdmin, phone, null, REPLY_ENGINE_ERROR);
+      return { handled: true };
+    }
+    const { TIER_DISPLAY_NAME } = await import("@/lib/subscription/tiers");
+    await sendAndStoreWhatsAppAssistant(
+      supabaseAdmin,
+      phone,
+      created.userId,
+      REPLY_PROMO_WELCOME(TIER_DISPLAY_NAME[normalizeTier(promo.tier)]),
+    );
+    return { handled: true, userId: created.userId, stopPipeline: true };
+  },
+
   async fetchMedia(inbound: NormalizedInbound): Promise<AdapterMediaBytes> {
     if (!inbound.media?.externalFileId) return { ok: false, error: "no_media" };
     try {
