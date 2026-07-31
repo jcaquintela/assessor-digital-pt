@@ -32,6 +32,13 @@ import {
 } from "./deterministic.server";
 import { applySafetyNet, buildArchiveContent } from "./safety-net.server";
 import { formatQueryResults, isQueryTool } from "./query-results";
+import {
+  detectPersonBriefQuery,
+  formatPersonBrief,
+  personNotFoundReply,
+  ambiguousPersonReply,
+} from "./person-brief";
+import { buildPersonBrief } from "./person-brief.server";
 
 const HISTORY_LIMIT = 6;
 
