@@ -62,9 +62,13 @@ function BetaPage() {
   const [days, setDays] = useState(14);
   const [batchOpen, setBatchOpen] = useState(false);
   const [raw, setRaw] = useState("");
+  const [template, setTemplate] = useState(
+    "Olá {nome}! 👋\n\nTens acesso ao Afonso — o teu Assessor pessoal — durante {dias} dias no plano {plano}.\n\nEnvia este código por WhatsApp ou Telegram ao Afonso para começares:\n\n{codigo}\n\nFica à vontade para responder com dúvidas.",
+  );
   const [generated, setGenerated] = useState<BetaInviteResult[] | null>(null);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "beta-testers"] });
+
   const run = (label: string, p: Promise<unknown>) =>
     p
       .then(() => {
@@ -104,16 +108,23 @@ function BetaPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const fillTemplate = (g: BetaInviteResult) =>
+    template
+      .replace(/{\s*nome\s*}/g, g.name)
+      .replace(/{\s*codigo\s*}/g, g.code)
+      .replace(/{\s*dias\s*}/g, String(g.days))
+      .replace(/{\s*plano\s*}/g, TIER_DISPLAY_NAME[g.tier as SubscriptionTier] ?? g.tier);
+
+  const copyMessage = (g: BetaInviteResult) => {
+    navigator.clipboard.writeText(fillTemplate(g)).then(() => toast.success(`Mensagem para ${g.name} copiada.`));
+  };
+
   const copyAll = () => {
     if (!generated) return;
-    const txt = generated
-      .map(
-        (g) =>
-          `${g.name}${g.whatsapp ? ` (${g.whatsapp})` : ""} — ${TIER_DISPLAY_NAME[g.tier as SubscriptionTier]}, ${g.days} dias — código: ${g.code}`,
-      )
-      .join("\n");
-    navigator.clipboard.writeText(txt).then(() => toast.success("Copiado."));
+    const txt = generated.map((g) => fillTemplate(g)).join("\n\n---\n\n");
+    navigator.clipboard.writeText(txt).then(() => toast.success("Todas as mensagens copiadas."));
   };
+
 
   return (
     <div>
@@ -291,34 +302,56 @@ function BetaPage() {
           </DialogHeader>
 
           {generated ? (
-            <div className="space-y-2 text-sm">
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1 text-sm">
               {generated.map((g) => (
-                <div key={g.code} className="rounded-md border p-2">
-                  <strong>{g.name}</strong>{" "}
-                  <span className="mini">
-                    {g.whatsapp ?? "sem WhatsApp"} · {TIER_DISPLAY_NAME[g.tier as SubscriptionTier]} · {g.days} dias
-                  </span>
-                  <div className="font-mono text-base">{g.code}</div>
+                <div key={g.code} className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div>
+                      <strong>{g.name}</strong>{" "}
+                      <span className="mini">
+                        {g.whatsapp ?? "sem WhatsApp"} · {TIER_DISPLAY_NAME[g.tier as SubscriptionTier]} · {g.days}{" "}
+                        dias
+                      </span>
+                    </div>
+                    <button type="button" className="admin-btn text-xs" onClick={() => copyMessage(g)}>
+                      Copiar mensagem
+                    </button>
+                  </div>
+                  <pre className="whitespace-pre-wrap rounded bg-black/5 p-2 font-mono text-[12px] leading-relaxed">
+                    {fillTemplate(g)}
+                  </pre>
                 </div>
               ))}
               <p className="mini">
-                Envia a cada pessoa: “envia este código por WhatsApp ao Afonso”. É essa mensagem que cria a conta.
+                O código cria a conta quando a pessoa o envia por WhatsApp ou Telegram ao Afonso.
               </p>
             </div>
           ) : (
-            <textarea
-              className="admin-input min-h-40 w-full font-mono text-xs"
-              placeholder={"Ana Silva, +351912345678, ana@exemplo.pt, pro, 14\nJoão Costa, +351913333444, , pro, 14"}
-              value={raw}
-              onChange={(e) => setRaw(e.target.value)}
-            />
+            <div className="space-y-3">
+              <textarea
+                className="admin-input min-h-32 w-full font-mono text-xs"
+                placeholder={"Ana Silva, +351912345678, ana@exemplo.pt, pro, 14\nJoão Costa, +351913333444, , pro, 14"}
+                value={raw}
+                onChange={(e) => setRaw(e.target.value)}
+              />
+              <label className="text-sm">
+                Modelo da mensagem de convite
+                <textarea
+                  className="admin-input mt-1 min-h-32 w-full text-xs"
+                  value={template}
+                  onChange={(e) => setTemplate(e.target.value)}
+                  placeholder="Usa {nome}, {codigo}, {dias} e {plano}."
+                />
+              </label>
+              <p className="mini">Variáveis disponíveis: {"{nome}"}, {"{codigo}"}, {"{dias}"}, {"{plano}"}.</p>
+            </div>
           )}
 
           <DialogFooter>
             {generated ? (
               <>
                 <button type="button" className="admin-btn" onClick={copyAll}>
-                  Copiar lista
+                  Copiar todas
                 </button>
                 <button type="button" className="admin-btn-primary" onClick={() => setBatchOpen(false)}>
                   Fechar
@@ -342,6 +375,7 @@ function BetaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
