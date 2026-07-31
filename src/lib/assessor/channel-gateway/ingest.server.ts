@@ -351,10 +351,39 @@ async function handleInboundMedia(
               .update({
                 extracted_text: reading.visible_text,
                 extracted_metadata: reading as unknown as Record<string, unknown>,
-                classification: reading.is_sign ? "prospecao" : "imagem",
+                classification: reading.is_sign
+                  ? "prospecao"
+                  : reading.is_business_card
+                    ? "cartao_visita"
+                    : "imagem",
               })
               .eq("id", result.fileId);
           }
+
+          // Cartão de visita → proposta de contacto (com botões), antes de
+          // qualquer leitura genérica.
+          const { extractBusinessCard, proposeBusinessCardContact } = await import(
+            "@/lib/assessor/business-card.server"
+          );
+          const card = extractBusinessCard(reading);
+          if (card) {
+            const question = await proposeBusinessCardContact({
+              supabase: supabaseAdmin,
+              userId,
+              channel: adapter.channel,
+              card,
+              fileId: result.fileId,
+              sourceMessageId: persistedUuid,
+            });
+            await deliverReply(adapter, supabaseAdmin, {
+              userId,
+              externalConversationId: inbound.externalConversationId,
+              outcome: { reply: question },
+              replyTo: inbound.replyToMessageId ?? null,
+            });
+            return;
+          }
+
           const engineText = readingToEngineText(reading, inbound.media?.caption ?? inbound.text);
           if (engineText) {
             // A pergunta "A que se refere?" deixa de fazer sentido: já sabemos.
