@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { LinkableType } from "./link-match";
 
 type Tab = "recentes" | "por_tratar" | "imoveis" | "pessoas" | "diversos" | "arquivados";
 
@@ -191,6 +192,40 @@ export const listDriveFiles = createServerFn({ method: "POST" })
       links = linkRows ?? [];
     }
 
+    // Nomes das entidades ligadas — a lista mostra TODAS as ligações,
+    // não só o tipo.
+    if (links.length) {
+      const byType: Record<string, string[]> = {};
+      for (const l of links) (byType[l.entity_type] ??= []).push(l.entity_id);
+      const TABLES: Record<string, [string, string]> = {
+        person: ["people", "name"],
+        property: ["properties", "title"],
+        opportunity: ["opportunities", "title"],
+        follow_up: ["follow_ups", "title"],
+        miscellaneous: ["miscellaneous_items", "title"],
+        prospecting_lead: ["prospecting_leads", "title"],
+      };
+      const names = new Map<string, string>();
+      await Promise.all(
+        Object.entries(byType).map(async ([type, entityIds]) => {
+          const t = TABLES[type];
+          if (!t) return;
+          const { data: rows } = await (supabase as any)
+            .from(t[0])
+            .select(`id, ${t[1]}`)
+            .eq("user_id", userId)
+            .in("id", [...new Set(entityIds)]);
+          for (const r of ((rows ?? []) as any[])) {
+            if (r?.[t[1]]) names.set(`${type}:${r.id}`, String(r[t[1]]));
+          }
+        }),
+      );
+      links = links.map((l) => ({
+        ...l,
+        entity_name: names.get(`${l.entity_type}:${l.entity_id}`) ?? null,
+      }));
+    }
+
     // Filtros por tipo de entidade (tab)
     let filtered = files ?? [];
     if (tab === "imoveis") {
@@ -272,7 +307,7 @@ export const getDriveFile = createServerFn({ method: "POST" })
         const map: Record<string, [string, string]> = {
           person: ["people", "name"],
           property: ["properties", "title"],
-          opportunity: ["opportunities", "type"],
+          opportunity: ["opportunities", "title"],
           follow_up: ["follow_ups", "title"],
           miscellaneous: ["miscellaneous_items", "title"],
           prospecting_lead: ["prospecting_leads", "title"],
@@ -373,6 +408,28 @@ export const removeFileLink = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Documentos de uma ficha (Pessoa / Imóvel / Negócio), incluindo os que
+// chegam por ligação indireta através do Negócio.
+export const listEntityFiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { entityType: LinkableType; entityId: string }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { listRelatedFiles } = await import("./related-files.server");
+    return await listRelatedFiles(supabase, userId, data.entityType, data.entityId);
+  });
+
+// Sugestões de ligações extra que o Afonso detetou no conteúdo do ficheiro.
+export const suggestFileLinks = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { fileId: string }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { findLinkCandidates } = await import("./link-suggestions.server");
+    const all = await findLinkCandidates(supabase, userId, data.fileId);
+    return all.filter((c) => c.score >= 0.7).slice(0, 5);
+  });
+
 // Alvos possíveis para "Corrigir ligação" (pessoas, imóveis, oportunidades).
 // Só devolve registos do próprio utilizador — RLS aplica-se na mesma.
 export const listLinkTargets = createServerFn({ method: "GET" })
@@ -455,12 +512,21 @@ export const setFileLink = createServerFn({ method: "POST" })
     );
     if (error) throw new Error(error.message);
 
-    // Manter o atalho legado coerente com a correção feita à mão.
-    await (supabase as any)
+    // Atalho legado: só preenche se estiver vazio ou se substituímos a ligação
+    // antiga. Adicionar uma ligação extra nunca "rouba" a principal.
+    const { data: current } = await (supabase as any)
       .from("uploaded_files")
-      .update({ related_resource_type: data.entityType, related_resource_id: data.entityId })
+      .select("related_resource_id")
       .eq("id", data.fileId)
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (data.replaceLinkId || !current?.related_resource_id) {
+      await (supabase as any)
+        .from("uploaded_files")
+        .update({ related_resource_type: data.entityType, related_resource_id: data.entityId })
+        .eq("id", data.fileId)
+        .eq("user_id", userId);
+    }
 
     return { ok: true };
   });

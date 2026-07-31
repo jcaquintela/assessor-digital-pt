@@ -246,6 +246,7 @@ function PropertyDetail() {
                     <div className="text-xs text-muted-foreground">
                       {f.document_type ? <Badge variant="secondary" className="mr-1">{f.document_type}</Badge> : <span className="mr-1 text-muted-foreground">Por classificar</span>}
                       {f.user_description && <span>{f.user_description}</span>}
+                      {f.via && <span className="ml-1">· via {f.via}</span>}
                     </div>
                   </div>
                   <div className="flex shrink-0 gap-1">

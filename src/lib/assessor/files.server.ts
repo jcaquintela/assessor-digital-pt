@@ -238,6 +238,45 @@ export async function processIncomingFile(
   const article = label === "imagem" || label === "mensagem de voz" ? "a" : "o";
   const reply = `Recebi ${article} ${label}. A que se refere?`;
 
+  // Drive Inteligente: se o conteúdo aponta claramente para registos já
+  // existentes, liga o mais óbvio e propõe o seguinte (com confirmação).
+  try {
+    if (classification !== "audio") {
+      let extraText: string | null = null;
+      if (mimeType.startsWith("text/") || mimeType === "application/json") {
+        extraText = new TextDecoder().decode(body).slice(0, 20000);
+        if (extraText.trim()) {
+          await supabase
+            .from("uploaded_files")
+            .update({ extracted_text: extraText } as never)
+            .eq("id", fileId);
+        }
+      }
+      const { autoLinkAndSuggest } = await import("@/lib/drive/link-suggestions.server");
+      const auto = await autoLinkAndSuggest({
+        supabase,
+        userId,
+        channel,
+        fileId,
+        fileLabel: `${article} ${label}`,
+        extraText,
+        sourceMessageId: sourceMessageId ?? null,
+      });
+      if (auto.reply) {
+        return {
+          ok: true,
+          fileId,
+          classification,
+          status: "processed",
+          reply: auto.reply,
+          extractedText: extraText,
+        };
+      }
+    }
+  } catch (err) {
+    console.error("[files] autoLink error:", err instanceof Error ? err.message : err);
+  }
+
   // Regista uma ação pendente de classificação para conduzir a conversa
   // progressiva (descrição → confirmação de lembrete → data/hora).
   // Áudio segue o motor via transcrição — não precisa de classificação.

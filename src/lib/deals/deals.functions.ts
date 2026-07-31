@@ -127,7 +127,11 @@ export const getDeal = createServerFn({ method: "GET" })
       supabase.from("financial_movements").select("id, type, description, amount, status, movement_date").eq("opportunity_id", o.id).eq("user_id", userId).order("movement_date", { ascending: false }),
       supabase.from("opportunity_events").select("id, kind, summary, source, occurred_at").eq("opportunity_id", o.id).eq("user_id", userId).order("occurred_at", { ascending: false }).limit(100),
       supabase.from("interactions").select("id, original_content, summary, occurred_at, source_channel").eq("opportunity_id", o.id).eq("user_id", userId).order("occurred_at", { ascending: false }).limit(50),
-      supabase.from("file_links").select("file_id").eq("entity_type", "opportunity").eq("entity_id", o.id).eq("user_id", userId).limit(50),
+      (async () => {
+        // Documentos do negócio incluem os da pessoa e dos imóveis envolvidos.
+        const { listRelatedFiles } = await import("@/lib/drive/related-files.server");
+        return { data: await listRelatedFiles(supabase, userId, "opportunity", o.id) } as any;
+      })(),
     ]);
 
     const propIds = new Set<string>(((linksRes.data ?? []) as Row[]).map((l) => l.property_id));
@@ -136,11 +140,6 @@ export const getDeal = createServerFn({ method: "GET" })
       ? await supabase.from("properties").select("id, title, location, status, asking_price, value").in("id", [...propIds]).eq("user_id", userId)
       : { data: [] as Row[] };
     const roleById = new Map<string, string>(((linksRes.data ?? []) as Row[]).map((l) => [l.property_id, l.role ?? "principal"]));
-
-    const fileIds = ((filesRes.data ?? []) as Row[]).map((f) => f.file_id);
-    const filesMeta = fileIds.length
-      ? await supabase.from("uploaded_files").select("id, file_name, classification, created_at").in("id", fileIds).eq("user_id", userId)
-      : { data: [] as Row[] };
 
     const personName = (personRes as any)?.data?.name ?? null;
     const properties = ((propsRes.data ?? []) as Row[]).map((p) => ({
@@ -183,8 +182,12 @@ export const getDeal = createServerFn({ method: "GET" })
       interactions: ((interRes.data ?? []) as Row[]).map((i) => ({
         id: i.id, content: i.summary || i.original_content, channel: i.source_channel, occurredAt: i.occurred_at,
       })),
-      files: ((filesMeta.data ?? []) as Row[]).map((f) => ({
-        id: f.id, name: f.file_name, classification: f.classification, createdAt: f.created_at,
+      files: ((filesRes.data ?? []) as any[]).map((f) => ({
+        id: f.id,
+        name: f.name,
+        classification: f.classification ?? f.document_type ?? null,
+        createdAt: f.created_at,
+        via: f.via?.label ?? null,
       })),
       alert: dealAlert({ lastActivityAt, deadline: o.deadline, nextActionAt, stage: o.stage }),
       lastActivityAt,

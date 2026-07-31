@@ -279,6 +279,25 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       }
     }
 
+    // Sugestão de ligação extra de um documento (Drive Inteligente).
+    // Confirmar acrescenta a ligação; recusar não mexe em nada.
+    if (pending && pending.intent === "suggest_file_link") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      if (saIsConfirmation(trimmed)) {
+        const { applyLinkSuggestion } = await import("@/lib/drive/link-suggestions.server");
+        const reply = await applyLinkSuggestion(supabase, userId, payload);
+        await markPendingActionStatus(supabase, pending.id, "executed", {
+          created_resource_type: "file_link",
+          created_resource_id: payload.file_id ?? null,
+        });
+        return { reply };
+      }
+      if (saIsRejection(trimmed)) {
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        return { reply: "Sem problema, deixo a ligação como está." };
+      }
+    }
+
     const commissionArgs = extractFinanceCommission(trimmed);
     if (commissionArgs) {
       const t0 = Date.now();

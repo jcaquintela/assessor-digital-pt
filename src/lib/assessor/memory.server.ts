@@ -136,7 +136,7 @@ export async function createPendingAction(
       "correction_pending",
     ]);
   for (const row of (superseded as any[]) ?? []) {
-    if (row.intent === "classify_file") continue;
+    if (row.intent === "classify_file" || row.intent === "suggest_file_link") continue;
     const payload = row.structured_payload ?? {};
     const label = payload.title || payload.description || row.original_content || row.intent;
     try {
