@@ -151,8 +151,18 @@ function logBranch(event: string, meta: Record<string, unknown> = {}) {
 function isQueryMisc(t: string): boolean {
   return QUERY_MISC_RE.test(t);
 }
+// Substantivos que tornam a pergunta inequivocamente sobre agenda.
+// "o que tenho" sozinho não chega: "Diversos o que tenho?" é uma pergunta
+// sobre o módulo Diversos, não sobre a agenda do dia.
+const AGENDA_NOUN_RE =
+  /\b(agenda|agendamentos?|compromissos?|marca(?:d[oa]s?|[çc][õoã]es?)|reuni(?:[ãa]o|[õo]es)|visitas?|chamadas?)\b/i;
+
 function isExplicitAgendaQuery(t: string): boolean {
-  return QUERY_AGENDA_RE.test(t);
+  if (!QUERY_AGENDA_RE.test(t)) return false;
+  // Referência explícita a Diversos/notas ganha à agenda, salvo se o texto
+  // também trouxer um substantivo de agenda ("que reuniões tenho? e notas?").
+  if (QUERY_MISC_RE.test(t) && !AGENDA_NOUN_RE.test(t)) return false;
+  return true;
 }
 
 function detectTipoEvento(texto: string): string {

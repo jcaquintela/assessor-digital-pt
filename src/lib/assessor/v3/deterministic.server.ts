@@ -11,6 +11,8 @@
 // Este módulo é puro (sem I/O). O caller resolve I/O (search_agenda,
 // pending_actions) e formata a resposta.
 
+import { displayTitle } from "../titles";
+
 export type AgendaPeriod = "today" | "tomorrow" | "week";
 
 // Palavras que denotam agenda mesmo sem período explícito.
@@ -29,9 +31,13 @@ const TODAY_RE = /\bhoje\b/iu;
 const TOMORROW_RE = /(?:^|[^\p{L}])amanh[ãa](?:[^\p{L}]|$)/iu;
 const WEEK_RE = /\b(esta\s+semana|na\s+semana|semana)\b/iu;
 
+// Referência explícita ao módulo Diversos/notas — nunca é consulta de agenda.
+const MISC_MODULE_RE = /\b(diversos|notas?|ideias?|apontamentos?)\b/i;
+
 export function detectAgendaQuery(text: string): AgendaPeriod | null {
   const t = (text ?? "").trim();
   if (!t) return null;
+  if (MISC_MODULE_RE.test(t) && !AGENDA_WORD_RE.test(t)) return null;
 
   const period: AgendaPeriod | null =
     TODAY_RE.test(t) ? "today" :
@@ -75,7 +81,7 @@ export function formatAgendaReply(period: AgendaPeriod, items: AgendaItem[]): st
   const lines = items.slice(0, 10).map((it) => {
     const t = it.due_time ? String(it.due_time).slice(0, 5) : "";
     const hhmm = t ? t.replace(":", "h") : "";
-    const title = String(it.title ?? "").trim() || "compromisso";
+    const title = displayTitle(it.title);
     return hhmm ? `• ${hhmm} — ${title}` : `• ${title}`;
   });
   const header = period === "today" ? "Hoje tens:" : period === "tomorrow" ? "Amanhã tens:" : "Esta semana tens:";
