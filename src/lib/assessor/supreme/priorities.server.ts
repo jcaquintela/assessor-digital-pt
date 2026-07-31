@@ -9,6 +9,9 @@ export interface PriorityItem {
   priority_score: number;
   due_at: string | null;
   entity_label: string | null;
+  /** Negócio associado (quando existe) — mostrado como "Negócio: X". */
+  deal_id: string | null;
+  deal_label: string | null;
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -22,6 +25,12 @@ function startOfDayLisbon(now = new Date()): Date {
   const m: Record<string, string> = {};
   for (const x of p) m[x.type] = x.value;
   return new Date(`${m.year}-${m.month}-${m.day}T00:00:00+00:00`);
+}
+
+// Fim do dia de hoje (Lisboa) em ISO — limite superior das prioridades.
+function endOfDayLisbonIso(now = new Date()): string {
+  const start = startOfDayLisbon(now);
+  return new Date(start.getTime() + 864e5 - 1).toISOString();
 }
 
 // Computa (em memória) as prioridades top-N para um utilizador.
@@ -41,7 +50,9 @@ export async function computePriorities(
       .eq("user_id", userId)
       .neq("status", "Concluído")
       .is("outcome", null)
-      .lte("due_date", new Date(now.getTime() + 7 * 864e5).toISOString())
+      // Só o que está em atraso ou é para hoje. Compromissos futuros
+      // (ex.: amanhã à noite) não são prioridades de hoje.
+      .lte("due_date", endOfDayLisbonIso(now))
       .order("due_date", { ascending: true })
       .limit(50),
     supabase
@@ -51,6 +62,21 @@ export async function computePriorities(
       .not("status", "in", "(Perdida,Escritura,closed_lost,closed_won,cancelled)")
       .limit(50),
   ]);
+
+  const dealIds = new Set<string>();
+  for (const f of ((follows as any[]) ?? [])) if (f.opportunity_id) dealIds.add(f.opportunity_id);
+  for (const o of ((opps as any[]) ?? [])) dealIds.add(o.id);
+  const dealById = new Map<string, string>();
+  if (dealIds.size) {
+    const { data: deals } = await supabase
+      .from("opportunities")
+      .select("id, title, type")
+      .in("id", [...dealIds]);
+    for (const d of ((deals as any[]) ?? [])) {
+      const label = String(d.title ?? "").trim() || String(d.type ?? "").trim() || "Negócio";
+      dealById.set(d.id, label);
+    }
+  }
 
   const personIds = new Set<string>();
   for (const f of ((follows as any[]) ?? [])) if (f.person_id) personIds.add(f.person_id);
@@ -91,6 +117,8 @@ export async function computePriorities(
       priority_score: Math.min(100, score),
       due_at: f.due_date,
       entity_label: f.person_id ? nameById.get(f.person_id) ?? null : null,
+      deal_id: f.opportunity_id ?? null,
+      deal_label: f.opportunity_id ? dealById.get(f.opportunity_id) ?? null : null,
     });
   }
 
@@ -118,6 +146,8 @@ export async function computePriorities(
       priority_score: Math.min(100, score),
       due_at: o.next_action_date ?? null,
       entity_label: nome,
+      deal_id: o.id,
+      deal_label: dealById.get(o.id) ?? "Negócio",
     });
   }
 

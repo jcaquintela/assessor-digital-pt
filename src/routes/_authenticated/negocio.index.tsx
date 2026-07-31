@@ -14,14 +14,14 @@ import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 export const Route = createFileRoute("/_authenticated/negocio/")({
   head: () => ({
     meta: [
-      { title: "O Meu Negócio — Assessor do Consultor" },
+      { title: "Faturação — Assessor do Consultor" },
       { name: "description", content: "Visão geral de comissões, faturação, despesas e rentabilidade." },
-      { property: "og:title", content: "O Meu Negócio — Assessor do Consultor" },
+      { property: "og:title", content: "Faturação — Assessor do Consultor" },
       { property: "og:description", content: "Visão geral do negócio do consultor." },
     ],
   }),
   component: () => (
-    <TierGate min="pro" title="O Meu Negócio">
+    <TierGate min="pro" title="Faturação">
       <NegocioPage />
     </TierGate>
   ),
@@ -108,7 +108,7 @@ function NegocioPage() {
 
   return (
     <AppShell>
-      <PageHeader title="O Meu Negócio" subtitle="Tudo o que entra e sai, registado por conversa." />
+      <PageHeader title="Faturação" subtitle="Tudo o que entra e sai, registado por conversa." />
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Link to="/negocio/comissoes" className="c-btn">
