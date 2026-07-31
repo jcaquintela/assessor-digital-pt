@@ -62,6 +62,7 @@ function DefinicoesPage() {
         <AssessorNameSection />
         <PlanoSection />
         <SupremeSection />
+        <NotificacoesSection />
         <CanalSection />
         <CalendarioSection />
         <ContaSection />
