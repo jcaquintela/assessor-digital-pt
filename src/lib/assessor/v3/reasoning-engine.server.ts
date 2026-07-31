@@ -385,8 +385,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   await applyMemoryWrites(ctx, decideR.decision.memory_writes);
 
   let reply = sanitizeReply(decideR.decision.natural_reply);
-  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" = "executed_ok";
+  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" | "service_down" = "executed_ok";
   let archiveReason: string | null = null;
+  // A IA esteve em baixo (créditos, rate limit, timeout, erro do provedor).
+  // Isto NÃO é incompreensão: o consultor tem de perceber a diferença.
+  const aiUnavailable = thinkR.unavailable === true || decideR.unavailable === true;
   // Executou e mesmo assim perguntou ("Marco a ação ... ?") — a pergunta faz o
   // consultor responder "Sim" e o turno seguinte volta a executar o mesmo.
   // Se a acção já foi feita, a resposta tem de ser afirmativa, nunca uma
