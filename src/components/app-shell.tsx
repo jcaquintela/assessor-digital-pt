@@ -13,6 +13,7 @@ import {
   Users,
   Wallet,
   FolderOpen,
+  Handshake,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -23,9 +24,10 @@ const desktopNav = [
   { to: "/hoje", label: "Hoje", icon: Home },
   { to: "/pessoas", label: "Pessoas", icon: Users },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
+  { to: "/negocios", label: "Negócios", icon: Handshake },
   { to: "/calendario", label: "Agenda", icon: CalendarDays },
   { to: "/drive", label: "Drive", icon: FolderOpen },
-  { to: "/negocio", label: "O Meu Negócio", icon: Wallet },
+  { to: "/negocio", label: "Faturação", icon: Wallet },
   { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/definicoes", label: "Definições", icon: Settings },
 ] as const;
