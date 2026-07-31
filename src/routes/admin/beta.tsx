@@ -43,6 +43,82 @@ function fmt(v: string | null) {
   return v ? new Date(v).toLocaleDateString("pt-PT") : "—";
 }
 
+const PREVIEW_SAMPLE: BetaInviteResult = {
+  name: "Ana Silva",
+  whatsapp: "+351912345678",
+  email: "ana@exemplo.pt",
+  tier: "pro",
+  days: 14,
+  code: "AFONSO-123456",
+};
+
+function renderWaLine(line: string, key: number) {
+  const text = line.replace(/^- /, "");
+  const isBullet = line.startsWith("- ");
+  const parts = text.split(/(\*[^*]+\*)/g);
+  return (
+    <div key={key} className={isBullet ? "pl-2" : undefined}>
+      {isBullet && <span className="mr-1">•</span>}
+      {parts.map((p, i) => {
+        if (p.startsWith("*") && p.endsWith("*") && p.length > 2) {
+          return <strong key={i}>{p.slice(1, -1)}</strong>;
+        }
+        return <span key={i}>{p}</span>;
+      })}
+    </div>
+  );
+}
+
+function ChannelPreview({ whatsapp, telegram }: { whatsapp: string; telegram: string }) {
+  const [tab, setTab] = useState<"whatsapp" | "telegram">("whatsapp");
+  return (
+    <div className="overflow-hidden rounded-md border text-sm">
+      <div className="flex border-b">
+        <button
+          type="button"
+          onClick={() => setTab("whatsapp")}
+          className={`flex-1 px-3 py-2 text-xs font-medium ${
+            tab === "whatsapp" ? "bg-[#d9fdd3] text-[#111b21]" : "bg-muted/50 text-muted-foreground"
+          }`}
+        >
+          WhatsApp
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("telegram")}
+          className={`flex-1 px-3 py-2 text-xs font-medium ${
+            tab === "telegram" ? "bg-[#e3f2fd] text-[#111b21]" : "bg-muted/50 text-muted-foreground"
+          }`}
+        >
+          Telegram
+        </button>
+      </div>
+      <div className="bg-background p-3">
+        {tab === "whatsapp" ? (
+          <div className="flex justify-end">
+            <div className="max-w-[85%] rounded-lg rounded-tr-none bg-[#d9fdd3] p-3 text-[#111b21] shadow-sm">
+              <div className="space-y-0.5 leading-relaxed">
+                {whatsapp.split("\n").map((line, i) => renderWaLine(line, i))}
+              </div>
+              <div className="mt-1 text-right text-[10px] text-[#667781]">10:30</div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <div className="max-w-[85%] rounded-lg rounded-tr-none bg-[#e3f2fd] p-3 text-[#111b21] shadow-sm">
+              <div
+                className="space-y-0.5 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: telegram.replace(/\n/g, "<br/>") }}
+              />
+              <div className="mt-1 text-right text-[10px] text-[#667781]">10:30</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BetaPage() {
   const qc = useQueryClient();
   const roleFn = useServerFn(getMyAdminRole);
