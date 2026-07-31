@@ -423,6 +423,15 @@ async function handleInboundMediaInner(
         await adapter.sendText(inbound.externalConversationId, adapter.replyTranscribeFail);
         return;
       }
+      // Guarda a transcrição e dá um nome legível ao ficheiro no Drive.
+      if (result.fileId) {
+        const { refineFileName } = await import("@/lib/assessor/files.server");
+        await supabaseAdmin
+          .from("uploaded_files")
+          .update({ extracted_text: t.text } as never)
+          .eq("id", result.fileId);
+        await refineFileName(supabaseAdmin, result.fileId, "audio", t.text);
+      }
       // Log da transcrição como user turn para o motor ter contexto textual.
       await supabaseAdmin.from("assessor_messages").insert({
         user_id: userId,
@@ -481,6 +490,15 @@ async function handleInboundMediaInner(
                     : "imagem",
               })
               .eq("id", result.fileId);
+            const { refineFileName } = await import("@/lib/assessor/files.server");
+            await refineFileName(
+              supabaseAdmin,
+              result.fileId,
+              "imagem",
+              reading.person_name
+                ? `cartão de ${reading.person_name}`
+                : (reading.visible_text ?? reading.description),
+            );
           }
 
           // Cartão de visita → proposta de contacto (com botões), antes de

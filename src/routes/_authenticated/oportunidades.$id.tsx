@@ -33,7 +33,7 @@ import {
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
   // Deep link: /oportunidades/<id>?destaque=seguimento:<uuid>
   // Tipos: seguimento | imovel | movimento | pessoa | documento | historico
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { destaque?: string } => ({
     destaque: typeof search.destaque === "string" ? search.destaque : undefined,
   }),
   head: () => ({

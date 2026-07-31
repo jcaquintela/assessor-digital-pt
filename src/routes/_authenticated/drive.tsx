@@ -361,12 +361,6 @@ function DrivePage() {
         open={!!catTarget}
         onOpenChange={(v) => { if (!v) setCatTarget(null); }}
       />
-
-      {/* Promessa visível do Drive Inteligente (flag drive.v1, ainda sem leitor no motor). */}
-      <div className="c-note mt-5">
-        Drive Inteligente a caminho — um ficheiro poderá ligar-se a mais do que um registo
-        (ex.: uma escritura ligada à Pessoa e ao Imóvel ao mesmo tempo).
-      </div>
     </AppShell>
   );
 }
