@@ -10,6 +10,8 @@ export interface TelegramSendResult {
   status?: number;
 }
 
+import { formatForTelegram, TELEGRAM_PARSE_MODE } from "./telegram-format";
+
 export interface TelegramProvider {
   sendText(input: {
     chatId: string;
@@ -84,9 +86,18 @@ async function gatewayCall(
 
 export const lovableTelegramProvider: TelegramProvider = {
   async sendText({ chatId, text, replyToMessageId }) {
-    const body: Record<string, unknown> = { chat_id: chatId, text };
+    const body: Record<string, unknown> = {
+      chat_id: chatId,
+      text: formatForTelegram(text),
+      parse_mode: TELEGRAM_PARSE_MODE,
+    };
     if (replyToMessageId) body.reply_parameters = { message_id: Number(replyToMessageId) };
-    const r = await gatewayCall("sendMessage", body);
+    let r = await gatewayCall("sendMessage", body);
+    // Fail-safe: se o Telegram recusar o HTML, reenvia em texto simples
+    // para nunca perdermos a mensagem por causa de formatação.
+    if (!r.ok && /parse|entit|tag/i.test(r.error ?? "")) {
+      r = await gatewayCall("sendMessage", { ...body, text: String(text ?? ""), parse_mode: undefined });
+    }
     return {
       ok: r.ok,
       messageId: r.result?.message_id ? String(r.result.message_id) : undefined,
@@ -97,11 +108,16 @@ export const lovableTelegramProvider: TelegramProvider = {
 
   async sendOptions({ chatId, text, options }) {
     const keyboard = options.map((o) => [{ text: o.label, callback_data: o.callbackData.slice(0, 64) }]);
-    const r = await gatewayCall("sendMessage", {
+    const base = {
       chat_id: chatId,
-      text,
+      text: formatForTelegram(text),
+      parse_mode: TELEGRAM_PARSE_MODE,
       reply_markup: { inline_keyboard: keyboard },
-    });
+    };
+    let r = await gatewayCall("sendMessage", base);
+    if (!r.ok && /parse|entit|tag/i.test(r.error ?? "")) {
+      r = await gatewayCall("sendMessage", { ...base, text: String(text ?? ""), parse_mode: undefined });
+    }
     return {
       ok: r.ok,
       messageId: r.result?.message_id ? String(r.result.message_id) : undefined,
