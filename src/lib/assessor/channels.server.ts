@@ -6,13 +6,17 @@ import { normalizePhone } from "@/lib/whatsapp/phone";
 import { sendWhatsAppText } from "@/lib/whatsapp/send.server";
 import { getTelegramProvider } from "@/lib/telegram/provider.server";
 
-export type Channel = "whatsapp" | "telegram";
+export type Channel = "whatsapp" | "telegram" | "dashboard";
 
 export async function findUserIdByChannel(
   supabaseAdmin: any,
   channel: Channel,
   externalId: string,
 ): Promise<string | null> {
+  // O dashboard não tem identidade externa: o utilizador já vem
+  // autenticado da sessão do painel.
+  if (channel === "dashboard") return null;
+
   const normalized = channel === "whatsapp" ? normalizePhone(externalId) : externalId;
   if (!normalized) return null;
 
