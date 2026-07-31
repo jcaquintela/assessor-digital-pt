@@ -380,6 +380,88 @@ function SupremeSection() {
 
 // Leitura leve do nome (evita import circular de estilos/hooks pesados).
 function useAssessorNameLite() {
+  return useAssessorNameLiteImpl();
+}
+
+/* ---------------- Notificações proativas ---------------- */
+
+function NotificacoesSection() {
+  const qc = useQueryClient();
+  const fetchPrefs = useServerFn(getSupremePreferences);
+  const savePrefs = useServerFn(updateSupremePreferences);
+  const { data } = useQuery({ queryKey: ["supreme", "prefs"], queryFn: () => fetchPrefs() });
+  const { channels } = useLinkedChannel();
+  const save = useMutation({
+    mutationFn: (patch: Record<string, unknown>) => savePrefs({ data: patch }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["supreme", "prefs"] }); toast.success("Guardado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const prefs = (data?.preferences ?? {}) as {
+    proactive_push_enabled?: boolean;
+    evening_checkin_enabled?: boolean;
+    evening_checkin_time?: string;
+    morning_time?: string;
+  };
+  const on = prefs.proactive_push_enabled === true;
+  const hasChannel = (channels ?? []).length > 0;
+
+  return (
+    <Section title="Notificações proativas">
+      <p className="c-muted text-[13px] leading-relaxed">
+        De manhã recebes as prioridades do dia. Ao fim da tarde pergunto-te como correram os
+        seguimentos, com botões para responderes num toque.
+      </p>
+      <div className="mt-4 flex items-center justify-between gap-4 rounded-[13px] border border-[var(--line)] p-4">
+        <div>
+          <p className="text-[13.5px] font-semibold">Receber notificações proativas</p>
+          <p className="c-muted mt-1 text-[12px]">
+            {hasChannel ? "Chegam pelo teu canal principal." : "Liga o WhatsApp ou o Telegram primeiro."}
+          </p>
+        </div>
+        <button
+          className={on ? "c-btn" : "c-btn-ghost"}
+          disabled={!hasChannel || save.isPending}
+          onClick={() => save.mutate({ proactive_push_enabled: !on })}
+        >
+          {on ? "Ligado" : "Desligado"}
+        </button>
+      </div>
+      {on && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="push-manha" className="c-eyebrow">Hora do push da manhã</label>
+            <input
+              id="push-manha" type="time" defaultValue={(prefs.morning_time ?? "08:00").slice(0, 5)}
+              onBlur={(e) => save.mutate({ morning_time: e.target.value })}
+              className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
+            />
+          </div>
+          <div>
+            <label htmlFor="push-tarde" className="c-eyebrow">Hora do check-in da tarde</label>
+            <input
+              id="push-tarde" type="time" defaultValue={(prefs.evening_checkin_time ?? "18:00").slice(0, 5)}
+              onBlur={(e) => save.mutate({ evening_checkin_time: e.target.value })}
+              className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
+            />
+            <button
+              className="c-btn mt-2"
+              onClick={() => save.mutate({ evening_checkin_enabled: !(prefs.evening_checkin_enabled ?? true) })}
+            >
+              {prefs.evening_checkin_enabled === false ? "Ativar check-in" : "Desativar check-in"}
+            </button>
+          </div>
+        </div>
+      )}
+      <p className="c-muted mt-3 text-[12px] leading-relaxed">
+        No WhatsApp, se já passaram mais de 24 horas desde a tua última mensagem, a Meta só deixa
+        passar mensagens com template aprovado — nesse caso o envio fica em espera até à aprovação.
+      </p>
+    </Section>
+  );
+}
+
+function useAssessorNameLiteImpl() {
   const [name, setName] = useState(ASSESSOR_NAME_DEFAULT);
   useEffect(() => {
     (async () => {
