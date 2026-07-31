@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -91,6 +92,11 @@ const PlanosRoute = PlanosRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EntrarRoute = EntrarRouteImport.update({
+  id: '/entrar',
+  path: '/entrar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -443,6 +449,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/entrar': typeof EntrarRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -511,6 +518,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/entrar': typeof EntrarRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -582,6 +590,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/entrar': typeof EntrarRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -653,6 +662,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/entrar'
     | '/mcp'
     | '/planos'
     | '/reset-password'
@@ -721,6 +731,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/entrar'
     | '/mcp'
     | '/planos'
     | '/reset-password'
@@ -791,6 +802,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin'
     | '/auth'
+    | '/entrar'
     | '/mcp'
     | '/planos'
     | '/reset-password'
@@ -862,6 +874,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  EntrarRoute: typeof EntrarRoute
   McpRoute: typeof McpRoute
   PlanosRoute: typeof PlanosRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -897,6 +910,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/entrar': {
+      id: '/entrar'
+      path: '/entrar'
+      fullPath: '/entrar'
+      preLoaderRoute: typeof EntrarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -1584,6 +1604,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  EntrarRoute: EntrarRoute,
   McpRoute: McpRoute,
   PlanosRoute: PlanosRoute,
   ResetPasswordRoute: ResetPasswordRoute,
