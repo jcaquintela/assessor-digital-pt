@@ -264,51 +264,6 @@ export const telegramAdapter: ChannelAdapter = {
       });
       return { handled: true, userId: auto.userId, stopPipeline: true };
     }
-    if (false) {
-      // Código promocional: alternativa ao convite normal, aplica o tier do código.
-      const { looksLikePromoCode, redeemPromoCode, PROMO_REPLY } = await import("@/lib/admin/promo.server");
-      if (text && looksLikePromoCode(text)) {
-        const promo = await redeemPromoCode(supabaseAdmin, text);
-        if (!promo.ok) {
-          if (promo.reason !== "not_found") {
-            await provider.sendText({ chatId: inbound.externalConversationId, text: PROMO_REPLY[promo.reason] });
-            return { handled: true };
-          }
-        } else {
-          const claimed = await createShadowAccount(
-            supabaseAdmin,
-            inbound.externalConversationId,
-            inbound.sender,
-            promo.tier,
-          );
-          if (!claimed.ok) {
-            await provider.sendText({ chatId: inbound.externalConversationId, text: claimed.reply });
-            return { handled: true };
-          }
-          await provider.sendText({
-            chatId: inbound.externalConversationId,
-            text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
-          });
-          return { handled: true, userId: claimed.userId, stopPipeline: true };
-        }
-      }
-      // Nível 0 grátis: registo automático na primeira mensagem, sem convite.
-      const auto = await createShadowAccount(
-        supabaseAdmin,
-        inbound.externalConversationId,
-        inbound.sender,
-        "base",
-      );
-      if (!auto.ok) {
-        await provider.sendText({ chatId: inbound.externalConversationId, text: auto.reply });
-        return { handled: true };
-      }
-      await provider.sendText({
-        chatId: inbound.externalConversationId,
-        text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
-      });
-      return { handled: true, userId: auto.userId, stopPipeline: true };
-    }
     const claim = await claimInvite(supabaseAdmin, code, inbound.externalConversationId, inbound.sender);
     if (!claim.ok) {
       await provider.sendText({ chatId: inbound.externalConversationId, text: claim.reply });
