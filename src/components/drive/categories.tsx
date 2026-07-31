@@ -246,22 +246,26 @@ export function FileCategoryDialog({
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <button
             type="button"
-            className={"c-category-box text-left" + (!currentId ? " active" : "")}
+            className={"c-category-box" + (!currentId ? " active" : "")}
             onClick={() => escolher(null)}
             disabled={busy}
           >
-            <span className="block text-[11px] font-semibold uppercase tracking-wide opacity-70">Automática</span>
-            <span className="block truncate">{autoLabel ? autoLabel : "Sugestão do Assessor"}</span>
+            <span className="text-left">
+              <span className="block text-[11px] font-semibold uppercase tracking-wide opacity-70">Automática</span>
+              <span className="block truncate">{autoLabel ? autoLabel : "Sugestão do Assessor"}</span>
+            </span>
+            <CategoryCheck active={!currentId} />
           </button>
           {categories.map((c) => (
             <button
               key={c.id}
               type="button"
-              className={"c-category-box text-left" + (currentId === c.id ? " active" : "")}
+              className={"c-category-box" + (currentId === c.id ? " active" : "")}
               onClick={() => escolher(c.id)}
               disabled={busy}
             >
-              {c.name}
+              <span className="truncate">{c.name}</span>
+              <CategoryCheck active={currentId === c.id} />
             </button>
           ))}
         </div>
