@@ -42,13 +42,22 @@ export const getProperty = createServerFn({ method: "POST" })
         .eq("id", data.id)
         .eq("user_id", userId)
         .maybeSingle(),
-      supabase
-        .from("uploaded_files")
-        .select("id, original_file_name, mime_type, document_type, user_description, created_at")
-        .eq("user_id", userId)
-        .eq("related_resource_type", "property")
-        .eq("related_resource_id", data.id)
-        .order("created_at", { ascending: false }),
+      (async () => {
+        // Inclui documentos ligados por qualquer via (também via negócio).
+        const { listRelatedFiles } = await import("@/lib/drive/related-files.server");
+        const rows = await listRelatedFiles(supabase, userId, "property", data.id);
+        return {
+          data: rows.map((f: any) => ({
+            id: f.id,
+            original_file_name: f.name,
+            mime_type: f.mime_type,
+            document_type: f.document_type,
+            user_description: f.user_description,
+            created_at: f.created_at,
+            via: f.via?.label ?? null,
+          })),
+        } as any;
+      })(),
       (supabase.from("follow_ups") as any)
         .select("id, title, type, due_date, due_time, status")
         .eq("user_id", userId)
