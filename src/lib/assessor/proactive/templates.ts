@@ -35,7 +35,17 @@ export function morningTemplatePayload(name: string, list: string) {
   } as Record<string, unknown>;
 }
 
-/** Corpo do check-in: {{1}} = seguimento. Botões de resposta rápida vêm do template. */
+/**
+ * Corpo do check-in: {{1}} = seguimento. Botões de resposta rápida vêm do
+ * template (máx. 3 opções: "Correu bem", "Precisa seguimento", "Sem efeito").
+ *
+ * Texto exato a submeter à Meta para aprovação:
+ * "Como correu \"{{1}}\"? Toca num botão para registar o resultado."
+ *
+ * Nota: o WhatsApp rejeita templates cujo corpo comece ou termine numa
+ * variável. A pergunta no início e o pedido no final garantem texto fixo
+ * nos dois extremos.
+ */
 export function checkinTemplatePayload(title: string) {
   return {
     type: "template",
