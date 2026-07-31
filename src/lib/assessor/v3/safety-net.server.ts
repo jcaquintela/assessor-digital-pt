@@ -13,7 +13,8 @@ export type TurnOutcome =
   | "duplicate"         // já existia — nada a guardar
   | "query"             // consulta (agenda, pessoa) — nada a guardar
   | "tool_failed"       // tentou executar e falhou — guardar
-  | "not_understood";   // não percebeu — guardar
+  | "not_understood"    // não percebeu — guardar
+  | "service_down";     // a IA está indisponível — guardar (não é incompreensão)
 
 // Mensagens descartáveis: confirmações, rejeições, saudações, agradecimentos
 // e texto demasiado curto para ter conteúdo profissional.
@@ -31,7 +32,10 @@ export function shouldArchiveTurn(params: {
   content: string;
   outcome: TurnOutcome;
 }): boolean {
-  if (params.outcome !== "tool_failed" && params.outcome !== "not_understood") return false;
+  const archivable = params.outcome === "tool_failed"
+    || params.outcome === "not_understood"
+    || params.outcome === "service_down";
+  if (!archivable) return false;
   return !isDisposableMessage(params.content);
 }
 
@@ -126,7 +130,11 @@ export async function applySafetyNet(
   const saved = await archiveToMiscellaneous(
     ctx,
     params.content,
-    params.reason || (params.outcome === "tool_failed" ? "não consegui guardar" : "não percebi a mensagem"),
+    params.reason || (
+      params.outcome === "tool_failed" ? "não consegui guardar"
+        : params.outcome === "service_down" ? "o serviço esteve indisponível"
+        : "não percebi a mensagem"
+    ),
   );
   return withSavedNote(params.reply, saved);
 }
