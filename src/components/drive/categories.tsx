@@ -6,6 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Check, Pencil, Plus, Tag, Trash2, X } from "lucide-react";
+
+function CategoryCheck({ active }: { active: boolean }) {
+  return (
+    <span className="c-category-check flex-shrink-0">
+      {active ? <Check className="h-3 w-3" /> : null}
+    </span>
+  );
+}
 import {
   listFileCategories,
   createFileCategory,
