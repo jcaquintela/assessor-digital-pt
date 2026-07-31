@@ -1028,6 +1028,8 @@ export type Database = {
         Row: {
           autonomy_level: string
           created_at: string
+          evening_checkin_enabled: boolean
+          evening_checkin_time: string
           evening_time: string
           evening_wrap_enabled: boolean
           max_daily_nudges: number
@@ -1035,6 +1037,7 @@ export type Database = {
           morning_days: number[]
           morning_time: string
           primary_channel: string
+          proactive_push_enabled: boolean
           quiet_hours_end: string
           quiet_hours_start: string
           timezone: string
@@ -1044,6 +1047,8 @@ export type Database = {
         Insert: {
           autonomy_level?: string
           created_at?: string
+          evening_checkin_enabled?: boolean
+          evening_checkin_time?: string
           evening_time?: string
           evening_wrap_enabled?: boolean
           max_daily_nudges?: number
@@ -1051,6 +1056,7 @@ export type Database = {
           morning_days?: number[]
           morning_time?: string
           primary_channel?: string
+          proactive_push_enabled?: boolean
           quiet_hours_end?: string
           quiet_hours_start?: string
           timezone?: string
@@ -1060,6 +1066,8 @@ export type Database = {
         Update: {
           autonomy_level?: string
           created_at?: string
+          evening_checkin_enabled?: boolean
+          evening_checkin_time?: string
           evening_time?: string
           evening_wrap_enabled?: boolean
           max_daily_nudges?: number
@@ -1067,6 +1075,7 @@ export type Database = {
           morning_days?: number[]
           morning_time?: string
           primary_channel?: string
+          proactive_push_enabled?: boolean
           quiet_hours_end?: string
           quiet_hours_start?: string
           timezone?: string
