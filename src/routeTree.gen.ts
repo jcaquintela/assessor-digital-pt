@@ -44,6 +44,7 @@ import { Route as AuthenticatedSeguimentosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
+import { Route as AuthenticatedLigarCanalRouteImport } from './routes/_authenticated/ligar-canal'
 import { Route as AuthenticatedInteracoesRouteImport } from './routes/_authenticated/interacoes'
 import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
 import { Route as AuthenticatedHojeRouteImport } from './routes/_authenticated/hoje'
@@ -253,6 +254,11 @@ const AuthenticatedPessoasRoute = AuthenticatedPessoasRouteImport.update({
 const AuthenticatedMaisRoute = AuthenticatedMaisRouteImport.update({
   id: '/mais',
   path: '/mais',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLigarCanalRoute = AuthenticatedLigarCanalRouteImport.update({
+  id: '/ligar-canal',
+  path: '/ligar-canal',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedInteracoesRoute = AuthenticatedInteracoesRouteImport.update({
@@ -471,6 +477,7 @@ export interface FileRoutesByFullPath {
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
+  '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
@@ -541,6 +548,7 @@ export interface FileRoutesByTo {
   '/hoje': typeof AuthenticatedHojeRoute
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
+  '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
   '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
@@ -614,6 +622,7 @@ export interface FileRoutesById {
   '/_authenticated/hoje': typeof AuthenticatedHojeRoute
   '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/_authenticated/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
+  '/_authenticated/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
   '/_authenticated/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
@@ -687,6 +696,7 @@ export interface FileRouteTypes {
     | '/hoje'
     | '/imoveis'
     | '/interacoes'
+    | '/ligar-canal'
     | '/mais'
     | '/pessoas'
     | '/rotinas'
@@ -757,6 +767,7 @@ export interface FileRouteTypes {
     | '/hoje'
     | '/imoveis'
     | '/interacoes'
+    | '/ligar-canal'
     | '/mais'
     | '/pessoas'
     | '/rotinas'
@@ -829,6 +840,7 @@ export interface FileRouteTypes {
     | '/_authenticated/hoje'
     | '/_authenticated/imoveis'
     | '/_authenticated/interacoes'
+    | '/_authenticated/ligar-canal'
     | '/_authenticated/mais'
     | '/_authenticated/pessoas'
     | '/_authenticated/rotinas'
@@ -1147,6 +1159,13 @@ declare module '@tanstack/react-router' {
       path: '/mais'
       fullPath: '/mais'
       preLoaderRoute: typeof AuthenticatedMaisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ligar-canal': {
+      id: '/_authenticated/ligar-canal'
+      path: '/ligar-canal'
+      fullPath: '/ligar-canal'
+      preLoaderRoute: typeof AuthenticatedLigarCanalRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/interacoes': {
@@ -1520,6 +1539,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHojeRoute: typeof AuthenticatedHojeRoute
   AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
   AuthenticatedInteracoesRoute: typeof AuthenticatedInteracoesRouteWithChildren
+  AuthenticatedLigarCanalRoute: typeof AuthenticatedLigarCanalRoute
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedPessoasRoute: typeof AuthenticatedPessoasRouteWithChildren
   AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
@@ -1544,6 +1564,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHojeRoute: AuthenticatedHojeRoute,
   AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
   AuthenticatedInteracoesRoute: AuthenticatedInteracoesRouteWithChildren,
+  AuthenticatedLigarCanalRoute: AuthenticatedLigarCanalRoute,
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedPessoasRoute: AuthenticatedPessoasRouteWithChildren,
   AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
