@@ -99,7 +99,7 @@ export const MODULE_LABEL: Record<string, string> = {
   "/diversos": "Diversos",
   "/imoveis": "Imóveis",
   "/prospecao": "Prospeção",
-  "/negocio": "O Meu Negócio",
+  "/negocio": "Faturação",
 };
 
 // Resumo do que um plano inclui. Deriva TUDO de MODULE_MIN_TIER e
