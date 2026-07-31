@@ -395,9 +395,10 @@ function BetaPage() {
                       Copiar mensagem
                     </button>
                   </div>
-                  <pre className="whitespace-pre-wrap rounded bg-black/5 p-2 font-mono text-[12px] leading-relaxed">
-                    {fillTemplate(g)}
-                  </pre>
+                  <ChannelPreview
+                    whatsapp={formatForWhatsApp(fillTemplate(g))}
+                    telegram={formatForTelegram(fillTemplate(g))}
+                  />
                 </div>
               ))}
               <p className="mini">
