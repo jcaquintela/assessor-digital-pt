@@ -217,9 +217,13 @@ function DrivePage() {
 
       {listQ.isLoading && <div className="c-muted text-sm">A carregar…</div>}
 
+      <CategoriesBar selected={categoryId} onSelect={setCategoryId} />
+
       {!listQ.isLoading && files.length === 0 && (
         <div className="c-empty">
-          {tab === "por_tratar"
+          {categoryId
+            ? "Nenhum ficheiro nesta categoria."
+            : tab === "por_tratar"
             ? "Nada por tratar. Bom trabalho."
             : "Sem ficheiros nesta vista. Envia pelo WhatsApp ou usa Carregar."}
         </div>
@@ -234,6 +238,8 @@ function DrivePage() {
             ["pending_classification", "awaiting_confirmation", "failed"].includes(
               f.processing_status,
             );
+          const autoLabel = f.document_type ?? f.classification ?? "Ficheiro";
+          const catName = f.custom_category_id ? catNameById.get(f.custom_category_id) ?? null : null;
           return (
             <Link key={f.id} to="/drive/$id" params={{ id: f.id }} className="c-card c-card-hover block p-3.5">
               <div className="flex items-start justify-between gap-3">
@@ -251,11 +257,16 @@ function DrivePage() {
                       )}
                     </div>
                     <div className="c-muted mt-1 text-[11.5px]">
-                      {f.document_type ?? f.classification ?? "Ficheiro"} ·{" "}
+                      {catName ?? autoLabel} ·{" "}
                       <span className="c-mono">{formatDate(f.created_at)}</span> ·{" "}
                       <span className="c-mono">{formatSize(f.size_bytes ?? 0)}</span> · recebido via{" "}
                       {CANAL_LABEL[f.channel] ?? f.channel}
                     </div>
+                    {catName && (
+                      <div className="c-muted mt-1 text-[11px]">
+                        Categoria tua · sugestão do Assessor: {autoLabel}
+                      </div>
+                    )}
                     {links.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         <span className="c-muted text-[11px]">Ligado a</span>
@@ -285,6 +296,23 @@ function DrivePage() {
                       >
                         <Link2 className="h-3 w-3" /> Corrigir ligação
                       </button>
+                      <button
+                        type="button"
+                        aria-label={`Categoria de ${f.original_file_name ?? "ficheiro"}`}
+                        className="c-badge"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setCatTarget({
+                            id: f.id,
+                            name: f.original_file_name ?? null,
+                            auto: autoLabel,
+                            current: f.custom_category_id ?? null,
+                          });
+                        }}
+                      >
+                        <Tag className="h-3 w-3" /> {catName ? "Mudar categoria" : "Categoria"}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -299,6 +327,15 @@ function DrivePage() {
         fileName={fixTarget?.name}
         open={!!fixTarget}
         onOpenChange={(v) => { if (!v) setFixTarget(null); }}
+      />
+
+      <FileCategoryDialog
+        fileId={catTarget?.id ?? null}
+        fileName={catTarget?.name}
+        autoLabel={catTarget?.auto}
+        currentId={catTarget?.current}
+        open={!!catTarget}
+        onOpenChange={(v) => { if (!v) setCatTarget(null); }}
       />
 
       {/* Promessa visível do Drive Inteligente (flag drive.v1, ainda sem leitor no motor). */}
