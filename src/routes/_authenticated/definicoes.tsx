@@ -10,6 +10,7 @@ import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "
 import { MODULE_LABEL, planSummary, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { isPlaceholderEmail, isValidEmail } from "@/lib/profile/email";
 import { CHANNEL_LABEL, maskContact, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
+import { createTelegramLinkToken, getTelegramLink, unlinkTelegram } from "@/lib/telegram/link.functions";
 import {
   getWhatsAppLink,
   startWhatsAppLink,
