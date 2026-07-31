@@ -34,12 +34,19 @@ export interface GoldenTurnResult {
   tools: string[];
   passed: boolean;
   failures: string[];
+  // Turno inconclusivo: a IA esteve indisponível (créditos, rate limit, rede).
+  // Não conta como falha de comportamento.
+  unavailable?: boolean;
+  unavailableReason?: string;
 }
 
 export interface GoldenRunResult {
   passed: boolean;
   turns: GoldenTurnResult[];
   aqsAvg: number | null;
+  // true quando pelo menos um turno ficou por avaliar por indisponibilidade.
+  inconclusive?: boolean;
+  unavailableReason?: string | null;
 }
 
 function nowLisbonYmd(): string {
