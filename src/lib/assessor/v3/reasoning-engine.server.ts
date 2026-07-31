@@ -311,6 +311,40 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
 
     // ---------- Router determinístico ----------
+    // (0) Resumo rápido de pessoa — leitura pura, sem confirmação e sem
+    // depender do nível de autonomia. Vem antes da agenda porque "o que
+    // tenho sobre a Marta" partilha o mesmo verbo.
+    const briefName = detectPersonBriefQuery(trimmed);
+    if (briefName) {
+      const t0 = Date.now();
+      let reply: string;
+      let okBrief = true;
+      try {
+        const lookup = await buildPersonBrief(ctx, briefName);
+        reply =
+          lookup.kind === "not_found"
+            ? personNotFoundReply(briefName)
+            : lookup.kind === "ambiguous"
+              ? ambiguousPersonReply(lookup.names)
+              : formatPersonBrief(lookup.brief);
+      } catch (err) {
+        okBrief = false;
+        reply = NATURAL_FALLBACKS.aiDown;
+        void err;
+      }
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "person_brief_fast_path", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: Date.now() - t0, success: okBrief, error: okBrief ? null : "person_brief_failed",
+          domain: "assessor", route: "v3-deterministic", fallback_used: !okBrief,
+          tool_name: "person_brief", tool_success: okBrief,
+        } as never);
+      } catch { /* noop */ }
+      return { reply };
+    }
+
     // (a) Consulta de agenda → chama search_agenda directamente.
     const agendaPeriod = detectAgendaQuery(trimmed);
     if (agendaPeriod) {
