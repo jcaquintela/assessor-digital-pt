@@ -68,7 +68,7 @@ export function EditPropertyDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Editar imóvel</DialogTitle>
-          <DialogDescription>Corrige o que já existe. Novos imóveis entram por conversa.</DialogDescription>
+          <DialogDescription>Corrige o que já existe. Para criar, usa "+ Adicionar".</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div><Label>Morada</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} /></div>

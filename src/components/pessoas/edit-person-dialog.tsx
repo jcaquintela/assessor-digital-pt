@@ -11,7 +11,8 @@ import type { Pessoa, Relacao } from "@/lib/demo-data";
 
 const RELACOES: Relacao[] = ["Cliente", "Potencial", "Proprietário", "Referenciador", "Colega"];
 
-// Correção de um registo já existente. Não cria pessoas — isso continua só por conversa.
+// Correção de um registo já existente. A criação também é possível no dashboard
+// (NewPersonDialog) além do WhatsApp/Telegram.
 export function EditPersonDialog({
   pessoa,
   open,
@@ -61,7 +62,7 @@ export function EditPersonDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Editar contacto</DialogTitle>
-          <DialogDescription>Corrige o que já existe. Novos contactos entram por conversa.</DialogDescription>
+          <DialogDescription>Corrige o que já existe. Para criar, usa "+ Adicionar".</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
