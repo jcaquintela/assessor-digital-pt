@@ -4,6 +4,7 @@
 // account). Não contém lógica de negócio do motor.
 
 import { getTelegramProvider } from "@/lib/telegram/provider.server";
+import { resolveInteractiveReply } from "@/lib/assessor/interactive";
 import { linkChannelToUser } from "@/lib/assessor/channels.server";
 import type {
   AdapterMediaBytes,
@@ -91,7 +92,9 @@ export const telegramAdapter: ChannelAdapter = {
     if (update.callback_query) {
       const cq = update.callback_query;
       const chatId = cq?.message?.chat?.id ? String(cq.message.chat.id) : null;
-      const data = typeof cq?.data === "string" ? cq.data : "";
+      const rawData = typeof cq?.data === "string" ? cq.data : "";
+      // O id do botão manda: nunca reinterpretamos texto livre.
+      const data = resolveInteractiveReply(rawData, rawData);
       if (!chatId || !data) return [];
       return [{
         channel: "telegram",
@@ -303,6 +306,17 @@ export const telegramAdapter: ChannelAdapter = {
       callbackQueryId,
       ...(feedback ? { text: feedback } : {}),
     });
+  },
+
+  // Paridade com o WhatsApp: as mesmas perguntas fechadas chegam ao
+  // Telegram como botões inline, com o mesmo id determinístico.
+  async sendInteractive(externalConversationId, prompt): Promise<AdapterSendResult> {
+    const r = await getTelegramProvider().sendOptions({
+      chatId: externalConversationId,
+      text: prompt.body,
+      options: prompt.options.map((o) => ({ label: o.label, callbackData: o.id })),
+    });
+    return { ok: r.ok, messageId: r.messageId ?? null, error: r.error };
   },
 };
 

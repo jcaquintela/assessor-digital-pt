@@ -1,0 +1,2 @@
+delete from prospecting_leads where id = '1e0e46bc-f339-4289-8c6d-01b1458cb286';
+update pending_actions set status = 'cancelled', error_message = 'teste de botões interativos' where user_id = '08d24695-a12c-4954-887a-81a71215a87e' and status in ('pending_confirmation','collecting_information');

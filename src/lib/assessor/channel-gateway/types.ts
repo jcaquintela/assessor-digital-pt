@@ -102,6 +102,14 @@ export interface ChannelAdapter {
     opts?: { replyTo?: string | null },
   ): Promise<AdapterSendResult>;
 
+  // 7b. Envio interativo (botões / lista). Opcional: se o canal não
+  //     suportar, ou se falhar, o pipeline cai para sendText.
+  sendInteractive?(
+    externalConversationId: string,
+    prompt: import("@/lib/assessor/interactive").InteractivePrompt,
+    opts?: { replyTo?: string | null },
+  ): Promise<AdapterSendResult>;
+
   answerInteraction?(callbackQueryId: string, feedback?: string): Promise<void>;
 
   // 8. Strings padrão por canal (podem partilhar copy, ficam no adapter

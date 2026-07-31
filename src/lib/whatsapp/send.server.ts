@@ -58,11 +58,27 @@ export async function sendWhatsAppText(
   body: string,
   opts: { triggeredBy?: string | null; kind?: "auto" | "test" } = {},
 ): Promise<SendResult> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? null;
   // Formatação consistente: sintaxe WhatsApp (não Markdown), listas com "- ".
   const { formatForWhatsApp } = await import("@/lib/assessor/culture/whatsapp-format");
   const text = formatForWhatsApp(body) || body;
+  return sendWhatsAppPayload(
+    to,
+    { type: "text", text: { preview_url: false, body: text } },
+    opts,
+  );
+}
+
+/**
+ * Envio cru para a Cloud API (texto ou interativo). Partilha telemetria,
+ * redacção de tokens e persistência de log com `sendWhatsAppText`.
+ */
+export async function sendWhatsAppPayload(
+  to: string,
+  payload: Record<string, unknown>,
+  opts: { triggeredBy?: string | null; kind?: "auto" | "test" } = {},
+): Promise<SendResult> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? null;
 
   const baseTelemetry: SendTelemetry = {
     ok: false,
@@ -104,8 +120,7 @@ export async function sendWhatsAppText(
         messaging_product: "whatsapp",
         recipient_type: "individual",
         to,
-        type: "text",
-        text: { preview_url: false, body: text },
+        ...payload,
       }),
     });
     const rawText = await res.text().catch(() => "");

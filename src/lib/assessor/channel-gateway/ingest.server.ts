@@ -6,6 +6,7 @@ import { findUserIdByChannel } from "@/lib/assessor/channels.server";
 import type { AdapterSendResult, ChannelAdapter, NormalizedInbound } from "./types";
 import type { EngineOutcome } from "@/lib/assessor/engine.server";
 import { withConversationLock } from "./lock.server";
+import { deriveInteractivePrompt } from "@/lib/assessor/interactive";
 
 export async function runInboundPipeline(
   adapter: ChannelAdapter,
@@ -142,9 +143,38 @@ async function deliverReply(
 ): Promise<AdapterSendResult> {
   const { outcome, externalConversationId, userId, replyTo } = args;
   const alreadyPersisted = outcome.messageType === "__ALREADY_PERSISTED__";
-  const send = await adapter.sendText(externalConversationId, outcome.reply, {
-    replyTo,
-  });
+
+  // Perguntas de resposta fechada seguem como botões tocáveis. Se o canal
+  // não suportar, ou o envio interativo falhar (ex.: fora da janela de 24h),
+  // cai para texto simples — a conversa nunca bloqueia por isto.
+  let send: AdapterSendResult | null = null;
+  if (adapter.sendInteractive) {
+    try {
+      const prompt = deriveInteractivePrompt(outcome.reply, {
+        hasPendingConfirmation: await hasPendingConfirmation(
+          supabaseAdmin,
+          userId,
+          adapter.channel,
+        ),
+      });
+      if (prompt) {
+        const r = await adapter.sendInteractive(externalConversationId, prompt, { replyTo });
+        if (r.ok) send = r;
+        else console.error(
+          `[channel-gateway/${adapter.channel}] interactive falhou, fallback texto:`,
+          r.error ?? "unknown",
+        );
+      }
+    } catch (err) {
+      console.error(
+        `[channel-gateway/${adapter.channel}] interactive:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+  if (!send) {
+    send = await adapter.sendText(externalConversationId, outcome.reply, { replyTo });
+  }
   if (!alreadyPersisted) {
     await supabaseAdmin.from("assessor_messages").insert({
       user_id: userId,
@@ -158,6 +188,28 @@ async function deliverReply(
     });
   }
   return send;
+}
+
+// Só propomos "Sim"/"Ainda não" quando existe mesmo um rascunho à espera de
+// confirmação. Perguntas abertas (ex.: "A que horas?") continuam em texto.
+async function hasPendingConfirmation(
+  supabaseAdmin: any,
+  userId: string,
+  channel: string,
+): Promise<boolean> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("pending_actions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("channel", channel)
+      .eq("status", "pending_confirmation")
+      .gt("expires_at", new Date().toISOString())
+      .limit(1);
+    return Array.isArray(data) && data.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 async function handleInboundMedia(
