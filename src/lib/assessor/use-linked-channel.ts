@@ -63,7 +63,7 @@ export function useLinkedChannel(): LinkedChannelInfo {
       if (cancelled) return;
       const rows = (data ?? []) as
         { channel: string; external_id: string; display_name: string | null; linked_at: string }[];
-      const channels = rows
+      const channels: LinkedChannelInfo["channels"] = rows
         .filter((r) => r.channel === "whatsapp" || r.channel === "telegram")
         .map((r) => ({
           channel: r.channel as LinkedChannel,
