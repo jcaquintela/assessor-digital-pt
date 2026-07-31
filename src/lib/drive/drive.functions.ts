@@ -63,14 +63,17 @@ export const createFileCategory = createServerFn({ method: "POST" })
 
 export const renameFileCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string; name: string }) => ({
+  .inputValidator((data: { id: string; name: string; color?: string | null }) => ({
     id: String(data?.id ?? ""),
     name: cleanCategoryName(data?.name),
+    color: cleanCategoryColor(data?.color),
   }))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const update: any = { name: data.name };
+    if (data.color !== undefined) update.color = data.color;
     const { error } = await (supabase.from("file_categories") as any)
-      .update({ name: data.name })
+      .update(update)
       .eq("id", data.id)
       .eq("user_id", userId);
     if (error) {
