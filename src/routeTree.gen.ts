@@ -77,6 +77,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as AuthenticatedOportunidadesProspecaoIndexRouteImport } from './routes/_authenticated/oportunidades.prospecao.index'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
+import { Route as ApiPublicHooksProactivePushRouteImport } from './routes/api/public/hooks/proactive-push'
 import { Route as ApiPublicHooksCalendarPollRouteImport } from './routes/api/public/hooks/calendar-poll'
 import { Route as ApiPublicHooksBetaExpiryRouteImport } from './routes/api/public/hooks/beta-expiry'
 import { Route as AuthenticatedOportunidadesProspecaoIdRouteImport } from './routes/_authenticated/oportunidades.prospecao.$id'
@@ -439,6 +440,12 @@ const ApiPublicHooksProactiveTickRoute =
     path: '/api/public/hooks/proactive-tick',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProactivePushRoute =
+  ApiPublicHooksProactivePushRouteImport.update({
+    id: '/api/public/hooks/proactive-push',
+    path: '/api/public/hooks/proactive-push',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksCalendarPollRoute =
   ApiPublicHooksCalendarPollRouteImport.update({
     id: '/api/public/hooks/calendar-poll',
@@ -540,6 +547,7 @@ export interface FileRoutesByFullPath {
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
+  '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -613,6 +621,7 @@ export interface FileRoutesByTo {
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
+  '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -689,6 +698,7 @@ export interface FileRoutesById {
   '/_authenticated/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
+  '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -765,6 +775,7 @@ export interface FileRouteTypes {
     | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
+    | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao/'
@@ -838,6 +849,7 @@ export interface FileRouteTypes {
     | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
+    | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao'
@@ -913,6 +925,7 @@ export interface FileRouteTypes {
     | '/_authenticated/oportunidades/prospecao/$id'
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
+    | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/telegram/webhook'
     | '/_authenticated/oportunidades/prospecao/'
@@ -936,6 +949,7 @@ export interface RootRouteChildren {
   OauthOutlookReturnRoute: typeof OauthOutlookReturnRoute
   ApiPublicHooksBetaExpiryRoute: typeof ApiPublicHooksBetaExpiryRoute
   ApiPublicHooksCalendarPollRoute: typeof ApiPublicHooksCalendarPollRoute
+  ApiPublicHooksProactivePushRoute: typeof ApiPublicHooksProactivePushRoute
   ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -1418,6 +1432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProactiveTickRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/proactive-push': {
+      id: '/api/public/hooks/proactive-push'
+      path: '/api/public/hooks/proactive-push'
+      fullPath: '/api/public/hooks/proactive-push'
+      preLoaderRoute: typeof ApiPublicHooksProactivePushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/calendar-poll': {
       id: '/api/public/hooks/calendar-poll'
       path: '/api/public/hooks/calendar-poll'
@@ -1701,6 +1722,7 @@ const rootRouteChildren: RootRouteChildren = {
   OauthOutlookReturnRoute: OauthOutlookReturnRoute,
   ApiPublicHooksBetaExpiryRoute: ApiPublicHooksBetaExpiryRoute,
   ApiPublicHooksCalendarPollRoute: ApiPublicHooksCalendarPollRoute,
+  ApiPublicHooksProactivePushRoute: ApiPublicHooksProactivePushRoute,
   ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
