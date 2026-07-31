@@ -69,7 +69,9 @@ export async function callGateway(input: GatewayCallInput): Promise<GatewayCallR
   const model = input.model ?? V2_MODEL_DEFAULT;
   const empty: GatewayUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   const key = process.env.LOVABLE_API_KEY;
-  if (!key) return { ok: false, usage: empty, latencyMs: 0, error: "LOVABLE_API_KEY missing" };
+  if (!key) {
+    return { ok: false, usage: empty, latencyMs: 0, error: "LOVABLE_API_KEY missing", unavailable: true };
+  }
 
   const body: Record<string, unknown> = {
     model,
@@ -106,12 +108,15 @@ export async function callGateway(input: GatewayCallInput): Promise<GatewayCallR
         latencyMs,
         httpStatus: res.status,
         error: payload?.error?.message || `HTTP ${res.status}`,
+        unavailable: isUnavailableStatus(res.status, payload),
       };
     }
     const choice = payload?.choices?.[0];
     const message = choice?.message as GatewayMessage | undefined;
     if (!message) {
-      return { ok: false, usage, latencyMs, error: "empty gateway message" };
+      // Resposta 200 sem mensagem: o modelo não devolveu conteúdo utilizável.
+      // Não é incompreensão do consultor — é indisponibilidade do serviço.
+      return { ok: false, usage, latencyMs, error: "empty gateway message", unavailable: true };
     }
     return {
       ok: true,
@@ -126,8 +131,24 @@ export async function callGateway(input: GatewayCallInput): Promise<GatewayCallR
       usage: empty,
       latencyMs: Date.now() - started,
       error: err instanceof Error ? err.message : String(err),
+      unavailable: true, // falha de rede/timeout — o serviço não respondeu
     };
   }
+}
+
+// Classificação de falhas do gateway.
+//
+// "Indisponível" = o pedido está correcto mas o serviço não pode servir agora:
+//   402 créditos esgotados, 403 limite de créditos do workspace atingido,
+//   408/429 rate limit ou timeout, 5xx erro do provedor.
+// "Pedido inválido" (400/401) = bug nosso: não é indisponibilidade, tratamos
+// como falha normal para não mascarar um erro de programação.
+export function isUnavailableStatus(status: number, payload?: any): boolean {
+  const type = String(payload?.error?.type ?? payload?.type ?? "").toLowerCase();
+  if (type.includes("credit") || type.includes("rate_limit") || type.includes("quota")) return true;
+  if (status === 402 || status === 403 || status === 408 || status === 429) return true;
+  if (status >= 500) return true;
+  return false;
 }
 
 // Helper que serializa um resultado de ferramenta para uma `role: "tool"`
