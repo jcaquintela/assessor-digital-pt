@@ -313,6 +313,54 @@ async function bumpAttempts(supabaseAdmin: any, id: string, current: number) {
   await supabaseAdmin.from("whatsapp_link_codes").update(patch as never).eq("id", id);
 }
 
+// Conta nova criada a partir do WhatsApp (código promocional). O email é
+// sintético e não entregável: a entrada no painel faz-se pelo link mágico.
+async function createWhatsAppAccount(
+  supabaseAdmin: any,
+  phone: string,
+  tier: string,
+): Promise<{ ok: true; userId: string } | { ok: false }> {
+  const email = `wa-${phone.replace(/\D/g, "")}@shadow.assessor.local`;
+  const nowIso = new Date().toISOString();
+  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { source: "whatsapp_promo", phone, name: `WhatsApp ${phone}` },
+  });
+  const userId = created?.user?.id as string | undefined;
+  if (error || !userId) {
+    console.error("[whatsapp-adapter] createUser:", error);
+    return { ok: false };
+  }
+  await supabaseAdmin
+    .from("profiles")
+    .update({
+      subscription_tier: normalizeTier(tier),
+      phone,
+      whatsapp_link_status: "linked",
+      whatsapp_linked_at: nowIso,
+      phone_verified_at: nowIso,
+      primary_channel: "whatsapp",
+    } as never)
+    .eq("id", userId);
+  await supabaseAdmin
+    .from("consultant_preferences")
+    .upsert(
+      { user_id: userId, autonomy_level: "conservative", primary_channel: "whatsapp" },
+      { onConflict: "user_id" },
+    );
+  const { linkChannelToUser } = await import("@/lib/assessor/channels.server");
+  await linkChannelToUser(supabaseAdmin, "whatsapp", phone, userId);
+  return { ok: true, userId };
+}
+
+async function bumpAttemptsLegacy(supabaseAdmin: any, id: string, current: number) {
+  const next = current + 1;
+  const patch: Record<string, unknown> = { attempts: next };
+  if (next >= WHATSAPP_CODE_MAX_ATTEMPTS) patch.used_at = new Date().toISOString();
+  await supabaseAdmin.from("whatsapp_link_codes").update(patch as never).eq("id", id);
+}
+
 // Tier efectivo lido directamente do perfil (mesma regra de public.effective_tier):
 // beta activo e não expirado => 'hub', senão o tier real.
 async function effectiveTierOf(supabaseAdmin: any, userId: string): Promise<string> {
