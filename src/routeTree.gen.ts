@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RegistoRouteImport } from './routes/registo'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as EntrarRouteImport } from './routes/entrar'
@@ -82,6 +83,11 @@ import { Route as AuthenticatedNegocioComissoesIdRouteImport } from './routes/_a
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegistoRoute = RegistoRouteImport.update({
+  id: '/registo',
+  path: '/registo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanosRoute = PlanosRouteImport.update({
@@ -452,6 +458,7 @@ export interface FileRoutesByFullPath {
   '/entrar': typeof EntrarRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
+  '/registo': typeof RegistoRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -521,6 +528,7 @@ export interface FileRoutesByTo {
   '/entrar': typeof EntrarRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
+  '/registo': typeof RegistoRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -593,6 +601,7 @@ export interface FileRoutesById {
   '/entrar': typeof EntrarRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
+  '/registo': typeof RegistoRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -665,6 +674,7 @@ export interface FileRouteTypes {
     | '/entrar'
     | '/mcp'
     | '/planos'
+    | '/registo'
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -734,6 +744,7 @@ export interface FileRouteTypes {
     | '/entrar'
     | '/mcp'
     | '/planos'
+    | '/registo'
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -805,6 +816,7 @@ export interface FileRouteTypes {
     | '/entrar'
     | '/mcp'
     | '/planos'
+    | '/registo'
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -877,6 +889,7 @@ export interface RootRouteChildren {
   EntrarRoute: typeof EntrarRoute
   McpRoute: typeof McpRoute
   PlanosRoute: typeof PlanosRoute
+  RegistoRoute: typeof RegistoRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -896,6 +909,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/registo': {
+      id: '/registo'
+      path: '/registo'
+      fullPath: '/registo'
+      preLoaderRoute: typeof RegistoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planos': {
@@ -1607,6 +1627,7 @@ const rootRouteChildren: RootRouteChildren = {
   EntrarRoute: EntrarRoute,
   McpRoute: McpRoute,
   PlanosRoute: PlanosRoute,
+  RegistoRoute: RegistoRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
