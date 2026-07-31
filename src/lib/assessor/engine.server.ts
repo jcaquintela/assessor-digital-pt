@@ -5,6 +5,7 @@
 // reais após confirmação explícita do utilizador.
 
 import { callAssessorAi, type AiInterpretation, type AiContextMessage } from "./ai.server";
+import { cleanTitle } from "./titles";
 import {
   interpretAssessorMessage,
   ROUTER_MIN_CONFIDENCE,
@@ -151,8 +152,18 @@ function logBranch(event: string, meta: Record<string, unknown> = {}) {
 function isQueryMisc(t: string): boolean {
   return QUERY_MISC_RE.test(t);
 }
+// Substantivos que tornam a pergunta inequivocamente sobre agenda.
+// "o que tenho" sozinho não chega: "Diversos o que tenho?" é uma pergunta
+// sobre o módulo Diversos, não sobre a agenda do dia.
+const AGENDA_NOUN_RE =
+  /\b(agenda|agendamentos?|compromissos?|marca(?:d[oa]s?|[çc][õoã]es?)|reuni(?:[ãa]o|[õo]es)|visitas?|chamadas?)\b/i;
+
 function isExplicitAgendaQuery(t: string): boolean {
-  return QUERY_AGENDA_RE.test(t);
+  if (!QUERY_AGENDA_RE.test(t)) return false;
+  // Referência explícita a Diversos/notas ganha à agenda, salvo se o texto
+  // também trouxer um substantivo de agenda ("que reuniões tenho? e notas?").
+  if (QUERY_MISC_RE.test(t) && !AGENDA_NOUN_RE.test(t)) return false;
+  return true;
 }
 
 function detectTipoEvento(texto: string): string {
@@ -279,6 +290,8 @@ function buildProposalReply(
   ent: Record<string, any>,
   personName: string | null,
 ): string {
+  // Higiene: nunca deixar placeholders ("null", "undefined") chegarem à resposta.
+  ent = { ...ent, title: cleanTitle(ent.title), event_type: cleanTitle(ent.event_type) };
   const hasDate = !!ent.date && /^\d{4}-\d{2}-\d{2}$/.test(String(ent.date));
   // Nunca propomos sem data. Se a data é inválida ou está em falta,
   // pedimos a data em primeiro lugar — o slot-fill vai completar o
@@ -921,7 +934,7 @@ async function saveMiscellaneous(
   return { reply: aiReply || "Fica registado." };
 }
 
-async function queryMisc(supabase: any, userId: string, text: string): Promise<string> {
+export async function queryMisc(supabase: any, userId: string, text: string): Promise<string> {
   const t = text.toLowerCase();
   const now = new Date();
   let sinceIso: string | null = null;
