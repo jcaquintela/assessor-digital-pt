@@ -58,7 +58,7 @@ export function EditMovementDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Editar {isExpense ? "despesa" : "comissão"}</DialogTitle>
-          <DialogDescription>Corrige o que já existe. Novos movimentos entram por conversa.</DialogDescription>
+          <DialogDescription>Corrige o que já existe. Novos movimentos entram por conversa (por agora).</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div><Label>Valor (€)</Label><Input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} /></div>

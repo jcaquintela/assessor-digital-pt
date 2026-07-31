@@ -1271,6 +1271,41 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_tags: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          tag_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          tag_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          tag_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flag_users: {
         Row: {
           flag_key: string
@@ -1436,6 +1471,65 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      folder_items: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          folder_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          folder_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          folder_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folder_items_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       follow_ups: {
         Row: {
@@ -2408,6 +2502,33 @@ export type Database = {
         }
         Relationships: []
       }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       telegram_invites: {
         Row: {
           code: string
@@ -2516,6 +2637,7 @@ export type Database = {
           classification: string | null
           classification_confidence: number | null
           created_at: string
+          custom_category: string | null
           deleted_at: string | null
           document_type: string | null
           error_code: string | null
@@ -2548,6 +2670,7 @@ export type Database = {
           classification?: string | null
           classification_confidence?: number | null
           created_at?: string
+          custom_category?: string | null
           deleted_at?: string | null
           document_type?: string | null
           error_code?: string | null
@@ -2580,6 +2703,7 @@ export type Database = {
           classification?: string | null
           classification_confidence?: number | null
           created_at?: string
+          custom_category?: string | null
           deleted_at?: string | null
           document_type?: string | null
           error_code?: string | null
