@@ -291,11 +291,14 @@ function DrivePage() {
                     {links.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         <span className="c-muted text-[11px]">Ligado a</span>
-                        {links.slice(0, 3).map((l) => (
+                        {links.slice(0, 4).map((l) => (
                           <span key={l.entity_id + l.entity_type} className="c-badge">
-                            {ENTITY_LABEL[l.entity_type] ?? l.entity_type}
+                            {l.entity_name ?? ENTITY_LABEL[l.entity_type] ?? l.entity_type}
                           </span>
                         ))}
+                        {links.length > 4 && (
+                          <span className="c-muted text-[11px]">+{links.length - 4}</span>
+                        )}
                       </div>
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -315,7 +318,7 @@ function DrivePage() {
                           setFixTarget({ id: f.id, name: f.original_file_name ?? null });
                         }}
                       >
-                        <Link2 className="h-3 w-3" /> Corrigir ligação
+                        <Link2 className="h-3 w-3" /> Ligações
                       </button>
                       <button
                         type="button"
