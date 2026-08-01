@@ -131,6 +131,16 @@ async function routeInbound(
       return;
     }
 
+    // Resgate de código promocional numa conta já existente: confirmação
+    // explícita antes de mexer no plano. Não passa pelo motor.
+    if (await handlePromoRedeem(adapter, supabaseAdmin, inbound, userId, content)) {
+      if (inbound.callback && adapter.answerInteraction) {
+        try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
+        catch { /* best-effort */ }
+      }
+      return;
+    }
+
     // Confirmação de um cartão de visita lido numa foto: cria o contacto e
     // devolve o ficheiro pronto a guardar. Não passa pelo motor.
     if (await handleBusinessCardAnswer(adapter, supabaseAdmin, inbound, userId, content)) {
