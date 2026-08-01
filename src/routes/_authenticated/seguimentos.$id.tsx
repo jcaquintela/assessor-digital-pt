@@ -17,6 +17,11 @@ import {
 } from "@/lib/demo-data";
 import { ChevronLeft, Trash2, Save, CheckCircle2, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Link } from "@tanstack/react-router";
+import { EntityFilesCard } from "@/components/drive/entity-files-card";
+import { Briefcase, User as UserIcon, Phone } from "lucide-react";
 
 const TIPOS: SeguimentoTipo[] = ["Tarefa", "Evento"];
 const ESTADOS: SeguimentoEstado[] = ["Pendente", "Concluído", "Atrasado"];
@@ -43,6 +48,31 @@ function SeguimentoDetail() {
   } = useStore();
 
   const s = useMemo(() => seguimentos.find((x) => x.id === id), [seguimentos, id]);
+
+  // Rede de segurança: se ainda não está na cache local (ou veio de uma
+  // prioridade calculada no servidor), vai buscá-lo à base de dados. Antes,
+  // caía em "não encontrado" e o consultor acabava na lista geral.
+  const fallback = useQuery({
+    queryKey: ["follow_up", id],
+    enabled: !s,
+    queryFn: async () => {
+      const { data } = await supabase.from("follow_ups").select("*").eq("id", id).maybeSingle();
+      if (!data) return null;
+      const r = data as any;
+      return {
+        id: r.id,
+        tipo: (r.due_time || String(r.type ?? "").toLowerCase().includes("event") ? "Evento" : "Tarefa") as SeguimentoTipo,
+        titulo: r.title,
+        data: r.due_date,
+        hora: r.due_time ?? undefined,
+        pessoaId: r.person_id ?? undefined,
+        oportunidadeId: r.opportunity_id ?? undefined,
+        estado: (r.status ?? "Pendente") as SeguimentoEstado,
+        prioridade: (r.priority ?? "Média") as SeguimentoPrioridade,
+        notas: r.notes ?? undefined,
+      };
+    },
+  });
 
   const [tipo, setTipo] = useState<SeguimentoTipo>(s?.tipo ?? "Tarefa");
   const [titulo, setTitulo] = useState(s?.titulo ?? "");
