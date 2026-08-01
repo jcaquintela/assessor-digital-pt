@@ -19,6 +19,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { EventDrawer, type EventDrawerItem } from "@/components/hoje/event-drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { explainPriority } from "@/lib/assessor/priority-explain";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
