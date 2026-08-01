@@ -80,7 +80,6 @@ import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicHooksWhatsappTemplateStatusRouteImport } from './routes/api/public/hooks/whatsapp-template-status'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
 import { Route as ApiPublicHooksProactivePushRouteImport } from './routes/api/public/hooks/proactive-push'
-import { Route as ApiPublicHooksE2eDriveRouteImport } from './routes/api/public/hooks/e2e-drive'
 import { Route as ApiPublicHooksCalendarPollRouteImport } from './routes/api/public/hooks/calendar-poll'
 import { Route as ApiPublicHooksBetaExpiryRouteImport } from './routes/api/public/hooks/beta-expiry'
 import { Route as AuthenticatedOportunidadesProspecaoIdRouteImport } from './routes/_authenticated/oportunidades.prospecao.$id'
@@ -461,11 +460,6 @@ const ApiPublicHooksProactivePushRoute =
     path: '/api/public/hooks/proactive-push',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksE2eDriveRoute = ApiPublicHooksE2eDriveRouteImport.update({
-  id: '/api/public/hooks/e2e-drive',
-  path: '/api/public/hooks/e2e-drive',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicHooksCalendarPollRoute =
   ApiPublicHooksCalendarPollRouteImport.update({
     id: '/api/public/hooks/calendar-poll',
@@ -568,7 +562,6 @@ export interface FileRoutesByFullPath {
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
-  '/api/public/hooks/e2e-drive': typeof ApiPublicHooksE2eDriveRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
@@ -645,7 +638,6 @@ export interface FileRoutesByTo {
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
-  '/api/public/hooks/e2e-drive': typeof ApiPublicHooksE2eDriveRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
@@ -725,7 +717,6 @@ export interface FileRoutesById {
   '/_authenticated/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
-  '/api/public/hooks/e2e-drive': typeof ApiPublicHooksE2eDriveRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
@@ -805,7 +796,6 @@ export interface FileRouteTypes {
     | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
-    | '/api/public/hooks/e2e-drive'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/hooks/whatsapp-template-status'
@@ -882,7 +872,6 @@ export interface FileRouteTypes {
     | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
-    | '/api/public/hooks/e2e-drive'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/hooks/whatsapp-template-status'
@@ -961,7 +950,6 @@ export interface FileRouteTypes {
     | '/_authenticated/oportunidades/prospecao/$id'
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
-    | '/api/public/hooks/e2e-drive'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/hooks/whatsapp-template-status'
@@ -987,7 +975,6 @@ export interface RootRouteChildren {
   OauthOutlookReturnRoute: typeof OauthOutlookReturnRoute
   ApiPublicHooksBetaExpiryRoute: typeof ApiPublicHooksBetaExpiryRoute
   ApiPublicHooksCalendarPollRoute: typeof ApiPublicHooksCalendarPollRoute
-  ApiPublicHooksE2eDriveRoute: typeof ApiPublicHooksE2eDriveRoute
   ApiPublicHooksProactivePushRoute: typeof ApiPublicHooksProactivePushRoute
   ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
   ApiPublicHooksWhatsappTemplateStatusRoute: typeof ApiPublicHooksWhatsappTemplateStatusRoute
@@ -1493,13 +1480,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProactivePushRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/e2e-drive': {
-      id: '/api/public/hooks/e2e-drive'
-      path: '/api/public/hooks/e2e-drive'
-      fullPath: '/api/public/hooks/e2e-drive'
-      preLoaderRoute: typeof ApiPublicHooksE2eDriveRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/hooks/calendar-poll': {
       id: '/api/public/hooks/calendar-poll'
       path: '/api/public/hooks/calendar-poll'
@@ -1785,7 +1765,6 @@ const rootRouteChildren: RootRouteChildren = {
   OauthOutlookReturnRoute: OauthOutlookReturnRoute,
   ApiPublicHooksBetaExpiryRoute: ApiPublicHooksBetaExpiryRoute,
   ApiPublicHooksCalendarPollRoute: ApiPublicHooksCalendarPollRoute,
-  ApiPublicHooksE2eDriveRoute: ApiPublicHooksE2eDriveRoute,
   ApiPublicHooksProactivePushRoute: ApiPublicHooksProactivePushRoute,
   ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
   ApiPublicHooksWhatsappTemplateStatusRoute:
