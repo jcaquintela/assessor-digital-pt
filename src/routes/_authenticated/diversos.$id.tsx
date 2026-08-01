@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { humanizeMiscText, humanizeMiscTitle, sanitizeMiscFields } from "@/lib/assessor/misc-text";
+import { miscReason } from "@/lib/assessor/misc-reason";
+import { MiscActions } from "@/components/diversos/misc-actions";
 import { ChevronLeft, Save, Trash2, Archive, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +22,9 @@ type MiscItem = {
   id: string;
   title: string;
   original_content: string | null;
+  category?: string | null;
+  related_person_id?: string | null;
+  related_property_id?: string | null;
   summary: string | null;
   source_channel: string;
   status: Status;
@@ -58,7 +63,7 @@ function DiversoDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("miscellaneous_items")
-        .select("id, title, original_content, summary, source_channel, status, tags, created_at")
+        .select("id, title, original_content, summary, category, source_channel, status, tags, related_person_id, related_property_id, created_at")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -195,6 +200,16 @@ function DiversoDetail() {
         <Badge variant="secondary" className="uppercase">{item.source_channel}</Badge>
         {(item.tags ?? []).map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
       </div>
+
+      <Card className="mb-4">
+        <CardContent className="space-y-2 p-4">
+          <h3 className="text-sm font-semibold">Porque está aqui</h3>
+          <p className="text-sm">
+            {miscReason(item).label} — <span className="text-muted-foreground">{miscReason(item).detail}</span>
+          </p>
+          <MiscActions item={item} />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

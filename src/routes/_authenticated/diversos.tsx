@@ -5,6 +5,8 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { humanizeMiscText, humanizeMiscTitle } from "@/lib/assessor/misc-text";
+import { miscReason } from "@/lib/assessor/misc-reason";
+import { MiscActions } from "@/components/diversos/misc-actions";
 import { Archive, Trash2, CheckCircle2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -26,6 +28,9 @@ type MiscItem = {
   id: string;
   title: string;
   original_content: string | null;
+  category?: string | null;
+  related_person_id?: string | null;
+  related_property_id?: string | null;
   summary: string | null;
   source_channel: string;
   status: "inbox" | "reviewed" | "classified" | "archived" | "deleted";
@@ -60,7 +65,7 @@ function DiversosPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("miscellaneous_items")
-        .select("id, title, original_content, summary, source_channel, status, tags, created_at")
+        .select("id, title, original_content, summary, category, source_channel, status, tags, related_person_id, related_property_id, created_at")
         .neq("status", "deleted")
         .order("created_at", { ascending: false })
         .limit(200);
@@ -252,11 +257,16 @@ function DiversosPage() {
                       })}
                     </span>
                   </div>
+                  <p className="text-[12.5px]">
+                    <span className="font-medium">Porque está aqui:</span>{" "}
+                    <span className="c-muted">{miscReason(r).label} — {miscReason(r).detail}</span>
+                  </p>
                   {r.original_content && r.original_content !== r.title ? (
                     <p className="c-soft whitespace-pre-wrap text-[13px] leading-relaxed">
                       {r.original_content}
                     </p>
                   ) : null}
+                  <MiscActions item={r} className="mt-1" />
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {r.status !== "reviewed" && r.status !== "classified" ? (
                       <button
