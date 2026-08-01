@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/public/hooks/e2e-drive")({
         }
 
         const { data: links, error: linksErr } = await supabaseAdmin.from("file_links")
-          .select("entity_type, entity_id, relation_type, created_by").eq("file_id", file!.id);
+          .select("entity_type, entity_id, relation_type, link_source").eq("file_id", file!.id);
         log.links_after = links; log.links_error = linksErr?.message ?? null;
 
         // Grafo: ficheiros relacionados a partir da Pessoa
