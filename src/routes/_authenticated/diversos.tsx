@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { humanizeMiscText, humanizeMiscTitle } from "@/lib/assessor/misc-text";
 import { miscReason } from "@/lib/assessor/misc-reason";
 import { MiscActions } from "@/components/diversos/misc-actions";
+import { MiscLinkedBadges } from "@/components/diversos/linked-badge";
 import { Archive, Trash2, CheckCircle2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -267,6 +268,11 @@ function DiversosPage() {
                     </p>
                   ) : null}
                   <MiscActions item={r} className="mt-1" />
+                  <MiscLinkedBadges
+                    personId={r.related_person_id}
+                    propertyId={r.related_property_id}
+                    className="mt-1"
+                  />
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {r.status !== "reviewed" && r.status !== "classified" ? (
                       <button
