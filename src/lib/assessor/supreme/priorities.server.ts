@@ -18,6 +18,16 @@ function daysBetween(a: Date, b: Date): number {
   return Math.floor((a.getTime() - b.getTime()) / 864e5);
 }
 
+// A BD tem valores em minúsculas ("evento", "pendente", "media") mas o
+// código antigo comparava com "Evento"/"Alta"/"Concluído". Resultado: quase
+// nenhum fator real entrava no cálculo e a frase saía sempre igual.
+const norm = (v: unknown) =>
+  String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+const DONE_STATUSES = new Set(["concluido", "concluida", "done", "cancelado", "cancelada", "arquivado"]);
+const EVENT_TYPES = new Set(["evento", "event", "visita", "reuniao"]);
+const HIGH_PRIORITIES = new Set(["alta", "high", "urgente"]);
+
 function startOfDayLisbon(now = new Date()): Date {
   const p = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
