@@ -26,7 +26,7 @@ function AquisicaoPage() {
         <MetricCard
           label="Tentativas de acesso ao WhatsApp sem autorização"
           value={data.unauthorizedWhatsappAttempts}
-          sub="mensagens LIGAR- rejeitadas · pode ser a mesma pessoa várias vezes"
+          sub={`mensagens LIGAR- rejeitadas, vindas de ${data.unauthorizedWhatsappNumbers} número(s) distinto(s)`}
           source="assessor_messages · live"
         />
         <MetricCard label="Converteu" value={data.converted} sub="base → pago" source="subscription_tier · live" />
