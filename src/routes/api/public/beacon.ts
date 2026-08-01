@@ -16,7 +16,7 @@ import { createFileRoute } from "@tanstack/react-router";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Headers": "content-type, x-beacon-dry-run",
 };
 
 function hostOf(value: unknown): string | null {
