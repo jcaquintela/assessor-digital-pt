@@ -17,8 +17,8 @@ describe("resgate de código promocional em conta existente", () => {
     const email = `e2e.promo.${stamp}@example.test`;
     const replies: string[] = [];
     setTelegramProviderOverride({
-      async sendText({ text }) { replies.push(text); return { ok: true, messageId: `m${replies.length}` }; },
-      async sendOptions({ text }) { replies.push(text); return { ok: true, messageId: `m${replies.length}` }; },
+      async sendText({ text }: { text: string }) { replies.push(text); return { ok: true, messageId: `m${replies.length}` }; },
+      async sendOptions({ text }: { text: string }) { replies.push(text); return { ok: true, messageId: `m${replies.length}` }; },
       async answerCallback() { return { ok: true }; },
       async getFile() { return { ok: false, error: "n/a" }; },
       async downloadFile() { return { ok: false, error: "n/a" }; },
