@@ -6,8 +6,32 @@ export interface OverviewSummary {
   properties: { count: number; toAcquire: number };
   people: { count: number; contactedWeek: number };
   misc: { pending: number };
-  agenda: { today: number; nextLabel: string | null; nextTime: string | null };
+  agenda: {
+    today: number;
+    nextLabel: string | null;
+    nextTime: string | null;
+    /** Fonte única dos compromissos de hoje — o cartão e o bloco "Próximos compromissos" leem daqui. */
+    items: AgendaItem[];
+  };
   billing: { forecast: number; open: number };
+}
+
+export interface AgendaItem {
+  id: string;
+  title: string;
+  time: string | null;
+  type: string | null;
+  personId: string | null;
+  propertyId: string | null;
+}
+
+/** Estados que tiram um compromisso do dia. */
+const DONE_FOLLOW_UP = new Set([
+  "concluído", "concluido", "concluída", "concluida", "done", "completed", "cancelado", "cancelled", "arquivado",
+]);
+
+export function isOpenFollowUp(status: unknown): boolean {
+  return !DONE_FOLLOW_UP.has(String(status ?? "").trim().toLowerCase());
 }
 
 export interface MentorTip {
@@ -42,7 +66,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     supabase.from("properties").select("id, status").eq("user_id", userId),
     supabase.from("people").select("id").eq("user_id", userId),
     supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox"),
-    supabase.from("follow_ups").select("id, title, type, due_date, due_time, status")
+    supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, person_id, property_id")
       .eq("user_id", userId).gte("due_date", start).lte("due_date", end).order("due_time", { ascending: true }),
     supabase.from("financial_movements").select("id, type, amount, status").eq("user_id", userId).eq("type", "commission"),
     supabase.from("interactions").select("person_id").eq("user_id", userId).gte("occurred_at", isoDaysAgo(7)),
@@ -54,9 +78,17 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
   const propRows = ((props.data as any[]) ?? []).filter(
     (p) => !CLOSED_PROPERTY.has(String(p.status ?? "").toLowerCase()),
   );
-  const eventRows = ((events.data as any[]) ?? []).filter(
-    (e) => String(e.status ?? "").toLowerCase() !== "concluído" && String(e.status ?? "").toLowerCase() !== "concluido",
-  );
+  const eventRows: AgendaItem[] = ((events.data as any[]) ?? [])
+    .filter((e) => isOpenFollowUp(e.status))
+    .map((e) => ({
+      id: String(e.id),
+      title: String(e.title ?? "Compromisso"),
+      time: e.due_time ? String(e.due_time).slice(0, 5) : null,
+      type: e.type ? String(e.type) : null,
+      personId: e.person_id ?? null,
+      propertyId: e.property_id ?? null,
+    }))
+    .sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
   const next = eventRows[0] ?? null;
   const commissions = ((movements.data as any[]) ?? []);
   const open = commissions.filter((m) => {
@@ -78,7 +110,8 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     agenda: {
       today: eventRows.length,
       nextLabel: next?.title ?? null,
-      nextTime: next?.due_time ? String(next.due_time).slice(0, 5) : null,
+      nextTime: next?.time ?? null,
+      items: eventRows,
     },
     billing: { forecast: open.reduce((s, m) => s + Number(m.amount ?? 0), 0), open: open.length },
   };
