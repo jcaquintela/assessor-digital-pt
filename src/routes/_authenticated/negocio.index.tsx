@@ -135,15 +135,15 @@ function NegocioPage() {
         </div>
       )}
 
-      <div className="grid gap-2">
+      <div className="grid min-w-0 gap-2">
         {rows.map((m) => {
           const tone = statusTone(m.status);
           const isExpense = m.type === "expense";
           const canal = (m as unknown as { source_channel?: string }).source_channel;
           const to = isExpense ? "/negocio/despesas/$id" : "/negocio/comissoes/$id";
           return (
-            <Link key={m.id} to={to} params={{ id: m.id }} className="c-card c-card-hover block p-4">
-              <div className="flex items-start justify-between gap-3">
+            <Link key={m.id} to={to} params={{ id: m.id }} className="c-card c-card-hover block min-w-0 p-4">
+              <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-[14px] font-semibold">{m.description}</div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
