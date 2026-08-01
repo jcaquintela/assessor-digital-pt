@@ -56,9 +56,8 @@ export async function computePriorities(
   const [{ data: follows }, { data: opps }] = await Promise.all([
     supabase
       .from("follow_ups")
-      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, outcome")
+      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, outcome, created_at, notes")
       .eq("user_id", userId)
-      .neq("status", "Concluído")
       .is("outcome", null)
       // Só o que está em atraso ou é para hoje. Compromissos futuros
       // (ex.: amanhã à noite) não são prioridades de hoje.
@@ -108,9 +107,10 @@ export async function computePriorities(
 
   // Follow-ups (tarefas e eventos)
   for (const f of ((follows as any[]) ?? [])) {
+    if (DONE_STATUSES.has(norm(f.status))) continue;
     const due = new Date(f.due_date);
     const overdueDays = Math.max(0, daysBetween(today, due));
-    const isEvent = f.type === "Evento" || f.type === "event";
+    const isEvent = EVENT_TYPES.has(norm(f.type));
     let score = isEvent ? 65 : 55;
     const reasons: string[] = [];
     if (overdueDays > 0) {
@@ -122,9 +122,28 @@ export async function computePriorities(
       reasons.push(isEvent ? "compromisso próximo" : "próximo do prazo");
       score -= 15;
     }
-    if (f.priority === "Alta" || f.priority === "high") { score += 10; reasons.push("prioridade alta"); }
+    if (HIGH_PRIORITIES.has(norm(f.priority))) { score += 10; reasons.push("prioridade alta"); }
+
+    // Há quanto tempo isto está por tratar (fator real, não a data de entrega).
+    const pendingDays = f.created_at ? Math.max(0, daysBetween(today, startOfDayLisbon(new Date(f.created_at)))) : 0;
+    if (pendingDays >= 2) {
+      score += Math.min(10, pendingDays);
+      reasons.push(pendingDays === 1 ? "aberto desde ontem" : `pendente há ${pendingDays} dias`);
+    }
+
+    // Hora marcada: um compromisso com hora é mais premente do que uma tarefa solta.
+    if (isEvent && f.due_time) reasons.push(`marcado para as ${String(f.due_time).slice(0, 5)}`);
+
     // Fator real: dá para agir já se houver contacto telefónico.
     if (f.person_id && phoneById.get(f.person_id)) reasons.push("com telefone disponível");
+
+    // Faz parte de um negócio em curso — não é uma tarefa isolada.
+    if (f.opportunity_id) { score += 5; reasons.push("faz parte de um negócio em curso"); }
+
+    // Sem contexto nenhum: vale a pena dizer, porque explica o próximo passo.
+    if (!f.person_id && !f.opportunity_id && !String(f.notes ?? "").trim()) {
+      reasons.push("ainda sem pessoa nem negócio associado");
+    }
     items.push({
       subject_type: "follow_up",
       subject_id: f.id,
