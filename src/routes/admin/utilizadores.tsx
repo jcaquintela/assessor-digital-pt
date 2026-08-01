@@ -114,7 +114,9 @@ function AcessosPage() {
           ) : filtered.map((u) => (
             <tr key={u.id}>
               <td>
-                {u.name || "—"}
+                <Link to="/admin/consultor/$id" params={{ id: u.id }} className="admin-link">
+                  {u.name || u.email || "Ver ficha"}
+                </Link>
                 <br />
                 <span className="mini" style={{ color: "var(--muted)" }}>{u.email}</span>
               </td>
