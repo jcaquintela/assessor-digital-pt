@@ -187,6 +187,13 @@ export const convertBeta = createServerFn({ method: "POST" })
       before,
       after,
     });
+
+    const { isUpgradeToPaid, notifyPlanActivatedSafe } = await import(
+      "@/lib/subscription/plan-activated.server"
+    );
+    if (isUpgradeToPaid(before?.subscription_tier, tier)) {
+      await notifyPlanActivatedSafe(supabaseAdmin, data.target_user_id, tier);
+    }
     return { ok: true, tier };
   });
 
