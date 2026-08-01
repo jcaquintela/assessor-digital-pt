@@ -199,6 +199,57 @@ function SeguimentoView({ s }: { s: Seguimento }) {
         <Badge variant={s.prioridade === "Alta" ? "destructive" : "secondary"}>{s.prioridade}</Badge>
       </div>
 
+      {/* Contexto primeiro: o que é, com quem, a que negócio pertence e o que falta fazer. */}
+      <Card className="mb-4">
+        <CardContent className="grid gap-4 p-4 md:grid-cols-2">
+          <div>
+            <div className="text-xs text-muted-foreground">O que é</div>
+            <div className="text-sm">
+              {s.tipo === "Evento" ? "Compromisso" : "Tarefa"} · {formatData(s.data)}{s.hora ? ` às ${s.hora}` : ""}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Com quem</div>
+            <div className="text-sm">
+              {pessoa ? (
+                <Link to="/pessoas/$id" params={{ id: pessoa.id }} className="inline-flex items-center gap-1 underline">
+                  <UserIcon className="h-3.5 w-3.5" />{pessoa.nome}
+                </Link>
+              ) : <span className="text-muted-foreground">Sem pessoa associada.</span>}
+              {pessoa?.telefone ? (
+                <span className="ml-2 text-xs text-muted-foreground"><Phone className="mr-1 inline h-3 w-3" />{pessoa.telefone}</span>
+              ) : null}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Negócio</div>
+            <div className="text-sm">
+              {op ? (
+                <Link to="/oportunidades/$id" params={{ id: op.id }} className="inline-flex items-center gap-1 underline">
+                  <Briefcase className="h-3.5 w-3.5" />{op.tipo}
+                </Link>
+              ) : <span className="text-muted-foreground">Não pertence a nenhum negócio.</span>}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Próximo passo</div>
+            <div className="text-sm">
+              {s.estado === "Concluído"
+                ? "Já está tratado."
+                : `${s.titulo} — ${new Date(s.data) < new Date() ? "já devia estar feito" : "por fazer"}.`}
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <div className="text-xs text-muted-foreground">Notas</div>
+            <div className="whitespace-pre-wrap text-sm">
+              {s.notas?.trim() ? s.notas : <span className="text-muted-foreground">Sem notas.</span>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <EntityFilesCard entityType="follow_up" entityId={s.id} />
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="space-y-3 p-4">
