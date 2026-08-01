@@ -6,6 +6,10 @@
 // invoked from webhook contexts without a bearer token; RLS still applies to
 // the authenticated path.
 
+import { describePendingPt, sanitizeMiscFields } from "./misc-text";
+
+export { describePendingPt };
+
 export type PendingActionStatus =
   | "collecting_information"
   | "pending_confirmation"
@@ -145,7 +149,7 @@ export async function createPendingAction(
       // (status ∈ inbox|reviewed|classified|archived|deleted). Um valor
       // inválido fazia o insert falhar em silêncio e a proposta perdia-se
       // mesmo assim (caso real: "Casa Final A", 30/07).
-      const { error: miscError } = await supabase.from("miscellaneous_items").insert({
+      const { error: miscError } = await supabase.from("miscellaneous_items").insert(sanitizeMiscFields({
         user_id: input.userId,
         title: `Proposta não confirmada: ${String(label).slice(0, 80)}`,
         // NUNCA JSON em bruto: o consultor lê isto no dashboard em português.
@@ -154,7 +158,7 @@ export async function createPendingAction(
         category: "Por tratar",
         source_channel: input.channel,
         status: "inbox",
-      } as never);
+      }) as never);
       if (miscError) console.error("[memory] falha a guardar proposta substituída em Diversos", miscError);
     } catch (err) {
       // nunca bloquear o turno por causa do registo de segurança
