@@ -3,6 +3,10 @@
 
 const START_RE = /\b(treina(r)?\s+comigo|vamos\s+treinar|simula(r)?\b|faz\s+de\s+conta\s+que\s+és|ajuda-me\s+a\s+(preparar|praticar)|praticar?\s+(uma|a)\s+objec?[çc][ãa]o|role\s*play)\b/i;
 const END_RE = /\b(chega|j[áa]\s+chega|para\s+com\s+isso|obrigad[oa]|volta(mos)?\s+ao\s+normal|sai\s+do\s+(modo\s+)?treino|acaba(mos)?\s+(o\s+)?treino|terminar?\s+(o\s+)?treino)\b/i;
+const CONTINUE_RE = /^\s*(sim|claro|continua(r|mos)?|vamos|mais\s+uma|bora)\b/i;
+
+/** Nº de trocas antes de o modo sair sozinho e perguntar se quer continuar. */
+export const SPARRING_MAX_TURNS = 6;
 
 export function detectSparringStart(text: string): boolean {
   const t = (text ?? "").trim();
@@ -16,6 +20,23 @@ export function detectSparringEnd(text: string): boolean {
   return END_RE.test(t);
 }
 
+/** Depois de uma pausa automática, "sim/continua" retoma o treino. */
+export function detectSparringContinue(text: string): boolean {
+  const t = (text ?? "").trim();
+  if (!t) return false;
+  return CONTINUE_RE.test(t);
+}
+
+export function isSparringPaused(conversationState: unknown): boolean {
+  const topic = (conversationState as { active_topic?: string | null } | null)?.active_topic;
+  return String(topic ?? "") === SPARRING_PAUSED_TOPIC;
+}
+
+export function sparringTurns(conversationState: unknown): number {
+  const n = Number((conversationState as { sparring_turns?: number } | null)?.sparring_turns ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 /** Estado activo lido do conversation_state. */
 export function isSparringActive(conversationState: unknown): boolean {
   const topic = (conversationState as { active_topic?: string | null } | null)?.active_topic;
@@ -23,6 +44,9 @@ export function isSparringActive(conversationState: unknown): boolean {
 }
 
 export const SPARRING_TOPIC = "sparring";
+export const SPARRING_PAUSED_TOPIC = "sparring_paused";
+
+export const SPARRING_CONTINUE_QUESTION = "Já foram algumas trocas. Queres continuar o treino?";
 
 export const SPARRING_PROMPT_BLOCK = `
 MODO SPARRING (ACTIVO NESTE TURNO):
