@@ -285,6 +285,36 @@ function HojePage() {
         </div>
       </header>
 
+      {/* A-bis. "{Assessor} chama a atenção": UMA observação por dia, nunca uma lista. */}
+      {atencao && (
+        <section className="c-alert mb-6">
+          <div className="mb-1 flex items-center gap-2 text-[13px] font-semibold">
+            <AlertTriangle className="h-4 w-4" />
+            {assessorName === "Assessor" ? "O Assessor" : assessorName} chama a atenção
+          </div>
+          <p className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{atencao.action}</p>
+          <p className="mt-0.5 text-[13.5px]">
+            {explainPriority(atencao)}
+            {atencao.entity_label ? ` ${atencao.entity_label}.` : ""}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {atencao.deal_id ? (
+              <Link
+                className="c-btn"
+                to="/oportunidades/$id"
+                params={{ id: atencao.deal_id }}
+                search={atencao.subject_type === "follow_up" ? { destaque: `seguimento:${atencao.subject_id}` } : {}}
+              >
+                <Briefcase className="h-3.5 w-3.5" /> Ver negócio
+              </Link>
+            ) : null}
+            <Link className="c-btn-ghost" to="/assessor">
+              <MessageSquare className="h-3.5 w-3.5" /> Tratar no WhatsApp
+            </Link>
+          </div>
+        </section>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Coluna principal */}
         <div className="space-y-6">
