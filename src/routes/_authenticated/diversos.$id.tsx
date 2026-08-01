@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { humanizeMiscText, humanizeMiscTitle, sanitizeMiscFields } from "@/lib/assessor/misc-text";
 import { miscReason } from "@/lib/assessor/misc-reason";
 import { MiscActions } from "@/components/diversos/misc-actions";
+import { MiscLinkedBadges } from "@/components/diversos/linked-badge";
 import { ChevronLeft, Save, Trash2, Archive, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -208,6 +209,11 @@ function DiversoDetail() {
             {miscReason(item).label} — <span className="text-muted-foreground">{miscReason(item).detail}</span>
           </p>
           <MiscActions item={item} />
+          <MiscLinkedBadges
+            personId={item.related_person_id}
+            propertyId={item.related_property_id}
+            className="pt-1"
+          />
         </CardContent>
       </Card>
 

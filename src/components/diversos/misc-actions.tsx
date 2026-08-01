@@ -25,6 +25,7 @@ function useInvalidate() {
   return (id: string) => {
     qc.invalidateQueries({ queryKey: ["misc"] });
     qc.invalidateQueries({ queryKey: ["misc", id] });
+    qc.invalidateQueries({ queryKey: ["misc-linked"] });
   };
 }
 
@@ -40,6 +41,8 @@ function LinkDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const [q, setQ] = useState("");
+  // Seleção explícita: o consultor escolhe, vê o que escolheu, e só depois grava.
+  const [chosen, setChosen] = useState<{ id: string; label: string } | null>(null);
   const invalidate = useInvalidate();
 
   const results = useQuery({
@@ -62,19 +65,30 @@ function LinkDialog({
   });
 
   const link = useMutation({
-    mutationFn: async (targetId: string) => {
+    mutationFn: async (target: { id: string; label: string }) => {
+      const targetId = target.id;
       const patch = kind === "person"
         ? { related_person_id: targetId, status: "classified" }
         : { related_property_id: targetId, status: "classified" };
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("miscellaneous_items")
         .update(patch as never)
-        .eq("id", item.id);
+        .eq("id", item.id)
+        .select("id, related_person_id, related_property_id")
+        .maybeSingle();
       if (error) throw error;
+      const row = data as { related_person_id?: string | null; related_property_id?: string | null } | null;
+      if (!row) throw new Error("Não foi possível gravar a associação.");
+      // Confirma que ficou gravado exatamente o registo escolhido.
+      const saved = kind === "person" ? row.related_person_id : row.related_property_id;
+      if (saved !== targetId) throw new Error("A associação gravada não corresponde ao que escolheste.");
+      return target;
     },
-    onSuccess: () => {
-      toast.success(kind === "person" ? "Nota associada à pessoa." : "Nota associada ao imóvel.");
+    onSuccess: (target) => {
+      toast.success(`Associado a: ${target.label}`);
       invalidate(item.id);
+      setChosen(null);
+      setQ("");
       onOpenChange(false);
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível associar."),
@@ -89,7 +103,7 @@ function LinkDialog({
         <Input
           autoFocus
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => { setQ(e.target.value); setChosen(null); }}
           placeholder={kind === "person" ? "Procurar pessoa…" : "Procurar imóvel…"}
         />
         <div className="max-h-64 overflow-y-auto rounded-md border">
@@ -103,14 +117,30 @@ function LinkDialog({
                 key={r.id}
                 type="button"
                 disabled={link.isPending}
-                onClick={() => link.mutate(r.id)}
-                className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                data-target-id={r.id}
+                aria-pressed={chosen?.id === r.id}
+                onClick={() => setChosen({ id: r.id, label: r.label })}
+                className={
+                  "block w-full px-3 py-2 text-left text-sm hover:bg-muted " +
+                  (chosen?.id === r.id ? "bg-muted font-semibold" : "")
+                }
               >
                 {r.label}
               </button>
             ))
           )}
         </div>
+        <DialogFooter className="items-center gap-2 sm:justify-between">
+          <span className="text-xs text-muted-foreground">
+            {chosen ? `Selecionado: ${chosen.label}` : "Escolhe um da lista."}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button disabled={!chosen || link.isPending} onClick={() => chosen && link.mutate(chosen)}>
+              Associar
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
