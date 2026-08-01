@@ -26,6 +26,9 @@ describe("sparring e2e", () => {
       "O preço está de acordo com o mercado, tenho comparativos da zona.",
       "Posso mostrar-lhe os imóveis vendidos nos últimos 3 meses na freguesia.",
       "Percebo, mas a exclusividade permite-me investir mais na promoção.",
+      "A promoção paga passa a mais gente do que o anúncio normal.",
+      "Faço fotos profissionais e vídeo, isso muda as visitas.",
+      "Proponho reunirmos 20 minutos para lhe mostrar o plano.",
       "chega, obrigado",
     ];
     const replies: string[] = [];
@@ -44,6 +47,7 @@ describe("sparring e2e", () => {
     await sb.from("conversation_states").delete().eq("user_id", userId).eq("channel", CH);
 
     expect(Object.values(after).every((n) => n === 0)).toBe(true);
-    expect((audit ?? []).map((a: any) => a.action).sort()).toEqual(["sparring_ended", "sparring_started"]);
+    expect((audit ?? []).filter((a:any)=>a.action==="sparring_started").length).toBeGreaterThanOrEqual(1);
+    expect((audit ?? []).some((a: any) => a.action === "sparring_ended" && a.metadata?.auto === true)).toBe(true);
   }, 180000);
 });
