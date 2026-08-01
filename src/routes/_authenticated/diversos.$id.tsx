@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { humanizeMiscText, humanizeMiscTitle, sanitizeMiscFields } from "@/lib/assessor/misc-text";
 import { ChevronLeft, Save, Trash2, Archive, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,7 +62,15 @@ function DiversoDetail() {
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
-      return data as MiscItem | null;
+      if (!data) return null;
+      const row = data as MiscItem;
+      // Segunda rede contra JSON bruto (registos antigos / regressões).
+      return {
+        ...row,
+        title: humanizeMiscTitle(row.title),
+        original_content: row.original_content ? humanizeMiscText(row.original_content) : null,
+        summary: row.summary ? humanizeMiscText(row.summary) : null,
+      } as MiscItem;
     },
   });
 
@@ -83,10 +92,13 @@ function DiversoDetail() {
   const save = useMutation({
     mutationFn: async () => {
       const tags = tagsText.split(",").map((s) => s.trim()).filter(Boolean);
-      const { error } = await supabase.from("miscellaneous_items").update({
+      const clean = sanitizeMiscFields({
         title: title.trim() || "Sem título",
         original_content: original.trim() || null,
         summary: summary.trim() || null,
+      });
+      const { error } = await supabase.from("miscellaneous_items").update({
+        ...clean,
         status,
         tags: tags.length ? tags : null,
       } as never).eq("id", id);

@@ -1,3 +1,4 @@
+import { sanitizeMiscFields } from "../misc-text";
 // Rede de segurança "nada se perde" — motor v3.
 //
 // Regra de produto: uma mensagem profissional do consultor NUNCA pode
@@ -48,7 +49,7 @@ export async function archiveToMiscellaneous(
     const text = String(content ?? "").trim();
     if (!text) return false;
     const title = text.length > 120 ? `${text.slice(0, 117)}...` : text;
-    const { error } = await ctx.supabase.from("miscellaneous_items").insert({
+    const { error } = await ctx.supabase.from("miscellaneous_items").insert(sanitizeMiscFields({
       user_id: ctx.userId,
       title,
       original_content: text,
@@ -59,7 +60,7 @@ export async function archiveToMiscellaneous(
       occurred_at: new Date().toISOString(),
       status: "inbox",
       tags: ["falha_assessor"],
-    } as never);
+    }) as never);
     return !error;
   } catch {
     return false;

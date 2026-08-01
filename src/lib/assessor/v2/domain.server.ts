@@ -1,3 +1,4 @@
+import { sanitizeMiscFields } from "../misc-text";
 // Assessor v2 — Domain Services.
 //
 // Um executor por ferramenta declarada em `tools.ts`. Cada um:
@@ -567,7 +568,7 @@ async function execSaveMiscellaneous(ctx: DomainContext, args: unknown): Promise
   const v = p.value;
   const { data, error } = await ctx.supabase
     .from("miscellaneous_items")
-    .insert({
+    .insert(sanitizeMiscFields({
       user_id: ctx.userId,
       title: v.title,
       summary: v.summary ?? null,
@@ -576,7 +577,7 @@ async function execSaveMiscellaneous(ctx: DomainContext, args: unknown): Promise
       occurred_at: new Date().toISOString(),
       status: "inbox",
       tags: v.tags ?? [],
-    } as never)
+    }) as never)
     .select("id, title")
     .single();
   if (error) return fail(error.message);

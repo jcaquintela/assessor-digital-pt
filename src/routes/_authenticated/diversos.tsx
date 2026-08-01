@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { humanizeMiscText, humanizeMiscTitle } from "@/lib/assessor/misc-text";
 import { Archive, Trash2, CheckCircle2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -64,7 +65,14 @@ function DiversosPage() {
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw error;
-      return (data ?? []) as MiscItem[];
+      // Segunda rede: nada em JSON bruto chega aos olhos do consultor,
+      // mesmo em registos antigos ou vindos de um caminho de escrita novo.
+      return ((data ?? []) as MiscItem[]).map((r) => ({
+        ...r,
+        title: humanizeMiscTitle(r.title),
+        original_content: r.original_content ? humanizeMiscText(r.original_content) : null,
+        summary: r.summary ? humanizeMiscText(r.summary) : null,
+      }));
     },
   });
 

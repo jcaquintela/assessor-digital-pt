@@ -6,6 +6,10 @@
 // invoked from webhook contexts without a bearer token; RLS still applies to
 // the authenticated path.
 
+import { describePendingPt, sanitizeMiscFields } from "./misc-text";
+
+export { describePendingPt };
+
 export type PendingActionStatus =
   | "collecting_information"
   | "pending_confirmation"
@@ -145,7 +149,7 @@ export async function createPendingAction(
       // (status ∈ inbox|reviewed|classified|archived|deleted). Um valor
       // inválido fazia o insert falhar em silêncio e a proposta perdia-se
       // mesmo assim (caso real: "Casa Final A", 30/07).
-      const { error: miscError } = await supabase.from("miscellaneous_items").insert({
+      const { error: miscError } = await supabase.from("miscellaneous_items").insert(sanitizeMiscFields({
         user_id: input.userId,
         title: `Proposta não confirmada: ${String(label).slice(0, 80)}`,
         // NUNCA JSON em bruto: o consultor lê isto no dashboard em português.
@@ -154,7 +158,7 @@ export async function createPendingAction(
         category: "Por tratar",
         source_channel: input.channel,
         status: "inbox",
-      } as never);
+      }) as never);
       if (miscError) console.error("[memory] falha a guardar proposta substituída em Diversos", miscError);
     } catch (err) {
       // nunca bloquear o turno por causa do registo de segurança
@@ -311,65 +315,4 @@ export function summarizePendingAction(row: PendingActionRow | null): string | n
   if (ent.property_type) parts.push(String(ent.property_type));
   if (ent.person_name) parts.push(`com ${ent.person_name}`);
   return parts.length ? parts.join(" · ") : null;
-}
-// Descrição em português normal de uma proposta por confirmar.
-// O consultor lê isto em Diversos: nunca pode ser JSON em bruto
-// (caso real "Casa Final A": {"title":"...","phone":"..."}).
-const FIELD_LABELS_PT: Record<string, string> = {
-  title: "Assunto",
-  name: "Nome",
-  full_name: "Nome",
-  phone: "Telefone",
-  phone_number: "Telefone",
-  email: "Email",
-  location: "Localização",
-  address: "Morada",
-  price: "Preço",
-  amount: "Valor",
-  description: "Descrição",
-  notes: "Notas",
-  date: "Data",
-  due_date: "Data",
-  due_time: "Hora",
-  time: "Hora",
-  typology: "Tipologia",
-  relationship_type: "Relação",
-  event_type: "Tipo",
-  category: "Categoria",
-  status: "Estado",
-};
-
-const INTENT_LABELS_PT: Record<string, string> = {
-  create_person: "Registar pessoa",
-  create_property: "Registar imóvel",
-  create_event: "Marcar compromisso",
-  create_follow_up: "Criar seguimento",
-  create_reminder: "Criar lembrete",
-  create_financial_movement: "Registar movimento",
-  create_prospecting_lead: "Registar prospeção",
-  create_miscellaneous: "Guardar nota",
-};
-
-export function describePendingPt(
-  intent: string | null | undefined,
-  payload: Record<string, any> | null | undefined,
-  originalContent?: string | null,
-): string {
-  const lines: string[] = [];
-  const header = INTENT_LABELS_PT[String(intent ?? "")] ?? "Proposta por confirmar";
-  lines.push(header);
-
-  const p = payload && typeof payload === "object" ? payload : {};
-  for (const [key, raw] of Object.entries(p)) {
-    if (raw === null || raw === undefined || raw === "") continue;
-    if (typeof raw === "object") continue; // nunca serializar estruturas
-    const label = FIELD_LABELS_PT[key];
-    if (!label) continue;
-    lines.push(`${label}: ${String(raw).slice(0, 200)}`);
-  }
-
-  const original = String(originalContent ?? "").trim();
-  if (original) lines.push(`Mensagem original: ${original.slice(0, 400)}`);
-
-  return lines.join("\n");
 }
