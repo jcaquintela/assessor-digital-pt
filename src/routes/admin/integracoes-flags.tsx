@@ -35,6 +35,11 @@ const KNOWN_FLAGS: Record<string, { label: string; readAt: string | null }> = {
     label: "Assessor Supremo (prioridades + autonomia)",
     readAt: "isSupremeEnabled → priorities.functions.ts, autonomy.functions.ts",
   },
+  "whatsapp.templates.approved": {
+    label: "Templates WhatsApp aprovados (push fora da janela de 24h)",
+    readAt:
+      "templatesApproved() → proactive/push.server.ts (push da manhã + check-in da tarde); override manual: env WHATSAPP_TEMPLATES_APPROVED",
+  },
 };
 
 function fmt(dt: string | null) {
@@ -287,21 +292,31 @@ function IntegracoesFlagsPage() {
       <TelegramSelfTestBlock />
 
       <SectionTitle>Outras integrações</SectionTitle>
+      <p className="mini mb-2" style={{ color: "var(--muted)" }}>
+        Esta tabela responde a “a integração está montada e com credenciais no servidor?”, não a
+        “quantos consultores a usam”. Nas integrações que cada consultor liga à sua conta
+        (calendários), a coluna Detalhe mostra as contas realmente ligadas.
+      </p>
       <div className="overflow-x-auto">
         <table>
-          <thead><tr><th>Integração</th><th>Estado</th><th>Detalhe</th></tr></thead>
+          <thead><tr><th>Integração</th><th>Âmbito</th><th>Disponível</th><th>Detalhe</th></tr></thead>
           <tbody>
             {(items ?? []).map((i) => (
               <tr key={i.name}>
                 <td>{i.name}</td>
-                <td><Badge tone={i.status === "active" ? "ok" : "warn"}>{i.status === "active" ? "ativa" : "planeada"}</Badge></td>
+                <td className="mini">{(i as any).scope ?? "plataforma"}</td>
+                <td>
+                  <Badge tone={i.status === "active" ? "ok" : "warn"}>
+                    {i.status === "active" ? "disponível" : "não disponível"}
+                  </Badge>
+                </td>
                 <td className="mini">{i.detail}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <Source>variáveis de ambiente do servidor (admin-integrations.server.ts)</Source>
+      <Source>variáveis de ambiente do servidor × app_user_connections (admin-integrations.server.ts)</Source>
 
       <SectionTitle>Flags do motor</SectionTitle>
       {!isSuper ? <p className="mini mb-2" style={{ color: "var(--coral)" }}>Só super_admin pode alterar.</p> : null}

@@ -259,7 +259,7 @@ export const getAdminOverview = createServerFn({ method: "GET" })
       followUps: follow.count ?? 0,
       financialMovements: movs.count ?? 0,
       recentErrors: errors24h.count ?? 0,
-      integrations: getIntegrationStatuses(),
+      integrations: await getIntegrationStatuses(supabaseAdmin),
     };
   });
 
@@ -268,7 +268,8 @@ export const getIntegrationsOverview = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     assertAdmin(await getCallerRoles(context.supabase, context.userId));
     const { getIntegrationStatuses } = await import("./admin-integrations.server");
-    return getIntegrationStatuses();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return getIntegrationStatuses(supabaseAdmin);
   });
 
 export const listAdminUsers = createServerFn({ method: "GET" })
