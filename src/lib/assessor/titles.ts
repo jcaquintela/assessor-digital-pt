@@ -15,12 +15,31 @@ export function isPlaceholderTitle(value: unknown): boolean {
   return PLACEHOLDER_RE.test(raw);
 }
 
+// Bug real: títulos criados a partir de blocos de contexto herdavam a linha de
+// confirmação do próprio assessor ("Assessor: Feito. Registei..."), o que dava
+// títulos poluídos na ficha do seguimento.
+const SPEAKER_RE = /^\s*(assessor|afonso|assistente|bot)\s*[:\-–—]\s*/i;
+const CONFIRMATION_RE =
+  /^\s*(feito|combinado|perfeito|certo|ok|prontos?)\b[.,!]?\s*(j[aá]\s+)?(registei|guardei|criei|anotei|marquei|apontei)?\b[:.,]?\s*/i;
+
+function stripAssistantVoice(raw: string): string {
+  let out = raw;
+  for (let i = 0; i < 3; i++) {
+    const next = out.replace(SPEAKER_RE, "").replace(CONFIRMATION_RE, "");
+    if (next === out) break;
+    out = next;
+  }
+  return out.trim();
+}
+
 // Devolve um título limpo ou `null` se não houver nada aproveitável.
 // Também remove tokens "null"/"undefined" colados a um título real
 // (ex.: "null - ligar ao Paulo" → "ligar ao Paulo").
 export function cleanTitle(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   let raw = String(value).trim();
+  if (!raw) return null;
+  raw = stripAssistantVoice(raw.split("\n")[0]?.trim() || raw);
   if (!raw) return null;
   raw = raw
     .replace(/\b(null|undefined)\b/gi, " ")

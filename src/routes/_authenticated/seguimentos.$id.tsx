@@ -14,9 +14,13 @@ import {
   type SeguimentoTipo,
   type SeguimentoEstado,
   type SeguimentoPrioridade,
+  type Seguimento,
 } from "@/lib/demo-data";
 import { ChevronLeft, Trash2, Save, CheckCircle2, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Briefcase, User as UserIcon, Phone } from "lucide-react";
 
 const TIPOS: SeguimentoTipo[] = ["Tarefa", "Evento"];
 const ESTADOS: SeguimentoEstado[] = ["Pendente", "Concluído", "Atrasado"];
@@ -38,11 +42,58 @@ function SeguimentoDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const {
-    seguimentos, pessoas, oportunidades,
-    atualizarSeguimento, eliminarSeguimento, concluirSeguimento, loading,
+    seguimentos, loading,
   } = useStore();
 
   const s = useMemo(() => seguimentos.find((x) => x.id === id), [seguimentos, id]);
+
+  // Rede de segurança: se ainda não está na cache local (ou veio de uma
+  // prioridade calculada no servidor), vai buscá-lo à base de dados. Antes,
+  // caía em "não encontrado" e o consultor acabava na lista geral.
+  const fallback = useQuery({
+    queryKey: ["follow_up", id],
+    enabled: !s,
+    queryFn: async () => {
+      const { data } = await supabase.from("follow_ups").select("*").eq("id", id).maybeSingle();
+      if (!data) return null;
+      const r = data as any;
+      return {
+        id: r.id,
+        tipo: (r.due_time || String(r.type ?? "").toLowerCase().includes("event") ? "Evento" : "Tarefa") as SeguimentoTipo,
+        titulo: r.title,
+        data: r.due_date,
+        hora: r.due_time ?? undefined,
+        pessoaId: r.person_id ?? undefined,
+        oportunidadeId: r.opportunity_id ?? undefined,
+        estado: (r.status ?? "Pendente") as SeguimentoEstado,
+        prioridade: (r.priority ?? "Média") as SeguimentoPrioridade,
+        notas: r.notes ?? undefined,
+      };
+    },
+  });
+
+  const item = s ?? fallback.data ?? null;
+
+  if ((loading || fallback.isLoading) && !item) {
+    return <AppShell><PageHeader title="A carregar…" /></AppShell>;
+  }
+  if (!item) {
+    return (
+      <AppShell>
+        <PageHeader title="Seguimento não encontrado" subtitle="Pode ter sido apagado." />
+        <Button variant="ghost" onClick={() => navigate({ to: "/seguimentos" })}>
+          <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
+        </Button>
+      </AppShell>
+    );
+  }
+
+  return <SeguimentoView key={item.id} s={item} />;
+}
+
+function SeguimentoView({ s }: { s: Seguimento }) {
+  const navigate = useNavigate();
+  const { pessoas, oportunidades, atualizarSeguimento, eliminarSeguimento, concluirSeguimento } = useStore();
 
   const [tipo, setTipo] = useState<SeguimentoTipo>(s?.tipo ?? "Tarefa");
   const [titulo, setTitulo] = useState(s?.titulo ?? "");
@@ -54,20 +105,6 @@ function SeguimentoDetail() {
   const [oportunidadeId, setOportunidadeId] = useState(s?.oportunidadeId ?? "");
   const [notas, setNotas] = useState(s?.notas ?? "");
   const [busy, setBusy] = useState(false);
-
-  if (loading && !s) {
-    return <AppShell><PageHeader title="A carregar…" /></AppShell>;
-  }
-  if (!s) {
-    return (
-      <AppShell>
-        <PageHeader title="Seguimento não encontrado" subtitle="Pode ter sido apagado." />
-        <Button variant="ghost" onClick={() => navigate({ to: "/seguimentos" })}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
-        </Button>
-      </AppShell>
-    );
-  }
 
   const pessoa = pessoas.find((p) => p.id === s.pessoaId);
   const op = oportunidades.find((o) => o.id === s.oportunidadeId);
@@ -160,6 +197,55 @@ function SeguimentoDetail() {
         <Badge variant="outline">{s.estado}</Badge>
         <Badge variant={s.prioridade === "Alta" ? "destructive" : "secondary"}>{s.prioridade}</Badge>
       </div>
+
+      {/* Contexto primeiro: o que é, com quem, a que negócio pertence e o que falta fazer. */}
+      <Card className="mb-4">
+        <CardContent className="grid gap-4 p-4 md:grid-cols-2">
+          <div>
+            <div className="text-xs text-muted-foreground">O que é</div>
+            <div className="text-sm">
+              {s.tipo === "Evento" ? "Compromisso" : "Tarefa"} · {formatData(s.data)}{s.hora ? ` às ${s.hora}` : ""}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Com quem</div>
+            <div className="text-sm">
+              {pessoa ? (
+                <Link to="/pessoas/$id" params={{ id: pessoa.id }} className="inline-flex items-center gap-1 underline">
+                  <UserIcon className="h-3.5 w-3.5" />{pessoa.nome}
+                </Link>
+              ) : <span className="text-muted-foreground">Sem pessoa associada.</span>}
+              {pessoa?.telefone ? (
+                <span className="ml-2 text-xs text-muted-foreground"><Phone className="mr-1 inline h-3 w-3" />{pessoa.telefone}</span>
+              ) : null}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Negócio</div>
+            <div className="text-sm">
+              {op ? (
+                <Link to="/oportunidades/$id" params={{ id: op.id }} className="inline-flex items-center gap-1 underline">
+                  <Briefcase className="h-3.5 w-3.5" />{op.tipo}
+                </Link>
+              ) : <span className="text-muted-foreground">Não pertence a nenhum negócio.</span>}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Próximo passo</div>
+            <div className="text-sm">
+              {s.estado === "Concluído"
+                ? "Já está tratado."
+                : `${s.titulo} — ${new Date(s.data) < new Date() ? "já devia estar feito" : "por fazer"}.`}
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <div className="text-xs text-muted-foreground">Notas</div>
+            <div className="whitespace-pre-wrap text-sm">
+              {s.notas?.trim() ? s.notas : <span className="text-muted-foreground">Sem notas.</span>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

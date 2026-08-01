@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
@@ -68,6 +68,7 @@ function HojePage() {
   void oportunidades; void imoveis;
   const { name: assessorName } = useAssessorName();
   const now = new Date();
+  const navigate = useNavigate();
   const supremeQ = useServerFn(getHojeSupreme);
   const dismissFn = useServerFn(dismissPriority);
   const outcomeFn = useServerFn(saveFollowUpOutcome);
@@ -200,9 +201,15 @@ function HojePage() {
     ? (supreme.data.awaitingOutcome as Awaiting[])
     : localAwaiting;
 
-  const openEvent = (id: string) => {
+  const openEvent = (id: string, extra?: { motivo?: string | null; dealId?: string | null; dealLabel?: string | null }) => {
     const s = seguimentos.find((x) => x.id === id);
-    if (!s) return;
+    if (!s) {
+      // Não está na cache local: abre a ficha, que sabe ir buscá-lo à base de dados.
+      void navigate({ to: "/seguimentos/$id", params: { id } });
+      return;
+    }
+    const pessoa = pessoas.find((p) => p.id === s.pessoaId);
+    const deal = oportunidades.find((o) => o.id === s.oportunidadeId);
     setDrawer({
       id: s.id,
       titulo: s.titulo,
@@ -210,15 +217,29 @@ function HojePage() {
       hora: s.hora,
       pessoaId: s.pessoaId ?? null,
       pessoaNome: nomePessoa(s.pessoaId),
+      pessoaTelefone: pessoa?.telefone ?? null,
       imovelId: null,
       imovelTitulo: null,
+      negocioId: extra?.dealId ?? s.oportunidadeId ?? null,
+      negocioLabel: extra?.dealLabel ?? deal?.tipo ?? null,
       notas: s.notas ?? null,
       estado: s.estado,
+      tipo: s.tipo,
+      prioridade: s.prioridade,
+      motivo: extra?.motivo ?? null,
     });
   };
 
   const openPriority = (p: Priority) => {
-    if (p.subject_type === "follow_up") openEvent(p.subject_id);
+    if (p.subject_type === "follow_up") {
+      openEvent(p.subject_id, {
+        motivo: explainPriority(p),
+        dealId: p.deal_id ?? null,
+        dealLabel: p.deal_label ?? null,
+      });
+      return;
+    }
+    if (p.deal_id) void navigate({ to: "/oportunidades/$id", params: { id: p.deal_id } });
     // oportunidade e imóvel são navegações diretas via Link nas ações
   };
 
