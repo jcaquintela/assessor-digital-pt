@@ -304,9 +304,12 @@ function HojePage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{p.action}</div>
+                      {/* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */}
+                      <div className="mt-0.5 text-xs" style={{ color: "var(--ink)" }}>
+                        {explainPriority(p)}
+                      </div>
                       <div className="c-muted mt-0.5 text-xs">
                         {[
-                          p.reasons?.slice(0, 2).join(" · "),
                           p.entity_label,
                           p.due_at ? formatData(p.due_at) : null,
                         ].filter(Boolean).join(" · ")}
@@ -322,7 +325,6 @@ function HojePage() {
                         </Link>
                       ) : null}
                     </div>
-                    <span className="c-badge c-mono shrink-0">{Math.round(p.priority_score)}</span>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
                     <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
@@ -339,30 +341,38 @@ function HojePage() {
                       </PopoverContent>
                     </Popover>
                     {p.subject_type === "opportunity" ? (
-                      <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir</Link>
+                      <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir contexto</Link>
+                    ) : p.deal_id ? (
+                      <Link
+                        className="c-btn-ghost"
+                        to="/oportunidades/$id"
+                        params={{ id: p.deal_id }}
+                        search={{ destaque: `seguimento:${p.subject_id}` }}
+                      >
+                        Abrir contexto
+                      </Link>
                     ) : (
-                      <>
-                        <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir</button>
-                        {p.deal_id ? (
-                          <Link
-                            className="c-btn-ghost"
-                            to="/oportunidades/$id"
-                            params={{ id: p.deal_id }}
-                            search={{ destaque: `seguimento:${p.subject_id}` }}
-                          >
-                            Abrir negócio
+                      <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir contexto</button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button type="button" className="c-btn-ghost ml-auto" aria-label="Mais ações">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem asChild>
+                          <Link to="/assessor">
+                            <MessageSquare className="mr-2 h-3.5 w-3.5" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
                           </Link>
-                        ) : null}
-                      </>
-                    )}
-                    <Link className="c-btn-ghost ml-auto" to="/assessor">
-                      <MessageSquare className="h-3.5 w-3.5" /> Falar
-                    </Link>
-                    {p.subject_type === "follow_up" && (
-                      <button type="button" className="c-btn-ghost" onClick={() => deletePriority(p)}>
-                        <Trash2 className="h-3.5 w-3.5" /> Eliminar
-                      </button>
-                    )}
+                        </DropdownMenuItem>
+                        {p.subject_type === "follow_up" && (
+                          <DropdownMenuItem className="text-destructive" onSelect={() => void deletePriority(p)}>
+                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
