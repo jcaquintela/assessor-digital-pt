@@ -25,6 +25,7 @@ function useInvalidate() {
   return (id: string) => {
     qc.invalidateQueries({ queryKey: ["misc"] });
     qc.invalidateQueries({ queryKey: ["misc", id] });
+    qc.invalidateQueries({ queryKey: ["misc-linked"] });
   };
 }
 
