@@ -68,6 +68,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox"),
     supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, person_id, property_id")
       .eq("user_id", userId).gte("due_date", start).lte("due_date", end).order("due_time", { ascending: true }),
+      .eq("user_id", userId).gte("due_date", start).lte("due_date", end).order("due_time", { ascending: true }),
     supabase.from("financial_movements").select("id, type, amount, status").eq("user_id", userId).eq("type", "commission"),
     supabase.from("interactions").select("person_id").eq("user_id", userId).gte("occurred_at", isoDaysAgo(7)),
   ]);
