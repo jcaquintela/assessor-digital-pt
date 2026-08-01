@@ -78,6 +78,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as AuthenticatedOportunidadesProspecaoIndexRouteImport } from './routes/_authenticated/oportunidades.prospecao.index'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksWhatsappTemplateStatusRouteImport } from './routes/api/public/hooks/whatsapp-template-status'
+import { Route as ApiPublicHooksSubmitCheckinTemplateRouteImport } from './routes/api/public/hooks/submit-checkin-template'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
 import { Route as ApiPublicHooksProactivePushRouteImport } from './routes/api/public/hooks/proactive-push'
 import { Route as ApiPublicHooksCalendarPollRouteImport } from './routes/api/public/hooks/calendar-poll'
@@ -448,6 +449,12 @@ const ApiPublicHooksWhatsappTemplateStatusRoute =
     path: '/api/public/hooks/whatsapp-template-status',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSubmitCheckinTemplateRoute =
+  ApiPublicHooksSubmitCheckinTemplateRouteImport.update({
+    id: '/api/public/hooks/submit-checkin-template',
+    path: '/api/public/hooks/submit-checkin-template',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksProactiveTickRoute =
   ApiPublicHooksProactiveTickRouteImport.update({
     id: '/api/public/hooks/proactive-tick',
@@ -564,6 +571,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
+  '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -640,6 +648,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
+  '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -719,6 +728,7 @@ export interface FileRoutesById {
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
+  '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -798,6 +808,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
+    | '/api/public/hooks/submit-checkin-template'
     | '/api/public/hooks/whatsapp-template-status'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao/'
@@ -874,6 +885,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
+    | '/api/public/hooks/submit-checkin-template'
     | '/api/public/hooks/whatsapp-template-status'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao'
@@ -952,6 +964,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
+    | '/api/public/hooks/submit-checkin-template'
     | '/api/public/hooks/whatsapp-template-status'
     | '/api/public/telegram/webhook'
     | '/_authenticated/oportunidades/prospecao/'
@@ -977,6 +990,7 @@ export interface RootRouteChildren {
   ApiPublicHooksCalendarPollRoute: typeof ApiPublicHooksCalendarPollRoute
   ApiPublicHooksProactivePushRoute: typeof ApiPublicHooksProactivePushRoute
   ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
+  ApiPublicHooksSubmitCheckinTemplateRoute: typeof ApiPublicHooksSubmitCheckinTemplateRoute
   ApiPublicHooksWhatsappTemplateStatusRoute: typeof ApiPublicHooksWhatsappTemplateStatusRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -1466,6 +1480,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksWhatsappTemplateStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/submit-checkin-template': {
+      id: '/api/public/hooks/submit-checkin-template'
+      path: '/api/public/hooks/submit-checkin-template'
+      fullPath: '/api/public/hooks/submit-checkin-template'
+      preLoaderRoute: typeof ApiPublicHooksSubmitCheckinTemplateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/proactive-tick': {
       id: '/api/public/hooks/proactive-tick'
       path: '/api/public/hooks/proactive-tick'
@@ -1755,6 +1776,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksCalendarPollRoute: ApiPublicHooksCalendarPollRoute,
   ApiPublicHooksProactivePushRoute: ApiPublicHooksProactivePushRoute,
   ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
+  ApiPublicHooksSubmitCheckinTemplateRoute:
+    ApiPublicHooksSubmitCheckinTemplateRoute,
   ApiPublicHooksWhatsappTemplateStatusRoute:
     ApiPublicHooksWhatsappTemplateStatusRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
