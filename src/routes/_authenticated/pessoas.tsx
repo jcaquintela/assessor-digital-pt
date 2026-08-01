@@ -137,32 +137,34 @@ function PessoasPage() {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="c-badge">{p.relacao}</span>
-                <button
-                  type="button"
-                  aria-label={`Editar ${p.nome}`}
-                  className="c-badge"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditId(p.id); }}
-                >
-                  <Pencil className="h-3 w-3" /> Editar
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Organizar ${p.nome}`}
-                  className="c-badge"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOrgId(p.id); }}
-                >
-                  <Tags className="h-3 w-3" /> Organizar
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Eliminar ${p.nome}`}
-                  className="c-badge"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); void eliminar(p.id, p.nome); }}
-                >
-                  <Trash2 className="h-3 w-3" /> Eliminar
-                </button>
                 <ChevronRight className="h-4 w-4" style={{ color: "var(--muted)" }} />
               </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                aria-label={`Editar ${p.nome}`}
+                className="c-badge tap-44"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditId(p.id); }}
+              >
+                <Pencil className="h-3 w-3" /> Editar
+              </button>
+              <button
+                type="button"
+                aria-label={`Organizar ${p.nome}`}
+                className="c-badge tap-44"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOrgId(p.id); }}
+              >
+                <Tags className="h-3 w-3" /> Organizar
+              </button>
+              <button
+                type="button"
+                aria-label={`Eliminar ${p.nome}`}
+                className="c-badge tap-44"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); void eliminar(p.id, p.nome); }}
+              >
+                <Trash2 className="h-3 w-3" /> Eliminar
+              </button>
             </div>
             {(org.tagsOf(p.id).length > 0 || org.foldersOf(p.id).length > 0) && (
               <div className="mt-2 flex flex-wrap gap-1.5">

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, AlertTriangle, Camera, ChevronRight, Archive } from "lucide-react";
 import { formatData, formatEUR } from "@/lib/demo-data";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { createDeal, listDeals, type DealListItem } from "@/lib/deals/deals.functions";
 import { DEAL_KINDS, KIND_LABEL, STAGE_GROUPS, STAGE_LABEL, groupOfStage } from "@/lib/deals/stages";
 
@@ -176,12 +177,14 @@ function NegociosPage() {
         </p>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      {/* Mobile: fases empilhadas (lista agrupada) — sem scroll horizontal.
+          Desktop: quadro em colunas. */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {STAGE_GROUPS.map((g) => {
           const items = visiveis.filter((d) => groupOfStage(d.stage) === g.key);
           return (
-            <section key={g.key} className="min-w-0">
-              <div className="mb-2 flex items-baseline justify-between">
+            <section key={g.key} className={cn("min-w-0", items.length === 0 && "hidden md:block")}>
+              <div className="mb-2 flex items-baseline justify-between gap-2">
                 <h2 className="text-sm font-semibold">{g.label}</h2>
                 <span className="text-xs text-muted-foreground">{items.length}</span>
               </div>
