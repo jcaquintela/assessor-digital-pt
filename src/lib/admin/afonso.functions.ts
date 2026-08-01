@@ -152,7 +152,7 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
       // (landing → conta base → canal ativo → proposta vista → checkout → pago).
       supabaseAdmin
         .from("assessor_messages")
-        .select("id", { count: "exact", head: true })
+        .select("sender_phone")
         .eq("channel", "whatsapp")
         .eq("role", "user")
         .is("user_id", null)
@@ -167,7 +167,10 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
     return {
       landingVisits: null as number | null,
       telegramStarts: new Set(((tgLinks.data ?? []) as any[]).map((r) => r.user_id)).size,
-      unauthorizedWhatsappAttempts: rejected.count ?? 0,
+      unauthorizedWhatsappAttempts: (rejected.data ?? []).length,
+      unauthorizedWhatsappNumbers: new Set(
+        ((rejected.data ?? []) as any[]).map((r) => r.sender_phone).filter(Boolean),
+      ).size,
       converted: converted.count ?? 0,
     };
   });
