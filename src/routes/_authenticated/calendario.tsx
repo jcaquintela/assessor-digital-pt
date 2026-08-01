@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { formatDataHora } from "@/lib/demo-data";
+import { formatData } from "@/lib/demo-data";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-grid";
@@ -156,7 +156,9 @@ function CalendarioPage() {
                 <div className="flex items-center justify-between gap-3">
                   <Link to="/seguimentos/$id" params={{ id: e.id }} className="min-w-0 flex-1">
                     <div className="truncate text-[14px] font-semibold">{e.titulo}</div>
-                    <div className="c-muted c-mono mt-1 text-[11.5px]">{formatDataHora(e.data)}</div>
+                    <div className="c-muted c-mono mt-1 text-[11.5px]">
+                      {formatData(e.data)}{e.hora ? ` · ${e.hora.slice(0, 5)}` : ""}
+                    </div>
                   </Link>
                   <span className="c-badge shrink-0">
                     <CalendarIcon className="h-3 w-3" /> {e.hora ?? "—"}
