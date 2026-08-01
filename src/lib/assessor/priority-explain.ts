@@ -42,6 +42,11 @@ function frasear(reason: string): string {
   if (r === "valor relevante") return "envolve um valor relevante";
   if (r === "com telefone disponível") return "há um número de telefone disponível";
   if (r === "com email disponível") return "há um email disponível";
+  if (r.startsWith("pendente há")) return `está ${r}`;
+  if (r === "aberto desde ontem") return "está aberto desde ontem";
+  if (r.startsWith("marcado para as")) return `está ${r}`;
+  if (r === "faz parte de um negócio em curso") return r;
+  if (r === "ainda sem pessoa nem negócio associado") return "ainda não está ligado a ninguém nem a um negócio";
   return r;
 }
 
