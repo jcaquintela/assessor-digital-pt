@@ -10,13 +10,28 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
+import { deleteProperty } from "@/lib/assessor/properties.functions";
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { PROPERTY_STATUSES, propertyStatusLabel } from "@/lib/assessor/properties-status";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatEUR } from "@/lib/demo-data";
-import { FileText, ChevronLeft, Eye, Download, Archive } from "lucide-react";
+import { FileText, ChevronLeft, Eye, Download, Archive, MoreHorizontal, Pencil, Trash2, MessageSquare } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { TierGate } from "@/components/tier-gate";
 import { DealsOf } from "@/components/negocios/deals-of";
+
+const ORIGEM_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  telegram: "Telegram",
+  web: "Dashboard",
+  dashboard: "Dashboard",
+  placa: "placa na rua",
+  prospecting: "placa na rua",
+};
 
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   head: () => ({
