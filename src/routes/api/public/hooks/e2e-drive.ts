@@ -60,9 +60,9 @@ export const Route = createFileRoute("/api/public/hooks/e2e-drive")({
         log.links_after = links;
 
         // Grafo: ficheiros relacionados a partir da Pessoa
-        const { relatedFilesFor } = await import("@/lib/drive/related-files.server");
+        const { listRelatedFiles } = await import("@/lib/drive/related-files.server");
         try {
-          log.graph_from_person = await relatedFilesFor(supabaseAdmin, USER, "person", person!.id);
+          log.graph_from_person = await listRelatedFiles(supabaseAdmin, USER, "person", person!.id);
         } catch (e: any) { log.graph_error = String(e?.message ?? e); }
 
         if (new URL("http://x/?" ).searchParams) { /* noop */ }
