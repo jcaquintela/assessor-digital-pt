@@ -63,6 +63,7 @@ import { Route as AuthenticatedNegocioIndexRouteImport } from './routes/_authent
 import { Route as OauthOutlookReturnRouteImport } from './routes/oauth/outlook/return'
 import { Route as OauthGoogleCalendarReturnRouteImport } from './routes/oauth/google-calendar/return'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
+import { Route as AdminConsultorIdRouteImport } from './routes/admin/consultor.$id'
 import { Route as AuthenticatedSeguimentosIdRouteImport } from './routes/_authenticated/seguimentos.$id'
 import { Route as AuthenticatedRotinasIdRouteImport } from './routes/_authenticated/rotinas.$id'
 import { Route as AuthenticatedPessoasIdRouteImport } from './routes/_authenticated/pessoas.$id'
@@ -364,6 +365,11 @@ const ApiPublicWhatsappWebhookRoute =
     path: '/api/public/whatsapp-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdminConsultorIdRoute = AdminConsultorIdRouteImport.update({
+  id: '/consultor/$id',
+  path: '/consultor/$id',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AuthenticatedSeguimentosIdRoute =
   AuthenticatedSeguimentosIdRouteImport.update({
     id: '/seguimentos/$id',
@@ -557,6 +563,7 @@ export interface FileRoutesByFullPath {
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
+  '/admin/consultor/$id': typeof AdminConsultorIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
@@ -634,6 +641,7 @@ export interface FileRoutesByTo {
   '/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
+  '/admin/consultor/$id': typeof AdminConsultorIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
@@ -714,6 +722,7 @@ export interface FileRoutesById {
   '/_authenticated/pessoas/$id': typeof AuthenticatedPessoasIdRoute
   '/_authenticated/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/_authenticated/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
+  '/admin/consultor/$id': typeof AdminConsultorIdRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
@@ -794,6 +803,7 @@ export interface FileRouteTypes {
     | '/pessoas/$id'
     | '/rotinas/$id'
     | '/seguimentos/$id'
+    | '/admin/consultor/$id'
     | '/api/public/whatsapp-webhook'
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
@@ -871,6 +881,7 @@ export interface FileRouteTypes {
     | '/pessoas/$id'
     | '/rotinas/$id'
     | '/seguimentos/$id'
+    | '/admin/consultor/$id'
     | '/api/public/whatsapp-webhook'
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
@@ -950,6 +961,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pessoas/$id'
     | '/_authenticated/rotinas/$id'
     | '/_authenticated/seguimentos/$id'
+    | '/admin/consultor/$id'
     | '/api/public/whatsapp-webhook'
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
@@ -1375,6 +1387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/consultor/$id': {
+      id: '/admin/consultor/$id'
+      path: '/consultor/$id'
+      fullPath: '/admin/consultor/$id'
+      preLoaderRoute: typeof AdminConsultorIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/_authenticated/seguimentos/$id': {
       id: '/_authenticated/seguimentos/$id'
       path: '/seguimentos/$id'
@@ -1723,6 +1742,7 @@ interface AdminRouteRouteChildren {
   AdminUtilizacaoRoute: typeof AdminUtilizacaoRoute
   AdminUtilizadoresRoute: typeof AdminUtilizadoresRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminConsultorIdRoute: typeof AdminConsultorIdRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -1749,6 +1769,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminUtilizacaoRoute: AdminUtilizacaoRoute,
   AdminUtilizadoresRoute: AdminUtilizadoresRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminConsultorIdRoute: AdminConsultorIdRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
