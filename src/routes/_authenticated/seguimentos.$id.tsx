@@ -42,8 +42,7 @@ function SeguimentoDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const {
-    seguimentos, pessoas, oportunidades,
-    atualizarSeguimento, eliminarSeguimento, concluirSeguimento, loading,
+    seguimentos, loading,
   } = useStore();
 
   const s = useMemo(() => seguimentos.find((x) => x.id === id), [seguimentos, id]);
@@ -73,6 +72,29 @@ function SeguimentoDetail() {
     },
   });
 
+  const item = s ?? fallback.data ?? null;
+
+  if ((loading || fallback.isLoading) && !item) {
+    return <AppShell><PageHeader title="A carregar…" /></AppShell>;
+  }
+  if (!item) {
+    return (
+      <AppShell>
+        <PageHeader title="Seguimento não encontrado" subtitle="Pode ter sido apagado." />
+        <Button variant="ghost" onClick={() => navigate({ to: "/seguimentos" })}>
+          <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
+        </Button>
+      </AppShell>
+    );
+  }
+
+  return <SeguimentoView key={item.id} s={item} />;
+}
+
+function SeguimentoView({ s }: { s: Seguimento }) {
+  const navigate = useNavigate();
+  const { pessoas, oportunidades, atualizarSeguimento, eliminarSeguimento, concluirSeguimento } = useStore();
+
   const [tipo, setTipo] = useState<SeguimentoTipo>(s?.tipo ?? "Tarefa");
   const [titulo, setTitulo] = useState(s?.titulo ?? "");
   const [data, setData] = useState((s?.data ?? "").slice(0, 10));
@@ -83,20 +105,6 @@ function SeguimentoDetail() {
   const [oportunidadeId, setOportunidadeId] = useState(s?.oportunidadeId ?? "");
   const [notas, setNotas] = useState(s?.notas ?? "");
   const [busy, setBusy] = useState(false);
-
-  if (loading && !s) {
-    return <AppShell><PageHeader title="A carregar…" /></AppShell>;
-  }
-  if (!s) {
-    return (
-      <AppShell>
-        <PageHeader title="Seguimento não encontrado" subtitle="Pode ter sido apagado." />
-        <Button variant="ghost" onClick={() => navigate({ to: "/seguimentos" })}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
-        </Button>
-      </AppShell>
-    );
-  }
 
   const pessoa = pessoas.find((p) => p.id === s.pessoaId);
   const op = oportunidades.find((o) => o.id === s.oportunidadeId);
