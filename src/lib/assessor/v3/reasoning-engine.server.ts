@@ -40,7 +40,18 @@ import {
   ambiguousPersonReply,
 } from "./person-brief";
 import { buildPersonBrief } from "./person-brief.server";
-import { detectSparringEnd, detectSparringStart, isSparringActive, SPARRING_TOPIC } from "./sparring";
+import {
+  detectSparringContinue,
+  detectSparringEnd,
+  detectSparringStart,
+  isSparringActive,
+  isSparringPaused,
+  sparringTurns,
+  SPARRING_CONTINUE_QUESTION,
+  SPARRING_MAX_TURNS,
+  SPARRING_PAUSED_TOPIC,
+  SPARRING_TOPIC,
+} from "./sparring";
 
 const HISTORY_LIMIT = 6;
 
@@ -446,17 +457,52 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
   // Modo Sparring — treino de conversas. Nada vira registo enquanto estiver
   // activo: as tool_calls são descartadas antes do ACT.
-  const sparringWasActive = isSparringActive((searches as any).conversation_state ?? null);
+  const convState = (searches as any).conversation_state ?? null;
+  const sparringWasActive = isSparringActive(convState);
+  const sparringWasPaused = isSparringPaused(convState);
+  const resumed = sparringWasPaused && detectSparringContinue(trimmed);
   const sparringEnding = sparringWasActive && detectSparringEnd(trimmed);
-  const sparringActive = sparringEnding
-    ? true // último turno em personagem: fecha com o comentário, ainda sem registos
-    : sparringWasActive || detectSparringStart(trimmed);
-  if (sparringActive !== sparringWasActive || sparringEnding) {
+  const startedNow = !sparringWasActive && (resumed || detectSparringStart(trimmed));
+  // Enquanto activo (ou a fechar) nada vira registo.
+  const sparringActive = sparringEnding || sparringWasActive || startedNow;
+  const prevTurns = sparringWasActive ? sparringTurns(convState) : 0;
+  const turns = sparringActive ? prevTurns + 1 : 0;
+  // Fim automático ao fim de algumas trocas: pergunta se quer continuar.
+  const autoPause = sparringActive && !sparringEnding && turns >= SPARRING_MAX_TURNS;
+  const sparringClosing = sparringEnding || autoPause;
+
+  if (sparringActive || sparringWasActive || sparringWasPaused) {
     try {
       await supabase.from("conversation_states").upsert({
         user_id: userId, channel, external_conversation_id: channel,
-        active_topic: sparringEnding ? null : (sparringActive ? SPARRING_TOPIC : null),
+        active_topic: sparringEnding ? null : autoPause ? SPARRING_PAUSED_TOPIC : sparringActive ? SPARRING_TOPIC : null,
+        sparring_turns: sparringClosing ? 0 : turns,
       } as never, { onConflict: "user_id,channel,external_conversation_id" });
+    } catch { /* noop */ }
+  }
+
+  // Auditoria: início/fim do treino ficam visíveis nas ações autónomas.
+  if (startedNow || sparringClosing) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const rows: any[] = [];
+      if (startedNow) {
+        rows.push({
+          admin_user_id: null, action: "sparring_started", target_user_id: userId,
+          resource_type: "conversation", resource_id: channel,
+          reason: "Modo treino (sparring) iniciado — escrita bloqueada.",
+          metadata: { channel, resumed, source: "reasoning-engine-v3" },
+        });
+      }
+      if (sparringClosing) {
+        rows.push({
+          admin_user_id: null, action: "sparring_ended", target_user_id: userId,
+          resource_type: "conversation", resource_id: channel,
+          reason: autoPause ? "Modo treino em pausa automática após várias trocas." : "Modo treino terminado pelo consultor.",
+          metadata: { channel, turns, auto: autoPause, source: "reasoning-engine-v3" },
+        });
+      }
+      await supabaseAdmin.from("admin_audit_logs").insert(rows as never);
     } catch { /* noop */ }
   }
 
