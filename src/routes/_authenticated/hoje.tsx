@@ -23,6 +23,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { explainPriority } from "@/lib/assessor/priority-explain";
+import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
+import { Home, Users, Layers, CalendarDays, Euro, Lightbulb } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -79,6 +81,17 @@ function HojePage() {
     queryFn: () => supremeQ(),
     retry: false,
   });
+
+  // Resumo geral (contagens simples) + sugestão do mentor.
+  const overviewQ = useServerFn(getHojeOverview);
+  const overview = useQuery({
+    queryKey: ["hoje", "overview"],
+    queryFn: () => overviewQ(),
+    retry: false,
+  });
+  const [tipOff, setTipOff] = useState<string | null>(null);
+  const mentor = overview.data?.mentor ?? null;
+  const resumo = overview.data?.summary ?? null;
 
   const docsPending = useQuery({
     queryKey: ["uploaded_files", "unclassified"],
