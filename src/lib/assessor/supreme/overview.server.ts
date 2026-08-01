@@ -66,7 +66,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     supabase.from("properties").select("id, status").eq("user_id", userId),
     supabase.from("people").select("id").eq("user_id", userId),
     supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox"),
-    supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, person_id, property_id")
+    supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, person_id, related_property_id")
       .eq("user_id", userId).gte("due_date", start).lte("due_date", end).order("due_time", { ascending: true }),
     supabase.from("financial_movements").select("id, type, amount, status").eq("user_id", userId).eq("type", "commission"),
     supabase.from("interactions").select("person_id").eq("user_id", userId).gte("occurred_at", isoDaysAgo(7)),
@@ -86,7 +86,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
       time: e.due_time ? String(e.due_time).slice(0, 5) : null,
       type: e.type ? String(e.type) : null,
       personId: e.person_id ?? null,
-      propertyId: e.property_id ?? null,
+      propertyId: e.related_property_id ?? e.property_id ?? null,
     }))
     .sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
   const next = eventRows[0] ?? null;
@@ -118,21 +118,58 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
 }
 
 // Sugestão do mentor: padrões reais nos dados, tom de conselho.
+// "Parado" mede-se pelo último CONTACTO REAL registado (interações e seguimentos
+// com resultado), nunca por edições de campos — editar uma ficha não reinicia o contador.
 // Se não houver padrão relevante, devolve null — nunca se inventa nada.
 export async function computeMentorTip(supabase: any, userId: string): Promise<MentorTip | null> {
   const now = Date.now();
   const days = (iso: string | null) => (iso ? Math.floor((now - new Date(iso).getTime()) / 864e5) : 0);
+  /** Data mais recente de um conjunto, ou null. */
+  const latest = (...vals: (string | null | undefined)[]) => {
+    const ts = vals.filter(Boolean).map((v) => new Date(v as string).getTime()).filter((n) => !Number.isNaN(n));
+    return ts.length ? new Date(Math.max(...ts)).toISOString() : null;
+  };
 
-  const [props, deals, people] = await Promise.all([
-    supabase.from("properties").select("id, status, updated_at").eq("user_id", userId),
+  const [props, deals, people, ints, done, links] = await Promise.all([
+    supabase.from("properties").select("id, status, created_at").eq("user_id", userId),
     supabase.from("opportunities").select("id, status, stage, stage_changed_at, archived_at").eq("user_id", userId),
     supabase.from("people").select("id, name, created_at").eq("user_id", userId).limit(200),
+    // Contactos reais registados (save_interaction e equivalentes).
+    supabase.from("interactions").select("person_id, opportunity_id, occurred_at").eq("user_id", userId),
+    // Seguimentos com resultado registado contam como contacto real.
+    supabase.from("follow_ups").select("person_id, opportunity_id, related_property_id, outcome_recorded_at")
+      .eq("user_id", userId).not("outcome_recorded_at", "is", null),
+    supabase.from("opportunity_properties").select("opportunity_id, property_id").eq("user_id", userId),
   ]);
 
-  // 1. Imóveis por angariar parados há mais de 10 dias.
-  const parados = ((props.data as any[]) ?? []).filter(
-    (p) => String(p.status ?? "") === "por_angariar" && days(p.updated_at) >= 10,
-  );
+  const intRows = ((ints.data as any[]) ?? []);
+  const doneRows = ((done.data as any[]) ?? []);
+  const linkRows = ((links.data as any[]) ?? []);
+
+  // Último contacto real por negócio.
+  const lastByDeal = new Map<string, string | null>();
+  for (const r of intRows) if (r.opportunity_id) lastByDeal.set(r.opportunity_id, latest(lastByDeal.get(r.opportunity_id), r.occurred_at));
+  for (const r of doneRows) if (r.opportunity_id) lastByDeal.set(r.opportunity_id, latest(lastByDeal.get(r.opportunity_id), r.outcome_recorded_at));
+
+  // Último contacto real por pessoa.
+  const lastByPerson = new Map<string, string | null>();
+  for (const r of intRows) if (r.person_id) lastByPerson.set(r.person_id, latest(lastByPerson.get(r.person_id), r.occurred_at));
+  for (const r of doneRows) if (r.person_id) lastByPerson.set(r.person_id, latest(lastByPerson.get(r.person_id), r.outcome_recorded_at));
+
+  // Último contacto real por imóvel: seguimentos do imóvel + contactos dos negócios ligados a ele.
+  const lastByProperty = new Map<string, string | null>();
+  for (const r of doneRows) if (r.related_property_id) lastByProperty.set(r.related_property_id, latest(lastByProperty.get(r.related_property_id), r.outcome_recorded_at));
+  for (const l of linkRows) {
+    if (!l.property_id || !l.opportunity_id) continue;
+    lastByProperty.set(l.property_id, latest(lastByProperty.get(l.property_id), lastByDeal.get(l.opportunity_id) ?? null));
+  }
+
+  // 1. Imóveis por angariar sem contacto real há mais de 10 dias.
+  //    Sem qualquer contacto, conta-se desde a criação do imóvel.
+  const parados = ((props.data as any[]) ?? []).filter((p) => {
+    if (String(p.status ?? "") !== "por_angariar") return false;
+    return days(lastByProperty.get(p.id) ?? p.created_at ?? null) >= 10;
+  });
   if (parados.length) {
     return {
       key: "imoveis-parados",
@@ -142,10 +179,13 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
     };
   }
 
-  // 2. Negócios na mesma fase há semanas.
-  const presos = ((deals.data as any[]) ?? []).filter(
-    (d) => !d.archived_at && !CLOSED_DEAL.has(String(d.status ?? "").toLowerCase()) && days(d.stage_changed_at) >= 21,
-  );
+  // 2. Negócios na mesma fase há 25+ dias e sem contacto real nesse período.
+  const presos = ((deals.data as any[]) ?? []).filter((d) => {
+    if (d.archived_at || CLOSED_DEAL.has(String(d.status ?? "").toLowerCase())) return false;
+    if (days(d.stage_changed_at) < 25) return false;
+    const contacto = lastByDeal.get(d.id) ?? null;
+    return !contacto || days(contacto) >= 25;
+  });
   if (presos.length) {
     return {
       key: "negocios-parados",
@@ -155,19 +195,14 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
     };
   }
 
-  // 3. Pessoas sem qualquer contacto registado há muito tempo.
-  const rows = ((people.data as any[]) ?? []).filter((p) => days(p.created_at) >= 30);
+  // 3. Pessoas sem contacto real há mais de 60 dias.
+  const rows = ((people.data as any[]) ?? []).filter((p) => days(p.created_at) >= 60);
   if (rows.length) {
-    const ids = rows.map((p) => p.id);
-    const { data: ints } = await supabase
-      .from("interactions").select("person_id").eq("user_id", userId).in("person_id", ids)
-      .gte("occurred_at", isoDaysAgo(30));
-    const recentes = new Set(((ints as any[]) ?? []).map((i) => i.person_id));
-    const frias = rows.filter((p) => !recentes.has(p.id));
+    const frias = rows.filter((p) => days(lastByPerson.get(p.id) ?? p.created_at ?? null) >= 60);
     if (frias.length >= 3) {
       return {
         key: "pessoas-frias",
-        text: `Tens ${frias.length} pessoas sem contacto registado há mais de um mês — ${frias.slice(0, 2).map((p) => String(p.name).split(" ")[0]).join(" e ")} entre elas. Um contacto curto agora vale mais do que uma campanha daqui a meio ano.`,
+        text: `Tens ${frias.length} pessoas sem contacto registado há mais de dois meses — ${frias.slice(0, 2).map((p) => String(p.name).split(" ")[0]).join(" e ")} entre elas. Um contacto curto agora vale mais do que uma campanha daqui a meio ano.`,
         linkLabel: "Ver pessoas →",
         to: "/pessoas",
       };
