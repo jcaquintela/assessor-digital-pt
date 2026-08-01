@@ -196,7 +196,7 @@ function QualidadePage() {
     <div>
       <PageTitle
         title="Qualidade"
-        sub="Trust Mode v1 — ATS, AQS, correções e falhas dos últimos 14 dias. Cada turno fraco abre a conversa real."
+        sub="Trust Mode v1 — ATS, AQS, correções e falhas dos últimos 14 dias. A análise de cada turno fraco está sempre visível; o conteúdo das mensagens está fechado até o consultor autorizar."
       />
 
       {trust ? (
@@ -356,7 +356,8 @@ function QualidadePage() {
         </div>
       )}
       <p className="mini mt-2" style={{ color: "var(--muted)" }}>
-        Clica numa linha para ver a conversa real desse turno.
+        Clica numa linha para abrir a análise desse turno. As mensagens aparecem tapadas até haver autorização do
+        consultor (válida 2 horas e registada na auditoria).
       </p>
     </div>
   );
