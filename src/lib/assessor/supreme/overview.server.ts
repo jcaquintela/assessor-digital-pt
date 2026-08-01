@@ -6,8 +6,32 @@ export interface OverviewSummary {
   properties: { count: number; toAcquire: number };
   people: { count: number; contactedWeek: number };
   misc: { pending: number };
-  agenda: { today: number; nextLabel: string | null; nextTime: string | null };
+  agenda: {
+    today: number;
+    nextLabel: string | null;
+    nextTime: string | null;
+    /** Fonte única dos compromissos de hoje — o cartão e o bloco "Próximos compromissos" leem daqui. */
+    items: AgendaItem[];
+  };
   billing: { forecast: number; open: number };
+}
+
+export interface AgendaItem {
+  id: string;
+  title: string;
+  time: string | null;
+  type: string | null;
+  personId: string | null;
+  propertyId: string | null;
+}
+
+/** Estados que tiram um compromisso do dia. */
+const DONE_FOLLOW_UP = new Set([
+  "concluído", "concluido", "concluída", "concluida", "done", "completed", "cancelado", "cancelled", "arquivado",
+]);
+
+export function isOpenFollowUp(status: unknown): boolean {
+  return !DONE_FOLLOW_UP.has(String(status ?? "").trim().toLowerCase());
 }
 
 export interface MentorTip {
