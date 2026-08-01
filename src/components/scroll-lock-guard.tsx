@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { getOverlayCount } from "@/lib/ui/overlay-stack";
 
 /**
  * Rede de segurança para o scroll lock dos overlays (Radix/Vaul).
@@ -14,6 +15,7 @@ export function ScrollLockGuard() {
     const body = document.body;
 
     const hasOpenOverlay = () =>
+      getOverlayCount() > 0 ||
       document.querySelector(
         '[data-radix-popper-content-wrapper], [data-state="open"][role="dialog"], [data-state="open"][role="alertdialog"], [data-vaul-drawer][data-state="open"]',
       ) !== null;
@@ -30,7 +32,10 @@ export function ScrollLockGuard() {
       // Espera o fim da animação de saída do overlay antes de limpar.
       window.setTimeout(cleanup, 350);
     });
-    observer.observe(body, { attributes: true, attributeFilter: ["data-scroll-locked", "style"] });
+    observer.observe(body, {
+      attributes: true,
+      attributeFilter: ["data-scroll-locked", "data-overlay-count", "style"],
+    });
     observer.observe(document.getElementById("root") ?? body, { childList: true, subtree: false });
 
     return () => observer.disconnect();
