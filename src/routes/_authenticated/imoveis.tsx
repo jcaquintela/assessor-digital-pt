@@ -173,32 +173,34 @@ function ImoveisPage() {
                   {i.asking_price != null && (
                     <div className="c-mono text-sm font-semibold" style={{ color: "var(--ink)" }}>{formatEUR(Number(i.asking_price))}</div>
                   )}
-                  <button
-                    type="button"
-                    aria-label={`Editar ${i.title}`}
-                    className="c-badge"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditId(i.id); }}
-                  >
-                    <Pencil className="h-3 w-3" /> Editar
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Organizar ${i.title}`}
-                    className="c-badge"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOrgId(i.id); }}
-                  >
-                    <Tags className="h-3 w-3" /> Organizar
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Eliminar ${i.title}`}
-                    className="c-badge"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); void eliminar(i.id, i.title); }}
-                  >
-                    <Trash2 className="h-3 w-3" /> Eliminar
-                  </button>
                   <ChevronRight className="h-4 w-4" style={{ color: "var(--muted)" }} />
                 </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  aria-label={`Editar ${i.title}`}
+                  className="c-badge tap-44"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditId(i.id); }}
+                >
+                  <Pencil className="h-3 w-3" /> Editar
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Organizar ${i.title}`}
+                  className="c-badge tap-44"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOrgId(i.id); }}
+                >
+                  <Tags className="h-3 w-3" /> Organizar
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Eliminar ${i.title}`}
+                  className="c-badge tap-44"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); void eliminar(i.id, i.title); }}
+                >
+                  <Trash2 className="h-3 w-3" /> Eliminar
+                </button>
               </div>
             </Link>
           );
