@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const hojeSrc = readFileSync(resolve("src/routes/_authenticated/hoje.tsx"), "utf8");
+const hojeSrc = readFileSync(resolve("src/components/hoje/sum-grid.tsx"), "utf8");
 const routeTreeSrc = readFileSync(resolve("src/routeTree.gen.ts"), "utf8");
 
 /** Caminhos navegáveis reais (interface FileRoutesByTo do route tree gerado). */
@@ -16,9 +16,9 @@ function navigableRoutes(): Set<string> {
 
 /** Extrai cada <SumCard ... /> da grelha de resumo. */
 function sumCards(): Array<{ raw: string; to: string; tone: string; label: string }> {
-  return [...hojeSrc.matchAll(/<SumCard\b([\s\S]*?)\/>/g)].map((m) => {
+  return [...hojeSrc.matchAll(/\{\s*\n?\s*key: "[^"]+",([\s\S]*?)\n    \},/g)].map((m) => {
     const raw = m[1];
-    const pick = (name: string) => raw.match(new RegExp(`${name}=(?:"([^"]*)"|\\{\`?([^}\`]*)\`?\\})`))?.slice(1).find(Boolean) ?? "";
+    const pick = (name: string) => raw.match(new RegExp(`${name}: (?:"([^"]*)"|\`([^\`]*)\`)`))?.slice(1).find(Boolean) ?? "";
     return { raw, to: pick("to"), tone: pick("tone"), label: pick("label") };
   });
 }
@@ -55,7 +55,7 @@ describe("grelha de resumo de /hoje", () => {
   });
 
   it("o cartão é renderizado como <Link> acessível (aria-label)", () => {
-    const comp = hojeSrc.slice(hojeSrc.indexOf("function SumCard"));
+    const comp = hojeSrc.slice(hojeSrc.indexOf("export function SumCard"));
     expect(comp).toMatch(/<Link\s+to=\{to[\s\S]*?aria-label=\{label\}/);
   });
 });
