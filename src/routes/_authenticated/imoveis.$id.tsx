@@ -133,6 +133,16 @@ function PropertyDetail() {
   const files = data?.files ?? [];
   const followUps = data?.followUps ?? [];
 
+  const proximo =
+    followUps
+      .filter((fu: any) => fu.status !== "done" && fu.status !== "concluido")
+      .sort((a: any, b: any) => String(a.due_date ?? "").localeCompare(String(b.due_date ?? "")))[0] ?? null;
+
+  const recente: string[] = [
+    files.length ? `${files.length} documento${files.length > 1 ? "s" : ""} no Drive` : "",
+    followUps.length ? `${followUps.length} seguimento${followUps.length > 1 ? "s" : ""}` : "",
+  ].filter(Boolean) as string[];
+
   const startEdit = () => setDraft({ ...p });
   const cancelEdit = () => setDraft(null);
   const save = () => {
