@@ -58,14 +58,14 @@ export function MonthGrid({
               aria-current={isToday ? "date" : undefined}
               aria-pressed={isSelected}
               className={cn(
-                "flex h-16 flex-col items-center justify-start gap-1 bg-card p-1.5 text-sm transition-colors hover:bg-accent sm:h-20",
+                "flex h-14 min-w-0 flex-col items-center justify-start gap-1 bg-card p-1 text-sm transition-colors hover:bg-accent sm:h-20 sm:p-1.5",
                 c.outside && "text-muted-foreground/50",
                 isSelected && "bg-accent",
               )}
             >
               <span
                 className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-sm",
+                  "flex h-8 w-8 items-center justify-center rounded-full text-[15px] sm:h-7 sm:w-7 sm:text-sm",
                   isToday && "bg-primary font-semibold text-primary-foreground",
                   !isToday && isSelected && "font-semibold text-foreground ring-1 ring-primary/50",
                 )}
@@ -75,7 +75,7 @@ export function MonthGrid({
               {markedKeys.has(c.key) && (
                 <span
                   aria-label="Tem compromissos"
-                  className={cn("h-1.5 w-1.5 rounded-full bg-primary", c.outside && "opacity-50")}
+                  className={cn("h-2 w-2 rounded-full bg-primary sm:h-1.5 sm:w-1.5", c.outside && "opacity-50")}
                 />
               )}
             </button>
