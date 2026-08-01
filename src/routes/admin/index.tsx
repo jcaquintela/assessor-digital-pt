@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getAfonsoBusiness } from "@/lib/admin/afonso.functions";
 import { useSystemHealth } from "@/components/admin/health-strip";
 import { Badge, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
+import { fmtPct } from "@/lib/admin/metrics-format";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [{ title: "Visão geral — Afonso admin" }] }),
@@ -44,8 +45,8 @@ function OverviewPage() {
       <Grid cols={4}>
         <MetricCard label="Mensagens 24h" value={data.messages24h} sub="WhatsApp, webhook ativo" source="assessor_messages · live" />
         <MetricCard
-          label="Tarefa bem sucedida"
-          value={ts == null ? "—" : `${(ts * 100).toFixed(1).replace(".", ",")}%`}
+          label="Tarefas executadas"
+          value={fmtPct(ts)}
           tone={ts == null ? "muted" : ts >= 0.95 ? "default" : "coral"}
           sub={`meta ≥ 95% · ${data.taskSuccessSamples} turnos / 14d`}
           source="assistant_trust_scores · agregado"
