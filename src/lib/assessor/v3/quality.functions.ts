@@ -97,13 +97,38 @@ export const getTurnTranscript = createServerFn({ method: "POST" })
     ]);
 
     const toolCalls = Array.isArray(t.tool_calls) ? t.tool_calls : [];
+
+    // Conteúdo real só com consentimento vivo (ou conta de teste / programa
+    // de avaliação). Sem isso devolvemos a mesma análise, sem as palavras.
+    const { canOpenRealContent, auditContentAccess } = await import("@/lib/admin/consent.server");
+    const access = await canOpenRealContent(supabaseAdmin, {
+      targetUserId: t.user_id,
+      adminId: context.userId,
+      resourceId: t.id,
+    });
+    if (access.allowed) {
+      await auditContentAccess(supabaseAdmin, {
+        adminId: context.userId,
+        targetUserId: t.user_id,
+        resourceId: t.id,
+        basis: access.basis ?? "consent",
+        consentId: access.consentId,
+        reason: "Abertura de conversa em Qualidade",
+      });
+    }
+    const hide = (v: string | null) => (access.allowed ? v : v == null ? null : "•".repeat(Math.min(24, v.length)));
+
     return {
       found: true as const,
       traceId: t.id,
+      targetUserId: t.user_id as string,
+      contentVisible: access.allowed,
+      contentBasis: access.basis,
+      contentExpiresAt: access.expiresAt,
       createdAt: t.created_at as string,
       channel: t.channel as string,
-      userMessage: t.input_content as string,
-      reply: (t.reply as string) ?? null,
+      userMessage: hide(t.input_content as string) as string,
+      reply: hide((t.reply as string) ?? null),
       action: (t.decision as any)?.action ?? null,
       confidence: (t.decision as any)?.confidence ?? null,
       error: (t.error as string) ?? null,
@@ -114,17 +139,18 @@ export const getTurnTranscript = createServerFn({ method: "POST" })
         ok: c?.ok !== false,
         error: c?.error ?? null,
       })),
-      messages: ((msgs as any[]) ?? []).map((m) => ({
+      messages: (access.allowed ? ((msgs as any[]) ?? []) : []).map((m) => ({
         id: m.id,
         role: m.role as string,
         content: m.content as string,
         createdAt: m.created_at as string,
       })),
+      messageCount: ((msgs as any[]) ?? []).length,
       corrections: ((corrections as any[]) ?? []).map((c) => ({
         id: c.id,
         createdAt: c.created_at as string,
         category: c.category as string,
-        message: c.correction_message as string,
+        message: (hide(c.correction_message as string) ?? "") as string,
       })),
     };
   });

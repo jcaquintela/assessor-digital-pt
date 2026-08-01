@@ -29,6 +29,7 @@ import {
   disconnectCalendar,
   syncCalendarNow,
 } from "@/lib/calendar/calendar.functions";
+import { decideContentAccess, listMyConsentRequests } from "@/lib/admin/consent.functions";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
   head: () => ({
@@ -65,9 +66,101 @@ function DefinicoesPage() {
         <NotificacoesSection />
         <CanalSection />
         <CalendarioSection />
+        <PrivacidadeSection />
         <ContaSection />
       </div>
     </AppShell>
+  );
+}
+
+/* ---------------- Privacidade das conversas ---------------- */
+
+function PrivacidadeSection() {
+  const listFn = useServerFn(listMyConsentRequests);
+  const decideFn = useServerFn(decideContentAccess);
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["consent-requests"],
+    queryFn: () => listFn(),
+  });
+  const decide = useMutation({
+    mutationFn: (input: { id: string; decision: "approved" | "denied" | "revoked" }) =>
+      decideFn({ data: input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["consent-requests"] });
+      toast.success("Decisão registada.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rows = (data ?? []) as {
+    id: string;
+    reason: string;
+    status: string;
+    expires_at: string | null;
+    created_at: string;
+  }[];
+  const pending = rows.filter((r) => r.status === "pending");
+  const live = rows.filter(
+    (r) => r.status === "approved" && (!r.expires_at || new Date(r.expires_at) > new Date()),
+  );
+
+  return (
+    <Section title="Privacidade das conversas">
+      <p className="c-muted mb-3 text-sm">
+        Ninguém da equipa lê as tuas conversas sem tu autorizares. Para resolver um problema podem pedir acesso —
+        tu decides, dura 2 horas e fica registado.
+      </p>
+      {isLoading ? (
+        <p className="c-muted text-sm">A carregar…</p>
+      ) : pending.length === 0 && live.length === 0 ? (
+        <p className="c-muted text-sm">Não há pedidos de acesso às tuas conversas.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {pending.map((r) => (
+            <div key={r.id} className="c-card p-3">
+              <p className="text-sm">{r.reason}</p>
+              <p className="c-muted mt-1 text-xs">
+                Pedido em {new Date(r.created_at).toLocaleString("pt-PT")}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  className="c-btn tap-44"
+                  disabled={decide.isPending}
+                  onClick={() => decide.mutate({ id: r.id, decision: "approved" })}
+                >
+                  Autorizar 2 horas
+                </button>
+                <button
+                  type="button"
+                  className="c-btn-ghost tap-44"
+                  disabled={decide.isPending}
+                  onClick={() => decide.mutate({ id: r.id, decision: "denied" })}
+                >
+                  Recusar
+                </button>
+              </div>
+            </div>
+          ))}
+          {live.map((r) => (
+            <div key={r.id} className="c-card p-3">
+              <p className="text-sm">
+                Acesso autorizado{r.expires_at ? ` até ${new Date(r.expires_at).toLocaleString("pt-PT")}` : ""}.
+              </p>
+              <button
+                type="button"
+                className="c-btn-ghost tap-44 mt-2"
+                disabled={decide.isPending}
+                onClick={() => decide.mutate({ id: r.id, decision: "revoked" })}
+              >
+                Retirar acesso agora
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }
 

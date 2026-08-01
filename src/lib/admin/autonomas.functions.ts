@@ -1,5 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  classifyTools,
+  resolveOutcome,
+  type ActionOutcome,
+  type ClassifiedTool,
+} from "./autonomy-classify";
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -23,17 +29,26 @@ export type AutonomousAction = {
   channel: string;
   request: string;
   tools: string[];
+  writeTools: string[];
+  readTools: string[];
   ok: boolean;
   error: string | null;
-  outcome: "mantida" | "corrigida";
+  outcome: ActionOutcome;
   correctionCategory: string | null;
   correctionMessage: string | null;
 };
 
+export type AutonomyCounters = {
+  sucesso: number;
+  falhou: number;
+  corrigida: number;
+  revertida: number;
+  duplicada: number;
+};
+
 // Feed de ações executadas SEM pedir confirmação, por consultor.
-// Fonte: assessor_reasoning_traces (decisão + ferramentas executadas),
-// cruzado com assistant_user_corrections (turn_id = trace) para saber se o
-// consultor manteve ou corrigiu a seguir.
+// Só entram turnos com pelo menos uma ESCRITA: pesquisas são leitura e não
+// contam como ação autónoma (contamos à parte, para transparência).
 export const listAutonomousActions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -48,19 +63,24 @@ export const listAutonomousActions = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(400);
 
-    const traces = ((traceRows as any[]) ?? []).filter((t) => {
+    const candidates = ((traceRows as any[]) ?? []).filter((t) => {
       const action = (t.decision as any)?.action;
       const tools = Array.isArray(t.tool_calls) ? t.tool_calls : [];
       if (action !== "act" || tools.length === 0) return false;
       return !CONFIRMATION_RE.test(String(t.input_content ?? ""));
     });
 
+    const withTools = candidates.map((t) => ({ t, tools: classifyTools(t.tool_calls) }));
+    const readOnlyTurns = withTools.filter((x) => !x.tools.some((c) => c.kind === "write")).length;
+    const traces = withTools.filter((x) => x.tools.some((c) => c.kind === "write"));
+
+    const empty: AutonomyCounters = { sucesso: 0, falhou: 0, corrigida: 0, revertida: 0, duplicada: 0 };
     if (traces.length === 0) {
-      return { items: [] as AutonomousAction[], total: 0, corrected: 0 };
+      return { items: [] as AutonomousAction[], total: 0, readOnlyTurns, counters: empty };
     }
 
-    const userIds = [...new Set(traces.map((t) => t.user_id).filter(Boolean))];
-    const traceIds = traces.map((t) => t.id);
+    const userIds = [...new Set(traces.map((x) => x.t.user_id).filter(Boolean))];
+    const traceIds = traces.map((x) => x.t.id);
 
     const [{ data: profiles }, { data: prefs }, { data: corrections }] = await Promise.all([
       supabaseAdmin.from("profiles").select("id, name, email").in("id", userIds),
@@ -71,14 +91,58 @@ export const listAutonomousActions = createServerFn({ method: "GET" })
         .in("turn_id", traceIds),
     ]);
 
+    // Uma escrita "revertida" é uma escrita cuja linha já não existe: o
+    // consultor apagou o que o Assessor criou sozinho.
+    const byTable = new Map<string, string[]>();
+    for (const x of traces) {
+      for (const c of x.tools) {
+        if (c.kind === "write" && c.ok && c.entityId && c.table) {
+          byTable.set(c.table, [...(byTable.get(c.table) ?? []), c.entityId]);
+        }
+      }
+    }
+    const alive = new Set<string>();
+    await Promise.all(
+      [...byTable.entries()].map(async ([table, ids]) => {
+        const { data } = await supabaseAdmin.from(table as never).select("id").in("id", ids);
+        for (const r of ((data as any[]) ?? [])) alive.add(String(r.id));
+      }),
+    );
+
     const profileById = new Map(((profiles as any[]) ?? []).map((p) => [p.id, p]));
     const autonomyById = new Map(((prefs as any[]) ?? []).map((p) => [p.user_id, p.autonomy_level]));
     const correctionByTrace = new Map(((corrections as any[]) ?? []).map((c) => [c.turn_id, c]));
 
-    const items: AutonomousAction[] = traces.map((t) => {
-      const tools = (Array.isArray(t.tool_calls) ? t.tool_calls : []) as any[];
+    // Duplicado = a mesma escrita, do mesmo consultor, repetida em menos de
+    // 5 minutos. Dois registos iguais são um incidente, não dois sucessos.
+    const dupKeySeen = new Map<string, number>();
+    const ordered = [...traces].sort(
+      (a, b) => new Date(a.t.created_at).getTime() - new Date(b.t.created_at).getTime(),
+    );
+    const duplicateTraces = new Set<string>();
+    for (const x of ordered) {
+      const ts = new Date(x.t.created_at).getTime();
+      for (const c of x.tools) {
+        if (c.kind !== "write" || !c.ok) continue;
+        const key = `${x.t.user_id}:${c.name}`;
+        const prev = dupKeySeen.get(key);
+        if (prev != null && ts - prev < 5 * 60_000) duplicateTraces.add(x.t.id);
+        dupKeySeen.set(key, ts);
+      }
+    }
+
+    const items: AutonomousAction[] = traces.map(({ t, tools }) => {
       const correction = correctionByTrace.get(t.id) ?? null;
       const p = profileById.get(t.user_id);
+      const writes = tools.filter((c: ClassifiedTool) => c.kind === "write");
+      const deleted = writes.some((c) => c.ok && c.entityId != null && !alive.has(c.entityId));
+      const outcome = resolveOutcome({
+        tools,
+        traceError: t.error,
+        hasCorrection: !!correction,
+        deleted,
+        duplicate: duplicateTraces.has(t.id),
+      });
       return {
         traceId: t.id,
         createdAt: t.created_at,
@@ -87,18 +151,19 @@ export const listAutonomousActions = createServerFn({ method: "GET" })
         autonomyLevel: autonomyById.get(t.user_id) ?? "equilibrado",
         channel: t.channel,
         request: String(t.input_content ?? "").slice(0, 240),
-        tools: tools.map((c) => c?.name ?? "—"),
-        ok: tools.every((c) => c?.ok !== false) && !t.error,
-        error: t.error ?? tools.find((c) => c?.ok === false)?.error ?? null,
-        outcome: correction ? "corrigida" : "mantida",
+        tools: tools.map((c: ClassifiedTool) => c.name),
+        writeTools: writes.map((c) => c.name),
+        readTools: tools.filter((c: ClassifiedTool) => c.kind === "read").map((c) => c.name),
+        ok: outcome === "sucesso",
+        error: t.error ?? writes.find((c) => !c.ok)?.error ?? null,
+        outcome,
         correctionCategory: correction?.category ?? null,
         correctionMessage: correction?.correction_message ?? null,
       };
     });
 
-    return {
-      items: items.slice(0, 100),
-      total: items.length,
-      corrected: items.filter((i) => i.outcome === "corrigida").length,
-    };
+    const counters: AutonomyCounters = { ...empty };
+    for (const i of items) counters[i.outcome] += 1;
+
+    return { items: items.slice(0, 100), total: items.length, readOnlyTurns, counters };
   });

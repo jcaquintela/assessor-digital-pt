@@ -1084,6 +1084,48 @@ export type Database = {
         }
         Relationships: []
       }
+      content_access_consents: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          expires_at: string | null
+          id: string
+          reason: string
+          requested_by: string
+          resource_id: string | null
+          scope: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          expires_at?: string | null
+          id?: string
+          reason: string
+          requested_by: string
+          resource_id?: string | null
+          scope?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          expires_at?: string | null
+          id?: string
+          reason?: string
+          requested_by?: string
+          resource_id?: string | null
+          scope?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversation_locks: {
         Row: {
           channel: string
@@ -2232,6 +2274,7 @@ export type Database = {
         Row: {
           notes: string | null
           price_month: number | null
+          pricing_mode: string
           status: string
           tier: string
           updated_at: string
@@ -2240,6 +2283,7 @@ export type Database = {
         Insert: {
           notes?: string | null
           price_month?: number | null
+          pricing_mode?: string
           status?: string
           tier: string
           updated_at?: string
@@ -2248,6 +2292,7 @@ export type Database = {
         Update: {
           notes?: string | null
           price_month?: number | null
+          pricing_mode?: string
           status?: string
           tier?: string
           updated_at?: string
