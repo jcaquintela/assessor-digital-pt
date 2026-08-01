@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { createFileRoute, Outlet, Link, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyAdminRole } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, ShieldCheck } from "lucide-react";
+import { LogOut, ShieldCheck, ChevronDown } from "lucide-react";
 import { HealthStrip } from "@/components/admin/health-strip";
 
 export const Route = createFileRoute("/admin")({
@@ -21,42 +22,51 @@ type NavItem = { to: string; label: string; exact?: boolean };
 
 const navGroups: { group: string; items: NavItem[] }[] = [
   {
-    group: "Negócio do Afonso",
+    group: "Visão geral",
     items: [
       { to: "/admin", label: "Visão geral", exact: true },
       { to: "/admin/negocio", label: "Negócio" },
-      { to: "/admin/planos", label: "Planos & preços" },
-      { to: "/admin/faturacao", label: "Faturação" },
-      { to: "/admin/custos", label: "Custos" },
-      { to: "/admin/aquisicao", label: "Aquisição" },
     ],
   },
   {
-    group: "Pessoas e acesso",
+    group: "Clientes",
     items: [
       { to: "/admin/utilizadores", label: "Utilizadores & planos" },
       { to: "/admin/beta", label: "Beta testers" },
-      { to: "/admin/comunicacao", label: "Comunicação" },
       { to: "/admin/suporte", label: "Suporte" },
+      { to: "/admin/convites", label: "Convites Telegram" },
     ],
   },
   {
-    group: "Sistema",
+    group: "Comercial",
+    items: [
+      { to: "/admin/planos", label: "Planos & preços" },
+      { to: "/admin/aquisicao", label: "Aquisição" },
+      { to: "/admin/subscricoes", label: "Subscrições" },
+      { to: "/admin/faturacao", label: "Faturação" },
+    ],
+  },
+  {
+    group: "Operação",
+    items: [
+      { to: "/admin/custos", label: "Custos" },
+      { to: "/admin/utilizacao", label: "Utilização" },
+      { to: "/admin/comunicacao", label: "Comunicação" },
+    ],
+  },
+  {
+    group: "Qualidade",
     items: [
       { to: "/admin/qualidade", label: "Qualidade" },
       { to: "/admin/autonomas", label: "Ações autónomas" },
-      { to: "/admin/integracoes-flags", label: "Integrações & flags" },
-      { to: "/admin/auditoria-seguranca", label: "Auditoria & segurança" },
+      { to: "/admin/goldens", label: "Goldens" },
     ],
   },
   {
-    group: "Outras páginas",
+    group: "Plataforma",
     items: [
-      { to: "/admin/subscricoes", label: "Subscrições" },
-      { to: "/admin/utilizacao", label: "Utilização" },
-      { to: "/admin/convites", label: "Convites Telegram" },
-      { to: "/admin/goldens", label: "Goldens" },
-      { to: "/admin/definicoes", label: "Definições" },
+      { to: "/admin/integracoes-flags", label: "Integrações & flags" },
+      { to: "/admin/auditoria-seguranca", label: "Auditoria & segurança" },
     ],
   },
 ];
@@ -64,6 +74,7 @@ const navGroups: { group: string; items: NavItem[] }[] = [
 function AdminLayout() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [closed, setClosed] = useState<Record<string, boolean>>({});
   const fetchRole = useServerFn(getMyAdminRole);
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "my-role"],
@@ -91,19 +102,32 @@ function AdminLayout() {
           Afonso — admin
         </div>
         <nav className="flex-1 overflow-y-auto">
-          {navGroups.map((g) => (
-            <div key={g.group}>
-              <div className="navgroup">{g.group}</div>
-              {g.items.map((n) => {
-                const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
-                return (
-                  <Link key={n.to} to={n.to as any} className={`navitem ${active ? "active" : ""}`}>
-                    {n.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+          {navGroups.map((g) => {
+            const hasActive = g.items.some((n) => (n.exact ? pathname === n.to : pathname.startsWith(n.to)));
+            const open = closed[g.group] ? false : true;
+            return (
+              <div key={g.group}>
+                <button
+                  type="button"
+                  onClick={() => setClosed((c) => ({ ...c, [g.group]: !c[g.group] }))}
+                  className="navgroup flex w-full items-center justify-between gap-2 text-left uppercase"
+                  aria-expanded={open}
+                >
+                  <span>{g.group}</span>
+                  <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${open ? "" : "-rotate-90"}`} />
+                </button>
+                {(open || hasActive) &&
+                  g.items.map((n) => {
+                    const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
+                    return (
+                      <Link key={n.to} to={n.to as any} className={`navitem ${active ? "active" : ""}`}>
+                        {n.label}
+                      </Link>
+                    );
+                  })}
+              </div>
+            );
+          })}
         </nav>
         <div className="navfoot">
           <div className="capitalize">{data.role.replace("_", " ")}</div>
