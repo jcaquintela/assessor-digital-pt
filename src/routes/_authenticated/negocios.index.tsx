@@ -176,12 +176,14 @@ function NegociosPage() {
         </p>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      {/* Mobile: fases empilhadas (lista agrupada) — sem scroll horizontal.
+          Desktop: quadro em colunas. */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {STAGE_GROUPS.map((g) => {
           const items = visiveis.filter((d) => groupOfStage(d.stage) === g.key);
           return (
-            <section key={g.key} className="min-w-0">
-              <div className="mb-2 flex items-baseline justify-between">
+            <section key={g.key} className={cn("min-w-0", items.length === 0 && "hidden md:block")}>
+              <div className="mb-2 flex items-baseline justify-between gap-2">
                 <h2 className="text-sm font-semibold">{g.label}</h2>
                 <span className="text-xs text-muted-foreground">{items.length}</span>
               </div>
