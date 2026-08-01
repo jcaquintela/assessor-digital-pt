@@ -7,6 +7,7 @@
 
 export const TEMPLATE_MORNING = "afonso_prioridades_dia";
 export const TEMPLATE_CHECKIN = "afonso_resultado_seguimento";
+export const TEMPLATE_CHECKIN_V2 = "afonso_resultado_seguimento_corrigido";
 export const TEMPLATE_PLAN_ACTIVATED = "afonso_plano_ativado";
 export const TEMPLATE_LANG = "pt_PT";
 
@@ -41,11 +42,14 @@ export function morningTemplatePayload(name: string, list: string) {
  * template (máx. 3 opções: "Correu bem", "Precisa seguimento", "Sem efeito").
  *
  * Texto exato a submeter à Meta para aprovação:
- * "Como correu \"{{1}}\"? Toca num botão para registar o resultado."
+ * "Como correu \"{{1}}\"? Toca num botao para registar o resultado."
  *
  * Nota: o WhatsApp rejeita templates cujo corpo comece ou termine numa
  * variável. A pergunta no início e o pedido no final garantem texto fixo
  * nos dois extremos.
+ *
+ * DEPRECATED: mantém-se activo enquanto a versão corrigida (v2) não for
+ * aprovada pela Meta.
  */
 export function checkinTemplatePayload(title: string) {
   return {
@@ -58,6 +62,33 @@ export function checkinTemplatePayload(title: string) {
       ],
     },
   } as Record<string, unknown>;
+}
+
+/**
+ * Versão corrigida do check-in: "botão" com til.
+ * Submetido como template separado para não interromper o check-in enquanto
+ * a nova versão não é aprovada.
+ */
+export function checkinTemplatePayloadV2(title: string) {
+  return {
+    type: "template",
+    template: {
+      name: TEMPLATE_CHECKIN_V2,
+      language: { code: TEMPLATE_LANG },
+      components: [
+        { type: "body", parameters: [{ type: "text", text: title }] },
+      ],
+    },
+  } as Record<string, unknown>;
+}
+
+/** Escolhe o template de check-in a usar: v2 se aprovado, senão v1. */
+export async function resolveCheckinTemplatePayload(
+  title: string,
+  isV2Approved: () => Promise<boolean>,
+): Promise<Record<string, unknown>> {
+  if (await isV2Approved()) return checkinTemplatePayloadV2(title);
+  return checkinTemplatePayload(title);
 }
 
 /**

@@ -9,7 +9,7 @@
 import { computePriorities, findAwaitingOutcome } from "@/lib/assessor/supreme/priorities.server";
 import { buildOutcomeCheckinPrompt } from "@/lib/assessor/interactive";
 import { sanitizeReply } from "@/lib/assessor/culture/sanitize";
-import { morningTemplatePayload, checkinTemplatePayload } from "./templates";
+import { morningTemplatePayload, resolveCheckinTemplatePayload } from "./templates";
 
 /**
  * Autorização para enviar fora da janela de 24h.
@@ -198,13 +198,12 @@ export async function sendEveningCheckin(
         ok = (await sendWhatsAppInteractive(target.externalId, prompt, { kind: "auto" })).ok;
       } else {
         // Fora das 24h só passa template aprovado (botões vêm do próprio template).
+        // Usa a versão corrigida (v2) se já estiver aprovada; senão mantém a antiga.
         const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
+        const { isCheckinV2Approved } = await import("@/lib/whatsapp/template-status.server");
+        const checkinPayload = await resolveCheckinTemplatePayload(item.title, isCheckinV2Approved);
         ok = (
-          await sendWhatsAppPayload(
-            target.externalId,
-            checkinTemplatePayload(item.title),
-            { kind: "auto" },
-          )
+          await sendWhatsAppPayload(target.externalId, checkinPayload, { kind: "auto" })
         ).ok;
       }
     } else {
