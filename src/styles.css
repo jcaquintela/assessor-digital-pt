@@ -47,9 +47,7 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   }
   /* Enquanto um diálogo/sheet/drawer modal está aberto, a barra sai da frente
      para não tapar botões de Confirmar/Editar/Cancelar. */
-  body[data-scroll-locked] .mobile-bottom-nav,
-  body:has([data-slot="dialog-overlay"]) .mobile-bottom-nav,
-  body:has([data-radix-popper-content-wrapper]) .mobile-bottom-nav {
+  body[data-scroll-locked] .mobile-bottom-nav {
     display: none;
   }
   /* Altura da barra (conteúdo ~56px) + safe area, para o conteúdo não ficar tapado. */
