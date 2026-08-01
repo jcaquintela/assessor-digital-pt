@@ -203,7 +203,11 @@ function HojePage() {
 
   const openEvent = (id: string, extra?: { motivo?: string | null; dealId?: string | null; dealLabel?: string | null }) => {
     const s = seguimentos.find((x) => x.id === id);
-    if (!s) return;
+    if (!s) {
+      // Não está na cache local: abre a ficha, que sabe ir buscá-lo à base de dados.
+      void navigate({ to: "/seguimentos/$id", params: { id } });
+      return;
+    }
     const pessoa = pessoas.find((p) => p.id === s.pessoaId);
     const deal = oportunidades.find((o) => o.id === s.oportunidadeId);
     setDrawer({
