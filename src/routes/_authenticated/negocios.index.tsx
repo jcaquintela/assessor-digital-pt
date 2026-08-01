@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, AlertTriangle, Camera, ChevronRight, Archive } from "lucide-react";
 import { formatData, formatEUR } from "@/lib/demo-data";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { createDeal, listDeals, type DealListItem } from "@/lib/deals/deals.functions";
 import { DEAL_KINDS, KIND_LABEL, STAGE_GROUPS, STAGE_LABEL, groupOfStage } from "@/lib/deals/stages";
 
