@@ -74,7 +74,7 @@ export async function search(
   if (wants.has("conversation_state")) {
     const { data } = await ctx.supabase
       .from("conversation_states")
-      .select("active_topic, state_summary, last_intent, last_entity_type, last_entity_id, last_created_resource_type, last_created_resource_id, last_property_id, active_person_id, goal, factual_summary, pending_action_id")
+      .select("active_topic, state_summary, last_intent, last_entity_type, last_entity_id, last_created_resource_type, last_created_resource_id, last_property_id, active_person_id, goal, factual_summary, pending_action_id, sparring_turns")
       .eq("user_id", ctx.userId)
       .eq("channel", ctx.channel)
       .maybeSingle();
