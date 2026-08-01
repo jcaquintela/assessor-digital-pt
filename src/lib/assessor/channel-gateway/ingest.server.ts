@@ -131,6 +131,16 @@ async function routeInbound(
       return;
     }
 
+    // Resgate de código promocional numa conta já existente: confirmação
+    // explícita antes de mexer no plano. Não passa pelo motor.
+    if (await handlePromoRedeem(adapter, supabaseAdmin, inbound, userId, content)) {
+      if (inbound.callback && adapter.answerInteraction) {
+        try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
+        catch { /* best-effort */ }
+      }
+      return;
+    }
+
     // Confirmação de um cartão de visita lido numa foto: cria o contacto e
     // devolve o ficheiro pronto a guardar. Não passa pelo motor.
     if (await handleBusinessCardAnswer(adapter, supabaseAdmin, inbound, userId, content)) {
@@ -573,4 +583,106 @@ async function handleInboundMediaInner(
   }
 
   await adapter.sendText(inbound.externalConversationId, result.reply);
+}
+
+// --- Código promocional em conta já existente -------------------------------
+// Só tratamos como código quando o texto tem mesmo cara de código (dígito,
+// hífen ou tudo em maiúsculas) — assim "obrigado" nunca vira "código inválido".
+function looksLikeCodeShape(text: string): boolean {
+  const t = text.trim();
+  if (/\s/.test(t) || t.length < 4 || t.length > 40) return false;
+  return /\d/.test(t) || /-/.test(t) || t === t.toUpperCase();
+}
+
+// Cara inequívoca de código (dígito + hífen ou maiúsculas): aqui vale a pena
+// dizer "esse código não existe" em vez de deixar o motor responder.
+function looksLikeCodeStrongly(text: string): boolean {
+  const t = text.trim();
+  return /\d/.test(t) && (/-/.test(t) || t === t.toUpperCase());
+}
+
+async function sendPromoReply(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  text: string,
+  options?: string[],
+): Promise<void> {
+  const { encodeInteractiveId } = await import("@/lib/assessor/interactive");
+  let send: AdapterSendResult | null = null;
+  if (options && adapter.sendInteractive) {
+    try {
+      const r = await adapter.sendInteractive(inbound.externalConversationId, {
+        kind: "buttons",
+        body: text,
+        options: options.map((o) => ({ id: encodeInteractiveId(o.toLowerCase()), label: o })),
+      });
+      if (r.ok) send = r;
+    } catch { /* cai para texto */ }
+  }
+  if (!send) send = await adapter.sendText(inbound.externalConversationId, text);
+  await supabaseAdmin.from("assessor_messages").insert({
+    user_id: userId,
+    role: "assistant",
+    content: text,
+    message_type: "promo_redeem",
+    channel: adapter.channel,
+    status: send.ok ? "sent" : "failed",
+    sender_phone: inbound.externalConversationId,
+  } as never);
+}
+
+async function handlePromoRedeem(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  content: string,
+): Promise<boolean> {
+  const text = content.trim();
+  if (!text) return false;
+  const {
+    checkPromoForUser, promoConfirmQuestion, stagePromoConfirmation,
+    loadPendingPromo, cancelPendingPromo, applyPromoToUser, readConfirmation,
+  } = await import("@/lib/admin/promo-existing.server");
+
+  // 1) Já há um código à espera de confirmação?
+  const pending = await loadPendingPromo(supabaseAdmin, userId, adapter.channel);
+  if (pending) {
+    const answer = readConfirmation(text);
+    if (answer === "yes") {
+      const r = await applyPromoToUser(supabaseAdmin, userId, pending);
+      await sendPromoReply(adapter, supabaseAdmin, inbound, userId, r.reply);
+      return true;
+    }
+    if (answer === "no") {
+      await cancelPendingPromo(supabaseAdmin, pending.id);
+      await sendPromoReply(adapter, supabaseAdmin, inbound, userId, "Sem problema — o código fica por aplicar.");
+      return true;
+    }
+    // Outra coisa qualquer: liberta o pedido e segue para o motor.
+    await cancelPendingPromo(supabaseAdmin, pending.id);
+    return false;
+  }
+
+  // 2) Texto novo com cara de código.
+  const { looksLikePromoCode } = await import("@/lib/admin/promo.server");
+  if (!looksLikePromoCode(text) || !looksLikeCodeShape(text)) return false;
+
+  const check = await checkPromoForUser(supabaseAdmin, text, userId);
+  if (!check.ok) {
+    // Palavra solta sem cara de código: deixa o motor responder normalmente.
+    if (check.reason === "not_found" && !looksLikeCodeStrongly(text)) return false;
+    await sendPromoReply(adapter, supabaseAdmin, inbound, userId, check.reply);
+    return true;
+  }
+
+  await stagePromoConfirmation(supabaseAdmin, {
+    userId, channel: adapter.channel, codeId: check.codeId, code: check.code, tier: check.tier,
+  });
+  await sendPromoReply(
+    adapter, supabaseAdmin, inbound, userId, promoConfirmQuestion(check.tier), ["Sim", "Não"],
+  );
+  return true;
 }

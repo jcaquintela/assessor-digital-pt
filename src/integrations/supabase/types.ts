@@ -2366,6 +2366,56 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_redemptions: {
+        Row: {
+          channel: string
+          code: string
+          code_id: string
+          confirmed_at: string | null
+          created_at: string
+          expires_at: string | null
+          granted_tier: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          code: string
+          code_id: string
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          granted_tier: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          code?: string
+          code_id?: string
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          granted_tier?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_redemptions_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       properties: {
         Row: {
           address: string | null
