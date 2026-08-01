@@ -94,7 +94,9 @@ function renderObject(obj: Record<string, unknown>, depth = 0): string[] {
 function looksLikeJson(text: string): boolean {
   const t = text.trim();
   if (t.length < 2) return false;
-  return (t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]"));
+  if ((t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]"))) return true;
+  // JSON truncado/partido também nunca pode chegar ao consultor.
+  return /^[{[]/.test(t) && /"\s*:/.test(t);
 }
 
 // Converte QUALQUER valor (objeto, array, string com JSON embutido) em
