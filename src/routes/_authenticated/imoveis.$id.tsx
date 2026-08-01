@@ -54,6 +54,8 @@ function PropertyDetail() {
   const fetchOne = useServerFn(getProperty);
   const update = useServerFn(updatePropertyFields);
   const signUrl = useServerFn(getUploadedFileSignedUrl);
+  const remove = useServerFn(deleteProperty);
+  const { name: assessorName } = useAssessorName();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data, isLoading } = useQuery({
@@ -113,6 +115,18 @@ function PropertyDetail() {
     mutation.mutate({ status: "arquivado" }, {
       onSuccess: () => navigate({ to: "/imoveis" }),
     });
+  };
+
+  const eliminar = async () => {
+    if (!confirm(`Apagar "${p.title}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await remove({ data: { id } });
+      await qc.invalidateQueries({ queryKey: ["properties"] });
+      toast.success("Imóvel eliminado.");
+      navigate({ to: "/imoveis" });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   const owner = data?.owner;
