@@ -50,6 +50,47 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_broadcast_recipients: {
+        Row: {
+          attempted_at: string
+          broadcast_id: string
+          created_at: string
+          email: string | null
+          error: string | null
+          id: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          attempted_at?: string
+          broadcast_id: string
+          created_at?: string
+          email?: string | null
+          error?: string | null
+          id?: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          attempted_at?: string
+          broadcast_id?: string
+          created_at?: string
+          email?: string | null
+          error?: string | null
+          id?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_broadcast_recipients_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "admin_broadcasts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_broadcasts: {
         Row: {
           body: string

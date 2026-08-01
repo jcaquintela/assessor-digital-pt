@@ -144,7 +144,12 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
 
     const [tgLinks, rejected, converted] = await Promise.all([
       supabaseAdmin.from("channel_links").select("user_id").eq("channel", "telegram"),
-      // Tentativas de LIGAR- de números sem conta associada = pedido de upgrade.
+      // Tentativas de LIGAR- vindas de números sem conta associada.
+      // ATENÇÃO: isto NÃO é um pedido de upgrade nem uma pessoa interessada em
+      // pagar. É a contagem bruta de mensagens rejeitadas — o mesmo número pode
+      // ter tentado várias vezes, e pode ser um erro de onboarding ou um teste.
+      // Só passa a haver sinal comercial quando existirem eventos reais de funil
+      // (landing → conta base → canal ativo → proposta vista → checkout → pago).
       supabaseAdmin
         .from("assessor_messages")
         .select("id", { count: "exact", head: true })
@@ -162,7 +167,7 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
     return {
       landingVisits: null as number | null,
       telegramStarts: new Set(((tgLinks.data ?? []) as any[]).map((r) => r.user_id)).size,
-      upgradeRequests: rejected.count ?? 0,
+      unauthorizedWhatsappAttempts: rejected.count ?? 0,
       converted: converted.count ?? 0,
     };
   });

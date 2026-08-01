@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Fragment, useState } from "react";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
 import { requestContentAccess } from "@/lib/admin/consent.functions";
+import { fmtPct, fmtScore100, fmtShare } from "@/lib/admin/metrics-format";
 import {
   getQualityOverview,
   getTrustOverview,
@@ -15,16 +16,39 @@ export const Route = createFileRoute("/admin/qualidade")({
   component: QualidadePage,
 });
 
-function Bar({ value, max, label }: { value: number; max: number; label: string }) {
-  const pct = max ? Math.round((value / max) * 100) : 0;
+// `hint` existe para o número nunca ficar ambíguo: diz-se sempre se subir é
+// bom ou mau, e o que a percentagem conta exactamente.
+function Bar({
+  value,
+  max,
+  label,
+  hint,
+  worseWhenHigher,
+}: {
+  value: number;
+  max: number;
+  label: string;
+  hint: string;
+  worseWhenHigher?: boolean;
+}) {
+  const pct = max ? (value / max) * 100 : 0;
   return (
     <div>
-      <div className="mini mb-1 flex justify-between" style={{ color: "var(--muted)" }}>
-        <span>{label}</span><span>{value}/{max} · {pct}%</span>
+      <div className="mini mb-1 flex justify-between gap-3" style={{ color: "var(--muted)" }}>
+        <span>{label}</span>
+        <span className="whitespace-nowrap">{fmtShare(value, max)} · {value} de {max} turnos</span>
       </div>
       <div style={{ height: 8, borderRadius: 6, background: "var(--line)" }}>
-        <div style={{ height: 8, borderRadius: 6, background: "var(--ink)", width: `${pct}%` }} />
+        <div
+          style={{
+            height: 8,
+            borderRadius: 6,
+            background: worseWhenHigher ? "var(--coral)" : "var(--ink)",
+            width: `${pct}%`,
+          }}
+        />
       </div>
+      <div className="mini mt-1" style={{ color: "var(--muted)" }}>{hint}</div>
     </div>
   );
 }
@@ -179,16 +203,19 @@ function QualidadePage() {
         <>
           <SectionTitle first>Definição de Pronto</SectionTitle>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-            {[
-              ["ATS ≥ 90", trust.readiness.ats_ok, trust.pillars.ats ?? "—"],
-              ["AQS ≥ 0,90", trust.readiness.aqs_ok, trust.pillars.aqs ?? "—"],
-              ["Tarefas ≥ 95%", trust.readiness.task_success_ok, trust.pillars.task_success ?? "—"],
-              ["Correções < 3%", trust.readiness.corrections_ok, trust.pillars.corrections_rate ?? "—"],
-              ["Contexto > 98%", trust.readiness.context_ok, trust.pillars.context_preservation ?? "—"],
-            ].map(([label, ok, val]) => (
-              <div key={label as string} className="admin-card p-3">
-                <div className="mini" style={{ color: "var(--muted)" }}>{label as string}</div>
-                <div className="mono">{String(val)}</div>
+            {(
+              [
+                ["ATS", "meta ≥ 90/100", trust.readiness.ats_ok, fmtScore100(trust.pillars.ats)],
+                ["AQS", "meta ≥ 90%", trust.readiness.aqs_ok, fmtPct(trust.pillars.aqs)],
+                ["Tarefas executadas", "meta ≥ 95%", trust.readiness.task_success_ok, fmtPct(trust.pillars.task_success)],
+                ["Correções", "meta < 3%", trust.readiness.corrections_ok, fmtPct(trust.pillars.corrections_rate)],
+                ["Contexto preservado", "meta > 98%", trust.readiness.context_ok, fmtPct(trust.pillars.context_preservation)],
+              ] as [string, string, boolean, string][]
+            ).map(([label, goal, ok, val]) => (
+              <div key={label} className="admin-card p-3">
+                <div className="mini" style={{ color: "var(--muted)" }}>{label}</div>
+                <div className="mono">{val}</div>
+                <div className="mini" style={{ color: "var(--muted)" }}>{goal}</div>
                 <Badge tone={ok ? "ok" : "warn"}>{ok ? "cumpre" : "por cumprir"}</Badge>
               </div>
             ))}
@@ -205,7 +232,7 @@ function QualidadePage() {
               <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
                 <div
                   style={{ width: "100%", background: "var(--sage)", borderRadius: "4px 4px 0 0", height: `${((d.ats ?? 0) / maxAts) * 100}%` }}
-                  title={`${d.day} — ATS ${d.ats ?? "—"} (${d.n} turnos)`}
+                  title={`${d.day} — ATS ${fmtScore100(d.ats)} (${d.n} turnos)`}
                 />
                 <span className="mini" style={{ color: "var(--muted)" }}>{d.day.slice(5)}</span>
               </div>
@@ -243,7 +270,7 @@ function QualidadePage() {
             <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
               <div
                 style={{ width: "100%", background: "var(--ink)", borderRadius: "4px 4px 0 0", height: `${((d.avg ?? 0) / maxAvg) * 100}%` }}
-                title={`${d.day} — ${d.avg ?? "—"} (${d.n} turnos)`}
+                title={`${d.day} — AQS ${fmtPct(d.avg)} (${d.n} turnos)`}
               />
               <span className="mini" style={{ color: "var(--muted)" }}>{d.day.slice(5)}</span>
             </div>
@@ -253,10 +280,31 @@ function QualidadePage() {
 
       <SectionTitle>Sinais · últimos 14 dias ({data.total} turnos)</SectionTitle>
       <div className="admin-card grid gap-3 p-4">
-        <Bar label="Compreendeu à primeira" value={data.dist.understood_first_try} max={data.total} />
-        <Bar label="Foi reformulado" value={data.dist.reformulated} max={data.total} />
-        <Bar label="Executou com sucesso" value={data.dist.executed_successfully} max={data.total} />
-        <Bar label="Tom humano" value={data.dist.human_tone} max={data.total} />
+        <Bar
+          label="Compreendeu à primeira"
+          value={data.dist.understood_first_try}
+          max={data.total}
+          hint="Percentagem de turnos em que o Assessor agiu sem ter de fazer pergunta de esclarecimento. Quanto maior, melhor."
+        />
+        <Bar
+          label="Precisou de reformulação"
+          value={data.dist.reformulated}
+          max={data.total}
+          worseWhenHigher
+          hint="Percentagem de turnos em que o consultor teve de reescrever o pedido logo a seguir (menos de 60 s depois). Quanto maior, PIOR — é o sinal negativo, não o positivo."
+        />
+        <Bar
+          label="Executou com sucesso"
+          value={data.dist.executed_successfully}
+          max={data.total}
+          hint="Percentagem de turnos em que todas as ações pedidas correram bem. Quanto maior, melhor."
+        />
+        <Bar
+          label="Tom humano"
+          value={data.dist.human_tone}
+          max={data.total}
+          hint="Percentagem de respostas em PT-PT natural, sem jargão técnico. Quanto maior, melhor."
+        />
       </div>
       <Source>assessor_quality_scores</Source>
 
