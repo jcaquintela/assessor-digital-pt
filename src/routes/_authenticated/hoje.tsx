@@ -259,6 +259,9 @@ function HojePage() {
   const compromissosCount = eventosHoje.length;
   const prioridadesCount = priorities.length;
 
+  // Uma só observação em destaque — a mais pressionante do dia.
+  const atencao: Priority | null = priorities.length ? priorities[0] : null;
+
   return (
     <AppShell>
       {/* A. Cabeçalho */}
