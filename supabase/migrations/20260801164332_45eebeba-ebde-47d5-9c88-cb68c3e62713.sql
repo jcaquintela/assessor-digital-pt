@@ -1,0 +1,1 @@
+DELETE FROM public.landing_page_visits WHERE id = '446e5832-5156-4006-bdcb-43ff176a600c';
