@@ -661,4 +661,48 @@ function AlertRow({
   );
 }
 
+// Cartão de resumo: uma contagem e o detalhe mais relevante. Sem gráficos.
+function SumCard({
+  tone, icon: Icon, to, stat, label, meta, statMono,
+}: {
+  tone: "negocios" | "imoveis" | "pessoas" | "diversos" | "neutro";
+  icon: any;
+  to: string;
+  stat: string;
+  label: string;
+  meta: string;
+  statMono?: boolean;
+}) {
+  return (
+    <Link to={to as any} className={`c-sumcard ${tone}`} aria-label={label}>
+      <Icon className="mb-2 h-[17px] w-[17px]" />
+      <div className={`c-sum-stat${statMono ? " c-mono" : ""}`} style={statMono ? { fontSize: 19 } : undefined}>{stat}</div>
+      <div className="c-sum-label">{label}</div>
+      <div className="c-sum-meta truncate">{meta}</div>
+    </Link>
+  );
+}
+
+function AlertRowLegacy({
+  to, search, icon: Icon, label,
+}: {
+  to: string;
+  search?: Record<string, string>;
+  icon: any;
+  label: string;
+}) {
+  return (
+    <Link
+      to={to as any}
+      search={search as any}
+      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13.5px] outline-none transition-colors hover:bg-white/50"
+      aria-label={label}
+    >
+      <Icon className="h-4 w-4 shrink-0 opacity-70" />
+      <span className="flex-1">{label}</span>
+      <ChevronRight className="h-4 w-4 opacity-70" />
+    </Link>
+  );
+}
+
 
