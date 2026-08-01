@@ -142,7 +142,8 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [tgLinks, rejected, converted] = await Promise.all([
+    const since30d = new Date(Date.now() - 30 * 864e5).toISOString();
+    const [tgLinks, rejected, converted, visits, baseAccounts, activeChannels] = await Promise.all([
       supabaseAdmin.from("channel_links").select("user_id").eq("channel", "telegram"),
       // Tentativas de LIGAR- vindas de números sem conta associada.
       // ATENÇÃO: isto NÃO é um pedido de upgrade nem uma pessoa interessada em
@@ -152,7 +153,7 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
       // (landing → conta base → canal ativo → proposta vista → checkout → pago).
       supabaseAdmin
         .from("assessor_messages")
-        .select("sender_phone")
+        .select("sender_phone, created_at")
         .eq("channel", "whatsapp")
         .eq("role", "user")
         .is("user_id", null)
@@ -162,15 +163,39 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
         .select("id", { count: "exact", head: true })
         .in("subscription_tier", PAID_TIERS)
         .eq("is_beta_tester", false),
+      supabaseAdmin.from("landing_page_visits").select("id", { count: "exact", head: true }),
+      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
+      supabaseAdmin.from("channel_links").select("user_id"),
     ]);
 
+    // Tentativas agregadas por número mascarado (nunca o número completo).
+    const attempts = new Map<string, { count: number; last: string }>();
+    for (const r of ((rejected.data ?? []) as any[])) {
+      const phone: string = r.sender_phone ?? "desconhecido";
+      const prev = attempts.get(phone);
+      const last = r.created_at ?? "";
+      attempts.set(phone, {
+        count: (prev?.count ?? 0) + 1,
+        last: !prev || last > prev.last ? last : prev.last,
+      });
+    }
+    const maskPhone = (p: string) =>
+      p === "desconhecido" || p.length < 5 ? "número desconhecido" : `${p.slice(0, 5)}••••${p.slice(-2)}`;
+
     return {
-      landingVisits: null as number | null,
+      landingVisits: visits.count ?? 0,
+      baseAccounts: baseAccounts.count ?? 0,
+      activatedChannel: new Set(((activeChannels.data ?? []) as any[]).map((r) => r.user_id)).size,
       telegramStarts: new Set(((tgLinks.data ?? []) as any[]).map((r) => r.user_id)).size,
       unauthorizedWhatsappAttempts: (rejected.data ?? []).length,
       unauthorizedWhatsappNumbers: new Set(
         ((rejected.data ?? []) as any[]).map((r) => r.sender_phone).filter(Boolean),
       ).size,
+      unauthorizedList: [...attempts.entries()]
+        .map(([phone, v]) => ({ masked: maskPhone(phone), count: v.count, lastAt: v.last || null }))
+        .sort((a, b) => (b.lastAt ?? "").localeCompare(a.lastAt ?? ""))
+        .slice(0, 50),
+      since30d,
       converted: converted.count ?? 0,
     };
   });
