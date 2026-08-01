@@ -204,7 +204,7 @@ function DrivePage() {
             <button
               key={t.key}
               onClick={() => navigate({ search: (s: any) => ({ ...s, tab: t.key }) })}
-              className={"c-pill shrink-0" + (active ? " active" : "")}
+              className={"c-pill tap-44 shrink-0" + (active ? " active" : "")}
             >
               {t.label}
               {typeof count === "number" && count > 0 && (
