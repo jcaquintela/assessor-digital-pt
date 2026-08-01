@@ -40,6 +40,7 @@ import {
   ambiguousPersonReply,
 } from "./person-brief";
 import { buildPersonBrief } from "./person-brief.server";
+import { detectSparringEnd, detectSparringStart, isSparringActive, SPARRING_TOPIC } from "./sparring";
 
 const HISTORY_LIMIT = 6;
 
@@ -443,6 +444,22 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   ]));
   const searches = await search(ctx, observations, recommended);
 
+  // Modo Sparring — treino de conversas. Nada vira registo enquanto estiver
+  // activo: as tool_calls são descartadas antes do ACT.
+  const sparringWasActive = isSparringActive((searches as any).conversation_state ?? null);
+  const sparringEnding = sparringWasActive && detectSparringEnd(trimmed);
+  const sparringActive = sparringEnding
+    ? true // último turno em personagem: fecha com o comentário, ainda sem registos
+    : sparringWasActive || detectSparringStart(trimmed);
+  if (sparringActive !== sparringWasActive || sparringEnding) {
+    try {
+      await supabase.from("conversation_states").upsert({
+        user_id: userId, channel, external_conversation_id: channel,
+        active_topic: sparringEnding ? null : (sparringActive ? SPARRING_TOPIC : null),
+      } as never, { onConflict: "user_id,channel,external_conversation_id" });
+    } catch { /* noop */ }
+  }
+
   // 4) DECIDE
   const decideR = await decide({
     content: trimmed,
@@ -454,7 +471,16 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     userFirstName,
     nowLisbonYmd: nowLisbonYmd(),
     nowLisbonHuman: nowLisbonHuman(),
+    sparring: sparringActive,
   });
+
+  if (sparringActive) {
+    decideR.decision.tool_calls = [];
+    decideR.decision.memory_writes = [];
+    if (decideR.decision.action === "act" || decideR.decision.action === "search_more") {
+      decideR.decision.action = "acknowledge";
+    }
+  }
 
   // 5) ACT — só executa se DECIDE disse "act".
   const shouldAct = decideR.decision.action === "act" && decideR.decision.tool_calls.length > 0;
