@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useOverlayStack } from "@/lib/ui/overlay-stack";
+import { OverlayLock } from "@/lib/ui/overlay-stack";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -59,7 +59,6 @@ const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
 >(({ side = "right", className, children, ...props }, ref) => {
-  useOverlayStack();
   return (
     <SheetPortal>
     <SheetOverlay />
@@ -68,6 +67,7 @@ const SheetContent = React.forwardRef<
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
+      <OverlayLock />
       {children}
     </SheetPrimitive.Content>
     </SheetPortal>
