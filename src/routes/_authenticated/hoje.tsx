@@ -683,26 +683,5 @@ function SumCard({
   );
 }
 
-function AlertRowLegacy({
-  to, search, icon: Icon, label,
-}: {
-  to: string;
-  search?: Record<string, string>;
-  icon: any;
-  label: string;
-}) {
-  return (
-    <Link
-      to={to as any}
-      search={search as any}
-      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13.5px] outline-none transition-colors hover:bg-white/50"
-      aria-label={label}
-    >
-      <Icon className="h-4 w-4 shrink-0 opacity-70" />
-      <span className="flex-1">{label}</span>
-      <ChevronRight className="h-4 w-4 opacity-70" />
-    </Link>
-  );
-}
 
 
