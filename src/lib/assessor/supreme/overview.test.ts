@@ -9,7 +9,7 @@ function fakeSupabase(tables: Record<string, any[]>) {
       let head = false;
       const builder: any = {
         select: (_c: string, opts?: { head?: boolean }) => { head = !!opts?.head; return builder; },
-        eq: () => builder, gte: () => builder, lte: () => builder, in: () => builder,
+        eq: () => builder, gte: () => builder, lte: () => builder, in: () => builder, not: () => builder,
         order: () => builder, limit: () => builder,
         then: (res: any) => res(head ? { count: rows.length, data: null } : { data: rows }),
       };
