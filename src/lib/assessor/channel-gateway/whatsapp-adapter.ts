@@ -38,7 +38,7 @@ const REPLY_LINK_TIER =
 const REPLY_LINK_INVALID =
   "Não consegui validar este código. Confirma o código no dashboard e tenta novamente.";
 const REPLY_PROMO_WELCOME = (tierLabel: string) =>
-  `Bem-vindo! Sou o Afonso, o teu assessor digital.\n\n` +
+  `Bem-vindo! Sou o teu assessor digital.\n\n` +
   `O teu código ficou activo no plano ${tierLabel}. A partir de agora é só falares comigo por aqui, em linguagem normal: pessoas, imóveis, visitas, seguimentos — eu guardo e lembro-te.\n\n` +
   `Para abrires o painel no computador, escreve *entrar* e envio-te um link.`;
 const REPLY_PROMO_TIER_NO_WHATSAPP =

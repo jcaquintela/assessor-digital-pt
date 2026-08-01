@@ -17,7 +17,7 @@ import type {
 // Apresentação curta usada nas portas com código (equipa, planos pagos).
 // O registo normal (Nível 0 grátis) é automático e não passa por aqui.
 const INTRO_2_LINHAS =
-  "Sou o Afonso, o teu assessor digital para o dia a dia imobiliário: organizo pessoas, imóveis, agenda e prospeção a partir do que me escreves.\n" +
+  "Sou o teu assessor digital para o dia a dia imobiliário: organizo pessoas, imóveis, agenda e prospeção a partir do que me escreves.\n" +
   "Para este acesso preciso de um código — envia-o no formato /start <código> ou apenas o código.";
 const REPLY_INVITE_INVALID = `${INTRO_2_LINHAS}\n\nNão reconheci esse código. Confirma-o com quem to enviou.`;
 const REPLY_INVITE_EXPIRED = `${INTRO_2_LINHAS}\n\nEsse convite já expirou. Pede um novo à equipa.`;
