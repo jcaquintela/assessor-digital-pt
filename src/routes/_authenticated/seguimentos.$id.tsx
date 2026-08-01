@@ -19,7 +19,6 @@ import { ChevronLeft, Trash2, Save, CheckCircle2, Calendar as CalendarIcon, Cloc
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Link } from "@tanstack/react-router";
 import { EntityFilesCard } from "@/components/drive/entity-files-card";
 import { Briefcase, User as UserIcon, Phone } from "lucide-react";
 
