@@ -7,6 +7,27 @@ import { listPlanConfigs, savePlanConfig } from "@/lib/admin/afonso.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { AUTONOMY_CAP_BY_TIER, MODULE_MIN_TIER, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 
+type PricingMode = "paid" | "invite_only" | "free_beta" | "on_request";
+
+const PRICING_MODE_LABEL: Record<PricingMode, string> = {
+  paid: "Pago (precisa de preço)",
+  invite_only: "Apenas por convite",
+  free_beta: "Beta gratuito",
+  on_request: "Preço sob consulta",
+};
+
+type PlanCfg = { price_month: number | null; status: string; pricing_mode?: string } | undefined;
+
+function missingPrice(cfg: PlanCfg) {
+  return (cfg?.pricing_mode ?? "paid") === "paid" && cfg?.price_month == null;
+}
+
+function publishedLabel(cfg: PlanCfg) {
+  const mode = (cfg?.pricing_mode ?? "paid") as PricingMode;
+  if (mode === "paid") return cfg?.price_month == null ? "Publicado sem preço — corrigir" : "Publicado";
+  return `Publicado · ${PRICING_MODE_LABEL[mode]}`;
+}
+
 export const Route = createFileRoute("/admin/planos")({
   head: () => ({ meta: [{ title: "Planos & preços — Afonso admin" }] }),
   component: PlanosPage,
@@ -54,7 +75,12 @@ function PlanosPage() {
   }, [data]);
 
   const mutation = useMutation({
-    mutationFn: (input: { tier: SubscriptionTier; price_month?: number | null; status?: "draft" | "published" }) =>
+    mutationFn: (input: {
+      tier: SubscriptionTier;
+      price_month?: number | null;
+      pricing_mode?: PricingMode;
+      status?: "draft" | "published";
+    }) =>
       save({ data: input }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "plan-configs"] });
@@ -67,6 +93,7 @@ function PlanosPage() {
 
   const byTier = new Map(data.map((p) => [p.tier, p]));
 
+
   return (
     <div>
       <PageTitle
@@ -76,7 +103,7 @@ function PlanosPage() {
 
       <table>
         <thead>
-          <tr><th>Plano</th><th>Preço/mês</th><th>Canal</th><th>Autonomia máx.</th><th>Módulos</th><th>Estado</th><th>Ações</th></tr>
+          <tr><th>Plano</th><th>Preço/mês</th><th>Como é vendido</th><th>Canal</th><th>Autonomia máx.</th><th>Módulos</th><th>Estado</th><th>Ações</th></tr>
         </thead>
         <tbody>
           {TIERS.map((tier) => {
@@ -105,10 +132,29 @@ function PlanosPage() {
                     />
                   )}
                 </td>
+                <td>
+                  {isFree ? (
+                    <span className="mini">Grátis</span>
+                  ) : (
+                    <select
+                      className="admin-input"
+                      value={(cfg?.pricing_mode ?? "paid") as PricingMode}
+                      onChange={(e) => mutation.mutate({ tier, pricing_mode: e.target.value as PricingMode })}
+                    >
+                      {Object.entries(PRICING_MODE_LABEL).map(([v, label]) => (
+                        <option key={v} value={v}>{label}</option>
+                      ))}
+                    </select>
+                  )}
+                </td>
                 <td className="mini">{CHANNEL[tier]}</td>
                 <td className="mini">{AUTONOMY_LABEL[AUTONOMY_CAP_BY_TIER[tier]]}</td>
                 <td className="mini">{modulesFor(tier)}</td>
-                <td><Badge tone={published ? "ok" : "warn"}>{published ? "Publicado" : "Rascunho"}</Badge></td>
+                <td>
+                  <Badge tone={published ? (missingPrice(cfg) ? "bad" : "ok") : "warn"}>
+                    {published ? publishedLabel(cfg) : "Rascunho"}
+                  </Badge>
+                </td>
                 <td className="mini">
                   <button
                     type="button"
@@ -126,8 +172,9 @@ function PlanosPage() {
       </table>
 
       <SectionTitle>Antes de publicar um preço</SectionTitle>
-      <Empty note="isto evita cobrar por engano um preço que ainda estás a testar">
-        Um plano "Rascunho" nunca é mostrado na landing page nem cobrado a ninguém — só "Publicado" fica visível a clientes.
+      <Empty note="isto evita mostrar ao cliente um plano publicado sem saber quanto custa">
+        Um plano "Rascunho" nunca é mostrado na landing page nem cobrado a ninguém. Para publicar, o plano precisa de
+        preço — ou de dizer porque não tem: apenas por convite, beta gratuito ou preço sob consulta.
       </Empty>
     </div>
   );

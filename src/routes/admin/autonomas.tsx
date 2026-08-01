@@ -16,6 +16,22 @@ const AUTONOMY_LABEL: Record<string, string> = {
   balanced: "Equilibrado",
 };
 
+const OUTCOME_LABEL: Record<string, string> = {
+  sucesso: "executada com sucesso",
+  falhou: "falhou — não aconteceu",
+  corrigida: "corrigida pelo consultor",
+  revertida: "revertida (registo apagado)",
+  duplicada: "duplicado",
+};
+
+const OUTCOME_TONE: Record<string, "ok" | "warn" | "bad"> = {
+  sucesso: "ok",
+  falhou: "bad",
+  corrigida: "warn",
+  revertida: "bad",
+  duplicada: "warn",
+};
+
 function fmt(dt: string) {
   return new Intl.DateTimeFormat("pt-PT", { dateStyle: "short", timeStyle: "short" }).format(new Date(dt));
 }
@@ -25,13 +41,13 @@ function AutonomasPage() {
   const { data, isLoading } = useQuery({ queryKey: ["admin", "autonomas"], queryFn: () => fn() });
 
   const items = data?.items ?? [];
-  const correctedPct = data?.total ? Math.round((data.corrected / data.total) * 100) : 0;
+  const c = data?.counters;
 
   return (
     <div>
       <PageTitle
         title="Ações autónomas"
-        sub="O que o Assessor executou sem pedir confirmação, por consultor. Contrapeso à autonomia: nada corre sozinho sem ficar visível aqui."
+        sub="Escritas que o Assessor fez sem pedir confirmação. Consultas não contam — e uma escrita que falhou não aconteceu."
       />
 
       <SectionTitle first>Últimos 14 dias</SectionTitle>
@@ -43,13 +59,27 @@ function AutonomasPage() {
         </Empty>
       ) : (
         <>
-          <div className="mb-3 flex flex-wrap items-center gap-4 text-[12.5px]">
-            <span><strong>{data?.total}</strong> ações autónomas</span>
-            <span><strong>{data?.corrected}</strong> corrigidas a seguir ({correctedPct}%)</span>
-            <Badge tone={correctedPct < 10 ? "ok" : correctedPct < 25 ? "warn" : "bad"}>
-              {correctedPct < 10 ? "autonomia saudável" : correctedPct < 25 ? "a vigiar" : "demasiadas correções"}
-            </Badge>
+          <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-5">
+            {[
+              ["Executadas com sucesso", c?.sucesso ?? 0, "ok"],
+              ["Falharam", c?.falhou ?? 0, "bad"],
+              ["Foram corrigidas", c?.corrigida ?? 0, "warn"],
+              ["Foram revertidas", c?.revertida ?? 0, "bad"],
+              ["Criaram duplicados", c?.duplicada ?? 0, "warn"],
+            ].map(([label, value, tone]) => (
+              <div key={label as string} className="admin-card p-3">
+                <div className="mini" style={{ color: "var(--muted)" }}>{label as string}</div>
+                <div className="mono" style={{ fontSize: 20 }}>{String(value)}</div>
+                {Number(value) > 0 && tone !== "ok" ? (
+                  <Badge tone={tone as any}>a rever</Badge>
+                ) : null}
+              </div>
+            ))}
           </div>
+          <p className="mini mb-3" style={{ color: "var(--muted)" }}>
+            {data?.total} escritas autónomas nos últimos 14 dias. Mais {data?.readOnlyTurns} turnos foram
+            só consulta (procurar agenda, listar leads) — leitura não é ação autónoma e não entra nestes números.
+          </p>
           <div className="overflow-x-auto">
             <table>
               <thead>
@@ -58,7 +88,7 @@ function AutonomasPage() {
                   <th>Consultor</th>
                   <th>Autonomia</th>
                   <th>Pedido</th>
-                  <th>Ação executada</th>
+                  <th>Escrita executada</th>
                   <th>Resultado</th>
                 </tr>
               </thead>
@@ -73,13 +103,14 @@ function AutonomasPage() {
                     <td className="mini">{AUTONOMY_LABEL[a.autonomyLevel] ?? a.autonomyLevel}</td>
                     <td className="mini" style={{ maxWidth: 260 }}>{a.request}</td>
                     <td className="mono mini">
-                      {a.tools.join(", ") || "—"}
+                      {a.writeTools.join(", ") || "—"}
+                      {a.readTools.length ? (
+                        <div style={{ color: "var(--muted)" }}>leitura: {a.readTools.join(", ")}</div>
+                      ) : null}
                       {a.error ? <div style={{ color: "var(--coral)" }}>{a.error}</div> : null}
                     </td>
                     <td>
-                      <Badge tone={a.outcome === "mantida" ? (a.ok ? "ok" : "warn") : "bad"}>
-                        {a.outcome === "mantida" ? (a.ok ? "mantida" : "mantida (com erro)") : "corrigida"}
-                      </Badge>
+                      <Badge tone={OUTCOME_TONE[a.outcome]}>{OUTCOME_LABEL[a.outcome]}</Badge>
                       {a.correctionMessage ? (
                         <div className="mini" style={{ color: "var(--muted)" }}>
                           {a.correctionCategory}: {a.correctionMessage}

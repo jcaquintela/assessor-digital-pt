@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Fragment, useState } from "react";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
+import { requestContentAccess } from "@/lib/admin/consent.functions";
 import {
   getQualityOverview,
   getTrustOverview,
@@ -35,14 +36,74 @@ function fmt(dt: string) {
 // A conversa real por trás do número. Sem isto, um AQS baixo não é acionável.
 function Transcript({ traceId }: { traceId: string }) {
   const fn = useServerFn(getTurnTranscript);
+  const askFn = useServerFn(requestContentAccess);
+  const qc = useQueryClient();
+  const [reason, setReason] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "turn-transcript", traceId],
     queryFn: () => fn({ data: { traceId } }),
     staleTime: 60_000,
   });
+  const ask = useMutation({
+    mutationFn: () =>
+      askFn({ data: { targetUserId: (data as any).targetUserId, resourceId: traceId, reason } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "turn-transcript", traceId] }),
+  });
 
   if (isLoading) return <div className="mini">A carregar conversa…</div>;
   if (!data?.found) return <div className="mini">Sem trace guardado para este turno.</div>;
+
+  // Sem consentimento vivo, a análise continua toda visível — só as palavras
+  // do consultor e dos clientes dele é que ficam fechadas.
+  if (!data.contentVisible) {
+    return (
+      <>
+        <div className="qa-meta">
+          <span>decisão: <strong>{data.action ?? "—"}</strong></span>
+          <span>confiança: {data.confidence ?? "—"}</span>
+          <span>latência: {data.latencyMs ? `${data.latencyMs} ms` : "—"}</span>
+          <span>mensagens no turno: {data.messageCount}</span>
+          <span>
+            ferramentas:{" "}
+            {data.tools.length
+              ? data.tools.map((t: { name: string; ok: boolean }) => `${t.name}${t.ok ? "" : " ✗"}`).join(", ")
+              : "nenhuma"}
+          </span>
+          {data.error ? <span style={{ color: "var(--coral)" }}>erro: {data.error}</span> : null}
+          {data.corrections.length ? (
+            <span style={{ color: "var(--coral)" }}>
+              correções: {data.corrections.map((c) => c.category).join(", ")}
+            </span>
+          ) : null}
+        </div>
+        <div className="admin-card mt-2 p-3">
+          <div className="mini mb-2">
+            Conteúdo fechado. Para ler as mensagens é preciso autorização do consultor, válida 2 horas e registada.
+          </div>
+          <textarea
+            className="admin-input w-full"
+            rows={2}
+            placeholder="Porque precisas de ver esta conversa? (fica no registo)"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <button
+            className="admin-btn mt-2 tap-44"
+            disabled={reason.trim().length < 10 || ask.isPending}
+            onClick={() => ask.mutate()}
+          >
+            {ask.isPending ? "A pedir…" : "Pedir acesso ao conteúdo"}
+          </button>
+          {ask.isSuccess ? (
+            <div className="mini mt-2">Pedido enviado. Fica pendente até o consultor autorizar.</div>
+          ) : null}
+          {ask.isError ? (
+            <div className="mini mt-2" style={{ color: "var(--coral)" }}>{(ask.error as Error).message}</div>
+          ) : null}
+        </div>
+      </>
+    );
+  }
 
   const msgs = data.messages.length
     ? data.messages
@@ -80,6 +141,15 @@ function Transcript({ traceId }: { traceId: string }) {
           ))}
         </div>
       ) : null}
+      <div className="mini mt-1" style={{ color: "var(--muted)" }}>
+        Conteúdo aberto ao abrigo de:{" "}
+        {data.contentBasis === "synthetic"
+          ? "conta de teste"
+          : data.contentBasis === "evaluation_program"
+            ? "programa de avaliação (consentimento permanente)"
+            : `autorização do consultor${data.contentExpiresAt ? ` até ${fmt(data.contentExpiresAt)}` : ""}`}
+        . Esta abertura ficou registada.
+      </div>
     </>
   );
 }

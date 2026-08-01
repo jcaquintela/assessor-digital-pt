@@ -210,6 +210,7 @@ export const listPlanConfigs = createServerFn({ method: "GET" })
       tier: string;
       price_month: number | null;
       status: string;
+      pricing_mode: string;
       notes: string | null;
       updated_at: string;
     }[];
@@ -222,6 +223,7 @@ export const savePlanConfig = createServerFn({ method: "POST" })
       .object({
         tier: z.enum(["base", "consultor", "pro", "hub"]),
         price_month: z.number().nullable().optional(),
+        pricing_mode: z.enum(["paid", "invite_only", "free_beta", "on_request"]).optional(),
         status: z.enum(["draft", "published"]).optional(),
       })
       .parse(d),
@@ -232,7 +234,25 @@ export const savePlanConfig = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString(), updated_by: context.userId };
     if (data.price_month !== undefined) patch.price_month = data.price_month;
+    if (data.pricing_mode) patch.pricing_mode = data.pricing_mode;
     if (data.status) patch.status = data.status;
+
+    // Um plano publicado tem de dizer ao cliente quanto custa — ou dizer
+    // claramente que não está à venda. Nunca publicar "pago" sem preço.
+    if (data.status === "published") {
+      const { data: current } = await supabaseAdmin
+        .from("plan_configs" as never)
+        .select("price_month, pricing_mode")
+        .eq("tier", data.tier)
+        .maybeSingle();
+      const mode = (data.pricing_mode ?? (current as any)?.pricing_mode ?? "paid") as string;
+      const price = data.price_month !== undefined ? data.price_month : ((current as any)?.price_month ?? null);
+      if (mode === "paid" && price == null && data.tier !== "base") {
+        throw new Error(
+          'Este plano está marcado como pago e não tem preço. Define o preço, ou escolhe "Apenas por convite", "Beta gratuito" ou "Preço sob consulta" antes de publicar.',
+        );
+      }
+    }
     const { error } = await supabaseAdmin.from("plan_configs" as never).update(patch as never).eq("tier", data.tier);
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("admin_audit_logs").insert({
