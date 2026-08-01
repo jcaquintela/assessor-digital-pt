@@ -19,6 +19,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { EventDrawer, type EventDrawerItem } from "@/components/hoje/event-drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { explainPriority } from "@/lib/assessor/priority-explain";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -255,6 +259,9 @@ function HojePage() {
   const compromissosCount = eventosHoje.length;
   const prioridadesCount = priorities.length;
 
+  // Uma só observação em destaque — a mais pressionante do dia.
+  const atencao: Priority | null = priorities.length ? priorities[0] : null;
+
   return (
     <AppShell>
       {/* A. Cabeçalho */}
@@ -281,6 +288,36 @@ function HojePage() {
         </div>
       </header>
 
+      {/* A-bis. "{Assessor} chama a atenção": UMA observação por dia, nunca uma lista. */}
+      {atencao && (
+        <section className="c-alert mb-6">
+          <div className="mb-1 flex items-center gap-2 text-[13px] font-semibold">
+            <AlertTriangle className="h-4 w-4" />
+            {assessorName === "Assessor" ? "O Assessor" : assessorName} chama a atenção
+          </div>
+          <p className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{atencao.action}</p>
+          <p className="mt-0.5 text-[13.5px]">
+            {explainPriority(atencao)}
+            {atencao.entity_label ? ` ${atencao.entity_label}.` : ""}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {atencao.deal_id ? (
+              <Link
+                className="c-btn"
+                to="/oportunidades/$id"
+                params={{ id: atencao.deal_id }}
+                search={atencao.subject_type === "follow_up" ? { destaque: `seguimento:${atencao.subject_id}` } : {}}
+              >
+                <Briefcase className="h-3.5 w-3.5" /> Ver negócio
+              </Link>
+            ) : null}
+            <Link className="c-btn-ghost" to="/assessor">
+              <MessageSquare className="h-3.5 w-3.5" /> Tratar no WhatsApp
+            </Link>
+          </div>
+        </section>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Coluna principal */}
         <div className="space-y-6">
@@ -300,9 +337,12 @@ function HojePage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{p.action}</div>
+                      {/* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */}
+                      <div className="mt-0.5 text-xs" style={{ color: "var(--ink)" }}>
+                        {explainPriority(p)}
+                      </div>
                       <div className="c-muted mt-0.5 text-xs">
                         {[
-                          p.reasons?.slice(0, 2).join(" · "),
                           p.entity_label,
                           p.due_at ? formatData(p.due_at) : null,
                         ].filter(Boolean).join(" · ")}
@@ -318,7 +358,6 @@ function HojePage() {
                         </Link>
                       ) : null}
                     </div>
-                    <span className="c-badge c-mono shrink-0">{Math.round(p.priority_score)}</span>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
                     <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
@@ -335,30 +374,38 @@ function HojePage() {
                       </PopoverContent>
                     </Popover>
                     {p.subject_type === "opportunity" ? (
-                      <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir</Link>
+                      <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir contexto</Link>
+                    ) : p.deal_id ? (
+                      <Link
+                        className="c-btn-ghost"
+                        to="/oportunidades/$id"
+                        params={{ id: p.deal_id }}
+                        search={{ destaque: `seguimento:${p.subject_id}` }}
+                      >
+                        Abrir contexto
+                      </Link>
                     ) : (
-                      <>
-                        <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir</button>
-                        {p.deal_id ? (
-                          <Link
-                            className="c-btn-ghost"
-                            to="/oportunidades/$id"
-                            params={{ id: p.deal_id }}
-                            search={{ destaque: `seguimento:${p.subject_id}` }}
-                          >
-                            Abrir negócio
+                      <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir contexto</button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button type="button" className="c-btn-ghost ml-auto" aria-label="Mais ações">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem asChild>
+                          <Link to="/assessor">
+                            <MessageSquare className="mr-2 h-3.5 w-3.5" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
                           </Link>
-                        ) : null}
-                      </>
-                    )}
-                    <Link className="c-btn-ghost ml-auto" to="/assessor">
-                      <MessageSquare className="h-3.5 w-3.5" /> Falar
-                    </Link>
-                    {p.subject_type === "follow_up" && (
-                      <button type="button" className="c-btn-ghost" onClick={() => deletePriority(p)}>
-                        <Trash2 className="h-3.5 w-3.5" /> Eliminar
-                      </button>
-                    )}
+                        </DropdownMenuItem>
+                        {p.subject_type === "follow_up" && (
+                          <DropdownMenuItem className="text-destructive" onSelect={() => void deletePriority(p)}>
+                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
@@ -516,5 +563,4 @@ function AlertRow({
   );
 }
 
-// Ícone reservado para futuras variantes; suprime aviso de import não usado.
-void MoreHorizontal;
+

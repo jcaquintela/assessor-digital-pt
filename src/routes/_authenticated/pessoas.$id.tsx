@@ -5,51 +5,87 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { EntityFilesCard } from "@/components/drive/entity-files-card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatData, formatEUR, type Relacao } from "@/lib/demo-data";
-import { ChevronLeft, Mail, Phone, Trash2, Save, MessageSquarePlus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { formatData } from "@/lib/demo-data";
+import {
+  ChevronLeft, Mail, Phone, Trash2, MessageSquare, MoreHorizontal,
+  CalendarPlus, Pencil, MessageSquarePlus,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PersonExtrasCard } from "@/components/pessoas/person-extras-card";
 import { PersonLinkedCard } from "@/components/pessoas/person-linked-card";
 import { DealsOf } from "@/components/negocios/deals-of";
-
-const RELACOES: Relacao[] = ["Cliente", "Potencial", "Proprietário", "Referenciador", "Colega"];
+import { EditPersonDialog } from "@/components/pessoas/edit-person-dialog";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 
 export const Route = createFileRoute("/_authenticated/pessoas/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha da pessoa — Assessor do Consultor" },
-      { name: "description", content: "Contactos, oportunidades, imóveis, seguimentos e interações." },
-      { property: "og:title", content: "Ficha da pessoa — Assessor do Consultor" },
+      { title: "Contexto da pessoa — Assessor do Consultor" },
+      { name: "description", content: "Quem é, o que procura, último contacto, próximo passo e ligações." },
+      { property: "og:title", content: "Contexto da pessoa — Assessor do Consultor" },
       { property: "og:description", content: "Memória organizada por pessoa." },
     ],
   }),
   component: PessoaDetail,
 });
 
+const CANAL_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  telegram: "Telegram",
+  web: "Dashboard",
+  dashboard: "Dashboard",
+  email: "Email",
+  telefone: "Telefone",
+};
+
+function haQuantoTempo(iso: string): string {
+  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
+  if (dias <= 0) return "hoje";
+  if (dias === 1) return "ontem";
+  if (dias < 7) return `há ${dias} dias`;
+  if (dias < 14) return "há uma semana";
+  if (dias < 60) return `há ${Math.floor(dias / 7)} semanas`;
+  return `há ${Math.floor(dias / 30)} meses`;
+}
+
 function PessoaDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const {
-    pessoas, oportunidades, imoveis, seguimentos, documentos,
-    updatePessoa, deletePessoa, addInteracao, loading,
+    pessoas, seguimentos, interacoes,
+    deletePessoa, addInteracao, addSeguimento, loading,
   } = useStore();
+  const { name: assessorName } = useAssessorName();
 
   const pessoa = useMemo(() => pessoas.find((p) => p.id === id), [pessoas, id]);
 
-  const [nome, setNome] = useState(pessoa?.nome ?? "");
-  const [telefone, setTelefone] = useState(pessoa?.telefone ?? "");
-  const [email, setEmail] = useState(pessoa?.email ?? "");
-  const [relacao, setRelacao] = useState<Relacao>((pessoa?.relacao as Relacao) ?? "Potencial");
-  const [resumo, setResumo] = useState(pessoa?.resumo ?? "");
-  const [proximaAcao, setProximaAcao] = useState(pessoa?.proximaAcao ?? "");
-  const [proximaAcaoData, setProximaAcaoData] = useState(pessoa?.proximaAcaoData ?? "");
+  const [editar, setEditar] = useState(false);
   const [interacao, setInteracao] = useState("");
   const [busy, setBusy] = useState(false);
+  const [novoSeg, setNovoSeg] = useState(false);
+  const [segTitulo, setSegTitulo] = useState("");
+  const [segData, setSegData] = useState(new Date().toISOString().slice(0, 10));
+
+  const segsPessoa = useMemo(
+    () => seguimentos.filter((s) => s.pessoaId === id),
+    [seguimentos, id],
+  );
+  const interPessoa = useMemo(
+    () => interacoes
+      .filter((i) => i.pessoaId === id)
+      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()),
+    [interacoes, id],
+  );
 
   if (loading && !pessoa) {
     return <AppShell><PageHeader title="A carregar…" /></AppShell>;
@@ -66,35 +102,10 @@ function PessoaDetail() {
     );
   }
 
-  const dirty =
-    nome !== pessoa.nome ||
-    telefone !== pessoa.telefone ||
-    email !== pessoa.email ||
-    relacao !== pessoa.relacao ||
-    resumo !== pessoa.resumo ||
-    (proximaAcao ?? "") !== (pessoa.proximaAcao ?? "") ||
-    (proximaAcaoData ?? "") !== (pessoa.proximaAcaoData ?? "");
-
-  const guardar = async () => {
-    if (!nome.trim()) { toast.error("O nome é obrigatório."); return; }
-    setBusy(true);
-    try {
-      await updatePessoa(pessoa.id, {
-        nome: nome.trim(),
-        telefone: telefone.trim(),
-        email: email.trim(),
-        relacao,
-        resumo: resumo.trim(),
-        proximaAcao: proximaAcao.trim() || undefined,
-        proximaAcaoData: proximaAcaoData || undefined,
-      });
-      toast.success("Alterações guardadas.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const ultimo = interPessoa[0] ?? null;
+  const proximoSeg = segsPessoa
+    .filter((s) => s.estado !== "Concluído")
+    .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())[0] ?? null;
 
   const registarInteracao = async () => {
     const texto = interacao.trim();
@@ -104,6 +115,28 @@ function PessoaDetail() {
       await addInteracao({ pessoaId: pessoa.id, conteudoOriginal: texto });
       setInteracao("");
       toast.success("Interação registada.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const criarSeguimento = async () => {
+    if (!segTitulo.trim()) { toast.error("Dá um título ao seguimento."); return; }
+    setBusy(true);
+    try {
+      await addSeguimento({
+        tipo: "Tarefa",
+        titulo: segTitulo.trim(),
+        data: new Date(`${segData}T09:00:00`).toISOString(),
+        pessoaId: pessoa.id,
+        estado: "Pendente",
+        prioridade: "Média",
+      });
+      toast.success("Seguimento criado.");
+      setNovoSeg(false);
+      setSegTitulo("");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -122,10 +155,6 @@ function PessoaDetail() {
     }
   };
 
-  const opsPessoa = oportunidades.filter((o) => o.pessoaId === pessoa.id);
-  const segsPessoa = seguimentos.filter((s) => s.pessoaId === pessoa.id);
-  const docsPessoa = documentos.filter((d) => d.pessoaId === pessoa.id);
-
   return (
     <AppShell>
       <div className="mb-2">
@@ -133,84 +162,109 @@ function PessoaDetail() {
           <ChevronLeft className="mr-1 h-4 w-4" /> Pessoas
         </Button>
       </div>
+
       <PageHeader
         title={pessoa.nome}
         subtitle={pessoa.relacao}
         action={
-          <div className="flex gap-2">
-            <Button variant="ghost" className="text-destructive" onClick={apagar}>
-              <Trash2 className="mr-1 h-4 w-4" /> Apagar
-            </Button>
-            <Button onClick={guardar} disabled={!dirty || busy}>
-              <Save className="mr-1 h-4 w-4" /> Guardar
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" aria-label="Mais ações">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem asChild>
+                <Link to="/assessor">
+                  <MessageSquare className="mr-2 h-3.5 w-3.5" />
+                  Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName} sobre esta pessoa
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setNovoSeg(true)}>
+                <CalendarPlus className="mr-2 h-3.5 w-3.5" /> Adicionar seguimento
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setEditar(true)}>
+                <Pencil className="mr-2 h-3.5 w-3.5" /> Editar dados
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive" onSelect={() => void apagar()}>
+                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
+
+      {/* Identidade e contacto, em leitura */}
       <div className="c-muted mb-4 flex flex-wrap items-center gap-3 text-xs">
         <Badge variant="secondary">{pessoa.relacao}</Badge>
         {pessoa.telefone && <span className="c-mono flex items-center gap-1"><Phone className="h-3 w-3" />{pessoa.telefone}</span>}
         {pessoa.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{pessoa.email}</span>}
-        {pessoa.canal && (
-          <span className="c-badge">
-            criada via {pessoa.canal === "whatsapp" ? "WhatsApp" : pessoa.canal === "telegram" ? "Telegram" : pessoa.canal === "web" ? "Dashboard" : pessoa.canal}
-          </span>
-        )}
+        {pessoa.canal && <span className="c-badge">criada via {CANAL_LABEL[pessoa.canal] ?? pessoa.canal}</span>}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <h3 className="text-sm font-semibold">Contacto</h3>
-            <div className="grid gap-2">
-              <Label htmlFor="nome">Nome</Label>
-              <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+      {/* Bloco de contexto: quem é, o que procura, último contacto, próximo passo */}
+      <Card>
+        <CardContent className="grid gap-4 p-4 md:grid-cols-2">
+          <div>
+            <div className="c-muted text-xs">Quem é</div>
+            <div className="text-sm">{pessoa.relacao}</div>
+          </div>
+          <div>
+            <div className="c-muted text-xs">O que procura ou está a vender</div>
+            <div className="whitespace-pre-wrap text-sm">
+              {pessoa.resumo?.trim() ? pessoa.resumo : <span className="text-muted-foreground">Ainda não sabemos. Conta ao {assessorName} e ele guarda aqui.</span>}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="tel">Telefone</Label>
-              <Input id="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+          </div>
+          <div>
+            <div className="c-muted text-xs">Último contacto</div>
+            <div className="text-sm">
+              {ultimo
+                ? `${CANAL_LABEL[ultimo.canal] ?? ultimo.canal} · ${haQuantoTempo(ultimo.data)}`
+                : <span className="text-muted-foreground">Sem contactos registados.</span>}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <div className="c-muted text-xs">Próximo passo</div>
+            <div className="text-sm">
+              {pessoa.proximaAcao
+                ? `${pessoa.proximaAcao}${pessoa.proximaAcaoData ? ` · ${formatData(pessoa.proximaAcaoData)}` : ""}`
+                : proximoSeg
+                  ? `${proximoSeg.titulo} · ${formatData(proximoSeg.data)}`
+                  : <span className="text-muted-foreground">Nada agendado.</span>}
             </div>
-            <div className="grid gap-2">
-              <Label>Relação</Label>
-              <Select value={relacao} onValueChange={(v) => setRelacao(v as Relacao)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {RELACOES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <h3 className="text-sm font-semibold">Notas & próxima ação</h3>
-            <div className="grid gap-2">
-              <Label htmlFor="resumo">Resumo</Label>
-              <Textarea id="resumo" rows={3} value={resumo} onChange={(e) => setResumo(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pa">Próxima ação</Label>
-              <Input id="pa" value={proximaAcao} onChange={(e) => setProximaAcao(e.target.value)} placeholder="Ex: Enviar CPCV" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pad">Data</Label>
-              <Input id="pad" type="date" value={(proximaAcaoData ?? "").slice(0, 10)} onChange={(e) => setProximaAcaoData(e.target.value)} />
-            </div>
-          </CardContent>
-        </Card>
-
+      {/* Relacionado com: negócios, imóveis e movimentos */}
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <DealsOf personId={pessoa.id} />
         <PersonExtrasCard personId={pessoa.id} />
       </div>
 
       <PersonLinkedCard personId={pessoa.id} />
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <DealsOf personId={pessoa.id} />
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="mb-3 text-sm font-semibold">Notas recentes ({interPessoa.length})</h3>
+            {interPessoa.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem notas registadas.</p>
+            ) : (
+              <div className="space-y-2">
+                {interPessoa.slice(0, 5).map((i) => (
+                  <div key={i.id} className="rounded-lg border border-border p-3 text-sm">
+                    <div className="whitespace-pre-wrap">{i.resumo || i.conteudo}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatData(i.data)} · {CANAL_LABEL[i.canal] ?? i.canal}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardContent className="p-4">
@@ -220,10 +274,15 @@ function PessoaDetail() {
             ) : (
               <div className="space-y-2">
                 {segsPessoa.map((s) => (
-                  <div key={s.id} className="rounded-lg border border-border p-3 text-sm">
+                  <Link
+                    key={s.id}
+                    to="/seguimentos/$id"
+                    params={{ id: s.id }}
+                    className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40"
+                  >
                     <div>{s.titulo}</div>
                     <div className="text-xs text-muted-foreground">{formatData(s.data)} · {s.estado}</div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -247,11 +306,30 @@ function PessoaDetail() {
               <MessageSquarePlus className="mr-1 h-4 w-4" /> Registar
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            As interações são guardadas no histórico da pessoa. Na próxima entrega o módulo Interações torna-as pesquisáveis.
-          </p>
         </CardContent>
       </Card>
+
+      <EditPersonDialog pessoa={pessoa} open={editar} onOpenChange={setEditar} />
+
+      <Dialog open={novoSeg} onOpenChange={setNovoSeg}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Adicionar seguimento</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="seg-t">O que fazer</Label>
+              <Input id="seg-t" value={segTitulo} onChange={(e) => setSegTitulo(e.target.value)} placeholder="Ex: Ligar a confirmar a visita" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="seg-d">Quando</Label>
+              <Input id="seg-d" type="date" value={segData} onChange={(e) => setSegData(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNovoSeg(false)}>Cancelar</Button>
+            <Button onClick={criarSeguimento} disabled={busy}>Criar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

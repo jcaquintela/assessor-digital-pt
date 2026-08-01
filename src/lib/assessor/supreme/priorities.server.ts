@@ -82,12 +82,16 @@ export async function computePriorities(
   for (const f of ((follows as any[]) ?? [])) if (f.person_id) personIds.add(f.person_id);
   for (const o of ((opps as any[]) ?? [])) if (o.person_id) personIds.add(o.person_id);
   const nameById = new Map<string, string>();
+  const phoneById = new Map<string, boolean>();
   if (personIds.size) {
     const { data: people } = await supabase
       .from("people")
-      .select("id, name")
+      .select("id, name, phone")
       .in("id", [...personIds]);
-    for (const p of ((people as any[]) ?? [])) nameById.set(p.id, p.name);
+    for (const p of ((people as any[]) ?? [])) {
+      nameById.set(p.id, p.name);
+      if (p.phone) phoneById.set(p.id, true);
+    }
   }
 
   const today = startOfDayLisbon(now);
@@ -109,6 +113,8 @@ export async function computePriorities(
       score -= 15;
     }
     if (f.priority === "Alta" || f.priority === "high") { score += 10; reasons.push("prioridade alta"); }
+    // Fator real: dá para agir já se houver contacto telefónico.
+    if (f.person_id && phoneById.get(f.person_id)) reasons.push("com telefone disponível");
     items.push({
       subject_type: "follow_up",
       subject_id: f.id,
