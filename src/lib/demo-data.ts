@@ -352,8 +352,13 @@ export const entradasSeed: EntradaAssessor[] = [];
 export const formatEUR = (v: number) =>
   new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(v);
 
+// Datas só-dia ("2026-08-01") são interpretadas como UTC pelo Date; fixamos ao
+// meio-dia para nunca saltar de dia por causa do fuso.
+const parseData = (isoStr: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(isoStr) ? new Date(`${isoStr}T12:00:00`) : new Date(isoStr);
+
 export const formatData = (isoStr: string) =>
-  new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "short" }).format(new Date(isoStr));
+  new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "short" }).format(parseData(isoStr));
 
 export const formatDataHora = (isoStr: string) =>
   new Intl.DateTimeFormat("pt-PT", {
