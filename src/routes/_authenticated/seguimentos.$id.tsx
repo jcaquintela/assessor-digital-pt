@@ -20,7 +20,6 @@ import { ChevronLeft, Trash2, Save, CheckCircle2, Calendar as CalendarIcon, Cloc
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { EntityFilesCard } from "@/components/drive/entity-files-card";
 import { Briefcase, User as UserIcon, Phone } from "lucide-react";
 
 const TIPOS: SeguimentoTipo[] = ["Tarefa", "Evento"];
@@ -247,8 +246,6 @@ function SeguimentoView({ s }: { s: Seguimento }) {
           </div>
         </CardContent>
       </Card>
-
-      <EntityFilesCard entityType="follow_up" entityId={s.id} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
