@@ -24,6 +24,19 @@ body {
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
 }
+/* Scroll lock: enquanto um modal/sheet/drawer está aberto, o conteúdo por trás
+   não faz scroll (inclui iOS, onde overflow:hidden no body não chega). */
+body[data-scroll-locked] {
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+}
+body[data-scroll-locked] .consult-root {
+  overflow: hidden !important;
+}
+/* O conteúdo do overlay continua a poder fazer scroll interno. */
+[role="dialog"], [role="alertdialog"], [data-vaul-drawer] {
+  overscroll-behavior: contain;
+}
 /* Prevent iOS Safari auto-zoom on focus */
 @media (max-width: 767px) {
   input, textarea, select {
