@@ -1,3 +1,4 @@
+import { sanitizeMiscFields } from "./misc-text";
 // Motor central do Assessor — independente do canal.
 // Usa a OpenAI Responses API para interpretar linguagem natural PT-PT e
 // devolve uma resposta que o adaptador de canal (WhatsApp, web, Telegram)
@@ -933,7 +934,7 @@ async function saveMiscellaneous(
   const titleRaw = String(interp.entities?.title || interp.entities?.notes || originalText).trim();
   const title = titleRaw.length > 120 ? titleRaw.slice(0, 117) + "..." : titleRaw;
   const summary = String(interp.entities?.notes || "").trim() || null;
-  const { error } = await supabase.from("miscellaneous_items").insert({
+  const { error } = await supabase.from("miscellaneous_items").insert(sanitizeMiscFields({
     user_id: userId,
     title,
     original_content: originalText,
@@ -941,7 +942,7 @@ async function saveMiscellaneous(
     source_channel: channel,
     status: "inbox",
     tags: [],
-  } as never);
+  }) as never);
   if (error) {
     return { reply: "Anotado." };
   }
