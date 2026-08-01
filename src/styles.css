@@ -42,7 +42,13 @@ html[data-keyboard="open"] .mobile-bottom-nav {
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 50;
+    /* Abaixo de overlays Radix (z-50): diálogos, sheets e drawers ficam sempre por cima. */
+    z-index: 40;
+  }
+  /* Enquanto um diálogo/sheet/drawer modal está aberto, a barra sai da frente
+     para não tapar botões de Confirmar/Editar/Cancelar. */
+  body[data-scroll-locked] .mobile-bottom-nav {
+    display: none;
   }
   /* Altura da barra (conteúdo ~56px) + safe area, para o conteúdo não ficar tapado. */
   .mobile-nav-pad {
