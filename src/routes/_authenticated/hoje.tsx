@@ -184,7 +184,7 @@ function HojePage() {
         action: `Preparar: ${e.titulo}`,
         reasons: ["compromisso de hoje"],
         priority_score: 70,
-        due_at: e.data,
+        due_at: now.toISOString(),
         entity_label: nomePessoa(e.pessoaId) || null,
         deal_id: null,
         deal_label: null,
