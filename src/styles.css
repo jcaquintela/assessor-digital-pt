@@ -355,6 +355,8 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   --coral-bg: #F6E4DE;
   --amber: #A6741A;
   --amber-bg: #F5EAD2;
+  --blue: #2F5D8A;
+  --blue-bg: #E3EBF2;
   --line: #E3DFD3;
   --muted: #79766A;
   --c-shadow: 0 1px 2px rgba(20, 33, 61, 0.04), 0 4px 14px rgba(20, 33, 61, 0.05);
@@ -461,6 +463,52 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   background: var(--sage-bg); border: 1px solid #CFDCD3; border-radius: 13px;
   color: var(--sage); padding: 13px 15px; font-size: 12.5px; line-height: 1.6;
 }
+
+/* Destaque do dia: uma só situação, nunca uma lista. */
+.consult-root .c-spotlight {
+  background: linear-gradient(155deg, #fff, #F3E9D4);
+  border: 1.5px solid var(--brass); border-radius: 16px; padding: 18px;
+  box-shadow: var(--c-shadow);
+}
+.consult-root .c-spotlight .c-spot-tag {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--brass-dark);
+}
+
+/* Sugestão do mentor: conselho, não urgência. Banda sage. */
+.consult-root .c-mentor {
+  background: var(--c-card); border: 1px solid var(--line); border-left: 3px solid var(--sage);
+  border-radius: 14px; padding: 16px; box-shadow: var(--c-shadow);
+}
+.consult-root .c-mentor .c-mentor-tag {
+  display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--sage);
+}
+
+/* Grelha de resumo: cor por rubrica, sem gráficos nem percentagens. */
+.consult-root .c-sumgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 900px) { .consult-root .c-sumgrid { grid-template-columns: repeat(3, 1fr); } }
+.consult-root .c-sumcard {
+  border-radius: 14px; padding: 14px; box-shadow: var(--c-shadow);
+  border: 1px solid transparent; text-align: left; display: block;
+  transition: transform .12s, box-shadow .12s;
+}
+.consult-root .c-sumcard:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(20,33,61,.05), 0 8px 22px rgba(20,33,61,.07); }
+.consult-root .c-sumcard .c-sum-stat {
+  font-family: "Fraunces", ui-serif, Georgia, serif; font-size: 22px; font-weight: 600; line-height: 1;
+}
+.consult-root .c-sumcard .c-sum-label { font-size: 12px; margin-top: 3px; opacity: .85; }
+.consult-root .c-sumcard .c-sum-meta { font-size: 11px; margin-top: 6px; opacity: .7; }
+.consult-root .c-sumcard.negocios { background: #F3E9D4; color: var(--brass-dark); }
+.consult-root .c-sumcard.negocios .c-sum-stat { color: var(--brass-dark); }
+.consult-root .c-sumcard.imoveis { background: var(--sage-bg); color: var(--sage); }
+.consult-root .c-sumcard.imoveis .c-sum-stat { color: var(--sage); }
+.consult-root .c-sumcard.pessoas { background: var(--blue-bg); color: var(--blue); }
+.consult-root .c-sumcard.pessoas .c-sum-stat { color: var(--blue); }
+.consult-root .c-sumcard.diversos { background: var(--amber-bg); color: var(--amber); }
+.consult-root .c-sumcard.diversos .c-sum-stat { color: var(--amber); }
+.consult-root .c-sumcard.neutro { background: var(--c-card); color: var(--ink-soft); border-color: var(--line); }
+.consult-root .c-sumcard.neutro .c-sum-stat { color: var(--ink); }
 
 /* Cartão de módulo bloqueado por plano. */
 .consult-root .c-lock {
