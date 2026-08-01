@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut, ShieldCheck, ChevronDown } from "lucide-react";
 import { HealthStrip } from "@/components/admin/health-strip";
+import { navGroups } from "./nav";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -17,59 +18,6 @@ export const Route = createFileRoute("/admin")({
   },
   component: AdminLayout,
 });
-
-type NavItem = { to: string; label: string; exact?: boolean };
-
-const navGroups: { group: string; items: NavItem[] }[] = [
-  {
-    group: "Visão geral",
-    items: [
-      { to: "/admin", label: "Visão geral", exact: true },
-      { to: "/admin/negocio", label: "Negócio" },
-    ],
-  },
-  {
-    group: "Clientes",
-    items: [
-      { to: "/admin/utilizadores", label: "Utilizadores & planos" },
-      { to: "/admin/beta", label: "Beta testers" },
-      { to: "/admin/suporte", label: "Suporte" },
-      { to: "/admin/convites", label: "Convites Telegram" },
-    ],
-  },
-  {
-    group: "Comercial",
-    items: [
-      { to: "/admin/planos", label: "Planos & preços" },
-      { to: "/admin/aquisicao", label: "Aquisição" },
-      { to: "/admin/subscricoes", label: "Subscrições" },
-      { to: "/admin/faturacao", label: "Faturação" },
-    ],
-  },
-  {
-    group: "Operação",
-    items: [
-      { to: "/admin/custos", label: "Custos" },
-      { to: "/admin/utilizacao", label: "Utilização" },
-      { to: "/admin/comunicacao", label: "Comunicação" },
-    ],
-  },
-  {
-    group: "Qualidade",
-    items: [
-      { to: "/admin/qualidade", label: "Qualidade" },
-      { to: "/admin/autonomas", label: "Ações autónomas" },
-      { to: "/admin/goldens", label: "Goldens" },
-    ],
-  },
-  {
-    group: "Plataforma",
-    items: [
-      { to: "/admin/integracoes-flags", label: "Integrações & flags" },
-      { to: "/admin/auditoria-seguranca", label: "Auditoria & segurança" },
-    ],
-  },
-];
 
 function AdminLayout() {
   const navigate = useNavigate();
