@@ -672,8 +672,8 @@ async function handlePromoRedeem(
 
   const check = await checkPromoForUser(supabaseAdmin, text, userId);
   if (!check.ok) {
-    // Palavra solta que não é código nenhum: deixa o motor responder.
-    if (check.reason === "not_found") return false;
+    // Palavra solta sem cara de código: deixa o motor responder normalmente.
+    if (check.reason === "not_found" && !looksLikeCodeStrongly(text)) return false;
     await sendPromoReply(adapter, supabaseAdmin, inbound, userId, check.reply);
     return true;
   }
