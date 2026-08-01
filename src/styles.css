@@ -35,6 +35,25 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   display: none;
 }
 
+/* Alvos de toque: garante 44x44 mínimos em ecrãs estreitos sem mudar o visual.
+   O pseudo-elemento só alarga a área tocável do próprio elemento. */
+@media (max-width: 767px) {
+  .tap-44 {
+    position: relative;
+  }
+  .tap-44::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 /*
  * Design system definition.
  *
