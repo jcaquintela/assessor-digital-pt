@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { explainPriority } from "@/lib/assessor/priority-explain";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
-import { Home, Users, Layers, CalendarDays, Euro, Lightbulb } from "lucide-react";
+import { Lightbulb } from "lucide-react";
+import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -376,45 +377,7 @@ function HojePage() {
       )}
 
       {/* A-quater. Resumo geral — 6 rubricas, contagens simples, cada uma clicável. */}
-      {resumo && (
-        <section className="mb-6">
-          <div className="c-eyebrow mb-2.5">Resumo geral</div>
-          <div className="c-sumgrid">
-            <SumCard
-              tone="negocios" icon={Briefcase} to="/negocios"
-              stat={String(resumo.deals.count)} label="Negócios em curso"
-              meta={`${formatEUR(resumo.deals.value)} em jogo`}
-            />
-            <SumCard
-              tone="imoveis" icon={Home} to="/imoveis"
-              stat={String(resumo.properties.count)} label="Imóveis em carteira"
-              meta={`${resumo.properties.toAcquire} por angariar`}
-            />
-            <SumCard
-              tone="pessoas" icon={Users} to="/pessoas"
-              stat={String(resumo.people.count)} label="Pessoas"
-              meta={`${resumo.people.contactedWeek} contactadas esta semana`}
-            />
-            <SumCard
-              tone="diversos" icon={Layers} to="/diversos"
-              stat={String(resumo.misc.pending)} label="Por tratar" meta="em Diversos"
-            />
-            <SumCard
-              tone="neutro" icon={CalendarDays} to="/calendario"
-              stat={String(resumo.agenda.today)}
-              label={`Compromisso${resumo.agenda.today === 1 ? "" : "s"} hoje`}
-              meta={resumo.agenda.nextLabel
-                ? `${resumo.agenda.nextTime ? `${resumo.agenda.nextTime} — ` : ""}${resumo.agenda.nextLabel}`
-                : "nada marcado"}
-            />
-            <SumCard
-              tone="neutro" icon={Euro} to="/negocio"
-              stat={formatEUR(resumo.billing.forecast)} statMono
-              label="Comissões previstas" meta={`${resumo.billing.open} por fechar`}
-            />
-          </div>
-        </section>
-      )}
+      {resumo && <HojeSumGrid resumo={resumo} />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Coluna principal */}
@@ -660,28 +623,3 @@ function AlertRow({
     </Link>
   );
 }
-
-// Cartão de resumo: uma contagem e o detalhe mais relevante. Sem gráficos.
-function SumCard({
-  tone, icon: Icon, to, stat, label, meta, statMono,
-}: {
-  tone: "negocios" | "imoveis" | "pessoas" | "diversos" | "neutro";
-  icon: any;
-  to: string;
-  stat: string;
-  label: string;
-  meta: string;
-  statMono?: boolean;
-}) {
-  return (
-    <Link to={to as any} className={`c-sumcard ${tone}`} aria-label={label}>
-      <Icon className="mb-2 h-[17px] w-[17px]" />
-      <div className={`c-sum-stat${statMono ? " c-mono" : ""}`} style={statMono ? { fontSize: 19 } : undefined}>{stat}</div>
-      <div className="c-sum-label">{label}</div>
-      <div className="c-sum-meta truncate">{meta}</div>
-    </Link>
-  );
-}
-
-
-
