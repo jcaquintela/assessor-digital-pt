@@ -77,8 +77,8 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         // Mobile: fixed viewport grid (header?/main/nav). Desktop: normal flow.
         "grid md:block",
         fullBleed
-          ? "h-[100svh] h-[100dvh] grid-rows-[minmax(0,1fr)_auto] overflow-hidden md:h-auto md:overflow-visible"
-          : "min-h-[100dvh] grid-rows-[minmax(0,1fr)_auto]",
+          ? "h-[100dvh] grid-rows-[minmax(0,1fr)] overflow-hidden md:h-auto md:overflow-visible"
+          : "min-h-[100dvh] grid-rows-[minmax(0,1fr)]",
       )}
     >
       {/* Desktop sidebar */}
@@ -114,11 +114,11 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
 
       {/* Main */}
       {fullBleed ? (
-        <main className="min-h-0 min-w-0 overflow-hidden md:ml-64 md:overflow-visible md:pb-8">
+        <main className="mobile-nav-pad min-h-0 min-w-0 overflow-hidden md:ml-64 md:overflow-visible md:pb-8">
           <div className="h-full min-w-0 md:mx-auto md:h-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
         </main>
       ) : (
-        <main className="min-h-0 min-w-0 md:ml-64 md:pb-8">
+        <main className="mobile-nav-pad min-h-0 min-w-0 md:ml-64 md:pb-8">
           <div
             className="sticky top-0 z-30 backdrop-blur"
             style={{ background: "color-mix(in srgb, var(--paper) 88%, transparent)", borderBottom: "1px solid var(--line)" }}
