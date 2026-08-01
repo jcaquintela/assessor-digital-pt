@@ -7,6 +7,7 @@
 
 export const TEMPLATE_MORNING = "afonso_prioridades_dia";
 export const TEMPLATE_CHECKIN = "afonso_resultado_seguimento";
+export const TEMPLATE_PLAN_ACTIVATED = "afonso_plano_ativado";
 export const TEMPLATE_LANG = "pt_PT";
 
 /**
