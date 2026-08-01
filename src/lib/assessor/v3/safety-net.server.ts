@@ -1,4 +1,5 @@
 import { sanitizeMiscFields } from "../misc-text";
+import { cleanTitle } from "../titles";
 // Rede de segurança "nada se perde" — motor v3.
 //
 // Regra de produto: uma mensagem profissional do consultor NUNCA pode
@@ -40,6 +41,26 @@ export function shouldArchiveTurn(params: {
   return !isDisposableMessage(params.content);
 }
 
+// O conteúdo arquivado pode ser um bloco de contexto com várias linhas,
+// incluindo a pergunta do próprio Assessor ("Assessor: Feito. Registei...").
+// O título tem de ser o assunto do consultor, nunca a voz do Assessor.
+export function deriveArchiveTitle(content: string): string {
+  const lines = String(content ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .filter((l) => !/^\s*(assessor|afonso|assistente|bot)\s*[:\-–—]/i.test(l))
+    .map((l) => l.replace(/^\(depois:\s*/i, "").replace(/\)$/, "").trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    const t = cleanTitle(line);
+    if (t) return t.length > 120 ? `${t.slice(0, 117)}...` : t;
+  }
+  const fallback = cleanTitle(String(content ?? "").replace(/\n+/g, " "));
+  if (fallback) return fallback.length > 120 ? `${fallback.slice(0, 117)}...` : fallback;
+  return "Nota por tratar";
+}
+
 export async function archiveToMiscellaneous(
   ctx: DomainContext,
   content: string,
@@ -48,7 +69,7 @@ export async function archiveToMiscellaneous(
   try {
     const text = String(content ?? "").trim();
     if (!text) return false;
-    const title = text.length > 120 ? `${text.slice(0, 117)}...` : text;
+    const title = deriveArchiveTitle(text);
     const { error } = await ctx.supabase.from("miscellaneous_items").insert(sanitizeMiscFields({
       user_id: ctx.userId,
       title,
