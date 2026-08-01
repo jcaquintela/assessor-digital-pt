@@ -14,6 +14,7 @@ import {
   type SeguimentoTipo,
   type SeguimentoEstado,
   type SeguimentoPrioridade,
+  type Seguimento,
 } from "@/lib/demo-data";
 import { ChevronLeft, Trash2, Save, CheckCircle2, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { toast } from "sonner";
