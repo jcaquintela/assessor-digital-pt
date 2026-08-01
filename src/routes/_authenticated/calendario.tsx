@@ -161,7 +161,7 @@ function CalendarioPage() {
                     </div>
                   </Link>
                   <span className="c-badge shrink-0">
-                    <CalendarIcon className="h-3 w-3" /> {e.hora ?? "—"}
+                    <CalendarIcon className="h-3 w-3" /> {e.hora ? e.hora.slice(0, 5) : "—"}
                   </span>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
