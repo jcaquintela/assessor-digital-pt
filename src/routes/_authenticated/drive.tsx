@@ -304,14 +304,14 @@ function DrivePage() {
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       <button
                         type="button"
-                        className="c-badge"
+                        className="c-badge tap-44"
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); abrirFicheiro(f.id); }}
                       >
                         <Eye className="h-3 w-3" /> Ver
                       </button>
                       <button
                         type="button"
-                        className="c-badge"
+                        className="c-badge tap-44"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -323,7 +323,7 @@ function DrivePage() {
                       <button
                         type="button"
                         aria-label={`Categoria de ${f.original_file_name ?? "ficheiro"}`}
-                        className="c-badge"
+                        className="c-badge tap-44"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
