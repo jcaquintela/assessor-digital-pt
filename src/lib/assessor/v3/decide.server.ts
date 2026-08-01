@@ -2,6 +2,7 @@
 
 import { callGateway, V2_MODEL_DEFAULT, type GatewayUsage } from "../v2/gateway.server";
 import { DECIDE_SYSTEM_PROMPT } from "./prompts";
+import { SPARRING_PROMPT_BLOCK } from "./sparring";
 import type { Decision, DecisionToolCall, MemoryWrite, Observation, Hypothesis, SearchResults } from "./types";
 
 export interface DecideResult {
@@ -56,6 +57,7 @@ export async function decide(input: {
   userFirstName: string;
   nowLisbonYmd: string;
   nowLisbonHuman: string;
+  sparring?: boolean;
 }): Promise<DecideResult> {
   const started = Date.now();
   const userPayload = {
@@ -73,7 +75,10 @@ export async function decide(input: {
   const call = await callGateway({
     model: V2_MODEL_DEFAULT,
     messages: [
-      { role: "system", content: DECIDE_SYSTEM_PROMPT },
+      {
+        role: "system",
+        content: input.sparring ? `${DECIDE_SYSTEM_PROMPT}\n${SPARRING_PROMPT_BLOCK}` : DECIDE_SYSTEM_PROMPT,
+      },
       { role: "user", content: JSON.stringify(userPayload) },
     ],
     temperature: 0.25,
