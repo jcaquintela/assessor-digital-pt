@@ -12,6 +12,7 @@ describe("resgate de código promocional em conta existente", () => {
     const admin: any = createClient(url, key, { auth: { persistSession: false } });
     const stamp = Date.now();
     const code = `E2EPROMO-${stamp}`;
+    const code2 = `E2EPROMO2-${stamp}`;
     const chatId = `-99${stamp}`;
     const email = `e2e.promo.${stamp}@example.test`;
     const replies: string[] = [];
@@ -57,9 +58,15 @@ describe("resgate de código promocional em conta existente", () => {
       // notifyPlanActivated → aviso pelo Telegram
       expect(replies.join("\n")).toMatch(/plano Pro/i);
 
-      // Plano igual ou superior: avisa em vez de aplicar
+      // Mesmo código outra vez: honesto sobre reutilização
       replies.length = 0;
       await send(code, 3);
+      expect(replies.join("\n")).toContain("Já usaste esse código");
+
+      // Plano igual ou superior: avisa em vez de aplicar
+      await admin.from("promo_codes").insert({ code: code2, grants_tier: "consultor", max_uses: 5, active: true, note: "e2e" });
+      replies.length = 0;
+      await send(code2, 5);
       expect(replies.join("\n")).toContain("igual ou superior");
 
       // Código inexistente: resposta honesta
@@ -69,7 +76,7 @@ describe("resgate de código promocional em conta existente", () => {
     } finally {
       setTelegramProviderOverride(null);
       await admin.from("promo_redemptions").delete().eq("user_id", userId);
-      await admin.from("promo_codes").delete().eq("code", code);
+      await admin.from("promo_codes").delete().in("code", [code, code2]);
       await admin.from("assessor_messages").delete().eq("user_id", userId);
       await admin.from("channel_links").delete().eq("external_id", chatId);
       await admin.from("admin_audit_logs").delete().eq("target_user_id", userId);
