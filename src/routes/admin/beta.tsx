@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -253,7 +253,11 @@ function BetaPage() {
               const urgent = t.days_left !== null && t.days_left < 3;
               return (
                 <tr key={t.id}>
-                  <td>{t.name || "—"}</td>
+                  <td>
+                    <Link to="/admin/consultor/$id" params={{ id: t.id }} className="admin-link">
+                      {t.name || "Ver ficha"}
+                    </Link>
+                  </td>
                   <td className="mini">
                     {t.phone || "—"}
                     <br />

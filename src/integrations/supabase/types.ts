@@ -1857,6 +1857,33 @@ export type Database = {
           },
         ]
       }
+      landing_page_visits: {
+        Row: {
+          created_at: string
+          id: string
+          path: string | null
+          referrer_host: string | null
+          visit_date: string
+          visit_hour: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          path?: string | null
+          referrer_host?: string | null
+          visit_date?: string
+          visit_hour?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          path?: string | null
+          referrer_host?: string | null
+          visit_date?: string
+          visit_hour?: number
+        }
+        Relationships: []
+      }
       miscellaneous_items: {
         Row: {
           category: string | null

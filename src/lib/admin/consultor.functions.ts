@@ -1,0 +1,141 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+type Role = "consultant" | "support_admin" | "super_admin";
+
+async function assertAdmin(supabase: any, userId: string) {
+  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+  const roles: Role[] = (data ?? []).map((r: any) => r.role);
+  if (!roles.includes("super_admin") && !roles.includes("support_admin")) {
+    throw new Error("Forbidden: admin only");
+  }
+  return roles;
+}
+
+export type ConsultantDetail = {
+  profile: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    tier: string;
+    createdAt: string;
+    accountKind: string | null;
+    channels: string[];
+    isBeta: boolean;
+    betaExpiresAt: string | null;
+    betaDaysLeft: number | null;
+    assessorName: string | null;
+  };
+  activity: {
+    messages30d: number;
+    lastContactAt: string | null;
+    topChannel: string | null;
+    byChannel: { channel: string; count: number }[];
+  };
+  volume: { people: number; properties: number; openDeals: number; pendingFollowUps: number };
+  quality: { ats: number | null; aqs: number | null; samples: number };
+  audit: {
+    id: string;
+    action: string;
+    createdAt: string;
+    reason: string | null;
+    resource: string | null;
+  }[];
+};
+
+export const getConsultantDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }): Promise<ConsultantDetail> => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const id = data.userId;
+    const since30d = new Date(Date.now() - 30 * 864e5).toISOString();
+
+    const [prof, links, msgs, people, props, deals, fups, trust, qual, audit] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("id, name, email, phone, subscription_tier, created_at, account_kind, is_beta_tester, beta_expires_at, assessor_name")
+        .eq("id", id)
+        .maybeSingle(),
+      supabaseAdmin.from("channel_links").select("channel").eq("user_id", id),
+      // Só metadados das mensagens: nunca o conteúdo (mesma privacidade de Qualidade).
+      supabaseAdmin.from("assessor_messages").select("channel, created_at").eq("user_id", id).gte("created_at", since30d),
+      supabaseAdmin.from("people").select("id", { count: "exact", head: true }).eq("user_id", id),
+      supabaseAdmin.from("properties").select("id", { count: "exact", head: true }).eq("user_id", id),
+      supabaseAdmin.from("opportunities").select("id", { count: "exact", head: true }).eq("user_id", id).is("archived_at", null).neq("stage", "concluido"),
+      supabaseAdmin.from("follow_ups").select("id", { count: "exact", head: true }).eq("user_id", id).eq("status", "pending"),
+      supabaseAdmin.from("assistant_trust_scores").select("ats, created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(200),
+      supabaseAdmin.from("assessor_quality_scores").select("score").eq("user_id", id).order("created_at", { ascending: false }).limit(200),
+      supabaseAdmin
+        .from("admin_audit_logs")
+        .select("id, action, created_at, reason, resource_type, resource_id")
+        .eq("target_user_id", id)
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
+
+    const p = (prof.data ?? null) as any;
+    if (!p) throw new Error("Conta não encontrada.");
+
+    const msgRows = ((msgs.data ?? []) as any[]);
+    const byChannelMap = new Map<string, number>();
+    for (const m of msgRows) byChannelMap.set(m.channel ?? "—", (byChannelMap.get(m.channel ?? "—") ?? 0) + 1);
+    const byChannel = [...byChannelMap.entries()]
+      .map(([channel, count]) => ({ channel, count }))
+      .sort((a, b) => b.count - a.count);
+    const lastContactAt = msgRows.length
+      ? msgRows.map((m) => m.created_at).sort().at(-1) ?? null
+      : null;
+
+    const atsRows = ((trust.data ?? []) as any[]).map((r) => Number(r.ats)).filter((n) => Number.isFinite(n));
+    const aqsRows = ((qual.data ?? []) as any[]).map((r) => Number(r.score)).filter((n) => Number.isFinite(n));
+    const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+
+    const betaDaysLeft = p.is_beta_tester && p.beta_expires_at
+      ? Math.max(0, Math.ceil((new Date(p.beta_expires_at).getTime() - Date.now()) / 864e5))
+      : null;
+
+    return {
+      profile: {
+        id: p.id,
+        name: p.name ?? null,
+        email: p.email ?? null,
+        phone: p.phone ?? null,
+        tier: p.subscription_tier ?? "base",
+        createdAt: p.created_at,
+        accountKind: p.account_kind ?? null,
+        channels: [...new Set(((links.data ?? []) as any[]).map((l) => l.channel))],
+        isBeta: !!p.is_beta_tester,
+        betaExpiresAt: p.beta_expires_at ?? null,
+        betaDaysLeft,
+        assessorName: p.assessor_name ?? null,
+      },
+      activity: {
+        messages30d: msgRows.length,
+        lastContactAt,
+        topChannel: byChannel[0]?.channel ?? null,
+        byChannel,
+      },
+      volume: {
+        people: people.count ?? 0,
+        properties: props.count ?? 0,
+        openDeals: deals.count ?? 0,
+        pendingFollowUps: fups.count ?? 0,
+      },
+      quality: {
+        ats: avg(atsRows),
+        aqs: avg(aqsRows),
+        samples: atsRows.length + aqsRows.length,
+      },
+      audit: ((audit.data ?? []) as any[]).map((a) => ({
+        id: a.id,
+        action: a.action,
+        createdAt: a.created_at,
+        reason: a.reason ?? null,
+        resource: a.resource_type ? `${a.resource_type}${a.resource_id ? ":" + a.resource_id : ""}` : null,
+      })),
+    };
+  });
