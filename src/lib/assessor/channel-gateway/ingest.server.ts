@@ -594,6 +594,13 @@ function looksLikeCodeShape(text: string): boolean {
   return /\d/.test(t) || /-/.test(t) || t === t.toUpperCase();
 }
 
+// Cara inequívoca de código (dígito + hífen ou maiúsculas): aqui vale a pena
+// dizer "esse código não existe" em vez de deixar o motor responder.
+function looksLikeCodeStrongly(text: string): boolean {
+  const t = text.trim();
+  return /\d/.test(t) && (/-/.test(t) || t === t.toUpperCase());
+}
+
 async function sendPromoReply(
   adapter: ChannelAdapter,
   supabaseAdmin: any,
