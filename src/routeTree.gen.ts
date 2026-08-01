@@ -63,6 +63,7 @@ import { Route as AuthenticatedNegocioIndexRouteImport } from './routes/_authent
 import { Route as OauthOutlookReturnRouteImport } from './routes/oauth/outlook/return'
 import { Route as OauthGoogleCalendarReturnRouteImport } from './routes/oauth/google-calendar/return'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
+import { Route as ApiPublicBeaconRouteImport } from './routes/api/public/beacon'
 import { Route as AdminConsultorIdRouteImport } from './routes/admin/consultor.$id'
 import { Route as AuthenticatedSeguimentosIdRouteImport } from './routes/_authenticated/seguimentos.$id'
 import { Route as AuthenticatedRotinasIdRouteImport } from './routes/_authenticated/rotinas.$id'
@@ -365,6 +366,11 @@ const ApiPublicWhatsappWebhookRoute =
     path: '/api/public/whatsapp-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicBeaconRoute = ApiPublicBeaconRouteImport.update({
+  id: '/api/public/beacon',
+  path: '/api/public/beacon',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminConsultorIdRoute = AdminConsultorIdRouteImport.update({
   id: '/consultor/$id',
   path: '/consultor/$id',
@@ -564,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/admin/consultor/$id': typeof AdminConsultorIdRoute
+  '/api/public/beacon': typeof ApiPublicBeaconRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
@@ -642,6 +649,7 @@ export interface FileRoutesByTo {
   '/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/admin/consultor/$id': typeof AdminConsultorIdRoute
+  '/api/public/beacon': typeof ApiPublicBeaconRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
@@ -723,6 +731,7 @@ export interface FileRoutesById {
   '/_authenticated/rotinas/$id': typeof AuthenticatedRotinasIdRoute
   '/_authenticated/seguimentos/$id': typeof AuthenticatedSeguimentosIdRoute
   '/admin/consultor/$id': typeof AdminConsultorIdRoute
+  '/api/public/beacon': typeof ApiPublicBeaconRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
@@ -804,6 +813,7 @@ export interface FileRouteTypes {
     | '/rotinas/$id'
     | '/seguimentos/$id'
     | '/admin/consultor/$id'
+    | '/api/public/beacon'
     | '/api/public/whatsapp-webhook'
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
@@ -882,6 +892,7 @@ export interface FileRouteTypes {
     | '/rotinas/$id'
     | '/seguimentos/$id'
     | '/admin/consultor/$id'
+    | '/api/public/beacon'
     | '/api/public/whatsapp-webhook'
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
@@ -962,6 +973,7 @@ export interface FileRouteTypes {
     | '/_authenticated/rotinas/$id'
     | '/_authenticated/seguimentos/$id'
     | '/admin/consultor/$id'
+    | '/api/public/beacon'
     | '/api/public/whatsapp-webhook'
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
@@ -995,6 +1007,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicBeaconRoute: typeof ApiPublicBeaconRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   OauthGoogleCalendarReturnRoute: typeof OauthGoogleCalendarReturnRoute
   OauthOutlookReturnRoute: typeof OauthOutlookReturnRoute
@@ -1385,6 +1398,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/whatsapp-webhook'
       fullPath: '/api/public/whatsapp-webhook'
       preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/beacon': {
+      id: '/api/public/beacon'
+      path: '/api/public/beacon'
+      fullPath: '/api/public/beacon'
+      preLoaderRoute: typeof ApiPublicBeaconRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/consultor/$id': {
@@ -1790,6 +1810,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicBeaconRoute: ApiPublicBeaconRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   OauthGoogleCalendarReturnRoute: OauthGoogleCalendarReturnRoute,
   OauthOutlookReturnRoute: OauthOutlookReturnRoute,
