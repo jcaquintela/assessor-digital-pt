@@ -51,3 +51,14 @@ export function useOverlayStack() {
     return () => popOverlay();
   }, []);
 }
+
+/**
+ * Marcador a renderizar DENTRO do conteúdo do overlay (Radix só monta os
+ * filhos do Content quando está aberto). Assim o contador reflete overlays
+ * ABERTOS e não componentes montados — um <DialogContent> declarado mas
+ * fechado não pode bloquear o scroll.
+ */
+export function OverlayLock() {
+  useOverlayStack();
+  return null;
+}
