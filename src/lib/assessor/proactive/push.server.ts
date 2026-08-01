@@ -193,8 +193,20 @@ export async function sendEveningCheckin(
     const prompt = buildOutcomeCheckinPrompt(item);
     let ok = false;
     if (target.channel === "whatsapp") {
-      const { sendWhatsAppInteractive } = await import("@/lib/whatsapp/interactive.server");
-      ok = (await sendWhatsAppInteractive(target.externalId, prompt, { kind: "auto" })).ok;
+      if (inWindow) {
+        const { sendWhatsAppInteractive } = await import("@/lib/whatsapp/interactive.server");
+        ok = (await sendWhatsAppInteractive(target.externalId, prompt, { kind: "auto" })).ok;
+      } else {
+        // Fora das 24h só passa template aprovado (botões vêm do próprio template).
+        const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
+        ok = (
+          await sendWhatsAppPayload(
+            target.externalId,
+            checkinTemplatePayload(item.title),
+            { kind: "auto" },
+          )
+        ).ok;
+      }
     } else {
       const { getTelegramProvider } = await import("@/lib/telegram/provider.server");
       const r = await getTelegramProvider().sendOptions({
