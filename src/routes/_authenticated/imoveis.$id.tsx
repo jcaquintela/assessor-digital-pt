@@ -197,17 +197,83 @@ function PropertyDetail() {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Badge variant="outline">{propertyStatusLabel(p.status)}</Badge>
         {p.property_type && <Badge variant="secondary">{p.property_type}</Badge>}
-        <div className="ml-auto flex gap-2">
-          {!editing && <Button size="sm" variant="outline" onClick={startEdit}>Editar</Button>}
-          {p.status !== "arquivado" && (
-            <Button size="sm" variant="outline" onClick={archive}>
-              <Archive className="mr-1 h-4 w-4" /> Arquivar
-            </Button>
-          )}
+        <div className="ml-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" aria-label="Mais ações">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem asChild>
+                <Link to="/assessor">
+                  <MessageSquare className="mr-2 h-3.5 w-3.5" />
+                  Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName} sobre este imóvel
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => startEdit()}>
+                <Pencil className="mr-2 h-3.5 w-3.5" /> Editar dados
+              </DropdownMenuItem>
+              {p.status !== "arquivado" && (
+                <DropdownMenuItem onSelect={() => archive()}>
+                  <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive" onSelect={() => void eliminar()}>
+                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       <div className="grid gap-3">
+        {/* Contexto primeiro: que imóvel é, como chegou, quem está ligado, o que falta fazer. */}
+        <Card>
+          <CardContent className="grid gap-4 p-4 md:grid-cols-2">
+            <div>
+              <div className="text-xs text-muted-foreground">Que imóvel é</div>
+              <div className="text-sm">
+                {[p.typology || p.property_type, p.address || p.city || p.location].filter(Boolean).join(" · ") || "Sem detalhes"}
+                {p.asking_price != null ? ` · ${formatEUR(Number(p.asking_price))}` : ""}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Como chegou até ti</div>
+              <div className="text-sm">
+                {p.source_channel
+                  ? `via ${ORIGEM_LABEL[p.source_channel] ?? p.source_channel}`
+                  : <span className="text-muted-foreground">Origem não registada.</span>}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Quem está relacionado</div>
+              <div className="text-sm">
+                {owner
+                  ? <Link to="/pessoas/$id" params={{ id: owner.id }} className="underline">{owner.name}</Link>
+                  : <span className="text-muted-foreground">Sem proprietário associado.</span>}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Próximo passo</div>
+              <div className="text-sm">
+                {proximo
+                  ? `${proximo.title}${proximo.due_date ? ` · ${proximo.due_date}` : ""}`
+                  : <span className="text-muted-foreground">Nada agendado.</span>}
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <div className="text-xs text-muted-foreground">O que aconteceu recentemente</div>
+              <div className="text-sm">
+                {recente.length === 0
+                  ? <span className="text-muted-foreground">Ainda sem movimento registado.</span>
+                  : recente.join(" · ")}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center justify-between">
