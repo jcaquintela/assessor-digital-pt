@@ -140,7 +140,7 @@ function FollowUpDialog({
         type: "tarefa",
         due_date: new Date(`${date}T09:00:00`).toISOString(),
         status: "pendente",
-        priority: "normal",
+        priority: "media",
         notes: item.original_content ?? null,
         person_id: item.related_person_id ?? null,
         related_property_id: item.related_property_id ?? null,
