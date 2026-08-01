@@ -1,0 +1,1 @@
+ALTER TABLE public.conversation_states ADD COLUMN IF NOT EXISTS sparring_turns integer NOT NULL DEFAULT 0;

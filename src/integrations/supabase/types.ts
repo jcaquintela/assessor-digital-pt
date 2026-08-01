@@ -1126,6 +1126,7 @@ export type Database = {
           last_intent: string | null
           last_property_id: string | null
           pending_action_id: string | null
+          sparring_turns: number
           state_summary: string | null
           updated_at: string
           user_id: string
@@ -1147,6 +1148,7 @@ export type Database = {
           last_intent?: string | null
           last_property_id?: string | null
           pending_action_id?: string | null
+          sparring_turns?: number
           state_summary?: string | null
           updated_at?: string
           user_id: string
@@ -1168,6 +1170,7 @@ export type Database = {
           last_intent?: string | null
           last_property_id?: string | null
           pending_action_id?: string | null
+          sparring_turns?: number
           state_summary?: string | null
           updated_at?: string
           user_id?: string
