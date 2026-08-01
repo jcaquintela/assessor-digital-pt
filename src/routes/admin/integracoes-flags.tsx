@@ -35,6 +35,11 @@ const KNOWN_FLAGS: Record<string, { label: string; readAt: string | null }> = {
     label: "Assessor Supremo (prioridades + autonomia)",
     readAt: "isSupremeEnabled → priorities.functions.ts, autonomy.functions.ts",
   },
+  "whatsapp.templates.approved": {
+    label: "Templates WhatsApp aprovados (push fora da janela de 24h)",
+    readAt:
+      "templatesApproved() → proactive/push.server.ts (push da manhã + check-in da tarde); override manual: env WHATSAPP_TEMPLATES_APPROVED",
+  },
 };
 
 function fmt(dt: string | null) {
