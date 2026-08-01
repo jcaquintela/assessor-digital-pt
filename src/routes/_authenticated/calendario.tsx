@@ -102,7 +102,7 @@ function CalendarioPage() {
     <AppShell>
       <PageHeader title="Calendário" subtitle="Vista interna dos compromissos." />
       <div className="grid gap-4 md:grid-cols-[1fr_320px]">
-        <div className="c-card p-4">
+        <div className="c-card p-2 sm:p-4">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarMes(-1)}>
@@ -116,12 +116,12 @@ function CalendarioPage() {
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <button type="button" className="c-pill active">Mês</button>
-              <button type="button" className="c-pill opacity-50" disabled>Semana</button>
-              <button type="button" className="c-pill opacity-50" disabled>Lista</button>
+              <button type="button" className="c-pill tap-44 active">Mês</button>
+              <button type="button" className="c-pill tap-44 opacity-50" disabled>Semana</button>
+              <button type="button" className="c-pill tap-44 opacity-50" disabled>Lista</button>
               <button
                 type="button"
-                className="c-pill"
+                className="c-pill tap-44"
                 onClick={() => {
                   const n = new Date();
                   setMonth(new Date(n.getFullYear(), n.getMonth(), 1));
@@ -165,7 +165,7 @@ function CalendarioPage() {
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
-                    className="c-badge"
+                    className="c-badge tap-44"
                     onClick={() => setEditing({
                       id: e.id,
                       titulo: e.titulo,
@@ -176,7 +176,7 @@ function CalendarioPage() {
                   >
                     <Pencil className="h-3 w-3" /> Editar
                   </button>
-                  <button type="button" className="c-badge text-destructive" onClick={() => remover(e.id, e.titulo)}>
+                  <button type="button" className="c-badge tap-44 text-destructive" onClick={() => remover(e.id, e.titulo)}>
                     <Trash2 className="h-3 w-3" /> Eliminar
                   </button>
                 </div>
