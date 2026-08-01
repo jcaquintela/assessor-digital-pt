@@ -8,11 +8,15 @@ import { createFileRoute } from "@tanstack/react-router";
  * Uso na landing:
  *   navigator.sendBeacon("https://<dominio>/api/public/beacon",
  *     JSON.stringify({ path: location.pathname, referrer: document.referrer }))
+ *
+ * Verificação/testes: envia `{ "dry": true }` (ou usa `?dry=1`). O pedido
+ * percorre exatamente o mesmo caminho, mas não escreve nada na base de dados,
+ * para nunca contaminar o funil de aquisição com visitas fictícias.
  */
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Headers": "content-type, x-beacon-dry-run",
 };
 
 function hostOf(value: unknown): string | null {
@@ -37,6 +41,16 @@ export const Route = createFileRoute("/api/public/beacon")({
         }
         const path = typeof body.path === "string" ? body.path.slice(0, 200) : "/";
         const referrerHost = hostOf(body.referrer) ?? hostOf(request.headers.get("referer"));
+        const dry =
+          body.dry === true ||
+          new URL(request.url).searchParams.get("dry") === "1" ||
+          request.headers.get("x-beacon-dry-run") === "1";
+        if (dry) {
+          return new Response(JSON.stringify({ ok: true, dryRun: true, path, referrerHost }), {
+            status: 200,
+            headers: { ...CORS, "content-type": "application/json" },
+          });
+        }
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           await supabaseAdmin
