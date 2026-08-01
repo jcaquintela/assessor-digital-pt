@@ -7,6 +7,7 @@
 
 export const TEMPLATE_MORNING = "afonso_prioridades_dia";
 export const TEMPLATE_CHECKIN = "afonso_resultado_seguimento";
+export const TEMPLATE_PLAN_ACTIVATED = "afonso_plano_ativado";
 export const TEMPLATE_LANG = "pt_PT";
 
 /**
@@ -57,4 +58,32 @@ export function checkinTemplatePayload(title: string) {
       ],
     },
   } as Record<string, unknown>;
+}
+
+/**
+ * Plano ativado: {{1}} = primeiro nome, {{2}} = nome do plano.
+ *
+ * Texto exato submetido à Meta (categoria Utility):
+ * "Boas notícias, {{1}}! O teu plano {{2}} já está ativo. Já podes usar
+ * tudo o que isso inclui."
+ */
+export function planActivatedTemplatePayload(name: string, plan: string) {
+  return {
+    type: "template",
+    template: {
+      name: TEMPLATE_PLAN_ACTIVATED,
+      language: { code: TEMPLATE_LANG },
+      components: [
+        { type: "body", parameters: [
+          { type: "text", text: name },
+          { type: "text", text: plan },
+        ] },
+      ],
+    },
+  } as Record<string, unknown>;
+}
+
+/** Mesma mensagem em texto normal (Telegram, ou WhatsApp dentro das 24h). */
+export function planActivatedText(name: string, plan: string) {
+  return `Boas notícias, ${name}! O teu plano ${plan} já está ativo. Já podes usar tudo o que isso inclui.`;
 }

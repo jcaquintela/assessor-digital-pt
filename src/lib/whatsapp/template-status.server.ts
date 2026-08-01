@@ -7,11 +7,18 @@
 // janela de 24h. Se algum template for rejeitado ou desactivado, a flag
 // volta a desligar-se.
 
-import { TEMPLATE_MORNING, TEMPLATE_CHECKIN } from "@/lib/assessor/proactive/templates";
+import {
+  TEMPLATE_MORNING,
+  TEMPLATE_CHECKIN,
+  TEMPLATE_PLAN_ACTIVATED,
+} from "@/lib/assessor/proactive/templates";
 
 export const TEMPLATES_APPROVED_FLAG = "whatsapp.templates.approved";
 
+// Flag global de push proativo: continua a depender só dos dois templates
+// do ciclo diário. O template de plano ativado é verificado à parte.
 const REQUIRED_TEMPLATES = [TEMPLATE_MORNING, TEMPLATE_CHECKIN];
+const TRACKED_TEMPLATES = [...REQUIRED_TEMPLATES, TEMPLATE_PLAN_ACTIVATED];
 
 export interface TemplateStatus {
   name: string;
@@ -33,12 +40,18 @@ export async function fetchTemplateStatuses(): Promise<TemplateStatus[]> {
   if (!res.ok) return [];
   const json = (await res.json().catch(() => ({}))) as { data?: any[] };
   return ((json.data ?? []) as any[])
-    .filter((t) => REQUIRED_TEMPLATES.includes(String(t?.name ?? "")))
+    .filter((t) => TRACKED_TEMPLATES.includes(String(t?.name ?? "")))
     .map((t) => ({
       name: String(t.name),
       status: String(t.status ?? "UNKNOWN").toUpperCase(),
       language: t.language ?? null,
     }));
+}
+
+/** Estado de um template concreto na Meta (ex.: afonso_plano_ativado). */
+export async function isTemplateApproved(name: string): Promise<boolean> {
+  const all = await fetchTemplateStatuses();
+  return all.some((t) => t.name === name && t.status === "APPROVED");
 }
 
 /** Liga/desliga a flag conforme o estado na Meta. Devolve o que ficou. */

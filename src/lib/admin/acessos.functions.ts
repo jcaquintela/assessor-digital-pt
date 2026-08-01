@@ -303,6 +303,16 @@ export const updateAccess = createServerFn({ method: "POST" })
       before: before ?? null,
       after: { ...(before ?? {}), ...patch },
     });
+
+    // Subiu de base para plano pago: avisa pelo canal principal.
+    if (data.subscription_tier !== undefined) {
+      const { isUpgradeToPaid, notifyPlanActivatedSafe } = await import(
+        "@/lib/subscription/plan-activated.server"
+      );
+      if (isUpgradeToPaid((before as any)?.subscription_tier, data.subscription_tier)) {
+        await notifyPlanActivatedSafe(supabaseAdmin, data.target_user_id, data.subscription_tier);
+      }
+    }
     return { ok: true };
   });
 
