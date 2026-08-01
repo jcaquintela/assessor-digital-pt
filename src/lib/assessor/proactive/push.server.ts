@@ -9,7 +9,7 @@
 import { computePriorities, findAwaitingOutcome } from "@/lib/assessor/supreme/priorities.server";
 import { buildOutcomeCheckinPrompt } from "@/lib/assessor/interactive";
 import { sanitizeReply } from "@/lib/assessor/culture/sanitize";
-import { morningTemplatePayload } from "./templates";
+import { morningTemplatePayload, checkinTemplatePayload } from "./templates";
 
 /**
  * Autorização para enviar fora da janela de 24h.
