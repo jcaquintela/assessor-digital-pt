@@ -336,7 +336,7 @@ function QualidadePage() {
                         </span>
                       </td>
                       <td className="mini">{r.channel}</td>
-                      <td className="mono">{r.score ?? "—"}</td>
+                      <td className="mono">{r.score == null ? "—" : fmtPct(r.score)}</td>
                       <td>{r.understood_first_try ? "✓" : "—"}</td>
                       <td>{r.reformulated ? "✓" : "—"}</td>
                       <td>{r.executed_successfully ? "✓" : "—"}</td>
