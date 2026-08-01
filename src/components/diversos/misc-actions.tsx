@@ -1,3 +1,4 @@
+import { displayTitle, ensureTitle } from "@/lib/assessor/titles";
 // Ações diretas para uma nota em Diversos.
 // Cada nota deve poder sair daqui para o sítio certo em 1 clique:
 // associar a pessoa, associar a imóvel, criar seguimento ou ignorar.
@@ -156,7 +157,7 @@ function FollowUpDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const invalidate = useInvalidate();
-  const [title, setTitle] = useState(item.title);
+  const [title, setTitle] = useState(() => displayTitle(item.title, item.title ?? ""));
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const create = useMutation({
@@ -166,7 +167,7 @@ function FollowUpDialog({
       if (!userId) throw new Error("Sessão expirada.");
       const { error } = await supabase.from("follow_ups").insert({
         user_id: userId,
-        title: title.trim() || item.title,
+        title: ensureTitle(title, displayTitle(item.title, "Seguimento")),
         type: "tarefa",
         due_date: new Date(`${date}T09:00:00`).toISOString(),
         status: "pendente",

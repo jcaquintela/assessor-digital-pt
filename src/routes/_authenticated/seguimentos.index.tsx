@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 type SeguimentosSearch = { status?: "overdue" | "hoje" | "semana" | "concluidos" };
 
-export const Route = createFileRoute("/_authenticated/seguimentos")({
+export const Route = createFileRoute("/_authenticated/seguimentos/")({
   head: () => ({
     meta: [
       { title: "Seguimentos — Assessor do Consultor" },
