@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
@@ -68,6 +68,7 @@ function HojePage() {
   void oportunidades; void imoveis;
   const { name: assessorName } = useAssessorName();
   const now = new Date();
+  const navigate = useNavigate();
   const supremeQ = useServerFn(getHojeSupreme);
   const dismissFn = useServerFn(dismissPriority);
   const outcomeFn = useServerFn(saveFollowUpOutcome);
