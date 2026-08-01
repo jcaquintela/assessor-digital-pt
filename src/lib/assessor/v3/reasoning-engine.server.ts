@@ -536,6 +536,9 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   await applyMemoryWrites(ctx, decideR.decision.memory_writes);
 
   let reply = sanitizeReply(decideR.decision.natural_reply);
+  if (autoPause && !reply.includes("continuar o treino")) {
+    reply = `${reply}\n\n${SPARRING_CONTINUE_QUESTION}`.trim();
+  }
   let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" | "service_down" = "executed_ok";
   let archiveReason: string | null = null;
   // A IA esteve em baixo (créditos, rate limit, timeout, erro do provedor).
