@@ -72,4 +72,5 @@ export const OFF_MENU_PAGES: Record<string, string> = {
   "/admin/integracoes": "redirect para /admin/integracoes-flags",
   "/admin/funcionalidades": "redirect para /admin/integracoes-flags",
   "/admin/definicoes": "página vazia (em preparação), escondida até ter conteúdo",
+  "/admin/consultor/$id": "ficha de um consultor, aberta a partir de Utilizadores & planos",
 };
