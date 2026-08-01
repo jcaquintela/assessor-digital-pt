@@ -137,12 +137,21 @@ function HojePage() {
   const nomePessoa = (id?: string) => pessoas.find((p) => p.id === id)?.nome ?? "";
   const tituloImovel = (id?: string) => imoveis.find((i) => i.id === id)?.titulo ?? "";
 
-  const eventosHoje = useMemo(
-    () => seguimentos
-      .filter((s) => s.tipo === "Evento" && isSameDay(new Date(s.data), now) && s.estado !== "Concluído")
-      .sort((a, b) => (a.hora ?? "").localeCompare(b.hora ?? "")),
-    [seguimentos, now],
-  );
+  // Fonte única dos compromissos de hoje: o resumo do servidor (o mesmo que alimenta o cartão
+  // "Compromissos hoje"). Só se cai no store local enquanto o resumo ainda não chegou.
+  const eventosHoje = useMemo(() => {
+    const doServidor = overview.data?.summary?.agenda.items;
+    if (doServidor) {
+      return doServidor.map((e) => ({
+        id: e.id, titulo: e.title, hora: e.time ?? undefined,
+        pessoaId: e.personId ?? undefined, imovelId: e.propertyId ?? undefined,
+      }));
+    }
+    return seguimentos
+      .filter((s) => isSameDay(new Date(s.data), now) && s.estado !== "Concluído")
+      .sort((a, b) => (a.hora ?? "99:99").localeCompare(b.hora ?? "99:99"))
+      .map((s) => ({ id: s.id, titulo: s.titulo, hora: s.hora, pessoaId: s.pessoaId, imovelId: (s as any).imovelId }));
+  }, [overview.data, seguimentos, now]);
   const atrasados = useMemo(
     () => seguimentos.filter((s) => s.estado !== "Concluído" && new Date(s.data) < now && !isSameDay(new Date(s.data), now)),
     [seguimentos, now],
@@ -291,7 +300,7 @@ function HojePage() {
     }
   };
 
-  const compromissosCount = eventosHoje.length;
+  const compromissosCount = resumo?.agenda.today ?? eventosHoje.length;
   const prioridadesCount = priorities.length;
 
   // Uma só observação em destaque — a mais pressionante do dia.
@@ -497,7 +506,7 @@ function HojePage() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{e.titulo}</div>
                     <div className="c-muted text-xs">
-                      {[nomePessoa(e.pessoaId), tituloImovel((e as any).imovelId)].filter(Boolean).join(" · ") || "—"}
+                      {[nomePessoa(e.pessoaId), tituloImovel(e.imovelId)].filter(Boolean).join(" · ") || "—"}
                     </div>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "var(--muted)" }} />
