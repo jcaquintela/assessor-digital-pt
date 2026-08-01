@@ -619,6 +619,8 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
     }
   }
+  // Em treino nada é arquivado: a simulação não pode deixar rasto em Diversos.
+  if (!sparringActive) {
   reply = await applySafetyNet(ctx, {
     content: buildArchiveContent({
       trimmed,
@@ -629,6 +631,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     reason: archiveReason,
     reply,
   });
+  }
 
   const totalLatencyMs = Date.now() - started;
   const inputTokens = thinkR.usage.inputTokens + decideR.usage.inputTokens;
