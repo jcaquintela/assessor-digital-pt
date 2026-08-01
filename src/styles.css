@@ -35,6 +35,24 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   display: none;
 }
 
+/* Tab bar nativa: fixa no fundo do ecrã em mobile, acima do indicador de home. */
+@media (max-width: 767px) {
+  .mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+  }
+  /* Altura da barra (conteúdo ~56px) + safe area, para o conteúdo não ficar tapado. */
+  .mobile-nav-pad {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+  html[data-keyboard="open"] .mobile-nav-pad {
+    padding-bottom: 0;
+  }
+}
+
 /* Alvos de toque: garante 44x44 mínimos em ecrãs estreitos sem mudar o visual.
    O pseudo-elemento só alarga a área tocável do próprio elemento. */
 @media (max-width: 767px) {
