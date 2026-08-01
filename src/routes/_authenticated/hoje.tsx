@@ -324,17 +324,20 @@ function HojePage() {
 
       {/* A-bis. "{Assessor} chama a atenção": UMA observação por dia, nunca uma lista. */}
       {atencao && (
-        <section className="c-alert mb-6">
-          <div className="mb-1 flex items-center gap-2 text-[13px] font-semibold">
+        <section className="c-spotlight mb-4">
+          <div className="c-spot-tag mb-2">
             <AlertTriangle className="h-4 w-4" />
             {assessorName === "Assessor" ? "O Assessor" : assessorName} chama a atenção
           </div>
-          <p className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{atencao.action}</p>
-          <p className="mt-0.5 text-[13.5px]">
+          <h2 className="c-serif text-[18px] font-medium">{atencao.action}</h2>
+          <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
             {explainPriority(atencao)}
             {atencao.entity_label ? ` ${atencao.entity_label}.` : ""}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <Link className="c-cta" to="/assessor">
+              <MessageSquare className="h-3.5 w-3.5" /> Tratar no WhatsApp
+            </Link>
             {atencao.deal_id ? (
               <Link
                 className="c-btn"
@@ -345,9 +348,70 @@ function HojePage() {
                 <Briefcase className="h-3.5 w-3.5" /> Ver negócio
               </Link>
             ) : null}
-            <Link className="c-btn-ghost" to="/assessor">
-              <MessageSquare className="h-3.5 w-3.5" /> Tratar no WhatsApp
+          </div>
+        </section>
+      )}
+
+      {/* A-ter. Sugestão do mentor — conselho, não urgência. Só aparece se houver padrão real. */}
+      {mentor && tipOff !== mentor.key && (
+        <section className="c-mentor mb-6">
+          <div className="c-mentor-tag mb-2">
+            <Lightbulb className="h-4 w-4" /> O teu mentor sugere
+          </div>
+          <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ink)" }}>{mentor.text}</p>
+          <div className="mt-3 flex items-center gap-3">
+            <Link to={mentor.to as never} className="text-[12.5px] font-semibold" style={{ color: "var(--sage)" }}>
+              {mentor.linkLabel}
             </Link>
+            <button
+              type="button"
+              className="text-[12.5px] font-semibold"
+              style={{ color: "var(--muted)" }}
+              onClick={() => setTipOff(mentor.key)}
+            >
+              Ignorar
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* A-quater. Resumo geral — 6 rubricas, contagens simples, cada uma clicável. */}
+      {resumo && (
+        <section className="mb-6">
+          <div className="c-eyebrow mb-2.5">Resumo geral</div>
+          <div className="c-sumgrid">
+            <SumCard
+              tone="negocios" icon={Briefcase} to="/negocios"
+              stat={String(resumo.deals.count)} label="Negócios em curso"
+              meta={`${formatEUR(resumo.deals.value)} em jogo`}
+            />
+            <SumCard
+              tone="imoveis" icon={Home} to="/imoveis"
+              stat={String(resumo.properties.count)} label="Imóveis em carteira"
+              meta={`${resumo.properties.toAcquire} por angariar`}
+            />
+            <SumCard
+              tone="pessoas" icon={Users} to="/pessoas"
+              stat={String(resumo.people.count)} label="Pessoas"
+              meta={`${resumo.people.contactedWeek} contactadas esta semana`}
+            />
+            <SumCard
+              tone="diversos" icon={Layers} to="/diversos"
+              stat={String(resumo.misc.pending)} label="Por tratar" meta="em Diversos"
+            />
+            <SumCard
+              tone="neutro" icon={CalendarDays} to="/calendario"
+              stat={String(resumo.agenda.today)}
+              label={`Compromisso${resumo.agenda.today === 1 ? "" : "s"} hoje`}
+              meta={resumo.agenda.nextLabel
+                ? `${resumo.agenda.nextTime ? `${resumo.agenda.nextTime} — ` : ""}${resumo.agenda.nextLabel}`
+                : "nada marcado"}
+            />
+            <SumCard
+              tone="neutro" icon={Euro} to="/negocio"
+              stat={formatEUR(resumo.billing.forecast)} statMono
+              label="Comissões previstas" meta={`${resumo.billing.open} por fechar`}
+            />
           </div>
         </section>
       )}
