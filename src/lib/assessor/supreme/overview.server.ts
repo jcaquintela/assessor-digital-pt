@@ -66,8 +66,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     supabase.from("properties").select("id, status").eq("user_id", userId),
     supabase.from("people").select("id").eq("user_id", userId),
     supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox"),
-    supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, person_id, property_id")
-      .eq("user_id", userId).gte("due_date", start).lte("due_date", end).order("due_time", { ascending: true }),
+    supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, person_id, related_property_id")
       .eq("user_id", userId).gte("due_date", start).lte("due_date", end).order("due_time", { ascending: true }),
     supabase.from("financial_movements").select("id, type, amount, status").eq("user_id", userId).eq("type", "commission"),
     supabase.from("interactions").select("person_id").eq("user_id", userId).gte("occurred_at", isoDaysAgo(7)),
@@ -87,7 +86,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
       time: e.due_time ? String(e.due_time).slice(0, 5) : null,
       type: e.type ? String(e.type) : null,
       personId: e.person_id ?? null,
-      propertyId: e.property_id ?? null,
+      propertyId: e.related_property_id ?? e.property_id ?? null,
     }))
     .sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
   const next = eventRows[0] ?? null;
