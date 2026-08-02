@@ -18,9 +18,11 @@ import { deleteProperty, updatePropertyFields } from "@/lib/assessor/properties.
 import {
   addMarketingActivity, addPropertyCost, addPropertyInterest, addPropertyNote,
   addPropertyOffer, addPropertyVisit, createDealForProperty, deleteInterest,
-  deleteMarketingActivity, getPropertyDossier, setInterestStatus, setOfferStatus,
+  deleteMarketingActivity, dismissPropertyQuestion, getPropertyDossier, setInterestStatus, setOfferStatus,
   setPropertyCommercialState, setPropertyValues, setVisitState, toggleMarketingActivity,
 } from "@/lib/imoveis/ficha.functions";
+import { propertySummary } from "@/lib/imoveis/summary";
+import { propertyOpenQuestions } from "@/lib/imoveis/questions";
 import { setDealStage } from "@/lib/deals/deals.functions";
 import { StagePath } from "@/components/negocios/stage-path";
 import { PROPERTY_STATUSES, propertyStatusLabel } from "@/lib/assessor/properties-status";
@@ -105,6 +107,7 @@ function PropertyDetail() {
   const dropMkt = useServerFn(deleteMarketingActivity);
   const addCost = useServerFn(addPropertyCost);
   const addNote = useServerFn(addPropertyNote);
+  const dismissQuestion = useServerFn(dismissPropertyQuestion);
 
   const { data, isLoading } = useQuery({
     queryKey: ["property-dossier", id],
@@ -179,6 +182,26 @@ function PropertyDetail() {
 
   const comissaoPct = com?.pct ?? (p.commission_pct != null ? String(p.commission_pct) : "");
   const comissaoVal = com?.amount ?? (p.commission_amount != null ? String(p.commission_amount) : "");
+
+  // Resumo e dúvidas: calculados a partir dos dados que já estão na ficha.
+  const resumo = propertySummary({
+    property: p,
+    owner: data.owner as any,
+    deal,
+    currentOffer: data.currentOffer,
+    visitsDone: data.visits.filter((v) => v.state === "feita").length,
+    interestsOpen: data.interests.filter((i) => i.status !== "descartado" && i.status !== "fechado").length,
+  });
+  const duvidas = propertyOpenQuestions({
+    property: p,
+    owner: data.owner as any,
+    offers: data.offers,
+    visits: data.visits,
+    assistantPending: (data as any).assistantPending ?? [],
+    dismissedKeys: (data as any).dismissedKeys ?? [],
+  });
+  const ignorar = (key: string, question: string) =>
+    void act(() => dismissQuestion({ data: { propertyId: id, key, question } }), "Dúvida ignorada.");
 
   const field = (label: string, key: string, type: "text" | "number" = "text") => (
     <div className="grid gap-1">
