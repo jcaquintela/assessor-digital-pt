@@ -576,3 +576,51 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   background: rgba(184,134,59,.15); color: var(--brass-dark);
   font-family: "Fraunces", ui-serif, Georgia, serif; font-size: 15px; font-weight: 600;
 }
+
+/* ---- Pessoas v2: etiquetas físicas, cartões de grupo, cartão de pessoa ---- */
+.consult-root .c-taglabel {
+  position: relative; display: inline-flex; align-items: center; min-height: 34px;
+  padding: 6px 13px 6px 18px; background: var(--paper-2); border: 1px solid var(--line);
+  color: var(--ink-soft); font-size: 12.5px; font-weight: 600; cursor: pointer;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
+}
+.consult-root .c-taglabel::before {
+  content: ""; position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--muted);
+}
+.consult-root .c-taglabel.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+.consult-root .c-taglabel.active::before { background: rgba(255,255,255,.6); }
+.consult-root .c-tagadd {
+  width: 34px; height: 34px; border-radius: 50%; border: 1px dashed var(--line);
+  background: var(--c-card); color: var(--muted); display: grid; place-items: center; cursor: pointer;
+}
+.consult-root .c-groupcard {
+  border: 1px solid var(--line); border-left: 4px solid var(--brass); border-radius: 14px;
+  box-shadow: var(--c-shadow); padding: 14px; text-align: left; display: block; width: 100%;
+}
+.consult-root .c-groupcard.add {
+  display: grid; place-items: center; color: var(--muted); font-weight: 600; font-size: 13px;
+  border-style: dashed; border-left-style: dashed; border-left-color: var(--line);
+  background: var(--c-card); box-shadow: none; min-height: 84px;
+}
+.consult-root .c-personcard {
+  background: var(--c-card); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: var(--c-shadow); padding: 12px; display: flex; gap: 10px; align-items: flex-start;
+}
+.consult-root .c-pavatar {
+  width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--blue-bg); color: var(--blue); flex-shrink: 0;
+  font-family: "Fraunces", ui-serif, Georgia, serif; font-size: 16px; font-weight: 600;
+}
+.consult-root .c-check {
+  width: 44px; min-height: 44px; display: grid; place-items: center; flex-shrink: 0; cursor: pointer;
+}
+.consult-root .c-check span {
+  width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--line);
+  display: grid; place-items: center; background: #fff;
+}
+.consult-root .c-check[aria-checked="true"] span { background: var(--ink); border-color: var(--ink); color: #fff; }
+.consult-root .c-swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+.consult-root .c-swatch.selected { border-color: var(--ink); }
+.c-swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+.c-swatch.selected { border-color: #14213D; }
