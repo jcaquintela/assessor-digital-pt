@@ -50,6 +50,7 @@ function baseDb(profile: Record<string, any> = {}, extra: Record<string, any[]> 
     consultant_preferences: [{ user_id: USER, primary_channel: "whatsapp" }],
     assessor_messages: [],
     admin_audit_logs: [],
+    subscription_events: [],
     people: [{ id: "p1", user_id: USER }],
     properties: [{ id: "i1", user_id: USER }],
     ...extra,
