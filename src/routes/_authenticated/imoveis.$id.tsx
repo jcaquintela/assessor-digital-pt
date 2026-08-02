@@ -117,11 +117,15 @@ function PropertyDetail() {
     qc.invalidateQueries({ queryKey: ["properties"] });
     qc.invalidateQueries({ queryKey: ["deals"] });
   };
-  const run = <T,>(fn: (v: T) => Promise<unknown>, msg: string) =>
-    async (v: T) => {
-      try { await fn(v); refresh(); toast.success(msg); }
-      catch (e) { toast.error((e as Error).message); }
-    };
+  const act = async (fn: () => Promise<unknown>, msg: string) => {
+    try { await fn(); refresh(); toast.success(msg); }
+    catch (e) { toast.error((e as Error).message); }
+  };
+  const mutation = useMutation({
+    mutationFn: (patch: Record<string, unknown>) => update({ data: { id, patch } }),
+    onSuccess: () => { refresh(); toast.success("Alterações guardadas."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const [draft, setDraft] = useState<Record<string, any> | null>(null);
   const [novoInteressado, setNovoInteressado] = useState({ name: "", contact: "", source: "" });
@@ -150,8 +154,6 @@ function PropertyDetail() {
   const deal = data.deal as any | null;
   const editing = draft !== null;
   const editValues = draft ?? p;
-
-  const mutation = useMutationSave(update, id, refresh);
 
   const startEdit = () => setDraft({ ...p });
   const save = () => {
@@ -249,7 +251,7 @@ function PropertyDetail() {
           <>
             <StagePath
               stage={deal.stage}
-              onChange={(s) => void run(() => stageFn({ data: { id: deal.id, stage: s } }), "Fase atualizada.")(null as never)}
+              onChange={(s) => void act(() => stageFn({ data: { id: deal.id, stage: s } }), "Fase atualizada.")}
             />
             <div className="mt-3 text-xs text-muted-foreground">
               {deal.title}
@@ -261,7 +263,7 @@ function PropertyDetail() {
             <p className="text-sm text-muted-foreground">Este imóvel ainda não tem negócio ligado.</p>
             <Button
               size="sm"
-              onClick={() => void run(() => newDeal({ data: { propertyId: id } }), "Negócio criado e ligado.")(null as never)}
+              onClick={() => void act(() => newDeal({ data: { propertyId: id } }), "Negócio criado e ligado.")}
             >
               <Plus className="mr-1 h-4 w-4" /> Criar negócio
             </Button>
@@ -301,13 +303,13 @@ function PropertyDetail() {
               onChange={(e) => setCom({ pct: com?.pct ?? "", amount: e.target.value })} />
             <Button
               variant="outline"
-              onClick={() => void run(() => values({
+              onClick={() => void act(() => values({
                 data: {
                   propertyId: id,
                   commissionPct: comissaoPct === "" ? null : Number(comissaoPct),
                   ...(com?.amount ? { commissionAmount: Number(com.amount) } : {}),
                 },
-              }), "Valores guardados.")(null as never).then(() => setCom(null))}
+              }), "Valores guardados.").then(() => setCom(null))}
             >
               Guardar comissão
             </Button>
@@ -347,8 +349,8 @@ function PropertyDetail() {
           right={
             <Switch
               checked={Boolean(p.reserved_at)}
-              onCheckedChange={(v) => void run(() => commercial({ data: { propertyId: id, reserved: v } }),
-                v ? "Reserva registada." : "Reserva retirada.")(null as never)}
+              onCheckedChange={(v) => void act(() => commercial({ data: { propertyId: id, reserved: v } }),
+                v ? "Reserva registada." : "Reserva retirada.")}
             />
           }
         />
@@ -358,8 +360,8 @@ function PropertyDetail() {
           right={
             <Switch
               checked={Boolean(p.sold_at)}
-              onCheckedChange={(v) => void run(() => commercial({ data: { propertyId: id, sold: v } }),
-                v ? "Imóvel marcado como vendido." : "Venda anulada.")(null as never)}
+              onCheckedChange={(v) => void act(() => commercial({ data: { propertyId: id, sold: v } }),
+                v ? "Imóvel marcado como vendido." : "Venda anulada.")}
             />
           }
         />
@@ -375,7 +377,7 @@ function PropertyDetail() {
             meta={[i.contact, i.source, formatData(i.createdAt)].filter(Boolean).join(" · ")}
             right={
               <div className="flex items-center gap-1">
-                <Select value={i.status} onValueChange={(v) => void run(() => interestStatus({ data: { id: i.id, status: v } }), "Estado atualizado.")(null as never)}>
+                <Select value={i.status} onValueChange={(v) => void act(() => interestStatus({ data: { id: i.id, status: v } }), "Estado atualizado.")}>
                   <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="a_contactar">A contactar</SelectItem>
@@ -384,7 +386,7 @@ function PropertyDetail() {
                     <SelectItem value="sem_interesse">Sem interesse</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button size="sm" variant="ghost" onClick={() => void run(() => dropInterest({ data: { id: i.id } }), "Removido.")(null as never)}>
+                <Button size="sm" variant="ghost" onClick={() => void act(() => dropInterest({ data: { id: i.id } }), "Removido.")}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -397,7 +399,7 @@ function PropertyDetail() {
           <Input placeholder="Origem (placa, portal…)" value={novoInteressado.source} onChange={(e) => setNovoInteressado({ ...novoInteressado, source: e.target.value })} />
           <Button
             variant="outline"
-            onClick={() => void run(() => addInterest({ data: { propertyId: id, ...novoInteressado } }), "Interessado registado.")(null as never)
+            onClick={() => void act(() => addInterest({ data: { propertyId: id, ...novoInteressado } }), "Interessado registado.")
               .then(() => setNovoInteressado({ name: "", contact: "", source: "" }))}
           >
             <Plus className="mr-1 h-4 w-4" /> Registar
@@ -414,7 +416,7 @@ function PropertyDetail() {
             main={v.who ?? v.title}
             meta={`${formatData(v.dueAt)}${v.dueTime ? `, ${String(v.dueTime).slice(0, 5)}` : ""} — ${v.title}`}
             right={
-              <Select value={v.state} onValueChange={(s) => void run(() => visitStateFn({ data: { id: v.id, state: s as any } }), "Visita atualizada.")(null as never)}>
+              <Select value={v.state} onValueChange={(s) => void act(() => visitStateFn({ data: { id: v.id, state: s as any } }), "Visita atualizada.")}>
                 <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="agendada">Agendada</SelectItem>
@@ -431,7 +433,7 @@ function PropertyDetail() {
           <Input type="time" value={novaVisita.time} onChange={(e) => setNovaVisita({ ...novaVisita, time: e.target.value })} />
           <Button
             variant="outline"
-            onClick={() => void run(() => addVisit({ data: { propertyId: id, ...novaVisita } }), "Visita agendada.")(null as never)
+            onClick={() => void act(() => addVisit({ data: { propertyId: id, ...novaVisita } }), "Visita agendada.")
               .then(() => setNovaVisita({ who: "", date: "", time: "" }))}
           >
             <Plus className="mr-1 h-4 w-4" /> Agendar visita
@@ -448,7 +450,7 @@ function PropertyDetail() {
             main={`${formatEUR(o.amount)}${o.from ? ` — ${o.from}` : ""}`}
             meta={`Recebida ${formatData(o.date)}`}
             right={
-              <Select value={o.status} onValueChange={(s) => void run(() => offerStatus({ data: { id: o.id, status: s as any } }), "Proposta atualizada.")(null as never)}>
+              <Select value={o.status} onValueChange={(s) => void act(() => offerStatus({ data: { id: o.id, status: s as any } }), "Proposta atualizada.")}>
                 <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pendente">Pendente</SelectItem>
@@ -464,7 +466,7 @@ function PropertyDetail() {
           <Input placeholder="De quem" value={novaProposta.from} onChange={(e) => setNovaProposta({ ...novaProposta, from: e.target.value })} />
           <Button
             variant="outline"
-            onClick={() => void run(() => addOffer({ data: { propertyId: id, amount: Number(novaProposta.amount), from: novaProposta.from } }), "Proposta registada.")(null as never)
+            onClick={() => void act(() => addOffer({ data: { propertyId: id, amount: Number(novaProposta.amount), from: novaProposta.from } }), "Proposta registada.")
               .then(() => setNovaProposta({ amount: "", from: "" }))}
           >
             <Plus className="mr-1 h-4 w-4" /> Registar proposta
@@ -484,9 +486,9 @@ function PropertyDetail() {
               <div className="flex items-center gap-2">
                 <Switch
                   checked={m.status === "feito"}
-                  onCheckedChange={(v) => void run(() => toggleMkt({ data: { id: m.id, done: v } }), "Atividade atualizada.")(null as never)}
+                  onCheckedChange={(v) => void act(() => toggleMkt({ data: { id: m.id, done: v } }), "Atividade atualizada.")}
                 />
-                <Button size="sm" variant="ghost" onClick={() => void run(() => dropMkt({ data: { id: m.id } }), "Removida.")(null as never)}>
+                <Button size="sm" variant="ghost" onClick={() => void act(() => dropMkt({ data: { id: m.id } }), "Removida.")}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -497,7 +499,7 @@ function PropertyDetail() {
           <Input placeholder="Ex.: fotos profissionais, anúncio no portal, vídeo…" value={novaAtividade} onChange={(e) => setNovaAtividade(e.target.value)} />
           <Button
             variant="outline"
-            onClick={() => void run(() => addMkt({ data: { propertyId: id, title: novaAtividade } }), "Atividade registada.")(null as never)
+            onClick={() => void act(() => addMkt({ data: { propertyId: id, title: novaAtividade } }), "Atividade registada.")
               .then(() => setNovaAtividade(""))}
           >
             <Plus className="mr-1 h-4 w-4" /> Registar atividade
@@ -516,7 +518,7 @@ function PropertyDetail() {
           <Input placeholder="Valor (€)" inputMode="decimal" value={novaDespesa.amount} onChange={(e) => setNovaDespesa({ ...novaDespesa, amount: e.target.value })} />
           <Button
             variant="outline"
-            onClick={() => void run(() => addCost({ data: { propertyId: id, description: novaDespesa.description, amount: Number(novaDespesa.amount) } }), "Despesa registada.")(null as never)
+            onClick={() => void act(() => addCost({ data: { propertyId: id, description: novaDespesa.description, amount: Number(novaDespesa.amount) } }), "Despesa registada.")
               .then(() => setNovaDespesa({ description: "", amount: "" }))}
           >
             <Plus className="mr-1 h-4 w-4" /> Registar despesa
@@ -540,7 +542,7 @@ function PropertyDetail() {
           <div>
             <Button
               variant="outline"
-              onClick={() => void run(() => addNote({ data: { propertyId: id, note: novaNota } }), "Nota registada.")(null as never)
+              onClick={() => void act(() => addNote({ data: { propertyId: id, note: novaNota } }), "Nota registada.")
                 .then(() => setNovaNota(""))}
             >
               <Plus className="mr-1 h-4 w-4" /> Adicionar nota
@@ -610,12 +612,4 @@ function PropertyDetail() {
       )}
     </AppShell>
   );
-}
-
-function useMutationSave(update: any, id: string, refresh: () => void) {
-  return useMutation({
-    mutationFn: (patch: Record<string, unknown>) => update({ data: { id, patch } }),
-    onSuccess: () => { refresh(); toast.success("Alterações guardadas."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
 }
