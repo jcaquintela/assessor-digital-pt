@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runDomainTool } from "@/lib/assessor/v2/domain.server";
+import { dispatchToolCall } from "@/lib/assessor/v2/domain.server";
 
 function fakeSupabase(inserts: Record<string, any[]>) {
   const api = (table: string) => ({
@@ -25,7 +25,7 @@ function fakeSupabase(inserts: Record<string, any[]>) {
 describe("comissão por conversa", () => {
   it("não cria negócio sozinho", async () => {
     const inserts: Record<string, any[]> = {};
-    const res = await runDomainTool(
+    const res = await dispatchToolCall(
       { supabase: fakeSupabase(inserts), userId: "u1", channel: "whatsapp" } as any,
       "create_financial_movement",
       { type: "commission", amount: 5000, description: "Comissão do terreno", deal_value: 200000, property_reference: "terreno" },
