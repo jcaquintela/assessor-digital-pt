@@ -35,7 +35,7 @@ const ROLE_KEYWORDS: Array<[RegExp, DetectedRole]> = [
 const PROPERTY_TYPE_RE = /\bT\d\b|\bstudio\b|\bmoradia\b|\bapartamento\b|\bloja\b|\bterreno\b/i;
 
 const NAME_INTRO_RE =
-  /\b(?:regista|guarda|adiciona|cria|conheci|contacto|contacta|liga\s+ao|liga\s+à)\s+(?:(?:o|a|este\s+contacto:?)\s+)?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+){0,3})/i;
+  /\b(?:regista|guarda|adiciona|cria|conheci|contacto|contacta|liga\s+ao|liga\s+à)\s+(?:(?:o|a|este\s+contacto:?)\s+)?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+){0,3})/;
 
 // "Ana Silva, 912 333 444, proprietária de..." — o nome vem primeiro, sem
 // verbo antes. Sem isto o contacto ficava gravado como "Sem nome".
