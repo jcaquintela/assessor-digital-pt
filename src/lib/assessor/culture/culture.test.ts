@@ -81,12 +81,12 @@ describe("cenário 1 — saudação com nome personalizado", () => {
     expect(stripAssessorVocative(original, "Sofia")).toBe(original);
   });
 
-  it("com nome por defeito ('Assessor') só remove com pontuação — nunca em minúsculas ambíguas", () => {
-    expect(stripAssessorVocative("Assessor, bom dia.", ASSESSOR_NAME_DEFAULT)).toBe(
+  it("com nome por defeito ('Afonso') só remove com pontuação — nunca em minúsculas ambíguas", () => {
+    expect(stripAssessorVocative(`${ASSESSOR_NAME_DEFAULT}, bom dia.`, ASSESSOR_NAME_DEFAULT)).toBe(
       "bom dia.",
     );
-    // 'assessor' colado ao verbo é ambíguo: mantém tudo.
-    const ambiguous = "assessor lembra-me de ligar ao João.";
+    // nome colado ao verbo é ambíguo: mantém tudo.
+    const ambiguous = `${ASSESSOR_NAME_DEFAULT.toLowerCase()} lembra-me de ligar ao João.`;
     expect(stripAssessorVocative(ambiguous, ASSESSOR_NAME_DEFAULT)).toBe(ambiguous);
   });
 });
