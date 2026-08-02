@@ -175,7 +175,7 @@ export interface AiCallInput {
 function buildInstructions(input: AiCallInput): string {
   const tz = input.timezone || "Europe/Lisbon";
   const nowStr = input.now.toLocaleString("pt-PT", { timeZone: tz });
-  const assessorName = input.assessorName || "Assessor";
+  const assessorName = input.assessorName || "Afonso";
   const userName = input.userName || "consultor";
   const pending = input.pendingAction
     ? `Existe uma ação pendente do tipo "${input.pendingAction.intent}". Se a mensagem atual for uma confirmação clara ("sim", "confirma", "regista", "pode ser") devolve intent "confirm" com entities todas a null. Se for cancelamento ("não", "cancela", "esquece") devolve intent "cancel" com entities todas a null. Se a mensagem introduzir uma acção nova, IGNORA a acção pendente e extrai apenas o que está na mensagem actual.`

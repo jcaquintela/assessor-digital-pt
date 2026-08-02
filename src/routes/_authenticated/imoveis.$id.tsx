@@ -307,7 +307,7 @@ function PropertyDetail() {
                     <Button size="sm" variant="outline" onClick={() => startEdit()}>Corrigir na ficha</Button>
                   )}
                   <Button size="sm" variant="ghost" asChild>
-                    <Link to="/assessor">Perguntar {assessorName === "Assessor" ? "ao Assessor" : `ao ${assessorName}`}</Link>
+                    <Link to="/assessor">Perguntar {`ao ${assessorName}`}</Link>
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => ignorar(q.key, q.text)}>Ignorar</Button>
                 </div>

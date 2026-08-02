@@ -117,7 +117,7 @@ function AssessorPage() {
               <br />
               {canWrite
                 ? <>Escreve aqui em baixo ou pelo {canalLabel}. É a mesma conversa.</>
-                : <>Fala com {assessorName === "Assessor" ? "o teu assessor" : `o ${assessorName}`} pelo {canalLabel}. O histórico aparece aqui.</>}
+                : <>Fala com {`o ${assessorName}`} pelo {canalLabel}. O histórico aparece aqui.</>}
             </div>
           )}
           <div className="mx-auto flex max-w-3xl flex-col gap-2">
