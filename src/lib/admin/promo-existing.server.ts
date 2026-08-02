@@ -190,6 +190,13 @@ export async function applyPromoToUser(
 
   const { notifyPlanActivatedSafe } = await import("@/lib/subscription/plan-activated.server");
   await notifyPlanActivatedSafe(supabaseAdmin, userId, check.tier);
+  // Código promocional = conversão manual: se havia período experimental
+  // a correr, fica convertido (não expira nem faz downgrade).
+  const { markTrialConverted, startWhatsAppTrialIfEligibleSafe } = await import(
+    "@/lib/subscription/trial.server"
+  );
+  const conv = await markTrialConverted(supabaseAdmin, userId, `Código ${check.code} aplicado.`);
+  if (!conv.converted) await startWhatsAppTrialIfEligibleSafe(supabaseAdmin, userId, check.tier);
 
   return {
     ok: true,

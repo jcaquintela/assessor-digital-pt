@@ -264,6 +264,7 @@ export type Database = {
       }
       assessor_messages: {
         Row: {
+          archived_at: string | null
           channel: string
           content: string
           conversation_id: string | null
@@ -281,6 +282,7 @@ export type Database = {
           whatsapp_message_id: string | null
         }
         Insert: {
+          archived_at?: string | null
           channel?: string
           content: string
           conversation_id?: string | null
@@ -298,6 +300,7 @@ export type Database = {
           whatsapp_message_id?: string | null
         }
         Update: {
+          archived_at?: string | null
           channel?: string
           content?: string
           conversation_id?: string | null
@@ -2432,6 +2435,12 @@ export type Database = {
           phone_verified_at: string | null
           primary_channel: string
           subscription_tier: string
+          telegram_retention_warned_at: string | null
+          trial_expires_at: string | null
+          trial_started_at: string | null
+          trial_status: string | null
+          trial_tier: string | null
+          trial_warned_at: string | null
           updated_at: string
           whatsapp_link_status: string
           whatsapp_linked_at: string | null
@@ -2453,6 +2462,12 @@ export type Database = {
           phone_verified_at?: string | null
           primary_channel?: string
           subscription_tier?: string
+          telegram_retention_warned_at?: string | null
+          trial_expires_at?: string | null
+          trial_started_at?: string | null
+          trial_status?: string | null
+          trial_tier?: string | null
+          trial_warned_at?: string | null
           updated_at?: string
           whatsapp_link_status?: string
           whatsapp_linked_at?: string | null
@@ -2474,6 +2489,12 @@ export type Database = {
           phone_verified_at?: string | null
           primary_channel?: string
           subscription_tier?: string
+          telegram_retention_warned_at?: string | null
+          trial_expires_at?: string | null
+          trial_started_at?: string | null
+          trial_status?: string | null
+          trial_tier?: string | null
+          trial_warned_at?: string | null
           updated_at?: string
           whatsapp_link_status?: string
           whatsapp_linked_at?: string | null

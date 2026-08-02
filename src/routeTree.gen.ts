@@ -81,6 +81,8 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as AuthenticatedOportunidadesProspecaoIndexRouteImport } from './routes/_authenticated/oportunidades.prospecao.index'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksWhatsappTemplateStatusRouteImport } from './routes/api/public/hooks/whatsapp-template-status'
+import { Route as ApiPublicHooksTrialLifecycleRouteImport } from './routes/api/public/hooks/trial-lifecycle'
+import { Route as ApiPublicHooksTelegramRetentionRouteImport } from './routes/api/public/hooks/telegram-retention'
 import { Route as ApiPublicHooksSubmitCheckinTemplateRouteImport } from './routes/api/public/hooks/submit-checkin-template'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
 import { Route as ApiPublicHooksProactivePushRouteImport } from './routes/api/public/hooks/proactive-push'
@@ -469,6 +471,18 @@ const ApiPublicHooksWhatsappTemplateStatusRoute =
     path: '/api/public/hooks/whatsapp-template-status',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksTrialLifecycleRoute =
+  ApiPublicHooksTrialLifecycleRouteImport.update({
+    id: '/api/public/hooks/trial-lifecycle',
+    path: '/api/public/hooks/trial-lifecycle',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksTelegramRetentionRoute =
+  ApiPublicHooksTelegramRetentionRouteImport.update({
+    id: '/api/public/hooks/telegram-retention',
+    path: '/api/public/hooks/telegram-retention',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSubmitCheckinTemplateRoute =
   ApiPublicHooksSubmitCheckinTemplateRouteImport.update({
     id: '/api/public/hooks/submit-checkin-template',
@@ -595,6 +609,8 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
+  '/api/public/hooks/telegram-retention': typeof ApiPublicHooksTelegramRetentionRoute
+  '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -675,6 +691,8 @@ export interface FileRoutesByTo {
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
+  '/api/public/hooks/telegram-retention': typeof ApiPublicHooksTelegramRetentionRoute
+  '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -758,6 +776,8 @@ export interface FileRoutesById {
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
+  '/api/public/hooks/telegram-retention': typeof ApiPublicHooksTelegramRetentionRoute
+  '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -841,6 +861,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/hooks/submit-checkin-template'
+    | '/api/public/hooks/telegram-retention'
+    | '/api/public/hooks/trial-lifecycle'
     | '/api/public/hooks/whatsapp-template-status'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao/'
@@ -921,6 +943,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/hooks/submit-checkin-template'
+    | '/api/public/hooks/telegram-retention'
+    | '/api/public/hooks/trial-lifecycle'
     | '/api/public/hooks/whatsapp-template-status'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao'
@@ -1003,6 +1027,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/hooks/submit-checkin-template'
+    | '/api/public/hooks/telegram-retention'
+    | '/api/public/hooks/trial-lifecycle'
     | '/api/public/hooks/whatsapp-template-status'
     | '/api/public/telegram/webhook'
     | '/_authenticated/oportunidades/prospecao/'
@@ -1030,6 +1056,8 @@ export interface RootRouteChildren {
   ApiPublicHooksProactivePushRoute: typeof ApiPublicHooksProactivePushRoute
   ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
   ApiPublicHooksSubmitCheckinTemplateRoute: typeof ApiPublicHooksSubmitCheckinTemplateRoute
+  ApiPublicHooksTelegramRetentionRoute: typeof ApiPublicHooksTelegramRetentionRoute
+  ApiPublicHooksTrialLifecycleRoute: typeof ApiPublicHooksTrialLifecycleRoute
   ApiPublicHooksWhatsappTemplateStatusRoute: typeof ApiPublicHooksWhatsappTemplateStatusRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -1540,6 +1568,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksWhatsappTemplateStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/trial-lifecycle': {
+      id: '/api/public/hooks/trial-lifecycle'
+      path: '/api/public/hooks/trial-lifecycle'
+      fullPath: '/api/public/hooks/trial-lifecycle'
+      preLoaderRoute: typeof ApiPublicHooksTrialLifecycleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/telegram-retention': {
+      id: '/api/public/hooks/telegram-retention'
+      path: '/api/public/hooks/telegram-retention'
+      fullPath: '/api/public/hooks/telegram-retention'
+      preLoaderRoute: typeof ApiPublicHooksTelegramRetentionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/submit-checkin-template': {
       id: '/api/public/hooks/submit-checkin-template'
       path: '/api/public/hooks/submit-checkin-template'
@@ -1825,6 +1867,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
   ApiPublicHooksSubmitCheckinTemplateRoute:
     ApiPublicHooksSubmitCheckinTemplateRoute,
+  ApiPublicHooksTelegramRetentionRoute: ApiPublicHooksTelegramRetentionRoute,
+  ApiPublicHooksTrialLifecycleRoute: ApiPublicHooksTrialLifecycleRoute,
   ApiPublicHooksWhatsappTemplateStatusRoute:
     ApiPublicHooksWhatsappTemplateStatusRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,

@@ -311,6 +311,8 @@ export const updateAccess = createServerFn({ method: "POST" })
       );
       if (isUpgradeToPaid((before as any)?.subscription_tier, data.subscription_tier)) {
         await notifyPlanActivatedSafe(supabaseAdmin, data.target_user_id, data.subscription_tier);
+        const { startWhatsAppTrialIfEligibleSafe } = await import("@/lib/subscription/trial.server");
+        await startWhatsAppTrialIfEligibleSafe(supabaseAdmin, data.target_user_id, data.subscription_tier);
       }
     }
     return { ok: true };

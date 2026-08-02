@@ -199,6 +199,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       .from("assessor_messages")
       .select("role, content, created_at, id")
       .eq("user_id", userId).eq("channel", channel)
+      .is("archived_at", null)
       .order("created_at", { ascending: false })
       .limit(HISTORY_LIMIT),
   ]);

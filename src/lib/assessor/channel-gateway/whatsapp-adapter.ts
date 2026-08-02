@@ -527,6 +527,16 @@ async function tryLinkCode(
       resource_type: "whatsapp",
       metadata: { phone: senderPhone } as never,
     } as never);
+    // Conta já num plano pago a ligar WhatsApp: arranca o período experimental.
+    {
+      const { data: p } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", row.user_id)
+        .maybeSingle();
+      const { startWhatsAppTrialIfEligibleSafe } = await import("@/lib/subscription/trial.server");
+      await startWhatsAppTrialIfEligibleSafe(supabaseAdmin, row.user_id, (p as any)?.subscription_tier);
+    }
     // WhatsApp passa a canal principal, mesmo que já houvesse Telegram ligado.
     const { linkChannelToUser } = await import("@/lib/assessor/channels.server");
     await linkChannelToUser(supabaseAdmin, "whatsapp", senderPhone, row.user_id);

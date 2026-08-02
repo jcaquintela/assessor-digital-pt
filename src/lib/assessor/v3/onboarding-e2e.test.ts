@@ -79,6 +79,8 @@ function makeDb() {
       _rows: rows(),
       select() { return q; },
       eq() { return q; },
+      is() { return q; },
+      not() { return q; },
       order() { q._rows = [...q._rows].reverse(); return q; },
       limit(n: number) { return Promise.resolve({ data: q._rows.slice(0, n), error: null }); },
       maybeSingle() { return Promise.resolve({ data: q._rows[0] ?? null, error: null }); },
