@@ -173,11 +173,21 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
     return days(lastByProperty.get(p.id) ?? p.created_at ?? null) >= 10;
   });
   if (parados.length) {
+    // O caso mais parado do grupo serve de exemplo concreto.
+    const pior = parados
+      .map((p) => {
+        const contacto = lastByProperty.get(p.id) ?? null;
+        return { dias: days(contacto ?? p.created_at ?? null), temContacto: !!contacto };
+      })
+      .sort((a, b) => b.dias - a.dias)[0];
     return {
       key: "imoveis-parados",
       text: `Tens ${parados.length} imóve${parados.length === 1 ? "l" : "is"} "Por angariar" há mais de 10 dias sem nenhum movimento registado. Vale a pena retomares o contacto antes que arrefeçam de vez.`,
       linkLabel: parados.length === 1 ? "Ver o imóvel →" : `Ver os ${parados.length} imóveis →`,
       to: "/imoveis",
+      reason: pior.temContacto
+        ? `limiar de 10 dias; o mais parado está há ${pior.dias} dias desde o último contacto real registado (interação ou seguimento com resultado, incluindo através de um negócio ligado ao imóvel).`
+        : `limiar de 10 dias; o mais parado nunca teve contacto registado — contam-se ${pior.dias} dias desde que criaste a ficha. Editar campos não conta como contacto.`,
     };
   }
 
@@ -189,11 +199,22 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
     return !contacto || days(contacto) >= 25;
   });
   if (presos.length) {
+    const piorD = presos
+      .map((d) => {
+        const contacto = lastByDeal.get(d.id) ?? null;
+        return { fase: days(d.stage_changed_at), contacto: contacto ? days(contacto) : null };
+      })
+      .sort((a, b) => b.fase - a.fase)[0];
     return {
       key: "negocios-parados",
       text: `${presos.length === 1 ? "Há 1 negócio" : `Há ${presos.length} negócios`} na mesma fase há mais de três semanas. Ou avança, ou fecha — deixar parado só ocupa cabeça.`,
       linkLabel: "Ver negócios →",
       to: "/negocios",
+      reason: `limiar de 25 dias; o mais preso está na mesma fase há ${piorD.fase} dias e ${
+        piorD.contacto === null
+          ? "sem qualquer contacto real registado"
+          : `com o último contacto real há ${piorD.contacto} dias`
+      } (interações e seguimentos com resultado).`,
     };
   }
 
@@ -207,6 +228,9 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
         text: `Tens ${frias.length} pessoas sem contacto registado há mais de dois meses — ${frias.slice(0, 2).map((p) => String(p.name).split(" ")[0]).join(" e ")} entre elas. Um contacto curto agora vale mais do que uma campanha daqui a meio ano.`,
         linkLabel: "Ver pessoas →",
         to: "/pessoas",
+        reason: `limiar de 60 dias; a mais fria está há ${Math.max(
+          ...frias.map((p) => days(lastByPerson.get(p.id) ?? p.created_at ?? null)),
+        )} dias sem interação nem seguimento com resultado registado.`,
       };
     }
   }
