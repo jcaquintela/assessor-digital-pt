@@ -28,7 +28,9 @@ const REPLY_MEDIA_ERROR = "Recebi o teu ficheiro mas não consegui descarregá-l
 const REPLY_TRANSCRIBE_FAIL =
   "Recebi o áudio mas não consegui transcrevê-lo. Guardei em Drive.";
 const REPLY_ONBOARDING = (name: string) =>
-  `Olá${name ? ` ${name}` : ""}! Sou o teu Assessor. Falamos por aqui como se fosse WhatsApp — dizes-me em linguagem natural e eu organizo pessoas, imóveis, agenda e prospeção.\n\nExperimenta: "Placa Santa Maria da Feira junto ao Castelo, 932145678 Apartamento"`;
+  `${aiDisclosureOpening(name)} Sou o assessor digital de quem trabalha em imobiliário: falas comigo em linguagem natural e eu organizo pessoas, imóveis, agenda e prospeção.\n\n` +
+  `Esta conta é tua e é a mesma em qualquer canal — se um dia ligares o WhatsApp, continuas exatamente onde ficaste.\n\n` +
+  `Experimenta: "Placa Santa Maria da Feira junto ao Castelo, 932145678 Apartamento"`;
 
 function extractInviteCode(text: string): string | null {
   const trimmed = text.trim();

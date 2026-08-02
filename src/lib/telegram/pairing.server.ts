@@ -39,8 +39,9 @@ export interface PairingOutcome {
 /* ---------------- Textos (PT-PT, curtos, sem jargão) ---------------- */
 
 const ASK_WHATSAPP =
-  "Olá! Sou o Afonso, o assessor digital de quem trabalha em imobiliário: guardo pessoas, imóveis, visitas e seguimentos a partir do que me escreves, em linguagem normal.\n\n" +
-  "Antes de começarmos: já falas comigo pelo WhatsApp? Responde só sim ou não.";
+  `${aiDisclosureOpening()} Sou o assessor digital de quem trabalha em imobiliário: guardo pessoas, imóveis, visitas e seguimentos a partir do que me escreves, em linguagem normal.\n\n` +
+  "Antes de começarmos: já falas comigo pelo WhatsApp? Responde só sim ou não. " +
+  "Se sim, ligo os dois canais à mesma conta — não crio conta nova nem duplico nada.";
 
 const ASK_PHONE =
   "Boa. Diz-me o número de WhatsApp que usas comigo, em formato internacional (por exemplo +351912345678).";
