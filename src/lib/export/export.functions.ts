@@ -34,12 +34,13 @@ export const exportPeople = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("people")
-      .select("name, phone, email, relationship_type, summary, created_at")
+      .select("id, name, phone, email, relationship_type, summary, created_at")
       .eq("user_id", userId)
       .order("name", { ascending: true })
       .limit(5000);
     if (error) throw new Error(error.message);
     return (data ?? []) as Array<{
+      id: string;
       name: string;
       phone: string | null;
       email: string | null;
