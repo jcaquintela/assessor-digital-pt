@@ -794,9 +794,10 @@ TOOL_SPECS.push(
         type: "object",
         properties: {
           property_id: { type: "string", format: "uuid" },
+          property_query: { type: ["string", "null"] },
           category_name: { type: ["string", "null"] },
         },
-        required: ["property_id"],
+        required: [],
       },
     },
   },
