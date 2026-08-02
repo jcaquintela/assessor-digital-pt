@@ -86,6 +86,7 @@ export function CategoryBadge({ category }: { category: PropertyCategory | null 
 // Filtro por categoria + gestão (criar, renomear, apagar) — igual ao Drive.
 export function PropertyCategoryFilter({
   selected,
+  hideHeading = false,
   onSelect,
 }: {
   selected: string | null;
