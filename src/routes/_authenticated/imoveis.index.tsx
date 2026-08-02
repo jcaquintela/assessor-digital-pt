@@ -181,15 +181,32 @@ function ImoveisPage() {
         />
       </div>
 
-      <div className="mb-4"><PropertyCategoryFilter selected={catId} onSelect={setCatId} /></div>
-      <div className="mb-5"><TagFilterRow org={org} tagId={tagId} onTag={setTagId} /></div>
-      <div className="mb-6">
-        <GroupCards
-          org={org}
-          items={all.map((i) => ({ id: i.id, label: i.title as string }))}
-          noun={["imóvel", "imóveis"]}
-          emptyLabel="Sem imóveis ainda"
-        />
+      <div className="mb-6 flex flex-col gap-2">
+        <FilterSection
+          title="Categoria"
+          count={categorias.length}
+          activeLabel={catId ? (categorias.find((c) => c.id === catId)?.name ?? null) : null}
+          onClearActive={() => setCatId(null)}
+        >
+          <PropertyCategoryFilter selected={catId} onSelect={setCatId} hideHeading />
+        </FilterSection>
+        <FilterSection
+          title="Etiquetas"
+          count={org.tags.length}
+          activeLabel={tagId ? (org.tags.find((t) => t.id === tagId)?.name ?? null) : null}
+          onClearActive={() => setTagId(null)}
+        >
+          <TagFilterRow org={org} tagId={tagId} onTag={setTagId} hideHeading />
+        </FilterSection>
+        <FilterSection title="Grupos" count={org.folders.length}>
+          <GroupCards
+            org={org}
+            items={all.map((i) => ({ id: i.id, label: i.title as string }))}
+            noun={["imóvel", "imóveis"]}
+            emptyLabel="Sem imóveis ainda"
+            hideHeading
+          />
+        </FilterSection>
       </div>
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
