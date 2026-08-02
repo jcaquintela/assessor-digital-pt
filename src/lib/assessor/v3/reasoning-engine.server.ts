@@ -41,8 +41,8 @@ import {
   ambiguousPersonReply,
 } from "./person-brief";
 import { buildPersonBrief } from "./person-brief.server";
-import { detectWhatsNewQuery, formatWhatsNewReply } from "./whats-new";
-import { listRecentProductUpdates } from "./whats-new.server";
+import { detectWhatsNewQuery, formatWhatsNewReply, noRecentUpdatesReply, NO_UPDATES_REPLY } from "./whats-new";
+import { lastProductUpdate, listRecentProductUpdates } from "./whats-new.server";
 import {
   detectSparringContinue,
   detectSparringEnd,
@@ -390,6 +390,9 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       let okNews = true;
       try {
         reply = formatWhatsNewReply(await listRecentProductUpdates(ctx));
+        if (reply === NO_UPDATES_REPLY) {
+          reply = noRecentUpdatesReply(await lastProductUpdate(ctx));
+        }
       } catch {
         okNews = false;
         reply = NATURAL_FALLBACKS.aiDown;
