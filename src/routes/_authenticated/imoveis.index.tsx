@@ -130,6 +130,13 @@ function ImoveisPage() {
 
   const aviso = atencao.data;
 
+  // Quantos imóveis por categoria — as mais usadas aparecem primeiro no filtro.
+  const usoCategorias = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const p of all) if (p.category_id) m[p.category_id] = (m[p.category_id] ?? 0) + 1;
+    return m;
+  }, [all]);
+
   return (
     <AppShell>
       <PageHeader
@@ -184,7 +191,7 @@ function ImoveisPage() {
           activeLabel={catId ? (cats.byId(catId)?.name ?? null) : null}
           onClearActive={() => setCatId(null)}
         >
-          <PropertyCategoryFilter selected={catId} onSelect={setCatId} hideHeading />
+          <PropertyCategoryFilter selected={catId} onSelect={setCatId} usage={usoCategorias} hideHeading />
         </FilterSection>
         <FilterSection title="Grupos" count={org.folders.length}>
           <GroupCards

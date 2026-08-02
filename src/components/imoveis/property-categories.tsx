@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -87,13 +87,21 @@ export function CategoryBadge({ category }: { category: PropertyCategory | null 
 export function PropertyCategoryFilter({
   selected,
   hideHeading = false,
+  usage,
   onSelect,
 }: {
   selected: string | null;
   onSelect: (id: string | null) => void;
   hideHeading?: boolean;
+  /** Nº de imóveis por categoria — usado para pôr as mais usadas à frente. */
+  usage?: Record<string, number>;
 }) {
-  const { categories, invalidate } = usePropertyCategories();
+  const { categories: todas, invalidate } = usePropertyCategories();
+  const categories = useMemo<PropertyCategory[]>(() => {
+    const n = (id: string) => usage?.[id] ?? 0;
+    return [...todas].sort((a: PropertyCategory, b: PropertyCategory) =>
+      n(b.id) - n(a.id) || a.name.localeCompare(b.name, "pt"));
+  }, [todas, usage]);
   const create = useServerFn(createPropertyCategory);
   const rename = useServerFn(renamePropertyCategory);
   const remove = useServerFn(deletePropertyCategory);
@@ -181,6 +189,7 @@ export function PropertyCategoryFilter({
               >
                 <ColorDot color={c.color} />
                 {c.name}
+                {usage?.[c.id] ? <span className="opacity-60">{usage[c.id]}</span> : null}
               </button>
               <button
                 type="button" aria-label={`Editar ${c.name}`} className="c-badge tap-44"
