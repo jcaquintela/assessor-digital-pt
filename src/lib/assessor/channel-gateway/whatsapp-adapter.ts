@@ -22,7 +22,8 @@ import type {
 } from "./types";
 
 const REPLY_UNASSOCIATED =
-  "Olá. Este número ainda não está associado a uma conta do Assessor. Entra no dashboard e confirma o teu número de WhatsApp.";
+  `${aiDisclosureOpening()} Este número ainda não está associado a uma conta. ` +
+  "Entra no dashboard e confirma o teu número de WhatsApp.";
 const REPLY_UNSUPPORTED_TYPE =
   "Recebi a tua mensagem, mas ainda não sei processar este tipo de conteúdo.";
 const REPLY_MEDIA_ERROR =
