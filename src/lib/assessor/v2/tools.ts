@@ -79,8 +79,13 @@ export const ListUncategorizedPropertiesArgs = z.object({
 export type ListUncategorizedPropertiesArgs = z.infer<typeof ListUncategorizedPropertiesArgs>;
 
 export const SetPropertyCategoryArgs = z.object({
-  property_id: z.string().uuid(),
+  property_id: z.string().uuid().optional().nullable(),
+  // O modelo nem sempre traz o id do search — aceitamos também a morada/título
+  // dita na conversa e resolvemos o imóvel a partir daí.
+  property_query: z.string().min(2).optional().nullable(),
   category_name: z.string().min(1).max(40).optional().nullable(),
+}).refine((v) => !!(v.property_id || v.property_query), {
+  message: "indica property_id ou property_query",
 });
 export type SetPropertyCategoryArgs = z.infer<typeof SetPropertyCategoryArgs>;
 
