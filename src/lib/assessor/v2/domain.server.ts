@@ -276,6 +276,12 @@ async function execSetPropertyCategory(ctx: DomainContext, args: unknown): Promi
   const p = parse(SetPropertyCategoryArgs, args); if (!p.ok) return fail(p.error);
   const name = (p.value.category_name ?? "").trim();
 
+  let propertyId = p.value.property_id ?? null;
+  if (!propertyId && p.value.property_query) {
+    propertyId = await resolvePropertyFromText(ctx, p.value.property_query);
+  }
+  if (!propertyId) return fail("property_not_found");
+
   let categoryId: string | null = null;
   if (name) {
     const { data: existing } = await (ctx.supabase.from("property_categories") as any)
@@ -296,7 +302,7 @@ async function execSetPropertyCategory(ctx: DomainContext, args: unknown): Promi
 
   const { data, error } = await (ctx.supabase.from("properties") as any)
     .update({ category_id: categoryId })
-    .eq("id", p.value.property_id)
+    .eq("id", propertyId)
     .eq("user_id", ctx.userId)
     .select("id, title")
     .maybeSingle();
