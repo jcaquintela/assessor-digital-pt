@@ -17,6 +17,8 @@ export async function loadMessages(limit = 80): Promise<MensagemDb[]> {
   const { data, error } = await supabase
     .from("assessor_messages")
     .select("*")
+    // Conversa em bruto arquivada pela retenção de 3 semanas fica invisível.
+    .is("archived_at", null)
     .order("created_at", { ascending: true })
     .limit(limit);
   if (error) throw error;

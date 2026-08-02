@@ -193,6 +193,8 @@ export const convertBeta = createServerFn({ method: "POST" })
     );
     if (isUpgradeToPaid(before?.subscription_tier, tier)) {
       await notifyPlanActivatedSafe(supabaseAdmin, data.target_user_id, tier);
+      const { startWhatsAppTrialIfEligibleSafe } = await import("@/lib/subscription/trial.server");
+      await startWhatsAppTrialIfEligibleSafe(supabaseAdmin, data.target_user_id, tier);
     }
     return { ok: true, tier };
   });
