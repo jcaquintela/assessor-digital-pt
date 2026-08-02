@@ -58,6 +58,7 @@ export async function decide(input: {
   nowLisbonYmd: string;
   nowLisbonHuman: string;
   sparring?: boolean;
+  consultantGoals?: string | null;
 }): Promise<DecideResult> {
   const started = Date.now();
   const userPayload = {
@@ -66,6 +67,7 @@ export async function decide(input: {
     assessor_name: input.assessorName,
     consultant_first_name: input.userFirstName,
     message: input.content,
+    consultant_goals: input.consultantGoals ?? null,
     observations: input.observations,
     hypotheses: input.hypotheses,
     searches: input.searches,
