@@ -12,9 +12,9 @@ import { formatData } from "@/lib/demo-data";
 export const Route = createFileRoute("/_authenticated/interacoes")({
   head: () => ({
     meta: [
-      { title: "Interações — Assessor do Consultor" },
+      { title: "Interações — Afonso" },
       { name: "description", content: "Histórico de conversas, ligações e notas relacionadas com pessoas e oportunidades." },
-      { property: "og:title", content: "Interações — Assessor do Consultor" },
+      { property: "og:title", content: "Interações — Afonso" },
       { property: "og:description", content: "Memória cronológica do consultor." },
     ],
   }),

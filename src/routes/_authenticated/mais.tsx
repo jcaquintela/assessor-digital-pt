@@ -6,9 +6,9 @@ import { Building2, CalendarDays, ChevronRight, FileText, Inbox, MessagesSquare,
 export const Route = createFileRoute("/_authenticated/mais")({
   head: () => ({
     meta: [
-      { title: "Mais — Assessor do Consultor" },
+      { title: "Mais — Afonso" },
       { name: "description", content: "Aceda a mais áreas do assessor." },
-      { property: "og:title", content: "Mais — Assessor do Consultor" },
+      { property: "og:title", content: "Mais — Afonso" },
       { property: "og:description", content: "Aceda a mais áreas do assessor." },
     ],
   }),

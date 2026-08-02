@@ -24,9 +24,9 @@ import {
 export const Route = createFileRoute("/_authenticated/rotinas")({
   head: () => ({
     meta: [
-      { title: "Rotinas — Assessor do Consultor" },
+      { title: "Rotinas — Afonso" },
       { name: "description", content: "Lembretes recorrentes configuráveis do consultor." },
-      { property: "og:title", content: "Rotinas — Assessor do Consultor" },
+      { property: "og:title", content: "Rotinas — Afonso" },
       { property: "og:description", content: "Configura hábitos e lembretes que se repetem." },
     ],
   }),

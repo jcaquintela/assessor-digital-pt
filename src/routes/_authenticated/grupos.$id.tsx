@@ -11,9 +11,9 @@ import { PersonCard, ViewToggle, type PeopleView } from "@/components/pessoas/pe
 export const Route = createFileRoute("/_authenticated/grupos/$id")({
   head: () => ({
     meta: [
-      { title: "Grupo — Assessor do Consultor" },
+      { title: "Grupo — Afonso" },
       { name: "description", content: "As pessoas deste grupo, com contactos e etiquetas." },
-      { property: "og:title", content: "Grupo — Assessor do Consultor" },
+      { property: "og:title", content: "Grupo — Afonso" },
       { property: "og:description", content: "As pessoas deste grupo, com contactos e etiquetas." },
     ],
   }),

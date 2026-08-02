@@ -16,9 +16,9 @@ export const Route = createFileRoute("/registo")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Criar conta — Assessor do Consultor" },
+      { title: "Criar conta — Afonso" },
       { name: "description", content: "Cria a tua conta no plano Base, grátis, e liga o teu assessor pessoal em minutos." },
-      { property: "og:title", content: "Criar conta — Assessor do Consultor" },
+      { property: "og:title", content: "Criar conta — Afonso" },
       { property: "og:description", content: "Cria a tua conta no plano Base, grátis, e liga o teu assessor pessoal em minutos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

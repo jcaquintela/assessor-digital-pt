@@ -25,9 +25,9 @@ export const Route = createFileRoute("/_authenticated/pessoas/")({
   }),
   head: () => ({
     meta: [
-      { title: "Pessoas — Assessor do Consultor" },
+      { title: "Pessoas — Afonso" },
       { name: "description", content: "Clientes, potenciais, proprietários e referenciadores." },
-      { property: "og:title", content: "Pessoas — Assessor do Consultor" },
+      { property: "og:title", content: "Pessoas — Afonso" },
       { property: "og:description", content: "Clientes, potenciais, proprietários e referenciadores." },
     ],
   }),

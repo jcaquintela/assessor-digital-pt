@@ -10,9 +10,9 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/documentos")({
   head: () => ({
     meta: [
-      { title: "Documentos — Assessor do Consultor" },
+      { title: "Documentos — Afonso" },
       { name: "description", content: "Documentos do consultor, associados a pessoas e imóveis." },
-      { property: "og:title", content: "Documentos — Assessor do Consultor" },
+      { property: "og:title", content: "Documentos — Afonso" },
       { property: "og:description", content: "Documentos do consultor, associados a pessoas e imóveis." },
     ],
   }),

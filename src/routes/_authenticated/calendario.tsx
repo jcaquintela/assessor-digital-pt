@@ -17,9 +17,9 @@ import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-gri
 export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
     meta: [
-      { title: "Calendário — Assessor do Consultor" },
+      { title: "Calendário — Afonso" },
       { name: "description", content: "Calendário interno do consultor." },
-      { property: "og:title", content: "Calendário — Assessor do Consultor" },
+      { property: "og:title", content: "Calendário — Afonso" },
       { property: "og:description", content: "Calendário interno do consultor." },
     ],
   }),

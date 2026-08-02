@@ -17,9 +17,9 @@ const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escrit
 export const Route = createFileRoute("/_authenticated/negocio/despesas/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de despesa — Assessor do Consultor" },
+      { title: "Ficha de despesa — Afonso" },
       { name: "description", content: "Editar ou eliminar despesa." },
-      { property: "og:title", content: "Ficha de despesa — Assessor do Consultor" },
+      { property: "og:title", content: "Ficha de despesa — Afonso" },
       { property: "og:description", content: "Editar despesa." },
     ],
   }),

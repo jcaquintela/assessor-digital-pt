@@ -14,9 +14,9 @@ import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 export const Route = createFileRoute("/_authenticated/negocio/")({
   head: () => ({
     meta: [
-      { title: "Faturação — Assessor do Consultor" },
+      { title: "Faturação — Afonso" },
       { name: "description", content: "Visão geral de comissões, faturação, despesas e rentabilidade." },
-      { property: "og:title", content: "Faturação — Assessor do Consultor" },
+      { property: "og:title", content: "Faturação — Afonso" },
       { property: "og:description", content: "Visão geral do negócio do consultor." },
     ],
   }),

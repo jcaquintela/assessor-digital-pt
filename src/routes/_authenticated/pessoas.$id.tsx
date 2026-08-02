@@ -31,9 +31,9 @@ import { useAssessorName } from "@/lib/assessor/assessor-name";
 export const Route = createFileRoute("/_authenticated/pessoas/$id")({
   head: () => ({
     meta: [
-      { title: "Contexto da pessoa — Assessor do Consultor" },
+      { title: "Contexto da pessoa — Afonso" },
       { name: "description", content: "Quem é, o que procura, último contacto, próximo passo e ligações." },
-      { property: "og:title", content: "Contexto da pessoa — Assessor do Consultor" },
+      { property: "og:title", content: "Contexto da pessoa — Afonso" },
       { property: "og:description", content: "Memória organizada por pessoa." },
     ],
   }),

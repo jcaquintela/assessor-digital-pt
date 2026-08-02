@@ -14,9 +14,9 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Entrar — Assessor do Consultor" },
+      { title: "Entrar — Afonso" },
       { name: "description", content: "Iniciar sessão ou criar conta no seu assessor pessoal." },
-      { property: "og:title", content: "Entrar — Assessor do Consultor" },
+      { property: "og:title", content: "Entrar — Afonso" },
       { property: "og:description", content: "Iniciar sessão ou criar conta no seu assessor pessoal." },
     ],
   }),

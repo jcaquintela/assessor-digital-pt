@@ -18,9 +18,9 @@ const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 export const Route = createFileRoute("/_authenticated/negocio/comissoes")({
   head: () => ({
     meta: [
-      { title: "Comissões — Assessor do Consultor" },
+      { title: "Comissões — Afonso" },
       { name: "description", content: "Registo e gestão de comissões previstas, faturadas e recebidas." },
-      { property: "og:title", content: "Comissões — Assessor do Consultor" },
+      { property: "og:title", content: "Comissões — Afonso" },
       { property: "og:description", content: "CRUD de comissões por oportunidade." },
     ],
   }),

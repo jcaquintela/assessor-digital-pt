@@ -45,9 +45,9 @@ const ORIGEM_LABEL: Record<string, string> = {
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha do imóvel — Assessor do Consultor" },
+      { title: "Ficha do imóvel — Afonso" },
       { name: "description", content: "Negócio, valores, visitas, propostas, marketing, custos e documentos do imóvel." },
-      { property: "og:title", content: "Ficha do imóvel — Assessor do Consultor" },
+      { property: "og:title", content: "Ficha do imóvel — Afonso" },
       { property: "og:description", content: "Tudo sobre o imóvel numa página, sem saltar de ecrã." },
     ],
   }),

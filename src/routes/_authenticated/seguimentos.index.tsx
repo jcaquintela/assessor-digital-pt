@@ -16,9 +16,9 @@ type SeguimentosSearch = { status?: "overdue" | "hoje" | "semana" | "concluidos"
 export const Route = createFileRoute("/_authenticated/seguimentos/")({
   head: () => ({
     meta: [
-      { title: "Seguimentos — Assessor do Consultor" },
+      { title: "Seguimentos — Afonso" },
       { name: "description", content: "Tarefas e eventos do consultor." },
-      { property: "og:title", content: "Seguimentos — Assessor do Consultor" },
+      { property: "og:title", content: "Seguimentos — Afonso" },
       { property: "og:description", content: "Tarefas e eventos do consultor." },
     ],
   }),

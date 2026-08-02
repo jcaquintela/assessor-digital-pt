@@ -16,9 +16,9 @@ import { tierAtLeast } from "@/lib/subscription/tiers";
 export const Route = createFileRoute("/_authenticated/assessor")({
   head: () => ({
     meta: [
-      { title: "Conversa — Assessor do Consultor" },
+      { title: "Conversa — Afonso" },
       { name: "description", content: "Histórico da conversa com o teu assessor." },
-      { property: "og:title", content: "Conversa — Assessor do Consultor" },
+      { property: "og:title", content: "Conversa — Afonso" },
       { property: "og:description", content: "Histórico da conversa com o teu assessor." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

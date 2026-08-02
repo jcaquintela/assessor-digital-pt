@@ -11,9 +11,9 @@ export const Route = createFileRoute("/reset-password")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Nova palavra-passe — Assessor do Consultor" },
+      { title: "Nova palavra-passe — Afonso" },
       { name: "description", content: "Definir uma nova palavra-passe." },
-      { property: "og:title", content: "Nova palavra-passe — Assessor do Consultor" },
+      { property: "og:title", content: "Nova palavra-passe — Afonso" },
       { property: "og:description", content: "Definir uma nova palavra-passe." },
     ],
   }),

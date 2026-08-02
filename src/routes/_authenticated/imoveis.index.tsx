@@ -28,9 +28,9 @@ export const Route = createFileRoute("/_authenticated/imoveis/")({
   }),
   head: () => ({
     meta: [
-      { title: "Imóveis — Assessor do Consultor" },
+      { title: "Imóveis — Afonso" },
       { name: "description", content: "Carteira de imóveis em angariação." },
-      { property: "og:title", content: "Imóveis — Assessor do Consultor" },
+      { property: "og:title", content: "Imóveis — Afonso" },
       { property: "og:description", content: "Carteira de imóveis em angariação." },
     ],
   }),

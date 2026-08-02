@@ -36,9 +36,9 @@ type HojeSearch = { filtro?: "imoveis-por-confirmar" };
 export const Route = createFileRoute("/_authenticated/hoje")({
   head: () => ({
     meta: [
-      { title: "Hoje — Assessor do Consultor" },
+      { title: "Hoje — Afonso" },
       { name: "description", content: "Briefing diário, compromissos e prioridades do consultor." },
-      { property: "og:title", content: "Hoje — Assessor do Consultor" },
+      { property: "og:title", content: "Hoje — Afonso" },
       { property: "og:description", content: "Briefing diário, compromissos e prioridades do consultor." },
     ],
   }),

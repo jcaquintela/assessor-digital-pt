@@ -16,9 +16,9 @@ import { UploadedFilesList } from "@/components/uploaded-files-list";
 export const Route = createFileRoute("/_authenticated/diversos")({
   head: () => ({
     meta: [
-      { title: "Diversos — Assessor do Consultor" },
+      { title: "Diversos — Afonso" },
       { name: "description", content: "Notas, ideias e observações que o Assessor guardou por ti." },
-      { property: "og:title", content: "Diversos — Assessor do Consultor" },
+      { property: "og:title", content: "Diversos — Afonso" },
       { property: "og:description", content: "Notas, ideias e observações que o Assessor guardou por ti." },
     ],
   }),

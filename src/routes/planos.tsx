@@ -13,9 +13,9 @@ import {
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos — Assessor do Consultor" },
+      { title: "Planos — Afonso" },
       { name: "description", content: "Compara os planos do teu assessor pessoal: módulos incluídos e nível de autonomia." },
-      { property: "og:title", content: "Planos — Assessor do Consultor" },
+      { property: "og:title", content: "Planos — Afonso" },
       { property: "og:description", content: "Compara os planos do teu assessor pessoal: módulos incluídos e nível de autonomia." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
