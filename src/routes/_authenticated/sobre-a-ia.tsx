@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
-import { Brain, Shield, Lock, Eye, Trash2, MessageSquare } from "lucide-react";
+import { Brain, Shield, Lock, Eye, Trash2, MessageSquare, FileText, Mic } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/sobre-a-ia")({
   head: () => ({
