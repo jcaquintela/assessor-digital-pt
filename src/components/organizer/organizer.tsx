@@ -134,6 +134,7 @@ export function OrganizeDialog({
   org,
   open,
   onOpenChange,
+  hideTags = false,
 }: {
   entityType: OrganizerEntity;
   entityId: string | null;
@@ -141,6 +142,7 @@ export function OrganizeDialog({
   org: Organizer;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  hideTags?: boolean;
 }) {
   const tTag = useServerFn(toggleTagOnEntity);
   const tFolder = useServerFn(toggleFolderItem);
@@ -157,10 +159,10 @@ export function OrganizeDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Organizar — {title}</DialogTitle>
-          <DialogDescription>Escolhe etiquetas e grupos. Cria novos na página.</DialogDescription>
+          <DialogDescription>{hideTags ? "Escolhe os grupos. Cria novos na página." : "Escolhe etiquetas e grupos. Cria novos na página."}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
+          {!hideTags && <div>
             <div className="mb-1.5 text-xs font-semibold">Etiquetas</div>
             {org.tags.length === 0 && <p className="text-xs text-muted-foreground">Ainda não criaste etiquetas.</p>}
             <div className="flex flex-wrap gap-1.5">
@@ -171,7 +173,7 @@ export function OrganizeDialog({
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
           <div>
             <div className="mb-1.5 text-xs font-semibold">Grupos</div>
             {org.folders.length === 0 && <p className="text-xs text-muted-foreground">Ainda não criaste grupos.</p>}
