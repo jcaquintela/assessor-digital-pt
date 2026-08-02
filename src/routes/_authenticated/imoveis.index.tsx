@@ -14,6 +14,7 @@ import { OrganizeDialog, useOrganizer } from "@/components/organizer/organizer";
 import { GroupCards, TagFilterRow, ViewToggle, type PeopleView } from "@/components/pessoas/people-explorer";
 import { ORIGEM, PropertyCard } from "@/components/imoveis/properties-explorer";
 import { PropertyCategoryDialog, PropertyCategoryFilter, usePropertyCategories } from "@/components/imoveis/property-categories";
+import { FilterSection } from "@/components/organizer/filter-section";
 import { toast } from "sonner";
 import { exportProperties } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
@@ -184,8 +185,8 @@ function ImoveisPage() {
       <div className="mb-6 flex flex-col gap-2">
         <FilterSection
           title="Categoria"
-          count={categorias.length}
-          activeLabel={catId ? (categorias.find((c) => c.id === catId)?.name ?? null) : null}
+          count={cats.categories.length}
+          activeLabel={catId ? (cats.byId(catId)?.name ?? null) : null}
           onClearActive={() => setCatId(null)}
         >
           <PropertyCategoryFilter selected={catId} onSelect={setCatId} hideHeading />
