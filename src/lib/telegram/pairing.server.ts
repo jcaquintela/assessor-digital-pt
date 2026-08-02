@@ -8,6 +8,7 @@
 //
 // Server-only: usa node:crypto e o service role.
 
+import { aiDisclosureOpening } from "@/lib/assessor/ai-disclosure";
 import { normalizePhone } from "@/lib/whatsapp/phone";
 import { sendWhatsAppText } from "@/lib/whatsapp/send.server";
 import { linkChannelToUser } from "@/lib/assessor/channels.server";

@@ -3,6 +3,7 @@
 // download de media, envio, dedupe, persistência do turno e o fluxo legado
 // de link code (LIGAR-XXXXXX). Não conhece o motor: só transporta.
 
+import { aiDisclosureOpening } from "@/lib/assessor/ai-disclosure";
 import { normalizePhone } from "@/lib/whatsapp/phone";
 import { sendWhatsAppText } from "@/lib/whatsapp/send.server";
 import {
