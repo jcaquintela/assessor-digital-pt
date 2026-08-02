@@ -37,6 +37,27 @@ const PROPERTY_TYPE_RE = /\bT\d\b|\bstudio\b|\bmoradia\b|\bapartamento\b|\bloja\
 const NAME_INTRO_RE =
   /\b(?:regista|guarda|adiciona|cria|conheci|contacto|contacta|liga\s+ao|liga\s+à)\s+(?:o|a|este\s+contacto:?\s+)?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+){0,3})/;
 
+// "Ana Silva, 912 333 444, proprietária de..." — o nome vem primeiro, sem
+// verbo antes. Sem isto o contacto ficava gravado como "Sem nome".
+const NAME_LEADING_RE =
+  /^\s*(?:o|a|os|as)?\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+(?:d[aeo]s?\s+)?[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+){0,3})\s*(?=,|:|\s+\+?\d|\s*[-–—]|$)/;
+
+// Palavras que parecem nome mas não são (papéis, saudações, comandos).
+const NAME_STOPWORDS = new Set([
+  "propietario","proprietario","proprietaria","comprador","compradora","cliente",
+  "referencia","parceiro","parceira","colega","fornecedor","fornecedora",
+  "ola","olá","bom","boa","hoje","amanha","amanhã","novo","nova","contacto",
+  "telefone","telemovel","telemóvel","nota","lembrete","visita","imovel","imóvel",
+]);
+
+function isPlausibleName(candidate: string): boolean {
+  const first = candidate.split(/\s+/)[0] ?? "";
+  const norm = first.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (NAME_STOPWORDS.has(norm) || NAME_STOPWORDS.has(first.toLowerCase())) return false;
+  if (/\d/.test(candidate)) return false;
+  return candidate.trim().length >= 2;
+}
+
 const REFERRED_RE =
   /\brecomend(?:ad[oa]?|a[cç][ãa]o)\s+d[oa]?\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+)?)/;
 
@@ -100,6 +121,11 @@ export function detectPerson(text: string): DetectedPerson {
   // Nome (heurística simples)
   const introMatch = text.match(NAME_INTRO_RE);
   if (introMatch) out.name = introMatch[1];
+  if (!out.name) {
+    const leading = text.match(NAME_LEADING_RE);
+    const candidate = leading?.[1]?.trim();
+    if (candidate && isPlausibleName(candidate)) out.name = candidate;
+  }
 
   // Empresa (após "da/do" antes de vírgula ou fim)
   const orgMatch = text.match(/\bd[ao]\s+((?:Empresa|Agência|Ag[eê]ncia|Grupo|Sociedade)\s+[A-ZÁÉÍÓÚ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚ][\wÀ-ÿ'-]+){0,3})/);
