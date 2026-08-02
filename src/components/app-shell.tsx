@@ -14,6 +14,7 @@ import {
   Wallet,
   FolderOpen,
   Handshake,
+  Sparkles,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
