@@ -41,6 +41,8 @@ import {
   ambiguousPersonReply,
 } from "./person-brief";
 import { buildPersonBrief } from "./person-brief.server";
+import { detectWhatsNewQuery, formatWhatsNewReply } from "./whats-new";
+import { listRecentProductUpdates } from "./whats-new.server";
 import {
   detectSparringContinue,
   detectSparringEnd,
@@ -376,6 +378,30 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           latency_ms: Date.now() - t0, success: okBrief, error: okBrief ? null : "person_brief_failed",
           domain: "assessor", route: "v3-deterministic", fallback_used: !okBrief,
           tool_name: "person_brief", tool_success: okBrief,
+        } as never);
+      } catch { /* noop */ }
+      return { reply };
+    }
+
+    // (a-1) "O que há de novo?" → novidades reais dos últimos 30 dias.
+    if (detectWhatsNewQuery(trimmed)) {
+      const t0 = Date.now();
+      let reply: string;
+      let okNews = true;
+      try {
+        reply = formatWhatsNewReply(await listRecentProductUpdates(ctx));
+      } catch {
+        okNews = false;
+        reply = NATURAL_FALLBACKS.aiDown;
+      }
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "whats_new_fast_path", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: Date.now() - t0, success: okNews, error: okNews ? null : "product_updates_failed",
+          domain: "assessor", route: "v3-deterministic", fallback_used: !okNews,
+          tool_name: "product_updates", tool_success: okNews,
         } as never);
       } catch { /* noop */ }
       return { reply };
