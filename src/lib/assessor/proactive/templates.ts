@@ -9,6 +9,7 @@ export const TEMPLATE_MORNING = "afonso_prioridades_dia";
 export const TEMPLATE_CHECKIN = "afonso_resultado_seguimento";
 export const TEMPLATE_CHECKIN_V2 = "afonso_resultado_seguimento_corrigido";
 export const TEMPLATE_PLAN_ACTIVATED = "afonso_plano_ativado";
+export const TEMPLATE_TRIAL_ENDING = "afonso_periodo_experimental";
 export const TEMPLATE_LANG = "pt_PT";
 
 /**
@@ -117,4 +118,45 @@ export function planActivatedTemplatePayload(name: string, plan: string) {
 /** Mesma mensagem em texto normal (Telegram, ou WhatsApp dentro das 24h). */
 export function planActivatedText(name: string, plan: string) {
   return `Boas notícias, ${name}! O teu plano ${plan} já está ativo. Já podes usar tudo o que isso inclui.`;
+}
+
+/**
+ * Fim do período experimental: {{1}} = primeiro nome, {{2}} = dias que faltam.
+ *
+ * Texto exato a submeter à Meta (categoria Utility):
+ * "Olá {{1}}. O teu período experimental termina em {{2}} dias. Depois disso,
+ * continuas a usar o Afonso pelo Telegram, sem perderes nada do que já
+ * organizámos — só voltas ao WhatsApp quando quiseres continuar a pagar."
+ */
+export function trialEndingTemplatePayload(name: string, days: number) {
+  return {
+    type: "template",
+    template: {
+      name: TEMPLATE_TRIAL_ENDING,
+      language: { code: TEMPLATE_LANG },
+      components: [
+        { type: "body", parameters: [
+          { type: "text", text: name },
+          { type: "text", text: String(days) },
+        ] },
+      ],
+    },
+  } as Record<string, unknown>;
+}
+
+/** Mesma mensagem em texto normal (Telegram, ou WhatsApp dentro das 24h). */
+export function trialEndingText(name: string, days: number) {
+  return (
+    `Olá${name ? ` ${name}` : ""}. O teu período experimental termina em ${days} dias. ` +
+    "Depois disso, continuas a usar o Afonso pelo Telegram, sem perderes nada do que já " +
+    "organizámos — só voltas ao WhatsApp quando quiseres continuar a pagar."
+  );
+}
+
+/** Aviso curto no momento em que o período experimental termina. */
+export function trialExpiredText(name: string) {
+  return (
+    `Olá${name ? ` ${name}` : ""}. O período experimental terminou. Continuas comigo pelo ` +
+    "Telegram e não perdeste nada do que já organizámos — quando quiseres retomar o plano, diz-me."
+  );
 }
