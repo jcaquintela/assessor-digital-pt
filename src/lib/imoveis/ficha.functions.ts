@@ -95,9 +95,35 @@ export const getPropertyDossier = createServerFn({ method: "POST" })
     }));
     const pendenteOuAceite = offers.filter((o) => o.status === "aceite")[0] ?? offers.filter((o) => o.status === "pendente")[0] ?? null;
 
+    // Dúvidas em aberto do assessor + dúvidas já ignoradas nesta ficha.
+    // Reutiliza `pending_actions` (mesmo ciclo proposta→confirmação da conversa),
+    // sem tabela nova: o vínculo ao imóvel vem do payload ou do recurso criado.
+    const { data: pendRows } = await supabase
+      .from("pending_actions")
+      .select("id, intent, status, pending_question, current_question, structured_payload, created_resource_type, created_resource_id")
+      .eq("user_id", userId)
+      .in("status", ["pending_confirmation", "collecting_information", "correction_pending", "cancelled"])
+      .order("created_at", { ascending: false })
+      .limit(80);
+    const pend = ((pendRows ?? []) as Row[]).filter((r) => {
+      const payloadId = (r.structured_payload ?? {})["property_id"];
+      const resourceId = r.created_resource_type === "property" ? r.created_resource_id : null;
+      return payloadId === data.id || resourceId === data.id;
+    });
+    const dismissedKeys = pend
+      .filter((r) => r.intent === "property_question_dismissed")
+      .map((r) => String((r.structured_payload ?? {})["question_key"] ?? ""))
+      .filter(Boolean);
+    const assistantPending = pend
+      .filter((r) => r.intent !== "property_question_dismissed" && r.status !== "cancelled")
+      .map((r) => ({ id: r.id as string, question: String(r.pending_question || r.current_question || "").trim() }))
+      .filter((r) => r.question.length > 0);
+
     return {
       property: p,
       dealId,
+      assistantPending,
+      dismissedKeys,
       deal: (dealRes as any)?.data ?? null,
       owner: (ownerRes as any)?.data ?? null,
       interests: ((interestsRes.data ?? []) as Row[]).map((i) => ({
@@ -134,6 +160,31 @@ export const getPropertyDossier = createServerFn({ method: "POST" })
 export type PropertyDossier = NonNullable<Awaited<ReturnType<typeof getPropertyDossier>>>;
 
 // ---- Escritas -----------------------------------------------------------
+
+/** "Ignorar" uma dúvida da ficha — fica registada como decisão do consultor. */
+export const dismissPropertyQuestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { propertyId: string; key: string; question?: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    if (data.key.startsWith("assistant:")) {
+      const id = data.key.slice("assistant:".length);
+      await supabase.from("pending_actions").update({ status: "cancelled" } as never)
+        .eq("id", id).eq("user_id", userId);
+      return { ok: true };
+    }
+    const { error } = await supabase.from("pending_actions").insert({
+      user_id: userId,
+      channel: "dashboard",
+      intent: "property_question_dismissed",
+      original_content: data.question?.slice(0, 400) || data.key,
+      structured_payload: { property_id: data.propertyId, question_key: data.key },
+      status: "cancelled",
+      expires_at: new Date(Date.now() + 3650 * 864e5).toISOString(),
+    } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
 
 export const addPropertyInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

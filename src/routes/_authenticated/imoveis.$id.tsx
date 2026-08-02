@@ -18,9 +18,11 @@ import { deleteProperty, updatePropertyFields } from "@/lib/assessor/properties.
 import {
   addMarketingActivity, addPropertyCost, addPropertyInterest, addPropertyNote,
   addPropertyOffer, addPropertyVisit, createDealForProperty, deleteInterest,
-  deleteMarketingActivity, getPropertyDossier, setInterestStatus, setOfferStatus,
+  deleteMarketingActivity, dismissPropertyQuestion, getPropertyDossier, setInterestStatus, setOfferStatus,
   setPropertyCommercialState, setPropertyValues, setVisitState, toggleMarketingActivity,
 } from "@/lib/imoveis/ficha.functions";
+import { propertySummary } from "@/lib/imoveis/summary";
+import { propertyOpenQuestions } from "@/lib/imoveis/questions";
 import { setDealStage } from "@/lib/deals/deals.functions";
 import { StagePath } from "@/components/negocios/stage-path";
 import { PROPERTY_STATUSES, propertyStatusLabel } from "@/lib/assessor/properties-status";
@@ -105,6 +107,7 @@ function PropertyDetail() {
   const dropMkt = useServerFn(deleteMarketingActivity);
   const addCost = useServerFn(addPropertyCost);
   const addNote = useServerFn(addPropertyNote);
+  const dismissQuestion = useServerFn(dismissPropertyQuestion);
 
   const { data, isLoading } = useQuery({
     queryKey: ["property-dossier", id],
@@ -180,6 +183,26 @@ function PropertyDetail() {
   const comissaoPct = com?.pct ?? (p.commission_pct != null ? String(p.commission_pct) : "");
   const comissaoVal = com?.amount ?? (p.commission_amount != null ? String(p.commission_amount) : "");
 
+  // Resumo e dúvidas: calculados a partir dos dados que já estão na ficha.
+  const resumo = propertySummary({
+    property: p,
+    owner: data.owner as any,
+    deal,
+    currentOffer: data.currentOffer,
+    visitsDone: data.visits.filter((v) => v.state === "feita").length,
+    interestsOpen: data.interests.filter((i) => i.status !== "descartado" && i.status !== "fechado").length,
+  });
+  const duvidas = propertyOpenQuestions({
+    property: p,
+    owner: data.owner as any,
+    offers: data.offers,
+    visits: data.visits,
+    assistantPending: (data as any).assistantPending ?? [],
+    dismissedKeys: (data as any).dismissedKeys ?? [],
+  });
+  const ignorar = (key: string, question: string) =>
+    void act(() => dismissQuestion({ data: { propertyId: id, key, question } }), "Dúvida ignorada.");
+
   const field = (label: string, key: string, type: "text" | "number" = "text") => (
     <div className="grid gap-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
@@ -241,6 +264,58 @@ function PropertyDetail() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* ===== Percurso do negócio ===== */}
+      <Section
+        title="O que sabemos"
+      >
+        <ul className="grid gap-1.5">
+          {resumo.map((frase, i) => (
+            <li key={i} className="text-sm text-muted-foreground">{frase}</li>
+          ))}
+        </ul>
+      </Section>
+
+      {duvidas.length > 0 && (
+        <Section title="Informação por confirmar">
+          <div className="grid gap-3">
+            {duvidas.map((q) => (
+              <div key={q.key} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
+                <p className="text-sm">{q.text}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {q.kind === "offer_pending" && q.refId && (
+                    <>
+                      <Button size="sm" onClick={() => void act(() => offerStatus({ data: { id: q.refId as string, status: "aceite" } }), "Proposta aceite.")}>
+                        {q.confirmLabel}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => void act(() => offerStatus({ data: { id: q.refId as string, status: "recusada" } }), "Proposta recusada.")}>
+                        {q.correctLabel}
+                      </Button>
+                    </>
+                  )}
+                  {q.kind === "visit_no_outcome" && q.refId && (
+                    <>
+                      <Button size="sm" onClick={() => void act(() => visitStateFn({ data: { id: q.refId as string, state: "feita" } }), "Visita marcada como feita.")}>
+                        {q.confirmLabel}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => void act(() => visitStateFn({ data: { id: q.refId as string, state: "cancelada" } }), "Visita cancelada.")}>
+                        {q.correctLabel}
+                      </Button>
+                    </>
+                  )}
+                  {(q.kind === "sold_without_price" || q.kind === "owner_missing") && (
+                    <Button size="sm" variant="outline" onClick={() => startEdit()}>Corrigir na ficha</Button>
+                  )}
+                  <Button size="sm" variant="ghost" asChild>
+                    <Link to="/assessor">Perguntar {assessorName === "Assessor" ? "ao Assessor" : `ao ${assessorName}`}</Link>
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => ignorar(q.key, q.text)}>Ignorar</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* ===== Percurso do negócio ===== */}
       <Section
