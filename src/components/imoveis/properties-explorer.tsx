@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Check, ChevronRight, FileText, Home, Pencil, Tags, Trash2 } from "lucide-react";
+import { Check, ChevronRight, FileText, Home, Pencil, Tag, Tags, Trash2 } from "lucide-react";
 import type { Organizer } from "@/components/organizer/organizer";
 import type { PeopleView } from "@/components/pessoas/people-explorer";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
 import { formatEUR } from "@/lib/demo-data";
+import { CategoryBadge } from "@/components/imoveis/property-categories";
+import type { PropertyCategory } from "@/lib/imoveis/categories.functions";
 
 export const ORIGEM: Record<string, string> = {
   whatsapp: "WhatsApp",
@@ -14,7 +16,7 @@ export const ORIGEM: Record<string, string> = {
 };
 
 export function PropertyCard({
-  i, org, selected, onToggle, onEdit, onOrganize, onDelete, view,
+  i, org, selected, onToggle, onEdit, onOrganize, onDelete, onCategory, category, view,
 }: {
   i: any;
   org: Organizer;
@@ -23,6 +25,8 @@ export function PropertyCard({
   onEdit: () => void;
   onOrganize: () => void;
   onDelete: () => void;
+  onCategory: () => void;
+  category: PropertyCategory | null;
   view: PeopleView;
 }) {
   const localizacao = i.city || i.location || "";
@@ -62,6 +66,7 @@ export function PropertyCard({
               {i.asking_price != null && (
                 <span className="c-badge c-mono">{formatEUR(Number(i.asking_price))}</span>
               )}
+              <CategoryBadge category={category} />
               {origem && <span className="c-badge">via {origem}</span>}
               {i.file_count > 0 && <span className="c-badge c-mono"><FileText className="h-3 w-3" /> {i.file_count}</span>}
               {org.tagsOf(i.id).map((t) => <span key={t.id} className="c-badge">{t.name}</span>)}
@@ -80,6 +85,7 @@ export function PropertyCard({
 
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <button type="button" className="c-badge tap-44" onClick={onEdit}><Pencil className="h-3 w-3" /> Editar</button>
+          <button type="button" className="c-badge tap-44" onClick={onCategory}><Tag className="h-3 w-3" /> Categoria</button>
           <button type="button" className="c-badge tap-44" onClick={onOrganize}><Tags className="h-3 w-3" /> Organizar</button>
           <button type="button" className="c-badge tap-44" onClick={onDelete}><Trash2 className="h-3 w-3" /> Eliminar</button>
           {view === "grelha" && (

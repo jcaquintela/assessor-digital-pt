@@ -31,6 +31,8 @@ import {
   SearchActiveRemindersArgs,
   CancelReminderArgs,
   SendReminderNowArgs,
+  ListUncategorizedPropertiesArgs,
+  SetPropertyCategoryArgs,
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
@@ -218,7 +220,41 @@ async function execSearchProperties(ctx: DomainContext, args: unknown): Promise<
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) return fail(error.message);
-  return ok({ results: data ?? [] });
+  if (data && data.length) return ok({ results: data });
+
+  // O consultor diz "Rua do Sol Matosinhos" mas o título é "Moradia V3 na Rua
+  // do Sol, Matosinhos": a frase inteira nunca casa. Segunda tentativa por
+  // palavras, ordenada pelo número de palavras encontradas.
+  const tokens = query
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((t) => t.length >= 3)
+    .slice(0, 6);
+  if (!tokens.length) return ok({ results: [] });
+  let q2 = ctx.supabase
+    .from("properties")
+    .select("id, title, typology, property_type, location, city, address, status, asking_price")
+    .eq("user_id", ctx.userId)
+    .or(tokens.flatMap((t) => [
+      `title.ilike.%${t}%`, `location.ilike.%${t}%`, `city.ilike.%${t}%`, `address.ilike.%${t}%`,
+    ]).join(","))
+    .limit(30);
+  if (status) q2 = q2.eq("status", status);
+  const { data: rows, error: e2 } = await q2;
+  if (e2) return fail(e2.message);
+  type Scored = { score: number; row: Record<string, unknown> };
+  const scored: Record<string, unknown>[] = ((rows ?? []) as Record<string, unknown>[])
+    .map((r: Record<string, unknown>) => {
+      const hay = [r.title, r.location, r.city, r.address]
+        .filter((x) => typeof x === "string").join(" ").toLowerCase();
+      const score = tokens.filter((t) => hay.includes(t.toLowerCase())).length;
+      const { address: _a, ...rest } = r;
+      return { score, row: rest } as Scored;
+    })
+    .filter((x: Scored) => x.score > 0)
+    .sort((a: Scored, b: Scored) => b.score - a.score)
+    .slice(0, 8)
+    .map((x: Scored) => x.row);
+  return ok({ results: scored });
 }
 
 async function execCreateProperty(ctx: DomainContext, args: unknown): Promise<DomainResult> {
@@ -242,6 +278,71 @@ async function execCreateProperty(ctx: DomainContext, args: unknown): Promise<Do
     .single();
   if (error) return fail(error.message);
   return ok({ property: data });
+}
+
+// ---- Categorias de imóveis ------------------------------------------------
+// Mesmo mecanismo das categorias do Drive: nome + cor, por consultor.
+// O assessor propõe, o consultor confirma; nunca reclassifica sozinho.
+
+async function execListPropertyCategories(ctx: DomainContext): Promise<DomainResult> {
+  const { data, error } = await (ctx.supabase.from("property_categories") as any)
+    .select("id, name, color")
+    .eq("user_id", ctx.userId)
+    .order("name");
+  if (error) return fail(error.message);
+  return ok({ categories: data ?? [] });
+}
+
+async function execListUncategorizedProperties(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(ListUncategorizedPropertiesArgs, args); if (!p.ok) return fail(p.error);
+  const limit = p.value.limit ?? 25;
+  const { data, error } = await (ctx.supabase.from("properties") as any)
+    .select("id, title, property_type, typology, location, city, address, status, source_channel, notes")
+    .eq("user_id", ctx.userId)
+    .is("category_id", null)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) return fail(error.message);
+  return ok({ properties: data ?? [] });
+}
+
+async function execSetPropertyCategory(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(SetPropertyCategoryArgs, args); if (!p.ok) return fail(p.error);
+  const name = (p.value.category_name ?? "").trim();
+
+  let propertyId = p.value.property_id ?? null;
+  if (!propertyId && p.value.property_query) {
+    propertyId = await resolvePropertyFromText(ctx, p.value.property_query);
+  }
+  if (!propertyId) return fail("property_not_found");
+
+  let categoryId: string | null = null;
+  if (name) {
+    const { data: existing } = await (ctx.supabase.from("property_categories") as any)
+      .select("id, name")
+      .eq("user_id", ctx.userId)
+      .ilike("name", name)
+      .maybeSingle();
+    if (existing) categoryId = existing.id as string;
+    else {
+      const { data: created, error: cErr } = await (ctx.supabase.from("property_categories") as any)
+        .insert({ user_id: ctx.userId, name })
+        .select("id")
+        .single();
+      if (cErr) return fail(cErr.message);
+      categoryId = created.id as string;
+    }
+  }
+
+  const { data, error } = await (ctx.supabase.from("properties") as any)
+    .update({ category_id: categoryId })
+    .eq("id", propertyId)
+    .eq("user_id", ctx.userId)
+    .select("id, title")
+    .maybeSingle();
+  if (error) return fail(error.message);
+  if (!data) return fail("property_not_found");
+  return ok({ property: data, category: name || null });
 }
 
 async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<DomainResult> {
@@ -936,6 +1037,9 @@ async function execSendReminderNow(ctx: DomainContext, args: unknown): Promise<D
 
 export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   search_people: execSearchPeople,
+  list_property_categories: execListPropertyCategories,
+  list_uncategorized_properties: execListUncategorizedProperties,
+  set_property_category: execSetPropertyCategory,
   create_person: execCreatePerson,
   search_properties: execSearchProperties,
   create_property: execCreateProperty,

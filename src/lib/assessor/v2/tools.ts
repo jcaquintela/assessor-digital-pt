@@ -69,6 +69,26 @@ export const SearchAgendaArgs = z.object({
 });
 export type SearchAgendaArgs = z.infer<typeof SearchAgendaArgs>;
 
+// ---- Categorias de imóveis (mesmo mecanismo das categorias do Drive) ----
+export const ListPropertyCategoriesArgs = z.object({}).passthrough();
+export type ListPropertyCategoriesArgs = z.infer<typeof ListPropertyCategoriesArgs>;
+
+export const ListUncategorizedPropertiesArgs = z.object({
+  limit: z.number().int().positive().max(50).optional().nullable(),
+});
+export type ListUncategorizedPropertiesArgs = z.infer<typeof ListUncategorizedPropertiesArgs>;
+
+export const SetPropertyCategoryArgs = z.object({
+  property_id: z.string().uuid().optional().nullable(),
+  // O modelo nem sempre traz o id do search — aceitamos também a morada/título
+  // dita na conversa e resolvemos o imóvel a partir daí.
+  property_query: z.string().min(2).optional().nullable(),
+  category_name: z.string().min(1).max(40).optional().nullable(),
+}).refine((v) => !!(v.property_id || v.property_query), {
+  message: "indica property_id ou property_query",
+});
+export type SetPropertyCategoryArgs = z.infer<typeof SetPropertyCategoryArgs>;
+
 const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD");
 const HhMm = z.string().regex(/^\d{2}:\d{2}$/, "HH:MM");
 
@@ -743,6 +763,44 @@ TOOL_SPECS.push(
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_property_categories",
+      description:
+        "Devolve as categorias de imóveis do consultor (nome e cor). Usa antes de sugerir uma categoria, para propores sempre nomes que já existem.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_uncategorized_properties",
+      description:
+        "Devolve os imóveis do consultor que ainda não têm categoria, com título, tipo, localização, origem e notas. Usa SÓ quando o consultor pede explicitamente para organizar os imóveis por categoria.",
+      parameters: {
+        type: "object",
+        properties: { limit: { type: ["number", "null"] } },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_property_category",
+      description:
+        "Atribui a categoria a um imóvel. Só podes usar DEPOIS de o consultor confirmar a categoria proposta. category_name vazio ou null tira a categoria.",
+      parameters: {
+        type: "object",
+        properties: {
+          property_id: { type: "string", format: "uuid" },
+          property_query: { type: ["string", "null"] },
+          category_name: { type: ["string", "null"] },
+        },
+        required: [],
+      },
+    },
+  },
 );
 
 // ---------- registo Zod (nome → schema) ----------
@@ -765,6 +823,9 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   search_active_reminders: SearchActiveRemindersArgs,
   cancel_reminder: CancelReminderArgs,
   send_reminder_now: SendReminderNowArgs,
+  list_property_categories: ListPropertyCategoriesArgs,
+  list_uncategorized_properties: ListUncategorizedPropertiesArgs,
+  set_property_category: SetPropertyCategoryArgs,
 };
 
 export const TOOL_NAMES = Object.keys(ZOD_BY_TOOL);

@@ -13,6 +13,7 @@ import { NewPropertyDialog } from "@/components/imoveis/new-property-dialog";
 import { OrganizeDialog, useOrganizer } from "@/components/organizer/organizer";
 import { GroupCards, TagFilterRow, ViewToggle, type PeopleView } from "@/components/pessoas/people-explorer";
 import { ORIGEM, PropertyCard } from "@/components/imoveis/properties-explorer";
+import { PropertyCategoryDialog, PropertyCategoryFilter, usePropertyCategories } from "@/components/imoveis/property-categories";
 import { toast } from "sonner";
 import { exportProperties } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/imoveis/")({
   validateSearch: (search: Record<string, unknown>) => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
+    cat: typeof search.cat === "string" && search.cat ? search.cat : undefined,
     view: search.view === "grelha" ? ("grelha" as const) : undefined,
   }),
   head: () => ({
@@ -50,19 +52,24 @@ function ImoveisPage() {
   const navigate = useNavigate({ from: "/imoveis" });
   const q = search.q ?? "";
   const tagId = search.tag ?? null;
+  const catId = search.cat ?? null;
   const view: PeopleView = search.view ?? "lista";
   const setQ = (v: string) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
   const setTagId = (v: string | null) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, tag: v ?? undefined }), replace: true });
+  const setCatId = (v: string | null) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, cat: v ?? undefined }), replace: true });
   const setView = (v: PeopleView) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, view: v === "grelha" ? "grelha" : undefined }), replace: true });
 
   const [editId, setEditId] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [catFor, setCatFor] = useState<string | null>(null);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const org = useOrganizer("property");
+  const cats = usePropertyCategories();
   const emEdicao = all.find((p) => p.id === editId) ?? null;
   const fetchExport = useServerFn(exportProperties);
   const fetchAttention = useServerFn(getPropertyAttention);
@@ -113,10 +120,11 @@ function ImoveisPage() {
   const term = q.trim().toLowerCase();
   const list = useMemo(() => all.filter((i) => {
     if (tagId && !org.tagsOf(i.id).some((t) => t.id === tagId)) return false;
+    if (catId && i.category_id !== catId) return false;
     if (!term) return true;
     return [i.title, i.address, i.city, i.location, i.typology, i.property_type]
       .filter(Boolean).join(" ").toLowerCase().includes(term);
-  }), [all, tagId, term, org.tagLinks, org.tags]);
+  }), [all, tagId, catId, term, org.tagLinks, org.tags]);
 
   const aviso = atencao.data;
 
@@ -167,6 +175,7 @@ function ImoveisPage() {
         />
       </div>
 
+      <div className="mb-4"><PropertyCategoryFilter selected={catId} onSelect={setCatId} /></div>
       <div className="mb-5"><TagFilterRow org={org} tagId={tagId} onTag={setTagId} /></div>
       <div className="mb-6">
         <GroupCards
@@ -209,12 +218,21 @@ function ImoveisPage() {
             onToggle={() => toggle(i.id)}
             onEdit={() => setEditId(i.id)}
             onOrganize={() => setOrgId(i.id)}
+            onCategory={() => setCatFor(i.id)}
+            category={cats.byId(i.category_id)}
             onDelete={() => void eliminar(i.id, i.title)}
           />
         ))}
       </div>
 
       <EditPropertyDialog property={emEdicao} open={!!emEdicao} onOpenChange={(v) => { if (!v) setEditId(null); }} />
+      <PropertyCategoryDialog
+        propertyId={catFor}
+        propertyTitle={all.find((p) => p.id === catFor)?.title ?? ""}
+        currentId={all.find((p) => p.id === catFor)?.category_id ?? null}
+        open={!!catFor}
+        onOpenChange={(v) => { if (!v) setCatFor(null); }}
+      />
       <NewPropertyDialog open={novo} onOpenChange={setNovo} />
       <OrganizeDialog
         entityType="property" entityId={orgId}

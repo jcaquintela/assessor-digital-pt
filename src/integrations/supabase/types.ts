@@ -2551,6 +2551,7 @@ export type Database = {
           bathrooms: number | null
           bedrooms: number | null
           category: string | null
+          category_id: string | null
           city: string | null
           commission_amount: number | null
           commission_pct: number | null
@@ -2585,6 +2586,7 @@ export type Database = {
           bathrooms?: number | null
           bedrooms?: number | null
           category?: string | null
+          category_id?: string | null
           city?: string | null
           commission_amount?: number | null
           commission_pct?: number | null
@@ -2619,6 +2621,7 @@ export type Database = {
           bathrooms?: number | null
           bedrooms?: number | null
           category?: string | null
+          category_id?: string | null
           city?: string | null
           commission_amount?: number | null
           commission_pct?: number | null
@@ -2647,6 +2650,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "properties_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "property_categories"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "properties_owner_person_fk"
             columns: ["owner_person_id"]
             isOneToOne: false
@@ -2654,6 +2664,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      property_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       property_interests: {
         Row: {
