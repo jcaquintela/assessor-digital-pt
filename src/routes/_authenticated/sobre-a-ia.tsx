@@ -91,6 +91,77 @@ function SobreAPage() {
           </ul>
         </Section>
 
+        <Section icon={FileText} title="O que registo e como uso">
+          <p className="c-muted text-sm leading-relaxed">
+            Quando me envias uma mensagem, foto, áudio ou ficheiro, processo o
+            conteúdo para te ajudar na organização do dia. Guardo o mínimo
+            necessário e só uso os dados para o que pedes.
+          </p>
+
+          <div className="mt-4 grid gap-3">
+            <div className="rounded-[10px] border p-3" style={{ borderColor: "var(--line)" }}>
+              <div className="mb-2 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-[var(--brass-dark)]" />
+                <span className="text-sm font-medium">Mensagem original</span>
+              </div>
+              <p className="c-muted text-xs leading-relaxed">
+                O texto que escreves — por exemplo, “A Maria ligou, quer vender
+                o T3 da Rua do Comércio por 285 mil”. Guardo para manter o
+                histórico da conversa e responder em contexto.
+              </p>
+            </div>
+
+            <div className="rounded-[10px] border p-3" style={{ borderColor: "var(--line)" }}>
+              <div className="mb-2 flex items-center gap-2">
+                <Mic className="h-4 w-4 text-[var(--brass-dark)]" />
+                <span className="text-sm font-medium">Transcrição de áudio</span>
+              </div>
+              <p className="c-muted text-xs leading-relaxed">
+                Se enviares uma nota de voz, converto-a em texto para a poder
+                processar. A transcrição fica associada à conversa e pode
+                alimentar rascunhos de pessoas, imóveis ou seguimentos.
+              </p>
+            </div>
+
+            <div className="rounded-[10px] border p-3" style={{ borderColor: "var(--line)" }}>
+              <div className="mb-2 flex items-center gap-2">
+                <Brain className="h-4 w-4 text-[var(--brass-dark)]" />
+                <span className="text-sm font-medium">Interpretações da IA</span>
+              </div>
+              <p className="c-muted text-xs leading-relaxed">
+                Extraio dados como nomes, telefones, moradas, tipologias,
+                preços, datas ou intenções. Estes campos aparecem como
+                rascunhos — só se transformam em registos quando confirmas.
+              </p>
+            </div>
+          </div>
+
+          <ul className="mt-4 flex flex-col gap-2 text-sm leading-relaxed" style={{ color: "var(--ink)" }}>
+            <li className="flex items-start gap-2">
+              <span className="text-[var(--brass-dark)]">•</span>
+              <span>Um nome + telefone pode gerar um rascunho de Pessoa.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-[var(--brass-dark)]">•</span>
+              <span>Uma morada + preço pode gerar um rascunho de Imóvel.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-[var(--brass-dark)]">•</span>
+              <span>Uma data + compromisso pode gerar um Lembrete ou Seguimento.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-[var(--brass-dark)]">•</span>
+              <span>Uma foto de um documento ou placa fica no Drive, organizada por contexto.</span>
+            </li>
+          </ul>
+
+          <p className="c-muted mt-4 text-xs leading-relaxed">
+            Em qualquer destes casos, a escrita na base de dados só acontece
+            depois da tua confirmação. Podes editar ou rejeitar cada rascunho
+            antes de o tornar definitivo.
+          </p>
+        </Section>
+
         <Section icon={Shield} title="Como trato os dados desta interação">
           <p className="c-muted text-sm leading-relaxed">
             Os dados que me envias — mensagens, contactos, imóveis, ficheiros — são processados para
