@@ -17,3 +17,15 @@ export async function listRecentProductUpdates(
     .limit(20);
   return ((data as unknown as ProductUpdate[]) ?? []);
 }
+
+/** Última novidade publicada, sem limite de data — usada como fallback. */
+export async function lastProductUpdate(ctx: DomainContext): Promise<ProductUpdate | null> {
+  const { data } = await ctx.supabase
+    .from("product_updates" as never)
+    .select("released_on, title, description, category")
+    .eq("is_published", true)
+    .order("released_on", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as unknown as ProductUpdate) ?? null;
+}
