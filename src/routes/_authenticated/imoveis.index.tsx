@@ -1,32 +1,29 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
-import { formatEUR } from "@/lib/demo-data";
-import { listProperties } from "@/lib/assessor/properties.functions";
+import { listProperties, deleteProperty } from "@/lib/assessor/properties.functions";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
-import { ChevronRight, Download, FileText, Pencil, Plus, Search, Tags, Trash2 } from "lucide-react";
+import { AlertTriangle, Download, Plus, Search } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
 import { EditPropertyDialog } from "@/components/imoveis/edit-property-dialog";
 import { NewPropertyDialog } from "@/components/imoveis/new-property-dialog";
-import { OrganizerFilter, OrganizeDialog, useOrganizer } from "@/components/organizer/organizer";
-import { deleteProperty } from "@/lib/assessor/properties.functions";
-import { useQueryClient } from "@tanstack/react-query";
+import { OrganizeDialog, useOrganizer } from "@/components/organizer/organizer";
+import { GroupCards, TagFilterRow, ViewToggle, type PeopleView } from "@/components/pessoas/people-explorer";
+import { ORIGEM, PropertyCard } from "@/components/imoveis/properties-explorer";
 import { toast } from "sonner";
 import { exportProperties } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
-
-const ORIGEM: Record<string, string> = {
-  whatsapp: "WhatsApp",
-  telegram: "Telegram",
-  web: "Dashboard",
-  placa: "placa",
-  prospecting: "placa",
-};
+import { getPropertyAttention } from "@/lib/imoveis/attention.functions";
 
 export const Route = createFileRoute("/_authenticated/imoveis/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
+    view: search.view === "grelha" ? ("grelha" as const) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Imóveis — Assessor do Consultor" },
@@ -46,21 +43,40 @@ function ImoveisPage() {
   const fetchList = useServerFn(listProperties);
   const qc = useQueryClient();
   const remove = useServerFn(deleteProperty);
-  const { data: rows } = useQuery({
-    queryKey: ["properties", "list"],
-    queryFn: () => fetchList(),
-  });
+  const { data: rows, isLoading } = useQuery({ queryKey: ["properties", "list"], queryFn: () => fetchList() });
   const all = (rows ?? []) as any[];
-  const [q, setQ] = useState("");
+
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/imoveis" });
+  const q = search.q ?? "";
+  const tagId = search.tag ?? null;
+  const view: PeopleView = search.view ?? "lista";
+  const setQ = (v: string) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
+  const setTagId = (v: string | null) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, tag: v ?? undefined }), replace: true });
+  const setView = (v: PeopleView) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, view: v === "grelha" ? "grelha" : undefined }), replace: true });
+
   const [editId, setEditId] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
   const [orgId, setOrgId] = useState<string | null>(null);
-  const [tagId, setTagId] = useState<string | null>(null);
-  const [folderId, setFolderId] = useState<string | null>(null);
+  const [sel, setSel] = useState<Set<string>>(new Set());
   const org = useOrganizer("property");
   const emEdicao = all.find((p) => p.id === editId) ?? null;
   const fetchExport = useServerFn(exportProperties);
+  const fetchAttention = useServerFn(getPropertyAttention);
   const [aExportar, setAExportar] = useState(false);
+
+  const atencao = useQuery({ queryKey: ["property-attention"], queryFn: () => fetchAttention() });
+
+  // Todos pré-selecionados por defeito; imóveis novos entram na seleção.
+  useEffect(() => {
+    setSel(new Set(all.map((p) => p.id)));
+  }, [all.length]);
+
+  const toggle = (id: string) =>
+    setSel((cur) => { const n = new Set(cur); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   async function eliminar(id: string, titulo: string) {
     if (!confirm(`Apagar "${titulo}"? Esta ação não pode ser desfeita.`)) return;
@@ -68,18 +84,18 @@ function ImoveisPage() {
       await remove({ data: { id } });
       await qc.invalidateQueries({ queryKey: ["properties"] });
       toast.success("Imóvel eliminado.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
+    } catch (e) { toast.error((e as Error).message); }
   }
 
   async function exportarCsv() {
     setAExportar(true);
     try {
-      const rows = await fetchExport();
+      const todos = await fetchExport();
+      const linhas = todos.filter((r: any) => sel.has(r.id));
+      if (!linhas.length) { toast.error("Não há imóveis selecionados."); return; }
       const csv = toCsv(
         ["Morada", "Tipo", "Estado", "Preço (EUR)", "Origem", "Criado em"],
-        rows.map((r) => [
+        linhas.map((r: any) => [
           [r.address, r.city || r.location].filter(Boolean).join(", ") || r.title || "",
           [r.typology, r.property_type].filter(Boolean).join(" "),
           propertyStatusLabel(r.status),
@@ -95,130 +111,115 @@ function ImoveisPage() {
   }
 
   const term = q.trim().toLowerCase();
-  const list = all.filter((i) => {
+  const list = useMemo(() => all.filter((i) => {
     if (tagId && !org.tagsOf(i.id).some((t) => t.id === tagId)) return false;
-    if (folderId && !org.foldersOf(i.id).some((f) => f.id === folderId)) return false;
-    return (
-      !term ||
-      [i.title, i.address, i.city, i.location, i.typology, i.property_type]
-        .filter(Boolean).join(" ").toLowerCase().includes(term)
-    );
-  });
+    if (!term) return true;
+    return [i.title, i.address, i.city, i.location, i.typology, i.property_type]
+      .filter(Boolean).join(" ").toLowerCase().includes(term);
+  }), [all, tagId, term, org.tagLinks, org.tags]);
+
+  const aviso = atencao.data;
+
   return (
     <AppShell>
       <PageHeader
         title="Imóveis"
-        subtitle={`${all.length} em carteira`}
+        subtitle={`${all.length} em carteira · criados aqui ou por conversa`}
         action={
-          <button type="button" className="c-btn" onClick={() => setNovo(true)}>
+          <button type="button" className="c-btn tap-44" onClick={() => setNovo(true)}>
             <Plus className="h-4 w-4" /> Adicionar
           </button>
         }
       />
-      <div className="mb-4">
-        <button type="button" className="c-btn" onClick={exportarCsv} disabled={aExportar}>
-          <Download className="h-4 w-4" /> {aExportar ? "A gerar…" : "CSV"}
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button type="button" className="c-btn tap-44" onClick={exportarCsv} disabled={aExportar}>
+          <Download className="h-4 w-4" /> {aExportar ? "A gerar…" : `CSV (${sel.size})`}
         </button>
       </div>
-      <div className="mb-4">
-        <OrganizerFilter
-          entityType="property" org={org}
-          tagId={tagId} folderId={folderId}
-          onTag={setTagId} onFolder={setFolderId}
-        />
-      </div>
+
+      {aviso && (
+        <div className="c-spotlight mb-4">
+          <div className="c-spot-tag"><AlertTriangle className="h-3.5 w-3.5" /> Isto merece atenção</div>
+          <p className="mt-2 text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
+            {aviso.count === 1 ? (
+              <>
+                <strong>{aviso.first.title}</strong> continua "Por angariar" há {aviso.days} dias sem contacto real registado
+              </>
+            ) : (
+              <>
+                <strong>{aviso.count} imóveis</strong> continuam "Por angariar" há mais de 10 dias sem contacto real registado
+                {" "}(o mais parado é {aviso.first.title}, há {aviso.days} dias)
+              </>
+            )} — vale a pena retomares antes que arrefeçam.
+          </p>
+        </div>
+      )}
+
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} />
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Procurar por morada, cidade ou tipo…"
+          placeholder="Procurar por morada ou tipo…"
           className="h-11 rounded-xl pl-9"
           style={{ background: "#fff", borderColor: "var(--line)" }}
         />
       </div>
-      {all.length === 0 && (
+
+      <div className="mb-5"><TagFilterRow org={org} tagId={tagId} onTag={setTagId} /></div>
+      <div className="mb-6">
+        <GroupCards
+          org={org}
+          items={all.map((i) => ({ id: i.id, label: i.title as string }))}
+          noun={["imóvel", "imóveis"]}
+          emptyLabel="Sem imóveis ainda"
+        />
+      </div>
+
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Toda a carteira</div>
+        <ViewToggle view={view} onView={setView} />
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px]" style={{ color: "var(--muted)" }}>
+        <span>{sel.size} de {all.length} selecionado{sel.size === 1 ? "" : "s"}</span>
+        <span className="flex items-center gap-2">
+          <button type="button" className="tap-44 font-semibold" style={{ color: "var(--ink-soft)" }} onClick={() => setSel(new Set(all.map((p) => p.id)))}>Selecionar tudo</button>
+          <span>·</span>
+          <button type="button" className="tap-44 font-semibold" style={{ color: "var(--ink-soft)" }} onClick={() => setSel(new Set())}>Limpar seleção</button>
+        </span>
+      </div>
+
+      {isLoading && all.length === 0 && <p className="c-muted text-sm">A carregar…</p>}
+      {!isLoading && all.length === 0 && (
         <div className="c-empty">
           Ainda não tens imóveis. Usa "+ Adicionar" ou descreve o imóvel ao teu assessor por WhatsApp.
         </div>
       )}
       {all.length > 0 && list.length === 0 && (
-        <div className="c-empty">Nenhum imóvel corresponde a “{q}”.</div>
+        <div className="c-empty">Nenhum imóvel corresponde à procura.</div>
       )}
-      <div className="grid gap-3 md:grid-cols-2">
-        {list.map((i: any) => {
-          const localizacao = i.city || i.location || "";
-          const tipo = i.typology || i.property_type || "";
-          const origem = i.source_channel ? (ORIGEM[i.source_channel] ?? i.source_channel) : null;
-          const angariado = i.status && i.status !== "em_angariacao" && i.status !== "por_angariar";
-          return (
-            <Link key={i.id} to="/imoveis/$id" params={{ id: i.id }} className="c-card c-card-hover block p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-[15px] font-semibold" style={{ color: "var(--ink)" }}>{i.title}</div>
-                  <div className="c-muted mt-0.5 text-xs">
-                    {[tipo, i.address || localizacao].filter(Boolean).join(" · ") || "Sem detalhes"}
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className={`c-badge ${angariado ? "ok" : "warn"}`}>{propertyStatusLabel(i.status)}</span>
-                    {origem && <span className="c-badge">via {origem}</span>}
-                    {i.file_count > 0 && (
-                      <span className="c-badge c-mono"><FileText className="h-3 w-3" /> {i.file_count}</span>
-                    )}
-                    {org.tagsOf(i.id).map((t) => <span key={t.id} className="c-badge">{t.name}</span>)}
-                    {org.foldersOf(i.id).map((f) => <span key={f.id} className="c-badge">{f.name}</span>)}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2 text-right">
-                  {i.asking_price != null && (
-                    <div className="c-mono text-sm font-semibold" style={{ color: "var(--ink)" }}>{formatEUR(Number(i.asking_price))}</div>
-                  )}
-                  <ChevronRight className="h-4 w-4" style={{ color: "var(--muted)" }} />
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  aria-label={`Editar ${i.title}`}
-                  className="c-badge tap-44"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditId(i.id); }}
-                >
-                  <Pencil className="h-3 w-3" /> Editar
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Organizar ${i.title}`}
-                  className="c-badge tap-44"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOrgId(i.id); }}
-                >
-                  <Tags className="h-3 w-3" /> Organizar
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Eliminar ${i.title}`}
-                  className="c-badge tap-44"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); void eliminar(i.id, i.title); }}
-                >
-                  <Trash2 className="h-3 w-3" /> Eliminar
-                </button>
-              </div>
-            </Link>
-          );
-        })}
+
+      <div className={view === "grelha" ? "grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4" : "grid gap-3"}>
+        {list.map((i: any) => (
+          <PropertyCard
+            key={i.id} i={i} org={org} view={view}
+            selected={sel.has(i.id)}
+            onToggle={() => toggle(i.id)}
+            onEdit={() => setEditId(i.id)}
+            onOrganize={() => setOrgId(i.id)}
+            onDelete={() => void eliminar(i.id, i.title)}
+          />
+        ))}
       </div>
-      <EditPropertyDialog
-        property={emEdicao}
-        open={!!emEdicao}
-        onOpenChange={(v) => { if (!v) setEditId(null); }}
-      />
+
+      <EditPropertyDialog property={emEdicao} open={!!emEdicao} onOpenChange={(v) => { if (!v) setEditId(null); }} />
       <NewPropertyDialog open={novo} onOpenChange={setNovo} />
       <OrganizeDialog
-        entityType="property"
-        entityId={orgId}
+        entityType="property" entityId={orgId}
         title={all.find((p) => p.id === orgId)?.title ?? ""}
-        org={org}
-        open={!!orgId}
-        onOpenChange={(v) => { if (!v) setOrgId(null); }}
+        org={org} open={!!orgId} onOpenChange={(v) => { if (!v) setOrgId(null); }}
       />
     </AppShell>
   );
