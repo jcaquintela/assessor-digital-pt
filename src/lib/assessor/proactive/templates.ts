@@ -124,9 +124,9 @@ export function planActivatedText(name: string, plan: string) {
  * Fim do período experimental: {{1}} = primeiro nome, {{2}} = dias que faltam.
  *
  * Texto exato a submeter à Meta (categoria Utility):
- * "Olá {{1}}. O teu período experimental termina em {{2}} dias. Depois disso,
- * continuas a usar o Afonso pelo Telegram, sem perderes nada do que já
- * organizámos — só voltas ao WhatsApp quando quiseres continuar a pagar."
+ * "Olá {{1}}. O teu período experimental termina em {{2}} dias. A conta é
+ * sempre a mesma e nada do que organizámos se perde — só muda o que fica
+ * disponível. Diz-me que plano queres continuar a usar."
  */
 export function trialEndingTemplatePayload(name: string, days: number) {
   return {
@@ -148,15 +148,43 @@ export function trialEndingTemplatePayload(name: string, days: number) {
 export function trialEndingText(name: string, days: number) {
   return (
     `Olá${name ? ` ${name}` : ""}. O teu período experimental termina em ${days} dias. ` +
-    "Depois disso, continuas a usar o Afonso pelo Telegram, sem perderes nada do que já " +
-    "organizámos — só voltas ao WhatsApp quando quiseres continuar a pagar."
+    "A conta é sempre a mesma e nada do que organizámos se perde — só muda o que fica " +
+    "disponível. Diz-me com que plano queres continuar: Consultor, Pro ou Base."
   );
 }
 
 /** Aviso curto no momento em que o período experimental termina. */
 export function trialExpiredText(name: string) {
   return (
-    `Olá${name ? ` ${name}` : ""}. O período experimental terminou. Continuas comigo pelo ` +
-    "Telegram e não perdeste nada do que já organizámos — quando quiseres retomar o plano, diz-me."
+    `Olá${name ? ` ${name}` : ""}. O período experimental terminou e a tua conta ficou no plano Base. ` +
+    "É a mesma conta de sempre, com o mesmo histórico: nada foi apagado, só ficam disponíveis " +
+    "menos funcionalidades. Quando quiseres voltar a abrir tudo, diz-me."
+  );
+}
+
+/** Dia 7 do período experimental: resumo de valor, sem pedir nada. */
+export function trialValueSummaryText(
+  name: string,
+  stats: { people: number; properties: number; followUps: number },
+) {
+  const bits: string[] = [];
+  if (stats.people > 0) bits.push(`${stats.people} ${stats.people === 1 ? "pessoa" : "pessoas"}`);
+  if (stats.properties > 0) bits.push(`${stats.properties} ${stats.properties === 1 ? "imóvel" : "imóveis"}`);
+  if (stats.followUps > 0) bits.push(`${stats.followUps} ${stats.followUps === 1 ? "seguimento" : "seguimentos"}`);
+  const body = bits.length
+    ? `Nestes primeiros 7 dias já organizámos ${bits.join(", ")}.`
+    : "Já vamos a meio do período experimental e ainda mal me puseste à prova.";
+  return (
+    `Olá${name ? ` ${name}` : ""}. ${body} Faltam 7 dias de experiência completa — ` +
+    "aproveita para me atirares o trabalho de que menos gostas."
+  );
+}
+
+/** Dia 12: escolha de plano, com o que acontece se não responderes. */
+export function trialChoiceText(name: string) {
+  return (
+    `Olá${name ? ` ${name}` : ""}. Faltam 2 dias para acabar o período experimental. ` +
+    "Diz-me só com que plano queres ficar: *Consultor*, *Pro* ou *Base*. " +
+    "Se não me disseres nada, fico automaticamente no Base — a conta e o histórico mantêm-se iguais."
   );
 }
