@@ -31,6 +31,8 @@ import {
   SearchActiveRemindersArgs,
   CancelReminderArgs,
   SendReminderNowArgs,
+  ListUncategorizedPropertiesArgs,
+  SetPropertyCategoryArgs,
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
@@ -222,6 +224,7 @@ async function execSearchProperties(ctx: DomainContext, args: unknown): Promise<
 }
 
 async function execCreateProperty(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p0 = 0; void p0;
   const p = parse(CreatePropertyArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
   const { data, error } = await ctx.supabase
@@ -242,6 +245,65 @@ async function execCreateProperty(ctx: DomainContext, args: unknown): Promise<Do
     .single();
   if (error) return fail(error.message);
   return ok({ property: data });
+}
+
+// ---- Categorias de imóveis ------------------------------------------------
+// Mesmo mecanismo das categorias do Drive: nome + cor, por consultor.
+// O assessor propõe, o consultor confirma; nunca reclassifica sozinho.
+
+async function execListPropertyCategories(ctx: DomainContext): Promise<DomainResult> {
+  const { data, error } = await (ctx.supabase.from("property_categories") as any)
+    .select("id, name, color")
+    .eq("user_id", ctx.userId)
+    .order("name");
+  if (error) return fail(error.message);
+  return ok({ categories: data ?? [] });
+}
+
+async function execListUncategorizedProperties(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(ListUncategorizedPropertiesArgs, args); if (!p.ok) return fail(p.error);
+  const limit = p.value.limit ?? 25;
+  const { data, error } = await (ctx.supabase.from("properties") as any)
+    .select("id, title, property_type, typology, location, city, address, status, source_channel, notes")
+    .eq("user_id", ctx.userId)
+    .is("category_id", null)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) return fail(error.message);
+  return ok({ properties: data ?? [] });
+}
+
+async function execSetPropertyCategory(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(SetPropertyCategoryArgs, args); if (!p.ok) return fail(p.error);
+  const name = (p.value.category_name ?? "").trim();
+
+  let categoryId: string | null = null;
+  if (name) {
+    const { data: existing } = await (ctx.supabase.from("property_categories") as any)
+      .select("id, name")
+      .eq("user_id", ctx.userId)
+      .ilike("name", name)
+      .maybeSingle();
+    if (existing) categoryId = existing.id as string;
+    else {
+      const { data: created, error: cErr } = await (ctx.supabase.from("property_categories") as any)
+        .insert({ user_id: ctx.userId, name })
+        .select("id")
+        .single();
+      if (cErr) return fail(cErr.message);
+      categoryId = created.id as string;
+    }
+  }
+
+  const { data, error } = await (ctx.supabase.from("properties") as any)
+    .update({ category_id: categoryId })
+    .eq("id", p.value.property_id)
+    .eq("user_id", ctx.userId)
+    .select("id, title")
+    .maybeSingle();
+  if (error) return fail(error.message);
+  if (!data) return fail("property_not_found");
+  return ok({ property: data, category: name || null });
 }
 
 async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<DomainResult> {
@@ -936,6 +998,9 @@ async function execSendReminderNow(ctx: DomainContext, args: unknown): Promise<D
 
 export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   search_people: execSearchPeople,
+  list_property_categories: execListPropertyCategories,
+  list_uncategorized_properties: execListUncategorizedProperties,
+  set_property_category: execSetPropertyCategory,
   create_person: execCreatePerson,
   search_properties: execSearchProperties,
   create_property: execCreateProperty,
