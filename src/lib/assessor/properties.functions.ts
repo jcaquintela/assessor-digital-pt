@@ -94,7 +94,7 @@ export const updatePropertyFields = createServerFn({ method: "POST" })
       "title", "typology", "property_type", "city", "location", "address",
       "postal_code", "parish", "asking_price", "estimated_value",
       "area_gross", "area_useful", "bedrooms", "bathrooms", "parking",
-      "energy_rating", "status", "notes", "owner_person_id",
+      "energy_rating", "status", "notes", "owner_person_id", "category",
     ]);
     const patch: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(data.patch)) {
