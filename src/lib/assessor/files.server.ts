@@ -251,6 +251,30 @@ export async function processIncomingFile(
   }
 
   const classification = classifyByMime(mimeType);
+
+  // Espaço incluído no plano Base (100 MB). Planos pagos não têm este limite.
+  {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("subscription_tier")
+      .eq("id", userId)
+      .maybeSingle();
+    const { canStoreDocument } = await import("@/lib/retention/documents.server");
+    const room = await canStoreDocument(supabase, userId, size, (prof as any)?.subscription_tier);
+    if (!room.ok) {
+      return failLog(supabase, {
+        userId,
+        channel,
+        sourceMessageId,
+        originalName,
+        mimeType,
+        size,
+        errorCode: "quota_exceeded",
+        reply: room.reply,
+      });
+    }
+  }
+
   const ext = extensionFor(mimeType);
   const internalName = `${crypto.randomUUID()}.${ext}`;
   const storagePath = `${userId}/${new Date().getFullYear()}/${internalName}`;
