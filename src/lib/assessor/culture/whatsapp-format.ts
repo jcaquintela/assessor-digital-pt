@@ -38,5 +38,27 @@ export function formatForWhatsApp(input: string | null | undefined): string {
 
   // Limpa marcadores soltos e linhas em branco a mais.
   out = out.replace(/\*{2,}/g, "*").replace(/\n{3,}/g, "\n\n");
-  return out.trim();
+  return balanceEmphasis(out.trim());
+}
+
+/**
+ * Rede de segurança: nunca sai uma mensagem com *negrito* ou _itálico_ por
+ * fechar (acontecia quando o texto era cortado a meio). Se o par estiver
+ * incompleto na linha, remove-se o marcador solto.
+ */
+export function balanceEmphasis(input: string): string {
+  return input
+    .split("\n")
+    .map((line) => {
+      let out = line;
+      for (const mark of ["*", "_"]) {
+        const count = (out.match(new RegExp(`\\${mark}`, "g")) ?? []).length;
+        if (count % 2 === 1) {
+          const last = out.lastIndexOf(mark);
+          out = out.slice(0, last) + out.slice(last + 1);
+        }
+      }
+      return out.replace(/\s+([,.?!;:])/g, "$1").trimEnd();
+    })
+    .join("\n");
 }
