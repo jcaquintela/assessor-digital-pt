@@ -280,7 +280,7 @@ function normalizeForMatch(s: string): string {
  * Compara o texto do compromisso com o título/morada/cidade dos imóveis do
  * consultor. Só liga quando há uma única correspondência clara.
  */
-async function resolvePropertyFromText(ctx: DomainContext, text: string): Promise<string | null> {
+export async function resolvePropertyFromText(ctx: DomainContext, text: string): Promise<string | null> {
   let source = text || "";
   // O título gravado pode perder a morada ("Visita com Sr. Almeida"); nesse
   // caso, olhamos para a frase original do consultor.

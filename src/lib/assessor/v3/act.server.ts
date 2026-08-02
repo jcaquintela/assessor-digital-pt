@@ -1,6 +1,9 @@
 // Reasoning Engine — Fase 5: ACT.
 
-import { TOOL_REGISTRY, type DomainContext, type DomainResult } from "../v2/domain.server";
+import {
+  TOOL_REGISTRY, resolvePropertyFromText,
+  type DomainContext, type DomainResult,
+} from "../v2/domain.server";
 import { ZOD_BY_TOOL, CreateProspectingLeadArgs } from "../v2/tools";
 import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
 import { cleanTitle } from "../titles";
@@ -93,6 +96,35 @@ export interface ToolExecResult {
   latencyMs: number;
 }
 
+// Ferramentas cujo registo deve ficar ligado ao imóvel de que se fala.
+const PROPERTY_AWARE_TOOLS = new Set([
+  "create_event", "create_follow_up", "save_interaction", "create_reminder",
+]);
+
+/**
+ * O modelo fala do imóvel pela morada ("visita à Alameda da República") e nem
+ * sempre devolve o `property_id` do search. Sem essa ligação, a visita nunca
+ * aparece na ficha do imóvel. Aqui resolvemos o imóvel a partir do que foi
+ * dito (título, notas e frase original) antes de executar a ferramenta.
+ */
+async function enrichWithProperty(
+  ctx: DomainContext,
+  name: string,
+  args: unknown,
+): Promise<unknown> {
+  if (!PROPERTY_AWARE_TOOLS.has(name) || !args || typeof args !== "object") return args;
+  const a = { ...(args as Record<string, unknown>) };
+  if (a.property_id) return a;
+  const text = [a.title, a.notes, a.description, a.summary, a.location]
+    .filter((x) => typeof x === "string" && x.trim())
+    .join(" ");
+  try {
+    const id = await resolvePropertyFromText(ctx, text);
+    if (id) a.property_id = id;
+  } catch { /* ligar ao imóvel é um bónus; nunca pode falhar o registo */ }
+  return a;
+}
+
 export async function executeToolCalls(
   ctx: DomainContext,
   toolCalls: DecisionToolCall[],
@@ -119,7 +151,11 @@ export async function executeToolCalls(
       continue;
     }
     const schema = ZOD_BY_TOOL[tc.name];
-    const args = normalizeToolArgs(tc.name, tc.arguments);
+    const args = await enrichWithProperty(
+      effectiveCtx,
+      tc.name,
+      normalizeToolArgs(tc.name, tc.arguments),
+    );
     const parsed = schema?.safeParse(args);
     if (schema && parsed && !parsed.success) {
       out.push({
