@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { BrandMark } from "@/components/brand-mark";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { isModuleVisible } from "@/lib/subscription/tiers";
 import {
