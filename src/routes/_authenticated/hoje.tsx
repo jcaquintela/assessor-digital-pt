@@ -369,6 +369,11 @@ function HojePage() {
             <Lightbulb className="h-4 w-4" /> O teu mentor sugere
           </div>
           <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ink)" }}>{mentor.text}</p>
+          {mentor.reason ? (
+            <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--muted)" }}>
+              Porquê: {mentor.reason}
+            </p>
+          ) : null}
           <div className="mt-3 flex items-center gap-3">
             <Link to={mentor.to as never} className="text-[12.5px] font-semibold" style={{ color: "var(--sage)" }}>
               {mentor.linkLabel}
