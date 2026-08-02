@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -62,6 +62,11 @@ function haQuantoTempo(iso: string): string {
 function PessoaDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const router = useRouter();
+  const voltarALista = () => {
+    if (router.history.canGoBack()) router.history.back();
+    else navigate({ to: "/pessoas" });
+  };
   const {
     pessoas, seguimentos, interacoes,
     deletePessoa, addInteracao, addSeguimento, loading,
@@ -159,7 +164,7 @@ function PessoaDetail() {
   return (
     <AppShell>
       <div className="mb-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/pessoas" })}>
+        <Button variant="ghost" size="sm" onClick={voltarALista}>
           <ChevronLeft className="mr-1 h-4 w-4" /> Pessoas
         </Button>
       </div>

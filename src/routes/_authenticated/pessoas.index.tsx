@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -18,6 +18,11 @@ import { getPersonAttention } from "@/lib/people/attention.functions";
 import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
+    view: search.view === "grelha" ? ("grelha" as const) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Pessoas — Assessor do Consultor" },
@@ -31,12 +36,20 @@ export const Route = createFileRoute("/_authenticated/pessoas/")({
 
 function PessoasPage() {
   const { pessoas, loading, deletePessoa } = useStore();
-  const [q, setQ] = useState("");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/pessoas" });
+  const q = search.q ?? "";
+  const tagId = search.tag ?? null;
+  const view: PeopleView = search.view ?? "lista";
+  const setQ = (v: string) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
+  const setTagId = (v: string | null) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, tag: v ?? undefined }), replace: true });
+  const setView = (v: PeopleView) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, view: v === "grelha" ? "grelha" : undefined }), replace: true });
   const [editId, setEditId] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
   const [orgId, setOrgId] = useState<string | null>(null);
-  const [tagId, setTagId] = useState<string | null>(null);
-  const [view, setView] = useState<PeopleView>("lista");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const org = useOrganizer("person");
   const emEdicao = pessoas.find((p) => p.id === editId) ?? null;
