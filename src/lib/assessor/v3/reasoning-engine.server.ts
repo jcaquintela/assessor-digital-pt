@@ -929,5 +929,27 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     });
   }
 
+  // Oferta das perguntas de arranque — só numa pausa natural: nada em curso,
+  // nenhuma execução neste turno e a resposta não terminou já com pergunta.
+  try {
+    const busyWithTask =
+      sparringActive ||
+      decideR.decision.action === "act" ||
+      decideR.decision.action === "ask" ||
+      toolResults.length > 0 ||
+      !!pendingForArchive;
+    const offer = nextOnboardingOffer(onboarding, {
+      replyIsQuestion: reply.includes("?"),
+      busyWithTask,
+    });
+    if (offer === "name") {
+      await markOnboardingOffered(supabase, userId, "name_asked", onboarding.offers);
+      reply = appendOffer(reply, NAME_QUESTION(assessorName));
+    } else if (offer === "goals") {
+      await markOnboardingOffered(supabase, userId, "goals_asked", onboarding.offers);
+      reply = appendOffer(reply, GOALS_QUESTION);
+    }
+  } catch { /* noop */ }
+
   return { reply };
 }
