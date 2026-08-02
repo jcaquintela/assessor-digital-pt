@@ -44,6 +44,26 @@ import { buildPersonBrief } from "./person-brief.server";
 import { detectWhatsNewQuery, formatWhatsNewReply, noRecentUpdatesReply, NO_UPDATES_REPLY } from "./whats-new";
 import { lastProductUpdate, listRecentProductUpdates } from "./whats-new.server";
 import {
+  appendOffer,
+  GOALS_QUESTION,
+  GOALS_SAVED_REPLY,
+  NAME_KEPT_REPLY,
+  NAME_QUESTION,
+  NAME_SET_REPLY,
+  nextOnboardingOffer,
+  readGoalsAnswer,
+  readNameAnswer,
+  type OnboardingState,
+} from "./onboarding";
+import {
+  loadOnboardingState,
+  markOnboardingOffered,
+  saveAssessorName,
+  saveOnboardingGoals,
+  setOnboardingStage,
+} from "./onboarding.server";
+import { validateAssessorName } from "../assessor-name";
+import {
   detectSparringContinue,
   detectSparringEnd,
   detectSparringStart,
@@ -198,6 +218,42 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     /\?\s*$/.test(lastAssistantContent0) &&
     !!lastAssistantAt0 &&
     (Date.now() - lastAssistantAt0.getTime()) < 10 * 60_000;
+
+  // ── Arranque leve (2 perguntas, nunca obrigatórias) ──────────────────
+  let onboarding: OnboardingState = {
+    stage: "not_started", offers: 0, lastOfferAt: null, goals: null,
+  };
+  try { onboarding = await loadOnboardingState(supabase, userId); } catch { /* noop */ }
+
+  const askedName = /como preferes chamar-me/i.test(lastAssistantContent0);
+  const askedGoals = /o que procuras mais em mim/i.test(lastAssistantContent0);
+
+  if (onboarding.stage === "name_asked" && askedName) {
+    const answer = readNameAnswer(trimmed);
+    if (answer.kind === "rename") {
+      const v = validateAssessorName(answer.name);
+      if (v.ok) {
+        try { await saveAssessorName(supabase, userId, v.value); } catch { /* noop */ }
+        try { await markOnboardingOffered(supabase, userId, "goals_asked", onboarding.offers); } catch { /* noop */ }
+        return { reply: `${NAME_SET_REPLY(v.value)} ${GOALS_QUESTION}` };
+      }
+    }
+    if (answer.kind === "keep") {
+      try { await markOnboardingOffered(supabase, userId, "goals_asked", onboarding.offers); } catch { /* noop */ }
+      return { reply: `${NAME_KEPT_REPLY(assessorName)} ${GOALS_QUESTION}` };
+    }
+    // Ignorou ou trouxe trabalho real: cai fora sem insistir.
+    try { await setOnboardingStage(supabase, userId, "skipped"); } catch { /* noop */ }
+    onboarding = { ...onboarding, stage: "skipped" };
+  } else if (onboarding.stage === "goals_asked" && askedGoals) {
+    const answer = readGoalsAnswer(trimmed);
+    if (answer.kind === "goals") {
+      try { await saveOnboardingGoals(supabase, userId, answer.text); } catch { /* noop */ }
+      return { reply: GOALS_SAVED_REPLY };
+    }
+    try { await setOnboardingStage(supabase, userId, "skipped"); } catch { /* noop */ }
+    onboarding = { ...onboarding, stage: "skipped" };
+  }
 
   // Contexto acumulado para a rede de segurança: guardar só "09:30" perde
   // o pedido real ("bloco de agenda amanhã para chamadas à rede").
