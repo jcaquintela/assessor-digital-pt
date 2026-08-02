@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   AlertTriangle, CalendarClock, CheckCircle2, Clock, MessageSquare, Sparkles,
   FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote, Trash2,
+  Home, X,
 } from "lucide-react";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -30,6 +31,8 @@ import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
+type HojeSearch = { filtro?: "imoveis-por-confirmar" };
+
 export const Route = createFileRoute("/_authenticated/hoje")({
   head: () => ({
     meta: [
@@ -39,6 +42,10 @@ export const Route = createFileRoute("/_authenticated/hoje")({
       { property: "og:description", content: "Briefing diário, compromissos e prioridades do consultor." },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): HojeSearch => {
+    const filtro = s.filtro;
+    return { filtro: filtro === "imoveis-por-confirmar" ? filtro : undefined };
+  },
   component: HojePage,
 });
 
@@ -65,14 +72,31 @@ type Priority = {
   deal_label?: string | null;
 };
 
-type Awaiting = { id: string; title: string; due_at: string; entity_label: string | null };
+type Awaiting = {
+  id: string;
+  title: string;
+  due_at: string;
+  entity_label: string | null;
+  property_id: string | null;
+  deal_id: string | null;
+};
 
 function HojePage() {
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const filtroAtivo = search.filtro === "imoveis-por-confirmar";
+  const setFiltro = (ativo: boolean) => {
+    void navigate({
+      to: "/hoje",
+      search: ativo ? { filtro: "imoveis-por-confirmar" } : {},
+      replace: true,
+    });
+  };
+
   const { seguimentos, oportunidades, pessoas, imoveis, concluirSeguimento, reagendarSeguimento, eliminarSeguimento } = useStore();
-  void oportunidades; void imoveis;
+  void oportunidades;
   const { name: assessorName } = useAssessorName();
   const now = new Date();
-  const navigate = useNavigate();
   const supremeQ = useServerFn(getHojeSupreme);
   const dismissFn = useServerFn(dismissPriority);
   const outcomeFn = useServerFn(saveFollowUpOutcome);
@@ -220,7 +244,14 @@ function HojePage() {
     () => atrasados
       .filter((s) => s.tipo === "Evento")
       .slice(0, 5)
-      .map((s) => ({ id: s.id, title: s.titulo, due_at: s.data, entity_label: nomePessoa(s.pessoaId) || null })),
+      .map((s) => ({
+        id: s.id,
+        title: s.titulo,
+        due_at: s.data,
+        entity_label: nomePessoa(s.pessoaId) || null,
+        property_id: null,
+        deal_id: null,
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [atrasados, pessoas],
   );
@@ -307,8 +338,14 @@ function HojePage() {
   const compromissosCount = resumo?.agenda.today ?? eventosHoje.length;
   const prioridadesCount = priorities.length;
 
+  const awaitingImoveis = useMemo(
+    () => awaiting.filter((a) => a.property_id),
+    [awaiting],
+  );
+  const awaitingToShow = filtroAtivo ? awaitingImoveis : awaiting;
+
   // Uma só observação em destaque — a mais pressionante do dia.
-  const atencao: Priority | null = priorities.length ? priorities[0] : null;
+  const atencao: Priority | null = !filtroAtivo && priorities.length ? priorities[0] : null;
 
   return (
     <AppShell>
@@ -336,8 +373,31 @@ function HojePage() {
         </div>
       </header>
 
+      {/* Filtro rápido: ações por confirmar ligadas a imóveis. */}
+      <div className="mb-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setFiltro(!filtroAtivo)}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+            filtroAtivo
+              ? "border-[var(--sage)] bg-[var(--sage)]/10 text-[var(--sage-dark)]"
+              : "border-[var(--border)] hover:bg-[var(--muted)]/5"
+          }`}
+          aria-pressed={filtroAtivo}
+        >
+          <Home className="h-3.5 w-3.5" />
+          {filtroAtivo ? "A mostrar imóveis por confirmar" : "Imóveis por confirmar"}
+          {filtroAtivo && <X className="h-3.5 w-3.5" />}
+        </button>
+        {filtroAtivo && (
+          <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+            {awaitingImoveis.length} ação{awaitingImoveis.length === 1 ? "" : "ões"}
+          </span>
+        )}
+      </div>
+
       {/* A-bis. "{Assessor} chama a atenção": UMA observação por dia, nunca uma lista. */}
-      {atencao && (
+      {!filtroAtivo && atencao && (
         <section className="c-spotlight mb-4">
           <div className="c-spot-tag mb-2">
             <AlertTriangle className="h-4 w-4" />
@@ -377,7 +437,7 @@ function HojePage() {
       )}
 
       {/* A-ter. Sugestão do mentor — conselho, não urgência. Só aparece se houver padrão real. */}
-      {mentor && tipOff !== mentor.key && (
+      {!filtroAtivo && mentor && tipOff !== mentor.key && (
         <section className="c-mentor mb-6">
           <div className="c-mentor-tag mb-2">
             <Lightbulb className="h-4 w-4" /> O teu mentor sugere
@@ -405,150 +465,156 @@ function HojePage() {
       )}
 
       {/* A-quater. Resumo geral — 6 rubricas, contagens simples, cada uma clicável. */}
-      {resumo && <HojeSumGrid resumo={resumo} />}
+      {!filtroAtivo && resumo && <HojeSumGrid resumo={resumo} />}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Coluna principal */}
-        <div className="space-y-6">
-          {/* B. As minhas prioridades */}
-          <Card className="c-card border-0 shadow-none">
-            <CardHeader className="pb-2">
-              <CardTitle className="c-section-title flex items-center gap-2">
-                <Sparkles className="h-4 w-4" style={{ color: "var(--brass)" }} /> As minhas prioridades
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {priorities.length === 0 && (
-                <p className="c-muted text-sm">Nenhuma prioridade urgente. Bom trabalho.</p>
-              )}
-              {priorities.map((p) => (
-                <div key={`${p.subject_type}:${p.subject_id}`} className="c-card c-card-hover p-3.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{p.action}</div>
-                      {/* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */}
-                      <div className="mt-0.5 text-xs" style={{ color: "var(--ink)" }}>
-                        {explainPriority(p)}
+      <div className={filtroAtivo ? "space-y-6" : "grid gap-6 lg:grid-cols-2"}>
+        {!filtroAtivo && (
+          <div className="space-y-6">
+            {/* B. As minhas prioridades */}
+            <Card className="c-card border-0 shadow-none">
+              <CardHeader className="pb-2">
+                <CardTitle className="c-section-title flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" style={{ color: "var(--brass)" }} /> As minhas prioridades
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {priorities.length === 0 && (
+                  <p className="c-muted text-sm">Nenhuma prioridade urgente. Bom trabalho.</p>
+                )}
+                {priorities.map((p) => (
+                  <div key={`${p.subject_type}:${p.subject_id}`} className="c-card c-card-hover p-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{p.action}</div>
+                        {/* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */}
+                        <div className="mt-0.5 text-xs" style={{ color: "var(--ink)" }}>
+                          {explainPriority(p)}
+                        </div>
+                        <div className="c-muted mt-0.5 text-xs">
+                          {[
+                            p.entity_label,
+                            p.due_at ? formatData(p.due_at) : null,
+                          ].filter(Boolean).join(" · ")}
+                        </div>
+                        {p.deal_id && p.deal_label ? (
+                          <Link
+                            to="/oportunidades/$id"
+                            params={{ id: p.deal_id }}
+                            search={p.subject_type === "follow_up" ? { destaque: `seguimento:${p.subject_id}` } : {}}
+                            className="c-badge mt-1.5 inline-flex max-w-full truncate text-xs"
+                          >
+                            Negócio: {p.deal_label}
+                          </Link>
+                        ) : null}
                       </div>
-                      <div className="c-muted mt-0.5 text-xs">
-                        {[
-                          p.entity_label,
-                          p.due_at ? formatData(p.due_at) : null,
-                        ].filter(Boolean).join(" · ")}
-                      </div>
-                      {p.deal_id && p.deal_label ? (
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
+                      </button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type="button" className="c-btn-ghost">Adiar</button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-40 p-1">
+                          <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "1h")}>+1 hora</button>
+                          <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "amanha")}>Amanhã</button>
+                          <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "semana")}>Próxima semana</button>
+                        </PopoverContent>
+                      </Popover>
+                      {p.subject_type === "opportunity" ? (
+                        <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir contexto</Link>
+                      ) : p.deal_id ? (
                         <Link
+                          className="c-btn-ghost"
                           to="/oportunidades/$id"
                           params={{ id: p.deal_id }}
-                          search={p.subject_type === "follow_up" ? { destaque: `seguimento:${p.subject_id}` } : {}}
-                          className="c-badge mt-1.5 inline-flex max-w-full truncate text-xs"
+                          search={{ destaque: `seguimento:${p.subject_id}` }}
                         >
-                          Negócio: {p.deal_label}
+                          Abrir contexto
                         </Link>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
-                    </button>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button type="button" className="c-btn-ghost">Adiar</button>
-                      </PopoverTrigger>
-                      <PopoverContent align="start" className="w-40 p-1">
-                        <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "1h")}>+1 hora</button>
-                        <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "amanha")}>Amanhã</button>
-                        <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "semana")}>Próxima semana</button>
-                      </PopoverContent>
-                    </Popover>
-                    {p.subject_type === "opportunity" ? (
-                      <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir contexto</Link>
-                    ) : p.deal_id ? (
-                      <Link
-                        className="c-btn-ghost"
-                        to="/oportunidades/$id"
-                        params={{ id: p.deal_id }}
-                        search={{ destaque: `seguimento:${p.subject_id}` }}
-                      >
-                        Abrir contexto
-                      </Link>
-                    ) : (
-                      <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir contexto</button>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button type="button" className="c-btn-ghost ml-auto" aria-label="Mais ações">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem asChild>
-                          <Link to="/assessor">
-                            <MessageSquare className="mr-2 h-3.5 w-3.5" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
-                          </Link>
-                        </DropdownMenuItem>
-                        {p.subject_type === "follow_up" && (
-                          <DropdownMenuItem className="text-destructive" onSelect={() => void deletePriority(p)}>
-                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                      ) : (
+                        <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir contexto</button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" className="c-btn-ghost ml-auto" aria-label="Mais ações">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem asChild>
+                            <Link to="/assessor">
+                              <MessageSquare className="mr-2 h-3.5 w-3.5" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
+                            </Link>
                           </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* C. Próximos compromissos */}
-          <Card className="c-card border-0 shadow-none">
-            <CardHeader className="pb-2">
-              <CardTitle className="c-section-title flex items-center gap-2">
-                <CalendarClock className="h-4 w-4" style={{ color: "var(--muted)" }} /> Próximos compromissos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {eventosHoje.length === 0 && (
-                <p className="c-muted text-sm">Não tens compromissos para hoje.</p>
-              )}
-              {eventosHoje.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => openEvent(e.id)}
-                  className="c-card c-card-hover flex w-full items-start gap-3 p-3 text-left"
-                >
-                  <div className="c-mono shrink-0 rounded-md px-2 py-1 text-xs font-semibold" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}>
-                    {e.hora ?? "—"}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{e.titulo}</div>
-                    <div className="c-muted text-xs">
-                      {[nomePessoa(e.pessoaId), tituloImovel(e.imovelId)].filter(Boolean).join(" · ") || "—"}
+                          {p.subject_type === "follow_up" && (
+                            <DropdownMenuItem className="text-destructive" onSelect={() => void deletePriority(p)}>
+                              <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "var(--muted)" }} />
-                </button>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
+                ))}
+              </CardContent>
+            </Card>
 
-        {/* Coluna lateral */}
+            {/* C. Próximos compromissos */}
+            <Card className="c-card border-0 shadow-none">
+              <CardHeader className="pb-2">
+                <CardTitle className="c-section-title flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4" style={{ color: "var(--muted)" }} /> Próximos compromissos
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {eventosHoje.length === 0 && (
+                  <p className="c-muted text-sm">Não tens compromissos para hoje.</p>
+                )}
+                {eventosHoje.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => openEvent(e.id)}
+                    className="c-card c-card-hover flex w-full items-start gap-3 p-3 text-left"
+                  >
+                    <div className="c-mono shrink-0 rounded-md px-2 py-1 text-xs font-semibold" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}>
+                      {e.hora ?? "—"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{e.titulo}</div>
+                      <div className="c-muted text-xs">
+                        {[nomePessoa(e.pessoaId), tituloImovel(e.imovelId)].filter(Boolean).join(" · ") || "—"}
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "var(--muted)" }} />
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Coluna lateral — ou vista completa quando filtro ativo */}
         <div className="space-y-6">
           {/* D. Aguardam resultado */}
           <Card className="c-card border-0 shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="c-section-title flex items-center gap-2">
-                <Clock className="h-4 w-4" style={{ color: "var(--muted)" }} /> Aguardam resultado
+                <Clock className="h-4 w-4" style={{ color: "var(--muted)" }} />
+                {filtroAtivo ? "Imóveis por confirmar" : "Aguardam resultado"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {awaiting.length === 0 && (
-                <p className="c-muted text-sm">Não há nada a aguardar resultado.</p>
+              {awaitingToShow.length === 0 && (
+                <p className="c-muted text-sm">
+                  {filtroAtivo
+                    ? "Nenhuma ação por confirmar ligada a imóveis."
+                    : "Não há nada a aguardar resultado."}
+                </p>
               )}
-              {awaiting.map((a) => (
+              {awaitingToShow.map((a) => (
                 <Link
                   key={a.id}
                   to="/seguimentos/$id"
@@ -558,8 +624,20 @@ function HojePage() {
                 >
                   <div className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{a.title}</div>
                   <div className="c-mono c-muted text-xs">
-                    {formatDataHora(a.due_at)}{a.entity_label ? ` · ${a.entity_label}` : ""}
+                    {formatDataHora(a.due_at)}
+                    {a.entity_label ? ` · ${a.entity_label}` : ""}
+                    {a.property_id ? ` · ${tituloImovel(a.property_id) ?? "Imóvel"}` : ""}
                   </div>
+                  {a.property_id && (
+                    <Link
+                      to="/imoveis/$id"
+                      params={{ id: a.property_id }}
+                      className="c-badge mt-1.5 inline-flex max-w-full truncate text-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Home className="mr-1 h-3 w-3" /> {tituloImovel(a.property_id) ?? "Ver imóvel"}
+                    </Link>
+                  )}
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <button type="button" className="c-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "concluido" }); }}>Correu bem</button>
                     <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "precisa_nova_acao" }); }}>Precisa seguimento</button>
@@ -576,7 +654,7 @@ function HojePage() {
       </div>
 
       {/* E. Banner de atenção agregado, no fundo da página */}
-      {(atrasados.length > 0 || oportSemAcao.length > 0 || (docsPending.data ?? 0) > 0) && (
+      {!filtroAtivo && (atrasados.length > 0 || oportSemAcao.length > 0 || (docsPending.data ?? 0) > 0) && (
         <section className="c-alert mt-6">
           <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
             <AlertTriangle className="h-4 w-4" /> A precisar de atenção

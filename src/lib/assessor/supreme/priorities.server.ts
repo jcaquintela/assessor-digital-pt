@@ -220,14 +220,23 @@ export async function persistPrioritiesSnapshot(
 }
 
 // Follow-ups executados sem outcome (para bloco "Aguardam resultado").
+export interface AwaitingOutcomeItem {
+  id: string;
+  title: string;
+  due_at: string;
+  entity_label: string | null;
+  property_id: string | null;
+  deal_id: string | null;
+}
+
 export async function findAwaitingOutcome(
   supabase: any,
   userId: string,
   now = new Date(),
-): Promise<Array<{ id: string; title: string; due_at: string; entity_label: string | null }>> {
+): Promise<AwaitingOutcomeItem[]> {
   const { data } = await supabase
     .from("follow_ups")
-    .select("id, title, due_date, person_id")
+    .select("id, title, due_date, person_id, related_property_id, opportunity_id")
     .eq("user_id", userId)
     .is("outcome", null)
     .not("status", "in", "(Concluído,Concluido,concluido,Arquivado,arquivado,Cancelado,cancelado)")
@@ -243,7 +252,11 @@ export async function findAwaitingOutcome(
     for (const p of ((people as any[]) ?? [])) names.set(p.id, p.name);
   }
   return rows.map((r) => ({
-    id: r.id, title: r.title, due_at: r.due_date,
+    id: r.id,
+    title: r.title,
+    due_at: r.due_date,
     entity_label: r.person_id ? names.get(r.person_id) ?? null : null,
+    property_id: r.related_property_id ?? null,
+    deal_id: r.opportunity_id ?? null,
   }));
 }
