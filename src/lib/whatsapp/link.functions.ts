@@ -87,7 +87,7 @@ export const startWhatsAppLink = createServerFn({ method: "POST" })
     const tier = normalizeTier(tierRaw as string | null);
     if (!canUseWhatsApp(tier)) {
       throw new Error(
-        `WhatsApp disponível a partir do plano Consultor. O teu plano actual é ${tierLabel(tier)}. Podes continuar a usar o Assessor pelo Telegram.`,
+        `WhatsApp disponível a partir do plano Consultor. O teu plano actual é ${tierLabel(tier)}. A conta é a mesma em qualquer canal — continuas a falar comigo pelo Telegram sem perderes nada.`,
       );
     }
 

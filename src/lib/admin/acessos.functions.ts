@@ -306,6 +306,23 @@ export const updateAccess = createServerFn({ method: "POST" })
 
     // Subiu de base para plano pago: avisa pelo canal principal.
     if (data.subscription_tier !== undefined) {
+      const beforeTier = String((before as any)?.subscription_tier ?? "");
+      const afterTier = String(data.subscription_tier ?? "");
+      if (beforeTier !== afterTier) {
+        const { recordSubscriptionEvent } = await import("@/lib/subscription/events.server");
+        const paid = (t: string) => t === "consultor" || t === "pro" || t === "hub";
+        if (!paid(beforeTier) && paid(afterTier)) {
+          await recordSubscriptionEvent(supabaseAdmin, {
+            userId: data.target_user_id, event: "base_to_paid",
+            fromTier: beforeTier, toTier: afterTier, source: "admin",
+          });
+        } else if (paid(beforeTier) && !paid(afterTier)) {
+          await recordSubscriptionEvent(supabaseAdmin, {
+            userId: data.target_user_id, event: "paid_to_base",
+            fromTier: beforeTier, toTier: afterTier, source: "admin",
+          });
+        }
+      }
       const { isUpgradeToPaid, notifyPlanActivatedSafe } = await import(
         "@/lib/subscription/plan-activated.server"
       );

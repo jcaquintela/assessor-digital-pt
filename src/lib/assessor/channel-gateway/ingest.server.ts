@@ -152,6 +152,16 @@ async function routeInbound(
       return;
     }
 
+    // Escolha de plano no fim do período experimental (dia 12). Só corre se
+    // a escolha tiver sido pedida e ainda não estiver registada.
+    if (await handleTrialChoiceAnswer(adapter, supabaseAdmin, inbound, userId, content)) {
+      if (inbound.callback && adapter.answerInteraction) {
+        try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
+        catch { /* best-effort */ }
+      }
+      return;
+    }
+
     // Confirmação de um cartão de visita lido numa foto: cria o contacto e
     // devolve o ficheiro pronto a guardar. Não passa pelo motor.
     if (await handleBusinessCardAnswer(adapter, supabaseAdmin, inbound, userId, content)) {
@@ -645,6 +655,51 @@ async function sendPromoReply(
 }
 
 async function handlePromoRedeem(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  content: string,
+): Promise<boolean> {
+  return handlePromoRedeemImpl(adapter, supabaseAdmin, inbound, userId, content);
+}
+
+/**
+ * Escolha de plano no fim do período experimental. Nunca há migração de
+ * conta: o que muda são as capacidades, e a escolha só é aplicada no dia 14.
+ */
+async function handleTrialChoiceAnswer(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  content: string,
+): Promise<boolean> {
+  const text = content.trim();
+  if (!text) return false;
+
+  const { data: prof } = await supabaseAdmin
+    .from("profiles")
+    .select("trial_status, trial_choice, trial_choice_asked_at")
+    .eq("id", userId)
+    .maybeSingle();
+  const p = prof as any;
+  if (!p || p.trial_status !== "active" || p.trial_choice || !p.trial_choice_asked_at) return false;
+
+  const { readTrialChoice, setTrialChoice, trialChoiceAck } = await import(
+    "@/lib/subscription/trial.server"
+  );
+  const choice = readTrialChoice(text);
+  if (!choice) return false;
+
+  const saved = await setTrialChoice(supabaseAdmin, userId, choice);
+  if (!saved.saved) return false;
+
+  await sendPromoReply(adapter, supabaseAdmin, inbound, userId, trialChoiceAck(choice));
+  return true;
+}
+
+async function handlePromoRedeemImpl(
   adapter: ChannelAdapter,
   supabaseAdmin: any,
   inbound: NormalizedInbound,

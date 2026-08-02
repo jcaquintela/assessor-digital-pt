@@ -3,6 +3,7 @@
 // download de media, envio, dedupe, persistência do turno e o fluxo legado
 // de link code (LIGAR-XXXXXX). Não conhece o motor: só transporta.
 
+import { aiDisclosureOpening } from "@/lib/assessor/ai-disclosure";
 import { normalizePhone } from "@/lib/whatsapp/phone";
 import { sendWhatsAppText } from "@/lib/whatsapp/send.server";
 import {
@@ -34,15 +35,17 @@ const REPLY_LINK_OK =
   "A tua conta ficou associada ao WhatsApp. Já podes começar a falar com o teu Assessor.";
 const REPLY_LINK_EXPIRED = "Este código expirou. Gera um novo código no dashboard.";
 const REPLY_LINK_TIER =
-  "Este código já não é válido: o teu plano actual não inclui WhatsApp. Podes continuar a usar o Assessor pelo Telegram.";
+  "Este código já não é válido: o teu plano actual ainda não inclui o canal WhatsApp. " +
+  "A tua conta e tudo o que já organizámos mantêm-se iguais — falamos pelo Telegram até ativares este canal.";
 const REPLY_LINK_INVALID =
   "Não consegui validar este código. Confirma o código no dashboard e tenta novamente.";
 const REPLY_PROMO_WELCOME = (tierLabel: string) =>
-  `Bem-vindo! Sou o teu assessor digital.\n\n` +
+  `${aiDisclosureOpening()} Sou o assessor digital de quem trabalha em imobiliário.\n\n` +
   `O teu código ficou activo no plano ${tierLabel}. A partir de agora é só falares comigo por aqui, em linguagem normal: pessoas, imóveis, visitas, seguimentos — eu guardo e lembro-te.\n\n` +
   `Para abrires o painel no computador, escreve *entrar* e envio-te um link.`;
 const REPLY_PROMO_TIER_NO_WHATSAPP =
-  "Esse código dá um plano que ainda não inclui WhatsApp. Fala comigo pelo Telegram e eu trato de tudo por lá.";
+  "Esse código dá um plano que ainda não inclui o canal WhatsApp. É a mesma conta em qualquer canal: " +
+  "falamos pelo Telegram e trato de tudo por lá.";
 
 function classifyType(type: string | undefined): NormalizedMessageType {
   switch (type) {
