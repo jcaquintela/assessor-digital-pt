@@ -42,7 +42,6 @@ describe("disclosure de IA", () => {
 
   it("o onboarding do dashboard também avisa", () => {
     const src = readFileSync("src/routes/_authenticated/assessor.tsx", "utf8");
-    expect(src).toContain("Assistente de IA");
-    expect(src).toContain("assistente de IA");
+    expect(src).toContain("AI_DISCLOSURE");
   });
 });

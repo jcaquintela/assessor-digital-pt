@@ -12,6 +12,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { sendDashboardMessage, DASHBOARD_CHAT_MIN_TIER } from "@/lib/assessor/dashboard-chat.functions";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { tierAtLeast } from "@/lib/subscription/tiers";
+import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
   head: () => ({
@@ -113,7 +114,7 @@ function AssessorPage() {
           {!loading && msgs.length === 0 && (
             <div className="c-empty mx-auto mt-8 max-w-md">
               <MessageCircle className="mx-auto mb-2 h-5 w-5" />
-              {`${assessorName} é um assistente de IA — falas com um sistema automático, não com uma pessoa.`}
+              {AI_DISCLOSURE}
               <br />
               Ainda não há mensagens.
               <br />

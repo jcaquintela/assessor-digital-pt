@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { listPublishedPlans } from "@/lib/subscription/plans.functions";
 import { MODULE_LABEL, planSummary, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
+import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,7 +99,7 @@ function RegistoPage() {
         <p className="c-eyebrow">Criar conta</p>
         <h1 className="c-page-title mt-1">Começa no plano Base</h1>
         <p className="c-muted mt-2 max-w-2xl text-[14px] leading-relaxed">
-          O Afonso é um assistente de IA: falas com um sistema automático, não com uma pessoa.
+          {AI_DISCLOSURE} Falas com um sistema automático, não com uma pessoa.
           O Base é grátis e fica activo de imediato. Os outros planos chegam em breve —
           podes mudar sem perderes nada do que já tiveres, e é sempre a mesma conta em qualquer canal.
         </p>
