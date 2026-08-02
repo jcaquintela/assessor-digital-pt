@@ -161,6 +161,31 @@ export type PropertyDossier = NonNullable<Awaited<ReturnType<typeof getPropertyD
 
 // ---- Escritas -----------------------------------------------------------
 
+/** "Ignorar" uma dúvida da ficha — fica registada como decisão do consultor. */
+export const dismissPropertyQuestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { propertyId: string; key: string; question?: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    if (data.key.startsWith("assistant:")) {
+      const id = data.key.slice("assistant:".length);
+      await supabase.from("pending_actions").update({ status: "cancelled" } as never)
+        .eq("id", id).eq("user_id", userId);
+      return { ok: true };
+    }
+    const { error } = await supabase.from("pending_actions").insert({
+      user_id: userId,
+      channel: "dashboard",
+      intent: "property_question_dismissed",
+      original_content: data.question?.slice(0, 400) || data.key,
+      structured_payload: { property_id: data.propertyId, question_key: data.key },
+      status: "cancelled",
+      expires_at: new Date(Date.now() + 3650 * 864e5).toISOString(),
+    } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const addPropertyInterest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { propertyId: string; name: string; contact?: string; source?: string; status?: string }) => {
