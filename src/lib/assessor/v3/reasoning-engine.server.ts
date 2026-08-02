@@ -16,6 +16,7 @@ import {
 import { captureCorrection, looksLikeCorrection } from "./corrections.server";
 import { reflect, type ReflectionTrigger } from "./reflection.server";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
+import { blockedChannelReason } from "../channel-guard";
 import type { DomainContext } from "../v2/domain.server";
 import { TOOL_REGISTRY } from "../v2/domain.server";
 import {
@@ -162,6 +163,9 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   const started = Date.now();
   const { supabase, userId, channel, content, sourceMessageId } = input;
   if (!userId) return { reply: NATURAL_FALLBACKS.unassociated };
+  // Isolamento de testes — ver `channel-guard.ts`. Repetido aqui porque o
+  // motor v3 também é invocado directamente (scripts, testes, fast-paths).
+  if (blockedChannelReason(channel)) return { reply: NATURAL_FALLBACKS.didNotUnderstand };
   const trimmed = content.trim();
   if (!trimmed) return { reply: NATURAL_FALLBACKS.didNotUnderstand };
 
