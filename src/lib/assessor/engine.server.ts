@@ -369,6 +369,14 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
 
   if (!userId) return { reply: REPLY_UNASSOCIATED };
 
+  // Isolamento de testes: canais que não são canais reais do produto
+  // (harnesses de CI/E2E) nunca escrevem na conta de um consultor.
+  const blocked = blockedChannelReason(channel);
+  if (blocked) {
+    logBranch("blocked_test_channel", { channel, reason: blocked });
+    return { reply: REPLY_FALLBACK };
+  }
+
   const trimmedRaw = content.trim();
   if (!trimmedRaw) return { reply: REPLY_FALLBACK };
 
