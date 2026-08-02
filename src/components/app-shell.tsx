@@ -18,6 +18,7 @@ import {
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/hoje/global-search";
+import { AccountArchiveBanner } from "@/components/account-archive-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 
 const desktopNav = [
