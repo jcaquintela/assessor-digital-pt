@@ -17,7 +17,7 @@ export const initialOf = (nome: string) => (nome.trim()[0] ?? "?").toUpperCase()
 
 /* ---------- Etiquetas (filtro, sem cor) ---------- */
 
-export function TagFilterRow({ org, tagId, onTag }: { org: Organizer; tagId: string | null; onTag: (id: string | null) => void }) {
+export function TagFilterRow({ org, tagId, onTag, hideHeading = false }: { org: Organizer; tagId: string | null; onTag: (id: string | null) => void; hideHeading?: boolean }) {
   const addTag = useServerFn(createTag);
   const delTag = useServerFn(deleteTag);
   const [open, setOpen] = useState(false);
@@ -35,7 +35,9 @@ export function TagFilterRow({ org, tagId, onTag }: { org: Organizer; tagId: str
 
   return (
     <div>
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Etiquetas</div>
+      {!hideHeading && (
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Etiquetas</div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={`c-taglabel ${tagId === null ? "active" : ""}`} onClick={() => onTag(null)}>Todas</button>
         {org.tags.map((t) => (
@@ -83,13 +85,14 @@ export function TagFilterRow({ org, tagId, onTag }: { org: Organizer; tagId: str
 export type GroupItem = { id: string; label: string };
 
 export function GroupCards({
-  org, pessoas, items, noun = ["pessoa", "pessoas"], emptyLabel = "Sem pessoas ainda",
+  org, pessoas, items, noun = ["pessoa", "pessoas"], emptyLabel = "Sem pessoas ainda", hideHeading = false,
 }: {
   org: Organizer;
   pessoas?: Pessoa[];
   items?: GroupItem[];
   noun?: [string, string];
   emptyLabel?: string;
+  hideHeading?: boolean;
 }) {
   const lista: GroupItem[] = items ?? (pessoas ?? []).map((p) => ({ id: p.id, label: p.nome }));
   const addFolder = useServerFn(createFolder);
@@ -113,7 +116,9 @@ export function GroupCards({
 
   return (
     <div>
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Os teus grupos</div>
+      {!hideHeading && (
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Os teus grupos</div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {org.folders.map((f) => {
           const cor = f.color ?? "#79766A";

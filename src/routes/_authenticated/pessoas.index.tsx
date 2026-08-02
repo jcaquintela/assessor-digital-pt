@@ -12,6 +12,7 @@ import { OrganizeDialog, useOrganizer } from "@/components/organizer/organizer";
 import {
   GroupCards, PersonCard, TagFilterRow, ViewToggle, type PeopleView,
 } from "@/components/pessoas/people-explorer";
+import { FilterSection } from "@/components/organizer/filter-section";
 import { toast } from "sonner";
 import { exportPeople } from "@/lib/export/export.functions";
 import { getPersonAttention } from "@/lib/people/attention.functions";
@@ -149,8 +150,19 @@ function PessoasPage() {
         />
       </div>
 
-      <div className="mb-5"><TagFilterRow org={org} tagId={tagId} onTag={setTagId} /></div>
-      <div className="mb-6"><GroupCards org={org} pessoas={pessoas} /></div>
+      <div className="mb-6 flex flex-col gap-2">
+        <FilterSection
+          title="Etiquetas"
+          count={org.tags.length}
+          activeLabel={tagId ? (org.tags.find((t) => t.id === tagId)?.name ?? null) : null}
+          onClearActive={() => setTagId(null)}
+        >
+          <TagFilterRow org={org} tagId={tagId} onTag={setTagId} hideHeading />
+        </FilterSection>
+        <FilterSection title="Grupos" count={org.folders.length}>
+          <GroupCards org={org} pessoas={pessoas} hideHeading />
+        </FilterSection>
+      </div>
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Todos os contactos</div>

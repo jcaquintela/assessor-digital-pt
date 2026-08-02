@@ -86,10 +86,12 @@ export function CategoryBadge({ category }: { category: PropertyCategory | null 
 // Filtro por categoria + gestão (criar, renomear, apagar) — igual ao Drive.
 export function PropertyCategoryFilter({
   selected,
+  hideHeading = false,
   onSelect,
 }: {
   selected: string | null;
   onSelect: (id: string | null) => void;
+  hideHeading?: boolean;
 }) {
   const { categories, invalidate } = usePropertyCategories();
   const create = useServerFn(createPropertyCategory);
@@ -144,9 +146,11 @@ export function PropertyCategoryFilter({
 
   return (
     <div>
-      <div className="c-muted mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide">
-        <Tag className="h-3.5 w-3.5" /> Categoria
-      </div>
+      {!hideHeading && (
+        <div className="c-muted mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide">
+          <Tag className="h-3.5 w-3.5" /> Categoria
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-1.5">
         <button type="button" className={"c-pill tap-44" + (selected === null ? " active" : "")} onClick={() => onSelect(null)}>
           Todas
