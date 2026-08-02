@@ -126,6 +126,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
             </div>
           </div>
           <div className="mx-auto min-w-0 max-w-6xl px-4 py-6 md:px-8 md:py-8">
+            <AccountArchiveBanner />
             <AnnouncementBanner />
             {children}
           </div>
