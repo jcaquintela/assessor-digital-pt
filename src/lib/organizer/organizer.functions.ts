@@ -24,7 +24,7 @@ export const listOrganizer = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const [tags, folders, tagLinks, folderLinks] = await Promise.all([
       (supabase.from("tags") as any).select("id, name, color").eq("user_id", userId).order("name"),
-      (supabase.from("folders") as any).select("id, name").eq("user_id", userId).order("name"),
+      (supabase.from("folders") as any).select("id, name, color").eq("user_id", userId).order("name"),
       (supabase.from("entity_tags") as any).select("tag_id, entity_id").eq("user_id", userId).eq("entity_type", data.entityType),
       (supabase.from("folder_items") as any).select("folder_id, entity_id").eq("user_id", userId).eq("entity_type", data.entityType),
     ]);
@@ -32,7 +32,7 @@ export const listOrganizer = createServerFn({ method: "POST" })
     if (folders.error) throw new Error(folders.error.message);
     return {
       tags: (tags.data ?? []) as { id: string; name: string; color: string | null }[],
-      folders: (folders.data ?? []) as { id: string; name: string }[],
+      folders: (folders.data ?? []) as { id: string; name: string; color: string | null }[],
       tagLinks: (tagLinks.data ?? []) as { tag_id: string; entity_id: string }[],
       folderLinks: (folderLinks.data ?? []) as { folder_id: string; entity_id: string }[],
     };
@@ -66,18 +66,21 @@ export const deleteTag = createServerFn({ method: "POST" })
 
 export const createFolder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { name: string }) => ({ name: cleanName(data?.name) }))
+  .inputValidator((data: { name: string; color?: string | null }) => ({
+    name: cleanName(data?.name),
+    color: typeof data?.color === "string" && /^#[0-9A-Fa-f]{6}$/.test(data.color) ? data.color : null,
+  }))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const { data: row, error } = await (supabase.from("folders") as any)
-      .insert({ user_id: userId, name: data.name })
-      .select("id, name")
+      .insert({ user_id: userId, name: data.name, color: data.color })
+      .select("id, name, color")
       .single();
     if (error) {
       if (error.code === "23505") throw new Error("Já tens um grupo com esse nome.");
       throw new Error(error.message);
     }
-    return row as { id: string; name: string };
+    return row as { id: string; name: string; color: string | null };
   });
 
 export const deleteFolder = createServerFn({ method: "POST" })
