@@ -607,6 +607,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     nowLisbonYmd: nowLisbonYmd(),
     nowLisbonHuman: nowLisbonHuman(),
     sparring: sparringActive,
+    consultantGoals: onboarding.goals,
   });
 
   if (sparringActive) {
