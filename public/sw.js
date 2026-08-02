@@ -1,7 +1,7 @@
 /* Afonso — minimal app-shell service worker.
    NetworkFirst for HTML navigations, CacheFirst for hashed assets.
    Bumps CACHE_VERSION to invalidate old caches on release. */
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const RUNTIME_CACHE = `assessor-runtime-${CACHE_VERSION}`;
 const ASSET_CACHE = `assessor-assets-${CACHE_VERSION}`;
 
@@ -24,6 +24,9 @@ self.addEventListener("activate", (event) => {
 });
 
 function isHashedAsset(url) {
+  // Ficheiros de marca na raiz (ícones, favicon, manifest) mudam sem hash no
+  // nome — nunca podem ficar presos em cache, senão o ícone antigo persiste.
+  if (/^\/(favicon|icon-|apple-touch-icon|manifest)/.test(url.pathname)) return false;
   return /\/_build\/|\/assets\/|\.(?:js|css|woff2?|png|jpg|jpeg|svg|webp|ico)$/.test(url.pathname);
 }
 
