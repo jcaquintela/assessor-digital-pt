@@ -14,6 +14,7 @@ import {
   Wallet,
   FolderOpen,
   Handshake,
+  Sparkles,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -106,8 +107,18 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
             );
           })}
         </nav>
-        <div className="navfoot mt-auto">
-          Por conversa ou aqui no dashboard.
+        <div className="navfoot mt-auto flex flex-col gap-2">
+          <p className="text-xs">Por conversa ou aqui no dashboard.</p>
+          <Link
+            to="/sobre-a-ia"
+            className={cn(
+              "navitem text-xs",
+              (pathname === "/sobre-a-ia" || pathname.startsWith("/sobre-a-ia")) && "active",
+            )}
+          >
+            <Sparkles className="h-4 w-4 shrink-0" />
+            <span className="truncate">Sobre a IA</span>
+          </Link>
         </div>
       </aside>
 

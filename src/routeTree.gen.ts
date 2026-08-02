@@ -41,6 +41,7 @@ import { Route as AdminAutonomasRouteImport } from './routes/admin/autonomas'
 import { Route as AdminAuditoriaSegurancaRouteImport } from './routes/admin/auditoria-seguranca'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AdminAquisicaoRouteImport } from './routes/admin/aquisicao'
+import { Route as AuthenticatedSobreAIaRouteImport } from './routes/_authenticated/sobre-a-ia'
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
 import { Route as AuthenticatedLigarCanalRouteImport } from './routes/_authenticated/ligar-canal'
@@ -250,6 +251,11 @@ const AdminAquisicaoRoute = AdminAquisicaoRouteImport.update({
   id: '/aquisicao',
   path: '/aquisicao',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const AuthenticatedSobreAIaRoute = AuthenticatedSobreAIaRouteImport.update({
+  id: '/sobre-a-ia',
+  path: '/sobre-a-ia',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRotinasRoute = AuthenticatedRotinasRouteImport.update({
   id: '/rotinas',
@@ -554,6 +560,7 @@ export interface FileRoutesByFullPath {
   '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
+  '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
@@ -636,6 +643,7 @@ export interface FileRoutesByTo {
   '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
+  '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
@@ -721,6 +729,7 @@ export interface FileRoutesById {
   '/_authenticated/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
+  '/_authenticated/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
@@ -806,6 +815,7 @@ export interface FileRouteTypes {
     | '/ligar-canal'
     | '/mais'
     | '/rotinas'
+    | '/sobre-a-ia'
     | '/admin/aquisicao'
     | '/admin/auditoria'
     | '/admin/auditoria-seguranca'
@@ -888,6 +898,7 @@ export interface FileRouteTypes {
     | '/ligar-canal'
     | '/mais'
     | '/rotinas'
+    | '/sobre-a-ia'
     | '/admin/aquisicao'
     | '/admin/auditoria'
     | '/admin/auditoria-seguranca'
@@ -972,6 +983,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ligar-canal'
     | '/_authenticated/mais'
     | '/_authenticated/rotinas'
+    | '/_authenticated/sobre-a-ia'
     | '/admin/aquisicao'
     | '/admin/auditoria'
     | '/admin/auditoria-seguranca'
@@ -1287,6 +1299,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/aquisicao'
       preLoaderRoute: typeof AdminAquisicaoRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/_authenticated/sobre-a-ia': {
+      id: '/_authenticated/sobre-a-ia'
+      path: '/sobre-a-ia'
+      fullPath: '/sobre-a-ia'
+      preLoaderRoute: typeof AuthenticatedSobreAIaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/rotinas': {
       id: '/_authenticated/rotinas'
@@ -1730,6 +1749,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLigarCanalRoute: typeof AuthenticatedLigarCanalRoute
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
+  AuthenticatedSobreAIaRoute: typeof AuthenticatedSobreAIaRoute
   AuthenticatedGruposIdRoute: typeof AuthenticatedGruposIdRoute
   AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
   AuthenticatedNegocioComissoesRoute: typeof AuthenticatedNegocioComissoesRouteWithChildren
@@ -1760,6 +1780,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLigarCanalRoute: AuthenticatedLigarCanalRoute,
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
+  AuthenticatedSobreAIaRoute: AuthenticatedSobreAIaRoute,
   AuthenticatedGruposIdRoute: AuthenticatedGruposIdRoute,
   AuthenticatedImoveisIdRoute: AuthenticatedImoveisIdRoute,
   AuthenticatedNegocioComissoesRoute:
