@@ -383,11 +383,6 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       return { reply };
     }
 
-    // (a0) Consulta explícita a Diversos → nunca é agenda.
-    if (detectMiscQuery(trimmed)) {
-      // fallthrough abaixo
-    }
-
     // (a-1) "O que há de novo?" → novidades reais dos últimos 30 dias.
     if (detectWhatsNewQuery(trimmed)) {
       const t0 = Date.now();
@@ -412,6 +407,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       return { reply };
     }
 
+    // (a0) Consulta explícita a Diversos → nunca é agenda.
     if (detectMiscQuery(trimmed)) {
       const t0 = Date.now();
       const { queryMisc } = await import("../engine.server");
