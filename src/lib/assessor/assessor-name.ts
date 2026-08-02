@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export const ASSESSOR_NAME_DEFAULT = "Assessor";
+export const ASSESSOR_NAME_DEFAULT = "Afonso";
 export const ASSESSOR_NAME_MAX = 30;
 
 // Letras (com acentos), espaços, hífenes e apóstrofos. Nada mais.

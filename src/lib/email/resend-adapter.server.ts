@@ -2,7 +2,7 @@ import type { EmailMessage, EmailProvider, EmailSendResult } from "./provider";
 
 // Remetente real: domínio meuafonso.com verificado no Resend.
 // (Antes era `onboarding@resend.dev`, que só entregava ao dono da conta.)
-const FROM = "Assessor do Consultor <ola@meuafonso.com>";
+const FROM = "Afonso <ola@meuafonso.com>";
 
 // Enviamos pelo connector gateway da Lovable (credenciais geridas pelo
 // conector Resend: LOVABLE_API_KEY + RESEND_API_KEY). Não há chave manual.

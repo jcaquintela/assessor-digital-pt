@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/diversos/$id")({
   head: () => ({
     meta: [
       { title: "Ficha de nota — Afonso" },
-      { name: "description", content: "Nota, ideia ou observação guardada pelo Assessor." },
+      { name: "description", content: "Nota, ideia ou observação guardada pelo Afonso." },
       { property: "og:title", content: "Ficha de nota — Afonso" },
       { property: "og:description", content: "Memória organizada por observação." },
     ],

@@ -173,7 +173,7 @@ function NegociosPage() {
       {deals.isLoading && <p className="text-sm text-muted-foreground">A carregar negócios…</p>}
       {!deals.isLoading && visiveis.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          {mostrarArquivados ? "Sem negócios arquivados." : "Ainda não há negócios. Cria o primeiro ou fala com o Assessor."}
+          {mostrarArquivados ? "Sem negócios arquivados." : "Ainda não há negócios. Cria o primeiro ou fala com o Afonso."}
         </p>
       )}
 

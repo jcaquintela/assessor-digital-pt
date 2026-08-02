@@ -251,7 +251,7 @@ function ComunicacaoPage() {
             <div>
               <div className="mini" style={{ color: "var(--muted)" }}>
                 {channel === "email"
-                  ? "De: Assessor do Consultor <ola@meuafonso.com>"
+                  ? "De: Afonso <ola@meuafonso.com>"
                   : "Aviso no topo do dashboard do consultor"}
               </div>
               <div className="mt-1"><strong>{previewTitle}</strong></div>

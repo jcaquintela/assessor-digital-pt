@@ -40,7 +40,7 @@ function PlanosPage() {
   return (
     <div className="consult-root min-h-screen px-4 py-10">
       <main className="mx-auto w-full max-w-5xl">
-        <p className="c-eyebrow">Assessor do Consultor</p>
+        <p className="c-eyebrow">Afonso</p>
         <h1 className="c-page-title mt-1">Planos</h1>
         <p className="c-muted mt-2 max-w-2xl text-[14px] leading-relaxed">
           Todos os planos incluem o teu assessor na conversa. O que muda é quanto ele

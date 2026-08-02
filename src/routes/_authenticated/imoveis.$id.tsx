@@ -245,7 +245,7 @@ function PropertyDetail() {
               <DropdownMenuItem asChild>
                 <Link to="/assessor">
                   <MessageSquare className="mr-2 h-3.5 w-3.5" />
-                  Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName} sobre este imóvel
+                  Falar com {assessorName} sobre este imóvel
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => startEdit()}>

@@ -183,7 +183,7 @@ function PessoaDetail() {
               <DropdownMenuItem asChild>
                 <Link to="/assessor">
                   <MessageSquare className="mr-2 h-3.5 w-3.5" />
-                  Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName} sobre esta pessoa
+                  Falar com {assessorName} sobre esta pessoa
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setNovoSeg(true)}>
