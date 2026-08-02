@@ -25,7 +25,7 @@ import {
 import { explainPriority } from "@/lib/assessor/priority-explain";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
-import { Lightbulb } from "lucide-react";
+import { Lightbulb, ArrowRight } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
