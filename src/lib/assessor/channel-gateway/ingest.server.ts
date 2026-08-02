@@ -152,6 +152,16 @@ async function routeInbound(
       return;
     }
 
+    // Escolha de plano no fim do período experimental (dia 12). Só corre se
+    // a escolha tiver sido pedida e ainda não estiver registada.
+    if (await handleTrialChoiceAnswer(adapter, supabaseAdmin, inbound, userId, content)) {
+      if (inbound.callback && adapter.answerInteraction) {
+        try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
+        catch { /* best-effort */ }
+      }
+      return;
+    }
+
     // Confirmação de um cartão de visita lido numa foto: cria o contacto e
     // devolve o ficheiro pronto a guardar. Não passa pelo motor.
     if (await handleBusinessCardAnswer(adapter, supabaseAdmin, inbound, userId, content)) {
