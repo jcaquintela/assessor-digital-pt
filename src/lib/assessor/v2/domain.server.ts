@@ -281,7 +281,20 @@ function normalizeForMatch(s: string): string {
  * consultor. Só liga quando há uma única correspondência clara.
  */
 async function resolvePropertyFromText(ctx: DomainContext, text: string): Promise<string | null> {
-  const hay = normalizeForMatch(text || "");
+  let source = text || "";
+  // O título gravado pode perder a morada ("Visita com Sr. Almeida"); nesse
+  // caso, olhamos para a frase original do consultor.
+  if (ctx.sourceMessageId) {
+    const { data: msg } = await ctx.supabase
+      .from("assessor_messages")
+      .select("content")
+      .eq("id", ctx.sourceMessageId)
+      .eq("user_id", ctx.userId)
+      .maybeSingle();
+    const extra = (msg as { content?: string } | null)?.content;
+    if (extra) source = `${source} ${extra}`;
+  }
+  const hay = normalizeForMatch(source);
   if (hay.length < 6) return null;
   const { data } = await ctx.supabase
     .from("properties")
