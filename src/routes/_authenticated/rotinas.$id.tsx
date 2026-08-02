@@ -18,9 +18,9 @@ import { useStore } from "@/lib/store";
 export const Route = createFileRoute("/_authenticated/rotinas/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de rotina — Assessor do Consultor" },
+      { title: "Ficha de rotina — Afonso" },
       { name: "description", content: "Configura este lembrete recorrente." },
-      { property: "og:title", content: "Ficha de rotina — Assessor do Consultor" },
+      { property: "og:title", content: "Ficha de rotina — Afonso" },
       { property: "og:description", content: "Configura este lembrete recorrente." },
     ],
   }),

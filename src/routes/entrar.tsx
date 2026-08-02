@@ -7,9 +7,9 @@ export const Route = createFileRoute("/entrar")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Entrar sem palavra-passe — Assessor do Consultor" },
+      { title: "Entrar sem palavra-passe — Afonso" },
       { name: "description", content: "Abre o painel com o link temporário que o Afonso te enviou." },
-      { property: "og:title", content: "Entrar sem palavra-passe — Assessor do Consultor" },
+      { property: "og:title", content: "Entrar sem palavra-passe — Afonso" },
       { property: "og:description", content: "Abre o painel com o link temporário que o Afonso te enviou." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

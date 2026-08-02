@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/definicoes")({
-  head: () => ({ meta: [{ title: "Definições — Admin" }] }),
+  head: () => ({ meta: [{ title: "Definições — Afonso admin" }] }),
   component: () => (
     <div className="space-y-2">
       <h1 className="text-2xl font-semibold tracking-tight">Definições</h1>

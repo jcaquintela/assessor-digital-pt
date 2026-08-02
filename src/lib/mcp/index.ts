@@ -6,9 +6,9 @@ import briefingHojeTool from "./tools/briefing-hoje";
 
 export default defineMcp({
   name: "assessor-do-consultor-mcp",
-  title: "Assessor do Consultor",
+  title: "Afonso",
   version: "0.1.0",
   instructions:
-    "Ferramentas do 'Assessor do Consultor' — assessor pessoal digital para consultores imobiliários. Devolve pessoas, oportunidades, seguimentos e o briefing do dia (dados demo fictícios em PT-PT).",
+    "Ferramentas do 'Afonso' — assessor pessoal digital para consultores imobiliários. Devolve pessoas, oportunidades, seguimentos e o briefing do dia (dados demo fictícios em PT-PT).",
   tools: [listPessoasTool, listOportunidadesTool, listSeguimentosTool, briefingHojeTool],
 });

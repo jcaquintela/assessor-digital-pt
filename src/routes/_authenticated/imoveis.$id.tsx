@@ -45,9 +45,9 @@ const ORIGEM_LABEL: Record<string, string> = {
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha do imóvel — Assessor do Consultor" },
+      { title: "Ficha do imóvel — Afonso" },
       { name: "description", content: "Negócio, valores, visitas, propostas, marketing, custos e documentos do imóvel." },
-      { property: "og:title", content: "Ficha do imóvel — Assessor do Consultor" },
+      { property: "og:title", content: "Ficha do imóvel — Afonso" },
       { property: "og:description", content: "Tudo sobre o imóvel numa página, sem saltar de ecrã." },
     ],
   }),
@@ -245,7 +245,7 @@ function PropertyDetail() {
               <DropdownMenuItem asChild>
                 <Link to="/assessor">
                   <MessageSquare className="mr-2 h-3.5 w-3.5" />
-                  Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName} sobre este imóvel
+                  Falar com {assessorName} sobre este imóvel
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => startEdit()}>
@@ -307,7 +307,7 @@ function PropertyDetail() {
                     <Button size="sm" variant="outline" onClick={() => startEdit()}>Corrigir na ficha</Button>
                   )}
                   <Button size="sm" variant="ghost" asChild>
-                    <Link to="/assessor">Perguntar {assessorName === "Assessor" ? "ao Assessor" : `ao ${assessorName}`}</Link>
+                    <Link to="/assessor">Perguntar {`ao ${assessorName}`}</Link>
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => ignorar(q.key, q.text)}>Ignorar</Button>
                 </div>

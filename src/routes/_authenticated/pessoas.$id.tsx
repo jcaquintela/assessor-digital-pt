@@ -31,9 +31,9 @@ import { useAssessorName } from "@/lib/assessor/assessor-name";
 export const Route = createFileRoute("/_authenticated/pessoas/$id")({
   head: () => ({
     meta: [
-      { title: "Contexto da pessoa — Assessor do Consultor" },
+      { title: "Contexto da pessoa — Afonso" },
       { name: "description", content: "Quem é, o que procura, último contacto, próximo passo e ligações." },
-      { property: "og:title", content: "Contexto da pessoa — Assessor do Consultor" },
+      { property: "og:title", content: "Contexto da pessoa — Afonso" },
       { property: "og:description", content: "Memória organizada por pessoa." },
     ],
   }),
@@ -183,7 +183,7 @@ function PessoaDetail() {
               <DropdownMenuItem asChild>
                 <Link to="/assessor">
                   <MessageSquare className="mr-2 h-3.5 w-3.5" />
-                  Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName} sobre esta pessoa
+                  Falar com {assessorName} sobre esta pessoa
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setNovoSeg(true)}>

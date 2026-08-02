@@ -39,9 +39,9 @@ export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
   }),
   head: () => ({
     meta: [
-      { title: "Negócio — Assessor do Consultor" },
+      { title: "Negócio — Afonso" },
       { name: "description", content: "Pessoa, imóveis, fase, histórico, seguimentos e comissões de um negócio." },
-      { property: "og:title", content: "Negócio — Assessor do Consultor" },
+      { property: "og:title", content: "Negócio — Afonso" },
       { property: "og:description", content: "A história completa do negócio numa página." },
     ],
   }),

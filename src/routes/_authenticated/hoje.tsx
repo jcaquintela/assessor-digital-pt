@@ -36,9 +36,9 @@ type HojeSearch = { filtro?: "imoveis-por-confirmar" };
 export const Route = createFileRoute("/_authenticated/hoje")({
   head: () => ({
     meta: [
-      { title: "Hoje — Assessor do Consultor" },
+      { title: "Hoje — Afonso" },
       { name: "description", content: "Briefing diário, compromissos e prioridades do consultor." },
-      { property: "og:title", content: "Hoje — Assessor do Consultor" },
+      { property: "og:title", content: "Hoje — Afonso" },
       { property: "og:description", content: "Briefing diário, compromissos e prioridades do consultor." },
     ],
   }),
@@ -367,7 +367,7 @@ function HojePage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link to="/assessor" className="c-cta">
-              <MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
+              <MessageSquare className="h-4 w-4" /> Falar com {assessorName}
             </Link>
           </div>
         </div>
@@ -401,7 +401,7 @@ function HojePage() {
         <section className="c-spotlight mb-4">
           <div className="c-spot-tag mb-2">
             <AlertTriangle className="h-4 w-4" />
-            {assessorName === "Assessor" ? "O Assessor" : assessorName} chama a atenção
+            {assessorName} chama a atenção
           </div>
           <h2 className="c-serif text-[18px] font-medium">{atencao.action}</h2>
           <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
@@ -545,7 +545,7 @@ function HojePage() {
                         <DropdownMenuContent align="end" className="w-56">
                           <DropdownMenuItem asChild>
                             <Link to="/assessor">
-                              <MessageSquare className="mr-2 h-3.5 w-3.5" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
+                              <MessageSquare className="mr-2 h-3.5 w-3.5" /> Falar com {assessorName}
                             </Link>
                           </DropdownMenuItem>
                           {p.subject_type === "follow_up" && (
@@ -679,7 +679,7 @@ function HojePage() {
         className="fixed bottom-20 right-4 z-10 flex h-12 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-lg md:hidden"
         style={{ background: "var(--brass)", color: "#241703" }}
       >
-        <MessageSquare className="h-4 w-4" /> Falar com {assessorName === "Assessor" ? "o Assessor" : assessorName}
+        <MessageSquare className="h-4 w-4" /> Falar com {assessorName}
       </Link>
 
       <EventDrawer item={drawer} onClose={() => setDrawer(null)} />

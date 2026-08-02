@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/oportunidades/prospecao/")
     meta: [
       { title: "Prospeção — Placas e leads" },
       { name: "description", content: "Regista placas fotografadas na rua e números captados para contactar mais tarde." },
-      { property: "og:title", content: "Prospeção — Assessor do Consultor" },
+      { property: "og:title", content: "Prospeção — Afonso" },
       { property: "og:description", content: "Placas na rua e leads para contactar." },
     ],
   }),

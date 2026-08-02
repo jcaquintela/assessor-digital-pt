@@ -1,4 +1,4 @@
-/* Assessor do Consultor — minimal app-shell service worker.
+/* Afonso — minimal app-shell service worker.
    NetworkFirst for HTML navigations, CacheFirst for hashed assets.
    Bumps CACHE_VERSION to invalidate old caches on release. */
 const CACHE_VERSION = "v1";

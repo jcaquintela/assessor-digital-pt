@@ -1,4 +1,4 @@
-// Demo data for "Assessor do Consultor" MVP.
+// Demo data for "Afonso" MVP.
 // Realistic Portuguese real-estate consultant scenario. EUR, PT-PT.
 // INTEGRATION POINTS (future): substituir por dados vindos de Cloud/Supabase.
 

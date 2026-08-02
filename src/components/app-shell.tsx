@@ -88,8 +88,8 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
             <Sparkles className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <div className="brand text-[15px] font-medium leading-tight">Assessor</div>
-            <div className="c-muted truncate text-xs">do Consultor</div>
+            <div className="brand text-[15px] font-medium leading-tight">Afonso</div>
+            <div className="c-muted truncate text-xs">o teu assessor</div>
           </div>
         </Link>
         <nav className="flex flex-col gap-0.5">

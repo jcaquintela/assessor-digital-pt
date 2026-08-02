@@ -34,7 +34,7 @@ function Index() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-      <p className="text-sm">A abrir Assessor do Consultor…</p>
+      <p className="text-sm">A abrir o Afonso…</p>
     </div>
   );
 }

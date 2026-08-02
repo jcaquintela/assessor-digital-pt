@@ -150,7 +150,7 @@ export interface RouterResult {
 function buildSystemPrompt(input: RouterInput): string {
   const tz = input.timezone || "Europe/Lisbon";
   const nowStr = input.now.toLocaleString("pt-PT", { timeZone: tz });
-  const assessorName = input.assessorName || "Assessor";
+  const assessorName = input.assessorName || "Afonso";
   const userName = input.userName || "consultor";
   return [
     `És o "${assessorName}", o assessor pessoal digital de um consultor imobiliário chamado ${userName}. Falas português europeu.`,

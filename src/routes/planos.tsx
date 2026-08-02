@@ -13,9 +13,9 @@ import {
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos — Assessor do Consultor" },
+      { title: "Planos — Afonso" },
       { name: "description", content: "Compara os planos do teu assessor pessoal: módulos incluídos e nível de autonomia." },
-      { property: "og:title", content: "Planos — Assessor do Consultor" },
+      { property: "og:title", content: "Planos — Afonso" },
       { property: "og:description", content: "Compara os planos do teu assessor pessoal: módulos incluídos e nível de autonomia." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -40,7 +40,7 @@ function PlanosPage() {
   return (
     <div className="consult-root min-h-screen px-4 py-10">
       <main className="mx-auto w-full max-w-5xl">
-        <p className="c-eyebrow">Assessor do Consultor</p>
+        <p className="c-eyebrow">Afonso</p>
         <h1 className="c-page-title mt-1">Planos</h1>
         <p className="c-muted mt-2 max-w-2xl text-[14px] leading-relaxed">
           Todos os planos incluem o teu assessor na conversa. O que muda é quanto ele

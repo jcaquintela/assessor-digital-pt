@@ -8,9 +8,9 @@ import { createTelegramLinkToken, getTelegramLink } from "@/lib/telegram/link.fu
 export const Route = createFileRoute("/_authenticated/ligar-canal")({
   head: () => ({
     meta: [
-      { title: "Ligar o teu canal — Assessor do Consultor" },
+      { title: "Ligar o teu canal — Afonso" },
       { name: "description", content: "Liga o Telegram à tua conta para começares a falar com o Afonso." },
-      { property: "og:title", content: "Ligar o teu canal — Assessor do Consultor" },
+      { property: "og:title", content: "Ligar o teu canal — Afonso" },
       { property: "og:description", content: "Liga o Telegram à tua conta para começares a falar com o Afonso." },
     ],
   }),

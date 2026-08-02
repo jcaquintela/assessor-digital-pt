@@ -34,9 +34,9 @@ import { decideContentAccess, listMyConsentRequests } from "@/lib/admin/consent.
 export const Route = createFileRoute("/_authenticated/definicoes")({
   head: () => ({
     meta: [
-      { title: "Definições — Assessor do Consultor" },
+      { title: "Definições — Afonso" },
       { name: "description", content: "O teu assessor, autonomia, canal ligado e conta." },
-      { property: "og:title", content: "Definições — Assessor do Consultor" },
+      { property: "og:title", content: "Definições — Afonso" },
       { property: "og:description", content: "O teu assessor, autonomia, canal ligado e conta." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

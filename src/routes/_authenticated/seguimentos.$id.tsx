@@ -30,9 +30,9 @@ const PRIORIDADES: SeguimentoPrioridade[] = ["Alta", "Média", "Baixa"];
 export const Route = createFileRoute("/_authenticated/seguimentos/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de seguimento — Assessor do Consultor" },
+      { title: "Ficha de seguimento — Afonso" },
       { name: "description", content: "Detalhe de tarefa ou evento com pessoa, oportunidade e notas." },
-      { property: "og:title", content: "Ficha de seguimento — Assessor do Consultor" },
+      { property: "og:title", content: "Ficha de seguimento — Afonso" },
       { property: "og:description", content: "Memória organizada por seguimento." },
     ],
   }),

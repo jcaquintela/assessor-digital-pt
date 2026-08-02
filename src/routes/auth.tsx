@@ -14,9 +14,9 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Entrar — Assessor do Consultor" },
+      { title: "Entrar — Afonso" },
       { name: "description", content: "Iniciar sessão ou criar conta no seu assessor pessoal." },
-      { property: "og:title", content: "Entrar — Assessor do Consultor" },
+      { property: "og:title", content: "Entrar — Afonso" },
       { property: "og:description", content: "Iniciar sessão ou criar conta no seu assessor pessoal." },
     ],
   }),
@@ -94,8 +94,8 @@ function AuthPage() {
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <div className="text-sm font-semibold leading-tight">Assessor</div>
-            <div className="text-xs text-muted-foreground">do Consultor</div>
+            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-xs text-muted-foreground">o teu assessor</div>
           </div>
         </div>
         <Card>

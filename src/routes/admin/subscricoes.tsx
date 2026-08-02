@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/subscricoes")({
-  head: () => ({ meta: [{ title: "Subscrições — Admin" }] }),
+  head: () => ({ meta: [{ title: "Subscrições — Afonso admin" }] }),
   component: () => (
     <Placeholder title="Subscrições" desc="Gestão de planos e faturação. Ligar Stripe para ativar." />
   ),

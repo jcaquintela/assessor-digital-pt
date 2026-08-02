@@ -22,9 +22,9 @@ import { DEAL_KINDS, KIND_LABEL, STAGE_GROUPS, STAGE_LABEL, groupOfStage } from 
 export const Route = createFileRoute("/_authenticated/negocios/")({
   head: () => ({
     meta: [
-      { title: "Negócios — Assessor do Consultor" },
+      { title: "Negócios — Afonso" },
       { name: "description", content: "Quadro de negócios do consultor: fase, pessoa, imóveis e próxima ação." },
-      { property: "og:title", content: "Negócios — Assessor do Consultor" },
+      { property: "og:title", content: "Negócios — Afonso" },
       { property: "og:description", content: "Cada negócio com a sua história, do primeiro contacto à escritura." },
     ],
   }),
@@ -173,7 +173,7 @@ function NegociosPage() {
       {deals.isLoading && <p className="text-sm text-muted-foreground">A carregar negócios…</p>}
       {!deals.isLoading && visiveis.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          {mostrarArquivados ? "Sem negócios arquivados." : "Ainda não há negócios. Cria o primeiro ou fala com o Assessor."}
+          {mostrarArquivados ? "Sem negócios arquivados." : "Ainda não há negócios. Cria o primeiro ou fala com o Afonso."}
         </p>
       )}
 
