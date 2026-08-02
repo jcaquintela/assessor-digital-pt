@@ -267,6 +267,39 @@ async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<Doma
 }
 
 async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  return execCreateEventInner(ctx, args);
+}
+
+/** Normaliza texto para comparação difusa (sem acentos, minúsculas). */
+function normalizeForMatch(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Tenta descobrir de que imóvel se fala quando o motor não devolveu o id.
+ * Compara o texto do compromisso com o título/morada/cidade dos imóveis do
+ * consultor. Só liga quando há uma única correspondência clara.
+ */
+async function resolvePropertyFromText(ctx: DomainContext, text: string): Promise<string | null> {
+  const hay = normalizeForMatch(text || "");
+  if (hay.length < 6) return null;
+  const { data } = await ctx.supabase
+    .from("properties")
+    .select("id, title, address, location, city")
+    .eq("user_id", ctx.userId)
+    .limit(300);
+  const rows = (data ?? []) as Array<{ id: string; title: string | null; address: string | null; location: string | null; city: string | null }>;
+  const matches = new Set<string>();
+  for (const r of rows) {
+    for (const raw of [r.address, r.title, r.location]) {
+      const needle = normalizeForMatch(String(raw ?? ""));
+      if (needle.length >= 6 && hay.includes(needle)) { matches.add(r.id); break; }
+    }
+  }
+  return matches.size === 1 ? [...matches][0]! : null;
+}
+
+async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
   // Última linha de defesa: a string "null" nunca pode chegar à BD.
   const v = { ...p.value, title: ensureTitle(p.value.title, "Compromisso") };
