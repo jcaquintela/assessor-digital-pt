@@ -80,7 +80,7 @@ export function sanitizeUpdates(updates: ProductUpdate[]): ProductUpdate[] {
       title: humanizeUpdateText(u.title),
       description: humanizeUpdateText(u.description),
     }))
-    .filter((u) => u.title.length > 2 && u.description.length > 5);
+    .filter((u) => u.title.length > 0 && u.description.length > 3);
 }
 
 /** Ordena por data (mais recente primeiro) e depois por relevância. */
