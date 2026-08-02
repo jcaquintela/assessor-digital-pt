@@ -69,7 +69,6 @@ export function PropertyCard({
               <CategoryBadge category={category} />
               {origem && <span className="c-badge">via {origem}</span>}
               {i.file_count > 0 && <span className="c-badge c-mono"><FileText className="h-3 w-3" /> {i.file_count}</span>}
-              {org.tagsOf(i.id).map((t) => <span key={t.id} className="c-badge">{t.name}</span>)}
               {org.foldersOf(i.id).map((f) => (
                 <span
                   key={f.id} className="c-badge"
