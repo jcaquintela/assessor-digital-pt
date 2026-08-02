@@ -8,7 +8,6 @@ import {
   Inbox,
   MoreHorizontal,
   Settings,
-  Sparkles,
   Building2,
   Users,
   Wallet,
