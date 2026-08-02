@@ -22,6 +22,10 @@ const STAGE_PT: Record<string, string> = {
   concluido: "concluído",
 };
 
+function upperFirst(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
 /** Devolve 1 a 4 frases curtas em PT-PT. Nunca devolve frases inventadas. */
 export function propertySummary(input: SummaryInput): string[] {
   const p = input.property ?? {};
@@ -29,9 +33,9 @@ export function propertySummary(input: SummaryInput): string[] {
 
   const local = [p.address, p.city || p.location].filter(Boolean).join(", ");
   const tipo = [p.typology, p.property_type].filter(Boolean).join(" ").trim();
-  if (local && tipo) frases.push(`${tipo} em ${local}.`);
+  if (local && tipo) frases.push(`${upperFirst(tipo)} em ${local}.`);
   else if (local) frases.push(`Imóvel em ${local}.`);
-  else if (tipo) frases.push(`${tipo} sem morada registada.`);
+  else if (tipo) frases.push(`${upperFirst(tipo)} sem morada registada.`);
 
   const preco = p.asking_price != null ? Number(p.asking_price) : null;
   if (preco != null && preco > 0) frases.push(`Está anunciado por ${formatEUR(preco)}.`);
