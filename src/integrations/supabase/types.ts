@@ -2423,6 +2423,7 @@ export type Database = {
           assessor_name: string
           beta_expires_at: string | null
           created_at: string
+          docs_retention_warned_at: string | null
           email: string | null
           id: string
           is_beta_tester: boolean
@@ -2434,12 +2435,16 @@ export type Database = {
           phone: string | null
           phone_verified_at: string | null
           primary_channel: string
+          readonly_until: string | null
           subscription_tier: string
           telegram_retention_warned_at: string | null
+          trial_choice: string | null
+          trial_choice_asked_at: string | null
           trial_expires_at: string | null
           trial_started_at: string | null
           trial_status: string | null
           trial_tier: string | null
+          trial_value_summary_at: string | null
           trial_warned_at: string | null
           updated_at: string
           whatsapp_link_status: string
@@ -2450,6 +2455,7 @@ export type Database = {
           assessor_name?: string
           beta_expires_at?: string | null
           created_at?: string
+          docs_retention_warned_at?: string | null
           email?: string | null
           id: string
           is_beta_tester?: boolean
@@ -2461,12 +2467,16 @@ export type Database = {
           phone?: string | null
           phone_verified_at?: string | null
           primary_channel?: string
+          readonly_until?: string | null
           subscription_tier?: string
           telegram_retention_warned_at?: string | null
+          trial_choice?: string | null
+          trial_choice_asked_at?: string | null
           trial_expires_at?: string | null
           trial_started_at?: string | null
           trial_status?: string | null
           trial_tier?: string | null
+          trial_value_summary_at?: string | null
           trial_warned_at?: string | null
           updated_at?: string
           whatsapp_link_status?: string
@@ -2477,6 +2487,7 @@ export type Database = {
           assessor_name?: string
           beta_expires_at?: string | null
           created_at?: string
+          docs_retention_warned_at?: string | null
           email?: string | null
           id?: string
           is_beta_tester?: boolean
@@ -2488,12 +2499,16 @@ export type Database = {
           phone?: string | null
           phone_verified_at?: string | null
           primary_channel?: string
+          readonly_until?: string | null
           subscription_tier?: string
           telegram_retention_warned_at?: string | null
+          trial_choice?: string | null
+          trial_choice_asked_at?: string | null
           trial_expires_at?: string | null
           trial_started_at?: string | null
           trial_status?: string | null
           trial_tier?: string | null
+          trial_value_summary_at?: string | null
           trial_warned_at?: string | null
           updated_at?: string
           whatsapp_link_status?: string
@@ -3178,6 +3193,39 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_events: {
+        Row: {
+          created_at: string
+          event: string
+          from_tier: string | null
+          id: string
+          metadata: Json
+          source: string | null
+          to_tier: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          from_tier?: string | null
+          id?: string
+          metadata?: Json
+          source?: string | null
+          to_tier?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          from_tier?: string | null
+          id?: string
+          metadata?: Json
+          source?: string | null
+          to_tier?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           color: string | null
@@ -3332,6 +3380,8 @@ export type Database = {
           related_resource_id: string | null
           related_resource_type: string | null
           requires_review: boolean
+          retention_archived_at: string | null
+          retention_warned_at: string | null
           size_bytes: number
           source_external_file_id: string | null
           source_message_id: string | null
@@ -3367,6 +3417,8 @@ export type Database = {
           related_resource_id?: string | null
           related_resource_type?: string | null
           requires_review?: boolean
+          retention_archived_at?: string | null
+          retention_warned_at?: string | null
           size_bytes?: number
           source_external_file_id?: string | null
           source_message_id?: string | null
@@ -3402,6 +3454,8 @@ export type Database = {
           related_resource_id?: string | null
           related_resource_type?: string | null
           requires_review?: boolean
+          retention_archived_at?: string | null
+          retention_warned_at?: string | null
           size_bytes?: number
           source_external_file_id?: string | null
           source_message_id?: string | null
