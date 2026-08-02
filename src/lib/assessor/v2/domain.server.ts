@@ -765,22 +765,41 @@ async function execCreateFinancialMovement(ctx: DomainContext, args: unknown): P
   const v = p.value;
   let opportunityId = v.opportunity_id ?? null;
 
-  // Dedupe: mesmo tipo, mesmo valor, mesmo dia — devolve o existente em vez
-  // de criar um segundo registo (mesmo nível de protecção da prospeção).
+  // Dedupe: mesmo tipo, mesmo valor, mesmo dia E mesmo negócio/imóvel —
+  // devolve o existente em vez de criar um segundo registo. Incluir o
+  // negócio/imóvel evita bloquear duas comissões reais e distintas do mesmo
+  // valor no mesmo dia (dois negócios fechados por coincidência iguais).
   const dedupeDate = v.movement_date ?? todayLisbonYmd();
   {
     const dayStart = `${String(dedupeDate).slice(0, 10)}T00:00:00.000Z`;
     const dayEnd = `${String(dedupeDate).slice(0, 10)}T23:59:59.999Z`;
-    const { data: dup } = await ctx.supabase
+    let dupQuery = ctx.supabase
       .from("financial_movements")
-      .select("id, type, amount, description, status, movement_date, opportunity_id")
+      .select("id, type, amount, description, status, movement_date, opportunity_id, property_id")
       .eq("user_id", ctx.userId)
       .eq("type", v.type)
       .eq("amount", v.amount)
       .gte("movement_date", dayStart)
-      .lte("movement_date", dayEnd)
-      .limit(1)
-      .maybeSingle();
+      .lte("movement_date", dayEnd);
+
+    // Âmbito: se o pedido já traz negócio ou imóvel, o duplicado tem de ser
+    // do MESMO negócio/imóvel. Sem negócio nem imóvel, comparamos também a
+    // referência textual (descrição) para distinguir negócios diferentes.
+    if (v.opportunity_id) dupQuery = dupQuery.eq("opportunity_id", v.opportunity_id);
+    else if (v.property_id) dupQuery = dupQuery.eq("property_id", v.property_id);
+
+    const { data: dupRows } = await dupQuery.limit(20);
+    const candidates = ((dupRows as any[]) ?? []);
+    const sameScope = (row: any): boolean => {
+      if (v.opportunity_id) return row.opportunity_id === v.opportunity_id;
+      if (v.property_id) return row.property_id === v.property_id;
+      // Sem âmbito explícito: só é duplicado se falar do mesmo negócio.
+      const ref = normalizeDedupeRef(v.property_reference ?? v.opportunity_title ?? v.description);
+      const rowRef = normalizeDedupeRef(row.description);
+      if (!ref || !rowRef) return true;
+      return rowRef.includes(ref) || ref.includes(rowRef);
+    };
+    const dup = candidates.find(sameScope);
     if (dup) return ok({ duplicate: true, existing: dup });
   }
 
