@@ -42,11 +42,11 @@ function PessoasPage() {
   const tagId = search.tag ?? null;
   const view: PeopleView = search.view ?? "lista";
   const setQ = (v: string) =>
-    navigate({ search: (p) => ({ ...p, q: v || undefined }), replace: true });
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
   const setTagId = (v: string | null) =>
-    navigate({ search: (p) => ({ ...p, tag: v ?? undefined }), replace: true });
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, tag: v ?? undefined }), replace: true });
   const setView = (v: PeopleView) =>
-    navigate({ search: (p) => ({ ...p, view: v === "grelha" ? "grelha" : undefined }), replace: true });
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, view: v === "grelha" ? "grelha" : undefined }), replace: true });
   const [editId, setEditId] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
   const [orgId, setOrgId] = useState<string | null>(null);
