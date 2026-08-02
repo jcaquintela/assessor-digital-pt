@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectWhatsNewQuery, formatWhatsNewReply, NO_UPDATES_REPLY } from "./whats-new";
+import { detectWhatsNewQuery, formatWhatsNewReply, isTechnicalText, noRecentUpdatesReply, NO_UPDATES_REPLY } from "./whats-new";
 
 describe("novidades", () => {
   it("deteta perguntas de novidades", () => {
@@ -30,5 +30,21 @@ describe("novidades", () => {
 
   it("sem novidades responde de forma natural", () => {
     expect(formatWhatsNewReply([])).toBe(NO_UPDATES_REPLY);
+  });
+});
+describe("linguagem das novidades", () => {
+  it("reescreve vocabulário técnico na descrição", () => {
+    const reply = formatWhatsNewReply([
+      { released_on: "2026-08-02", title: "Categorias", description: "Nova tabela e endpoint com RLS no backend.", category: "nova_funcionalidade" },
+    ]);
+    expect(reply).not.toMatch(/tabela|endpoint|RLS|backend/i);
+    expect(isTechnicalText("corrigi o bug do parser")).toBe(true);
+    expect(isTechnicalText("agora podes agrupar imóveis por categoria")).toBe(false);
+  });
+
+  it("usa fallback com a última novidade quando não há nada no mês", () => {
+    expect(noRecentUpdatesReply(null)).toBe(NO_UPDATES_REPLY);
+    const r = noRecentUpdatesReply({ released_on: "2026-05-01", title: "Sparring", description: "Treino de objeções.", category: "nova_funcionalidade" });
+    expect(r).toContain("Sparring");
   });
 });
