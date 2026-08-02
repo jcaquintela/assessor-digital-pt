@@ -1,3 +1,5 @@
+import { BrandMark } from "@/components/brand-mark";
+
 /**
  * Ecrã de carregamento / splash do Afonso.
  * Usado como pendingComponent global do router (mobile e desktop).
@@ -10,13 +12,7 @@ export function AppSplash() {
       role="status"
       aria-live="polite"
     >
-      <img
-        src="/icon-192.png"
-        alt="Afonso"
-        width={96}
-        height={96}
-        className="h-24 w-24 rounded-3xl shadow-lg"
-      />
+      <BrandMark size={96} className="rounded-3xl shadow-lg" />
       <div className="text-center">
         <div className="brand text-lg font-medium" style={{ color: "#e9c46a" }}>
           Afonso

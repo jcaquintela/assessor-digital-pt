@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { BrandMark } from "@/components/brand-mark";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { isModuleVisible } from "@/lib/subscription/tiers";
 import {
@@ -83,11 +84,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
       {/* Desktop sidebar */}
       <aside className="consult-nav fixed inset-y-0 left-0 z-20 hidden w-64 flex-col px-4 py-6 md:flex">
         <Link to="/hoje" className="mb-8 flex items-center gap-2 px-2">
-          <img
-            src="/icon-192.png"
-            alt="Afonso"
-            className="h-9 w-9 shrink-0 rounded-xl object-cover"
-          />
+          <BrandMark size={36} />
           <div className="min-w-0">
             <div className="brand text-[15px] font-medium leading-tight">Afonso</div>
             <div className="c-muted truncate text-xs">o teu assessor</div>
