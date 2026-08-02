@@ -77,6 +77,12 @@ function ImoveisPage() {
 
   const atencao = useQuery({ queryKey: ["property-attention"], queryFn: () => fetchAttention() });
 
+  // "Em carteira" usa a mesma régua de /hoje: exclui vendidos e arquivados.
+  // A lista continua a mostrar tudo — só o contador é que fica alinhado.
+  const emCarteira = all.filter(
+    (p) => !["vendido", "arquivado"].includes(String(p.status ?? "").toLowerCase()),
+  ).length;
+
   // Todos pré-selecionados por defeito; imóveis novos entram na seleção.
   useEffect(() => {
     setSel(new Set(all.map((p) => p.id)));
@@ -132,7 +138,7 @@ function ImoveisPage() {
     <AppShell>
       <PageHeader
         title="Imóveis"
-        subtitle={`${all.length} em carteira · criados aqui ou por conversa`}
+        subtitle={`${emCarteira} em carteira · criados aqui ou por conversa`}
         action={
           <button type="button" className="c-btn tap-44" onClick={() => setNovo(true)}>
             <Plus className="h-4 w-4" /> Adicionar

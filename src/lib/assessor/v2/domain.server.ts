@@ -815,30 +815,28 @@ async function execCreateFinancialMovement(ctx: DomainContext, args: unknown): P
     if (dup) return ok({ duplicate: true, existing: dup });
   }
 
-  if (!opportunityId && v.type === "commission" && (v.deal_value != null || v.production_amount != null || v.property_reference)) {
-    const title = (v.opportunity_title?.trim()
-      || (v.property_reference ? `Negócio ${v.property_reference.trim()}` : "Negócio fechado"))
-      .slice(0, 200);
-    const { data: opportunity, error: opportunityError } = await ctx.supabase
-      .from("opportunities")
-      .insert({
-        user_id: ctx.userId,
-        property_id: v.property_id ?? null,
-        title,
-        deal_kind: "venda",
-        stage: "escritura",
-        stage_changed_at: new Date().toISOString(),
-        type: "venda",
-        status: "fechado",
-        value: v.deal_value ?? null,
-        probability: "alta",
-        notes: financialOpportunityNotes(v),
-        next_action: null,
-      } as never)
-      .select("id, value, notes")
-      .single();
-    if (opportunityError) return fail(`opportunity:${opportunityError.message}`);
-    opportunityId = (opportunity as any)?.id ?? null;
+  // Um imóvel nunca cria negócio sozinho: registar uma comissão liga-se a um
+  // negócio JÁ existente do mesmo imóvel, mas nunca inventa um negócio novo.
+  // Criar negócio é decisão explícita do consultor (ficha do imóvel / negócios).
+  if (!opportunityId && v.property_id) {
+    const { data: linked } = await ctx.supabase
+      .from("opportunity_properties")
+      .select("opportunity_id")
+      .eq("user_id", ctx.userId)
+      .eq("property_id", v.property_id)
+      .limit(1)
+      .maybeSingle();
+    opportunityId = (linked as any)?.opportunity_id ?? null;
+    if (!opportunityId) {
+      const { data: legacy } = await ctx.supabase
+        .from("opportunities")
+        .select("id")
+        .eq("user_id", ctx.userId)
+        .eq("property_id", v.property_id)
+        .limit(1)
+        .maybeSingle();
+      opportunityId = (legacy as any)?.id ?? null;
+    }
   }
 
   const movementDate = dedupeDate;
