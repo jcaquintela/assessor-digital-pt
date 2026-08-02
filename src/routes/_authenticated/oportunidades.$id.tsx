@@ -27,8 +27,9 @@ import {
   unlinkDealProperty, updateDeal,
 } from "@/lib/deals/deals.functions";
 import {
-  DEAL_KINDS, DEAL_STAGES, KIND_LABEL, PROPERTY_ROLE_LABEL, STAGE_LABEL, stageIndex,
+  DEAL_KINDS, KIND_LABEL, PROPERTY_ROLE_LABEL, STAGE_LABEL, stageIndex,
 } from "@/lib/deals/stages";
+import { StagePath } from "@/components/negocios/stage-path";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
   // Deep link: /oportunidades/<id>?destaque=seguimento:<uuid>
@@ -256,28 +257,7 @@ function DealDetail() {
       <Card className="mb-4">
         <CardContent className="p-4">
           <h3 className="mb-3 text-sm font-semibold">Fase</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {DEAL_STAGES.map((s, i) => {
-              const passou = i <= atual;
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => mudarFase.mutate(s)}
-                  disabled={mudarFase.isPending || s === d.stage}
-                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                    s === d.stage
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : passou
-                        ? "border-primary/30 bg-primary/10 text-foreground"
-                        : "border-border text-muted-foreground hover:border-primary/40"
-                  }`}
-                >
-                  {STAGE_LABEL[s]}
-                </button>
-              );
-            })}
-          </div>
+          <StagePath stage={d.stage} onChange={(s) => mudarFase.mutate(s)} disabled={mudarFase.isPending} />
           <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span>Valor: <strong className="text-foreground">{formatEUR(d.value)}</strong></span>
             <span>Comissão prevista: <strong className="text-foreground">{formatEUR(comissaoPrevista)}</strong></span>
