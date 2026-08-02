@@ -24,6 +24,10 @@ import {
   warnExpiringTrials,
   expireDueTrials,
   markTrialConverted,
+  sendTrialValueSummaries,
+  askTrialChoice,
+  readTrialChoice,
+  setTrialChoice,
   TRIAL_DAYS,
 } from "./trial.server";
 
@@ -75,8 +79,8 @@ describe("trial WhatsApp de 14 dias", () => {
     expect((await startWhatsAppTrialIfEligible(used as any, USER, "pro", { now: NOW })).started).toBe(false);
   });
 
-  it("avisa aos 11 dias (3 antes de terminar) e só uma vez", async () => {
-    const db = baseDb({ trial_status: "active", trial_tier: "consultor", trial_expires_at: inDays(3) });
+  it("avisa no dia 12 (2 antes de terminar) e só uma vez", async () => {
+    const db = baseDb({ trial_status: "active", trial_tier: "consultor", trial_expires_at: inDays(2) });
     const r = await warnExpiringTrials(db as any, { now: NOW });
     expect(r.warned).toEqual([USER]);
     expect(db.state.profiles[0].trial_warned_at).toBeTruthy();
@@ -86,9 +90,61 @@ describe("trial WhatsApp de 14 dias", () => {
     expect(again.warned).toHaveLength(0);
   });
 
-  it("não avisa quando ainda faltam mais de 3 dias", async () => {
+  it("não avisa quando ainda faltam mais de 2 dias", async () => {
     const db = baseDb({ trial_status: "active", trial_expires_at: inDays(7) });
     expect((await warnExpiringTrials(db as any, { now: NOW })).warned).toHaveLength(0);
+  });
+
+  it("é um só modelo: arranca mesmo em Base e dá capacidades completas", async () => {
+    const db = baseDb({ subscription_tier: "base" });
+    expect((await startWhatsAppTrialIfEligible(db as any, USER, "base", { now: NOW })).started).toBe(true);
+    expect(db.state.profiles[0].subscription_tier).toBe("consultor");
+    expect(db.state.subscription_events?.some((e: any) => e.event === "trial_started")).toBe(true);
+  });
+
+  it("dia 7: envia resumo de valor uma só vez", async () => {
+    const db = baseDb({
+      trial_status: "active", trial_started_at: inDays(-7), trial_expires_at: inDays(7),
+    });
+    const r = await sendTrialValueSummaries(db as any, { now: NOW });
+    expect(r.sent).toEqual([USER]);
+    expect(db.state.assessor_messages.some((m) => m.message_type === "trial_value_summary")).toBe(true);
+    expect((await sendTrialValueSummaries(db as any, { now: NOW })).sent).toHaveLength(0);
+  });
+
+  it("dia 12: pede a escolha de plano", async () => {
+    const db = baseDb({
+      trial_status: "active", trial_started_at: inDays(-12), trial_expires_at: inDays(2),
+    });
+    const r = await askTrialChoice(db as any, { now: NOW });
+    expect(r.asked).toEqual([USER]);
+    expect(db.state.profiles[0].trial_choice_asked_at).toBeTruthy();
+  });
+
+  it("lê a escolha em linguagem natural", () => {
+    expect(readTrialChoice("Pro, por favor")).toBe("pro");
+    expect(readTrialChoice("fico no consultor")).toBe("consultor");
+    expect(readTrialChoice("base")).toBe("base");
+    expect(readTrialChoice("olá, tudo bem?")).toBeNull();
+  });
+
+  it("aplica a escolha Pro no dia 14 sem perder dados", async () => {
+    const db = baseDb({
+      trial_status: "active", trial_started_at: inDays(-14), trial_expires_at: inDays(-1),
+      trial_choice: "pro",
+    });
+    const r = await expireDueTrials(db as any, { now: NOW });
+    expect(r.expired[0].toTier).toBe("pro");
+    expect(db.state.profiles[0].subscription_tier).toBe("pro");
+    expect(db.state.profiles[0].readonly_until).toBeNull();
+    expect(db.state.subscription_events.some((e: any) => e.event === "trial_to_pro")).toBe(true);
+    expect(db.state.people).toHaveLength(1);
+  });
+
+  it("guarda a escolha durante o período experimental", async () => {
+    const db = baseDb({ trial_status: "active", trial_expires_at: inDays(2) });
+    expect((await setTrialChoice(db as any, USER, "consultor")).saved).toBe(true);
+    expect(db.state.profiles[0].trial_choice).toBe("consultor");
   });
 
   it("ao expirar volta a base, recalcula canal e regista auditoria", async () => {
@@ -111,6 +167,9 @@ describe("trial WhatsApp de 14 dias", () => {
     const log = db.state.admin_audit_logs.find((a) => a.action === "trial_expired_downgrade");
     expect(log).toBeTruthy();
     expect(log!.metadata.after.subscription_tier).toBe("base");
+    // Sem escolha explícita: Base, com arquivo em leitura de 90 dias.
+    expect(p.readonly_until).toBeTruthy();
+    expect(db.state.subscription_events.some((e: any) => e.event === "trial_to_base")).toBe(true);
   });
 
   it("recalcula para Telegram quando o WhatsApp deixa de estar disponível", async () => {
