@@ -327,7 +327,7 @@ export const listPersonPhones = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => v as { personId: string })
   .handler(async ({ data, context }): Promise<PersonPhone[]> => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: rows, error } = await supabase
       .from("person_phones")
       .select("id,raw,e164,kind,is_primary")
@@ -335,6 +335,35 @@ export const listPersonPhones = createServerFn({ method: "GET" })
       .order("is_primary", { ascending: false })
       .order("created_at", { ascending: true });
     if (error) throw error;
+    // Contactos antigos (ou criados pelo motor) só têm `people.phone`. O
+    // cabeçalho mostrava o número e esta secção dizia "sem telefones".
+    // Migramos o número para a mesma fonte, uma vez, e devolvemos.
+    if (!rows || rows.length === 0) {
+      const { data: person } = await supabase
+        .from("people").select("phone").eq("id", data.personId).maybeSingle();
+      const legacy = (person as { phone: string | null } | null)?.phone?.trim();
+      if (legacy) {
+        const norm = normalizePhoneE164(legacy);
+        const { data: created } = await supabase.from("person_phones").insert({
+          user_id: userId,
+          person_id: data.personId,
+          raw: legacy,
+          e164: norm.e164,
+          country_code: norm.countryCode,
+          kind: norm.kind,
+          is_primary: true,
+        } as never).select("id,raw,e164,kind,is_primary").single();
+        if (created) {
+          const c = created as { id: string; raw: string; e164: string | null; kind: string; is_primary: boolean };
+          // Cabeçalho e secção passam a mostrar exactamente o mesmo número.
+          if (c.e164 && c.e164 !== legacy) {
+            await supabase.from("people").update({ phone: c.e164 } as never).eq("id", data.personId);
+          }
+          return [{ id: c.id, raw: c.raw, e164: c.e164, kind: c.kind, isPrimary: c.is_primary }];
+        }
+      }
+      return [];
+    }
     return (rows ?? []).map((r) => ({
       id: r.id, raw: r.raw, e164: r.e164, kind: r.kind, isPrimary: r.is_primary,
     }));
@@ -370,8 +399,22 @@ export const deletePersonPhone = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => v as { id: string })
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("person_phones").delete().eq("id", data.id);
+    const { supabase } = context;
+    const { data: row } = await supabase
+      .from("person_phones").select("person_id,raw,e164").eq("id", data.id).maybeSingle();
+    const { error } = await supabase.from("person_phones").delete().eq("id", data.id);
     if (error) throw error;
+    // Sem isto o número apagado voltava a aparecer (vinha de `people.phone`).
+    const r = row as { person_id: string; raw: string; e164: string | null } | null;
+    if (r) {
+      const { data: rest } = await supabase
+        .from("person_phones").select("raw,e164").eq("person_id", r.person_id)
+        .order("is_primary", { ascending: false }).limit(1);
+      const next = (rest ?? [])[0] as { raw: string; e164: string | null } | undefined;
+      await supabase.from("people")
+        .update({ phone: next ? (next.e164 ?? next.raw) : null } as never)
+        .eq("id", r.person_id);
+    }
     return { ok: true };
   });
 
