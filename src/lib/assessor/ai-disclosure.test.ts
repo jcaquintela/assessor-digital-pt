@@ -27,7 +27,6 @@ describe("disclosure de IA", () => {
   it("abre com a frase, com e sem nome", () => {
     expect(aiDisclosureOpening("Júlio")).toBe(`Olá Júlio! ${AI_DISCLOSURE}`);
     expect(aiDisclosureOpening()).toBe(`Olá! ${AI_DISCLOSURE}`);
-    expect(withAiDisclosure("Texto.")).toStartWith?.call(null) ?? null;
     expect(withAiDisclosure("Texto.")).toBe(`${AI_DISCLOSURE} Texto.`);
     expect(withAiDisclosure(`Já tem. ${AI_DISCLOSURE}`)).toBe(`Já tem. ${AI_DISCLOSURE}`);
   });
