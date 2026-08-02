@@ -2424,6 +2424,10 @@ export type Database = {
           id: string
           is_beta_tester: boolean
           name: string | null
+          onboarding_goals: string | null
+          onboarding_last_offer_at: string | null
+          onboarding_offers: number
+          onboarding_stage: string
           phone: string | null
           phone_verified_at: string | null
           primary_channel: string
@@ -2441,6 +2445,10 @@ export type Database = {
           id: string
           is_beta_tester?: boolean
           name?: string | null
+          onboarding_goals?: string | null
+          onboarding_last_offer_at?: string | null
+          onboarding_offers?: number
+          onboarding_stage?: string
           phone?: string | null
           phone_verified_at?: string | null
           primary_channel?: string
@@ -2458,6 +2466,10 @@ export type Database = {
           id?: string
           is_beta_tester?: boolean
           name?: string | null
+          onboarding_goals?: string | null
+          onboarding_last_offer_at?: string | null
+          onboarding_offers?: number
+          onboarding_stage?: string
           phone?: string | null
           phone_verified_at?: string | null
           primary_channel?: string
