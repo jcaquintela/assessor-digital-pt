@@ -25,7 +25,7 @@ import {
 import { explainPriority } from "@/lib/assessor/priority-explain";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
-import { Lightbulb } from "lucide-react";
+import { Lightbulb, ArrowRight } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -349,9 +349,19 @@ function HojePage() {
             {atencao.entity_label ? ` ${atencao.entity_label}.` : ""}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Link className="c-cta" to="/assessor">
-              <MessageSquare className="h-3.5 w-3.5" /> Tratar no WhatsApp
-            </Link>
+            {atencao.subject_type === "follow_up" ? (
+              <Link className="c-cta" to="/seguimentos/$id" params={{ id: atencao.subject_id }}>
+                <ArrowRight className="h-3.5 w-3.5" /> Tratar
+              </Link>
+            ) : atencao.subject_type === "opportunity" ? (
+              <Link className="c-cta" to="/oportunidades/$id" params={{ id: atencao.subject_id }}>
+                <ArrowRight className="h-3.5 w-3.5" /> Tratar
+              </Link>
+            ) : (
+              <Link className="c-cta" to="/imoveis/$id" params={{ id: atencao.subject_id }}>
+                <ArrowRight className="h-3.5 w-3.5" /> Tratar
+              </Link>
+            )}
             {atencao.deal_id ? (
               <Link
                 className="c-btn"
