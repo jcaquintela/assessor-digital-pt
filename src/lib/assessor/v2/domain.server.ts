@@ -224,7 +224,6 @@ async function execSearchProperties(ctx: DomainContext, args: unknown): Promise<
 }
 
 async function execCreateProperty(ctx: DomainContext, args: unknown): Promise<DomainResult> {
-  const p0 = 0; void p0;
   const p = parse(CreatePropertyArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
   const { data, error } = await ctx.supabase
