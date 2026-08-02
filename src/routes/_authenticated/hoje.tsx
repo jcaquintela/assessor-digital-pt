@@ -23,6 +23,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { explainPriority } from "@/lib/assessor/priority-explain";
+import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
 import { Lightbulb } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
@@ -148,12 +149,15 @@ function HojePage() {
       }));
     }
     return seguimentos
-      .filter((s) => isSameDay(new Date(s.data), now) && s.estado !== "Concluído")
+      .filter((s) => isSameDay(new Date(s.data), now) && isOpenFollowUpStatus(s.estado))
       .sort((a, b) => (a.hora ?? "99:99").localeCompare(b.hora ?? "99:99"))
       .map((s) => ({ id: s.id, titulo: s.titulo, hora: s.hora, pessoaId: s.pessoaId, imovelId: (s as any).imovelId }));
   }, [overview.data, seguimentos, now]);
   const atrasados = useMemo(
-    () => seguimentos.filter((s) => s.estado !== "Concluído" && new Date(s.data) < now && !isSameDay(new Date(s.data), now)),
+    () =>
+      seguimentos.filter(
+        (s) => isOpenFollowUpStatus(s.estado) && new Date(s.data) < now && !isSameDay(new Date(s.data), now),
+      ),
     [seguimentos, now],
   );
   const oportSemAcao = useMemo(
