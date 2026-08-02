@@ -91,15 +91,16 @@ function RegistoPage() {
           </div>
           <div>
             <div className="text-sm font-semibold leading-tight">Afonso</div>
-            <div className="text-xs text-muted-foreground">o teu assessor</div>
+            <div className="text-xs text-muted-foreground">assistente de IA</div>
           </div>
         </div>
 
         <p className="c-eyebrow">Criar conta</p>
         <h1 className="c-page-title mt-1">Começa no plano Base</h1>
         <p className="c-muted mt-2 max-w-2xl text-[14px] leading-relaxed">
+          O Afonso é um assistente de IA: falas com um sistema automático, não com uma pessoa.
           O Base é grátis e fica activo de imediato. Os outros planos chegam em breve —
-          podes mudar sem perderes nada do que já tiveres.
+          podes mudar sem perderes nada do que já tiveres, e é sempre a mesma conta em qualquer canal.
         </p>
 
         <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
