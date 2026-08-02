@@ -3,7 +3,7 @@
 // media, envio via TelegramProvider e onboarding por convite (shadow
 // account). Não contém lógica de negócio do motor.
 
-import { aiDisclosureOpening } from "@/lib/assessor/ai-disclosure";
+import { AI_DISCLOSURE, aiDisclosureOpening } from "@/lib/assessor/ai-disclosure";
 import { getTelegramProvider } from "@/lib/telegram/provider.server";
 import { resolveInteractiveReply } from "@/lib/assessor/interactive";
 import { linkChannelToUser } from "@/lib/assessor/channels.server";
