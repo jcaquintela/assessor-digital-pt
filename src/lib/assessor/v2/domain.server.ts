@@ -751,14 +751,6 @@ function todayLisbonYmd(): string {
   return `${m.year}-${m.month}-${m.day}`;
 }
 
-function financialOpportunityNotes(v: CreateFinancialMovementArgs): string | null {
-  const notes: string[] = [];
-  if (v.deal_value != null) notes.push(`Valor do negócio: ${v.deal_value}€`);
-  if (v.production_amount != null) notes.push(`Produção: ${v.production_amount}€${v.vat_amount != null ? ` + IVA (${v.vat_amount}€)` : " + IVA"}`);
-  if (v.amount != null) notes.push(`Comissão: ${v.amount}€`);
-  if (v.description) notes.push(v.description);
-  return notes.length ? notes.join("\n") : null;
-}
 
 // Normaliza a referência textual do negócio para comparação de duplicados
 // ("Comissão do terreno · valor..." → "comissao do terreno valor...").
