@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -97,9 +97,10 @@ export function PropertyCategoryFilter({
   usage?: Record<string, number>;
 }) {
   const { categories: todas, invalidate } = usePropertyCategories();
-  const categories = useMemo(() => {
+  const categories = useMemo<PropertyCategory[]>(() => {
     const n = (id: string) => usage?.[id] ?? 0;
-    return [...todas].sort((a, b) => n(b.id) - n(a.id) || a.name.localeCompare(b.name, "pt"));
+    return [...todas].sort((a: PropertyCategory, b: PropertyCategory) =>
+      n(b.id) - n(a.id) || a.name.localeCompare(b.name, "pt"));
   }, [todas, usage]);
   const create = useServerFn(createPropertyCategory);
   const rename = useServerFn(renamePropertyCategory);
