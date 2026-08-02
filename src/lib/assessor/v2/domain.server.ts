@@ -241,18 +241,19 @@ async function execSearchProperties(ctx: DomainContext, args: unknown): Promise<
   if (status) q2 = q2.eq("status", status);
   const { data: rows, error: e2 } = await q2;
   if (e2) return fail(e2.message);
-  const scored = (rows ?? [])
+  type Scored = { score: number; row: Record<string, unknown> };
+  const scored: Record<string, unknown>[] = ((rows ?? []) as Record<string, unknown>[])
     .map((r: Record<string, unknown>) => {
       const hay = [r.title, r.location, r.city, r.address]
         .filter((x) => typeof x === "string").join(" ").toLowerCase();
       const score = tokens.filter((t) => hay.includes(t.toLowerCase())).length;
       const { address: _a, ...rest } = r;
-      return { score, row: rest };
+      return { score, row: rest } as Scored;
     })
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .filter((x: Scored) => x.score > 0)
+    .sort((a: Scored, b: Scored) => b.score - a.score)
     .slice(0, 8)
-    .map((x) => x.row);
+    .map((x: Scored) => x.row);
   return ok({ results: scored });
 }
 
