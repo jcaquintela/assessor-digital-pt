@@ -11,7 +11,7 @@ import { TierGate } from "@/components/tier-gate";
 import { EditPropertyDialog } from "@/components/imoveis/edit-property-dialog";
 import { NewPropertyDialog } from "@/components/imoveis/new-property-dialog";
 import { OrganizeDialog, useOrganizer } from "@/components/organizer/organizer";
-import { GroupCards, TagFilterRow, ViewToggle, type PeopleView } from "@/components/pessoas/people-explorer";
+import { GroupCards, ViewToggle, type PeopleView } from "@/components/pessoas/people-explorer";
 import { ORIGEM, PropertyCard } from "@/components/imoveis/properties-explorer";
 import { PropertyCategoryDialog, PropertyCategoryFilter, usePropertyCategories } from "@/components/imoveis/property-categories";
 import { FilterSection } from "@/components/organizer/filter-section";
@@ -23,7 +23,6 @@ import { getPropertyAttention } from "@/lib/imoveis/attention.functions";
 export const Route = createFileRoute("/_authenticated/imoveis/")({
   validateSearch: (search: Record<string, unknown>) => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
-    tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
     cat: typeof search.cat === "string" && search.cat ? search.cat : undefined,
     view: search.view === "grelha" ? ("grelha" as const) : undefined,
   }),
@@ -52,13 +51,10 @@ function ImoveisPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/imoveis" });
   const q = search.q ?? "";
-  const tagId = search.tag ?? null;
   const catId = search.cat ?? null;
   const view: PeopleView = search.view ?? "lista";
   const setQ = (v: string) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
-  const setTagId = (v: string | null) =>
-    navigate({ search: (p: Record<string, unknown>) => ({ ...p, tag: v ?? undefined }), replace: true });
   const setCatId = (v: string | null) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, cat: v ?? undefined }), replace: true });
   const setView = (v: PeopleView) =>
@@ -126,12 +122,11 @@ function ImoveisPage() {
 
   const term = q.trim().toLowerCase();
   const list = useMemo(() => all.filter((i) => {
-    if (tagId && !org.tagsOf(i.id).some((t) => t.id === tagId)) return false;
     if (catId && i.category_id !== catId) return false;
     if (!term) return true;
     return [i.title, i.address, i.city, i.location, i.typology, i.property_type]
       .filter(Boolean).join(" ").toLowerCase().includes(term);
-  }), [all, tagId, catId, term, org.tagLinks, org.tags]);
+  }), [all, catId, term]);
 
   const aviso = atencao.data;
 
@@ -190,14 +185,6 @@ function ImoveisPage() {
           onClearActive={() => setCatId(null)}
         >
           <PropertyCategoryFilter selected={catId} onSelect={setCatId} hideHeading />
-        </FilterSection>
-        <FilterSection
-          title="Etiquetas"
-          count={org.tags.length}
-          activeLabel={tagId ? (org.tags.find((t) => t.id === tagId)?.name ?? null) : null}
-          onClearActive={() => setTagId(null)}
-        >
-          <TagFilterRow org={org} tagId={tagId} onTag={setTagId} hideHeading />
         </FilterSection>
         <FilterSection title="Grupos" count={org.folders.length}>
           <GroupCards
@@ -261,7 +248,7 @@ function ImoveisPage() {
       <OrganizeDialog
         entityType="property" entityId={orgId}
         title={all.find((p) => p.id === orgId)?.title ?? ""}
-        org={org} open={!!orgId} onOpenChange={(v) => { if (!v) setOrgId(null); }}
+        org={org} open={!!orgId} onOpenChange={(v) => { if (!v) setOrgId(null); }} hideTags
       />
     </AppShell>
   );
