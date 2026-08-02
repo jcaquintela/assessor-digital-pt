@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
@@ -104,7 +105,7 @@ function PessoaDetail() {
 
   const ultimo = interPessoa[0] ?? null;
   const proximoSeg = segsPessoa
-    .filter((s) => s.estado !== "Concluído")
+    .filter((s) => isOpenFollowUpStatus(s.estado))
     .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())[0] ?? null;
 
   const registarInteracao = async () => {

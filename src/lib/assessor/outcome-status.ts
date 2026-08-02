@@ -24,3 +24,20 @@ export function statusForOutcome(outcome: string): string | null {
   if (isTerminalOutcome(outcome)) return "Arquivado";
   return null;
 }
+
+/**
+ * Estados de `follow_ups` que significam "terminado". Usado tanto no
+ * servidor como no dashboard: um seguimento arquivado ou cancelado não pode
+ * voltar a aparecer como prioridade em atraso.
+ */
+export const DONE_FOLLOW_UP_STATUSES = new Set([
+  "concluido", "concluida", "concluído", "concluída",
+  "arquivado", "arquivada", "cancelado", "cancelada",
+  "done", "completed", "closed", "archived", "cancelled", "canceled",
+]);
+
+export function isOpenFollowUpStatus(status?: string | null): boolean {
+  const s = String(status ?? "").trim().toLowerCase();
+  if (!s) return true;
+  return !DONE_FOLLOW_UP_STATUSES.has(s);
+}

@@ -1,4 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
+import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { z } from "zod";
 import { seguimentosSeed, pessoasSeed } from "@/lib/demo-data";
 
@@ -26,9 +27,9 @@ export default defineTool({
     const filtered = seguimentosSeed.filter((s) => {
       const d = new Date(s.data);
       switch (escopo) {
-        case "hoje": return s.estado !== "Concluído" && sameDay(d, now);
-        case "semana": return s.estado !== "Concluído" && inWeek(d);
-        case "atrasados": return s.estado !== "Concluído" && d < now && !sameDay(d, now);
+        case "hoje": return isOpenFollowUpStatus(s.estado) && sameDay(d, now);
+        case "semana": return isOpenFollowUpStatus(s.estado) && inWeek(d);
+        case "atrasados": return isOpenFollowUpStatus(s.estado) && d < now && !sameDay(d, now);
         case "concluidos": return s.estado === "Concluído";
         default: return true;
       }
