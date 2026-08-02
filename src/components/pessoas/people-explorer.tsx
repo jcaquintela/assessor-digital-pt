@@ -79,7 +79,19 @@ export function TagFilterRow({ org, tagId, onTag }: { org: Organizer; tagId: str
 
 /* ---------- Grupos: objetos com identidade e cor ---------- */
 
-export function GroupCards({ org, pessoas }: { org: Organizer; pessoas: Pessoa[] }) {
+/** Itens genéricos: grupos são transversais a pessoas e imóveis. */
+export type GroupItem = { id: string; label: string };
+
+export function GroupCards({
+  org, pessoas, items, noun = ["pessoa", "pessoas"], emptyLabel = "Sem pessoas ainda",
+}: {
+  org: Organizer;
+  pessoas?: Pessoa[];
+  items?: GroupItem[];
+  noun?: [string, string];
+  emptyLabel?: string;
+}) {
+  const lista: GroupItem[] = items ?? (pessoas ?? []).map((p) => ({ id: p.id, label: p.nome }));
   const addFolder = useServerFn(createFolder);
   const delFolder = useServerFn(deleteFolder);
   const [open, setOpen] = useState(false);
@@ -88,7 +100,7 @@ export function GroupCards({ org, pessoas }: { org: Organizer; pessoas: Pessoa[]
   const [busy, setBusy] = useState(false);
 
   const membros = (folderId: string) =>
-    pessoas.filter((p) => org.foldersOf(p.id).some((f) => f.id === folderId));
+    lista.filter((p) => org.foldersOf(p.id).some((f) => f.id === folderId));
 
   async function criar() {
     setBusy(true);
@@ -118,11 +130,11 @@ export function GroupCards({ org, pessoas }: { org: Organizer; pessoas: Pessoa[]
                   className="shrink-0 rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold"
                   style={{ color: cor, background: `color-mix(in srgb, ${cor} 18%, #fff)` }}
                 >
-                  {gente.length} pessoa{gente.length === 1 ? "" : "s"}
+                  {gente.length} {gente.length === 1 ? noun[0] : noun[1]}
                 </span>
               </div>
               <div className="mt-1 truncate text-[12.5px]" style={{ color: "var(--muted)" }}>
-                {gente.length ? gente.slice(0, 3).map((p) => p.nome).join(", ") : "Sem pessoas ainda"}
+                {gente.length ? gente.slice(0, 3).map((p) => p.label).join(", ") : emptyLabel}
               </div>
               <div className="mt-2 flex items-center justify-between gap-2">
                 <Link to="/grupos/$id" params={{ id: f.id }} className="tap-44 text-[12.5px] font-semibold" style={{ color: "var(--sage)" }}>
