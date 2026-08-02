@@ -28,7 +28,7 @@ describe("comissão por conversa", () => {
     const res = await dispatchToolCall(
       { supabase: fakeSupabase(inserts), userId: "u1", channel: "whatsapp" } as any,
       "create_financial_movement",
-      { type: "commission", amount: 5000, description: "Comissão do terreno", deal_value: 200000, property_reference: "terreno" },
+      JSON.stringify({ type: "commission", amount: 5000, description: "Comissão do terreno", deal_value: 200000, property_reference: "terreno" }),
     );
     expect(res.ok).toBe(true);
     expect(inserts["opportunities"] ?? []).toHaveLength(0);
