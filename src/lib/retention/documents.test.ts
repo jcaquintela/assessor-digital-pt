@@ -56,8 +56,8 @@ describe("documentos do plano Base", () => {
 
     const r = await archiveExpiredDocuments(db as any, { now: NOW });
     expect(r.archived).toBe(1);
-    expect(db.state.uploaded_files.find((f: any) => f.id === "f-old").deleted_at).toBeTruthy();
-    expect(db.state.uploaded_files.find((f: any) => f.id === "f-new").deleted_at).toBeNull();
+    expect(db.state.uploaded_files.find((f: any) => f.id === "f-old")!.deleted_at).toBeTruthy();
+    expect(db.state.uploaded_files.find((f: any) => f.id === "f-new")!.deleted_at).toBeNull();
     expect(db.state.people).toHaveLength(1);
   });
 
