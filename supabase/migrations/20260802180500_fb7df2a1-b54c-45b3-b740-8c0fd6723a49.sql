@@ -1,0 +1,2 @@
+INSERT INTO public.product_updates (released_on, title, description, category)
+VALUES (CURRENT_DATE, 'A app passa a chamar-se Afonso', 'O nome e o ícone ficam iguais em todo o lado: separadores do navegador, ecrã inicial do telemóvel e cabeçalho do painel mostram sempre Afonso.', 'melhoria');
