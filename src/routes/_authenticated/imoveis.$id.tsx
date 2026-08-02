@@ -267,6 +267,58 @@ function PropertyDetail() {
 
       {/* ===== Percurso do negócio ===== */}
       <Section
+        title="O que sabemos"
+      >
+        <ul className="grid gap-1.5">
+          {resumo.map((frase, i) => (
+            <li key={i} className="text-sm text-muted-foreground">{frase}</li>
+          ))}
+        </ul>
+      </Section>
+
+      {duvidas.length > 0 && (
+        <Section title="Informação por confirmar">
+          <div className="grid gap-3">
+            {duvidas.map((q) => (
+              <div key={q.key} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
+                <p className="text-sm">{q.text}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {q.kind === "offer_pending" && q.refId && (
+                    <>
+                      <Button size="sm" onClick={() => void act(() => offerStatus({ data: { id: q.refId as string, status: "aceite" } }), "Proposta aceite.")}>
+                        {q.confirmLabel}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => void act(() => offerStatus({ data: { id: q.refId as string, status: "recusada" } }), "Proposta recusada.")}>
+                        {q.correctLabel}
+                      </Button>
+                    </>
+                  )}
+                  {q.kind === "visit_no_outcome" && q.refId && (
+                    <>
+                      <Button size="sm" onClick={() => void act(() => visitStateFn({ data: { id: q.refId as string, state: "feita" } }), "Visita marcada como feita.")}>
+                        {q.confirmLabel}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => void act(() => visitStateFn({ data: { id: q.refId as string, state: "cancelada" } }), "Visita cancelada.")}>
+                        {q.correctLabel}
+                      </Button>
+                    </>
+                  )}
+                  {(q.kind === "sold_without_price" || q.kind === "owner_missing") && (
+                    <Button size="sm" variant="outline" onClick={() => startEdit()}>Corrigir na ficha</Button>
+                  )}
+                  <Button size="sm" variant="ghost" asChild>
+                    <Link to="/assessor">Perguntar {assessorName === "Assessor" ? "ao Assessor" : `ao ${assessorName}`}</Link>
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => ignorar(q.key, q.text)}>Ignorar</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ===== Percurso do negócio ===== */}
+      <Section
         title="Percurso do negócio"
         action={deal ? <Link to="/oportunidades/$id" params={{ id: deal.id }} className="text-xs underline">Abrir negócio</Link> : null}
       >
