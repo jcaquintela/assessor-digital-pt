@@ -33,6 +33,56 @@ const CATEGORY_ORDER: Record<string, number> = {
 export const NO_UPDATES_REPLY =
   "Não tenho novidades novas para te contar deste último mês. Continuo com tudo o que já fazia.";
 
+// Fallback quando não há nada no último mês mas há novidades mais antigas.
+export function noRecentUpdatesReply(last?: ProductUpdate | null): string {
+  if (!last) return NO_UPDATES_REPLY;
+  const desc = humanizeUpdateText(last.description);
+  return `Este último mês não trouxe novidades novas. A última coisa que aprendi foi *${humanizeUpdateText(last.title)}* — ${desc}`;
+}
+
+// Vocabulário técnico que nunca deve chegar ao consultor numa novidade.
+// Chave = expressão técnica, valor = como um assessor humano diria.
+const TECH_REWRITES: Array<[RegExp, string]> = [
+  [/\b(tabela|coluna|schema|migra[çc][ãa]o|base\s+de\s+dados)\b/gi, "registo"],
+  [/\b(endpoint|api|webhook|payload|json|token|uuid|id\b)/gi, "ligação"],
+  [/\b(backend|frontend|servidor|deploy|build|commit|cron)\b/gi, "sistema"],
+  [/\b(bug|stack\s*trace|log|refactor(?:ing|iza[çc][ãa]o)?|patch)\b/gi, "ajuste"],
+  [/\b(RLS|pol[íi]tica\s+de\s+acesso|query|SQL|cache|flag)\b/gi, "definição"],
+  [/\b(prompt|tool[- ]?call(?:ing)?|LLM|modelo\s+de\s+IA|parser)\b/gi, "forma de perceber"],
+];
+
+/** true se o texto contém vocabulário técnico. */
+export function isTechnicalText(text: string): boolean {
+  return TECH_REWRITES.some(([re]) => {
+    re.lastIndex = 0;
+    return re.test(text ?? "");
+  });
+}
+
+/** Substitui vocabulário técnico por linguagem normal e limpa o texto. */
+export function humanizeUpdateText(text: string): string {
+  let out = String(text ?? "");
+  for (const [re, replacement] of TECH_REWRITES) {
+    re.lastIndex = 0;
+    out = out.replace(re, replacement);
+  }
+  return out.replace(/\s{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
+}
+
+/**
+ * Valida e limpa uma novidade antes de a mostrar: título e descrição passam
+ * pela reescrita humana; entradas sem título ou sem descrição são descartadas.
+ */
+export function sanitizeUpdates(updates: ProductUpdate[]): ProductUpdate[] {
+  return (updates ?? [])
+    .map((u) => ({
+      ...u,
+      title: humanizeUpdateText(u.title),
+      description: humanizeUpdateText(u.description),
+    }))
+    .filter((u) => u.title.length > 2 && u.description.length > 5);
+}
+
 /** Ordena por data (mais recente primeiro) e depois por relevância. */
 export function rankUpdates(updates: ProductUpdate[]): ProductUpdate[] {
   return [...updates].sort((a, b) => {
@@ -43,7 +93,7 @@ export function rankUpdates(updates: ProductUpdate[]): ProductUpdate[] {
 }
 
 export function formatWhatsNewReply(updates: ProductUpdate[], limit = 5): string {
-  const ranked = rankUpdates(updates);
+  const ranked = rankUpdates(sanitizeUpdates(updates));
   if (!ranked.length) return NO_UPDATES_REPLY;
   const shown = ranked.slice(0, limit);
   const lines = shown.map((u) => `- *${u.title}* — ${u.description}`);
