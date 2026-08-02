@@ -661,6 +661,51 @@ async function handlePromoRedeem(
   userId: string,
   content: string,
 ): Promise<boolean> {
+  return handlePromoRedeemImpl(adapter, supabaseAdmin, inbound, userId, content);
+}
+
+/**
+ * Escolha de plano no fim do período experimental. Nunca há migração de
+ * conta: o que muda são as capacidades, e a escolha só é aplicada no dia 14.
+ */
+async function handleTrialChoiceAnswer(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  content: string,
+): Promise<boolean> {
+  const text = content.trim();
+  if (!text) return false;
+
+  const { data: prof } = await supabaseAdmin
+    .from("profiles")
+    .select("trial_status, trial_choice, trial_choice_asked_at")
+    .eq("id", userId)
+    .maybeSingle();
+  const p = prof as any;
+  if (!p || p.trial_status !== "active" || p.trial_choice || !p.trial_choice_asked_at) return false;
+
+  const { readTrialChoice, setTrialChoice, trialChoiceAck } = await import(
+    "@/lib/subscription/trial.server"
+  );
+  const choice = readTrialChoice(text);
+  if (!choice) return false;
+
+  const saved = await setTrialChoice(supabaseAdmin, userId, choice);
+  if (!saved.saved) return false;
+
+  await sendPromoReply(adapter, supabaseAdmin, inbound, userId, trialChoiceAck(choice));
+  return true;
+}
+
+async function handlePromoRedeemImpl(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  content: string,
+): Promise<boolean> {
   const text = content.trim();
   if (!text) return false;
   const {
