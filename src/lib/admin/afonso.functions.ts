@@ -143,7 +143,7 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const since30d = new Date(Date.now() - 30 * 864e5).toISOString();
-    const [tgLinks, rejected, converted, visits, baseAccounts, activeChannels] = await Promise.all([
+    const [tgLinks, rejected, converted, visits, baseAccounts, activeChannels, subEvents] = await Promise.all([
       supabaseAdmin.from("channel_links").select("user_id").eq("channel", "telegram"),
       // Tentativas de LIGAR- vindas de números sem conta associada.
       // ATENÇÃO: isto NÃO é um pedido de upgrade nem uma pessoa interessada em
@@ -166,6 +166,8 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
       supabaseAdmin.from("landing_page_visits").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("channel_links").select("user_id"),
+      // Eventos de subscrição separados (Trial→Consultor, Trial→Pro, …).
+      supabaseAdmin.from("subscription_events").select("event, created_at"),
     ]);
 
     // Tentativas agregadas por número mascarado (nunca o número completo).
@@ -182,6 +184,34 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
     const maskPhone = (p: string) =>
       p === "desconhecido" || p.length < 5 ? "número desconhecido" : `${p.slice(0, 5)}••••${p.slice(-2)}`;
 
+    // Contagem por tipo de evento: total e últimos 30 dias.
+    const eventRows = ((subEvents.data ?? []) as any[]);
+    const emptyCounts = {
+      trial_started: 0,
+      trial_to_consultor: 0,
+      trial_to_pro: 0,
+      trial_to_base: 0,
+      base_to_paid: 0,
+      paid_to_base: 0,
+      churn: 0,
+      reactivation: 0,
+    };
+    const subscriptionEvents = { ...emptyCounts };
+    const subscriptionEvents30d = { ...emptyCounts };
+    for (const r of eventRows) {
+      const key = String(r.event) as keyof typeof emptyCounts;
+      if (!(key in subscriptionEvents)) continue;
+      subscriptionEvents[key] += 1;
+      if (String(r.created_at ?? "") >= since30d) subscriptionEvents30d[key] += 1;
+    }
+    const trialsEnded =
+      subscriptionEvents.trial_to_consultor + subscriptionEvents.trial_to_pro + subscriptionEvents.trial_to_base;
+    const trialConversionRate = trialsEnded
+      ? Math.round(
+          ((subscriptionEvents.trial_to_consultor + subscriptionEvents.trial_to_pro) / trialsEnded) * 100,
+        )
+      : null;
+
     return {
       landingVisits: visits.count ?? 0,
       baseAccounts: baseAccounts.count ?? 0,
@@ -197,6 +227,9 @@ export const getAfonsoAcquisition = createServerFn({ method: "GET" })
         .slice(0, 50),
       since30d,
       converted: converted.count ?? 0,
+      subscriptionEvents,
+      subscriptionEvents30d,
+      trialConversionRate,
     };
   });
 
