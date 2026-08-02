@@ -208,7 +208,6 @@ function DealDetail() {
     .reduce((s, m) => s + m.amount, 0);
   const pendentes = d.followUps.filter((f) => !String(f.status ?? "").toLowerCase().startsWith("conclu"));
   const propIds = new Set(d.properties.map((p) => p.id));
-  const atual = stageIndex(d.stage);
 
   return (
     <AppShell>
