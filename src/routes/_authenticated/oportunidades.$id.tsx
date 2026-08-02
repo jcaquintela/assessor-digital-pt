@@ -27,7 +27,7 @@ import {
   unlinkDealProperty, updateDeal,
 } from "@/lib/deals/deals.functions";
 import {
-  DEAL_KINDS, KIND_LABEL, PROPERTY_ROLE_LABEL, STAGE_LABEL, stageIndex,
+  DEAL_KINDS, KIND_LABEL, PROPERTY_ROLE_LABEL, STAGE_LABEL,
 } from "@/lib/deals/stages";
 import { StagePath } from "@/components/negocios/stage-path";
 
