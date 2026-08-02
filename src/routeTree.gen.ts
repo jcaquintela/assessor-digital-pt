@@ -42,7 +42,6 @@ import { Route as AdminAuditoriaSegurancaRouteImport } from './routes/admin/audi
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AdminAquisicaoRouteImport } from './routes/admin/aquisicao'
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
-import { Route as AuthenticatedPessoasRouteImport } from './routes/_authenticated/pessoas'
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
 import { Route as AuthenticatedLigarCanalRouteImport } from './routes/_authenticated/ligar-canal'
 import { Route as AuthenticatedInteracoesRouteImport } from './routes/_authenticated/interacoes'
@@ -57,6 +56,7 @@ import { Route as AuthenticatedAssessorRouteImport } from './routes/_authenticat
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedSeguimentosIndexRouteImport } from './routes/_authenticated/seguimentos.index'
+import { Route as AuthenticatedPessoasIndexRouteImport } from './routes/_authenticated/pessoas.index'
 import { Route as AuthenticatedOportunidadesIndexRouteImport } from './routes/_authenticated/oportunidades.index'
 import { Route as AuthenticatedNegociosIndexRouteImport } from './routes/_authenticated/negocios.index'
 import { Route as AuthenticatedNegocioIndexRouteImport } from './routes/_authenticated/negocio.index'
@@ -254,11 +254,6 @@ const AuthenticatedRotinasRoute = AuthenticatedRotinasRouteImport.update({
   path: '/rotinas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedPessoasRoute = AuthenticatedPessoasRouteImport.update({
-  id: '/pessoas',
-  path: '/pessoas',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedMaisRoute = AuthenticatedMaisRouteImport.update({
   id: '/mais',
   path: '/mais',
@@ -332,6 +327,12 @@ const AuthenticatedSeguimentosIndexRoute =
     path: '/seguimentos/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPessoasIndexRoute =
+  AuthenticatedPessoasIndexRouteImport.update({
+    id: '/pessoas/',
+    path: '/pessoas/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedOportunidadesIndexRoute =
   AuthenticatedOportunidadesIndexRouteImport.update({
     id: '/oportunidades/',
@@ -389,9 +390,9 @@ const AuthenticatedRotinasIdRoute = AuthenticatedRotinasIdRouteImport.update({
   getParentRoute: () => AuthenticatedRotinasRoute,
 } as any)
 const AuthenticatedPessoasIdRoute = AuthenticatedPessoasIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedPessoasRoute,
+  id: '/pessoas/$id',
+  path: '/pessoas/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedOportunidadesIdRoute =
   AuthenticatedOportunidadesIdRouteImport.update({
@@ -538,7 +539,6 @@ export interface FileRoutesByFullPath {
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
   '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
-  '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -584,6 +584,7 @@ export interface FileRoutesByFullPath {
   '/negocio/': typeof AuthenticatedNegocioIndexRoute
   '/negocios/': typeof AuthenticatedNegociosIndexRoute
   '/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
+  '/pessoas/': typeof AuthenticatedPessoasIndexRoute
   '/seguimentos/': typeof AuthenticatedSeguimentosIndexRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
@@ -618,7 +619,6 @@ export interface FileRoutesByTo {
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
   '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
-  '/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -664,6 +664,7 @@ export interface FileRoutesByTo {
   '/negocio': typeof AuthenticatedNegocioIndexRoute
   '/negocios': typeof AuthenticatedNegociosIndexRoute
   '/oportunidades': typeof AuthenticatedOportunidadesIndexRoute
+  '/pessoas': typeof AuthenticatedPessoasIndexRoute
   '/seguimentos': typeof AuthenticatedSeguimentosIndexRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
@@ -701,7 +702,6 @@ export interface FileRoutesById {
   '/_authenticated/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
   '/_authenticated/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
-  '/_authenticated/pessoas': typeof AuthenticatedPessoasRouteWithChildren
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -747,6 +747,7 @@ export interface FileRoutesById {
   '/_authenticated/negocio/': typeof AuthenticatedNegocioIndexRoute
   '/_authenticated/negocios/': typeof AuthenticatedNegociosIndexRoute
   '/_authenticated/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
+  '/_authenticated/pessoas/': typeof AuthenticatedPessoasIndexRoute
   '/_authenticated/seguimentos/': typeof AuthenticatedSeguimentosIndexRoute
   '/_authenticated/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/_authenticated/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
@@ -784,7 +785,6 @@ export interface FileRouteTypes {
     | '/interacoes'
     | '/ligar-canal'
     | '/mais'
-    | '/pessoas'
     | '/rotinas'
     | '/admin/aquisicao'
     | '/admin/auditoria'
@@ -830,6 +830,7 @@ export interface FileRouteTypes {
     | '/negocio/'
     | '/negocios/'
     | '/oportunidades/'
+    | '/pessoas/'
     | '/seguimentos/'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
@@ -864,7 +865,6 @@ export interface FileRouteTypes {
     | '/interacoes'
     | '/ligar-canal'
     | '/mais'
-    | '/pessoas'
     | '/rotinas'
     | '/admin/aquisicao'
     | '/admin/auditoria'
@@ -910,6 +910,7 @@ export interface FileRouteTypes {
     | '/negocio'
     | '/negocios'
     | '/oportunidades'
+    | '/pessoas'
     | '/seguimentos'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
@@ -946,7 +947,6 @@ export interface FileRouteTypes {
     | '/_authenticated/interacoes'
     | '/_authenticated/ligar-canal'
     | '/_authenticated/mais'
-    | '/_authenticated/pessoas'
     | '/_authenticated/rotinas'
     | '/admin/aquisicao'
     | '/admin/auditoria'
@@ -992,6 +992,7 @@ export interface FileRouteTypes {
     | '/_authenticated/negocio/'
     | '/_authenticated/negocios/'
     | '/_authenticated/oportunidades/'
+    | '/_authenticated/pessoas/'
     | '/_authenticated/seguimentos/'
     | '/_authenticated/negocio/comissoes/$id'
     | '/_authenticated/negocio/despesas/$id'
@@ -1265,13 +1266,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRotinasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/pessoas': {
-      id: '/_authenticated/pessoas'
-      path: '/pessoas'
-      fullPath: '/pessoas'
-      preLoaderRoute: typeof AuthenticatedPessoasRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/mais': {
       id: '/_authenticated/mais'
       path: '/mais'
@@ -1370,6 +1364,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSeguimentosIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pessoas/': {
+      id: '/_authenticated/pessoas/'
+      path: '/pessoas'
+      fullPath: '/pessoas/'
+      preLoaderRoute: typeof AuthenticatedPessoasIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/oportunidades/': {
       id: '/_authenticated/oportunidades/'
       path: '/oportunidades'
@@ -1442,10 +1443,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/pessoas/$id': {
       id: '/_authenticated/pessoas/$id'
-      path: '/$id'
+      path: '/pessoas/$id'
       fullPath: '/pessoas/$id'
       preLoaderRoute: typeof AuthenticatedPessoasIdRouteImport
-      parentRoute: typeof AuthenticatedPessoasRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/oportunidades/$id': {
       id: '/_authenticated/oportunidades/$id'
@@ -1646,17 +1647,6 @@ const AuthenticatedInteracoesRouteWithChildren =
     AuthenticatedInteracoesRouteChildren,
   )
 
-interface AuthenticatedPessoasRouteChildren {
-  AuthenticatedPessoasIdRoute: typeof AuthenticatedPessoasIdRoute
-}
-
-const AuthenticatedPessoasRouteChildren: AuthenticatedPessoasRouteChildren = {
-  AuthenticatedPessoasIdRoute: AuthenticatedPessoasIdRoute,
-}
-
-const AuthenticatedPessoasRouteWithChildren =
-  AuthenticatedPessoasRoute._addFileChildren(AuthenticatedPessoasRouteChildren)
-
 interface AuthenticatedRotinasRouteChildren {
   AuthenticatedRotinasIdRoute: typeof AuthenticatedRotinasIdRoute
 }
@@ -1708,17 +1698,18 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInteracoesRoute: typeof AuthenticatedInteracoesRouteWithChildren
   AuthenticatedLigarCanalRoute: typeof AuthenticatedLigarCanalRoute
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
-  AuthenticatedPessoasRoute: typeof AuthenticatedPessoasRouteWithChildren
   AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
   AuthenticatedGruposIdRoute: typeof AuthenticatedGruposIdRoute
   AuthenticatedNegocioComissoesRoute: typeof AuthenticatedNegocioComissoesRouteWithChildren
   AuthenticatedNegocioDespesasRoute: typeof AuthenticatedNegocioDespesasRouteWithChildren
   AuthenticatedNegocioFaturacaoRoute: typeof AuthenticatedNegocioFaturacaoRoute
   AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
+  AuthenticatedPessoasIdRoute: typeof AuthenticatedPessoasIdRoute
   AuthenticatedSeguimentosIdRoute: typeof AuthenticatedSeguimentosIdRoute
   AuthenticatedNegocioIndexRoute: typeof AuthenticatedNegocioIndexRoute
   AuthenticatedNegociosIndexRoute: typeof AuthenticatedNegociosIndexRoute
   AuthenticatedOportunidadesIndexRoute: typeof AuthenticatedOportunidadesIndexRoute
+  AuthenticatedPessoasIndexRoute: typeof AuthenticatedPessoasIndexRoute
   AuthenticatedSeguimentosIndexRoute: typeof AuthenticatedSeguimentosIndexRoute
   AuthenticatedOportunidadesProspecaoIdRoute: typeof AuthenticatedOportunidadesProspecaoIdRoute
   AuthenticatedOportunidadesProspecaoIndexRoute: typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -1736,7 +1727,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInteracoesRoute: AuthenticatedInteracoesRouteWithChildren,
   AuthenticatedLigarCanalRoute: AuthenticatedLigarCanalRoute,
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
-  AuthenticatedPessoasRoute: AuthenticatedPessoasRouteWithChildren,
   AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
   AuthenticatedGruposIdRoute: AuthenticatedGruposIdRoute,
   AuthenticatedNegocioComissoesRoute:
@@ -1745,10 +1735,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedNegocioDespesasRouteWithChildren,
   AuthenticatedNegocioFaturacaoRoute: AuthenticatedNegocioFaturacaoRoute,
   AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
+  AuthenticatedPessoasIdRoute: AuthenticatedPessoasIdRoute,
   AuthenticatedSeguimentosIdRoute: AuthenticatedSeguimentosIdRoute,
   AuthenticatedNegocioIndexRoute: AuthenticatedNegocioIndexRoute,
   AuthenticatedNegociosIndexRoute: AuthenticatedNegociosIndexRoute,
   AuthenticatedOportunidadesIndexRoute: AuthenticatedOportunidadesIndexRoute,
+  AuthenticatedPessoasIndexRoute: AuthenticatedPessoasIndexRoute,
   AuthenticatedSeguimentosIndexRoute: AuthenticatedSeguimentosIndexRoute,
   AuthenticatedOportunidadesProspecaoIdRoute:
     AuthenticatedOportunidadesProspecaoIdRoute,

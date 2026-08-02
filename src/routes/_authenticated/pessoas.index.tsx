@@ -17,7 +17,7 @@ import { exportPeople } from "@/lib/export/export.functions";
 import { getPersonAttention } from "@/lib/people/attention.functions";
 import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 
-export const Route = createFileRoute("/_authenticated/pessoas")({
+export const Route = createFileRoute("/_authenticated/pessoas/")({
   head: () => ({
     meta: [
       { title: "Pessoas — Assessor do Consultor" },
