@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // (RLS aplica-se como o próprio consultor) e filtradas por user_id.
 
 type PropertyExportRow = {
+  id: string;
   title: string | null;
   address: string | null;
   city: string | null;
@@ -56,7 +57,7 @@ export const exportProperties = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("properties")
-      .select("title, address, city, location, property_type, typology, status, asking_price, value, source_channel, created_at")
+      .select("id, title, address, city, location, property_type, typology, status, asking_price, value, source_channel, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(5000);

@@ -624,3 +624,6 @@ html[data-keyboard="open"] .mobile-bottom-nav {
 .consult-root .c-swatch.selected { border-color: var(--ink); }
 .c-swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
 .c-swatch.selected { border-color: #14213D; }
+
+/* Imóveis v2: avatar de imóvel em verde-sálvia (mesma cor do cartão Imóveis) */
+.consult-root .c-pavatar.sage { background: var(--sage-bg); color: var(--sage); }
