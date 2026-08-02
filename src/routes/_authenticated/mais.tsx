@@ -26,6 +26,7 @@ const items = [
   { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/negocio", label: "Faturação", icon: Wallet },
   { to: "/definicoes", label: "Definições", icon: Settings },
+  { to: "/sobre-a-ia", label: "Sobre a IA", icon: Sparkles },
 ] as const;
 
 function MaisPage() {
