@@ -120,7 +120,10 @@ export function detectPerson(text: string): DetectedPerson {
 
   // Nome (heurística simples)
   const introMatch = text.match(NAME_INTRO_RE);
-  if (introMatch) out.name = introMatch[1];
+  const intro = introMatch?.[1]?.trim();
+  // O regex é case-insensitive para apanhar "Regista"/"regista"; o nome em si
+  // tem mesmo de começar por maiúscula.
+  if (intro && /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/.test(intro) && isPlausibleName(intro)) out.name = intro;
   if (!out.name) {
     const leading = text.match(NAME_LEADING_RE);
     const candidate = leading?.[1]?.trim();
