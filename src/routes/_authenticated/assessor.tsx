@@ -102,7 +102,7 @@ function AssessorPage() {
           <div className="min-w-0">
             <div className="c-serif truncate text-[15px]">{assessorName}</div>
             <div className="c-muted text-[11.5px]">
-              {canWrite ? `Escreve aqui ou pelo ${canalLabel}` : `Conversa via ${canalLabel} — só leitura`}
+              Assistente de IA · {canWrite ? `escreve aqui ou pelo ${canalLabel}` : `conversa via ${canalLabel}, só leitura`}
             </div>
           </div>
         </div>
@@ -113,6 +113,8 @@ function AssessorPage() {
           {!loading && msgs.length === 0 && (
             <div className="c-empty mx-auto mt-8 max-w-md">
               <MessageCircle className="mx-auto mb-2 h-5 w-5" />
+              {`${assessorName} é um assistente de IA — falas com um sistema automático, não com uma pessoa.`}
+              <br />
               Ainda não há mensagens.
               <br />
               {canWrite
