@@ -52,6 +52,37 @@ function AquisicaoPage() {
       </p>
       <Source>landing_page_visits × profiles × channel_links</Source>
 
+      <SectionTitle>Período experimental e mudanças de plano</SectionTitle>
+      <div className="overflow-x-auto">
+        <table>
+          <thead><tr><th>Evento</th><th>Total</th><th>Últimos 30 dias</th></tr></thead>
+          <tbody>
+            {([
+              ["Entrou em período experimental", "trial_started"],
+              ["Experimental → Consultor", "trial_to_consultor"],
+              ["Experimental → Pro", "trial_to_pro"],
+              ["Experimental → Base", "trial_to_base"],
+              ["Base → plano pago", "base_to_paid"],
+              ["Plano pago → Base", "paid_to_base"],
+              ["Cancelou", "churn"],
+              ["Voltou", "reactivation"],
+            ] as const).map(([label, key]) => (
+              <tr key={key}>
+                <td>{label}</td>
+                <td className="mono">{data.subscriptionEvents[key]}</td>
+                <td className="mono mini">{data.subscriptionEvents30d[key]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mini mt-2" style={{ color: "var(--muted)" }}>
+        Conversão do período experimental:{" "}
+        {data.trialConversionRate === null ? "ainda sem períodos terminados" : `${data.trialConversionRate}%`}. Descer de
+        plano não migra nem apaga a conta: muda apenas o que fica disponível.
+      </p>
+      <Source>subscription_events · live</Source>
+
       <SectionTitle>Números que já eram medidos</SectionTitle>
       <Grid cols={4}>
         <MetricCard label="Visitas à landing" value={data.landingVisits} sub="sinal anónimo da landing" source="landing_page_visits · live" />
