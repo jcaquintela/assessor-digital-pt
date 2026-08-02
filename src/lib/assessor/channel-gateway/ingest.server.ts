@@ -108,8 +108,19 @@ async function routeInbound(
     if (!content.trim()) return;
 
     // Botão de resultado do check-in da tarde: actualiza o seguimento na
-    // hora e responde curto. Não passa pelo motor.
-    const outcomeCmd = parseOutcomeCommand(content);
+    // hora e responde curto. Não passa pelo motor. Se a resposta vier
+    // escrita ("já liguei", "fica sem efeito"), resolvemos o seguimento a
+    // que o Assessor se referiu há pouco e fechamos na mesma.
+    let outcomeCmd = parseOutcomeCommand(content);
+    if (!outcomeCmd && inbound.messageType === "text") {
+      const { detectOutcomeFromText } = await import("@/lib/assessor/outcome-intent");
+      const detected = detectOutcomeFromText(content);
+      if (detected) {
+        const { resolveOutcomeTargetFollowUp } = await import("@/lib/assessor/proactive/outcomes.server");
+        const target = await resolveOutcomeTargetFollowUp(supabaseAdmin, userId);
+        if (target) outcomeCmd = { followUpId: target.id, outcome: detected };
+      }
+    }
     if (outcomeCmd) {
       const { applyFollowUpOutcome, outcomeAck } = await import("@/lib/assessor/proactive/outcomes.server");
       const r = await applyFollowUpOutcome(

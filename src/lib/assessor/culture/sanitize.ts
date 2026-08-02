@@ -73,6 +73,48 @@ export function safeReply(
   return sanitizeReply(reply) || fallback;
 }
 
+// Abreviaturas PT-PT que terminam em ponto mas NÃO terminam a frase.
+// Sem isto, "Queres ligar já ao *Sr. Nogueira*?" era cortado em "…ao *Sr."
+const ABBREVIATIONS = [
+  "sr", "sra", "srs", "sras", "dr", "dra", "drs", "dras", "eng", "enga", "arq",
+  "d", "exmo", "exma", "prof", "profa", "av", "r", "n", "nº", "ex", "etc",
+  "tel", "telem", "lda", "sa", "urb", "apt", "fig", "pág", "vs", "aprox",
+];
+const ABBREV_RE = new RegExp(
+  `(?:^|[\\s(\\[*_"'])(?:${ABBREVIATIONS.join("|")})\\.$`,
+  "i",
+);
+
+// Marcadores de ênfase abertos (negrito/itálico WhatsApp) por fechar.
+function hasOpenEmphasis(s: string): boolean {
+  return (s.match(/\*/g) ?? []).length % 2 === 1 || (s.match(/_/g) ?? []).length % 2 === 1;
+}
+
+/**
+ * Divide em frases sem cortar abreviaturas ("Sr.", "Dr.", "Av.") nem dentro
+ * de um par de *negrito* / _itálico_ ainda por fechar.
+ */
+export function splitSentences(s: string): string[] {
+  const raw = s.split(/(?<=[.!?])(\s+)/);
+  const out: string[] = [];
+  let buf = "";
+  for (let i = 0; i < raw.length; i += 2) {
+    const chunk = raw[i] ?? "";
+    const gap = raw[i + 1] ?? "";
+    buf += chunk;
+    const isLast = i + 2 >= raw.length;
+    if (isLast) break;
+    if (ABBREV_RE.test(buf) || hasOpenEmphasis(buf)) {
+      buf += gap;
+      continue;
+    }
+    out.push(buf);
+    buf = "";
+  }
+  if (buf.trim()) out.push(buf);
+  return out.filter((p) => p.trim().length > 0);
+}
+
 // Verifica se a resposta parece humana: sem vocabulário técnico, sem
 // linguagem de formulário, ≤ 2 frases. Usado pelo AQS.
 export function hasHumanTone(reply?: string | null): boolean {
@@ -80,7 +122,7 @@ export function hasHumanTone(reply?: string | null): boolean {
   if (!s) return false;
   if (TECH_VOCAB_RE.test(s)) return false;
   if (FORM_CONFIRM_RE.test(s)) return false;
-  const sentences = maskQuoted(s).masked.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const sentences = splitSentences(maskQuoted(s).masked);
   if (sentences.length > 3) return false;
   return true;
 }
@@ -102,8 +144,8 @@ export function enforceHumanTone(
   // Corta para no máximo 2 frases — mas texto entre aspas (ex.: um script
   // que o consultor pediu) conta como parte da frase que o introduz.
   const { masked, store } = maskQuoted(out);
-  const parts = masked.split(/(?<=[.!?])\s+/).filter(Boolean);
-  const kept = parts.length > 2 ? parts.slice(0, 2).join(" ") : masked;
+  const parts = splitSentences(masked);
+  const kept = parts.length > 2 ? parts.slice(0, 2).map((p) => p.trim()).join(" ") : masked;
   return unmaskQuoted(kept, store).trim();
 }
 
@@ -129,7 +171,7 @@ export function enforceSingleQuestion(reply: string): string {
   const { masked, store } = maskQuoted(reply.trim());
   const qCount = (masked.match(/\?/g) ?? []).length;
   if (qCount <= 1) return unmaskQuoted(masked, store).trim();
-  const sentences = masked.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const sentences = splitSentences(masked).map((p) => p.trim());
   let seenQuestion = false;
   const kept: string[] = [];
   for (const part of sentences) {

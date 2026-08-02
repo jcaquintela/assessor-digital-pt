@@ -2,12 +2,13 @@
 // Mesma semântica do bloco "Aguardam resultado" em /hoje.
 
 import { OUTCOME_LABEL, type FollowUpOutcome } from "@/lib/assessor/interactive";
+import { isTerminalOutcome, statusForOutcome } from "@/lib/assessor/outcome-status";
 
 export async function applyFollowUpOutcome(
   supabase: any,
   userId: string,
   followUpId: string,
-  outcome: FollowUpOutcome,
+  outcome: FollowUpOutcome | string,
 ): Promise<{ ok: boolean; title: string | null }> {
   const { data: row } = await supabase
     .from("follow_ups")
@@ -21,7 +22,8 @@ export async function applyFollowUpOutcome(
     outcome,
     outcome_recorded_at: new Date().toISOString(),
   };
-  if (outcome === "concluido") patch.status = "Concluído";
+  const status = statusForOutcome(String(outcome));
+  if (status) patch.status = status;
 
   const { error } = await supabase
     .from("follow_ups")
@@ -29,14 +31,65 @@ export async function applyFollowUpOutcome(
     .eq("id", followUpId)
     .eq("user_id", userId);
   if (error) return { ok: false, title: row.title ?? null };
+
+  // Um seguimento fechado não pode continuar a disparar avisos.
+  if (isTerminalOutcome(String(outcome))) {
+    try {
+      await supabase
+        .from("reminders")
+        .update({ status: "cancelled" } as never)
+        .eq("user_id", userId)
+        .eq("related_resource_type", "follow_up")
+        .eq("related_resource_id", followUpId)
+        .in("status", ["scheduled", "processing", "failed"]);
+    } catch { /* best-effort */ }
+  }
   return { ok: true, title: row.title ?? null };
 }
 
-export function outcomeAck(outcome: FollowUpOutcome, title: string | null): string {
+/**
+ * Descobre a que seguimento se refere uma resposta escrita ("já liguei",
+ * "fica sem efeito"): o último seguimento sobre o qual o Assessor falou
+ * (lembrete, check-in) e que ainda está aberto.
+ */
+export async function resolveOutcomeTargetFollowUp(
+  supabase: any,
+  userId: string,
+  opts: { withinHours?: number; now?: Date } = {},
+): Promise<{ id: string; title: string } | null> {
+  const since = new Date(
+    (opts.now ?? new Date()).getTime() - (opts.withinHours ?? 36) * 3600_000,
+  ).toISOString();
+  const { data: msgs } = await supabase
+    .from("assessor_messages")
+    .select("related_resource_id, created_at")
+    .eq("user_id", userId)
+    .eq("role", "assistant")
+    .eq("related_resource_type", "follow_up")
+    .in("message_type", ["followup_reminder", "outcome_checkin"])
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const ids = [...new Set(((msgs as any[]) ?? []).map((m) => m.related_resource_id).filter(Boolean))];
+  if (!ids.length) return null;
+  for (const id of ids) {
+    const { data: fu } = await supabase
+      .from("follow_ups")
+      .select("id, title, outcome")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .is("outcome", null)
+      .maybeSingle();
+    if (fu) return { id: (fu as any).id, title: String((fu as any).title ?? "") };
+  }
+  return null;
+}
+
+export function outcomeAck(outcome: FollowUpOutcome | string, title: string | null): string {
   const what = title ? `"${title}"` : "o seguimento";
   if (outcome === "concluido") return `Boa. Dei ${what} como concluído.`;
   if (outcome === "precisa_nova_acao") return `Fica marcado: ${what} precisa de seguimento. Queres que agende?`;
-  return `Registei ${what} como sem efeito.`;
+  return `Registei ${what} como sem efeito. Não volto a lembrar-te disso.`;
 }
 
 export { OUTCOME_LABEL };
