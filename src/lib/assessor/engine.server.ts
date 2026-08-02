@@ -58,6 +58,7 @@ import {
   isThanks as saIsThanks,
   detectCorrection as saDetectCorrection,
 } from "./culture/short-answers";
+import { blockedChannelReason } from "./channel-guard";
 
 export interface EngineInput {
   supabase: any; // service-role client (admin)
