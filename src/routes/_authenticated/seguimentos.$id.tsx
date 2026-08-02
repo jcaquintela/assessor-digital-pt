@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
@@ -175,7 +176,7 @@ function SeguimentoView({ s }: { s: Seguimento }) {
         subtitle={`${s.tipo === "Evento" ? "Evento" : "Tarefa"} · ${formatData(s.data)}${s.hora ? ` · ${s.hora}` : ""}`}
         action={
           <div className="flex gap-2">
-            {s.estado !== "Concluído" && (
+            {isOpenFollowUpStatus(s.estado) && (
               <Button variant="outline" onClick={concluir}>
                 <CheckCircle2 className="mr-1 h-4 w-4" /> Concluir
               </Button>

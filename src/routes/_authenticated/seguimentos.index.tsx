@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState, useEffect } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
@@ -38,9 +39,9 @@ function SeguimentosPage() {
   const semanaFim = new Date(now); semanaFim.setDate(now.getDate() + 7);
 
   const grupos = useMemo(() => ({
-    hoje: seguimentos.filter((s) => same(new Date(s.data), now) && s.estado !== "Concluído"),
-    semana: seguimentos.filter((s) => new Date(s.data) >= now && new Date(s.data) <= semanaFim && s.estado !== "Concluído"),
-    atrasados: seguimentos.filter((s) => s.estado !== "Concluído" && new Date(s.data) < now && !same(new Date(s.data), now)),
+    hoje: seguimentos.filter((s) => same(new Date(s.data), now) && isOpenFollowUpStatus(s.estado)),
+    semana: seguimentos.filter((s) => new Date(s.data) >= now && new Date(s.data) <= semanaFim && isOpenFollowUpStatus(s.estado)),
+    atrasados: seguimentos.filter((s) => isOpenFollowUpStatus(s.estado) && new Date(s.data) < now && !same(new Date(s.data), now)),
     concluidos: seguimentos.filter((s) => s.estado === "Concluído"),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [seguimentos]);
@@ -86,7 +87,7 @@ function SeguimentosPage() {
                   <Badge variant={s.prioridade === "Alta" ? "destructive" : "secondary"}>{s.prioridade}</Badge>
                 </div>
               </div>
-            {s.estado !== "Concluído" && (
+            {isOpenFollowUpStatus(s.estado) && (
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   size="sm"

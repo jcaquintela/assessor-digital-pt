@@ -1,4 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
+import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { seguimentosSeed, oportunidadesSeed, pessoasSeed } from "@/lib/demo-data";
 
 function sameDay(a: Date, b: Date) {
@@ -14,13 +15,13 @@ export default defineTool({
   handler: () => {
     const now = new Date();
     const eventosHoje = seguimentosSeed.filter(
-      (s) => s.tipo === "Evento" && sameDay(new Date(s.data), now) && s.estado !== "Concluído",
+      (s) => s.tipo === "Evento" && sameDay(new Date(s.data), now) && isOpenFollowUpStatus(s.estado),
     );
     const tarefasHoje = seguimentosSeed.filter(
-      (s) => s.tipo === "Tarefa" && sameDay(new Date(s.data), now) && s.estado !== "Concluído",
+      (s) => s.tipo === "Tarefa" && sameDay(new Date(s.data), now) && isOpenFollowUpStatus(s.estado),
     );
     const atrasados = seguimentosSeed.filter(
-      (s) => s.estado !== "Concluído" && new Date(s.data) < now && !sameDay(new Date(s.data), now),
+      (s) => isOpenFollowUpStatus(s.estado) && new Date(s.data) < now && !sameDay(new Date(s.data), now),
     );
     const oportunidadesSemAcao = oportunidadesSeed.filter((o) => !o.proximaAcao);
     const briefing = {
