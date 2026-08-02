@@ -760,6 +760,18 @@ function financialOpportunityNotes(v: CreateFinancialMovementArgs): string | nul
   return notes.length ? notes.join("\n") : null;
 }
 
+// Normaliza a referência textual do negócio para comparação de duplicados
+// ("Comissão do terreno · valor..." → "comissao do terreno valor...").
+function normalizeDedupeRef(raw: string | null | undefined): string {
+  return String(raw ?? "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60);
+}
+
 async function execCreateFinancialMovement(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateFinancialMovementArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
