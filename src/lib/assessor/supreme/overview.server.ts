@@ -39,6 +39,8 @@ export interface MentorTip {
   linkLabel: string;
   to: string;
   key: string;
+  /** Porque disparou: dias sem contacto e que atividade foi usada como referência. */
+  reason: string;
 }
 
 const CLOSED_DEAL = new Set(["perdida", "escritura", "closed_lost", "closed_won", "cancelled", "concluido", "concluído"]);
