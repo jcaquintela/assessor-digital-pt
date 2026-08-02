@@ -45,7 +45,6 @@ import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
 import { Route as AuthenticatedLigarCanalRouteImport } from './routes/_authenticated/ligar-canal'
 import { Route as AuthenticatedInteracoesRouteImport } from './routes/_authenticated/interacoes'
-import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
 import { Route as AuthenticatedHojeRouteImport } from './routes/_authenticated/hoje'
 import { Route as AuthenticatedDriveRouteImport } from './routes/_authenticated/drive'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
@@ -60,6 +59,7 @@ import { Route as AuthenticatedPessoasIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedOportunidadesIndexRouteImport } from './routes/_authenticated/oportunidades.index'
 import { Route as AuthenticatedNegociosIndexRouteImport } from './routes/_authenticated/negocios.index'
 import { Route as AuthenticatedNegocioIndexRouteImport } from './routes/_authenticated/negocio.index'
+import { Route as AuthenticatedImoveisIndexRouteImport } from './routes/_authenticated/imoveis.index'
 import { Route as OauthOutlookReturnRouteImport } from './routes/oauth/outlook/return'
 import { Route as OauthGoogleCalendarReturnRouteImport } from './routes/oauth/google-calendar/return'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
@@ -269,11 +269,6 @@ const AuthenticatedInteracoesRoute = AuthenticatedInteracoesRouteImport.update({
   path: '/interacoes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedImoveisRoute = AuthenticatedImoveisRouteImport.update({
-  id: '/imoveis',
-  path: '/imoveis',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedHojeRoute = AuthenticatedHojeRouteImport.update({
   id: '/hoje',
   path: '/hoje',
@@ -351,6 +346,12 @@ const AuthenticatedNegocioIndexRoute =
     path: '/negocio/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedImoveisIndexRoute =
+  AuthenticatedImoveisIndexRouteImport.update({
+    id: '/imoveis/',
+    path: '/imoveis/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const OauthOutlookReturnRoute = OauthOutlookReturnRouteImport.update({
   id: '/oauth/outlook/return',
   path: '/oauth/outlook/return',
@@ -425,9 +426,9 @@ const AuthenticatedInteracoesIdRoute =
     getParentRoute: () => AuthenticatedInteracoesRoute,
   } as any)
 const AuthenticatedImoveisIdRoute = AuthenticatedImoveisIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedImoveisRoute,
+  id: '/imoveis/$id',
+  path: '/imoveis/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedGruposIdRoute = AuthenticatedGruposIdRouteImport.update({
   id: '/grupos/$id',
@@ -535,7 +536,6 @@ export interface FileRoutesByFullPath {
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/drive': typeof AuthenticatedDriveRouteWithChildren
   '/hoje': typeof AuthenticatedHojeRoute
-  '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
   '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
@@ -581,6 +581,7 @@ export interface FileRoutesByFullPath {
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
+  '/imoveis/': typeof AuthenticatedImoveisIndexRoute
   '/negocio/': typeof AuthenticatedNegocioIndexRoute
   '/negocios/': typeof AuthenticatedNegociosIndexRoute
   '/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
@@ -615,7 +616,6 @@ export interface FileRoutesByTo {
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/drive': typeof AuthenticatedDriveRouteWithChildren
   '/hoje': typeof AuthenticatedHojeRoute
-  '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
   '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
@@ -661,6 +661,7 @@ export interface FileRoutesByTo {
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
+  '/imoveis': typeof AuthenticatedImoveisIndexRoute
   '/negocio': typeof AuthenticatedNegocioIndexRoute
   '/negocios': typeof AuthenticatedNegociosIndexRoute
   '/oportunidades': typeof AuthenticatedOportunidadesIndexRoute
@@ -698,7 +699,6 @@ export interface FileRoutesById {
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
   '/_authenticated/drive': typeof AuthenticatedDriveRouteWithChildren
   '/_authenticated/hoje': typeof AuthenticatedHojeRoute
-  '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/_authenticated/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
   '/_authenticated/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
@@ -744,6 +744,7 @@ export interface FileRoutesById {
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
+  '/_authenticated/imoveis/': typeof AuthenticatedImoveisIndexRoute
   '/_authenticated/negocio/': typeof AuthenticatedNegocioIndexRoute
   '/_authenticated/negocios/': typeof AuthenticatedNegociosIndexRoute
   '/_authenticated/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
@@ -781,7 +782,6 @@ export interface FileRouteTypes {
     | '/documentos'
     | '/drive'
     | '/hoje'
-    | '/imoveis'
     | '/interacoes'
     | '/ligar-canal'
     | '/mais'
@@ -827,6 +827,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp-webhook'
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
+    | '/imoveis/'
     | '/negocio/'
     | '/negocios/'
     | '/oportunidades/'
@@ -861,7 +862,6 @@ export interface FileRouteTypes {
     | '/documentos'
     | '/drive'
     | '/hoje'
-    | '/imoveis'
     | '/interacoes'
     | '/ligar-canal'
     | '/mais'
@@ -907,6 +907,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp-webhook'
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
+    | '/imoveis'
     | '/negocio'
     | '/negocios'
     | '/oportunidades'
@@ -943,7 +944,6 @@ export interface FileRouteTypes {
     | '/_authenticated/documentos'
     | '/_authenticated/drive'
     | '/_authenticated/hoje'
-    | '/_authenticated/imoveis'
     | '/_authenticated/interacoes'
     | '/_authenticated/ligar-canal'
     | '/_authenticated/mais'
@@ -989,6 +989,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp-webhook'
     | '/oauth/google-calendar/return'
     | '/oauth/outlook/return'
+    | '/_authenticated/imoveis/'
     | '/_authenticated/negocio/'
     | '/_authenticated/negocios/'
     | '/_authenticated/oportunidades/'
@@ -1287,13 +1288,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInteracoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/imoveis': {
-      id: '/_authenticated/imoveis'
-      path: '/imoveis'
-      fullPath: '/imoveis'
-      preLoaderRoute: typeof AuthenticatedImoveisRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/hoje': {
       id: '/_authenticated/hoje'
       path: '/hoje'
@@ -1392,6 +1386,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNegocioIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/imoveis/': {
+      id: '/_authenticated/imoveis/'
+      path: '/imoveis'
+      fullPath: '/imoveis/'
+      preLoaderRoute: typeof AuthenticatedImoveisIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/oauth/outlook/return': {
       id: '/oauth/outlook/return'
       path: '/oauth/outlook/return'
@@ -1485,10 +1486,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/imoveis/$id': {
       id: '/_authenticated/imoveis/$id'
-      path: '/$id'
+      path: '/imoveis/$id'
       fullPath: '/imoveis/$id'
       preLoaderRoute: typeof AuthenticatedImoveisIdRouteImport
-      parentRoute: typeof AuthenticatedImoveisRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/grupos/$id': {
       id: '/_authenticated/grupos/$id'
@@ -1622,17 +1623,6 @@ const AuthenticatedDriveRouteChildren: AuthenticatedDriveRouteChildren = {
 const AuthenticatedDriveRouteWithChildren =
   AuthenticatedDriveRoute._addFileChildren(AuthenticatedDriveRouteChildren)
 
-interface AuthenticatedImoveisRouteChildren {
-  AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
-}
-
-const AuthenticatedImoveisRouteChildren: AuthenticatedImoveisRouteChildren = {
-  AuthenticatedImoveisIdRoute: AuthenticatedImoveisIdRoute,
-}
-
-const AuthenticatedImoveisRouteWithChildren =
-  AuthenticatedImoveisRoute._addFileChildren(AuthenticatedImoveisRouteChildren)
-
 interface AuthenticatedInteracoesRouteChildren {
   AuthenticatedInteracoesIdRoute: typeof AuthenticatedInteracoesIdRoute
 }
@@ -1694,18 +1684,19 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
   AuthenticatedDriveRoute: typeof AuthenticatedDriveRouteWithChildren
   AuthenticatedHojeRoute: typeof AuthenticatedHojeRoute
-  AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
   AuthenticatedInteracoesRoute: typeof AuthenticatedInteracoesRouteWithChildren
   AuthenticatedLigarCanalRoute: typeof AuthenticatedLigarCanalRoute
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
   AuthenticatedGruposIdRoute: typeof AuthenticatedGruposIdRoute
+  AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
   AuthenticatedNegocioComissoesRoute: typeof AuthenticatedNegocioComissoesRouteWithChildren
   AuthenticatedNegocioDespesasRoute: typeof AuthenticatedNegocioDespesasRouteWithChildren
   AuthenticatedNegocioFaturacaoRoute: typeof AuthenticatedNegocioFaturacaoRoute
   AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
   AuthenticatedPessoasIdRoute: typeof AuthenticatedPessoasIdRoute
   AuthenticatedSeguimentosIdRoute: typeof AuthenticatedSeguimentosIdRoute
+  AuthenticatedImoveisIndexRoute: typeof AuthenticatedImoveisIndexRoute
   AuthenticatedNegocioIndexRoute: typeof AuthenticatedNegocioIndexRoute
   AuthenticatedNegociosIndexRoute: typeof AuthenticatedNegociosIndexRoute
   AuthenticatedOportunidadesIndexRoute: typeof AuthenticatedOportunidadesIndexRoute
@@ -1723,12 +1714,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
   AuthenticatedDriveRoute: AuthenticatedDriveRouteWithChildren,
   AuthenticatedHojeRoute: AuthenticatedHojeRoute,
-  AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
   AuthenticatedInteracoesRoute: AuthenticatedInteracoesRouteWithChildren,
   AuthenticatedLigarCanalRoute: AuthenticatedLigarCanalRoute,
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
   AuthenticatedGruposIdRoute: AuthenticatedGruposIdRoute,
+  AuthenticatedImoveisIdRoute: AuthenticatedImoveisIdRoute,
   AuthenticatedNegocioComissoesRoute:
     AuthenticatedNegocioComissoesRouteWithChildren,
   AuthenticatedNegocioDespesasRoute:
@@ -1737,6 +1728,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
   AuthenticatedPessoasIdRoute: AuthenticatedPessoasIdRoute,
   AuthenticatedSeguimentosIdRoute: AuthenticatedSeguimentosIdRoute,
+  AuthenticatedImoveisIndexRoute: AuthenticatedImoveisIndexRoute,
   AuthenticatedNegocioIndexRoute: AuthenticatedNegocioIndexRoute,
   AuthenticatedNegociosIndexRoute: AuthenticatedNegociosIndexRoute,
   AuthenticatedOportunidadesIndexRoute: AuthenticatedOportunidadesIndexRoute,

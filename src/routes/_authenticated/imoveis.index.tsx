@@ -26,7 +26,7 @@ const ORIGEM: Record<string, string> = {
   prospecting: "placa",
 };
 
-export const Route = createFileRoute("/_authenticated/imoveis")({
+export const Route = createFileRoute("/_authenticated/imoveis/")({
   head: () => ({
     meta: [
       { title: "Imóveis — Assessor do Consultor" },
