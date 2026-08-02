@@ -355,6 +355,10 @@ export const listPersonPhones = createServerFn({ method: "GET" })
         } as never).select("id,raw,e164,kind,is_primary").single();
         if (created) {
           const c = created as { id: string; raw: string; e164: string | null; kind: string; is_primary: boolean };
+          // Cabeçalho e secção passam a mostrar exactamente o mesmo número.
+          if (c.e164 && c.e164 !== legacy) {
+            await supabase.from("people").update({ phone: c.e164 } as never).eq("id", data.personId);
+          }
           return [{ id: c.id, raw: c.raw, e164: c.e164, kind: c.kind, isPrimary: c.is_primary }];
         }
       }
