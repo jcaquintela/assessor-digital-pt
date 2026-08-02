@@ -220,7 +220,40 @@ async function execSearchProperties(ctx: DomainContext, args: unknown): Promise<
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) return fail(error.message);
-  return ok({ results: data ?? [] });
+  if (data && data.length) return ok({ results: data });
+
+  // O consultor diz "Rua do Sol Matosinhos" mas o título é "Moradia V3 na Rua
+  // do Sol, Matosinhos": a frase inteira nunca casa. Segunda tentativa por
+  // palavras, ordenada pelo número de palavras encontradas.
+  const tokens = query
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((t) => t.length >= 3)
+    .slice(0, 6);
+  if (!tokens.length) return ok({ results: [] });
+  let q2 = ctx.supabase
+    .from("properties")
+    .select("id, title, typology, property_type, location, city, address, status, asking_price")
+    .eq("user_id", ctx.userId)
+    .or(tokens.flatMap((t) => [
+      `title.ilike.%${t}%`, `location.ilike.%${t}%`, `city.ilike.%${t}%`, `address.ilike.%${t}%`,
+    ]).join(","))
+    .limit(30);
+  if (status) q2 = q2.eq("status", status);
+  const { data: rows, error: e2 } = await q2;
+  if (e2) return fail(e2.message);
+  const scored = (rows ?? [])
+    .map((r: Record<string, unknown>) => {
+      const hay = [r.title, r.location, r.city, r.address]
+        .filter((x) => typeof x === "string").join(" ").toLowerCase();
+      const score = tokens.filter((t) => hay.includes(t.toLowerCase())).length;
+      const { address: _a, ...rest } = r;
+      return { score, row: rest };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map((x) => x.row);
+  return ok({ results: scored });
 }
 
 async function execCreateProperty(ctx: DomainContext, args: unknown): Promise<DomainResult> {
