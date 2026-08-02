@@ -267,9 +267,60 @@ async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<Doma
 }
 
 async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  return execCreateEventInner(ctx, args);
+}
+
+/** Normaliza texto para comparação difusa (sem acentos, minúsculas). */
+function normalizeForMatch(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Tenta descobrir de que imóvel se fala quando o motor não devolveu o id.
+ * Compara o texto do compromisso com o título/morada/cidade dos imóveis do
+ * consultor. Só liga quando há uma única correspondência clara.
+ */
+async function resolvePropertyFromText(ctx: DomainContext, text: string): Promise<string | null> {
+  let source = text || "";
+  // O título gravado pode perder a morada ("Visita com Sr. Almeida"); nesse
+  // caso, olhamos para a frase original do consultor.
+  if (ctx.sourceMessageId) {
+    const { data: msg } = await ctx.supabase
+      .from("assessor_messages")
+      .select("content")
+      .eq("id", ctx.sourceMessageId)
+      .eq("user_id", ctx.userId)
+      .maybeSingle();
+    const extra = (msg as { content?: string } | null)?.content;
+    if (extra) source = `${source} ${extra}`;
+  }
+  const hay = normalizeForMatch(source);
+  if (hay.length < 6) return null;
+  const { data } = await ctx.supabase
+    .from("properties")
+    .select("id, title, address, location, city")
+    .eq("user_id", ctx.userId)
+    .limit(300);
+  const rows = (data ?? []) as Array<{ id: string; title: string | null; address: string | null; location: string | null; city: string | null }>;
+  const matches = new Set<string>();
+  for (const r of rows) {
+    for (const raw of [r.address, r.title, r.location]) {
+      const needle = normalizeForMatch(String(raw ?? ""));
+      if (needle.length >= 6 && hay.includes(needle)) { matches.add(r.id); break; }
+    }
+  }
+  return matches.size === 1 ? [...matches][0]! : null;
+}
+
+async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
   // Última linha de defesa: a string "null" nunca pode chegar à BD.
   const v = { ...p.value, title: ensureTitle(p.value.title, "Compromisso") };
+  // O imóvel é muitas vezes falado ("visita à Alameda da República") sem que o
+  // motor devolva o id. Sem ligação, a visita não aparece na ficha do imóvel.
+  if (!v.property_id) {
+    v.property_id = await resolvePropertyFromText(ctx, [v.title, v.notes].filter(Boolean).join(" "));
+  }
   const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   // Idempotência: um pending_action só pode criar um recurso.
   if (ctx.pendingActionId) {
@@ -445,6 +496,9 @@ async function findActiveProspectingLead(ctx: DomainContext): Promise<{ id: stri
 async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateFollowUpArgs, args); if (!p.ok) return fail(p.error);
   const v = { ...p.value, title: ensureTitle(p.value.title, "Lembrete") };
+  if (!v.property_id) {
+    v.property_id = await resolvePropertyFromText(ctx, [v.title, (v as any).notes].filter(Boolean).join(" "));
+  }
   const dueIsoDate = lisbonLocalToUtcIso(v.due_date, v.due_time ?? "09:00");
   // Idempotência: se já existe um follow_up para esta pending_action, devolve-o.
   if (ctx.pendingActionId) {

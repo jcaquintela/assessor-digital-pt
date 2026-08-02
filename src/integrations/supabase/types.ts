@@ -1815,6 +1815,7 @@ export type Database = {
           opportunity_id: string | null
           original_content: string | null
           person_id: string | null
+          property_id: string | null
           source_channel: string
           summary: string | null
           user_id: string
@@ -1827,6 +1828,7 @@ export type Database = {
           opportunity_id?: string | null
           original_content?: string | null
           person_id?: string | null
+          property_id?: string | null
           source_channel?: string
           summary?: string | null
           user_id: string
@@ -1839,6 +1841,7 @@ export type Database = {
           opportunity_id?: string | null
           original_content?: string | null
           person_id?: string | null
+          property_id?: string | null
           source_channel?: string
           summary?: string | null
           user_id?: string
@@ -1856,6 +1859,13 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -2540,7 +2550,10 @@ export type Database = {
           asking_price: number | null
           bathrooms: number | null
           bedrooms: number | null
+          category: string | null
           city: string | null
+          commission_amount: number | null
+          commission_pct: number | null
           created_at: string
           energy_rating: string | null
           estimated_value: number | null
@@ -2552,6 +2565,9 @@ export type Database = {
           parking: number | null
           postal_code: string | null
           property_type: string | null
+          reserved_at: string | null
+          sale_price: number | null
+          sold_at: string | null
           source_channel: string | null
           source_message_id: string | null
           status: string
@@ -2568,7 +2584,10 @@ export type Database = {
           asking_price?: number | null
           bathrooms?: number | null
           bedrooms?: number | null
+          category?: string | null
           city?: string | null
+          commission_amount?: number | null
+          commission_pct?: number | null
           created_at?: string
           energy_rating?: string | null
           estimated_value?: number | null
@@ -2580,6 +2599,9 @@ export type Database = {
           parking?: number | null
           postal_code?: string | null
           property_type?: string | null
+          reserved_at?: string | null
+          sale_price?: number | null
+          sold_at?: string | null
           source_channel?: string | null
           source_message_id?: string | null
           status?: string
@@ -2596,7 +2618,10 @@ export type Database = {
           asking_price?: number | null
           bathrooms?: number | null
           bedrooms?: number | null
+          category?: string | null
           city?: string | null
+          commission_amount?: number | null
+          commission_pct?: number | null
           created_at?: string
           energy_rating?: string | null
           estimated_value?: number | null
@@ -2608,6 +2633,9 @@ export type Database = {
           parking?: number | null
           postal_code?: string | null
           property_type?: string | null
+          reserved_at?: string | null
+          sale_price?: number | null
+          sold_at?: string | null
           source_channel?: string | null
           source_message_id?: string | null
           status?: string
@@ -2623,6 +2651,194 @@ export type Database = {
             columns: ["owner_person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_interests: {
+        Row: {
+          contact: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          opportunity_id: string | null
+          person_id: string | null
+          property_id: string
+          source: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          opportunity_id?: string | null
+          person_id?: string | null
+          property_id: string
+          source?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          opportunity_id?: string | null
+          person_id?: string | null
+          property_id?: string
+          source?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_interests_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_interests_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_interests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_marketing_activities: {
+        Row: {
+          created_at: string
+          done_at: string | null
+          id: string
+          notes: string | null
+          opportunity_id: string | null
+          property_id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          notes?: string | null
+          opportunity_id?: string | null
+          property_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          notes?: string | null
+          opportunity_id?: string | null
+          property_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_marketing_activities_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_marketing_activities_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_offers: {
+        Row: {
+          amount: number
+          created_at: string
+          from_name: string | null
+          id: string
+          notes: string | null
+          offer_date: string
+          opportunity_id: string | null
+          person_id: string | null
+          property_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          from_name?: string | null
+          id?: string
+          notes?: string | null
+          offer_date?: string
+          opportunity_id?: string | null
+          person_id?: string | null
+          property_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          from_name?: string | null
+          id?: string
+          notes?: string | null
+          offer_date?: string
+          opportunity_id?: string | null
+          person_id?: string | null
+          property_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_offers_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_offers_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_offers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
