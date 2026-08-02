@@ -270,6 +270,11 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
   // Última linha de defesa: a string "null" nunca pode chegar à BD.
   const v = { ...p.value, title: ensureTitle(p.value.title, "Compromisso") };
+  // O imóvel é muitas vezes falado ("visita à Alameda da República") sem que o
+  // motor devolva o id. Sem ligação, a visita não aparece na ficha do imóvel.
+  if (!v.property_id) {
+    v.property_id = await resolvePropertyFromText(ctx, [v.title, v.notes].filter(Boolean).join(" "));
+  }
   const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   // Idempotência: um pending_action só pode criar um recurso.
   if (ctx.pendingActionId) {
