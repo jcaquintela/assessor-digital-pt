@@ -24,7 +24,7 @@ const daysAgo = (d: number) => new Date(NOW.getTime() - d * 864e5).toISOString()
 function seed() {
   return makeFakeSupabase({
     channel_links: [{ user_id: USER, channel: "telegram", external_id: "555" }],
-    profiles: [{ id: USER, name: "Teste", telegram_retention_warned_at: null }],
+    profiles: [{ id: USER, name: "Teste", subscription_tier: "base", readonly_until: null, telegram_retention_warned_at: null }],
     assessor_messages: [
       { id: "m-old", user_id: USER, channel: "telegram", role: "user", content: "há 25 dias", created_at: daysAgo(25), archived_at: null },
       { id: "m-mid", user_id: USER, channel: "telegram", role: "user", content: "há 19 dias", created_at: daysAgo(19), archived_at: null },
@@ -57,7 +57,7 @@ describe("retenção Telegram", () => {
   it("não avisa contas cuja conversa mais antiga tem menos de 18 dias", async () => {
     const db = makeFakeSupabase({
       channel_links: [{ user_id: USER, channel: "telegram", external_id: "555" }],
-      profiles: [{ id: USER, telegram_retention_warned_at: null }],
+      profiles: [{ id: USER, subscription_tier: "base", readonly_until: null, telegram_retention_warned_at: null }],
       assessor_messages: [
         { id: "m", user_id: USER, channel: "telegram", created_at: daysAgo(5), archived_at: null },
       ],
