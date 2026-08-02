@@ -417,7 +417,9 @@ export async function dispatchDueReminders(
   const windowMin = opts.windowMinutes ?? 30;
   const maxPerRun = opts.maxPerRun ?? 20;
 
-  const upper = new Date(now.getTime() + 60_000).toISOString();
+  // Nunca disparar antes da hora: uma folga de +1min fazia o aviso das 19:51
+  // sair às 19:50, logo a seguir à confirmação — parecia duplicado.
+  const upper = new Date(now.getTime() + 5_000).toISOString();
   const lower = new Date(now.getTime() - windowMin * 60_000).toISOString();
 
   const { data: due } = await supabase
