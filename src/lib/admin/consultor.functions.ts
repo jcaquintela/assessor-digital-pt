@@ -27,6 +27,10 @@ export type ConsultantDetail = {
     betaExpiresAt: string | null;
     betaDaysLeft: number | null;
     assessorName: string | null;
+    trialStatus: string | null;
+    trialTier: string | null;
+    trialExpiresAt: string | null;
+    trialDaysLeft: number | null;
   };
   activity: {
     messages30d: number;
@@ -57,7 +61,7 @@ export const getConsultantDetail = createServerFn({ method: "GET" })
     const [prof, links, msgs, people, props, deals, fups, trust, qual, audit] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("id, name, email, phone, subscription_tier, created_at, account_kind, is_beta_tester, beta_expires_at, assessor_name")
+        .select("id, name, email, phone, subscription_tier, created_at, account_kind, is_beta_tester, beta_expires_at, assessor_name, trial_status, trial_tier, trial_expires_at")
         .eq("id", id)
         .maybeSingle(),
       supabaseAdmin.from("channel_links").select("channel").eq("user_id", id),
@@ -112,6 +116,13 @@ export const getConsultantDetail = createServerFn({ method: "GET" })
         betaExpiresAt: p.beta_expires_at ?? null,
         betaDaysLeft,
         assessorName: p.assessor_name ?? null,
+        trialStatus: p.trial_status ?? null,
+        trialTier: p.trial_tier ?? null,
+        trialExpiresAt: p.trial_expires_at ?? null,
+        trialDaysLeft:
+          p.trial_status === "active" && p.trial_expires_at
+            ? Math.max(0, Math.ceil((new Date(p.trial_expires_at).getTime() - Date.now()) / 864e5))
+            : null,
       },
       activity: {
         messages30d: msgRows.length,

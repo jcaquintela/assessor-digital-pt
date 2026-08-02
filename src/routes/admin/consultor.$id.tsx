@@ -7,6 +7,7 @@ import { Badge, Empty, PageTitle, SectionTitle, Source } from "@/components/admi
 import { getConsultantDetail } from "@/lib/admin/consultor.functions";
 import { updateAccess, deactivateAccess, reactivateAccess } from "@/lib/admin/acessos.functions";
 import { getMyAdminRole } from "@/lib/admin.functions";
+import { confirmTrialPaid } from "@/lib/subscription/trial.functions";
 import { tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { fmtScore100, fmtPct } from "@/lib/admin/metrics-format";
 
@@ -41,6 +42,7 @@ function ConsultorPage() {
   const updateFn = useServerFn(updateAccess);
   const deactivateFn = useServerFn(deactivateAccess);
   const reactivateFn = useServerFn(reactivateAccess);
+  const confirmTrialFn = useServerFn(confirmTrialPaid);
 
   const { data: me } = useQuery({ queryKey: ["admin", "my-role"], queryFn: () => roleFn() });
   const isSuper = me?.role === "super_admin";
@@ -95,6 +97,15 @@ function ConsultorPage() {
         </Field>
         <Field label="Nome do assessor">{p.assessorName || "—"}</Field>
         <Field label="Tipo de conta">{p.accountKind || "—"}</Field>
+        <Field label="Período experimental (WhatsApp)">
+          {p.trialStatus === "active"
+            ? `a decorrer até ${fmtDate(p.trialExpiresAt)} (${p.trialDaysLeft} dia(s))`
+            : p.trialStatus === "converted"
+              ? "pagamento confirmado"
+              : p.trialStatus === "expired"
+                ? "terminado (voltou a Base)"
+                : "não aplicável"}
+        </Field>
       </div>
       <Source>profiles × channel_links</Source>
 
@@ -156,6 +167,12 @@ function ConsultorPage() {
           disabled={!isSuper || !p.isBeta}
           onClick={() => run("Período de teste terminado.", updateFn({ data: { target_user_id: p.id, is_beta_tester: false, beta_expires_at: "" } }))}
         >Terminar beta</button>
+        <button
+          type="button"
+          className="admin-btn tap-44"
+          disabled={!isSuper || p.trialStatus !== "active"}
+          onClick={() => run("Pagamento confirmado.", confirmTrialFn({ data: { target_user_id: p.id } }))}
+        >Confirmar pagamento (fim do trial)</button>
         <button
           type="button"
           className="admin-link-danger tap-44"
