@@ -230,7 +230,7 @@ export async function findAwaitingOutcome(
     .select("id, title, due_date, person_id")
     .eq("user_id", userId)
     .is("outcome", null)
-    .neq("status", "Concluído")
+    .not("status", "in", "(Concluído,Concluido,concluido,Arquivado,arquivado,Cancelado,cancelado)")
     .lt("due_date", now.toISOString())
     .order("due_date", { ascending: false })
     .limit(10);
