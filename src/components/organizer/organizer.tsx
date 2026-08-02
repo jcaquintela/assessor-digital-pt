@@ -26,7 +26,7 @@ export function useOrganizer(entityType: OrganizerEntity) {
     tagsOf: (id: string) =>
       data.tagLinks.filter((l) => l.entity_id === id).map((l) => data.tags.find((t) => t.id === l.tag_id)).filter(Boolean) as { id: string; name: string }[],
     foldersOf: (id: string) =>
-      data.folderLinks.filter((l) => l.entity_id === id).map((l) => data.folders.find((f) => f.id === l.folder_id)).filter(Boolean) as { id: string; name: string }[],
+      data.folderLinks.filter((l) => l.entity_id === id).map((l) => data.folders.find((f) => f.id === l.folder_id)).filter(Boolean) as { id: string; name: string; color?: string | null }[],
   };
 }
 
