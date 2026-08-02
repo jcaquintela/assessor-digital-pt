@@ -114,7 +114,7 @@ function AssessorPage() {
           {!loading && msgs.length === 0 && (
             <div className="c-empty mx-auto mt-8 max-w-md">
               <MessageCircle className="mx-auto mb-2 h-5 w-5" />
-              {`${assessorName} é um assistente de IA — falas com um sistema automático, não com uma pessoa.`}
+              {AI_DISCLOSURE}
               <br />
               Ainda não há mensagens.
               <br />
