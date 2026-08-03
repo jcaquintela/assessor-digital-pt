@@ -12,8 +12,11 @@
 import { normalizeTier, TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tiers";
 import {
   TEMPLATE_PLAN_ACTIVATED,
+  TEMPLATE_PLAN_TRIAL_START,
   planActivatedTemplatePayload,
   planActivatedText,
+  planTrialStartTemplatePayload,
+  planTrialStartText,
 } from "@/lib/assessor/proactive/templates";
 
 export function isUpgradeToPaid(
@@ -35,6 +38,7 @@ export async function notifyPlanActivated(
   supabaseAdmin: any,
   userId: string,
   tier: string | null | undefined,
+  opts: { source?: "upgrade" | "promo" } = {},
 ): Promise<PlanActivatedResult> {
   const plan = normalizeTier(tier) as SubscriptionTier;
   if (plan === "base") return { sent: false, channel: null, reason: "not_paid" };
@@ -45,12 +49,25 @@ export async function notifyPlanActivated(
 
   const { data: prof } = await supabaseAdmin
     .from("profiles")
-    .select("name")
+    .select("name, trial_status")
     .eq("id", userId)
     .maybeSingle();
   const firstName = String((prof as any)?.name ?? "").trim().split(/\s+/)[0] || "Olá";
   const planName = TIER_DISPLAY_NAME[plan];
-  const text = planActivatedText(firstName, planName);
+
+  // Subida para Consultor/Pro com WhatsApp ligado e sem trial anterior: o
+  // período experimental de 14 dias vai arrancar a seguir, por isso a
+  // mensagem é a do trial (e nunca as duas). Código promocional mantém a
+  // sua própria mensagem.
+  const isTrialStart =
+    target.channel === "whatsapp" &&
+    opts.source !== "promo" &&
+    (plan === "consultor" || plan === "pro") &&
+    !(prof as any)?.trial_status;
+
+  const text = isTrialStart
+    ? planTrialStartText(planName)
+    : planActivatedText(firstName, planName);
 
   if (target.channel === "telegram") {
     const { getTelegramProvider } = await import("@/lib/telegram/provider.server");
@@ -72,14 +89,17 @@ export async function notifyPlanActivated(
   }
 
   const { isTemplateApproved } = await import("@/lib/whatsapp/template-status.server");
-  if (!(await isTemplateApproved(TEMPLATE_PLAN_ACTIVATED))) {
+  const templateName = isTrialStart ? TEMPLATE_PLAN_TRIAL_START : TEMPLATE_PLAN_ACTIVATED;
+  if (!(await isTemplateApproved(templateName))) {
     return { sent: false, channel: "whatsapp", reason: "template_pending" };
   }
 
   const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
   const r = await sendWhatsAppPayload(
     target.externalId,
-    planActivatedTemplatePayload(firstName, planName),
+    isTrialStart
+      ? planTrialStartTemplatePayload(planName)
+      : planActivatedTemplatePayload(firstName, planName),
     { triggeredBy: userId, kind: "auto" },
   );
   return r.ok
@@ -92,9 +112,10 @@ export async function notifyPlanActivatedSafe(
   supabaseAdmin: any,
   userId: string,
   tier: string | null | undefined,
+  opts: { source?: "upgrade" | "promo" } = {},
 ): Promise<void> {
   try {
-    await notifyPlanActivated(supabaseAdmin, userId, tier);
+    await notifyPlanActivated(supabaseAdmin, userId, tier, opts);
   } catch (err) {
     console.error("[plano-ativado] falha a avisar:", err instanceof Error ? err.message : err);
   }

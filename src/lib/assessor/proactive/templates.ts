@@ -9,6 +9,7 @@ export const TEMPLATE_MORNING = "afonso_prioridades_dia";
 export const TEMPLATE_CHECKIN = "afonso_resultado_seguimento";
 export const TEMPLATE_CHECKIN_V2 = "afonso_resultado_seguimento_corrigido";
 export const TEMPLATE_PLAN_ACTIVATED = "afonso_plano_ativado";
+export const TEMPLATE_PLAN_TRIAL_START = "afonso_plano_trial";
 export const TEMPLATE_TRIAL_ENDING = "afonso_periodo_experimental";
 export const TEMPLATE_LANG = "pt_PT";
 
@@ -118,6 +119,36 @@ export function planActivatedTemplatePayload(name: string, plan: string) {
 /** Mesma mensagem em texto normal (Telegram, ou WhatsApp dentro das 24h). */
 export function planActivatedText(name: string, plan: string) {
   return `Boas notícias, ${name}! O teu plano ${plan} já está ativo. Já podes usar tudo o que isso inclui.`;
+}
+
+/**
+ * Subida para Consultor/Pro com WhatsApp ligado e período experimental de
+ * 14 dias a arrancar. NÃO repete o aviso de IA: quem recebe isto já teve o
+ * primeiro contacto. Texto único e fixo, definido pelo produto.
+ *
+ * Texto exato submetido à Meta (categoria Utility), {{1}} = plano.
+ */
+export function planTrialStartText(plan: string) {
+  return (
+    `Boas notícias — já tens o plano ${plan} ativo, com WhatsApp e tudo o que isso traz. 🎉\n\n` +
+    `Tens 14 dias grátis, sem cartão de crédito nenhum. Ao dia 12, pergunto-te se queres continuar ` +
+    `(Consultor ou Pro) ou ficar no Nível Base, grátis, pelo Telegram. Se não disseres nada, ao dia 14 ` +
+    `passas automaticamente para o Base — sem perderes nada do que já organizámos, só ficas sem os ` +
+    `módulos pagos até decidires voltar.`
+  );
+}
+
+export function planTrialStartTemplatePayload(plan: string) {
+  return {
+    type: "template",
+    template: {
+      name: TEMPLATE_PLAN_TRIAL_START,
+      language: { code: TEMPLATE_LANG },
+      components: [
+        { type: "body", parameters: [{ type: "text", text: plan }] },
+      ],
+    },
+  } as Record<string, unknown>;
 }
 
 /**
