@@ -464,6 +464,32 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   // 0.confirm) PRIORIDADE ABSOLUTA: se existe uma pending válida e a mensagem
   // é uma confirmação (sim/ok/está bem/…), executa antes de qualquer outro
   // ramo — nunca pode cair em saudação, fecho social ou IA.
+  if (pending) {
+    const { isRegisterOnly } = await import("./pending-answerable");
+    if (isRegisterOnly(trimmed)) {
+      logBranch("register_only_closes_pending", { pending_id: pending.id, intent: pending.intent });
+      const content = String(pending.original_content ?? "").trim() || trimmedRaw;
+      await markPendingActionStatus(supabase, pending.id, "cancelled", {
+        error_message: "consultor pediu só registo, sem lembrete",
+      });
+      await upsertConversationState(supabase, {
+        userId, channel, pendingActionId: null, activeTopic: null,
+      });
+      const { error } = await supabase.from("miscellaneous_items").insert(sanitizeMiscFields({
+        user_id: userId,
+        title: content.length > 120 ? `${content.slice(0, 117)}...` : content,
+        original_content: content,
+        summary: "Ficou só registado, sem lembrete.",
+        source_channel: channel,
+        status: "inbox",
+      }) as never);
+      return {
+        reply: error
+          ? "Certo — fica só registado, sem lembrete."
+          : "Certo — fica só registado, sem lembrete. Deixei em Diversos.",
+      };
+    }
+  }
   if (pending && isConfirmText(trimmed)) {
     logBranch("confirm_short_answer", { pending_id: pending.id, intent: pending.intent });
     if (pending.intent === "await_property_details") {
