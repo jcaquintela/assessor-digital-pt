@@ -12,6 +12,7 @@ import {
   driveCounts,
   uploadDriveFile,
   deleteDriveFiles,
+  restoreDriveFiles,
 } from "@/lib/drive/drive.functions";
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
@@ -28,9 +29,17 @@ import {
   Link2,
   Tag,
   Trash2,
+  Undo2,
 } from "lucide-react";
 
-type Tab = "recentes" | "por_tratar" | "imoveis" | "pessoas" | "diversos" | "arquivados";
+type Tab =
+  | "recentes"
+  | "por_tratar"
+  | "imoveis"
+  | "pessoas"
+  | "diversos"
+  | "arquivados"
+  | "reciclagem";
 
 export const Route = createFileRoute("/_authenticated/drive")({
   head: () => ({
@@ -63,7 +72,18 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "pessoas", label: "Pessoas" },
   { key: "diversos", label: "Diversos" },
   { key: "arquivados", label: "Arquivados" },
+  { key: "reciclagem", label: "Reciclagem" },
 ];
+
+// Ficheiros eliminados ficam recuperáveis durante 24 horas, com as ligações intactas.
+function tempoRestante(deletedAt: string | null) {
+  if (!deletedAt) return null;
+  const ms = new Date(deletedAt).getTime() + 24 * 3600_000 - Date.now();
+  if (ms <= 0) return "a ser apagado";
+  const h = Math.floor(ms / 3600_000);
+  if (h >= 1) return `${h}h`;
+  return `${Math.max(1, Math.round(ms / 60_000))} min`;
+}
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -178,10 +198,33 @@ function DrivePage() {
   const toggleOne = (id: string, on: boolean) =>
     setSelected((prev) => (on ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
 
+  const restoreFiles = useServerFn(restoreDriveFiles);
+  const restoreMany = useMutation({
+    mutationFn: (ids: string[]) => restoreFiles({ data: { ids } }),
+    onSuccess: (res: any, ids) => {
+      setSelected((prev) => prev.filter((id) => !ids.includes(id)));
+      toast.success(
+        ids.length === 1
+          ? "Ficheiro recuperado, com as ligações."
+          : `${res?.restored ?? ids.length} ficheiros recuperados, com as ligações.`,
+      );
+      listQ.refetch();
+      countsQ.refetch();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível recuperar."),
+  });
+
+  const naReciclagem = tab === "reciclagem";
+
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
-    if (!confirm(`Eliminar ${label}? O ficheiro e as ligações associadas desaparecem. Esta ação não pode ser desfeita.`)) return;
+    if (!confirm(`Eliminar ${label}? Fica na Reciclagem 24 horas — podes recuperar com as ligações dentro desse prazo.`)) return;
     deleteMany.mutate(ids);
+  };
+
+  const recuperar = (ids: string[]) => {
+    if (!ids.length || restoreMany.isPending) return;
+    restoreMany.mutate(ids);
   };
 
   return (
@@ -230,7 +273,9 @@ function DrivePage() {
                 ? countsQ.data?.por_tratar
                 : t.key === "arquivados"
                   ? countsQ.data?.arquivados
-                  : undefined;
+                  : t.key === "reciclagem"
+                    ? (countsQ.data as any)?.reciclagem
+                    : undefined;
           return (
             <button
               key={t.key}
@@ -254,6 +299,8 @@ function DrivePage() {
         <div className="c-empty">
           {categoryId
             ? "Nenhum ficheiro nesta categoria."
+            : tab === "reciclagem"
+            ? "A reciclagem está vazia. Ficheiros eliminados ficam aqui 24 horas."
             : tab === "por_tratar"
             ? "Nada por tratar. Bom trabalho."
             : "Sem ficheiros nesta vista. Envia pelo WhatsApp ou usa Carregar."}
@@ -276,6 +323,16 @@ function DrivePage() {
                 <span className="c-muted text-[12.5px]">
                   {selectedVisible.length} selecionado{selectedVisible.length === 1 ? "" : "s"}
                 </span>
+                {naReciclagem ? (
+                  <button
+                    type="button"
+                    className="c-badge tap-44"
+                    disabled={restoreMany.isPending}
+                    onClick={() => recuperar(selectedVisible)}
+                  >
+                    <Undo2 className="h-3 w-3" /> Recuperar selecionados
+                  </button>
+                ) : (
                 <button
                   type="button"
                   className="c-badge tap-44 text-destructive"
@@ -289,6 +346,7 @@ function DrivePage() {
                 >
                   <Trash2 className="h-3 w-3" /> Eliminar selecionados
                 </button>
+                )}
               </>
             )}
           </div>
@@ -324,7 +382,12 @@ function DrivePage() {
                       <div className="truncate text-[14px] font-semibold">
                         {f.original_file_name ?? "Ficheiro"}
                       </div>
-                      {needsReview && (
+                      {naReciclagem && (
+                        <span className="c-badge warn shrink-0">
+                          Recuperável durante {tempoRestante(f.deleted_at)}
+                        </span>
+                      )}
+                      {!naReciclagem && needsReview && (
                         <span className="c-badge warn">
                           <AlertCircle className="h-3 w-3" /> Por tratar
                         </span>
@@ -410,18 +473,33 @@ function DrivePage() {
                       >
                         <Tag className="h-3 w-3" /> {catName ? "Mudar categoria" : "Categoria"}
                       </button>
-                      <button
-                        type="button"
-                        className="c-badge tap-44 text-destructive"
-                        disabled={deleteMany.isPending}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`);
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3" /> Eliminar
-                      </button>
+                      {naReciclagem ? (
+                        <button
+                          type="button"
+                          className="c-badge tap-44"
+                          disabled={restoreMany.isPending}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            recuperar([f.id]);
+                          }}
+                        >
+                          <Undo2 className="h-3 w-3" /> Recuperar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="c-badge tap-44 text-destructive"
+                          disabled={deleteMany.isPending}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" /> Eliminar
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
