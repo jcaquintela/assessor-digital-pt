@@ -1,15 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   listDriveFiles,
   driveCounts,
   uploadDriveFile,
+  deleteDriveFiles,
 } from "@/lib/drive/drive.functions";
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
@@ -25,6 +27,7 @@ import {
   Eye,
   Link2,
   Tag,
+  Trash2,
 } from "lucide-react";
 
 type Tab = "recentes" | "por_tratar" | "imoveis" | "pessoas" | "diversos" | "arquivados";
