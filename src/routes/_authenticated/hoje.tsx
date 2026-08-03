@@ -24,6 +24,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { explainPriority } from "@/lib/assessor/priority-explain";
+import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
+import { AssuntoCard } from "@/components/assunto-card";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
 import { Lightbulb, ArrowRight } from "lucide-react";
@@ -80,15 +82,6 @@ type Awaiting = {
   property_id: string | null;
   deal_id: string | null;
 };
-
-// O título do que merece atenção é sempre o assunto (negócio, pessoa, imóvel),
-// nunca a ação genérica. A ação sugerida vai na frase explicativa.
-function assuntoDe(p: Priority): string {
-  const label = p.subject_type === "opportunity"
-    ? p.deal_label || p.entity_label
-    : p.entity_label || p.deal_label;
-  return (label && label.trim()) || p.action;
-}
 
 function HojePage() {
   const search = Route.useSearch();
