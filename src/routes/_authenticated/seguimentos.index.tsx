@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { formatDataHora, type Seguimento } from "@/lib/demo-data";
+import { formatData, formatDataHora, type Seguimento } from "@/lib/demo-data";
 import { Calendar, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
@@ -80,7 +80,8 @@ function SeguimentosPage() {
                   <span className="truncate text-sm font-medium">{s.titulo}</span>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {formatDataHora(s.data)} · {nomePessoa(s.pessoaId) || "—"}
+                  {/* A hora guardada manda: evita divergir da ficha por causa do fuso. */}
+                  {s.hora ? `${formatData(s.data)}, ${s.hora}` : formatDataHora(s.data)} · {nomePessoa(s.pessoaId) || "—"}
                 </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
