@@ -34,11 +34,32 @@ export function PropertyCard({
   const origem = i.source_channel ? (ORIGEM[i.source_channel] ?? i.source_channel) : null;
   const angariado = i.status && i.status !== "em_angariacao" && i.status !== "por_angariar";
 
+  const grelha = view === "grelha";
+  const acoes = (
+    <div className={`mt-2 flex flex-wrap items-center gap-1.5 ${grelha ? "" : "sm:gap-2"}`}>
+      <button type="button" className="c-badge tap-44" onClick={onEdit} aria-label="Editar">
+        <Pencil className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Editar</span>
+      </button>
+      <button type="button" className="c-badge tap-44" onClick={onCategory} aria-label="Categoria">
+        <Tag className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Categoria</span>
+      </button>
+      <button type="button" className="c-badge tap-44" onClick={onOrganize} aria-label="Organizar">
+        <Tags className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Organizar</span>
+      </button>
+      <button type="button" className="c-badge tap-44" onClick={onDelete} aria-label="Eliminar">
+        <Trash2 className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Eliminar</span>
+      </button>
+      <Link to="/imoveis/$id" params={{ id: i.id }} className="c-badge tap-44 ml-auto">
+        Abrir <ChevronRight className="h-3 w-3 shrink-0" />
+      </Link>
+    </div>
+  );
+
   return (
-    <div className="c-personcard">
+    <div className={`c-personcard min-w-0 overflow-hidden ${grelha ? "p-2.5 sm:p-3" : ""}`}>
       <div
         role="checkbox" tabIndex={0} aria-checked={selected} aria-label={`Selecionar ${i.title}`}
-        className="c-check"
+        className={`c-check ${grelha ? "!w-8" : ""}`}
         onClick={onToggle}
         onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onToggle(); } }}
       >
@@ -48,30 +69,30 @@ export function PropertyCard({
       <div className="min-w-0 flex-1">
         <Link
           to="/imoveis/$id" params={{ id: i.id }}
-          className={`flex min-w-0 items-start gap-3 ${view === "grelha" ? "flex-col" : ""}`}
+          className={`flex min-w-0 items-start gap-2 sm:gap-3 ${grelha ? "flex-col" : ""}`}
           aria-label={`Abrir ficha de ${i.title}`}
         >
-          <div className="c-pavatar sage" aria-hidden="true"><Home className="h-5 w-5" /></div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate text-[15px] font-semibold" style={{ color: "var(--ink)" }}>{i.title}</div>
+          {!grelha && <div className="c-pavatar sage" aria-hidden="true"><Home className="h-5 w-5" /></div>}
+          <div className="w-full min-w-0 flex-1">
+            <div className={`flex min-w-0 gap-2 ${grelha ? "flex-col items-start" : "items-start justify-between"}`}>
+              <div className="w-full min-w-0">
+                <div className={`text-[14.5px] font-semibold sm:text-[15px] ${grelha ? "line-clamp-2 break-words" : "truncate"}`} style={{ color: "var(--ink)" }}>{i.title}</div>
                 <div className="c-mono mt-0.5 truncate text-xs" style={{ color: "var(--muted)" }}>
                   {[tipo, i.address || localizacao].filter(Boolean).join(" · ") || "Sem detalhes"}
                 </div>
               </div>
-              <span className={`c-badge shrink-0 ${angariado ? "ok" : "warn"}`}>{propertyStatusLabel(i.status)}</span>
+              <span className={`c-badge max-w-full shrink-0 truncate ${angariado ? "ok" : "warn"}`}>{propertyStatusLabel(i.status)}</span>
             </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
               {i.asking_price != null && (
                 <span className="c-badge c-mono">{formatEUR(Number(i.asking_price))}</span>
               )}
               <CategoryBadge category={category} />
-              {origem && <span className="c-badge">via {origem}</span>}
+              {origem && <span className="c-badge max-w-full truncate">via {origem}</span>}
               {i.file_count > 0 && <span className="c-badge c-mono"><FileText className="h-3 w-3" /> {i.file_count}</span>}
               {org.foldersOf(i.id).map((f) => (
                 <span
-                  key={f.id} className="c-badge"
+                  key={f.id} className="c-badge max-w-full truncate"
                   style={f.color ? { background: `color-mix(in srgb, ${f.color} 14%, #fff)`, color: f.color, borderColor: "transparent" } : undefined}
                 >
                   {f.name}
@@ -79,18 +100,10 @@ export function PropertyCard({
               ))}
             </div>
           </div>
-          {view === "lista" && <ChevronRight className="ml-auto h-5 w-5 shrink-0 self-center" style={{ color: "var(--line)" }} />}
+          {!grelha && <ChevronRight className="hidden h-5 w-5 shrink-0 self-center sm:block" style={{ color: "var(--line)" }} />}
         </Link>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <button type="button" className="c-badge tap-44" onClick={onEdit}><Pencil className="h-3 w-3" /> Editar</button>
-          <button type="button" className="c-badge tap-44" onClick={onCategory}><Tag className="h-3 w-3" /> Categoria</button>
-          <button type="button" className="c-badge tap-44" onClick={onOrganize}><Tags className="h-3 w-3" /> Organizar</button>
-          <button type="button" className="c-badge tap-44" onClick={onDelete}><Trash2 className="h-3 w-3" /> Eliminar</button>
-          {view === "grelha" && (
-            <Link to="/imoveis/$id" params={{ id: i.id }} className="c-badge tap-44">Abrir <ChevronRight className="h-3 w-3" /></Link>
-          )}
-        </div>
+        {acoes}
       </div>
     </div>
   );
