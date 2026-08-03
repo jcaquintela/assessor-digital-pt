@@ -8,5 +8,5 @@ test("dbg", async ({ page }) => {
   await page.goto("/hoje");
   await page.waitForLoadState("networkidle");
   console.log("URL:", page.url());
-  console.log((await page.locator("body").innerText()).slice(0, 800));
+  console.log("h1:", await page.locator("h1").count(), await page.locator("h1").allInnerTexts());console.log("navPessoas:", await page.getByRole("link", { name: "Pessoas", exact: true }).count());
 });
