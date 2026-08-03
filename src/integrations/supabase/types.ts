@@ -3429,6 +3429,12 @@ export type Database = {
           custom_category: string | null
           custom_category_id: string | null
           deleted_at: string | null
+          doc_artigo_matricial: string | null
+          doc_expires_on: string | null
+          doc_fracao: string | null
+          doc_issued_on: string | null
+          doc_morada: string | null
+          doc_nif: string | null
           document_type: string | null
           error_code: string | null
           error_message: string | null
@@ -3440,6 +3446,7 @@ export type Database = {
           mime_type: string
           opportunity_id: string | null
           original_file_name: string | null
+          photo_value: string | null
           processing_status: string
           related_pending_action_id: string | null
           related_resource_id: string | null
@@ -3466,6 +3473,12 @@ export type Database = {
           custom_category?: string | null
           custom_category_id?: string | null
           deleted_at?: string | null
+          doc_artigo_matricial?: string | null
+          doc_expires_on?: string | null
+          doc_fracao?: string | null
+          doc_issued_on?: string | null
+          doc_morada?: string | null
+          doc_nif?: string | null
           document_type?: string | null
           error_code?: string | null
           error_message?: string | null
@@ -3477,6 +3490,7 @@ export type Database = {
           mime_type: string
           opportunity_id?: string | null
           original_file_name?: string | null
+          photo_value?: string | null
           processing_status?: string
           related_pending_action_id?: string | null
           related_resource_id?: string | null
@@ -3503,6 +3517,12 @@ export type Database = {
           custom_category?: string | null
           custom_category_id?: string | null
           deleted_at?: string | null
+          doc_artigo_matricial?: string | null
+          doc_expires_on?: string | null
+          doc_fracao?: string | null
+          doc_issued_on?: string | null
+          doc_morada?: string | null
+          doc_nif?: string | null
           document_type?: string | null
           error_code?: string | null
           error_message?: string | null
@@ -3514,6 +3534,7 @@ export type Database = {
           mime_type?: string
           opportunity_id?: string | null
           original_file_name?: string | null
+          photo_value?: string | null
           processing_status?: string
           related_pending_action_id?: string | null
           related_resource_id?: string | null

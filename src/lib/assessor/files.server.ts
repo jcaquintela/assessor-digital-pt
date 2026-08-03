@@ -189,6 +189,57 @@ function toUint8(bytes: Uint8Array | ArrayBuffer): Uint8Array {
   return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
 }
 
+/**
+ * Extração de dados do documento (OCR + IA): datas, NIF, artigo matricial,
+ * fração e morada. Renomeia ficheiros com nomes ilegíveis ("SCAN_2026…"),
+ * mantendo sempre um nome legível já escolhido pelo consultor ou por nós.
+ * Nunca falha o processamento: se não conseguir ler, segue em frente.
+ */
+export async function applyDocumentExtraction(args: {
+  supabase: any;
+  fileId: string;
+  bytes: Uint8Array;
+  mimeType: string;
+  currentName: string | null;
+}): Promise<{ text: string | null; expiresOn: string | null } | null> {
+  try {
+    const { readDocument, supportsDocExtraction, hasAnyDocData } = await import(
+      "@/lib/ai/doc-extract.server"
+    );
+    if (!supportsDocExtraction(args.mimeType)) return null;
+    const res = await readDocument(args.bytes, args.mimeType, args.currentName);
+    if (!res.ok) {
+      console.error("[files] doc-extract:", res.error);
+      return null;
+    }
+    const r = res.reading;
+    if (!hasAnyDocData(r) && !r.visible_text) return null;
+
+    const patch: Record<string, unknown> = {
+      doc_issued_on: r.issued_on,
+      doc_expires_on: r.expires_on,
+      doc_nif: r.nif,
+      doc_artigo_matricial: r.artigo_matricial,
+      doc_fracao: r.fracao,
+      doc_morada: r.morada,
+    };
+    if (r.doc_type) patch.document_type = r.doc_type;
+    if (r.visible_text) patch.extracted_text = r.visible_text;
+
+    const { isIllegibleName, suggestDocumentName } = await import("@/lib/drive/doc-meta");
+    if (isAutoName(args.currentName) || isIllegibleName(args.currentName)) {
+      const nome = suggestDocumentName(r);
+      if (nome) patch.original_file_name = nome;
+    }
+
+    await args.supabase.from("uploaded_files").update(patch as never).eq("id", args.fileId);
+    return { text: r.visible_text, expiresOn: r.expires_on };
+  } catch (err) {
+    console.error("[files] applyDocumentExtraction:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 export async function processIncomingFile(
   input: ProcessIncomingFileInput,
 ): Promise<ProcessIncomingFileResult> {
@@ -355,6 +406,19 @@ export async function processIncomingFile(
             .eq("id", fileId);
         }
       }
+      // Documentos (PDF) passam pela extração antes de tentarmos ligar:
+      // a morada/NIF lidos ajudam a encontrar o imóvel certo.
+      if (classification === "documento_pdf") {
+        const meta = await applyDocumentExtraction({
+          supabase,
+          fileId,
+          bytes: body,
+          mimeType,
+          currentName: originalName,
+        });
+        if (meta?.text) extraText = [extraText, meta.text].filter(Boolean).join("\n").slice(0, 20000);
+      }
+
       const { autoLinkAndSuggest } = await import("@/lib/drive/link-suggestions.server");
       const auto = await autoLinkAndSuggest({
         supabase,

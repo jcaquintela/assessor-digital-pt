@@ -11,6 +11,9 @@ const SUPPORTED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp",
 export interface ImageReading {
   is_sign: boolean;
   is_business_card: boolean;
+  is_document: boolean;
+  has_document_value: boolean;
+  photo_kind: string | null;
   visible_text: string | null;
   phones: string[];
   agency_name: string | null;
@@ -36,6 +39,9 @@ Responde apenas com JSON válido, sem markdown, com estas chaves:
 {
   "is_sign": boolean,            // true se for uma placa/letreiro de venda ou arrendamento
   "is_business_card": boolean,   // true se for um cartão de visita pessoal (nome + contactos), e não uma placa nem um documento
+  "is_document": boolean,        // true se for um documento fotografado (caderneta, certidão, contrato, licença, fatura, planta)
+  "has_document_value": boolean, // true se a foto serve o trabalho do consultor (placa, imóvel, obra, documento, cartão, planta, rua). false para refeições, cafés, animais, selfies, memes, capturas de ecrã irrelevantes
+  "photo_kind": string|null,     // 2-3 palavras em PT-PT: "placa de venda", "sala do imóvel", "prato de comida"…
   "visible_text": string|null,   // todo o texto legível, tal como aparece
   "phones": string[],            // números de telefone visíveis, só dígitos e +
   "agency_name": string|null,    // nome da agência/imobiliária, se aparecer
@@ -76,6 +82,13 @@ function coerce(parsed: any): ImageReading {
   return {
     is_sign: parsed?.is_sign === true,
     is_business_card: parsed?.is_business_card === true,
+    is_document: parsed?.is_document === true,
+    // Na dúvida guarda-se: só descarta quando o modelo diz explicitamente que não tem valor.
+    has_document_value: parsed?.has_document_value !== false
+      || parsed?.is_sign === true
+      || parsed?.is_business_card === true
+      || parsed?.is_document === true,
+    photo_kind: str(parsed?.photo_kind, 60),
     visible_text: str(parsed?.visible_text, 1500),
     phones,
     agency_name: str(parsed?.agency_name, 120),

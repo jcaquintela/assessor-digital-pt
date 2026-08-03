@@ -417,6 +417,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
 
     if (pending && pending.intent === "suggest_file_link") {
+      // (ver também confirm_keep_photo, logo abaixo)
       // Sugestão de ligação extra de um documento (Drive Inteligente).
       // Confirmar acrescenta a ligação; recusar não mexe em nada.
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
@@ -432,6 +433,31 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       if (saIsRejection(trimmed)) {
         await markPendingActionStatus(supabase, pending.id, "cancelled");
         return { reply: "Sem problema, deixo a ligação como está." };
+      }
+    }
+
+    // Foto sem valor documental: ficou de fora do Drive à espera de resposta.
+    // "Sim" recupera-a com tudo; "não" deixa-a ir.
+    if (pending && pending.intent === "confirm_keep_photo") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const fileId = payload.file_id ? String(payload.file_id) : null;
+      if (saIsConfirmation(trimmed)) {
+        if (fileId) {
+          await supabase
+            .from("uploaded_files")
+            .update({ deleted_at: null, processing_status: "organized", photo_value: "documental" } as never)
+            .eq("id", fileId)
+            .eq("user_id", userId);
+        }
+        await markPendingActionStatus(supabase, pending.id, "executed", {
+          created_resource_type: "uploaded_file",
+          created_resource_id: fileId,
+        });
+        return { reply: "Guardei a foto no Drive." };
+      }
+      if (saIsRejection(trimmed)) {
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        return { reply: "Certo, não fica no Drive." };
       }
     }
 

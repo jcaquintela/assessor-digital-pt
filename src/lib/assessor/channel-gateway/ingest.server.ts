@@ -592,7 +592,9 @@ async function handleInboundMediaInner(
                     : "imagem",
               })
               .eq("id", result.fileId);
-            const { refineFileName } = await import("@/lib/assessor/files.server");
+            const { refineFileName, applyDocumentExtraction } = await import(
+              "@/lib/assessor/files.server"
+            );
             await refineFileName(
               supabaseAdmin,
               result.fileId,
@@ -601,6 +603,65 @@ async function handleInboundMediaInner(
                 ? `cartão de ${reading.person_name}`
                 : (reading.visible_text ?? reading.description),
             );
+
+            // Documento fotografado → mesma extração dos PDFs (datas, NIF,
+            // artigo matricial, morada) e nome legível.
+            if (reading.is_document) {
+              const { data: cur } = await supabaseAdmin
+                .from("uploaded_files")
+                .select("original_file_name")
+                .eq("id", result.fileId)
+                .maybeSingle();
+              await applyDocumentExtraction({
+                supabase: supabaseAdmin,
+                fileId: result.fileId,
+                bytes: dl.bytes,
+                mimeType,
+                currentName: (cur as any)?.original_file_name ?? null,
+              });
+            }
+
+            // Filtro de ruído: fotos sem valor (refeição, café, captura de
+            // ecrã irrelevante) não ficam no Drive sem o consultor querer —
+            // mesma disciplina do áudio: pergunta-se antes de manter.
+            if (!reading.has_document_value && !reading.is_sign && !reading.is_business_card && !reading.is_document) {
+              await supabaseAdmin
+                .from("uploaded_files")
+                .update({
+                  photo_value: "sem_valor",
+                  deleted_at: new Date().toISOString(),
+                  processing_status: "deleted",
+                } as never)
+                .eq("id", result.fileId);
+              const kind = reading.photo_kind ? ` (${reading.photo_kind})` : "";
+              const question = `Recebi a foto${kind}, mas não me parece ter valor para o teu trabalho — não a guardei no Drive. Queres que a guarde na mesma?`;
+              const { findActivePendingAction, markPendingActionStatus, createPendingAction } =
+                await import("@/lib/assessor/memory.server");
+              const prev = await findActivePendingAction(supabaseAdmin, userId, adapter.channel);
+              if (prev) await markPendingActionStatus(supabaseAdmin, prev.id, "cancelled");
+              await createPendingAction(supabaseAdmin, {
+                userId,
+                channel: adapter.channel,
+                intent: "confirm_keep_photo",
+                originalContent: reading.photo_kind ?? "foto sem valor documental",
+                payload: { file_id: result.fileId, photo_kind: reading.photo_kind },
+                pendingQuestion: question,
+                currentQuestion: question,
+                sourceMessageId: persistedUuid,
+              });
+              await deliverReply(adapter, supabaseAdmin, {
+                userId,
+                externalConversationId: inbound.externalConversationId,
+                outcome: { reply: question },
+                replyTo: inbound.replyToMessageId ?? null,
+              });
+              return;
+            }
+
+            await supabaseAdmin
+              .from("uploaded_files")
+              .update({ photo_value: "documental" } as never)
+              .eq("id", result.fileId);
           }
 
           // Cartão de visita → proposta de contacto (com botões), antes de

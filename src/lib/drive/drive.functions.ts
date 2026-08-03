@@ -659,3 +659,114 @@ export const setFileLink = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+// ---- Alertas de validade ("Isto merece atenção" no Drive) -------------
+// Reutiliza o padrão das outras páginas: um único destaque, com o documento
+// e o imóvel/negócio a que está ligado.
+export const driveAttention = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { expiryAlert } = await import("./doc-meta");
+
+    const { data: rows } = await (supabase.from("uploaded_files") as any)
+      .select(
+        "id, original_file_name, document_type, classification, doc_issued_on, doc_expires_on",
+      )
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .is("archived_at", null)
+      .or("doc_expires_on.not.is.null,doc_issued_on.not.is.null")
+      .limit(300);
+
+    const flagged = ((rows ?? []) as any[])
+      .map((f) => ({ file: f, alert: expiryAlert(f) }))
+      .filter((x) => x.alert)
+      .sort((a, b) => (a.alert!.days ?? 0) - (b.alert!.days ?? 0));
+
+    if (!flagged.length) return { count: 0, items: [] as any[] };
+
+    // Nome do imóvel / negócio ligado, para o alerta ter contexto.
+    const ids = flagged.map((x) => x.file.id);
+    const { data: links } = await (supabase.from("file_links") as any)
+      .select("file_id, entity_type, entity_id")
+      .eq("user_id", userId)
+      .in("file_id", ids)
+      .in("entity_type", ["property", "opportunity"]);
+
+    const byType: Record<string, string[]> = {};
+    for (const l of ((links ?? []) as any[])) (byType[l.entity_type] ??= []).push(l.entity_id);
+    const names = new Map<string, string>();
+    await Promise.all(
+      Object.entries(byType).map(async ([type, entityIds]) => {
+        const table = type === "property" ? "properties" : "opportunities";
+        const { data: recs } = await (supabase as any)
+          .from(table)
+          .select("id, title")
+          .eq("user_id", userId)
+          .in("id", [...new Set(entityIds)]);
+        for (const r of ((recs ?? []) as any[])) names.set(`${type}:${r.id}`, String(r.title ?? ""));
+      }),
+    );
+    const linkOf = new Map<string, { type: string; name: string }>();
+    for (const l of ((links ?? []) as any[])) {
+      const name = names.get(`${l.entity_type}:${l.entity_id}`);
+      if (name && !linkOf.has(l.file_id)) linkOf.set(l.file_id, { type: l.entity_type, name });
+    }
+
+    return {
+      count: flagged.length,
+      items: flagged.slice(0, 5).map((x) => ({
+        id: x.file.id as string,
+        name: (x.file.original_file_name as string | null) ?? "Documento",
+        docType: (x.file.document_type as string | null) ?? null,
+        level: x.alert!.level,
+        reason: x.alert!.reason,
+        linked: linkOf.get(x.file.id) ?? null,
+      })),
+    };
+  });
+
+// ---- Partilhar por WhatsApp -------------------------------------------
+// Prepara — nunca envia. O consultor escolhe o destinatário e confirma no
+// WhatsApp, tal como nas mensagens preparadas.
+export const listShareContacts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await (supabase.from("people") as any)
+      .select("id, name, phone")
+      .eq("user_id", userId)
+      .not("phone", "is", null)
+      .order("name")
+      .limit(300);
+    return ((data ?? []) as any[])
+      .map((p) => ({ id: String(p.id), name: String(p.name ?? "Sem nome"), phone: String(p.phone ?? "") }))
+      .filter((p) => p.phone.replace(/\D/g, "").length >= 9);
+  });
+
+export const prepareFileShare = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { fileId: string }) => ({ fileId: String(data?.fileId ?? "") }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: file } = await (supabase.from("uploaded_files") as any)
+      .select("id, original_file_name, storage_path, document_type")
+      .eq("id", data.fileId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!file) throw new Error("Ficheiro não encontrado.");
+    if (!(file as any).storage_path) throw new Error("Este ficheiro não tem conteúdo para partilhar.");
+
+    // Link temporário (24h) — quem receber abre o documento, sem entrar na app.
+    const { data: signed, error } = await supabase.storage
+      .from("assessor-files")
+      .createSignedUrl((file as any).storage_path, 60 * 60 * 24);
+    if (error || !signed?.signedUrl) throw new Error("Não consegui preparar o link do ficheiro.");
+
+    const nome = (file as any).original_file_name ?? "documento";
+    return {
+      fileName: nome as string,
+      url: signed.signedUrl as string,
+      text: `Boa tarde, envio o documento "${nome}": ${signed.signedUrl}\n(link válido durante 24 horas)`,
+    };
+  });
