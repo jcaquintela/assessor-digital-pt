@@ -34,7 +34,8 @@ import {
   hasValidPendingContext,
   type AgendaItem,
 } from "./deterministic.server";
-import { applySafetyNet, buildArchiveContent } from "./safety-net.server";
+import { applySafetyNet, buildArchiveContent, archiveToMiscellaneous } from "./safety-net.server";
+import { isRegisterOnly, isAnswerablePending } from "../pending-answerable";
 import { formatQueryResults, isQueryTool } from "./query-results";
 import {
   detectPersonBriefQuery,
@@ -284,7 +285,32 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   // consultor confirma/cancela, resolvemos sem passar por THINK/DECIDE.
   // Garante que o "Feito" só sai depois da persistência real.
   try {
-    const pending = await findActivePendingAction(supabase, userId, channel);
+    let pending = await findActivePendingAction(supabase, userId, channel);
+
+    // Um pendente antigo, cuja pergunta já não é a que está em aberto, não
+    // pode ser resolvido por uma resposta destinada a outro assunto.
+    if (pending && !isAnswerablePending(pending, { lastAssistantContent: lastAssistantContent0 })) {
+      await markPendingActionStatus(supabase, pending.id, "expired", {
+        error_message: "stale: pergunta já não estava em aberto",
+      });
+      pending = null;
+    }
+
+    // "Só registar" / "sem lembrete": recusa explícita de agendar. Fecha já o
+    // rascunho e guarda o assunto em Diversos, em vez de o deixar vivo.
+    if (pending && isRegisterOnly(trimmed)) {
+      const content = String(pending.original_content ?? "").trim() || trimmed;
+      await markPendingActionStatus(supabase, pending.id, "cancelled", {
+        error_message: "consultor pediu só registo, sem lembrete",
+      });
+      const saved = await archiveToMiscellaneous(ctx, content, "ficou só registado, sem lembrete");
+      return {
+        reply: saved
+          ? "Certo — fica só registado, sem lembrete. Deixei em Diversos."
+          : "Certo — fica só registado, sem lembrete.",
+      };
+    }
+
     pendingForArchive = pending ?? null;
     if (pending && pending.intent === "create_prospecting_lead") {
       if (saIsConfirmation(trimmed)) {
