@@ -383,6 +383,31 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
         await markPendingActionStatus(supabase, pending.id, "cancelled");
         return { reply: "Está bem, não guardei nada do áudio." };
       }
+      // Correção a um item específico antes do "sim" — a proposta mantém-se
+      // aberta e é reescrita já corrigida.
+      {
+        const { coerceBreakdown, formatBreakdownRevised } = await import("./audio-breakdown");
+        const { parseBreakdownEdit, applyBreakdownEdit, describeBreakdownEdit } =
+          await import("./audio-breakdown-edit");
+        const { todayLisbonYmd } = await import("./audio-breakdown.server");
+        const current = coerceBreakdown(pending.structured_payload ?? {});
+        const edit = parseBreakdownEdit(trimmed, current.items.length, todayLisbonYmd());
+        if (edit) {
+          const next = applyBreakdownEdit(current, edit);
+          if (!next.items.length) {
+            await markPendingActionStatus(supabase, pending.id, "cancelled");
+            return { reply: "Tirei o último ponto — já não fica nada por guardar deste áudio." };
+          }
+          const { updatePendingActionPayload } = await import("../memory.server");
+          await updatePendingActionPayload(
+            supabase,
+            pending.id,
+            next as unknown as Record<string, any>,
+            { status: "pending_confirmation" },
+          );
+          return { reply: formatBreakdownRevised(next, describeBreakdownEdit(edit)) };
+        }
+      }
     }
 
     if (pending && pending.intent === "suggest_file_link") {
