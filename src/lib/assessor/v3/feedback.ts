@@ -5,7 +5,14 @@ export type FeedbackKind = "bug" | "suggestion";
 
 // Só apanha quando o alvo é claramente o produto/Afonso, para não confundir
 // uma queixa sobre um proprietário ou cliente com feedback do produto.
-const PRODUCT_RE = /\b(afonso|assessor|aplica[çc][ãa]o|app|dashboard|sistema|plataforma|isto|isso)\b/i;
+const PRODUCT_RE = /\b(afonso|assessor|aplica[çc][ãa]o|app|dashboard|sistema|plataforma)\b/i;
+
+// Marcadores fracos: podem ser o produto ou a situação com uma pessoa.
+const VAGUE_RE = /\b(isto|isso|aquilo)\b/i;
+
+// Sinais de que a frase fala de uma pessoa (proprietário, cliente, etc.).
+const PERSON_RE =
+  /\b(propriet[áa]ri[oa]s?|dono|dona|client[ea]s?|comprador(?:es|a)?|vendedor(?:es|a)?|inquilin[oa]s?|senhor(?:a)?|s[ru]?a?\.?\s|visita|angaria[çc][ãa]o|neg[óo]cio|contacto)\b/i;
 
 const BUG_RE =
   /\b(bug|erro|falha|avaria|rebentou|partiu|deixou\s+de\s+funcionar|n[ãa]o\s+funciona|est[áa]\s+mal|apareceu\s+mal|problema\s+t[ée]cnico)\b/i;
