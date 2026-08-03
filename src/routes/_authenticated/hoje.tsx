@@ -481,24 +481,17 @@ function HojePage() {
                   <p className="c-muted text-sm">Nenhuma prioridade urgente. Bom trabalho.</p>
                 )}
                 {priorities.map((p) => (
-                  <div key={`${p.subject_type}:${p.subject_id}`} className="c-card c-card-hover p-3.5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{assuntoDe(p)}</div>
-                        {/* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */}
-                        <div className="mt-0.5 text-xs" style={{ color: "var(--ink)" }}>
-                          {explainPriority(p)}
-                          {assuntoDe(p) !== p.action && p.action
-                            ? ` Vale a pena ${p.action.charAt(0).toLowerCase()}${p.action.slice(1)}.`
-                            : ""}
-                        </div>
-                        <div className="c-muted mt-0.5 text-xs">
-                          {[
-                            p.entity_label,
-                            p.due_at ? formatData(p.due_at) : null,
-                          ].filter(Boolean).join(" · ")}
-                        </div>
-                        {p.deal_id && p.deal_label ? (
+                  <AssuntoCard
+                    key={`${p.subject_type}:${p.subject_id}`}
+                    titulo={assuntoDe(p)}
+                    /* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */
+                    frase={fraseComAcao(p, explainPriority(p))}
+                    meta={[
+                      p.entity_label,
+                      p.due_at ? formatData(p.due_at) : null,
+                    ].filter(Boolean).join(" · ")}
+                    extra={
+                      p.deal_id && p.deal_label ? (
                           <Link
                             to="/negocios/$id"
                             params={{ id: p.deal_id }}
@@ -507,10 +500,9 @@ function HojePage() {
                           >
                             Negócio: {p.deal_label}
                           </Link>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      ) : null
+                    }
+                    actions={<>
                       <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
                         <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
                       </button>
@@ -557,8 +549,8 @@ function HojePage() {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </div>
-                  </div>
+                    </>}
+                  />
                 ))}
               </CardContent>
             </Card>
