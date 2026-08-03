@@ -104,67 +104,80 @@ function FeedbackPage() {
       ) : (
         <div className="space-y-3">
           {items.map((i: any) => (
-            <article key={i.id} className="rounded-lg border bg-card p-4 space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span className="rounded-full border px-2 py-0.5 font-medium text-foreground">
-                  {i.kind === "bug" ? "Erro" : "Sugestão"}
-                </span>
-                <span className="rounded-full border px-2 py-0.5">{STATUS_LABEL[i.status] ?? i.status}</span>
-                <span>{i.consultant_name ?? i.consultant_email ?? "Consultor"}</span>
-                <span>· {i.channel}</span>
-                <span>· {new Date(i.created_at).toLocaleString("pt-PT")}</span>
-              </div>
-
-              <p className="whitespace-pre-wrap text-sm">{i.body}</p>
-
-              {i.attachment?.url ? (
-                <a
-                  href={i.attachment.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block w-fit rounded-md border p-2 hover:bg-muted"
-                >
-                  {String(i.attachment.mime ?? "").startsWith("image/") ? (
+            <article key={i.id} className="rounded-lg border bg-card p-4">
+              <div className="flex flex-col gap-4 md:flex-row">
+                {i.attachment?.url && String(i.attachment.mime ?? "").startsWith("image/") ? (
+                  <a
+                    href={i.attachment.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 rounded-md border p-2 hover:bg-muted md:w-48"
+                  >
                     <img
                       src={i.attachment.url}
                       alt={`Anexo: ${i.attachment.name}`}
-                      className="max-h-48 rounded"
+                      className="h-32 w-full rounded object-cover md:h-28"
                       loading="lazy"
                     />
-                  ) : (
-                    <span className="text-sm underline">Anexo: {i.attachment.name}</span>
-                  )}
-                </a>
-              ) : i.attachment_file_id ? (
-                <p className="text-xs text-muted-foreground">Anexo indisponível.</p>
-              ) : null}
+                  </a>
+                ) : null}
+                <div className="flex-1 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full border px-2 py-0.5 font-medium text-foreground">
+                      {i.kind === "bug" ? "Erro" : "Sugestão"}
+                    </span>
+                    <span className="rounded-full border px-2 py-0.5">{STATUS_LABEL[i.status] ?? i.status}</span>
+                    {i.attachment_file_id && (
+                      <span className="rounded-full border border-dashed px-2 py-0.5">Com anexo</span>
+                    )}
+                    <span>{i.consultant_name ?? i.consultant_email ?? "Consultor"}</span>
+                    <span>· {i.channel}</span>
+                    <span>· {new Date(i.created_at).toLocaleString("pt-PT")}</span>
+                  </div>
 
-              <Textarea
-                rows={2}
-                placeholder="Nota interna"
-                defaultValue={i.internal_note ?? ""}
-                onChange={(e) => setNotes((n) => ({ ...n, [i.id]: e.target.value }))}
-              />
+                  <p className="whitespace-pre-wrap text-sm">{i.body}</p>
 
-              <div className="flex flex-wrap gap-2">
-                {["em_analise", "resolvido", "arquivado"].map((s) => (
-                  <Button
-                    key={s}
-                    size="sm"
-                    variant="outline"
-                    disabled={mut.isPending || i.status === s}
-                    onClick={() => mut.mutate({ id: i.id, status: s, internalNote: notes[i.id] ?? i.internal_note ?? "" })}
-                  >
-                    {STATUS_LABEL[s]}
-                  </Button>
-                ))}
-                <Button
-                  size="sm"
-                  disabled={mut.isPending || notes[i.id] === undefined}
-                  onClick={() => mut.mutate({ id: i.id, internalNote: notes[i.id] ?? "" })}
-                >
-                  Guardar nota
-                </Button>
+                  {i.attachment?.url && !String(i.attachment.mime ?? "").startsWith("image/") ? (
+                    <a
+                      href={i.attachment.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md border p-2 text-sm underline hover:bg-muted"
+                    >
+                      Anexo: {i.attachment.name}
+                    </a>
+                  ) : i.attachment_file_id && !i.attachment?.url ? (
+                    <p className="text-xs text-muted-foreground">Anexo indisponível.</p>
+                  ) : null}
+
+                  <Textarea
+                    rows={2}
+                    placeholder="Nota interna"
+                    defaultValue={i.internal_note ?? ""}
+                    onChange={(e) => setNotes((n) => ({ ...n, [i.id]: e.target.value }))}
+                  />
+
+                  <div className="flex flex-wrap gap-2">
+                    {["em_analise", "resolvido", "arquivado"].map((s) => (
+                      <Button
+                        key={s}
+                        size="sm"
+                        variant="outline"
+                        disabled={mut.isPending || i.status === s}
+                        onClick={() => mut.mutate({ id: i.id, status: s, internalNote: notes[i.id] ?? i.internal_note ?? "" })}
+                      >
+                        {STATUS_LABEL[s]}
+                      </Button>
+                    ))}
+                    <Button
+                      size="sm"
+                      disabled={mut.isPending || notes[i.id] === undefined}
+                      onClick={() => mut.mutate({ id: i.id, internalNote: notes[i.id] ?? "" })}
+                    >
+                      Guardar nota
+                    </Button>
+                  </div>
+                </div>
               </div>
             </article>
           ))}
