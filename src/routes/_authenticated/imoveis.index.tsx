@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { exportProperties } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 import { getPropertyAttention } from "@/lib/imoveis/attention.functions";
+import { assuntoDeImovel } from "@/lib/assessor/assunto";
+import { AssuntoCard } from "@/components/assunto-card";
 
 export const Route = createFileRoute("/_authenticated/imoveis/")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -156,21 +158,13 @@ function ImoveisPage() {
       </div>
 
       {aviso && (
-        <div className="c-spotlight mb-4">
-          <div className="c-spot-tag"><AlertTriangle className="h-3.5 w-3.5" /> Isto merece atenção</div>
-          <p className="mt-2 text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
-            {aviso.count === 1 ? (
-              <>
-                <strong>{aviso.first.title}</strong> continua "Por angariar" há {aviso.days} dias sem contacto real registado
-              </>
-            ) : (
-              <>
-                <strong>{aviso.count} imóveis</strong> continuam "Por angariar" há mais de 10 dias sem contacto real registado
-                {" "}(o mais parado é {aviso.first.title}, há {aviso.days} dias)
-              </>
-            )} — vale a pena retomares antes que arrefeçam.
-          </p>
-        </div>
+        <section className="c-spotlight mb-4">
+          <AssuntoCard
+            destaque
+            tag={<><AlertTriangle className="h-4 w-4" /> Isto merece atenção</>}
+            {...assuntoDeImovel(aviso)}
+          />
+        </section>
       )}
 
       <div className="relative mb-4">
