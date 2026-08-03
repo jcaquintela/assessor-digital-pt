@@ -155,6 +155,7 @@ export async function findDocuments(
 }
 
 /** Documentos ligados a uma pessoa/imóvel pelo nome ("que documentos tenho da Sra. Ana?"). */
+
 export async function findDocumentsForSubject(
   supabase: any,
   userId: string,
