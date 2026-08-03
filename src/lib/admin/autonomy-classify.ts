@@ -12,6 +12,7 @@ export const WRITE_TOOL_TABLE: Record<string, string> = {
   create_property: "properties",
   update_property: "properties",
   create_follow_up: "follow_ups",
+  create_routine: "routines",
   create_event: "follow_ups",
   create_reminder: "reminders",
   save_interaction: "interactions",

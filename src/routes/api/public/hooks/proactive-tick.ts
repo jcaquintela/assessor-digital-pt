@@ -54,6 +54,11 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
         const dispatched = await dispatchPendingNudges(supabaseAdmin as any, {});
         const reminders = await dispatchDueReminders(supabaseAdmin as any, {});
 
+        // Rotinas (lembretes recorrentes) — materializa os que já venceram.
+        const { materializeDueRoutinesServer } = await import("@/lib/assessor/routines-run.server");
+        let routines = { created: 0, skipped: 0 };
+        try { routines = await materializeDueRoutinesServer(supabaseAdmin as any); } catch { /* noop */ }
+
         return new Response(
           JSON.stringify({
             ok: true,
@@ -65,6 +70,7 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
             remindersSent: reminders.sent,
             remindersFailed: reminders.failed,
             remindersSkipped: reminders.skipped,
+            routinesCreated: routines.created,
           }),
           { headers: { "Content-Type": "application/json" } },
         );

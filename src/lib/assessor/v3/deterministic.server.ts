@@ -40,6 +40,16 @@ const MISC_MODULE_RE = /\b(diversos|notas?|ideias?|apontamentos?)\b/i;
 const MISC_QUESTION_RE =
   /\b(?:(?:o\s+)?que\s+(?:tenho|h[áa]|est[áa])|tenho|mostra(?:-me)?|lista(?:r|-me)?|ver)\b/i;
 
+// Pedidos de criação/lembrete. Bug real: "Amanhã tenho uma visita ... às
+// 14:30. Recorda-me pela manhã. ... todos os dias às 9:45. Combinado?"
+// era intercetado como consulta de agenda ("visita" + "?") e respondido com
+// "Não tens compromissos para amanhã" — perdendo os dois pedidos.
+const CREATE_INTENT_RE =
+  /\b(recorda[-\s]?me|lembra[-\s]?me|lembrar[-\s]?me|avisa[-\s]?me|marca(?:r)?\b|agenda(?:r)?[-\s]?me|regista(?:r)?\b|apontar?\b|todos\s+os\s+dias|todas\s+as\s+(?:semanas|manh[ãa]s)|diariamente|sempre\s+[àa]s)\b/i;
+
+// Hora explícita ("às 14:30", "14h30", "9:45").
+const EXPLICIT_TIME_RE = /(?:\b[àa]s\s*)?\b([01]?\d|2[0-3])\s*(?:[:h]\s*[0-5]\d)\b/i;
+
 export function detectMiscQuery(text: string): boolean {
   const t = (text ?? "").trim();
   if (!t) return false;
@@ -52,6 +62,10 @@ export function detectAgendaQuery(text: string): AgendaPeriod | null {
   const t = (text ?? "").trim();
   if (!t) return null;
   if (MISC_MODULE_RE.test(t) && !AGENDA_WORD_RE.test(t)) return null;
+
+  // Mensagem que pede para criar/lembrar, ou que declara um compromisso com
+  // hora, nunca é uma simples consulta: tem de ir ao motor de raciocínio.
+  if (CREATE_INTENT_RE.test(t) || EXPLICIT_TIME_RE.test(t)) return null;
 
   const period: AgendaPeriod | null =
     TODAY_RE.test(t) ? "today" :
@@ -105,6 +119,19 @@ export function formatAgendaReply(period: AgendaPeriod, items: AgendaItem[]): st
 // Formulação única para "sim/ok" sem contexto — mantida consistente para
 // que os testes e o consultor vejam sempre a mesma resposta.
 export const BARE_CONFIRMATION_REPLY = "Claro. A que te referes?";
+
+// "Ok" logo a seguir a uma afirmação do Assessor ("Marcada a visita...") é
+// só reconhecimento — não é uma confirmação órfã. Bug real: gerava
+// "Claro. A que te referes?" depois de a visita ter sido confirmada.
+export const ACKNOWLEDGED_REPLY = "Combinado.";
+
+const ACK_ONLY_RE =
+  /^\s*(ok(ay|ei)?|okey|certo|perfeito|boa|[óo]ptimo|otimo|combinado|est[áa]\s+bem|fixe|top|obrigad[oa]|👍|✅|🙏)\s*[.!]*\s*$/iu;
+
+/** Reconhecimento neutro (não pede nada, não confirma nada por decidir). */
+export function isBareAcknowledgement(text: string): boolean {
+  return ACK_ONLY_RE.test((text ?? "").trim());
+}
 
 // Contexto pendente é considerado válido apenas se existir uma
 // pending_action no estado apropriado. O caller deve ter feito o SELECT
