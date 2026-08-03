@@ -3,7 +3,15 @@
 // nunca apenas uma descrição.
 
 import type { ChannelAdapter } from "@/lib/assessor/channel-gateway/types";
-import { detectDocumentRequest, formatCandidateList, parseChoice } from "./retrieve";
+import {
+  detectDocumentRequest,
+  docOptionLabel,
+  encodeDocCommand,
+  formatCandidateList,
+  parseChoice,
+  parseDocCommand,
+  shortDocId,
+} from "./retrieve";
 import { findDocuments, findDocumentsForSubject, loadDocument, type DocHit } from "./retrieve.server";
 
 export const DOC_CHOICE_INTENT = "choosing_document";
@@ -81,6 +89,82 @@ export async function deliverDocument(
   return true;
 }
 
+
+/**
+ * Ecrã conversacional de escolha: mostra os documentos possíveis como opções
+ * tocáveis (botões até 3, lista até 10) e guarda os candidatos no rascunho
+ * para a resposta seguinte — por toque ou pelo número escrito.
+ */
+async function askWhichDocument(
+  adapter: ChannelAdapter,
+  supabase: any,
+  args: { userId: string; to: string; content: string; header: string; hits: DocHit[] },
+): Promise<void> {
+  const { userId, to, content, header, hits } = args;
+  const { createPendingAction } = await import("@/lib/assessor/memory.server");
+  const { encodeInteractiveId } = await import("@/lib/assessor/interactive");
+
+  const text = formatCandidateList(
+    hits.map((h) => ({ fileName: h.fileName, label: h.entityLabels[0] ?? h.docType })),
+    header,
+  );
+
+  await createPendingAction(supabase, {
+    userId,
+    channel: adapter.channel,
+    intent: DOC_CHOICE_INTENT,
+    originalContent: content,
+    payload: { candidates: hits },
+    pendingQuestion: text,
+    currentQuestion: text,
+  });
+
+  const options = hits.slice(0, 10).map((h) => ({
+    id: encodeInteractiveId(encodeDocCommand(h.id)),
+    label: docOptionLabel(h.fileName),
+    description: h.entityLabels[0] ?? h.docType ?? null,
+  }));
+
+  let sent = false;
+  if (adapter.sendInteractive) {
+    try {
+      const r = await adapter.sendInteractive(to, {
+        kind: options.length <= 3 ? "buttons" : "list",
+        body: `${header}\n\nToca no que queres que te mande.`,
+        options,
+        listButtonLabel: "Ver documentos",
+      });
+      sent = r.ok;
+      if (!r.ok) {
+        console.error(`[drive/retrieve] interactive falhou (${adapter.channel}):`, r.error ?? "");
+      }
+    } catch (err) {
+      console.error(
+        `[drive/retrieve] interactive (${adapter.channel}):`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
+  if (sent) {
+    try {
+      await supabase.from("assessor_messages").insert({
+        user_id: userId,
+        role: "assistant",
+        content: text,
+        message_type: `${adapter.channel}_interactive`,
+        status: "sent",
+        channel: adapter.channel,
+        sender_phone: to,
+      } as never);
+    } catch { /* noop */ }
+    return;
+  }
+
+  // Canal sem botões (ou fora da janela): a mesma lista numerada em texto.
+  await say(adapter, supabase, userId, to, text);
+}
+
 /**
  * Trata pedidos de documentos. Devolve true quando já respondeu ao turno.
  */
@@ -91,12 +175,49 @@ export async function handleDocumentRequest(
 ): Promise<boolean> {
   const { userId, to, content } = args;
   try {
-    const { findActivePendingAction, createPendingAction, markPendingActionStatus } = await import(
+    const { findActivePendingAction, markPendingActionStatus } = await import(
       "@/lib/assessor/memory.server"
     );
     const pending = await findActivePendingAction(supabase, userId, adapter.channel);
 
-    // (1) Escolha de um documento de uma lista proposta antes.
+    // (0) Toque numa das opções da lista de escolha.
+    const cmd = parseDocCommand(content);
+    if (cmd) {
+      const candidates = ((pending?.structured_payload as any)?.candidates ?? []) as DocHit[];
+      let hit = candidates.find((c) => shortDocId(c.id) === cmd) ?? null;
+      if (!hit) {
+        const { data: row } = await supabase
+          .from("uploaded_files")
+          .select("id, original_file_name, internal_file_name, mime_type, document_type")
+          .eq("user_id", userId)
+          .is("deleted_at", null)
+          .ilike("id::text", `${cmd.slice(0, 8)}%`)
+          .maybeSingle();
+        if (row) {
+          hit = {
+            id: row.id,
+            fileName: String(row.original_file_name ?? row.internal_file_name ?? "documento"),
+            mimeType: String(row.mime_type ?? "application/octet-stream"),
+            storagePath: null,
+            docType: row.document_type ?? null,
+            summary: null,
+            entityLabels: [],
+            score: 1,
+          };
+        }
+      }
+      if (pending?.intent === DOC_CHOICE_INTENT) {
+        await markPendingActionStatus(supabase, pending.id, "executed");
+      }
+      if (!hit) {
+        await say(adapter, supabase, userId, to, "Esse documento já não está disponível. Diz-me outra vez qual queres.");
+        return true;
+      }
+      await deliverDocument(adapter, supabase, userId, to, hit);
+      return true;
+    }
+
+    // (1) Escolha escrita ("o 2", "o primeiro") de uma lista proposta antes.
     if (pending?.intent === DOC_CHOICE_INTENT) {
       const candidates = ((pending.structured_payload as any)?.candidates ?? []) as DocHit[];
       const idx = parseChoice(content, candidates.length);
@@ -121,21 +242,12 @@ export async function handleDocumentRequest(
         await say(adapter, supabase, userId, to, `Não tenho documentos guardados${label ? ` de ${label}` : ` sobre "${req.subject}"`}.`);
         return true;
       }
-      const header = `Tenho ${hits.length} documento${hits.length > 1 ? "s" : ""}${label ? ` de ${label}` : ""}:`;
-      const text = formatCandidateList(
-        hits.map((h) => ({ fileName: h.fileName, label: h.docType })),
-        header,
-      );
-      await createPendingAction(supabase, {
-        userId,
-        channel: adapter.channel,
-        intent: DOC_CHOICE_INTENT,
-        originalContent: content,
-        payload: { candidates: hits },
-        pendingQuestion: text,
-        currentQuestion: text,
-      });
-      await say(adapter, supabase, userId, to, text);
+      if (hits.length === 1) {
+        await deliverDocument(adapter, supabase, userId, to, hits[0]!);
+        return true;
+      }
+      const header = `Tenho ${hits.length} documentos${label ? ` de ${label}` : ""}:`;
+      await askWhichDocument(adapter, supabase, { userId, to, content, header, hits });
       return true;
     }
 
@@ -155,20 +267,13 @@ export async function handleDocumentRequest(
       const ok = await deliverDocument(adapter, supabase, userId, to, hits[0]!);
       return ok || true;
     }
-    const text = formatCandidateList(
-      hits.map((h) => ({ fileName: h.fileName, label: h.entityLabels[0] ?? h.docType })),
-      "Tenho estes que encaixam:",
-    );
-    await createPendingAction(supabase, {
+    await askWhichDocument(adapter, supabase, {
       userId,
-      channel: adapter.channel,
-      intent: DOC_CHOICE_INTENT,
-      originalContent: content,
-      payload: { candidates: hits },
-      pendingQuestion: text,
-      currentQuestion: text,
+      to,
+      content,
+      header: "Tenho estes que encaixam:",
+      hits,
     });
-    await say(adapter, supabase, userId, to, text);
     return true;
   } catch (err) {
     console.error(
