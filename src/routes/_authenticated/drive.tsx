@@ -13,9 +13,11 @@ import {
   uploadDriveFile,
   deleteDriveFiles,
   restoreDriveFiles,
+  driveAttention,
 } from "@/lib/drive/drive.functions";
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
+import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import {
   FileText,
@@ -30,6 +32,8 @@ import {
   Tag,
   Trash2,
   Undo2,
+  MessageCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 type Tab =
@@ -154,6 +158,11 @@ function DrivePage() {
     queryKey: ["drive", "counts"],
     queryFn: () => fetchCounts(),
   });
+  const fetchAttention = useServerFn(driveAttention);
+  const attentionQ = useQuery({
+    queryKey: ["drive", "atencao"],
+    queryFn: () => fetchAttention(),
+  });
 
   const onPickFile = () => fileRef.current?.click();
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,6 +223,7 @@ function DrivePage() {
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível recuperar."),
   });
 
+  const [shareTarget, setShareTarget] = useState<{ id: string; name: string | null } | null>(null);
   const naReciclagem = tab === "reciclagem";
 
   const eliminar = (ids: string[], label: string) => {
@@ -292,6 +302,40 @@ function DrivePage() {
       </div>
 
       {listQ.isLoading && <div className="c-muted text-sm">A carregar…</div>}
+
+      {(attentionQ.data?.count ?? 0) > 0 && (
+        <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+            <AlertTriangle className="h-4 w-4 text-amber-500" /> Isto merece atenção
+          </div>
+          <ul className="space-y-1.5">
+            {(attentionQ.data?.items ?? []).map((it: any) => (
+              <li key={it.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+                <button
+                  type="button"
+                  className="font-medium underline-offset-2 hover:underline"
+                  onClick={() => abrirFicheiro(it.id)}
+                >
+                  {it.name}
+                </button>
+                <span className={it.level === "aviso" ? "c-muted" : "text-destructive"}>
+                  {it.reason}
+                </span>
+                {it.linked && (
+                  <span className="c-muted">
+                    · {it.linked.type === "property" ? "imóvel" : "negócio"}: {it.linked.name}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {(attentionQ.data?.count ?? 0) > (attentionQ.data?.items?.length ?? 0) && (
+            <div className="c-muted mt-1.5 text-xs">
+              e mais {(attentionQ.data!.count as number) - (attentionQ.data!.items.length as number)} documento(s).
+            </div>
+          )}
+        </div>
+      )}
 
       <CategoriesBar selected={categoryId} onSelect={setCategoryId} />
 
@@ -473,6 +517,19 @@ function DrivePage() {
                       >
                         <Tag className="h-3 w-3" /> {catName ? "Mudar categoria" : "Categoria"}
                       </button>
+                      {!naReciclagem && (
+                        <button
+                          type="button"
+                          className="c-badge tap-44"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShareTarget({ id: f.id, name: f.original_file_name ?? null });
+                          }}
+                        >
+                          <MessageCircle className="h-3 w-3" /> Abrir no WhatsApp
+                        </button>
+                      )}
                       {naReciclagem ? (
                         <button
                           type="button"
@@ -514,6 +571,13 @@ function DrivePage() {
         fileName={fixTarget?.name}
         open={!!fixTarget}
         onOpenChange={(v) => { if (!v) setFixTarget(null); }}
+      />
+
+      <ShareWhatsAppDialog
+        fileId={shareTarget?.id ?? null}
+        fileName={shareTarget?.name}
+        open={!!shareTarget}
+        onOpenChange={(v) => { if (!v) setShareTarget(null); }}
       />
 
       <FileCategoryDialog
