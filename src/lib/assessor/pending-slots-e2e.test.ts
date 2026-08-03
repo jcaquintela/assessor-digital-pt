@@ -170,3 +170,78 @@ describe("E2E — dois pendentes em simultâneo", () => {
     expect((await findActivePendingAction(db, USER, CHANNEL))?.intent).toBe("create_follow_up");
   });
 });
+
+/** Envelhece um rascunho: o TTL passou (o consultor respondeu tarde demais). */
+function expire(db: any, id: string) {
+  const row = db.state.pending_actions.find((r: any) => r.id === id);
+  row.expires_at = new Date(Date.now() - 60_000).toISOString();
+}
+
+describe("E2E — pendentes expirados (TTL) deixam de ser resolvidos", () => {
+  let db: any;
+  beforeEach(() => {
+    db = makeFakeSupabase({
+      profiles: [{ id: USER, name: "Júlio" }],
+      consultant_preferences: [{ user_id: USER, confirm_document_send: true }],
+    });
+  });
+
+  it("'não' já não cancela um agendamento expirado — fica marcado como expirado", async () => {
+    const draft = await askSchedule(db);
+    expire(db, draft!.id);
+
+    expect(await findActivePendingAction(db, USER, CHANNEL)).toBeNull();
+    expect(await engineAnswers(db, "não")).toBeNull();
+    expect(db.state.pending_actions.find((r: any) => r.id === draft!.id).status).toBe("expired");
+  });
+
+  it("'sim' já não envia o documento quando a confirmação expirou", async () => {
+    const ch = makeAdapter();
+    await handleDocumentRequest(ch.adapter, db, {
+      userId: USER, to: "351900000000", content: "manda-me a caderneta predial do T2 de Benfica",
+    });
+    await handleDocumentRequest(ch.adapter, db, {
+      userId: USER, to: "351900000000", content: encodeDocCommand(hits[1]!.id),
+    });
+    const confirm = db.state.pending_actions.find((r: any) => r.intent === "confirming_document_send");
+    expire(db, confirm.id);
+
+    const handled = await handleDocumentRequest(ch.adapter, db, { userId: USER, to: "351900000000", content: "sim" });
+    expect(handled).toBe(false); // segue para conversa normal
+    expect(ch.documents).toHaveLength(0);
+    expect(db.state.pending_actions.find((r: any) => r.id === confirm.id).status).toBe("expired");
+  });
+
+  it("botão de uma lista expirada não resolve o pedido antigo", async () => {
+    const ch = makeAdapter();
+    await handleDocumentRequest(ch.adapter, db, {
+      userId: USER, to: "351900000000", content: "manda-me a caderneta predial do T2 de Benfica",
+    });
+    const list = db.state.pending_actions.find((r: any) => r.intent === "choosing_document");
+    expire(db, list.id);
+
+    const handled = await handleDocumentRequest(ch.adapter, db, {
+      userId: USER, to: "351900000000", content: encodeDocCommand(hits[0]!.id),
+    });
+    expect(handled).toBe(true);
+    expect(ch.documents).toHaveLength(0);
+    expect(ch.texts.some((t) => /j[áa] n[ãa]o est[áa] dispon[íi]vel/i.test(t))).toBe(true);
+    expect(db.state.pending_actions.find((r: any) => r.id === list.id).status).toBe("expired");
+  });
+
+  it("lista expirada não impede um novo pedido de documentos", async () => {
+    const ch = makeAdapter();
+    await handleDocumentRequest(ch.adapter, db, {
+      userId: USER, to: "351900000000", content: "manda-me a caderneta predial do T2 de Benfica",
+    });
+    const first = db.state.pending_actions.find((r: any) => r.intent === "choosing_document");
+    expire(db, first.id);
+
+    await handleDocumentRequest(ch.adapter, db, {
+      userId: USER, to: "351900000000", content: "manda-me a caderneta predial do T2 de Benfica",
+    });
+    const fresh = await findActivePendingAction(db, USER, CHANNEL, "documents");
+    expect(fresh?.intent).toBe("choosing_document");
+    expect(fresh?.id).not.toBe(first.id);
+  });
+});
