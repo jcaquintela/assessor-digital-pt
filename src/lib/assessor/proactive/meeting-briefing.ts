@@ -89,3 +89,31 @@ export function formatMeetingBriefing(
     (Number.isFinite(start) ? ` (${timePt(start)}).` : ".");
   return `${head}\n\n${formatPersonBrief(brief)}`;
 }
+/** Uma linha só, sem quebras nem marcações — exigência da Meta nos params. */
+export function flattenForTemplate(text: string): string {
+  return String(text ?? "")
+    .replace(/[*_~`]/g, "")
+    .replace(/\s*\n+\s*/g, " · ")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^[-·\s]+/, "")
+    .trim()
+    .slice(0, 900);
+}
+
+/**
+ * Parâmetros do template de briefing, pela ordem {{1}}, {{2}}, {{3}}:
+ * nome do consultor, compromisso (título + pessoa), resumo numa linha.
+ */
+export function briefingTemplateParams(
+  ev: BriefingEvent,
+  brief: PersonBrief,
+  consultantFirstName: string,
+): string[] {
+  const meeting = `${String(ev.title).trim()}, com ${brief.name}`;
+  return [
+    flattenForTemplate(consultantFirstName) || "Olá",
+    flattenForTemplate(meeting),
+    flattenForTemplate(formatPersonBrief(brief).replace(/^.*?\n/, "")) ||
+      flattenForTemplate(formatPersonBrief(brief)),
+  ];
+}

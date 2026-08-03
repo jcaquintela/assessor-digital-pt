@@ -3662,6 +3662,36 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_template_bindings: {
+        Row: {
+          enabled: boolean
+          language: string
+          param_count: number
+          purpose: string
+          template_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          language?: string
+          param_count?: number
+          purpose: string
+          template_name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          language?: string
+          param_count?: number
+          purpose?: string
+          template_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,0 +1,1 @@
+GRANT UPDATE (email) ON public.profiles TO authenticated;
