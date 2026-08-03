@@ -393,6 +393,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
     // Clarificação: a queixa/ideia é sobre mim ou sobre uma pessoa?
     if (pending && pending.intent === "clarify_feedback_target") {
+      void 0;
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
       const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
       const original = String(payload.original ?? pending.original_content ?? "");
