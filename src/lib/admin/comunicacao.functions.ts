@@ -482,18 +482,48 @@ export const getMyAnnouncements = createServerFn({ method: "GET" })
       .eq("id", context.userId)
       .maybeSingle();
     const p = (profile ?? {}) as any;
+    const now = new Date().toISOString();
     const { data } = await context.supabase
       .from("dashboard_announcements")
-      .select("id, title, body, segment, created_at")
+      .select("id, title, body, segment, created_at, expires_at")
       .eq("active", true)
+      // Um aviso com data de fim deixa de aparecer sozinho quando essa hora passa.
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order("created_at", { ascending: false })
       .limit(10);
-    const rows = (data ?? []) as { id: string; title: string; body: string; segment: string; created_at: string }[];
+    const rows = (data ?? []) as {
+      id: string; title: string; body: string; segment: string; created_at: string; expires_at: string | null;
+    }[];
+
+    // "Fechar" fica gravado por consultor — não volta a aparecer noutra visita
+    // nem noutro dispositivo.
+    const { data: dismissedRows } = await context.supabase
+      .from("announcement_dismissals")
+      .select("announcement_id")
+      .eq("user_id", context.userId);
+    const dismissed = new Set(((dismissedRows ?? []) as any[]).map((r) => r.announcement_id as string));
+
     return rows.filter((a) => {
+      if (dismissed.has(a.id)) return false;
       if (a.segment === "all") return true;
       if (a.segment === "beta") return !!p.is_beta_tester;
       if (a.segment.startsWith("tier:")) return p.subscription_tier === a.segment.split(":")[1];
       if (a.segment === "channel:whatsapp") return p.whatsapp_link_status === "linked";
       return false;
     });
+  });
+
+/** Guarda que este consultor fechou o aviso — para sempre, não só nesta sessão. */
+export const dismissAnnouncement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ announcementId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("announcement_dismissals")
+      .upsert(
+        { user_id: context.userId, announcement_id: data.announcementId } as never,
+        { onConflict: "user_id,announcement_id" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
