@@ -2,6 +2,7 @@ import { defineTool } from "@lovable.dev/mcp-js";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { z } from "zod";
 import { seguimentosSeed, pessoasSeed } from "@/lib/demo-data";
+import { NOT_AUTHENTICATED, isSignedIn } from "../require-auth";
 
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -18,7 +19,8 @@ export default defineTool({
       .describe("Âmbito temporal do filtro."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: ({ escopo }) => {
+  handler: ({ escopo }, ctx) => {
+    if (!isSignedIn(ctx)) return NOT_AUTHENTICATED;
     const now = new Date();
     const inWeek = (d: Date) => {
       const diff = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);

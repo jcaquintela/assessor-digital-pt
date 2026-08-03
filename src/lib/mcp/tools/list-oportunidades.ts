@@ -1,6 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { oportunidadesSeed, pessoasSeed } from "@/lib/demo-data";
+import { NOT_AUTHENTICATED, isSignedIn } from "../require-auth";
 
 export default defineTool({
   name: "list_oportunidades",
@@ -10,7 +11,8 @@ export default defineTool({
     estado: z.string().optional().describe("Filtrar por estado exato (ex.: 'Visita', 'Proposta')."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: ({ estado }) => {
+  handler: ({ estado }, ctx) => {
+    if (!isSignedIn(ctx)) return NOT_AUTHENTICATED;
     const items = (estado ? oportunidadesSeed.filter((o) => o.estado === estado) : oportunidadesSeed)
       .map((o) => ({
         ...o,
