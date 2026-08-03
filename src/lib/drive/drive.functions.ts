@@ -2,7 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { LinkableType } from "./link-match";
 
-type Tab = "recentes" | "por_tratar" | "imoveis" | "pessoas" | "diversos" | "arquivados";
+type Tab =
+  | "recentes"
+  | "por_tratar"
+  | "imoveis"
+  | "pessoas"
+  | "diversos"
+  | "arquivados"
+  | "reciclagem";
 
 // ---- Categorias personalizadas do Drive -------------------------------
 // Criadas pelo próprio consultor. A classificação automática (classification /
@@ -145,6 +152,9 @@ export const listDriveFiles = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const tab = (data.tab ?? "recentes") as Tab;
 
+    const { purgeExpiredDeletedFiles } = await import("./purge.server");
+    await purgeExpiredDeletedFiles(supabase, userId);
+
     let query = supabase
       .from("uploaded_files")
       .select(
@@ -154,7 +164,9 @@ export const listDriveFiles = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(200);
 
-    if (tab === "arquivados") {
+    if (tab === "reciclagem") {
+      query = query.not("deleted_at", "is", null);
+    } else if (tab === "arquivados") {
       query = query.not("archived_at", "is", null).is("deleted_at", null);
     } else {
       query = query.is("archived_at", null).is("deleted_at", null);
@@ -257,12 +269,14 @@ export const driveCounts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    const { purgeExpiredDeletedFiles } = await import("./purge.server");
+    await purgeExpiredDeletedFiles(supabase, userId);
     const { data: files } = await supabase
       .from("uploaded_files")
       .select("id, processing_status, requires_review, archived_at, deleted_at")
-      .eq("user_id", userId)
-      .is("deleted_at", null);
-    const active = (files ?? []).filter((f: any) => !f.archived_at);
+      .eq("user_id", userId);
+    const live = (files ?? []).filter((f: any) => !f.deleted_at);
+    const active = live.filter((f: any) => !f.archived_at);
     const porTratar = active.filter(
       (f: any) =>
         f.requires_review === true ||
@@ -270,11 +284,12 @@ export const driveCounts = createServerFn({ method: "GET" })
           f.processing_status,
         ),
     );
-    const arquivados = (files ?? []).filter((f: any) => !!f.archived_at);
+    const arquivados = live.filter((f: any) => !!f.archived_at);
     return {
       recentes: active.length,
       por_tratar: porTratar.length,
       arquivados: arquivados.length,
+      reciclagem: (files ?? []).filter((f: any) => !!f.deleted_at).length,
     };
   });
 
@@ -360,9 +375,10 @@ export const setDriveFileStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Upload direto a partir do dashboard (multipart via FormData)
-// Eliminar ficheiros a sério: sai do storage, sai o registo e saem todas as
-// ligações (Pessoa / Imóvel / Negócio). Nada fica pendurado.
+// Eliminar ficheiros: vão para a reciclagem durante 24 horas. As ligações
+// (Pessoa / Imóvel / Negócio) e o ficheiro no storage ficam intactos para que
+// a recuperação seja completa. Só depois das 24h é que se apaga a sério
+// (ver purge.server.ts).
 export const deleteDriveFiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { ids: string[] }) => ({
@@ -377,6 +393,7 @@ export const deleteDriveFiles = createServerFn({ method: "POST" })
       .from("uploaded_files")
       .select("id, storage_path, original_file_name")
       .eq("user_id", userId)
+      .is("deleted_at", null)
       .in("id", data.ids);
     if (readErr) throw new Error(readErr.message);
     const files = ((rows ?? []) as any[]).filter((r) => r?.id);
@@ -389,26 +406,11 @@ export const deleteDriveFiles = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .in("file_id", ids);
 
-    // 1) Ligações
-    const { error: linkErr } = await supabase
-      .from("file_links")
-      .delete()
-      .eq("user_id", userId)
-      .in("file_id", ids);
-    if (linkErr) throw new Error(linkErr.message);
-
-    // 2) Ficheiro físico no storage
-    const paths = files.map((f) => f.storage_path).filter(Boolean) as string[];
-    if (paths.length) {
-      const { error: storageErr } = await supabase.storage.from("assessor-files").remove(paths);
-      if (storageErr) console.error("[drive] falha ao remover do storage:", storageErr.message);
-    }
-
-    // 3) Registo (FKs em follow_ups / prospecting_leads / product_feedback
-    //    ficam a null; file_links já saiu).
-    const { error: delErr } = await supabase
+    // Eliminação reversível: sai das listas, fica na reciclagem 24 horas.
+    const deletedAt = new Date().toISOString();
+    const { error: delErr } = await (supabase as any)
       .from("uploaded_files")
-      .delete()
+      .update({ deleted_at: deletedAt, processing_status: "deleted" })
       .eq("user_id", userId)
       .in("id", ids);
     if (delErr) throw new Error(delErr.message);
@@ -422,13 +424,14 @@ export const deleteDriveFiles = createServerFn({ method: "POST" })
         target_user_id: userId,
         resource_type: "uploaded_files",
         resource_id: ids[0] ?? null,
-        reason: `Eliminação de ${ids.length} ficheiro(s) no Drive pelo consultor.`,
+        reason: `Eliminação de ${ids.length} ficheiro(s) no Drive pelo consultor (recuperável 24h).`,
         metadata: {
           source: "dashboard:drive",
           file_ids: ids,
           file_names: files.map((f) => f.original_file_name ?? null),
-          links_removed: linkCount ?? 0,
-          storage_objects: paths.length,
+          links_kept: linkCount ?? 0,
+          soft_delete: true,
+          recoverable_until: new Date(Date.parse(deletedAt) + 24 * 3600_000).toISOString(),
         },
       });
     } catch (err) {
@@ -436,6 +439,55 @@ export const deleteDriveFiles = createServerFn({ method: "POST" })
     }
 
     return { deleted: ids.length, links: linkCount ?? 0 };
+  });
+
+// Recuperar ficheiros da reciclagem (dentro das 24 horas). As ligações nunca
+// chegaram a sair, por isso voltam com o ficheiro.
+export const restoreDriveFiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { ids: string[] }) => ({
+    ids: [...new Set((data?.ids ?? []).map((v) => String(v)).filter(Boolean))].slice(0, 200),
+  }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    if (!data.ids.length) return { restored: 0 };
+
+    const { purgeExpiredDeletedFiles } = await import("./purge.server");
+    await purgeExpiredDeletedFiles(supabase, userId);
+
+    const { data: rows, error: readErr } = await supabase
+      .from("uploaded_files")
+      .select("id, original_file_name")
+      .eq("user_id", userId)
+      .not("deleted_at", "is", null)
+      .in("id", data.ids);
+    if (readErr) throw new Error(readErr.message);
+    const ids = ((rows ?? []) as any[]).map((r) => String(r.id));
+    if (!ids.length) throw new Error("Já não dá para recuperar: o prazo de 24 horas passou.");
+
+    const { error } = await (supabase as any)
+      .from("uploaded_files")
+      .update({ deleted_at: null, processing_status: "organized" })
+      .eq("user_id", userId)
+      .in("id", ids);
+    if (error) throw new Error(error.message);
+
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await (supabaseAdmin as any).from("admin_audit_logs").insert({
+        admin_user_id: null,
+        action: "drive.files_restored",
+        target_user_id: userId,
+        resource_type: "uploaded_files",
+        resource_id: ids[0] ?? null,
+        reason: `Recuperação de ${ids.length} ficheiro(s) da reciclagem do Drive.`,
+        metadata: { source: "dashboard:drive", file_ids: ids },
+      });
+    } catch (err) {
+      console.error("[drive] auditoria de recuperação falhou:", err);
+    }
+
+    return { restored: ids.length };
   });
 
 export const uploadDriveFile = createServerFn({ method: "POST" })
