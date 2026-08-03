@@ -88,9 +88,7 @@ function RegistoPage() {
     <div className="consult-root min-h-screen px-4 py-10">
       <main className="mx-auto w-full max-w-5xl">
         <div className="mb-8 flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="h-4 w-4" />
-          </div>
+          <BrandMark size={36} />
           <div>
             <div className="text-sm font-semibold leading-tight">Afonso</div>
             <div className="text-xs text-muted-foreground">assistente de IA</div>
