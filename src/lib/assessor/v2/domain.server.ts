@@ -1060,6 +1060,7 @@ async function execSendReminderNow(ctx: DomainContext, args: unknown): Promise<D
 
 export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   search_people: execSearchPeople,
+  create_routine: execCreateRoutine,
   list_property_categories: execListPropertyCategories,
   list_uncategorized_properties: execListUncategorizedProperties,
   set_property_category: execSetPropertyCategory,
