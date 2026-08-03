@@ -44,7 +44,7 @@ const CHANNEL: Record<SubscriptionTier, string> = {
 
 const AUTONOMY_LABEL = { conservador: "Conservador", balanced: "Equilibrado", proativo: "Proativo" } as const;
 
-const BASE_MODULES = "Hoje, Pessoas, Agenda, Drive, Diversos";
+const BASE_MODULES = "Hoje, Pessoas, Agenda, Drive Inteligente, Diversos";
 
 const MODULE_LABEL: Record<string, string> = {
   "/imoveis": "Imóveis",

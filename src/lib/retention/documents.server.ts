@@ -17,14 +17,14 @@ const DAY = 864e5;
 export const DOCS_RETENTION_WARNING_TEXT =
   `O plano Base guarda documentos durante ${BASE_DOCS_RETENTION_DAYS} dias e tens ficheiros a chegar ao fim desse prazo. ` +
   "O que já registei a partir deles (imóveis, pessoas, valores, notas) fica para sempre — sai apenas o ficheiro. " +
-  "Se quiseres guardar algum, descarrega-o agora do Drive.";
+  "Se quiseres guardar algum, descarrega-o agora do Drive Inteligente.";
 
 export function quotaExceededText(usedBytes: number): string {
   const mb = Math.round(usedBytes / (1024 * 1024));
   return (
     `Já ocupaste ${mb} MB dos 100 MB de documentos que o plano Base inclui. ` +
     "Posso continuar a registar o que me disseres por escrito; para guardar mais ficheiros, " +
-    "liberta espaço no Drive ou abre um plano com mais espaço."
+    "liberta espaço no Drive Inteligente ou abre um plano com mais espaço."
   );
 }
 

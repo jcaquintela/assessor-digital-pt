@@ -181,11 +181,11 @@ export async function deliverDocument(
 ): Promise<boolean> {
   const doc = await loadDocument(supabase, userId, hit.id);
   if (!doc.ok) {
-    await say(adapter, supabase, userId, to, `Encontrei "${hit.fileName}" mas não consegui abrir o ficheiro. Vê no Drive.`);
+    await say(adapter, supabase, userId, to, `Encontrei "${hit.fileName}" mas não consegui abrir o ficheiro. Vê no Drive Inteligente.`);
     return false;
   }
   if (!adapter.sendDocument) {
-    await say(adapter, supabase, userId, to, `Aqui tens "${doc.fileName}": ${doc.signedUrl ?? "está no Drive"}`);
+    await say(adapter, supabase, userId, to, `Aqui tens "${doc.fileName}": ${doc.signedUrl ?? "está no Drive Inteligente"}`);
     return false;
   }
   const caption = hit.entityLabels[0] ? `${doc.fileName} — ${hit.entityLabels[0]}` : doc.fileName;
@@ -204,7 +204,7 @@ export async function deliverDocument(
       to,
       doc.signedUrl
         ? `Não consegui anexar o ficheiro aqui. Fica o link (válido 10 minutos): ${doc.signedUrl}`
-        : `Não consegui enviar "${doc.fileName}". Está no Drive.`,
+        : `Não consegui enviar "${doc.fileName}". Está no Drive Inteligente.`,
     );
     return false;
   }
@@ -418,7 +418,7 @@ export async function handleDocumentRequest(
           supabase,
           userId,
           to,
-          `Não encontrei nenhum documento ${alvo} no Drive. Se mo enviares, guardo e fico com esses dados.`,
+          `Não encontrei nenhum documento ${alvo} no Drive Inteligente. Se mo enviares, guardo e fico com esses dados.`,
         );
         return true;
       }
@@ -447,7 +447,7 @@ export async function handleDocumentRequest(
     if (!hits.length) {
       const what = req.docLabel ?? "esse documento";
       const where = req.subject ? ` de ${req.subject}` : "";
-      await say(adapter, supabase, userId, to, `Não encontrei ${what}${where} no Drive. Se mo enviares, guardo já.`);
+      await say(adapter, supabase, userId, to, `Não encontrei ${what}${where} no Drive Inteligente. Se mo enviares, guardo já.`);
       return true;
     }
     if (hits.length === 1 || hits[0]!.score >= (hits[1]?.score ?? 0) + 3) {

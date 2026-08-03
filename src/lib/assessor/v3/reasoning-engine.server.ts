@@ -519,11 +519,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           created_resource_type: "uploaded_file",
           created_resource_id: fileId,
         });
-        return { reply: "Guardei a foto no Drive." };
+        return { reply: "Guardei a foto no Drive Inteligente." };
       }
       if (saIsRejection(trimmed)) {
         await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: "Certo, não fica no Drive." };
+        return { reply: "Certo, não fica no Drive Inteligente." };
       }
     }
 

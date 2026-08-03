@@ -28,7 +28,7 @@ const desktopNav = [
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/negocios", label: "Negócios", icon: Handshake },
   { to: "/calendario", label: "Agenda", icon: CalendarDays },
-  { to: "/drive", label: "Drive", icon: FolderOpen },
+  { to: "/drive", label: "Drive Inteligente", icon: FolderOpen },
   { to: "/negocio", label: "Faturação", icon: Wallet },
   { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/definicoes", label: "Definições", icon: Settings },

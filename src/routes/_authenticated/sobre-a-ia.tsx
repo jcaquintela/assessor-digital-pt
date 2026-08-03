@@ -151,7 +151,7 @@ function SobreAPage() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[var(--brass-dark)]">•</span>
-              <span>Uma foto de um documento ou placa fica no Drive, organizada por contexto.</span>
+              <span>Uma foto de um documento ou placa fica no Drive Inteligente, organizada por contexto.</span>
             </li>
           </ul>
 
