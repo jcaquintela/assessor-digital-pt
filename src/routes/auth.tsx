@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -90,9 +90,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="h-4 w-4" />
-          </div>
+          <BrandMark size={36} />
           <div>
             <div className="text-sm font-semibold leading-tight">Afonso</div>
             <div className="text-xs text-muted-foreground">o teu assessor</div>
