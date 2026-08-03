@@ -36,6 +36,7 @@ async function irPara(page: Page, url: string) {
       await page.waitForTimeout(500);
       continue;
     }
+    await page.waitForLoadState("networkidle");
     // A guarda de sessão corre no cliente; se cair no ecrã de entrada,
     // repõe a sessão e tenta outra vez.
     if (!page.url().includes("/auth")) break;
