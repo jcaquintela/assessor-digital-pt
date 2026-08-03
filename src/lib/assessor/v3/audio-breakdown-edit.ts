@@ -170,9 +170,16 @@ export function applyBreakdownEdit(
   return { ...breakdown, items };
 }
 
-export function describeBreakdownEdit(edit: BreakdownEdit): string {
+export function describeBreakdownEdit(edit: BreakdownEdit, removed?: BreakdownItem): string {
   const n = edit.index + 1;
-  if (edit.remove) return `Tirei o ponto ${n}.`;
+  if (edit.remove) {
+    const what =
+      removed?.kind === "follow_up" ? "o seguimento"
+      : removed?.kind === "fact" ? "o facto"
+      : removed?.kind === "note" ? (removed.confidential ? "a nota confidencial" : "a nota")
+      : `o ponto ${n}`;
+    return `Tirei ${what} do ponto ${n}. O resto fica na mesma:`;
+  }
   if (edit.due_date || edit.due_time) return `Corrigi a data do ponto ${n}.`;
   return `Corrigi o texto do ponto ${n}.`;
 }
