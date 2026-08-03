@@ -1,0 +1,91 @@
+// Cartela de Briefing: 15 minutos antes de um compromisso com pessoa
+// associada, o Afonso manda sozinho o que interessa saber sobre ela.
+//
+// Este ficheiro é puro (sem I/O): decide o que é um compromisso elegível e
+// como se escreve a cartela. O runner vive em `meeting-briefing.server.ts`.
+
+import { boldWa } from "../culture/whatsapp-format";
+import { formatPersonBrief, type PersonBrief } from "../v3/person-brief";
+
+export const BRIEFING_LEAD_MINUTES = 15;
+/** Tolerância para trás: cobre corridas atrasadas sem mandar tarde demais. */
+export const BRIEFING_GRACE_MINUTES = 5;
+
+export interface BriefingEvent {
+  id: string;
+  title: string;
+  due_date: string;
+  due_time?: string | null;
+  type?: string | null;
+  status?: string | null;
+  person_id: string | null;
+  briefing_sent_at?: string | null;
+}
+
+const CLOSED = new Set(["concluído", "concluido", "cancelado", "arquivado"]);
+
+function norm(v: unknown): string {
+  return String(v ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Instante de início do compromisso, respeitando `due_time` quando existe. */
+export function eventStartMs(ev: Pick<BriefingEvent, "due_date" | "due_time">): number {
+  const base = new Date(ev.due_date);
+  if (Number.isNaN(base.getTime())) return NaN;
+  const hhmm = String(ev.due_time ?? "").trim();
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
+  if (!m) return base.getTime();
+  // Data (em Lisboa) do due_date + hora de due_time, interpretada em Lisboa.
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(base);
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  const dayIso = `${map.year}-${map.month}-${map.day}`;
+  // Offset de Lisboa nesse dia (0 ou -1h face a UTC no verão).
+  const guess = new Date(`${dayIso}T${m[1].padStart(2, "0")}:${m[2]}:00Z`);
+  const offsetMin =
+    (new Date(guess.toLocaleString("en-US", { timeZone: "UTC" })).getTime() -
+      new Date(guess.toLocaleString("en-US", { timeZone: "Europe/Lisbon" })).getTime()) / 60000;
+  return guess.getTime() + offsetMin * 60000;
+}
+
+/** Está dentro da janela dos próximos 15 minutos (com tolerância)? */
+export function isBriefingDue(ev: BriefingEvent, nowMs: number): boolean {
+  if (!ev.person_id) return false;
+  if (ev.briefing_sent_at) return false;
+  if (CLOSED.has(norm(ev.status))) return false;
+  const start = eventStartMs(ev);
+  if (!Number.isFinite(start)) return false;
+  const delta = start - nowMs;
+  return delta <= BRIEFING_LEAD_MINUTES * 60_000 && delta >= -BRIEFING_GRACE_MINUTES * 60_000;
+}
+
+export function hasBriefContent(b: PersonBrief): boolean {
+  return Boolean(
+    b.lastInteraction?.text?.trim() ||
+    b.properties.length ||
+    b.deals.length ||
+    b.nextAction?.text?.trim(),
+  );
+}
+
+export function timePt(ms: number): string {
+  return new Intl.DateTimeFormat("pt-PT", {
+    timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(new Date(ms));
+}
+
+/** Texto final da cartela. Cabeçalho = motivo do compromisso + pessoa. */
+export function formatMeetingBriefing(
+  ev: BriefingEvent,
+  brief: PersonBrief,
+  nowMs: number,
+): string {
+  const start = eventStartMs(ev);
+  const minutes = Math.max(1, Math.round((start - nowMs) / 60_000));
+  const head =
+    `Daqui a ${minutes} min: ${boldWa(String(ev.title).trim())}, com ${boldWa(brief.name)}` +
+    (Number.isFinite(start) ? ` (${timePt(start)}).` : ".");
+  return `${head}\n\n${formatPersonBrief(brief)}`;
+}
