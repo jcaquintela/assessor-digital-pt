@@ -13,10 +13,12 @@ const SESSION = process.env.LOVABLE_BROWSER_SUPABASE_SESSION_JSON;
 const STORAGE_KEY = process.env.LOVABLE_BROWSER_SUPABASE_STORAGE_KEY;
 const COOKIES = process.env.LOVABLE_BROWSER_SUPABASE_COOKIES_JSON;
 
-/** Larguras reais: iPhone SE (a mais apertada) e iPhone 14. */
+/** Larguras reais: iPhone SE, iPhone 14, iPhone Plus/Max e tablet retrato. */
 const LARGURAS = [
   { nome: "iPhone SE", width: 320, height: 780 },
   { nome: "iPhone 14", width: 390, height: 844 },
+  { nome: "iPhone Plus", width: 414, height: 896 },
+  { nome: "Tablet retrato", width: 768, height: 1024 },
 ];
 
 const ROTAS = [
