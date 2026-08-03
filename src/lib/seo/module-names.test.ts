@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
-import { MODULE_NAME, moduleTitle, pageTitle } from "./module-names";
+import { MODULE_NAME, moduleTitle, pageTitle, type ModuleNames } from "./module-names";
 
 describe("nomes de módulos", () => {
   it("o Drive chama-se sempre Drive Inteligente", () => {
@@ -54,5 +54,26 @@ describe("fonte única: nenhum 'Drive' sozinho", () => {
     const literais = src.match(/"[^"]*"|`[^`]*`/g) ?? [];
     const maus = literais.filter((l) => DRIVE_SOZINHO.test(l));
     expect(maus).toEqual([]);
+  });
+});
+
+describe("garantia em compile-time", () => {
+  it("recusa qualquer nome que não seja 'Drive Inteligente'", () => {
+    const base = {
+      hoje: "Hoje",
+      pessoas: "Pessoas",
+      imoveis: "Imóveis",
+      negocios: "Negócios",
+      agenda: "Agenda",
+      faturacao: "Faturação",
+      diversos: "Diversos",
+      prospecao: "Prospeção",
+      definicoes: "Definições",
+    };
+    // @ts-expect-error — "Drive" sozinho não é atribuível a DriveModuleName.
+    const mau: ModuleNames = { ...base, drive: "Drive" };
+    const bom: ModuleNames = { ...base, drive: "Drive Inteligente" };
+    expect(bom.drive).toBe(MODULE_NAME.drive);
+    expect(mau.drive).toBe("Drive");
   });
 });

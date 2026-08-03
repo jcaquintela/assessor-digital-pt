@@ -3,20 +3,46 @@
 
 export const APP_NAME = "Afonso";
 
+/** Módulos do produto (enum fechada — não há nomes de módulo fora daqui). */
+export const ModuleKey = {
+  Hoje: "hoje",
+  Pessoas: "pessoas",
+  Imoveis: "imoveis",
+  Negocios: "negocios",
+  Agenda: "agenda",
+  Drive: "drive",
+  Faturacao: "faturacao",
+  Diversos: "diversos",
+  Prospecao: "prospecao",
+  Definicoes: "definicoes",
+} as const;
+
+export type ModuleKey = (typeof ModuleKey)[keyof typeof ModuleKey];
+
+/**
+ * Nome visível do Drive, fixado ao nível do tipo. Qualquer tentativa de
+ * escrever outra coisa em MODULE_NAME.drive falha na compilação.
+ */
+export const DRIVE_MODULE_NAME = "Drive Inteligente";
+export type DriveModuleName = typeof DRIVE_MODULE_NAME;
+
+/** Contrato: o módulo do Drive só pode chamar-se "Drive Inteligente". */
+export type ModuleNames = Record<Exclude<ModuleKey, "drive">, string> & {
+  readonly drive: DriveModuleName;
+};
+
 export const MODULE_NAME = {
   hoje: "Hoje",
   pessoas: "Pessoas",
   imoveis: "Imóveis",
   negocios: "Negócios",
   agenda: "Agenda",
-  drive: "Drive Inteligente",
+  drive: DRIVE_MODULE_NAME,
   faturacao: "Faturação",
   diversos: "Diversos",
   prospecao: "Prospeção",
   definicoes: "Definições",
-} as const;
-
-export type ModuleKey = keyof typeof MODULE_NAME;
+} as const satisfies ModuleNames;
 
 /** "Drive Inteligente" -> "Drive Inteligente — Afonso" */
 export function pageTitle(name: string): string {
