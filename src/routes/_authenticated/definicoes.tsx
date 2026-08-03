@@ -495,6 +495,7 @@ function NotificacoesSection() {
     evening_checkin_enabled?: boolean;
     evening_checkin_time?: string;
     morning_time?: string;
+    confirm_document_send?: boolean;
   };
   const on = prefs.proactive_push_enabled === true;
   const hasChannel = (channels ?? []).length > 0;
@@ -546,6 +547,21 @@ function NotificacoesSection() {
           </div>
         </div>
       )}
+      <div className="mt-4 flex items-center justify-between gap-4 rounded-[13px] border border-[var(--line)] p-4">
+        <div>
+          <p className="text-[13.5px] font-semibold">Perguntar antes de enviar um documento</p>
+          <p className="c-muted mt-1 text-[12px]">
+            Quando escolheres um documento na conversa, confirmo contigo antes de o enviar.
+          </p>
+        </div>
+        <button
+          className={prefs.confirm_document_send ? "c-btn" : "c-btn-ghost"}
+          disabled={save.isPending}
+          onClick={() => save.mutate({ confirm_document_send: !prefs.confirm_document_send })}
+        >
+          {prefs.confirm_document_send ? "Ligado" : "Desligado"}
+        </button>
+      </div>
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
         No WhatsApp, se já passaram mais de 24 horas desde a tua última mensagem, a Meta só deixa
         passar mensagens com template aprovado — nesse caso o envio fica em espera até à aprovação.
