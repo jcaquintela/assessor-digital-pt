@@ -19,7 +19,7 @@ const REGISTER_ONLY_RE = new RegExp(
     // recusa explícita de lembrete/agendamento
     "\\b(?:sem|nada\\s+de)\\s+(?:lembrete|lembretes|alarme|agendamento)\\b",
     "\\bn[ãa]o\\s+(?:é|e)\\s+preciso\\s+(?:lembrete|lembrar|agendar|marcar)\\b",
-    "\\bn[ãa]o\\s+(?:precis(?:o|as|a)|quero)\\s+(?:de\\s+)?(?:lembrete|lembrar|que\\s+me\\s+lembres)\\b",
+    "\\bn[ãa]o\\s+(?:precis(?:o|as|a)|quero)\\s+(?:de\\s+)?(?:me\\s+)?(?:lembrete|lembrar|que\\s+me\\s+lembres)\\b",
     "\\bn[ãa]o\\s+(?:marques|agendes|me\\s+lembres)\\b",
     // "só registar" e variantes (com o "só" antes ou depois do verbo)
     "\\b(?:s[óo]|apenas|basta)\\s+(?:para\\s+)?(?:registar|registo|guardar|anotar|apontar|tomar\\s+nota|ficar\\s+registado|mem[óo]ria)\\b",
