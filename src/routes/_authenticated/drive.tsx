@@ -109,6 +109,7 @@ function DrivePage() {
     { id: string; name: string | null; auto: string | null; current: string | null } | null
   >(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
   const { categories } = useFileCategories();
   const catById = new Map(categories.map((c) => [c.id, c]));
 
@@ -155,6 +156,33 @@ function DrivePage() {
 
   const files = listQ.data?.files ?? [];
   const linksByFile = listQ.data?.linksByFile ?? {};
+
+  const removeFiles = useServerFn(deleteDriveFiles);
+  const deleteMany = useMutation({
+    mutationFn: (ids: string[]) => removeFiles({ data: { ids } }),
+    onSuccess: (res: any, ids) => {
+      setSelected((prev) => prev.filter((id) => !ids.includes(id)));
+      toast.success(
+        ids.length === 1
+          ? "Ficheiro eliminado."
+          : `${res?.deleted ?? ids.length} ficheiros eliminados.`,
+      );
+      listQ.refetch();
+      countsQ.refetch();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível eliminar."),
+  });
+
+  const selectedVisible = selected.filter((id) => files.some((f: any) => f.id === id));
+  const allSelected = files.length > 0 && selectedVisible.length === files.length;
+  const toggleOne = (id: string, on: boolean) =>
+    setSelected((prev) => (on ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+
+  const eliminar = (ids: string[], label: string) => {
+    if (!ids.length || deleteMany.isPending) return;
+    if (!confirm(`Eliminar ${label}? O ficheiro e as ligações associadas desaparecem. Esta ação não pode ser desfeita.`)) return;
+    deleteMany.mutate(ids);
+  };
 
   return (
     <AppShell>
@@ -233,6 +261,38 @@ function DrivePage() {
       )}
 
       <div className="space-y-2">
+        {files.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 px-1">
+            <label className="c-muted flex cursor-pointer items-center gap-2 text-[12.5px]">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={(v) => setSelected(v === true ? files.map((f: any) => f.id) : [])}
+                aria-label="Selecionar todos os ficheiros visíveis"
+              />
+              Selecionar tudo
+            </label>
+            {selectedVisible.length > 0 && (
+              <>
+                <span className="c-muted text-[12.5px]">
+                  {selectedVisible.length} selecionado{selectedVisible.length === 1 ? "" : "s"}
+                </span>
+                <button
+                  type="button"
+                  className="c-badge tap-44 text-destructive"
+                  disabled={deleteMany.isPending}
+                  onClick={() =>
+                    eliminar(
+                      selectedVisible,
+                      `${selectedVisible.length} ficheiro${selectedVisible.length === 1 ? "" : "s"}`,
+                    )
+                  }
+                >
+                  <Trash2 className="h-3 w-3" /> Eliminar selecionados
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {files.map((f: any) => {
           const Icon = fileIcon(f.mime_type);
           const links = (linksByFile[f.id] as any[]) ?? [];
