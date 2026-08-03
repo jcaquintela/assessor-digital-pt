@@ -63,6 +63,7 @@ vi.mock("../memory.server", () => ({
 }));
 
 import { runReasoningEngine } from "./reasoning-engine.server";
+import { fetchProductFeedbackList } from "@/lib/admin/feedback-list.server";
 
 const USER = "00000000-0000-4000-8000-000000000009";
 const CHANNEL = "whatsapp";
@@ -93,6 +94,40 @@ function makeDb() {
     messages,
     say(role: string, content: string) { messages.push({ role, content, created_at: new Date().toISOString(), id: String(messages.length + 1) }); },
     supabase: { from: (n: string) => table(n) } as any,
+  };
+}
+
+
+// Fake supabaseAdmin que devolve exatamente o que ficou gravado no fluxo acima,
+// para verificar que o registo chega à listagem de /admin/feedback.
+function makeAdmin() {
+  const rows = saved.map((r, i) => ({
+    id: `feedback-${i + 1}`,
+    status: "novo",
+    channel: CHANNEL,
+    internal_note: null,
+    handled_at: null,
+    attachment_file_id: null,
+    created_at: new Date().toISOString(),
+    ...r,
+  }));
+  return {
+    from(name: string) {
+      if (name === "product_feedback") {
+        return {
+          select: () => ({ order: () => ({ limit: async () => ({ data: rows, error: null }) }) }),
+        };
+      }
+      if (name === "profiles") {
+        return {
+          select: () => ({
+            in: async () => ({ data: [{ id: USER, name: "Júlio", email: "julio@example.com" }] }),
+          }),
+        };
+      }
+      return { select: () => ({ in: async () => ({ data: [] }) }) };
+    },
+    storage: { from: () => ({ createSignedUrl: async () => ({ data: null }) }) },
   };
 }
 
@@ -136,5 +171,17 @@ describe("E2E — sugestão anunciada num turno e escrita no seguinte", () => {
     expect(saved[0].kind).toBe("suggestion");
     expect(saved[0].body).toContain("Drive");
     expect(saved[0].user_id).toBe(USER);
+
+    // O que o admin (/admin/feedback) vê a seguir.
+    const admin = makeAdmin();
+    const list = await fetchProductFeedbackList(admin);
+    expect(list.items).toHaveLength(1);
+    expect(list.items[0]).toMatchObject({
+      kind: "suggestion",
+      status: "novo",
+      user_id: USER,
+      consultant_name: "Júlio",
+    });
+    expect(list.items[0].body).toContain("Drive");
   });
 });
