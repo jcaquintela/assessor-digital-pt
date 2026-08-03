@@ -172,6 +172,26 @@ async function routeInbound(
       return;
     }
 
+    // Recuperador do Drive: "manda-me a caderneta predial do T2 de Benfica"
+    // ou "que documentos tenho da Sra. Ana?". Devolve o ficheiro real como
+    // anexo — não uma descrição. Não passa pelo motor.
+    {
+      const { handleDocumentRequest } = await import("@/lib/drive/retrieve-channel.server");
+      if (
+        await handleDocumentRequest(adapter, supabaseAdmin, {
+          userId,
+          to: inbound.externalConversationId,
+          content,
+        })
+      ) {
+        if (inbound.callback && adapter.answerInteraction) {
+          try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
+          catch { /* best-effort */ }
+        }
+        return;
+      }
+    }
+
     try {
       const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
       const outcome = await processAssessorMessage({
