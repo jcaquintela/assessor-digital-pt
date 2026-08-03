@@ -394,6 +394,36 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     // Clarificação: a queixa/ideia é sobre mim ou sobre uma pessoa?
     if (pending && pending.intent === "clarify_feedback_target") {
       void 0;
+    }
+
+    // Feedback anunciado ("posso dar uma sugestão?") — aguarda o corpo.
+    // Aqui já não é preciso repetir "sugestão"/"erro" nem falar do produto.
+    if (pending && pending.intent === "collecting_feedback") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
+      if (saIsRejection(trimmed)) {
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        return { reply: FEEDBACK_CANCELLED_REPLY };
+      }
+      if (isEmptyFeedbackBody(trimmed)) {
+        return { reply: FEEDBACK_BODY_RETRY };
+      }
+      await markPendingActionStatus(supabase, pending.id, "executed");
+      const { createPendingAction } = await import("../memory.server");
+      const question = feedbackConfirmQuestion(kind);
+      await createPendingAction(supabase, {
+        userId,
+        channel,
+        intent: "record_product_feedback",
+        originalContent: trimmed,
+        payload: { kind, original: trimmed },
+        pendingQuestion: question,
+        currentQuestion: question,
+      });
+      return { reply: question };
+    }
+
+    if (pending && pending.intent === "clarify_feedback_target") {
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
       const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
       const original = String(payload.original ?? pending.original_content ?? "");
