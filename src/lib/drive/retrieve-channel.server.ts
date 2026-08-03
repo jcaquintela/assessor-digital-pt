@@ -8,6 +8,7 @@ import {
   docOptionLabel,
   encodeDocCommand,
   formatCandidateList,
+  normalize,
   parseChoice,
   parseDocCommand,
   shortDocId,
@@ -24,6 +25,54 @@ export const DOC_CHOICE_INTENT = "choosing_document";
 export const DOC_CONFIRM_INTENT = "confirming_document_send";
 
 const DOC_CANCEL_COMMAND = "#documento-nao";
+
+/**
+ * Recupera um ficheiro a partir do id curto do botão, mesmo quando o rascunho
+ * da lista já não existe (o consultor pode tocar num botão antigo). O filtro
+ * tem de ser feito em JS: `id::text` não é uma coluna válida no PostgREST.
+ */
+async function findDocByShortId(supabase: any, userId: string, shortId: string): Promise<DocHit | null> {
+  try {
+    const { data } = await supabase
+      .from("uploaded_files")
+      .select("id, original_file_name, internal_file_name, mime_type, document_type, storage_path")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const row = (data ?? []).find((r: any) => shortDocId(r.id) === shortId);
+    if (!row) return null;
+    return {
+      id: row.id,
+      fileName: String(row.original_file_name ?? row.internal_file_name ?? "documento"),
+      mimeType: String(row.mime_type ?? "application/octet-stream"),
+      storagePath: row.storage_path ?? null,
+      docType: row.document_type ?? null,
+      summary: null,
+      entityLabels: [],
+      score: 1,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Escolha escrita por nome ("CPU Gondomar") em vez de número ou toque. */
+function matchCandidateByText(text: string, candidates: DocHit[]): DocHit | null {
+  const n = normalize(text).replace(/[?!.,;:]/g, " ").trim();
+  if (n.length < 3) return null;
+  const terms = n.split(/\s+/).filter((w) => w.length >= 3);
+  if (!terms.length) return null;
+  let best: { hit: DocHit; score: number } | null = null;
+  for (const c of candidates) {
+    const hay = normalize(`${c.fileName} ${c.docType ?? ""} ${c.entityLabels.join(" ")}`);
+    const score = terms.filter((t) => hay.includes(t)).length;
+    if (score && (!best || score > best.score)) best = { hit: c, score };
+  }
+  if (!best) return null;
+  // Só decide quando é claramente uma escolha (a maioria das palavras encaixa).
+  return best.score >= Math.max(1, Math.ceil(terms.length / 2)) ? best.hit : null;
+}
 
 /** Preferência opcional: perguntar antes de enviar o ficheiro. */
 async function wantsConfirmation(supabase: any, userId: string): Promise<boolean> {
@@ -292,27 +341,7 @@ export async function handleDocumentRequest(
     if (cmd) {
       const candidates = ((pending?.structured_payload as any)?.candidates ?? []) as DocHit[];
       let hit = candidates.find((c) => shortDocId(c.id) === cmd) ?? null;
-      if (!hit) {
-        const { data: row } = await supabase
-          .from("uploaded_files")
-          .select("id, original_file_name, internal_file_name, mime_type, document_type")
-          .eq("user_id", userId)
-          .is("deleted_at", null)
-          .ilike("id::text", `${cmd.slice(0, 8)}%`)
-          .maybeSingle();
-        if (row) {
-          hit = {
-            id: row.id,
-            fileName: String(row.original_file_name ?? row.internal_file_name ?? "documento"),
-            mimeType: String(row.mime_type ?? "application/octet-stream"),
-            storagePath: null,
-            docType: row.document_type ?? null,
-            summary: null,
-            entityLabels: [],
-            score: 1,
-          };
-        }
-      }
+      if (!hit) hit = await findDocByShortId(supabase, userId, cmd);
       if (pending?.intent === DOC_CHOICE_INTENT) {
         await markPendingActionStatus(supabase, pending.id, "executed");
       }
@@ -330,6 +359,14 @@ export async function handleDocumentRequest(
       const candidates = ((pending.structured_payload as any)?.candidates ?? []) as DocHit[];
       const idx = parseChoice(content, candidates.length);
       if (idx === null) {
+        // Texto livre pode ainda ser o nome do documento ("CPU Gondomar").
+        const byName = matchCandidateByText(content, candidates);
+        if (byName) {
+          await markPendingActionStatus(supabase, pending.id, "executed");
+          if (await confirmBeforeSending(adapter, supabase, { userId, to, content, hit: byName })) return true;
+          await deliverDocument(adapter, supabase, userId, to, byName);
+          return true;
+        }
         // Não é uma escolha — deixa o turno seguir para o motor normal.
         await markPendingActionStatus(supabase, pending.id, "cancelled");
         return false;
