@@ -391,11 +391,6 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       }
     }
 
-    // Clarificação: a queixa/ideia é sobre mim ou sobre uma pessoa?
-    if (pending && pending.intent === "clarify_feedback_target") {
-      void 0;
-    }
-
     // Feedback anunciado ("posso dar uma sugestão?") — aguarda o corpo.
     // Aqui já não é preciso repetir "sugestão"/"erro" nem falar do produto.
     if (pending && pending.intent === "collecting_feedback") {
