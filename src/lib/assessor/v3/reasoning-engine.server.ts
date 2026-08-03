@@ -47,6 +47,10 @@ import {
   detectFeedbackTarget,
   feedbackConfirmQuestion,
   feedbackClarifyQuestion,
+  detectFeedbackAnnouncement,
+  feedbackAskBody,
+  isEmptyFeedbackBody,
+  FEEDBACK_BODY_RETRY,
   readClarifyAnswer,
   FEEDBACK_CLARIFY_RETRY,
   FEEDBACK_NOT_PRODUCT_REPLY,
@@ -416,6 +420,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
     // Feedback sobre o produto — só grava depois de confirmação explícita.
     if (pending && pending.intent === "record_product_feedback") {
+      // (nota) a recolha do corpo é tratada no bloco collecting_feedback.
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
       const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
       if (saIsRejection(trimmed)) {
