@@ -12,7 +12,13 @@ import {
   parseDocCommand,
   shortDocId,
 } from "./retrieve";
-import { findDocuments, findDocumentsForSubject, loadDocument, type DocHit } from "./retrieve.server";
+import {
+  findDocuments,
+  findDocumentsByMeta,
+  findDocumentsForSubject,
+  loadDocument,
+  type DocHit,
+} from "./retrieve.server";
 
 export const DOC_CHOICE_INTENT = "choosing_document";
 export const DOC_CONFIRM_INTENT = "confirming_document_send";
