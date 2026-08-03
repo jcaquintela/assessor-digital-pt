@@ -1058,6 +1058,102 @@ async function execSendReminderNow(ctx: DomainContext, args: unknown): Promise<D
   return ok({ sent: true, external_message_id: r.external_message_id ?? null });
 }
 
+// ---------- rotinas (lembretes recorrentes) ----------
+
+const PRIORITY_PT: Record<string, "Alta" | "Média" | "Baixa"> = {
+  alta: "Alta", media: "Média", "média": "Média", baixa: "Baixa",
+};
+
+// Próxima ocorrência (em UTC ISO) estritamente depois de agora, calculada
+// sobre a hora local de Lisboa.
+function nextRoutineRunIso(v: {
+  frequency: "daily" | "weekly" | "monthly";
+  time_of_day: string;
+  interval_n?: number | null;
+  weekday?: number | null;
+  day_of_month?: number | null;
+}): string {
+  const step = Math.max(1, v.interval_n ?? 1);
+  const todayYmd = nowLisbonYmd();
+  const nowHm = nowLisbonHhMm();
+  const [y, m, d] = todayYmd.split("-").map((n) => parseInt(n, 10));
+
+  const ymd = (date: Date) =>
+    `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+
+  if (v.frequency === "weekly") {
+    const base = new Date(Date.UTC(y, m - 1, d));
+    const target = v.weekday ?? base.getUTCDay();
+    let diff = (target - base.getUTCDay() + 7) % 7;
+    if (diff === 0 && v.time_of_day <= nowHm) diff = 7 * step;
+    base.setUTCDate(base.getUTCDate() + diff);
+    return lisbonLocalToUtcIso(ymd(base), v.time_of_day);
+  }
+
+  if (v.frequency === "monthly") {
+    const dom = v.day_of_month ?? d;
+    const clamp = (yy: number, mm: number) =>
+      Math.min(dom, new Date(Date.UTC(yy, mm + 1, 0)).getUTCDate());
+    let yy = y, mm = m - 1;
+    let day = clamp(yy, mm);
+    if (day < d || (day === d && v.time_of_day <= nowHm)) {
+      mm += step;
+      yy += Math.floor(mm / 12);
+      mm = ((mm % 12) + 12) % 12;
+      day = clamp(yy, mm);
+    }
+    return lisbonLocalToUtcIso(
+      `${yy}-${String(mm + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+      v.time_of_day,
+    );
+  }
+
+  // daily
+  const base = new Date(Date.UTC(y, m - 1, d));
+  if (v.time_of_day <= nowHm) base.setUTCDate(base.getUTCDate() + step);
+  return lisbonLocalToUtcIso(ymd(base), v.time_of_day);
+}
+
+async function execCreateRoutine(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(CreateRoutineArgs, args); if (!p.ok) return fail(p.error);
+  const v = { ...p.value, title: ensureTitle(p.value.title, "Lembrete") };
+
+  // Anti-duplicação: mesma rotina (título + hora + frequência) já activa.
+  const { data: existing } = await ctx.supabase
+    .from("routines")
+    .select("id, title, time_of_day, frequency, next_run_at")
+    .eq("user_id", ctx.userId)
+    .eq("active", true)
+    .eq("frequency", v.frequency)
+    .eq("time_of_day", v.time_of_day)
+    .ilike("title", v.title.trim())
+    .limit(1);
+  const dup = ((existing as any[]) ?? [])[0];
+  if (dup) return ok({ routine: dup, idempotent: true });
+
+  const nextRunIso = nextRoutineRunIso(v);
+  const { data, error } = await ctx.supabase
+    .from("routines")
+    .insert({
+      user_id: ctx.userId,
+      title: v.title.trim(),
+      notes: v.notes ?? null,
+      frequency: v.frequency,
+      interval_n: Math.max(1, v.interval_n ?? 1),
+      weekday: v.frequency === "weekly" ? (v.weekday ?? null) : null,
+      day_of_month: v.frequency === "monthly" ? (v.day_of_month ?? null) : null,
+      time_of_day: v.time_of_day,
+      next_run_at: nextRunIso,
+      priority: PRIORITY_PT[String(v.priority ?? "media").toLowerCase()] ?? "Média",
+      person_id: v.person_id ?? null,
+      active: true,
+    } as never)
+    .select("id, title, frequency, time_of_day, next_run_at")
+    .maybeSingle();
+  if (error) return fail(error.message);
+  return ok({ routine: data });
+}
+
 export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   // Lembrete recorrente ("todos os dias às 9:45"). Guarda uma rotina e
   // materializa o primeiro seguimento na próxima ocorrência.
