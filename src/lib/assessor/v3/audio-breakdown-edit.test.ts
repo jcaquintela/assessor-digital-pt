@@ -38,3 +38,27 @@ describe("correções item-a-item", () => {
     expect(parseBreakdownEdit("muda o 9 para amanhã", 3, TODAY)).toBeNull();
   });
 });
+
+describe("apagar um item específico", () => {
+  it("apaga por tipo quando é único", () => {
+    const e = parseBreakdownEdit("apaga a nota", 3, TODAY, bd.items)!;
+    expect(e).toMatchObject({ index: 2, remove: true });
+    const next = applyBreakdownEdit(bd, e);
+    expect(next.items).toHaveLength(2);
+    expect(next.items.map((i) => i.kind)).toEqual(["fact", "follow_up"]);
+  });
+  it("apaga o último", () => {
+    const e = parseBreakdownEdit("esquece o último", 3, TODAY, bd.items)!;
+    expect(e.index).toBe(2);
+  });
+  it("não adivinha quando o tipo é ambíguo", () => {
+    const items = [...bd.items, { kind: "note" as const, text: "outra nota" }];
+    expect(parseBreakdownEdit("apaga a nota", 4, TODAY, items)).toBeNull();
+  });
+  it("mantém os restantes intactos", () => {
+    const e = parseBreakdownEdit("apaga o 1", 3, TODAY, bd.items)!;
+    const next = applyBreakdownEdit(bd, e);
+    expect(next.items[0]).toEqual(bd.items[1]);
+    expect(next.items[1]).toEqual(bd.items[2]);
+  });
+});
