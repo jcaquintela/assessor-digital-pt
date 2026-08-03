@@ -38,16 +38,16 @@ export function PropertyCard({
   const acoes = (
     <div className={`mt-2 flex flex-wrap items-center gap-1.5 ${grelha ? "" : "sm:gap-2"}`}>
       <button type="button" className="c-badge tap-44" onClick={onEdit} aria-label="Editar">
-        <Pencil className="h-3 w-3 shrink-0" /> <span className={grelha ? "sr-only sm:not-sr-only" : "hidden xs:inline"}>Editar</span>
+        <Pencil className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Editar</span>
       </button>
       <button type="button" className="c-badge tap-44" onClick={onCategory} aria-label="Categoria">
-        <Tag className="h-3 w-3 shrink-0" /> <span className={grelha ? "sr-only sm:not-sr-only" : "hidden xs:inline"}>Categoria</span>
+        <Tag className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Categoria</span>
       </button>
       <button type="button" className="c-badge tap-44" onClick={onOrganize} aria-label="Organizar">
-        <Tags className="h-3 w-3 shrink-0" /> <span className={grelha ? "sr-only sm:not-sr-only" : "hidden xs:inline"}>Organizar</span>
+        <Tags className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Organizar</span>
       </button>
       <button type="button" className="c-badge tap-44" onClick={onDelete} aria-label="Eliminar">
-        <Trash2 className="h-3 w-3 shrink-0" /> <span className={grelha ? "sr-only sm:not-sr-only" : "hidden xs:inline"}>Eliminar</span>
+        <Trash2 className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Eliminar</span>
       </button>
       <Link to="/imoveis/$id" params={{ id: i.id }} className="c-badge tap-44 ml-auto">
         Abrir <ChevronRight className="h-3 w-3 shrink-0" />
