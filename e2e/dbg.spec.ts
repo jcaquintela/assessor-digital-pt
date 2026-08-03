@@ -5,8 +5,12 @@ test("dbg", async ({ page }) => {
   if (COOKIES) await page.context().addCookies(JSON.parse(COOKIES).map((c: Record<string, unknown>) => ({ ...c, url: base })));
   await page.goto("/");
   await page.evaluate(([k, v]) => window.localStorage.setItem(k as string, v as string), [process.env.LOVABLE_BROWSER_SUPABASE_STORAGE_KEY!, process.env.LOVABLE_BROWSER_SUPABASE_SESSION_JSON!]);
-  await page.goto("/hoje");
+  for (let i = 0; i < 3; i++) {
+    try { await page.goto("/hoje", { waitUntil: "domcontentloaded" }); break; }
+    catch { await page.waitForTimeout(500); }
+  }
   await page.waitForLoadState("networkidle");
   console.log("URL:", page.url());
-  console.log("h1:", await page.locator("h1").count(), await page.locator("h1").allInnerTexts());console.log("navPessoas:", await page.getByRole("link", { name: "Pessoas", exact: true }).count());
+  console.log("h1:", await page.locator("h1").count(), await page.locator("h1").allInnerTexts());
+  console.log("navPessoas:", await page.getByRole("link", { name: "Pessoas", exact: true }).count());
 });
