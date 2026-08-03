@@ -211,7 +211,7 @@ function NegociosPage() {
 
 function DealCard({ deal }: { deal: DealListItem }) {
   return (
-    <Link to="/oportunidades/$id" params={{ id: deal.id }} className="block">
+    <Link to="/negocios/$id" params={{ id: deal.id }} className="block">
       <Card className="transition-colors hover:border-primary/40">
         <CardContent className="space-y-2 p-3">
           <div className="flex items-start justify-between gap-2">

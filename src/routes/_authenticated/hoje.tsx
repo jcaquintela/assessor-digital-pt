@@ -297,7 +297,7 @@ function HojePage() {
       });
       return;
     }
-    if (p.deal_id) void navigate({ to: "/oportunidades/$id", params: { id: p.deal_id } });
+    if (p.deal_id) void navigate({ to: "/negocios/$id", params: { id: p.deal_id } });
     // oportunidade e imóvel são navegações diretas via Link nas ações
   };
 
@@ -414,7 +414,7 @@ function HojePage() {
                 <ArrowRight className="h-3.5 w-3.5" /> Tratar
               </Link>
             ) : atencao.subject_type === "opportunity" ? (
-              <Link className="c-cta" to="/oportunidades/$id" params={{ id: atencao.subject_id }}>
+              <Link className="c-cta" to="/negocios/$id" params={{ id: atencao.subject_id }}>
                 <ArrowRight className="h-3.5 w-3.5" /> Tratar
               </Link>
             ) : (
@@ -425,7 +425,7 @@ function HojePage() {
             {atencao.deal_id ? (
               <Link
                 className="c-btn"
-                to="/oportunidades/$id"
+                to="/negocios/$id"
                 params={{ id: atencao.deal_id }}
                 search={atencao.subject_type === "follow_up" ? { destaque: `seguimento:${atencao.subject_id}` } : {}}
               >
@@ -498,7 +498,7 @@ function HojePage() {
                         </div>
                         {p.deal_id && p.deal_label ? (
                           <Link
-                            to="/oportunidades/$id"
+                            to="/negocios/$id"
                             params={{ id: p.deal_id }}
                             search={p.subject_type === "follow_up" ? { destaque: `seguimento:${p.subject_id}` } : {}}
                             className="c-badge mt-1.5 inline-flex max-w-full truncate text-xs"
@@ -523,11 +523,11 @@ function HojePage() {
                         </PopoverContent>
                       </Popover>
                       {p.subject_type === "opportunity" ? (
-                        <Link className="c-btn-ghost" to="/oportunidades/$id" params={{ id: p.subject_id }}>Abrir contexto</Link>
+                        <Link className="c-btn-ghost" to="/negocios/$id" params={{ id: p.subject_id }}>Abrir contexto</Link>
                       ) : p.deal_id ? (
                         <Link
                           className="c-btn-ghost"
-                          to="/oportunidades/$id"
+                          to="/negocios/$id"
                           params={{ id: p.deal_id }}
                           search={{ destaque: `seguimento:${p.subject_id}` }}
                         >

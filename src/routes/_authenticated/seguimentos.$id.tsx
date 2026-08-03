@@ -225,7 +225,7 @@ function SeguimentoView({ s }: { s: Seguimento }) {
             <div className="text-xs text-muted-foreground">Negócio</div>
             <div className="text-sm">
               {op ? (
-                <Link to="/oportunidades/$id" params={{ id: op.id }} className="inline-flex items-center gap-1 underline">
+                <Link to="/negocios/$id" params={{ id: op.id }} className="inline-flex items-center gap-1 underline">
                   <Briefcase className="h-3.5 w-3.5" />{op.tipo}
                 </Link>
               ) : <span className="text-muted-foreground">Não pertence a nenhum negócio.</span>}
@@ -348,7 +348,7 @@ function SeguimentoView({ s }: { s: Seguimento }) {
           <CardContent className="p-4">
             <h3 className="mb-3 text-sm font-semibold">Oportunidade associada</h3>
             {op ? (
-              <Link to="/oportunidades/$id" params={{ id: op.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
+              <Link to="/negocios/$id" params={{ id: op.id }} className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40">
                 <div className="font-medium">{op.tipo}</div>
                 <div className="text-xs text-muted-foreground">{op.estado}</div>
               </Link>
