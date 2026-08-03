@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
+import { assuntoDe } from "@/lib/assessor/assunto";
 import { formatData, formatDataHora, formatEUR } from "@/lib/demo-data";
 import {
   addDealNote, archiveDeal, getDeal, linkDealProperty, setDealStage,
@@ -224,7 +225,7 @@ function DealDetail() {
         }`}
       >
         <PageHeader
-          title={d.title}
+          title={assuntoDe({ subject_type: "opportunity", deal_label: d.title })}
         subtitle={[KIND_LABEL[d.kind], d.person?.name, d.properties[0]?.title].filter(Boolean).join(" · ")}
         action={
           <div className="flex flex-wrap gap-2">
