@@ -32,7 +32,7 @@ import {
 import { StagePath } from "@/components/negocios/stage-path";
 
 export const Route = createFileRoute("/_authenticated/negocios/$id")({
-  // Deep link: /oportunidades/<id>?destaque=seguimento:<uuid>
+  // Deep link: /negocios/<id>?destaque=seguimento:<uuid>
   // Tipos: seguimento | imovel | movimento | pessoa | documento | historico
   validateSearch: (search: Record<string, unknown>): { destaque?: string } => ({
     destaque: typeof search.destaque === "string" ? search.destaque : undefined,
