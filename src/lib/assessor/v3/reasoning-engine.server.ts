@@ -53,6 +53,7 @@ import {
   FEEDBACK_CANCELLED_REPLY,
   FEEDBACK_FAILED_REPLY,
   FEEDBACK_SAVED_REPLY,
+  FEEDBACK_SAVED_WITH_ATTACHMENT_REPLY,
   type FeedbackKind,
 } from "./feedback";
 import { saveProductFeedback } from "./feedback.server";
@@ -425,12 +426,18 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       const body = saIsConfirmation(trimmed)
         ? String(payload.original ?? pending.original_content ?? "")
         : trimmed;
-      const saved = await saveProductFeedback(supabase, { userId, kind, body, channel });
+      const attachmentFileId = payload.attachment_file_id ? String(payload.attachment_file_id) : null;
+      const saved = await saveProductFeedback(supabase, {
+        userId, kind, body, channel, attachmentFileId,
+      });
       await markPendingActionStatus(supabase, pending.id, saved ? "executed" : "failed", {
         created_resource_type: saved ? "product_feedback" : null,
         error_message: saved ? null : "feedback_insert_failed",
       });
-      return { reply: saved ? FEEDBACK_SAVED_REPLY : FEEDBACK_FAILED_REPLY };
+      if (!saved) return { reply: FEEDBACK_FAILED_REPLY };
+      return {
+        reply: attachmentFileId ? FEEDBACK_SAVED_WITH_ATTACHMENT_REPLY : FEEDBACK_SAVED_REPLY,
+      };
     }
 
     const commissionArgs = extractFinanceCommission(trimmed);
