@@ -54,6 +54,53 @@ export function feedbackLabel(kind: FeedbackKind): string {
   return kind === "bug" ? "erro" : "sugestão";
 }
 
+// ---- Abertura de feedback em vários turnos ----
+// "Posso dar uma sugestão?" / "queria reportar um erro" → anuncia a intenção
+// sem trazer ainda o corpo. Abrimos um pending a aguardar o conteúdo.
+const ANNOUNCE_BUG_RE =
+  /\b(erro|bug|falha|problema\s+t[ée]cnico)\b/i;
+const ANNOUNCE_SUGGESTION_RE =
+  /\b(sugest[ãa]o|sugest[õo]es|ideia|melhoria|feedback)\b/i;
+const ANNOUNCE_LEAD_RE =
+  /\b(posso|podia|queria|quero|gostava|gostaria|tenho|deixo|deixar|dar[-\s]?te|reportar|reportar[-\s]?te|comunicar|registar|apontar|partilhar)\b/i;
+
+/**
+ * Deteta uma abertura de feedback (ainda sem corpo). Só dispara em frases
+ * curtas de anúncio — o corpo real vem na mensagem seguinte.
+ */
+export function detectFeedbackAnnouncement(text: string): FeedbackKind | null {
+  const t = (text ?? "").trim();
+  if (!t || t.length > 140) return null;
+  if (PERSON_RE.test(t)) return null;
+  if (!ANNOUNCE_LEAD_RE.test(t)) return null;
+  const bug = ANNOUNCE_BUG_RE.test(t);
+  const suggestion = ANNOUNCE_SUGGESTION_RE.test(t);
+  if (!bug && !suggestion) return null;
+  return bug ? "bug" : "suggestion";
+}
+
+/** Resposta ao anúncio: convida o corpo do feedback. */
+export function feedbackAskBody(kind: FeedbackKind): string {
+  return kind === "bug"
+    ? "Claro. Diz-me o que aconteceu — se tiveres um screenshot, envia também."
+    : "Claro, diz. Conta-me a ideia em poucas palavras — se tiveres uma imagem que ajude, envia também.";
+}
+
+// Mensagens que não trazem corpo nenhum ("sim", "diz", "ok", "claro").
+const FILLER_RE =
+  /^(sim|ok|okay|claro|certo|pois|est[áa]\s+bem|diz|diz[-\s]?me|ent[ãa]o\s+diz|vai|for[çc]a|obrigad[oa])[\s.!,]*$/i;
+
+/** true quando a mensagem ainda não contém o corpo do feedback. */
+export function isEmptyFeedbackBody(text: string): boolean {
+  const t = (text ?? "").trim();
+  if (!t) return true;
+  if (FILLER_RE.test(t)) return true;
+  return t.length < 12;
+}
+
+export const FEEDBACK_BODY_RETRY =
+  "Diz-me só o que queres que fique registado para a equipa.";
+
 export function feedbackConfirmQuestion(kind: FeedbackKind): string {
   return kind === "bug"
     ? "Queres que registe isto como erro para a equipa? Diz-me em poucas palavras o que aconteceu — se tiveres um screenshot, envia-o agora que junto ao registo."

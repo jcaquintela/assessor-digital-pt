@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectFeedbackIntent, detectFeedbackTarget, feedbackClarifyQuestion, feedbackConfirmQuestion, readClarifyAnswer } from "./feedback";
+import { detectFeedbackIntent, detectFeedbackTarget, feedbackClarifyQuestion, feedbackConfirmQuestion, readClarifyAnswer, detectFeedbackAnnouncement, isEmptyFeedbackBody } from "./feedback";
 
 describe("feedback do produto", () => {
   it("apanha erro no Afonso", () => {
@@ -38,5 +38,22 @@ describe("clarificação produto vs. pessoa", () => {
   });
   it("pergunta de clarificação distingue os dois lados", () => {
     expect(feedbackClarifyQuestion("bug")).toContain("proprietário");
+  });
+});
+
+describe("abertura de feedback em vários turnos", () => {
+  it("apanha o anúncio sem corpo", () => {
+    expect(detectFeedbackAnnouncement("Posso dar uma sugestão de melhoria?")).toBe("suggestion");
+    expect(detectFeedbackAnnouncement("queria reportar um erro")).toBe("bug");
+    expect(detectFeedbackAnnouncement("tenho uma ideia para o Afonso")).toBe("suggestion");
+  });
+  it("não confunde com nota sobre pessoa", () => {
+    expect(detectFeedbackAnnouncement("quero registar um problema com o proprietário")).toBeNull();
+    expect(detectFeedbackAnnouncement("marca visita amanhã às 10h")).toBeNull();
+  });
+  it("reconhece mensagens sem corpo", () => {
+    expect(isEmptyFeedbackBody("sim, diz")).toBe(true);
+    expect(isEmptyFeedbackBody("claro")).toBe(true);
+    expect(isEmptyFeedbackBody("no Drive os ficheiros aparecem sem nome")).toBe(false);
   });
 });
