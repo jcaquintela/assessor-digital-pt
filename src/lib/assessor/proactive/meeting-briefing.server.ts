@@ -50,7 +50,7 @@ export async function sendMeetingBriefing(
   supabase: any,
   event: BriefingEvent & { user_id: string },
   opts: { now?: Date; force?: boolean } = {},
-): Promise<{ sent: boolean; reason?: string }> {
+): Promise<{ sent: boolean; reason?: string; via?: "text" | "template" }> {
   const nowMs = (opts.now ?? new Date()).getTime();
   if (!opts.force && !isBriefingDue(event, nowMs)) return { sent: false, reason: "not_due" };
   if (!event.person_id) return { sent: false, reason: "no_person" };
