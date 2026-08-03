@@ -29,6 +29,8 @@ import {
   detectMiscQuery,
   formatAgendaReply,
   BARE_CONFIRMATION_REPLY,
+  ACKNOWLEDGED_REPLY,
+  isBareAcknowledgement,
   hasValidPendingContext,
   type AgendaItem,
 } from "./deterministic.server";
