@@ -711,6 +711,7 @@ async function execSaveInteraction(ctx: DomainContext, args: unknown): Promise<D
       summary: v.summary,
       interaction_type: v.interaction_type ?? "conversa",
       occurred_at: v.occurred_at ?? new Date().toISOString(),
+      is_confidential: v.is_confidential === true,
     } as never)
     .select("id")
     .single();

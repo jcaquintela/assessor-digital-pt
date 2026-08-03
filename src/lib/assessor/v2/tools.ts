@@ -185,6 +185,9 @@ export const SaveInteractionArgs = z.object({
   property_id: z.string().uuid().optional().nullable(),
   interaction_type: z.string().optional().nullable(),
   occurred_at: z.string().optional().nullable(),
+  // Nota confidencial: fica no histórico do consultor, mas nunca pode entrar
+  // em texto destinado a terceiros (ver `culture/confidential.ts`).
+  is_confidential: z.boolean().optional().nullable(),
 });
 export type SaveInteractionArgs = z.infer<typeof SaveInteractionArgs>;
 

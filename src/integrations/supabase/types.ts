@@ -1820,6 +1820,7 @@ export type Database = {
           created_at: string
           id: string
           interaction_type: string | null
+          is_confidential: boolean
           occurred_at: string
           opportunity_id: string | null
           original_content: string | null
@@ -1833,6 +1834,7 @@ export type Database = {
           created_at?: string
           id?: string
           interaction_type?: string | null
+          is_confidential?: boolean
           occurred_at?: string
           opportunity_id?: string | null
           original_content?: string | null
@@ -1846,6 +1848,7 @@ export type Database = {
           created_at?: string
           id?: string
           interaction_type?: string | null
+          is_confidential?: boolean
           occurred_at?: string
           opportunity_id?: string | null
           original_content?: string | null
@@ -1911,6 +1914,7 @@ export type Database = {
           category: string | null
           created_at: string
           id: string
+          is_confidential: boolean
           occurred_at: string
           original_content: string | null
           related_opportunity_id: string | null
@@ -1929,6 +1933,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           id?: string
+          is_confidential?: boolean
           occurred_at?: string
           original_content?: string | null
           related_opportunity_id?: string | null
@@ -1947,6 +1952,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           id?: string
+          is_confidential?: boolean
           occurred_at?: string
           original_content?: string | null
           related_opportunity_id?: string | null

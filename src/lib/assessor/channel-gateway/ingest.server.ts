@@ -515,7 +515,37 @@ async function handleInboundMediaInner(
         sender_phone: inbound.externalConversationId,
       });
       const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
-      const outcome = await processAssessorMessage({
+      // Processador de Áudio Imobiliário: um áudio informal e comprido é
+      // separado em factos, seguimentos e notas, com uma só confirmação.
+      // Se não houver mais do que um item, segue o caminho normal.
+      let outcome: { reply: string } | null = null;
+      try {
+        const { worthBreakingDown } = await import("@/lib/assessor/v3/audio-breakdown");
+        if (worthBreakingDown(t.text)) {
+          const { analyseAudioTranscript, proposeAudioBreakdown } =
+            await import("@/lib/assessor/v3/audio-breakdown.server");
+          const breakdown = await analyseAudioTranscript(t.text);
+          if (breakdown) {
+            const reply = await proposeAudioBreakdown(
+              {
+                supabase: supabaseAdmin,
+                userId,
+                channel: adapter.channel,
+                sourceMessageId: persistedUuid,
+              } as never,
+              t.text,
+              breakdown,
+            );
+            outcome = { reply };
+          }
+        }
+      } catch (err) {
+        console.error(
+          `[channel-gateway/${adapter.channel}] audio-breakdown:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+      outcome = outcome ?? await processAssessorMessage({
         supabase: supabaseAdmin,
         userId,
         channel: adapter.channel,
