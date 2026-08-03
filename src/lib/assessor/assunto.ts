@@ -33,6 +33,27 @@ export function fraseComAcao(p: AssuntoSubject, explicacao: string): string {
 
 export type AssuntoView = { titulo: string; frase: string };
 
+/** Seguimentos: mesma fonte para as listas (Atrasados/Esta semana) e para a ficha. */
+export function assuntoDeSeguimento(s: {
+  titulo: string;
+  tipo: "Evento" | "Tarefa" | string;
+  data: string;
+  estado?: string;
+}): AssuntoView & { acao: string } {
+  const titulo = assuntoDe({ subject_type: "follow_up", titulo: s.titulo });
+  if (s.estado === "Concluído") return { titulo, frase: "Já está tratado.", acao: "" };
+  const acao = s.tipo === "Evento" ? "Preparar o compromisso" : "Tratar este seguimento";
+  const atrasado = new Date(s.data) < new Date();
+  const explicacao = atrasado
+    ? "Está em atraso."
+    : s.tipo === "Evento" ? "Está agendado." : "Está por fazer.";
+  return {
+    titulo,
+    frase: fraseComAcao({ subject_type: "follow_up", titulo: s.titulo, action: acao }, explicacao),
+    acao,
+  };
+}
+
 export function assuntoDePessoa(a: {
   name: string;
   days: number;
