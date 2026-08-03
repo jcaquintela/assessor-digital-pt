@@ -730,17 +730,30 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       !hasValidPendingContext(pending) &&
       !lastAssistantAskedQuestion
     ) {
+      // O Assessor acabou de afirmar algo ("Marcada a visita amanhã às 14:30.")
+      // e o consultor responde "Ok": é reconhecimento, não uma confirmação
+      // órfã. Perguntar "A que te referes?" aqui soa a software partido.
+      const recentStatement =
+        !!lastAssistantContent0 &&
+        !/\?\s*$/.test(lastAssistantContent0) &&
+        !!lastAssistantAt0 &&
+        (Date.now() - lastAssistantAt0.getTime()) < 30 * 60_000;
+      const reply =
+        recentStatement && isBareAcknowledgement(trimmed)
+          ? ACKNOWLEDGED_REPLY
+          : BARE_CONFIRMATION_REPLY;
       try {
         await supabase.from("assessor_ai_logs").insert({
           user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "bare_confirmation_no_context", confidence: 1,
+          intent: reply === ACKNOWLEDGED_REPLY ? "bare_acknowledgement" : "bare_confirmation_no_context",
+          confidence: 1,
           input_tokens: 0, output_tokens: 0, total_tokens: 0,
           latency_ms: 0, success: true, error: null,
           domain: "assessor", route: "v3-deterministic", fallback_used: false,
           tool_name: null, tool_success: null,
         } as never);
       } catch { /* noop */ }
-      return { reply: BARE_CONFIRMATION_REPLY };
+      return { reply };
     }
   } catch { /* noop — cai no fluxo normal */ }
 
