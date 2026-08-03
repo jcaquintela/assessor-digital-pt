@@ -49,7 +49,7 @@ async function loadDueEvents(
 export async function sendMeetingBriefing(
   supabase: any,
   event: BriefingEvent & { user_id: string },
-  opts: { now?: Date; force?: boolean } = {},
+  opts: { now?: Date; force?: boolean; forceTemplate?: boolean } = {},
 ): Promise<{ sent: boolean; reason?: string; via?: "text" | "template" }> {
   const nowMs = (opts.now ?? new Date()).getTime();
   if (!opts.force && !isBriefingDue(event, nowMs)) return { sent: false, reason: "not_due" };
@@ -76,7 +76,7 @@ export async function sendMeetingBriefing(
 
   if (target.channel === "whatsapp") {
     const { isWithin24hWindow } = await import("./push.server");
-    if (!(await isWithin24hWindow(supabase, event.user_id, "whatsapp"))) {
+    if (opts.forceTemplate || !(await isWithin24hWindow(supabase, event.user_id, "whatsapp"))) {
       // Fora da janela de 24h só passa template aprovado. O template usado é
       // o que estiver escolhido no admin; sem escolha activa, silêncio.
       const { resolveUsableBinding } = await import("@/lib/whatsapp/template-binding.server");
