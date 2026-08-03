@@ -1071,6 +1071,7 @@ export type Database = {
       consultant_preferences: {
         Row: {
           autonomy_level: string
+          confirm_document_send: boolean
           created_at: string
           evening_checkin_enabled: boolean
           evening_checkin_time: string
@@ -1090,6 +1091,7 @@ export type Database = {
         }
         Insert: {
           autonomy_level?: string
+          confirm_document_send?: boolean
           created_at?: string
           evening_checkin_enabled?: boolean
           evening_checkin_time?: string
@@ -1109,6 +1111,7 @@ export type Database = {
         }
         Update: {
           autonomy_level?: string
+          confirm_document_send?: boolean
           created_at?: string
           evening_checkin_enabled?: boolean
           evening_checkin_time?: string
