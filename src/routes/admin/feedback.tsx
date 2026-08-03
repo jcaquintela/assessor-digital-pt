@@ -97,6 +97,28 @@ function FeedbackPage() {
 
               <p className="whitespace-pre-wrap text-sm">{i.body}</p>
 
+              {i.attachment?.url ? (
+                <a
+                  href={i.attachment.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-fit rounded-md border p-2 hover:bg-muted"
+                >
+                  {String(i.attachment.mime ?? "").startsWith("image/") ? (
+                    <img
+                      src={i.attachment.url}
+                      alt={`Anexo: ${i.attachment.name}`}
+                      className="max-h-48 rounded"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-sm underline">Anexo: {i.attachment.name}</span>
+                  )}
+                </a>
+              ) : i.attachment_file_id ? (
+                <p className="text-xs text-muted-foreground">Anexo indisponível.</p>
+              ) : null}
+
               <Textarea
                 rows={2}
                 placeholder="Nota interna"
