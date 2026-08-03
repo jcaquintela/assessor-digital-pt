@@ -66,12 +66,9 @@ function SeguimentosPage() {
     <div className="space-y-2">
       {items.length === 0 && <p className="text-sm text-muted-foreground">Nada aqui.</p>}
       {items.map((s) => {
-        // Mesma regra de Hoje: título = assunto, ação sugerida dentro da frase.
-        const assunto = assuntoDe({ titulo: s.titulo });
-        const acao = s.tipo === "Evento" ? "Preparar o compromisso" : "Tratar este seguimento";
-        const explicacao = new Date(s.data) < new Date()
-          ? "Está em atraso."
-          : s.tipo === "Evento" ? "Está agendado." : "Está por fazer.";
+        // Mesma fonte da ficha: título = assunto, ação sugerida dentro da frase.
+        const vista = assuntoDeSeguimento(s);
+        const assunto = vista.titulo;
         return (
         <Link
           key={s.id}
