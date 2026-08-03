@@ -12,6 +12,7 @@ import {
   TEMPLATE_CHECKIN,
   TEMPLATE_CHECKIN_V2,
   TEMPLATE_PLAN_ACTIVATED,
+  TEMPLATE_PLAN_TRIAL_START,
   TEMPLATE_LANG,
 } from "@/lib/assessor/proactive/templates";
 
@@ -20,7 +21,12 @@ export const TEMPLATES_APPROVED_FLAG = "whatsapp.templates.approved";
 // Flag global de push proativo: continua a depender só dos dois templates
 // do ciclo diário. O template de plano ativado é verificado à parte.
 const REQUIRED_TEMPLATES = [TEMPLATE_MORNING, TEMPLATE_CHECKIN];
-const TRACKED_TEMPLATES = [...REQUIRED_TEMPLATES, TEMPLATE_CHECKIN_V2, TEMPLATE_PLAN_ACTIVATED];
+const TRACKED_TEMPLATES = [
+  ...REQUIRED_TEMPLATES,
+  TEMPLATE_CHECKIN_V2,
+  TEMPLATE_PLAN_ACTIVATED,
+  TEMPLATE_PLAN_TRIAL_START,
+];
 
 export const CHECKIN_V2_APPROVED_FLAG = "whatsapp.template.checkin_v2.approved";
 
