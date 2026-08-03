@@ -407,7 +407,7 @@ export async function processAssessorMessage(input: EngineInput): Promise<Engine
   }
 
   // Contexto: perfil, últimas mensagens, ação pendente e estado da conversa.
-  const [{ data: prof }, recent, pending, convState] = await Promise.all([
+  const [{ data: prof }, recent, pendingRaw, convState] = await Promise.all([
     supabase
       .from("profiles")
       .select("name, assessor_name")
