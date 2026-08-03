@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:isolation": "vitest run src/lib/assessor/storage-isolation.test.ts"
+    "test:isolation": "vitest run src/lib/assessor/storage-isolation.test.ts",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
