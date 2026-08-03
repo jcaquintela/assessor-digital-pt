@@ -1,3 +1,4 @@
+import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -26,8 +27,8 @@ import {
 export const Route = createFileRoute("/_authenticated/drive/$id")({
   head: () => ({
     meta: [
-      { title: "Ficheiro — Drive Inteligente" },
-      { name: "description", content: "Detalhe do ficheiro no Drive Inteligente." },
+      { title: moduleTitle("drive", "Ficheiro") },
+      { name: "description", content: `Detalhe do ficheiro no ${MODULE_NAME.drive}.` },
     ],
   }),
   component: DriveDetail,
@@ -99,7 +100,7 @@ function DriveDetail() {
       <AppShell>
         <PageHeader title="Ficheiro não encontrado" />
         <Link to="/drive" className="text-sm underline">
-          Voltar ao Drive Inteligente
+          Voltar ao {MODULE_NAME.drive}
         </Link>
       </AppShell>
     );
@@ -113,7 +114,7 @@ function DriveDetail() {
     <AppShell>
       <div className="mb-3">
         <Link to="/drive" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Drive Inteligente
+          <ChevronLeft className="h-4 w-4" /> {MODULE_NAME.drive}
         </Link>
       </div>
       <PageHeader

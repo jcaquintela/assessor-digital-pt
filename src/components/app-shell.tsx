@@ -1,3 +1,4 @@
+import { MODULE_NAME } from "@/lib/seo/module-names";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { BrandMark } from "@/components/brand-mark";
@@ -28,7 +29,7 @@ const desktopNav = [
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/negocios", label: "Negócios", icon: Handshake },
   { to: "/calendario", label: "Agenda", icon: CalendarDays },
-  { to: "/drive", label: "Drive Inteligente", icon: FolderOpen },
+  { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
   { to: "/negocio", label: "Faturação", icon: Wallet },
   { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/definicoes", label: "Definições", icon: Settings },

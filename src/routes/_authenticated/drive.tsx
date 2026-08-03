@@ -1,3 +1,4 @@
+import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -48,9 +49,9 @@ type Tab =
 export const Route = createFileRoute("/_authenticated/drive")({
   head: () => ({
     meta: [
-      { title: "Drive Inteligente — Afonso" },
+      { title: moduleTitle("drive") },
       { name: "description", content: "Todos os teus ficheiros, organizados automaticamente por imóvel, pessoa e oportunidade." },
-      { property: "og:title", content: "Drive Inteligente — Afonso" },
+      { property: "og:title", content: moduleTitle("drive") },
       { property: "og:description", content: "Todos os teus ficheiros, organizados automaticamente." },
     ],
   }),
@@ -249,7 +250,7 @@ function DrivePage() {
   return (
     <AppShell>
       <PageHeader
-        title="Drive Inteligente"
+        title={MODULE_NAME.drive}
         subtitle="Envia. O Assessor organiza."
         action={
           <>
