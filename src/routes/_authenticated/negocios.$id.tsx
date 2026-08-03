@@ -31,7 +31,7 @@ import {
 } from "@/lib/deals/stages";
 import { StagePath } from "@/components/negocios/stage-path";
 
-export const Route = createFileRoute("/_authenticated/oportunidades/$id")({
+export const Route = createFileRoute("/_authenticated/negocios/$id")({
   // Deep link: /oportunidades/<id>?destaque=seguimento:<uuid>
   // Tipos: seguimento | imovel | movimento | pessoa | documento | historico
   validateSearch: (search: Record<string, unknown>): { destaque?: string } => ({
