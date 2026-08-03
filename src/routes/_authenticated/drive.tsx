@@ -48,9 +48,9 @@ type Tab =
 export const Route = createFileRoute("/_authenticated/drive")({
   head: () => ({
     meta: [
-      { title: "Drive Inteligente — Afonso" },
+      { title: moduleTitle("drive") },
       { name: "description", content: "Todos os teus ficheiros, organizados automaticamente por imóvel, pessoa e oportunidade." },
-      { property: "og:title", content: "Drive Inteligente — Afonso" },
+      { property: "og:title", content: moduleTitle("drive") },
       { property: "og:description", content: "Todos os teus ficheiros, organizados automaticamente." },
     ],
   }),
