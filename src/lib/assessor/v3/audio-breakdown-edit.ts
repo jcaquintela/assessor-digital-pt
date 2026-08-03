@@ -106,7 +106,7 @@ export function parseBreakdownEdit(
   }
 
   // Correção de texto: "no 1 o texto é ...", "o 2 é: ...", "muda o 3 para ..."
-  const m = msg.match(/(?::|\b(?:para|é|e|fica)\b)\s+(.{3,400})$/i);
+  const m = msg.match(/(?::|(?:^|\s)(?:para|é|e|fica|diz)\s)\s*(.{3,400})$/i);
   if (m) {
     const text = m[1].replace(/^["'“”]|["'“”]$/g, "").trim();
     if (text && (TEXT_HINT.test(strip(msg)) || text.split(/\s+/).length >= 2)) {
