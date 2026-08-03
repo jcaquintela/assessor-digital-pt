@@ -81,6 +81,15 @@ type Awaiting = {
   deal_id: string | null;
 };
 
+// O título do que merece atenção é sempre o assunto (negócio, pessoa, imóvel),
+// nunca a ação genérica. A ação sugerida vai na frase explicativa.
+function assuntoDe(p: Priority): string {
+  const label = p.subject_type === "opportunity"
+    ? p.deal_label || p.entity_label
+    : p.entity_label || p.deal_label;
+  return (label && label.trim()) || p.action;
+}
+
 function HojePage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
