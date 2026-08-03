@@ -120,6 +120,19 @@ export function formatAgendaReply(period: AgendaPeriod, items: AgendaItem[]): st
 // que os testes e o consultor vejam sempre a mesma resposta.
 export const BARE_CONFIRMATION_REPLY = "Claro. A que te referes?";
 
+// "Ok" logo a seguir a uma afirmação do Assessor ("Marcada a visita...") é
+// só reconhecimento — não é uma confirmação órfã. Bug real: gerava
+// "Claro. A que te referes?" depois de a visita ter sido confirmada.
+export const ACKNOWLEDGED_REPLY = "Combinado.";
+
+const ACK_ONLY_RE =
+  /^\s*(ok(ay|ei)?|okey|certo|perfeito|boa|[óo]ptimo|otimo|combinado|est[áa]\s+bem|fixe|top|obrigad[oa]|👍|✅|🙏)\s*[.!]*\s*$/iu;
+
+/** Reconhecimento neutro (não pede nada, não confirma nada por decidir). */
+export function isBareAcknowledgement(text: string): boolean {
+  return ACK_ONLY_RE.test((text ?? "").trim());
+}
+
 // Contexto pendente é considerado válido apenas se existir uma
 // pending_action no estado apropriado. O caller deve ter feito o SELECT
 // com o filtro certo (findActivePendingAction já garante isto).
