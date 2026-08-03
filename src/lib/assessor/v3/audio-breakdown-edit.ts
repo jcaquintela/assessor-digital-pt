@@ -82,6 +82,32 @@ const REMOVE_HINT = /\b(apaga|apagar|remove|remover|tira|tirar|esquece|esquecer|
 
 const TEXT_HINT = /\b(texto|diz|dizer|escreve|escrever|criterio|critério)\b/i;
 
+const KIND_WORDS: Array<{ re: RegExp; kind: BreakdownItem["kind"] }> = [
+  { re: /\b(facto|factos|informacao|informação)\b/i, kind: "fact" },
+  { re: /\b(seguimento|seguimentos|tarefa|lembrete|agendamento|visita)\b/i, kind: "follow_up" },
+  { re: /\b(nota|notas|comentario|comentário)\b/i, kind: "note" },
+];
+
+/** "apaga a nota", "tira o seguimento", "esquece o último" — sem número. */
+function readIndexWithoutNumber(msg: string, items: BreakdownItem[]): number | null {
+  const plain = strip(msg);
+  if (/\b(ultimo|ultima)\b/.test(plain)) return items.length - 1;
+  if (/\b(primeiro|primeira)\b/.test(plain)) return 0;
+  for (const { re, kind } of KIND_WORDS) {
+    if (!re.test(plain)) continue;
+    const matches = items
+      .map((it, i) => ({ it, i }))
+      .filter(({ it }) => it.kind === kind);
+    if (matches.length === 1) return matches[0].i;
+    if (matches.length > 1 && kind === "note" && /\bconfidencial\b/.test(plain)) {
+      const conf = matches.filter(({ it }) => it.confidential);
+      if (conf.length === 1) return conf[0].i;
+    }
+    return null;
+  }
+  return null;
+}
+
 /**
  * Lê uma correção a um item específico. Devolve null quando a mensagem não é
  * claramente uma correção (para o motor seguir o caminho normal).
@@ -90,12 +116,16 @@ export function parseBreakdownEdit(
   message: string,
   count: number,
   today: string,
+  items?: BreakdownItem[],
 ): BreakdownEdit | null {
   const msg = String(message ?? "").trim();
   if (!msg || count <= 0) return null;
   if (!EDIT_HINT.test(strip(msg))) return null;
-  const index = readIndex(msg, count);
-  if (index === null) return null;
+  let index = readIndex(msg, count);
+  if (index === null && REMOVE_HINT.test(strip(msg)) && items?.length) {
+    index = readIndexWithoutNumber(msg, items.slice(0, count));
+  }
+  if (index === null || index < 0 || index >= count) return null;
 
   if (REMOVE_HINT.test(strip(msg))) return { index, remove: true };
 
