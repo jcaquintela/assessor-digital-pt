@@ -6,6 +6,8 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AssuntoCard } from "@/components/assunto-card";
+import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatData, formatDataHora, type Seguimento } from "@/lib/demo-data";
 import { Calendar, CheckCircle2, Clock } from "lucide-react";
@@ -63,26 +65,35 @@ function SeguimentosPage() {
   const Lista = ({ items }: { items: Seguimento[] }) => (
     <div className="space-y-2">
       {items.length === 0 && <p className="text-sm text-muted-foreground">Nada aqui.</p>}
-      {items.map((s) => (
+      {items.map((s) => {
+        // Mesma regra de Hoje: título = assunto, ação sugerida dentro da frase.
+        const assunto = assuntoDe({ titulo: s.titulo });
+        const acao = s.tipo === "Evento" ? "Preparar o compromisso" : "Tratar este seguimento";
+        const explicacao = new Date(s.data) < new Date()
+          ? "Está em atraso."
+          : s.tipo === "Evento" ? "Está agendado." : "Está por fazer.";
+        return (
         <Link
           key={s.id}
           to="/seguimentos/$id"
           params={{ id: s.id }}
           className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label={`Abrir seguimento ${s.titulo}`}
+          aria-label={`Abrir seguimento ${assunto}`}
         >
           <Card className="transition-colors group-hover:border-primary/40 group-focus-visible:border-primary/60">
             <CardContent className="p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  {s.tipo === "Evento" ? <Calendar className="h-3.5 w-3.5 text-primary" /> : <Clock className="h-3.5 w-3.5 text-muted-foreground" />}
-                  <span className="truncate text-sm font-medium">{s.titulo}</span>
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {/* A hora guardada manda: evita divergir da ficha por causa do fuso. */}
-                  {s.hora ? `${formatData(s.data)}, ${s.hora}` : formatDataHora(s.data)} · {nomePessoa(s.pessoaId) || "—"}
-                </div>
+                <AssuntoCard
+                  tag={s.tipo === "Evento"
+                    ? <><Calendar className="h-3.5 w-3.5 text-primary" /></>
+                    : <><Clock className="h-3.5 w-3.5 text-muted-foreground" /></>}
+                  titulo={assunto}
+                  frase={fraseComAcao({ titulo: s.titulo, action: acao }, explicacao)}
+                  /* A hora guardada manda: evita divergir da ficha por causa do fuso. */
+                  meta={`${s.hora ? `${formatData(s.data)}, ${s.hora}` : formatDataHora(s.data)} · ${nomePessoa(s.pessoaId) || "—"}`}
+                  plano
+                />
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Badge variant={s.prioridade === "Alta" ? "destructive" : "secondary"}>{s.prioridade}</Badge>
@@ -109,7 +120,8 @@ function SeguimentosPage() {
             </CardContent>
           </Card>
         </Link>
-      ))}
+        );
+      })}
     </div>
   );
 

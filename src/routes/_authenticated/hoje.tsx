@@ -24,6 +24,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { explainPriority } from "@/lib/assessor/priority-explain";
+import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
+import { AssuntoCard } from "@/components/assunto-card";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
 import { Lightbulb, ArrowRight } from "lucide-react";
@@ -80,15 +82,6 @@ type Awaiting = {
   property_id: string | null;
   deal_id: string | null;
 };
-
-// O título do que merece atenção é sempre o assunto (negócio, pessoa, imóvel),
-// nunca a ação genérica. A ação sugerida vai na frase explicativa.
-function assuntoDe(p: Priority): string {
-  const label = p.subject_type === "opportunity"
-    ? p.deal_label || p.entity_label
-    : p.entity_label || p.deal_label;
-  return (label && label.trim()) || p.action;
-}
 
 function HojePage() {
   const search = Route.useSearch();
@@ -408,19 +401,12 @@ function HojePage() {
       {/* A-bis. "Isto merece atenção": UMA observação por dia, nunca uma lista. */}
       {!filtroAtivo && atencao && (
         <section className="c-spotlight mb-4">
-          <div className="c-spot-tag mb-2">
-            <AlertTriangle className="h-4 w-4" />
-            Isto merece atenção
-          </div>
-          {/* O título é sempre o assunto (negócio/pessoa/imóvel); a ação sugerida vive na frase. */}
-          <h2 className="c-serif text-[18px] font-medium">{assuntoDe(atencao)}</h2>
-          <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
-            {explainPriority(atencao)}
-            {assuntoDe(atencao) !== atencao.action && atencao.action
-              ? ` Vale a pena ${atencao.action.charAt(0).toLowerCase()}${atencao.action.slice(1)}.`
-              : ""}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <AssuntoCard
+            destaque
+            tag={<><AlertTriangle className="h-4 w-4" /> Isto merece atenção</>}
+            titulo={assuntoDe(atencao)}
+            frase={fraseComAcao(atencao, explainPriority(atencao))}
+            actions={<>
             {atencao.subject_type === "follow_up" ? (
               <Link className="c-cta" to="/seguimentos/$id" params={{ id: atencao.subject_id }}>
                 <ArrowRight className="h-3.5 w-3.5" /> Tratar
@@ -444,7 +430,8 @@ function HojePage() {
                 <Briefcase className="h-3.5 w-3.5" /> Ver negócio
               </Link>
             ) : null}
-          </div>
+            </>}
+          />
         </section>
       )}
 
@@ -494,24 +481,17 @@ function HojePage() {
                   <p className="c-muted text-sm">Nenhuma prioridade urgente. Bom trabalho.</p>
                 )}
                 {priorities.map((p) => (
-                  <div key={`${p.subject_type}:${p.subject_id}`} className="c-card c-card-hover p-3.5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{assuntoDe(p)}</div>
-                        {/* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */}
-                        <div className="mt-0.5 text-xs" style={{ color: "var(--ink)" }}>
-                          {explainPriority(p)}
-                          {assuntoDe(p) !== p.action && p.action
-                            ? ` Vale a pena ${p.action.charAt(0).toLowerCase()}${p.action.slice(1)}.`
-                            : ""}
-                        </div>
-                        <div className="c-muted mt-0.5 text-xs">
-                          {[
-                            p.entity_label,
-                            p.due_at ? formatData(p.due_at) : null,
-                          ].filter(Boolean).join(" · ")}
-                        </div>
-                        {p.deal_id && p.deal_label ? (
+                  <AssuntoCard
+                    key={`${p.subject_type}:${p.subject_id}`}
+                    titulo={assuntoDe(p)}
+                    /* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */
+                    frase={fraseComAcao(p, explainPriority(p))}
+                    meta={[
+                      p.entity_label,
+                      p.due_at ? formatData(p.due_at) : null,
+                    ].filter(Boolean).join(" · ")}
+                    extra={
+                      p.deal_id && p.deal_label ? (
                           <Link
                             to="/negocios/$id"
                             params={{ id: p.deal_id }}
@@ -520,10 +500,9 @@ function HojePage() {
                           >
                             Negócio: {p.deal_label}
                           </Link>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      ) : null
+                    }
+                    actions={<>
                       <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
                         <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
                       </button>
@@ -570,8 +549,8 @@ function HojePage() {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </div>
-                  </div>
+                    </>}
+                  />
                 ))}
               </CardContent>
             </Card>
