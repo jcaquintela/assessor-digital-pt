@@ -279,6 +279,9 @@ export const CreateDealArgs = z.object({
   value: z.number().nonnegative().optional().nullable(),
   notes: z.string().optional().nullable(),
   link_movement_ids: z.array(z.string().uuid()).optional().nullable(),
+  // Imóvel descrito por palavras quando ainda não existe ficha ("terreno de
+  // Canelas"). Só depois do "sim" é que vira registo.
+  property_hint: z.string().min(2).max(120).optional().nullable(),
 });
 export type CreateDealArgs = z.infer<typeof CreateDealArgs>;
 
