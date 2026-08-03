@@ -155,7 +155,57 @@ export async function findDocuments(
 }
 
 /** Documentos ligados a uma pessoa/imóvel pelo nome ("que documentos tenho da Sra. Ana?"). */
+/**
+ * Procura documentos por metadado extraído: NIF, artigo matricial ou fração.
+ * Além dos campos extraídos, procura também no texto lido do documento, para
+ * apanhar ficheiros guardados antes da extração automática existir.
+ */
+export async function findDocumentsByMeta(
+  supabase: any,
+  userId: string,
+  q: { nif?: string | null; artigo?: string | null },
+  limit = 5,
+): Promise<DocHit[]> {
+  const nif = String(q.nif ?? "").replace(/\D/g, "");
+  const artigo = String(q.artigo ?? "").trim().replace(/[%_]/g, "");
+  if (!nif && !artigo) return [];
 
+  const ors: string[] = [];
+  if (nif) {
+    ors.push(`doc_nif.eq.${nif}`, `extracted_text.ilike.%${nif}%`);
+  }
+  if (artigo) {
+    ors.push(
+      `doc_artigo_matricial.ilike.%${artigo}%`,
+      `doc_fracao.ilike.%${artigo}%`,
+    );
+  }
+
+  const { data: files } = await supabase
+    .from("uploaded_files")
+    .select(
+      "id, original_file_name, internal_file_name, mime_type, storage_path, document_type, classification, ai_summary, doc_nif, doc_artigo_matricial, doc_fracao, created_at",
+    )
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .not("storage_path", "is", null)
+    .or(ors.join(","))
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return ((files ?? []) as any[]).map((r) => ({
+    id: r.id,
+    fileName: String(r.original_file_name ?? r.internal_file_name ?? "ficheiro"),
+    mimeType: String(r.mime_type ?? "application/octet-stream"),
+    storagePath: r.storage_path ?? null,
+    docType: r.document_type ?? r.classification ?? null,
+    summary: r.ai_summary ?? null,
+    entityLabels: [],
+    score: r.doc_nif && nif && r.doc_nif === nif ? 5 : 3,
+  }));
+}
+
+/** Documentos ligados a uma pessoa/imóvel pelo nome ("que documentos tenho da Sra. Ana?"). */
 export async function findDocumentsForSubject(
   supabase: any,
   userId: string,
