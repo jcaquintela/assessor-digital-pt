@@ -9,6 +9,14 @@ const SESSION = process.env.LOVABLE_BROWSER_SUPABASE_SESSION_JSON;
 const STORAGE_KEY = process.env.LOVABLE_BROWSER_SUPABASE_STORAGE_KEY;
 const COOKIES = process.env.LOVABLE_BROWSER_SUPABASE_COOKIES_JSON;
 
+async function guardarSessao(page: Page) {
+  if (!STORAGE_KEY || !SESSION) return;
+  await page.evaluate(
+    ([k, v]) => window.localStorage.setItem(k as string, v as string),
+    [STORAGE_KEY, SESSION],
+  );
+}
+
 async function autenticar(page: Page) {
   const base = process.env.E2E_BASE_URL ?? "http://localhost:8080";
   if (COOKIES) {
@@ -16,12 +24,7 @@ async function autenticar(page: Page) {
     await page.context().addCookies(cookies);
   }
   await page.goto("/");
-  if (STORAGE_KEY && SESSION) {
-    await page.evaluate(
-      ([k, v]) => window.localStorage.setItem(k as string, v as string),
-      [STORAGE_KEY, SESSION],
-    );
-  }
+  await guardarSessao(page);
 }
 
 /** Navegação estável: o router do lado do cliente pode abortar o primeiro goto. */
@@ -29,10 +32,15 @@ async function irPara(page: Page, url: string) {
   for (let i = 0; i < 3; i++) {
     try {
       await page.goto(url, { waitUntil: "domcontentloaded" });
-      break;
     } catch {
       await page.waitForTimeout(500);
+      continue;
     }
+    // A guarda de sessão corre no cliente; se cair no ecrã de entrada,
+    // repõe a sessão e tenta outra vez.
+    if (!page.url().includes("/auth")) break;
+    await guardarSessao(page);
+    await page.waitForTimeout(300);
   }
   await page.waitForLoadState("networkidle");
 }
