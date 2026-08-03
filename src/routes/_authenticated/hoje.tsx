@@ -413,10 +413,12 @@ function HojePage() {
             Isto merece atenção
           </div>
           {/* O título é sempre o assunto (negócio/pessoa/imóvel); a ação sugerida vive na frase. */}
-          <h2 className="c-serif text-[18px] font-medium">{atencao.entity_label || atencao.action}</h2>
+          <h2 className="c-serif text-[18px] font-medium">{assuntoDe(atencao)}</h2>
           <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
             {explainPriority(atencao)}
-            {atencao.entity_label && atencao.action ? ` Vale a pena ${atencao.action.toLowerCase()}.` : ""}
+            {assuntoDe(atencao) !== atencao.action && atencao.action
+              ? ` Vale a pena ${atencao.action.charAt(0).toLowerCase()}${atencao.action.slice(1)}.`
+              : ""}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {atencao.subject_type === "follow_up" ? (
