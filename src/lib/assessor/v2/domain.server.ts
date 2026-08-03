@@ -25,6 +25,8 @@ import {
   SaveInteractionArgs,
   SaveMiscellaneousArgs,
   CreateFinancialMovementArgs,
+  CreateDealArgs,
+  SearchDealsArgs,
   CreateProspectingLeadArgs,
   SearchProspectingLeadsArgs,
   UpdateProspectingLeadArgs,
@@ -1154,6 +1156,48 @@ async function execCreateRoutine(ctx: DomainContext, args: unknown): Promise<Dom
   return ok({ routine: data });
 }
 
+
+// ---------- Negócio (deal) ----------
+
+async function execSearchDeals(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(SearchDealsArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  let q = ctx.supabase
+    .from("opportunities")
+    .select("id, title, stage, deal_kind, type, value, person_id, property_id, archived_at")
+    .eq("user_id", ctx.userId)
+    .order("updated_at", { ascending: false })
+    .limit(20);
+  if (v.person_id) q = q.eq("person_id", v.person_id);
+  if (v.property_id) q = q.eq("property_id", v.property_id);
+  if (v.query) q = q.ilike("title", `%${v.query}%`);
+  const { data, error } = await q;
+  if (error) return fail(error.message);
+  return ok({ deals: data ?? [] });
+}
+
+async function execCreateDeal(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(CreateDealArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  try {
+    const { createDealCore } = await import("@/lib/deals/create.server");
+    const res = await createDealCore(ctx.supabase, ctx.userId, {
+      title: v.title,
+      kind: v.kind ?? null,
+      stage: v.stage ?? null,
+      personId: v.person_id ?? null,
+      propertyId: v.property_id ?? null,
+      value: v.value ?? 0,
+      notes: v.notes ?? null,
+      source: "assessor",
+      linkMovementIds: v.link_movement_ids ?? null,
+    });
+    return ok(res);
+  } catch (err) {
+    return fail(err instanceof Error ? err.message : String(err));
+  }
+}
+
 export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   // Lembrete recorrente ("todos os dias às 9:45"). Guarda uma rotina e
   // materializa o primeiro seguimento na próxima ocorrência.
@@ -1171,6 +1215,8 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   save_interaction: execSaveInteraction,
   save_miscellaneous: execSaveMiscellaneous,
   create_financial_movement: execCreateFinancialMovement,
+  create_deal: execCreateDeal,
+  search_deals: execSearchDeals,
   create_prospecting_lead: execCreateProspectingLead,
   search_prospecting_leads: execSearchProspectingLeads,
   update_prospecting_lead: execUpdateProspectingLead,

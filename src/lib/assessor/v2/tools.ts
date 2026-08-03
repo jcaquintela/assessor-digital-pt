@@ -266,6 +266,29 @@ export const CreateFinancialMovementArgs = z.object({
 });
 export type CreateFinancialMovementArgs = z.infer<typeof CreateFinancialMovementArgs>;
 
+
+// ---------- Negócio (deal) ----------
+// O Afonso nunca cria um negócio sozinho: propõe e só executa depois de
+// confirmação explícita do consultor.
+export const CreateDealArgs = z.object({
+  title: z.string().min(3).max(200),
+  kind: z.string().optional().nullable(),
+  stage: z.string().optional().nullable(),
+  person_id: z.string().uuid().optional().nullable(),
+  property_id: z.string().uuid().optional().nullable(),
+  value: z.number().nonnegative().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  link_movement_ids: z.array(z.string().uuid()).optional().nullable(),
+});
+export type CreateDealArgs = z.infer<typeof CreateDealArgs>;
+
+export const SearchDealsArgs = z.object({
+  query: z.string().optional().nullable(),
+  person_id: z.string().uuid().optional().nullable(),
+  property_id: z.string().uuid().optional().nullable(),
+});
+export type SearchDealsArgs = z.infer<typeof SearchDealsArgs>;
+
 // ---------- Lembretes (reminders) ----------
 
 const ReminderResource = z.enum(["follow_up", "event", "prospecting_lead", "other"]);
@@ -846,6 +869,50 @@ TOOL_SPECS.push(
 
 // ---------- registo Zod (nome → schema) ----------
 
+
+// Negócio: o fio que une pessoa, imóvel e dinheiro. Proposto pelo Afonso,
+// criado só com o "sim" do consultor.
+TOOL_SPECS.push(
+  {
+    type: "function",
+    function: {
+      name: "search_deals",
+      description:
+        "Procura negócios do consultor (em curso e arquivados). Usa ANTES de propor criar um negócio, para não repetir um que já existe, e quando o consultor pergunta 'que negócios tenho?'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: ["string", "null"], description: "Texto livre no título." },
+          person_id: { type: ["string", "null"], format: "uuid" },
+          property_id: { type: ["string", "null"], format: "uuid" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_deal",
+      description:
+        "Cria o negócio que une pessoa + imóvel + dinheiro de um processo comercial real (angariação ganha, sequência de visitas ao mesmo imóvel, comissão registada sem negócio). NUNCA invoques esta ferramenta sem o consultor ter confirmado explicitamente nesta conversa: para propor, usa o memory_write propose_deal. Exige pessoa (ou imóvel) e um objetivo claro no título.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Ex.: 'Venda da moradia em Canelas'." },
+          kind: { type: ["string", "null"], enum: ["venda", "compra", "arrendamento", "angariacao", "investimento", "outro", null] },
+          stage: { type: ["string", "null"], description: "Fase inicial; por omissão 'preparacao' (A começar)." },
+          person_id: { type: ["string", "null"], format: "uuid" },
+          property_id: { type: ["string", "null"], format: "uuid" },
+          value: { type: ["number", "null"] },
+          notes: { type: ["string", "null"] },
+          link_movement_ids: { type: ["array", "null"], items: { type: "string", format: "uuid" } },
+        },
+        required: ["title"],
+      },
+    },
+  },
+);
+
 export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   search_people: SearchPeopleArgs,
   create_person: CreatePersonArgs,
@@ -858,6 +925,8 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   create_routine: CreateRoutineArgs,
   save_miscellaneous: SaveMiscellaneousArgs,
   create_financial_movement: CreateFinancialMovementArgs,
+  create_deal: CreateDealArgs,
+  search_deals: SearchDealsArgs,
   create_prospecting_lead: CreateProspectingLeadArgs,
   search_prospecting_leads: SearchProspectingLeadsArgs,
   update_prospecting_lead: UpdateProspectingLeadArgs,

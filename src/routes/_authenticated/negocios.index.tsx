@@ -16,7 +16,10 @@ import { Plus, AlertTriangle, Camera, ChevronRight, Archive } from "lucide-react
 import { formatData, formatEUR } from "@/lib/demo-data";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { createDeal, listDeals, type DealListItem } from "@/lib/deals/deals.functions";
+import {
+  createDeal, listDeals, listOrphanMovements, linkMovementToDeal, createDealFromMovement,
+  type DealListItem,
+} from "@/lib/deals/deals.functions";
 import { DEAL_KINDS, KIND_LABEL, STAGE_GROUPS, STAGE_LABEL, groupOfStage } from "@/lib/deals/stages";
 
 export const Route = createFileRoute("/_authenticated/negocios/")({
@@ -170,6 +173,8 @@ function NegociosPage() {
         </div>
       )}
 
+      {!mostrarArquivados && <OrphanMovements deals={visiveis} />}
+
       {deals.isLoading && <p className="text-sm text-muted-foreground">A carregar negócios…</p>}
       {!deals.isLoading && visiveis.length === 0 && (
         <p className="text-sm text-muted-foreground">
@@ -234,5 +239,145 @@ function DealCard({ deal }: { deal: DealListItem }) {
         </CardContent>
       </Card>
     </Link>
+  );
+}
+
+/**
+ * Comissões e despesas registadas sem negócio: dinheiro sem história.
+ * Aqui o consultor liga a um negócio que já existe ou abre um novo.
+ */
+function OrphanMovements({ deals }: { deals: DealListItem[] }) {
+  const listFn = useServerFn(listOrphanMovements);
+  const linkFn = useServerFn(linkMovementToDeal);
+  const createFromFn = useServerFn(createDealFromMovement);
+  const qc = useQueryClient();
+  const { pessoas } = useStore();
+
+  const [aberto, setAberto] = useState<string | null>(null);
+  const [dealId, setDealId] = useState("");
+  const [titulo, setTitulo] = useState("");
+  const [pessoaId, setPessoaId] = useState("");
+
+  const q = useQuery({ queryKey: ["orphan-movements"], queryFn: () => listFn(), retry: false });
+  const movements = q.data?.movements ?? [];
+
+  const refrescar = () => {
+    qc.invalidateQueries({ queryKey: ["orphan-movements"] });
+    qc.invalidateQueries({ queryKey: ["deals"] });
+    setAberto(null);
+    setDealId(""); setTitulo(""); setPessoaId("");
+  };
+
+  const ligar = useMutation({
+    mutationFn: (movementId: string) => linkFn({ data: { movementId, dealId } }),
+    onSuccess: () => { toast.success("Ligado ao negócio."); refrescar(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const criar = useMutation({
+    mutationFn: (m: (typeof movements)[number]) => createFromFn({
+      data: {
+        movementId: m.id,
+        title: titulo.trim() || m.description || "Novo negócio",
+        kind: "venda",
+        personId: pessoaId || null,
+        propertyId: m.propertyId,
+        value: 0,
+      },
+    }),
+    onSuccess: () => { toast.success("Negócio criado com a comissão ligada."); refrescar(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (q.isLoading || movements.length === 0) return null;
+
+  return (
+    <Card className="mb-4 border-amber-500/30 bg-amber-500/5">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4" />
+          {movements.length === 1
+            ? "Tens 1 valor registado sem negócio"
+            : `Tens ${movements.length} valores registados sem negócio`}
+        </div>
+        <div className="space-y-2">
+          {movements.map((m) => (
+            <div key={m.id} className="rounded-lg border bg-background p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">
+                    {m.description || (m.type === "expense" ? "Despesa" : "Comissão")}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {[formatEUR(m.amount), m.date ? formatData(m.date) : null, m.propertyTitle]
+                      .filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant={aberto === m.id ? "secondary" : "outline"}
+                  onClick={() => {
+                    setAberto(aberto === m.id ? null : m.id);
+                    setTitulo(m.description || "");
+                  }}
+                >
+                  {aberto === m.id ? "Fechar" : "Ligar a um negócio"}
+                </Button>
+              </div>
+
+              {aberto === m.id && (
+                <div className="mt-3 space-y-3 border-t pt-3">
+                  {deals.length > 0 && (
+                    <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                      <div className="grid gap-2">
+                        <Label>Negócio existente</Label>
+                        <Select value={dealId} onValueChange={setDealId}>
+                          <SelectTrigger><SelectValue placeholder="Escolhe um negócio" /></SelectTrigger>
+                          <SelectContent>
+                            {deals.map((d) => <SelectItem key={d.id} value={d.id}>{d.title}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button disabled={!dealId || ligar.isPending} onClick={() => ligar.mutate(m.id)}>
+                        Ligar
+                      </Button>
+                    </div>
+                  )}
+                  <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                    <div className="grid gap-2">
+                      <Label>Ou abrir negócio novo</Label>
+                      <Input value={titulo} placeholder="Título do negócio"
+                        onChange={(e) => setTitulo(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Pessoa</Label>
+                      <Select value={pessoaId || "__none"} onValueChange={(v) => setPessoaId(v === "__none" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none">— sem pessoa —</SelectItem>
+                          {pessoas.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      variant="outline"
+                      disabled={criar.isPending || (!pessoaId && !m.propertyId)}
+                      onClick={() => criar.mutate(m)}
+                    >
+                      Criar negócio
+                    </Button>
+                  </div>
+                  {!pessoaId && !m.propertyId && (
+                    <p className="text-xs text-muted-foreground">
+                      Um negócio precisa pelo menos de uma pessoa ou de um imóvel.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

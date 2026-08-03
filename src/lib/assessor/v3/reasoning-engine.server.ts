@@ -400,6 +400,44 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       }
     }
 
+    // Negócio proposto pelo Afonso — só cria depois do "sim".
+    if (pending && pending.intent === "create_deal") {
+      if (saIsConfirmation(trimmed)) {
+        const exec = TOOL_REGISTRY.create_deal;
+        const result = await exec(ctx, pending.structured_payload ?? {});
+        const data = (result.data as any) ?? {};
+        const okOk = !!result.ok;
+        await markPendingActionStatus(supabase, pending.id, okOk ? "executed" : "failed", {
+          created_resource_type: okOk ? "opportunity" : null,
+          created_resource_id: okOk ? (data.id ?? null) : null,
+          error_message: okOk ? null : (result.error ?? "not_created"),
+        });
+        if (okOk && data.id) {
+          try {
+            await supabase.from("conversation_states").upsert({
+              user_id: userId, channel, external_conversation_id: channel,
+              last_entity_type: "opportunity", last_entity_id: data.id, last_intent: "create_deal",
+            } as never, { onConflict: "user_id,channel,external_conversation_id" });
+          } catch { /* noop */ }
+        }
+        if (!okOk) {
+          return { reply: `Não consegui criar o negócio: ${result.error ?? "tenta outra vez"}.` };
+        }
+        const extra = data.linkedMovements > 0
+          ? ` Liguei ${data.linkedMovements === 1 ? "a comissão que já tinhas registada" : `${data.linkedMovements} movimentos financeiros`}.`
+          : "";
+        return {
+          reply: data.duplicate
+            ? `Já tinhas esse negócio aberto — "${data.title}". Não criei outro.${extra}`
+            : `Feito. Abri o negócio "${data.title}", em "A começar".${extra}`,
+        };
+      }
+      if (saIsRejection(trimmed)) {
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        return { reply: "Está bem, não abri negócio nenhum." };
+      }
+    }
+
     // Processador de Áudio Imobiliário — proposta única com vários itens.
     if (pending && pending.intent === "audio_breakdown") {
       if (saIsConfirmation(trimmed)) {
@@ -951,6 +989,42 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
   // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
   // Financeiro: duplicado do mesmo dia — pergunta antes de assumir novo registo.
+  // Dinheiro registado sem negócio: é aqui que o ciclo se fechava sozinho no
+  // vazio. O Afonso propõe abrir o negócio que une pessoa, imóvel e comissão.
+  const finOk = toolResults.find(
+    (t) => t.name === "create_financial_movement" && t.ok && !(t.data as any)?.duplicate,
+  );
+  if (finOk) {
+    try {
+      const mv = (finOk.data as any)?.movement ?? {};
+      const finArgs = (decideR.decision.tool_calls.find(
+        (t) => t.name === "create_financial_movement",
+      )?.arguments ?? {}) as Record<string, any>;
+      const hasDeal = !!(mv.opportunity_id ?? (finOk.data as any)?.opportunity_id);
+      const propertyId: string | null = finArgs.property_id ?? null;
+      const personId: string | null = (convState as any)?.active_person_id ?? null;
+      if (!hasDeal && (propertyId || personId)) {
+        const label = String(finArgs.opportunity_title ?? finArgs.description ?? "").trim();
+        const title = label.length > 3 ? label.slice(0, 120) : "Novo negócio";
+        const { createPendingAction: createPending } = await import("../memory.server");
+        await createPending(supabase, {
+          userId, channel, intent: "create_deal",
+          originalContent: trimmed,
+          payload: {
+            title,
+            kind: "venda",
+            person_id: personId,
+            property_id: propertyId,
+            value: Number(finArgs.deal_value ?? 0) || 0,
+            link_movement_ids: mv.id ? [mv.id] : [],
+          } as Record<string, unknown>,
+          sourceMessageId: ctx.sourceMessageId ?? null,
+        });
+        reply = `${reply} Isto ainda não está ligado a nenhum negócio. Queres que abra "${title}" para juntar tudo?`.trim();
+      }
+    } catch { /* a sugestão nunca pode estragar o registo */ }
+  }
+
   const finTool = toolResults.find((t) => t.name === "create_financial_movement");
   if (finTool?.ok && (finTool.data as any)?.duplicate === true) {
     const existing = (finTool.data as any)?.existing ?? {};

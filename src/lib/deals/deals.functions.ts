@@ -215,30 +215,86 @@ export const createDeal = createServerFn({ method: "POST" })
   }) => data)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const kind = normalizeKind(data.kind);
-    const stage = normalizeStage(data.stage);
-    const { data: created, error } = await supabase.from("opportunities").insert({
-      user_id: userId,
-      title: data.title.trim() || null,
-      deal_kind: kind,
-      type: kind,
-      stage,
-      status: "Novo",
-      person_id: data.personId || null,
-      property_id: data.propertyId || null,
+    const { createDealCore } = await import("./create.server");
+    const res = await createDealCore(supabase, userId, {
+      title: data.title,
+      kind: data.kind,
+      stage: data.stage ?? null,
+      personId: data.personId ?? null,
+      propertyId: data.propertyId ?? null,
       value: data.value ?? 0,
-      notes: data.notes || null,
-      stage_changed_at: new Date().toISOString(),
-    } as never).select("id").single();
+      notes: data.notes ?? null,
+      source: "dashboard",
+    });
+    return res;
+  });
+
+/** Comissões e despesas sem negócio — para o consultor as ligar num clique. */
+export const listOrphanMovements = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("financial_movements")
+      .select("id, type, amount, description, movement_date, status, property_id")
+      .eq("user_id", userId)
+      .is("opportunity_id", null)
+      .order("movement_date", { ascending: false })
+      .limit(50);
     if (error) throw new Error(error.message);
-    const id = (created as Row).id as string;
-    if (data.propertyId) {
-      await supabase.from("opportunity_properties").insert({
-        user_id: userId, opportunity_id: id, property_id: data.propertyId, role: "principal",
-      } as never);
+    const rows = (data ?? []) as Row[];
+    const propIds = [...new Set(rows.map((r) => r.property_id).filter(Boolean))] as string[];
+    const titles = new Map<string, string>();
+    if (propIds.length) {
+      const { data: props } = await supabase
+        .from("properties").select("id, title").eq("user_id", userId).in("id", propIds);
+      for (const p of ((props ?? []) as Row[])) titles.set(p.id, p.title ?? "Imóvel");
     }
-    await logEvent(supabase, userId, id, "criado", "Negócio criado no dashboard.");
-    return { id };
+    return {
+      movements: rows.map((m) => ({
+        id: m.id,
+        type: m.type as string,
+        amount: Number(m.amount ?? 0),
+        description: m.description ?? "",
+        date: m.movement_date ?? null,
+        status: m.status ?? null,
+        propertyId: m.property_id ?? null,
+        propertyTitle: m.property_id ? (titles.get(m.property_id) ?? null) : null,
+      })),
+    };
+  });
+
+/** Liga uma comissão/despesa solta a um negócio existente. */
+export const linkMovementToDeal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { movementId: string; dealId: string }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { linkMovementsToDeal } = await import("./create.server");
+    const n = await linkMovementsToDeal(supabase, userId, data.dealId, { ids: [data.movementId] });
+    if (!n) throw new Error("Não consegui ligar esse movimento. Já pertence a um negócio?");
+    return { ok: true };
+  });
+
+/** Cria um negócio novo a partir de uma comissão/despesa solta. */
+export const createDealFromMovement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: {
+    movementId: string; title: string; kind?: string;
+    personId?: string | null; propertyId?: string | null; value?: number | null;
+  }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { createDealCore } = await import("./create.server");
+    return await createDealCore(supabase, userId, {
+      title: data.title,
+      kind: data.kind ?? "venda",
+      personId: data.personId ?? null,
+      propertyId: data.propertyId ?? null,
+      value: data.value ?? 0,
+      source: "dashboard",
+      linkMovementIds: [data.movementId],
+    });
   });
 
 export const updateDeal = createServerFn({ method: "POST" })
