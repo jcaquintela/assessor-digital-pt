@@ -57,6 +57,7 @@ export const updateSupremePreferences = createServerFn({ method: "POST" })
       proactive_push_enabled?: boolean;
       evening_checkin_enabled?: boolean;
       evening_checkin_time?: string;
+      confirm_document_send?: boolean;
     };
     const patch: Record<string, unknown> = {};
     if (typeof o.morning_briefing_enabled === "boolean") patch.morning_briefing_enabled = o.morning_briefing_enabled;
@@ -66,6 +67,7 @@ export const updateSupremePreferences = createServerFn({ method: "POST" })
     if (typeof o.evening_checkin_time === "string" && /^\d{2}:\d{2}$/.test(o.evening_checkin_time)) {
       patch.evening_checkin_time = o.evening_checkin_time;
     }
+    if (typeof o.confirm_document_send === "boolean") patch.confirm_document_send = o.confirm_document_send;
     if (isAutonomyLevel(o.autonomy_level)) patch.autonomy_level = o.autonomy_level;
     if (typeof o.max_daily_nudges === "number" && o.max_daily_nudges >= 0 && o.max_daily_nudges <= 20) {
       patch.max_daily_nudges = Math.floor(o.max_daily_nudges);

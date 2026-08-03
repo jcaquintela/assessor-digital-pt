@@ -15,6 +15,85 @@ import {
 import { findDocuments, findDocumentsForSubject, loadDocument, type DocHit } from "./retrieve.server";
 
 export const DOC_CHOICE_INTENT = "choosing_document";
+export const DOC_CONFIRM_INTENT = "confirming_document_send";
+
+const DOC_CANCEL_COMMAND = "#documento-nao";
+
+/** Preferência opcional: perguntar antes de enviar o ficheiro. */
+async function wantsConfirmation(supabase: any, userId: string): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from("consultant_preferences")
+      .select("confirm_document_send")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return (data as { confirm_document_send?: boolean } | null)?.confirm_document_send === true;
+  } catch {
+    return false;
+  }
+}
+
+const YES = /^(s|sim|sim!|claro|ok|okay|okey|certo|isso|manda|envia|pode ser|pode|vai|força|é esse|esse mesmo|confirmo|confirma|yes)\b/i;
+const NO = /^(n|não|nao|nope|deixa|esquece|cancela|cancelar|agora não|agora nao|outro|nem|no)\b/i;
+
+/**
+ * Pergunta antes de enviar (só quando o consultor ativou a confirmação).
+ * Devolve true quando ficou a aguardar resposta.
+ */
+async function confirmBeforeSending(
+  adapter: ChannelAdapter,
+  supabase: any,
+  args: { userId: string; to: string; content: string; hit: DocHit },
+): Promise<boolean> {
+  const { userId, to, content, hit } = args;
+  if (!(await wantsConfirmation(supabase, userId))) return false;
+
+  const { createPendingAction } = await import("@/lib/assessor/memory.server");
+  const { encodeInteractiveId } = await import("@/lib/assessor/interactive");
+  const where = hit.entityLabels[0] ? ` (${hit.entityLabels[0]})` : "";
+  const question = `Envio-te "${hit.fileName}"${where}?`;
+
+  await createPendingAction(supabase, {
+    userId,
+    channel: adapter.channel,
+    intent: DOC_CONFIRM_INTENT,
+    originalContent: content,
+    payload: { hit },
+    pendingQuestion: question,
+    currentQuestion: question,
+  });
+
+  let sent = false;
+  if (adapter.sendInteractive) {
+    try {
+      const r = await adapter.sendInteractive(to, {
+        kind: "buttons",
+        body: question,
+        options: [
+          { id: encodeInteractiveId(encodeDocCommand(hit.id)), label: "Sim, envia" },
+          { id: encodeInteractiveId(DOC_CANCEL_COMMAND), label: "Agora não" },
+        ],
+      });
+      sent = r.ok;
+    } catch { /* cai para texto */ }
+  }
+  if (sent) {
+    try {
+      await supabase.from("assessor_messages").insert({
+        user_id: userId,
+        role: "assistant",
+        content: question,
+        message_type: `${adapter.channel}_interactive`,
+        status: "sent",
+        channel: adapter.channel,
+        sender_phone: to,
+      } as never);
+    } catch { /* noop */ }
+  } else {
+    await say(adapter, supabase, userId, to, question);
+  }
+  return true;
+}
 
 async function say(
   adapter: ChannelAdapter,
@@ -180,7 +259,29 @@ export async function handleDocumentRequest(
     );
     const pending = await findActivePendingAction(supabase, userId, adapter.channel);
 
-    // (0) Toque numa das opções da lista de escolha.
+    // (0a) Resposta a uma confirmação de envio pendente.
+    if (pending?.intent === DOC_CONFIRM_INTENT) {
+      const hit = (pending.structured_payload as any)?.hit as DocHit | undefined;
+      const raw = content.trim();
+      const said = parseDocCommand(raw);
+      const yes = Boolean(hit) && (YES.test(raw) || (said !== null && said === shortDocId(hit!.id)));
+      const no = raw === DOC_CANCEL_COMMAND || NO.test(raw);
+      if (yes) {
+        await markPendingActionStatus(supabase, pending.id, "executed");
+        await deliverDocument(adapter, supabase, userId, to, hit!);
+        return true;
+      }
+      if (no) {
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        await say(adapter, supabase, userId, to, "Está bem, não envio. Diz-me se mudares de ideias.");
+        return true;
+      }
+      // Não é resposta à pergunta — segue o turno normal.
+      await markPendingActionStatus(supabase, pending.id, "cancelled");
+      return false;
+    }
+
+    // (0b) Toque numa das opções da lista de escolha.
     const cmd = parseDocCommand(content);
     if (cmd) {
       const candidates = ((pending?.structured_payload as any)?.candidates ?? []) as DocHit[];
@@ -213,6 +314,7 @@ export async function handleDocumentRequest(
         await say(adapter, supabase, userId, to, "Esse documento já não está disponível. Diz-me outra vez qual queres.");
         return true;
       }
+      if (await confirmBeforeSending(adapter, supabase, { userId, to, content, hit })) return true;
       await deliverDocument(adapter, supabase, userId, to, hit);
       return true;
     }
@@ -227,7 +329,9 @@ export async function handleDocumentRequest(
         return false;
       }
       await markPendingActionStatus(supabase, pending.id, "executed");
-      await deliverDocument(adapter, supabase, userId, to, candidates[idx]!);
+      const chosen = candidates[idx]!;
+      if (await confirmBeforeSending(adapter, supabase, { userId, to, content, hit: chosen })) return true;
+      await deliverDocument(adapter, supabase, userId, to, chosen);
       return true;
     }
 
@@ -243,7 +347,9 @@ export async function handleDocumentRequest(
         return true;
       }
       if (hits.length === 1) {
-        await deliverDocument(adapter, supabase, userId, to, hits[0]!);
+        const only = hits[0]!;
+        if (await confirmBeforeSending(adapter, supabase, { userId, to, content, hit: only })) return true;
+        await deliverDocument(adapter, supabase, userId, to, only);
         return true;
       }
       const header = `Tenho ${hits.length} documentos${label ? ` de ${label}` : ""}:`;
@@ -264,7 +370,9 @@ export async function handleDocumentRequest(
       return true;
     }
     if (hits.length === 1 || hits[0]!.score >= (hits[1]?.score ?? 0) + 3) {
-      const ok = await deliverDocument(adapter, supabase, userId, to, hits[0]!);
+      const best = hits[0]!;
+      if (await confirmBeforeSending(adapter, supabase, { userId, to, content, hit: best })) return true;
+      const ok = await deliverDocument(adapter, supabase, userId, to, best);
       return ok || true;
     }
     await askWhichDocument(adapter, supabase, {
