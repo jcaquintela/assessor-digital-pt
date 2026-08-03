@@ -361,6 +361,83 @@ export const setDriveFileStatus = createServerFn({ method: "POST" })
   });
 
 // Upload direto a partir do dashboard (multipart via FormData)
+// Eliminar ficheiros a sério: sai do storage, sai o registo e saem todas as
+// ligações (Pessoa / Imóvel / Negócio). Nada fica pendurado.
+export const deleteDriveFiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { ids: string[] }) => ({
+    ids: [...new Set((data?.ids ?? []).map((v) => String(v)).filter(Boolean))].slice(0, 200),
+  }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    if (!data.ids.length) return { deleted: 0, links: 0 };
+
+    // Só ficheiros do próprio consultor — RLS aplica-se na mesma.
+    const { data: rows, error: readErr } = await supabase
+      .from("uploaded_files")
+      .select("id, storage_path, original_file_name")
+      .eq("user_id", userId)
+      .in("id", data.ids);
+    if (readErr) throw new Error(readErr.message);
+    const files = ((rows ?? []) as any[]).filter((r) => r?.id);
+    if (!files.length) return { deleted: 0, links: 0 };
+    const ids = files.map((f) => String(f.id));
+
+    const { count: linkCount } = await (supabase as any)
+      .from("file_links")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("file_id", ids);
+
+    // 1) Ligações
+    const { error: linkErr } = await supabase
+      .from("file_links")
+      .delete()
+      .eq("user_id", userId)
+      .in("file_id", ids);
+    if (linkErr) throw new Error(linkErr.message);
+
+    // 2) Ficheiro físico no storage
+    const paths = files.map((f) => f.storage_path).filter(Boolean) as string[];
+    if (paths.length) {
+      const { error: storageErr } = await supabase.storage.from("assessor-files").remove(paths);
+      if (storageErr) console.error("[drive] falha ao remover do storage:", storageErr.message);
+    }
+
+    // 3) Registo (FKs em follow_ups / prospecting_leads / product_feedback
+    //    ficam a null; file_links já saiu).
+    const { error: delErr } = await supabase
+      .from("uploaded_files")
+      .delete()
+      .eq("user_id", userId)
+      .in("id", ids);
+    if (delErr) throw new Error(delErr.message);
+
+    // 4) Auditoria, mesmo padrão das outras eliminações.
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await (supabaseAdmin as any).from("admin_audit_logs").insert({
+        admin_user_id: null,
+        action: "drive.files_deleted",
+        target_user_id: userId,
+        resource_type: "uploaded_files",
+        resource_id: ids[0] ?? null,
+        reason: `Eliminação de ${ids.length} ficheiro(s) no Drive pelo consultor.`,
+        metadata: {
+          source: "dashboard:drive",
+          file_ids: ids,
+          file_names: files.map((f) => f.original_file_name ?? null),
+          links_removed: linkCount ?? 0,
+          storage_objects: paths.length,
+        },
+      });
+    } catch (err) {
+      console.error("[drive] auditoria de eliminação falhou:", err);
+    }
+
+    return { deleted: ids.length, links: linkCount ?? 0 };
+  });
+
 export const uploadDriveFile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => {
