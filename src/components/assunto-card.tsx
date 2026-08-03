@@ -11,6 +11,7 @@ export function AssuntoCard({
   meta,
   tag,
   destaque = false,
+  plano = false,
   extra,
   actions,
 }: {
@@ -19,12 +20,14 @@ export function AssuntoCard({
   meta?: ReactNode;
   tag?: ReactNode;
   destaque?: boolean;
+  /** Sem moldura própria: já vem dentro de um cartão. */
+  plano?: boolean;
   extra?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
-    <div className={destaque ? "" : "c-card c-card-hover p-3.5"}>
-      {tag ? <div className="c-spot-tag mb-2">{tag}</div> : null}
+    <div className={destaque || plano ? "" : "c-card c-card-hover p-3.5"}>
+      {tag ? <div className={plano ? "mb-1 flex items-center gap-2" : "c-spot-tag mb-2"}>{tag}</div> : null}
       {destaque ? (
         <h2 className="c-serif text-[18px] font-medium">{titulo}</h2>
       ) : (
