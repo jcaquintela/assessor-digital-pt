@@ -147,7 +147,15 @@ export const setFileCategory = createServerFn({ method: "POST" })
 // Lista principal do Drive. Aplica filtro simples por tab.
 export const listDriveFiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { tab?: Tab; q?: string; categoryId?: string | null }) => data)
+  .inputValidator(
+    (data: {
+      tab?: Tab;
+      q?: string;
+      categoryId?: string | null;
+      nif?: string;
+      artigo?: string;
+    }) => data,
+  )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const tab = (data.tab ?? "recentes") as Tab;
@@ -185,7 +193,21 @@ export const listDriveFiles = createServerFn({ method: "POST" })
     if (data.q && data.q.trim().length >= 2) {
       const term = `%${data.q.trim().replace(/[%_]/g, "")}%`;
       query = query.or(
-        `original_file_name.ilike.${term},ai_summary.ilike.${term},extracted_text.ilike.${term}`,
+        `original_file_name.ilike.${term},ai_summary.ilike.${term},extracted_text.ilike.${term},doc_nif.ilike.${term},doc_artigo_matricial.ilike.${term},doc_fracao.ilike.${term},doc_morada.ilike.${term}`,
+      );
+    }
+
+    // Filtro por NIF (só dígitos).
+    const nif = String(data.nif ?? "").replace(/\D/g, "");
+    if (nif.length >= 3) {
+      query = query.ilike("doc_nif", `%${nif}%`);
+    }
+
+    // Filtro por artigo matricial ou fração.
+    const artigo = String(data.artigo ?? "").trim().replace(/[%_]/g, "");
+    if (artigo.length >= 1) {
+      query = query.or(
+        `doc_artigo_matricial.ilike.%${artigo}%,doc_fracao.ilike.%${artigo}%`,
       );
     }
 
