@@ -575,6 +575,24 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       return { reply: feedbackConfirmQuestion(kind) };
     }
 
+    // (a-0b) Abertura de feedback sem corpo ("posso dar uma sugestão?").
+    // Abre um pending a aguardar o conteúdo em vez de cair em conversa solta.
+    const announceKind = !pending ? detectFeedbackAnnouncement(trimmed) : null;
+    if (announceKind) {
+      const { createPendingAction } = await import("../memory.server");
+      const ask = feedbackAskBody(announceKind);
+      await createPendingAction(supabase, {
+        userId,
+        channel,
+        intent: "collecting_feedback",
+        originalContent: trimmed,
+        payload: { kind: announceKind },
+        pendingQuestion: ask,
+        currentQuestion: ask,
+      });
+      return { reply: ask };
+    }
+
     if (detectWhatsNewQuery(trimmed)) {
       const t0 = Date.now();
       let reply: string;
