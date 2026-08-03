@@ -75,8 +75,8 @@ export function formatBreakdownProposal(breakdown: AudioBreakdown): string {
     : `Ouvi o áudio. Separei em ${breakdown.items.length} coisas:`;
   const confidential = breakdown.items.some((i) => i.kind === "note" && i.confidential);
   const tail = confidential
-    ? "A nota confidencial fica só para ti — nunca sai em nada que eu prepare para outra pessoa.\n\nGuardo tudo assim?"
-    : "Guardo tudo assim?";
+    ? "A nota confidencial fica só para ti — nunca sai em nada que eu prepare para outra pessoa.\n\nSe algum ponto estiver errado, diz-me qual (ex.: 'o 2 é amanhã às 10h'). Guardo tudo assim?"
+    : "Se algum ponto estiver errado, diz-me qual (ex.: 'o 2 é amanhã às 10h'). Guardo tudo assim?";
   return `${head}\n\n${lines.join("\n")}\n\n${tail}`;
 }
 
