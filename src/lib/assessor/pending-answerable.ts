@@ -23,7 +23,7 @@ const REGISTER_ONLY_RE = new RegExp(
     "\\bn[ãa]o\\s+(?:marques|agendes|me\\s+lembres)\\b",
     // "só registar" e variantes (com o "só" antes ou depois do verbo)
     "\\b(?:s[óo]|apenas|basta)\\s+(?:para\\s+)?(?:registar|registo|guardar|anotar|apontar|tomar\\s+nota|ficar\\s+registado|mem[óo]ria)\\b",
-    "\\b(?:regista|registar|guarda|guardar|anota|anotar|aponta|apontar)\\s+(?:s[óo]|apenas)\\b",
+    "\\b(?:regista|registar|guarda|guardar|anota|anotar|aponta|apontar)\\s+(?:s[óo]|apenas)(?![\\wáàâãéêíóôõúç])",
   ].join("|"),
   "i",
 );
