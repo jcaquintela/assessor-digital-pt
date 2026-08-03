@@ -4,7 +4,7 @@ import {
   TOOL_REGISTRY, resolvePropertyFromText,
   type DomainContext, type DomainResult,
 } from "../v2/domain.server";
-import { ZOD_BY_TOOL, CreateProspectingLeadArgs } from "../v2/tools";
+import { ZOD_BY_TOOL, CreateProspectingLeadArgs, CreateDealArgs } from "../v2/tools";
 import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
 import { cleanTitle } from "../titles";
 import type { DecisionToolCall, MemoryWrite } from "./types";
@@ -207,6 +207,22 @@ export async function applyMemoryWrites(
               userId: ctx.userId,
               channel: ctx.channel,
               intent: "create_prospecting_lead",
+              originalContent: "",
+              payload: parsed.data as Record<string, unknown>,
+              sourceMessageId: ctx.sourceMessageId ?? null,
+            });
+          } catch { /* noop */ }
+        }
+      }
+      // Proposta de Negócio — o Afonso propõe, o consultor é que decide.
+      if (w.key === "propose_deal" && w.value && typeof w.value === "object") {
+        const parsed = CreateDealArgs.safeParse(w.value);
+        if (parsed.success) {
+          try {
+            await createPendingAction(ctx.supabase, {
+              userId: ctx.userId,
+              channel: ctx.channel,
+              intent: "create_deal",
               originalContent: "",
               payload: parsed.data as Record<string, unknown>,
               sourceMessageId: ctx.sourceMessageId ?? null,

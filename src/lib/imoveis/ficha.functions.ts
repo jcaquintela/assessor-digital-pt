@@ -476,23 +476,15 @@ export const createDealForProperty = createServerFn({ method: "POST" })
       .from("properties").select("title, owner_person_id, asking_price")
       .eq("id", data.propertyId).eq("user_id", userId).maybeSingle();
     const p = (prop ?? {}) as Row;
-    const { data: created, error } = await supabase.from("opportunities").insert({
-      user_id: userId,
+    const { createDealCore } = await import("@/lib/deals/create.server");
+    const res = await createDealCore(supabase, userId, {
       title: `Venda · ${p.title ?? "Imóvel"}`,
-      deal_kind: "venda", type: "venda", stage: "preparacao", status: "Novo",
-      person_id: p.owner_person_id ?? null,
-      property_id: data.propertyId,
+      kind: "venda",
+      stage: "preparacao",
+      personId: p.owner_person_id ?? null,
+      propertyId: data.propertyId,
       value: Number(p.asking_price ?? 0),
-      stage_changed_at: new Date().toISOString(),
-    } as never).select("id").single();
-    if (error) throw new Error(error.message);
-    const id = (created as Row).id as string;
-    await supabase.from("opportunity_properties").insert({
-      user_id: userId, opportunity_id: id, property_id: data.propertyId, role: "principal",
-    } as never);
-    await supabase.from("opportunity_events").insert({
-      user_id: userId, opportunity_id: id, kind: "criado",
-      summary: "Negócio criado a partir da ficha do imóvel.", source: "dashboard",
-    } as never);
-    return { id };
+      source: "imovel",
+    });
+    return { id: res.id };
   });
