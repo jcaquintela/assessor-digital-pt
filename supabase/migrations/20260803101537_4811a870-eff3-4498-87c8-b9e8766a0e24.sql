@@ -1,0 +1,2 @@
+ALTER TABLE public.follow_ups ADD COLUMN IF NOT EXISTS briefing_sent_at timestamptz;
+CREATE INDEX IF NOT EXISTS follow_ups_briefing_pending_idx ON public.follow_ups (due_date) WHERE briefing_sent_at IS NULL AND person_id IS NOT NULL;

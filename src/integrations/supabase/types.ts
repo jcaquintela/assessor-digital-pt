@@ -1691,6 +1691,7 @@ export type Database = {
       }
       follow_ups: {
         Row: {
+          briefing_sent_at: string | null
           created_at: string
           created_by_assessor: boolean
           due_date: string
@@ -1719,6 +1720,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          briefing_sent_at?: string | null
           created_at?: string
           created_by_assessor?: boolean
           due_date?: string
@@ -1747,6 +1749,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          briefing_sent_at?: string | null
           created_at?: string
           created_by_assessor?: boolean
           due_date?: string
