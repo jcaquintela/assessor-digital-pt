@@ -219,3 +219,30 @@ export function trialChoiceText(name: string) {
     "Se não me disseres nada, fico automaticamente no Base — a conta e o histórico mantêm-se iguais."
   );
 }
+/**
+ * Cartela de briefing fora da janela de 24h.
+ *
+ * Template por defeito (submetido à Meta, categoria Utility, pt_PT):
+ * "Olá {{1}}. Daqui a 15 minutos tens {{2}}. O que interessa saber: {{3}}. Bom trabalho."
+ *
+ * O nome do template usado é escolhido no admin (Integrações & flags →
+ * "Briefing fora das 24h"), porque a Meta pode aprovar um nome diferente.
+ */
+export const TEMPLATE_MEETING_BRIEFING = "afonso_briefing_compromisso";
+
+export function meetingBriefingTemplatePayload(
+  templateName: string,
+  params: string[],
+  language: string = TEMPLATE_LANG,
+) {
+  return {
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: language },
+      components: params.length
+        ? [{ type: "body", parameters: params.map((text) => ({ type: "text", text })) }]
+        : [],
+    },
+  } as Record<string, unknown>;
+}
