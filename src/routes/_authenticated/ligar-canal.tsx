@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { BrandMark } from "@/components/brand-mark";
 import { createTelegramLinkToken, getTelegramLink } from "@/lib/telegram/link.functions";
 
 export const Route = createFileRoute("/_authenticated/ligar-canal")({
@@ -42,6 +43,13 @@ function LigarCanalPage() {
   return (
     <div className="consult-root min-h-screen px-4 py-10">
       <main className="mx-auto w-full max-w-xl">
+        <div className="mb-6 flex items-center gap-2">
+          <BrandMark size={36} />
+          <div>
+            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-xs text-muted-foreground">o teu assessor</div>
+          </div>
+        </div>
         <p className="c-eyebrow">Último passo</p>
         <h1 className="c-page-title mt-1">Liga o teu canal</h1>
         <p className="c-muted mt-2 text-[14px] leading-relaxed">
