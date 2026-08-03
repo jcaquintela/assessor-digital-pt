@@ -26,8 +26,8 @@ import {
 export const Route = createFileRoute("/_authenticated/drive/$id")({
   head: () => ({
     meta: [
-      { title: "Ficheiro — Drive" },
-      { name: "description", content: "Detalhe do ficheiro no Drive." },
+      { title: "Ficheiro — Drive Inteligente" },
+      { name: "description", content: "Detalhe do ficheiro no Drive Inteligente." },
     ],
   }),
   component: DriveDetail,
@@ -99,7 +99,7 @@ function DriveDetail() {
       <AppShell>
         <PageHeader title="Ficheiro não encontrado" />
         <Link to="/drive" className="text-sm underline">
-          Voltar ao Drive
+          Voltar ao Drive Inteligente
         </Link>
       </AppShell>
     );
@@ -113,7 +113,7 @@ function DriveDetail() {
     <AppShell>
       <div className="mb-3">
         <Link to="/drive" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Drive
+          <ChevronLeft className="h-4 w-4" /> Drive Inteligente
         </Link>
       </div>
       <PageHeader

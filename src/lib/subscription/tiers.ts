@@ -95,7 +95,7 @@ export function isModuleVisible(
 export const MODULE_LABEL: Record<string, string> = {
   "/hoje": "Hoje",
   "/pessoas": "Pessoas",
-  "/drive": "Drive",
+  "/drive": "Drive Inteligente",
   "/diversos": "Diversos",
   "/imoveis": "Imóveis",
   "/prospecao": "Prospeção",

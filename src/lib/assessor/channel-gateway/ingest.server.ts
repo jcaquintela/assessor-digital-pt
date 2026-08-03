@@ -634,7 +634,7 @@ async function handleInboundMediaInner(
                 } as never)
                 .eq("id", result.fileId);
               const kind = reading.photo_kind ? ` (${reading.photo_kind})` : "";
-              const question = `Recebi a foto${kind}, mas não me parece ter valor para o teu trabalho — não a guardei no Drive. Queres que a guarde na mesma?`;
+              const question = `Recebi a foto${kind}, mas não me parece ter valor para o teu trabalho — não a guardei no Drive Inteligente. Queres que a guarde na mesma?`;
               const { findActivePendingAction, markPendingActionStatus, createPendingAction } =
                 await import("@/lib/assessor/memory.server");
               const prev = await findActivePendingAction(supabaseAdmin, userId, adapter.channel);

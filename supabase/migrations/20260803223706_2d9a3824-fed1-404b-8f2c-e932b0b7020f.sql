@@ -1,0 +1,1 @@
+INSERT INTO public.product_updates (released_on, title, description, category) VALUES (CURRENT_DATE, 'O Drive passa a chamar-se Drive Inteligente', 'O nome mudou em todo o produto — menu, páginas e mensagens. O que faz é o mesmo: envias, o Assessor organiza.', 'melhoria');
