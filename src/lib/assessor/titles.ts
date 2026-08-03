@@ -47,6 +47,9 @@ export function cleanTitle(value: unknown): string | null {
     .replace(/^[\s\-–—:.,]+|[\s\-–—:,]+$/g, "")
     .trim();
   if (!raw || isPlaceholderTitle(raw)) return null;
+  // Bug real: o modelo devolveu "?" como tipo de evento e o seguimento ficou
+  // "? ao T2 em Oliveira do Douro". Só pontuação nunca é título.
+  if (!/[\p{L}\p{N}]/u.test(raw)) return null;
   return raw.slice(0, 200);
 }
 
