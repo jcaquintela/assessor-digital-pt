@@ -16,6 +16,8 @@ import { FilterSection } from "@/components/organizer/filter-section";
 import { toast } from "sonner";
 import { exportPeople } from "@/lib/export/export.functions";
 import { getPersonAttention } from "@/lib/people/attention.functions";
+import { assuntoDePessoa } from "@/lib/assessor/assunto";
+import { AssuntoCard } from "@/components/assunto-card";
 import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
@@ -130,13 +132,13 @@ function PessoasPage() {
       </div>
 
       {aviso && (
-        <div className="c-spotlight mb-4">
-          <div className="c-spot-tag"><AlertTriangle className="h-3.5 w-3.5" /> Isto merece atenção</div>
-          <p className="mt-2 text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
-            Não contactas <strong>{aviso.name}</strong> há {aviso.days} dias
-            {aviso.everContacted ? "" : " — nunca registaste um contacto desde que criaste a ficha"}. Vale a pena reativar antes que arrefeça de vez.
-          </p>
-        </div>
+        <section className="c-spotlight mb-4">
+          <AssuntoCard
+            destaque
+            tag={<><AlertTriangle className="h-4 w-4" /> Isto merece atenção</>}
+            {...assuntoDePessoa(aviso)}
+          />
+        </section>
       )}
 
       <div className="relative mb-4">
