@@ -475,9 +475,24 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
     // (a-1) "O que há de novo?" → novidades reais dos últimos 30 dias.
     // (a-0) Erro ou sugestão sobre o próprio produto → pede confirmação.
-    if (!pending && detectFeedbackIntent(trimmed)) {
-      const kind = detectFeedbackIntent(trimmed) as FeedbackKind;
+    const feedbackHit = !pending ? detectFeedbackTarget(trimmed) : null;
+    if (feedbackHit) {
+      const kind = feedbackHit.kind;
       const { createPendingAction } = await import("../memory.server");
+      // Ambíguo (produto vs. proprietário/cliente) → clarifica primeiro.
+      if (feedbackHit.target === "ambiguous") {
+        const question = feedbackClarifyQuestion(kind);
+        await createPendingAction(supabase, {
+          userId,
+          channel,
+          intent: "clarify_feedback_target",
+          originalContent: trimmed,
+          payload: { kind, original: trimmed },
+          pendingQuestion: question,
+          currentQuestion: question,
+        });
+        return { reply: question };
+      }
       await createPendingAction(supabase, {
         userId,
         channel,
