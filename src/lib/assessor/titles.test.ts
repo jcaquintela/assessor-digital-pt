@@ -56,3 +56,14 @@ describe("fast-path de Diversos", () => {
     expect(detectMiscQuery("nota: falar com o Paulo")).toBe(false);
   });
 });
+
+describe("bug real — tipo de evento '?' (Iolanda, 29/07)", () => {
+  it("pontuação isolada nunca é título", () => {
+    expect(cleanTitle("?")).toBeNull();
+    expect(cleanTitle("??!")).toBeNull();
+    expect(displayTitle("?")).toBe("compromisso");
+  });
+  it("título real com ponto de interrogação mantém-se", () => {
+    expect(cleanTitle("Confirmar visita?")).toBe("Confirmar visita?");
+  });
+});
