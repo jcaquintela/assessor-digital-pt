@@ -497,10 +497,13 @@ function HojePage() {
                   <div key={`${p.subject_type}:${p.subject_id}`} className="c-card c-card-hover p-3.5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{p.action}</div>
+                        <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{assuntoDe(p)}</div>
                         {/* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */}
                         <div className="mt-0.5 text-xs" style={{ color: "var(--ink)" }}>
                           {explainPriority(p)}
+                          {assuntoDe(p) !== p.action && p.action
+                            ? ` Vale a pena ${p.action.charAt(0).toLowerCase()}${p.action.slice(1)}.`
+                            : ""}
                         </div>
                         <div className="c-muted mt-0.5 text-xs">
                           {[
