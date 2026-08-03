@@ -80,6 +80,21 @@ function FeedbackPage() {
             {s === "todos" ? "Todos os estados" : STATUS_LABEL[s]}
           </Button>
         ))}
+        <span className="mx-2 w-px bg-border" />
+        {[
+          { v: "todos", l: "Com ou sem anexo" },
+          { v: "com_anexo", l: "Com anexo" },
+          { v: "sem_anexo", l: "Sem anexo" },
+        ].map((o) => (
+          <Button
+            key={o.v}
+            size="sm"
+            variant={attachment === o.v ? "default" : "outline"}
+            onClick={() => setAttachment(o.v)}
+          >
+            {o.l}
+          </Button>
+        ))}
       </div>
 
       {isLoading ? (
