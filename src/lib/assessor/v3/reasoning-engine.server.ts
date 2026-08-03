@@ -391,8 +391,14 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           await import("./audio-breakdown-edit");
         const { todayLisbonYmd } = await import("./audio-breakdown.server");
         const current = coerceBreakdown(pending.structured_payload ?? {});
-        const edit = parseBreakdownEdit(trimmed, current.items.length, todayLisbonYmd());
+        const edit = parseBreakdownEdit(
+          trimmed,
+          current.items.length,
+          todayLisbonYmd(),
+          current.items,
+        );
         if (edit) {
+          const removedItem = edit.remove ? current.items[edit.index] : undefined;
           const next = applyBreakdownEdit(current, edit);
           if (!next.items.length) {
             await markPendingActionStatus(supabase, pending.id, "cancelled");
@@ -405,7 +411,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
             next as unknown as Record<string, any>,
             { status: "pending_confirmation" },
           );
-          return { reply: formatBreakdownRevised(next, describeBreakdownEdit(edit)) };
+          return { reply: formatBreakdownRevised(next, describeBreakdownEdit(edit, removedItem)) };
         }
       }
     }
