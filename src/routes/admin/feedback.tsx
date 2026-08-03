@@ -32,6 +32,7 @@ function FeedbackPage() {
 
   const [kind, setKind] = useState<string>("todos");
   const [status, setStatus] = useState<string>("todos");
+  const [attachment, setAttachment] = useState<string>("todos");
   const [notes, setNotes] = useState<Record<string, string>>({});
 
   const mut = useMutation({
@@ -44,10 +45,14 @@ function FeedbackPage() {
   });
 
   const items = useMemo(() => {
-    return ((data as any)?.items ?? []).filter(
-      (i: any) => (kind === "todos" || i.kind === kind) && (status === "todos" || i.status === status),
-    );
-  }, [data, kind, status]);
+    return ((data as any)?.items ?? []).filter((i: any) => {
+      const kindOk = kind === "todos" || i.kind === kind;
+      const statusOk = status === "todos" || i.status === status;
+      const hasAttachment = !!i.attachment_file_id;
+      const attachmentOk = attachment === "todos" || (attachment === "com_anexo" ? hasAttachment : !hasAttachment);
+      return kindOk && statusOk && attachmentOk;
+    });
+  }, [data, kind, status, attachment]);
 
   return (
     <div className="space-y-6">
