@@ -166,7 +166,7 @@ function InteracaoDetail() {
                 </SelectContent>
               </Select>
               {op && (
-                <Link to="/oportunidades/$id" params={{ id: op.id }} className="text-xs text-primary hover:underline">Abrir oportunidade</Link>
+                <Link to="/negocios/$id" params={{ id: op.id }} className="text-xs text-primary hover:underline">Abrir oportunidade</Link>
               )}
             </div>
           </CardContent>

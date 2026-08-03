@@ -64,7 +64,7 @@ export function EventDrawer({ item, onClose }: { item: EventDrawerItem | null; o
                 </Link>
               )}
               {item.negocioId && (
-                <Link to="/oportunidades/$id" params={{ id: item.negocioId }} className="flex items-center gap-2 rounded-lg border border-border p-3 hover:bg-muted">
+                <Link to="/negocios/$id" params={{ id: item.negocioId }} className="flex items-center gap-2 rounded-lg border border-border p-3 hover:bg-muted">
                   <Briefcase className="h-4 w-4 text-muted-foreground" />
                   <span className="flex-1">{item.negocioLabel ?? "Negócio"}</span>
                   <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />

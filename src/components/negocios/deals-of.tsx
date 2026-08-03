@@ -33,7 +33,7 @@ export function DealsOf({ personId, propertyId }: { personId?: string; propertyI
             {deals.map((d) => (
               <Link
                 key={d.id}
-                to="/oportunidades/$id"
+                to="/negocios/$id"
                 params={{ id: d.id }}
                 className="block rounded-lg border border-border p-3 text-sm hover:border-primary/40"
               >

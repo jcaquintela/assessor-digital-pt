@@ -99,7 +99,7 @@ function ComissaoFicha() {
           </div>
         </div>
         {opp && (
-          <Link to="/oportunidades/$id" params={{ id: opp.id }} className="text-sm text-primary hover:underline">Abrir oportunidade →</Link>
+          <Link to="/negocios/$id" params={{ id: opp.id }} className="text-sm text-primary hover:underline">Abrir oportunidade →</Link>
         )}
         <div className="flex justify-between">
           <Button variant="ghost" className="text-destructive" onClick={apagar}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>

@@ -36,7 +36,7 @@ export const Route = createFileRoute("/_authenticated/drive/$id")({
 const ENTITY_TARGET: Record<string, (id: string) => { to: string; params: any }> = {
   person: (id) => ({ to: "/pessoas/$id", params: { id } }),
   property: (id) => ({ to: "/imoveis/$id", params: { id } }),
-  opportunity: (id) => ({ to: "/oportunidades/$id", params: { id } }),
+  opportunity: (id) => ({ to: "/negocios/$id", params: { id } }),
   follow_up: (id) => ({ to: "/seguimentos/$id", params: { id } }),
   miscellaneous: (id) => ({ to: "/diversos/$id", params: { id } }),
   prospecting_lead: (id) => ({ to: "/oportunidades/prospecao/$id", params: { id } }),

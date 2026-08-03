@@ -320,7 +320,7 @@ function PropertyDetail() {
       {/* ===== Percurso do negócio ===== */}
       <Section
         title="Percurso do negócio"
-        action={deal ? <Link to="/oportunidades/$id" params={{ id: deal.id }} className="text-xs underline">Abrir negócio</Link> : null}
+        action={deal ? <Link to="/negocios/$id" params={{ id: deal.id }} className="text-xs underline">Abrir negócio</Link> : null}
       >
         {deal ? (
           <>
