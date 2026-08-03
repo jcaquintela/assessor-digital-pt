@@ -2384,6 +2384,48 @@ export type Database = {
         }
         Relationships: []
       }
+      product_feedback: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          internal_note: string | null
+          kind: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          channel?: string
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          internal_note?: string | null
+          kind?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          internal_note?: string | null
+          kind?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_updates: {
         Row: {
           category: string
