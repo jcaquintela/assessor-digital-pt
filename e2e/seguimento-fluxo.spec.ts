@@ -24,6 +24,19 @@ async function autenticar(page: Page) {
   }
 }
 
+/** Navegação estável: o router do lado do cliente pode abortar o primeiro goto. */
+async function irPara(page: Page, url: string) {
+  for (let i = 0; i < 3; i++) {
+    try {
+      await page.goto(url, { waitUntil: "domcontentloaded" });
+      break;
+    } catch {
+      await page.waitForTimeout(500);
+    }
+  }
+  await page.waitForLoadState("networkidle");
+}
+
 /** Data em formato do input (YYYY-MM-DD), com deslocamento em dias. */
 function dataISO(offsetDias: number) {
   const d = new Date();
@@ -36,8 +49,7 @@ function dataISO(offsetDias: number) {
  * (é o sítio onde o consultor o cria sem passar pelo Assessor).
  */
 async function registarSeguimentoDesdeHoje(page: Page, titulo: string, quando: string) {
-  await page.goto("/hoje");
-  await page.waitForLoadState("networkidle");
+  await irPara(page, "/hoje");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
   await page.getByRole("link", { name: "Pessoas", exact: true }).first().click();
@@ -62,8 +74,7 @@ async function registarSeguimentoDesdeHoje(page: Page, titulo: string, quando: s
 
 /** Abre o seguimento pelo título e apaga-o, para não deixar lixo na conta. */
 async function apagarSeguimento(page: Page, titulo: string) {
-  await page.goto("/seguimentos");
-  await page.waitForLoadState("networkidle");
+  await irPara(page, "/seguimentos");
   for (const sep of ["Atrasados", "Esta semana", "Hoje"]) {
     const aba = page.getByRole("tab", { name: new RegExp(`^${sep}`) });
     if (!(await aba.count())) continue;
@@ -82,8 +93,7 @@ async function apagarSeguimento(page: Page, titulo: string) {
 
 /** Confirma que o seguimento está no separador esperado. */
 async function verNoSeparador(page: Page, separador: string, titulo: string) {
-  await page.goto("/seguimentos");
-  await page.waitForLoadState("networkidle");
+  await irPara(page, "/seguimentos");
   await page.getByRole("tab", { name: new RegExp(`^${separador}`) }).click();
   await expect(
     page.getByRole("link", { name: new RegExp(titulo) }).first(),
