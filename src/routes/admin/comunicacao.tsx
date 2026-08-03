@@ -124,6 +124,9 @@ function ComunicacaoPage() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [includeTest, setIncludeTest] = useState(false);
+  // Um aviso de dashboard sem fim fica no ecrã do consultor para sempre.
+  // Por defeito desaparece ao fim de 24h; o admin pode escolher outra coisa.
+  const [expiresIn, setExpiresIn] = useState<"6h" | "24h" | "7d" | "30d" | "never">("24h");
   const [sending, setSending] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [openBroadcast, setOpenBroadcast] = useState<string | null>(null);
@@ -150,6 +153,12 @@ function ComunicacaoPage() {
   const finalCount = preview?.finalCount ?? 0;
   const canSend = !!isSuper && !sending && body.trim().length >= 3 && channel !== "whatsapp" && finalCount > 0;
 
+  const expiresAtIso = () => {
+    const hours = { "6h": 6, "24h": 24, "7d": 24 * 7, "30d": 24 * 30 } as Record<string, number>;
+    const h = hours[expiresIn];
+    return h ? new Date(Date.now() + h * 3600_000).toISOString() : null;
+  };
+
   const send = async () => {
     setSending(true);
     setConfirming(false);
@@ -160,6 +169,7 @@ function ComunicacaoPage() {
           segment,
           subject: subject.trim() || undefined,
           body: body.trim(),
+          expires_at: channel === "dashboard" ? expiresAtIso() : null,
           includeTestAccounts: includeTest,
         },
       });
@@ -230,6 +240,26 @@ function ComunicacaoPage() {
           <label className="mini mb-3 block" style={{ color: "var(--muted)" }}>
             Assunto
             <input className="admin-input mt-1 block w-full" value={subject} onChange={(e) => setSubject(e.target.value)} />
+          </label>
+        ) : null}
+
+        {channel === "dashboard" ? (
+          <label className="mini mb-3 block" style={{ color: "var(--muted)" }}>
+            Deixa de aparecer
+            <select
+              className="admin-input mt-1 block w-full max-w-sm"
+              value={expiresIn}
+              onChange={(e) => setExpiresIn(e.target.value as typeof expiresIn)}
+            >
+              <option value="6h">Daqui a 6 horas</option>
+              <option value="24h">Daqui a 24 horas</option>
+              <option value="7d">Daqui a 7 dias</option>
+              <option value="30d">Daqui a 30 dias</option>
+              <option value="never">Só quando o consultor fechar</option>
+            </select>
+            <span className="mt-1 block">
+              Um aviso de manutenção só faz sentido até à hora que anuncia. Depois desta altura desaparece sozinho.
+            </span>
           </label>
         ) : null}
 
