@@ -25,3 +25,45 @@ export function fraseComAcao(p: AssuntoSubject, explicacao: string): string {
   const sufixo = ` Vale a pena ${acao.charAt(0).toLowerCase()}${acao.slice(1)}.`;
   return `${explicacao}${sufixo}`;
 }
+
+/* ---------- Selectors por origem ----------
+ * Cada origem de "Isto merece atenção" passa por aqui e devolve sempre o mesmo
+ * formato { titulo, frase }: título = assunto, ação sugerida dentro da frase.
+ * Assim, Hoje, Pessoas e Imóveis nunca divergem. */
+
+export type AssuntoView = { titulo: string; frase: string };
+
+export function assuntoDePessoa(a: {
+  name: string;
+  days: number;
+  everContacted: boolean;
+}): AssuntoView {
+  const subject: AssuntoSubject = {
+    subject_type: "person",
+    entity_label: a.name,
+    action: "reativar o contacto antes que arrefeça de vez",
+  };
+  const nunca = a.everContacted
+    ? ""
+    : " — nunca registaste um contacto desde que criaste a ficha";
+  return {
+    titulo: assuntoDe(subject),
+    frase: fraseComAcao(subject, `Sem contacto há ${a.days} dias${nunca}.`),
+  };
+}
+
+export function assuntoDeImovel(a: {
+  count: number;
+  days: number;
+  first: { id: string; title: string };
+}): AssuntoView {
+  const subject: AssuntoSubject = {
+    subject_type: "property",
+    entity_label: a.count === 1 ? a.first.title : `${a.count} imóveis por angariar`,
+    action: "retomar antes que arrefeçam",
+  };
+  const explicacao = a.count === 1
+    ? `Continua "Por angariar" há ${a.days} dias sem contacto real registado.`
+    : `Continuam "Por angariar" há mais de 10 dias sem contacto real registado (o mais parado é ${a.first.title}, há ${a.days} dias).`;
+  return { titulo: assuntoDe(subject), frase: fraseComAcao(subject, explicacao) };
+}
