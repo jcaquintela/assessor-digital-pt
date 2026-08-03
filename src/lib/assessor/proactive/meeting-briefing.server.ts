@@ -49,7 +49,7 @@ async function loadDueEvents(
 export async function sendMeetingBriefing(
   supabase: any,
   event: BriefingEvent & { user_id: string },
-  opts: { now?: Date; force?: boolean; forceTemplate?: boolean } = {},
+  opts: { now?: Date; force?: boolean; forceTemplate?: boolean; markSent?: boolean } = {},
 ): Promise<{ sent: boolean; reason?: string; via?: "text" | "template" }> {
   const nowMs = (opts.now ?? new Date()).getTime();
   if (!opts.force && !isBriefingDue(event, nowMs)) return { sent: false, reason: "not_due" };
@@ -97,7 +97,7 @@ export async function sendMeetingBriefing(
         { kind: opts.force ? "test" : "auto" },
       );
       if (!sentTpl.ok) return { sent: false, reason: "send_failed" };
-      await markBriefingSent(supabase, event, target.channel, text, nowMs);
+      if (opts.markSent !== false) await markBriefingSent(supabase, event, target.channel, text, nowMs);
       return { sent: true, via: "template" };
     }
   }
@@ -106,7 +106,7 @@ export async function sendMeetingBriefing(
   const r = await sendReplyForChannel(target.channel, target.externalId, text);
   if (!r.ok) return { sent: false, reason: "send_failed" };
 
-  await markBriefingSent(supabase, event, target.channel, text, nowMs);
+  if (opts.markSent !== false) await markBriefingSent(supabase, event, target.channel, text, nowMs);
   return { sent: true, via: "text" };
 }
 
