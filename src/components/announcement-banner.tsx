@@ -15,6 +15,11 @@ function readDismissed(): string[] {
   }
 }
 
+function sameText(a?: string | null, b?: string | null) {
+  const n = (s?: string | null) => String(s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  return !!n(a) && n(a) === n(b);
+}
+
 export function AnnouncementBanner() {
   const fetchAnnouncements = useServerFn(getMyAnnouncements);
   const [dismissed, setDismissed] = useState<string[]>(() => readDismissed());
@@ -26,6 +31,9 @@ export function AnnouncementBanner() {
 
   const announcement = (data ?? []).find((a) => !dismissed.includes(a.id));
   if (!announcement) return null;
+
+  // Aviso com título e corpo iguais aparecia duas vezes seguidas.
+  const body = sameText(announcement.title, announcement.body) ? null : announcement.body;
 
   const dismiss = () => {
     const next = [...dismissed, announcement.id];
@@ -42,7 +50,9 @@ export function AnnouncementBanner() {
       <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{announcement.title}</p>
-        <p className="mt-0.5 whitespace-pre-line text-sm text-muted-foreground">{announcement.body}</p>
+        {body && (
+          <p className="mt-0.5 whitespace-pre-line text-sm text-muted-foreground">{body}</p>
+        )}
       </div>
       <button
         type="button"

@@ -396,12 +396,12 @@ function HojePage() {
         )}
       </div>
 
-      {/* A-bis. "{Assessor} chama a atenção": UMA observação por dia, nunca uma lista. */}
+      {/* A-bis. "Isto merece atenção": UMA observação por dia, nunca uma lista. */}
       {!filtroAtivo && atencao && (
         <section className="c-spotlight mb-4">
           <div className="c-spot-tag mb-2">
             <AlertTriangle className="h-4 w-4" />
-            {assessorName} chama a atenção
+            Isto merece atenção
           </div>
           <h2 className="c-serif text-[18px] font-medium">{atencao.action}</h2>
           <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
