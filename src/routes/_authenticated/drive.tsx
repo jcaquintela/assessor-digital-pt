@@ -1,3 +1,4 @@
+import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -249,7 +250,7 @@ function DrivePage() {
   return (
     <AppShell>
       <PageHeader
-        title="Drive Inteligente"
+        title={MODULE_NAME.drive}
         subtitle="Envia. O Assessor organiza."
         action={
           <>

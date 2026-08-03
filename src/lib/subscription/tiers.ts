@@ -1,3 +1,4 @@
+import { MODULE_NAME } from "@/lib/seo/module-names";
 // Fonte única para regras de gating por tier. Não lê da BD — recebe o valor
 // vindo de `effective_tier()` e devolve capacidades. Cliente e servidor
 // importam daqui para nunca divergirem.
@@ -95,7 +96,7 @@ export function isModuleVisible(
 export const MODULE_LABEL: Record<string, string> = {
   "/hoje": "Hoje",
   "/pessoas": "Pessoas",
-  "/drive": "Drive Inteligente",
+  "/drive": MODULE_NAME.drive,
   "/diversos": "Diversos",
   "/imoveis": "Imóveis",
   "/prospecao": "Prospeção",
