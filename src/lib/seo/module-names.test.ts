@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { MODULE_NAME, moduleTitle, pageTitle } from "./module-names";
 
@@ -21,5 +22,37 @@ describe("nomes de módulos", () => {
 
   it("pageTitle acrescenta o nome da app", () => {
     expect(pageTitle("Hoje")).toBe("Hoje — Afonso");
+  });
+});
+
+describe("fonte única: nenhum 'Drive' sozinho", () => {
+  // "Drive" só é aceitável quando seguido de "Inteligente".
+  const DRIVE_SOZINHO = /\bDrive\b(?!\s+Inteligente)/;
+
+  it("o valor visível do módulo drive nunca é 'Drive' sozinho", () => {
+    expect(MODULE_NAME.drive).toBe("Drive Inteligente");
+    expect(DRIVE_SOZINHO.test(MODULE_NAME.drive)).toBe(false);
+  });
+
+  it("os títulos gerados para o drive nunca contêm 'Drive' sozinho", () => {
+    const titulos = [
+      moduleTitle("drive"),
+      moduleTitle("drive", "Ficheiro"),
+      pageTitle(MODULE_NAME.drive),
+    ];
+    for (const t of titulos) {
+      expect(DRIVE_SOZINHO.test(t)).toBe(false);
+      expect(t).toContain("Drive Inteligente");
+    }
+  });
+
+  it("o ficheiro da fonte única não tem literais com 'Drive' sozinho", () => {
+    const src = readFileSync(
+      new URL("./module-names.ts", import.meta.url),
+      "utf8",
+    );
+    const literais = src.match(/"[^"]*"|`[^`]*`/g) ?? [];
+    const maus = literais.filter((l) => DRIVE_SOZINHO.test(l));
+    expect(maus).toEqual([]);
   });
 });
