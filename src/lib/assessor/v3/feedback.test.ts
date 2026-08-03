@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectFeedbackIntent, feedbackConfirmQuestion } from "./feedback";
+import { detectFeedbackIntent, detectFeedbackTarget, feedbackClarifyQuestion, feedbackConfirmQuestion, readClarifyAnswer } from "./feedback";
 
 describe("feedback do produto", () => {
   it("apanha erro no Afonso", () => {
@@ -14,5 +14,29 @@ describe("feedback do produto", () => {
   });
   it("pergunta antes de gravar", () => {
     expect(feedbackConfirmQuestion("bug")).toContain("registe isto como erro");
+  });
+});
+
+describe("clarificação produto vs. pessoa", () => {
+  it("mensagem vaga pede clarificação em vez de assumir", () => {
+    expect(detectFeedbackTarget("isto não funciona")).toEqual({ kind: "bug", target: "ambiguous" });
+    expect(detectFeedbackIntent("isto não funciona")).toBeNull();
+  });
+  it("produto + pessoa na mesma frase é ambíguo", () => {
+    expect(detectFeedbackTarget("o app não funciona com o proprietário")?.target).toBe("ambiguous");
+  });
+  it("produto claro continua direto à confirmação", () => {
+    expect(detectFeedbackTarget("o Afonso não funciona")).toEqual({ kind: "bug", target: "product" });
+  });
+  it("frase sobre pessoa continua a não ser feedback", () => {
+    expect(detectFeedbackTarget("o proprietário falhou a visita e não funciona assim")).toBeNull();
+  });
+  it("lê a resposta à clarificação", () => {
+    expect(readClarifyAnswer("é da app")).toBe("product");
+    expect(readClarifyAnswer("é do proprietário")).toBe("person");
+    expect(readClarifyAnswer("talvez")).toBeNull();
+  });
+  it("pergunta de clarificação distingue os dois lados", () => {
+    expect(feedbackClarifyQuestion("bug")).toContain("proprietário");
   });
 });

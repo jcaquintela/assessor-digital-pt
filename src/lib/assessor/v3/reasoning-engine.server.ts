@@ -44,8 +44,12 @@ import { buildPersonBrief } from "./person-brief.server";
 import { detectWhatsNewQuery, formatWhatsNewReply, noRecentUpdatesReply, NO_UPDATES_REPLY } from "./whats-new";
 import { lastProductUpdate, listRecentProductUpdates } from "./whats-new.server";
 import {
-  detectFeedbackIntent,
+  detectFeedbackTarget,
   feedbackConfirmQuestion,
+  feedbackClarifyQuestion,
+  readClarifyAnswer,
+  FEEDBACK_CLARIFY_RETRY,
+  FEEDBACK_NOT_PRODUCT_REPLY,
   FEEDBACK_CANCELLED_REPLY,
   FEEDBACK_FAILED_REPLY,
   FEEDBACK_SAVED_REPLY,
@@ -382,6 +386,33 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       }
     }
 
+    // Clarificação: a queixa/ideia é sobre mim ou sobre uma pessoa?
+    if (pending && pending.intent === "clarify_feedback_target") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
+      const original = String(payload.original ?? pending.original_content ?? "");
+      const answer = readClarifyAnswer(trimmed);
+      if (answer === null) {
+        return { reply: FEEDBACK_CLARIFY_RETRY };
+      }
+      await markPendingActionStatus(supabase, pending.id, answer === "product" ? "executed" : "cancelled");
+      if (answer === "person") {
+        return { reply: FEEDBACK_NOT_PRODUCT_REPLY };
+      }
+      const { createPendingAction } = await import("../memory.server");
+      const question = feedbackConfirmQuestion(kind);
+      await createPendingAction(supabase, {
+        userId,
+        channel,
+        intent: "record_product_feedback",
+        originalContent: original,
+        payload: { kind, original },
+        pendingQuestion: question,
+        currentQuestion: question,
+      });
+      return { reply: question };
+    }
+
     // Feedback sobre o produto — só grava depois de confirmação explícita.
     if (pending && pending.intent === "record_product_feedback") {
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
@@ -471,9 +502,24 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
     // (a-1) "O que há de novo?" → novidades reais dos últimos 30 dias.
     // (a-0) Erro ou sugestão sobre o próprio produto → pede confirmação.
-    if (!pending && detectFeedbackIntent(trimmed)) {
-      const kind = detectFeedbackIntent(trimmed) as FeedbackKind;
+    const feedbackHit = !pending ? detectFeedbackTarget(trimmed) : null;
+    if (feedbackHit) {
+      const kind = feedbackHit.kind;
       const { createPendingAction } = await import("../memory.server");
+      // Ambíguo (produto vs. proprietário/cliente) → clarifica primeiro.
+      if (feedbackHit.target === "ambiguous") {
+        const question = feedbackClarifyQuestion(kind);
+        await createPendingAction(supabase, {
+          userId,
+          channel,
+          intent: "clarify_feedback_target",
+          originalContent: trimmed,
+          payload: { kind, original: trimmed },
+          pendingQuestion: question,
+          currentQuestion: question,
+        });
+        return { reply: question };
+      }
       await createPendingAction(supabase, {
         userId,
         channel,
