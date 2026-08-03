@@ -7,8 +7,11 @@
 // the authenticated path.
 
 import { describePendingPt, sanitizeMiscFields } from "./misc-text";
+import { pendingSlot, type PendingSlot } from "./pending-slots";
 
 export { describePendingPt };
+export { pendingSlot };
+export type { PendingSlot };
 
 export type PendingActionStatus =
   | "collecting_information"
@@ -54,6 +57,7 @@ export async function findActivePendingAction(
   supabase: any,
   userId: string,
   channel: string,
+  slot: PendingSlot = "main",
 ): Promise<PendingActionRow | null> {
   const { data } = await supabase
     .from("pending_actions")
@@ -62,9 +66,11 @@ export async function findActivePendingAction(
     .eq("channel", channel)
     .in("status", ["pending_confirmation", "collecting_information", "correction_pending"])
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const row = (data as PendingActionRow | null) ?? null;
+    .limit(10);
+  const rows = ((data as PendingActionRow[] | null) ?? []).filter(
+    (r) => pendingSlot(r.intent) === slot,
+  );
+  const row = rows[0] ?? null;
   if (!row) return null;
   if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) {
     await supabase
@@ -110,14 +116,17 @@ export async function createPendingAction(
     sourceMessageId?: string | null;
   },
 ): Promise<PendingActionRow | null> {
-  // MVP invariant: only one active pending action per (user, channel).
+  // Invariante: um rascunho activo por (user, canal, RANHURA).
+  // Rascunhos de outra ranhura (ex.: a lista de escolha de documentos)
+  // sobrevivem intactos a um novo pedido de outra natureza.
   // (helper describePendingPt definido no fim do ficheiro)
   // Any older draft is cancelled BEFORE the new one is inserted, so a
   // confirmation/refusal cannot possibly land on a stale row.
   // Uma proposta por confirmar que é substituída nunca pode desaparecer em
   // silêncio (caso real: "Casa Teste A" perdida quando chegou "Casa Teste B").
   // Guardamos o que se perdeu em Diversos.
-  const { data: superseded } = await supabase
+  const slot = pendingSlot(input.intent);
+  const { data: activeRows } = await supabase
     .from("pending_actions")
     .select("id, intent, structured_payload, original_content")
     .eq("user_id", input.userId)
@@ -127,20 +136,19 @@ export async function createPendingAction(
       "collecting_information",
       "correction_pending",
     ]);
-  await supabase
-    .from("pending_actions")
-    .update({
-      status: "cancelled",
-      error_message: "superseded by new pending action",
-    } as never)
-    .eq("user_id", input.userId)
-    .eq("channel", input.channel)
-    .in("status", [
-      "pending_confirmation",
-      "collecting_information",
-      "correction_pending",
-    ]);
-  for (const row of (superseded as any[]) ?? []) {
+  const superseded = ((activeRows as any[]) ?? []).filter(
+    (r) => pendingSlot(r.intent) === slot,
+  );
+  for (const row of superseded) {
+    await supabase
+      .from("pending_actions")
+      .update({
+        status: "cancelled",
+        error_message: "superseded by new pending action",
+      } as never)
+      .eq("id", row.id);
+  }
+  for (const row of superseded) {
     if (row.intent === "classify_file" || row.intent === "suggest_file_link") continue;
     const payload = row.structured_payload ?? {};
     const label = payload.title || payload.description || row.original_content || row.intent;

@@ -312,7 +312,9 @@ export async function handleDocumentRequest(
     const { findActivePendingAction, markPendingActionStatus } = await import(
       "@/lib/assessor/memory.server"
     );
-    const pending = await findActivePendingAction(supabase, userId, adapter.channel);
+    // Ranhura própria: a lista de documentos nunca colide com a pergunta
+    // pendente do motor (agendamento, classificação de ficheiro, etc.).
+    const pending = await findActivePendingAction(supabase, userId, adapter.channel, "documents");
 
     // (0a) Resposta a uma confirmação de envio pendente.
     if (pending?.intent === DOC_CONFIRM_INTENT) {
@@ -331,8 +333,8 @@ export async function handleDocumentRequest(
         await say(adapter, supabase, userId, to, "Está bem, não envio. Diz-me se mudares de ideias.");
         return true;
       }
-      // Não é resposta à pergunta — segue o turno normal.
-      await markPendingActionStatus(supabase, pending.id, "cancelled");
+      // Não é resposta a esta pergunta — segue o turno normal e mantém o
+      // pedido de documento válido (pertence a outra conversa).
       return false;
     }
 
@@ -367,8 +369,8 @@ export async function handleDocumentRequest(
           await deliverDocument(adapter, supabase, userId, to, byName);
           return true;
         }
-        // Não é uma escolha — deixa o turno seguir para o motor normal.
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        // Não é uma escolha — deixa o turno seguir para o motor normal
+        // sem destruir a lista (o consultor ainda pode tocar num botão).
         return false;
       }
       await markPendingActionStatus(supabase, pending.id, "executed");
