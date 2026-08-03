@@ -44,6 +44,15 @@ import { buildPersonBrief } from "./person-brief.server";
 import { detectWhatsNewQuery, formatWhatsNewReply, noRecentUpdatesReply, NO_UPDATES_REPLY } from "./whats-new";
 import { lastProductUpdate, listRecentProductUpdates } from "./whats-new.server";
 import {
+  detectFeedbackIntent,
+  feedbackConfirmQuestion,
+  FEEDBACK_CANCELLED_REPLY,
+  FEEDBACK_FAILED_REPLY,
+  FEEDBACK_SAVED_REPLY,
+  type FeedbackKind,
+} from "./feedback";
+import { saveProductFeedback } from "./feedback.server";
+import {
   appendOffer,
   GOALS_QUESTION,
   GOALS_SAVED_REPLY,
@@ -373,6 +382,26 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       }
     }
 
+    // Feedback sobre o produto — só grava depois de confirmação explícita.
+    if (pending && pending.intent === "record_product_feedback") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
+      if (saIsRejection(trimmed)) {
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        return { reply: FEEDBACK_CANCELLED_REPLY };
+      }
+      // "sim" sozinho → guarda a mensagem original; texto novo → guarda esse.
+      const body = saIsConfirmation(trimmed)
+        ? String(payload.original ?? pending.original_content ?? "")
+        : trimmed;
+      const saved = await saveProductFeedback(supabase, { userId, kind, body, channel });
+      await markPendingActionStatus(supabase, pending.id, saved ? "executed" : "failed", {
+        created_resource_type: saved ? "product_feedback" : null,
+        error_message: saved ? null : "feedback_insert_failed",
+      });
+      return { reply: saved ? FEEDBACK_SAVED_REPLY : FEEDBACK_FAILED_REPLY };
+    }
+
     const commissionArgs = extractFinanceCommission(trimmed);
     if (commissionArgs) {
       const t0 = Date.now();
@@ -441,6 +470,22 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
 
     // (a-1) "O que há de novo?" → novidades reais dos últimos 30 dias.
+    // (a-0) Erro ou sugestão sobre o próprio produto → pede confirmação.
+    if (!pending && detectFeedbackIntent(trimmed)) {
+      const kind = detectFeedbackIntent(trimmed) as FeedbackKind;
+      const { createPendingAction } = await import("../memory.server");
+      await createPendingAction(supabase, {
+        userId,
+        channel,
+        intent: "record_product_feedback",
+        originalContent: trimmed,
+        payload: { kind, original: trimmed },
+        pendingQuestion: feedbackConfirmQuestion(kind),
+        currentQuestion: feedbackConfirmQuestion(kind),
+      });
+      return { reply: feedbackConfirmQuestion(kind) };
+    }
+
     if (detectWhatsNewQuery(trimmed)) {
       const t0 = Date.now();
       let reply: string;
