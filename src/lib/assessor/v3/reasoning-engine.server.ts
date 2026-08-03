@@ -386,6 +386,33 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       }
     }
 
+    // Clarificação: a queixa/ideia é sobre mim ou sobre uma pessoa?
+    if (pending && pending.intent === "clarify_feedback_target") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
+      const original = String(payload.original ?? pending.original_content ?? "");
+      const answer = readClarifyAnswer(trimmed);
+      if (answer === null) {
+        return { reply: FEEDBACK_CLARIFY_RETRY };
+      }
+      await markPendingActionStatus(supabase, pending.id, answer === "product" ? "executed" : "cancelled");
+      if (answer === "person") {
+        return { reply: FEEDBACK_NOT_PRODUCT_REPLY };
+      }
+      const { createPendingAction } = await import("../memory.server");
+      const question = feedbackConfirmQuestion(kind);
+      await createPendingAction(supabase, {
+        userId,
+        channel,
+        intent: "record_product_feedback",
+        originalContent: original,
+        payload: { kind, original },
+        pendingQuestion: question,
+        currentQuestion: question,
+      });
+      return { reply: question };
+    }
+
     // Feedback sobre o produto — só grava depois de confirmação explícita.
     if (pending && pending.intent === "record_product_feedback") {
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
