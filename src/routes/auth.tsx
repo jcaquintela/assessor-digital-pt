@@ -12,6 +12,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s['next'] === "string" ? s['next'] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Entrar — Afonso" },
@@ -25,6 +28,13 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  // Só caminhos relativos da própria app são aceites como destino.
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+  const goNext = () => {
+    if (safeNext) window.location.href = safeNext;
+    else navigate({ to: "/", replace: true });
+  };
   const [tab, setTab] = useState<"in" | "up" | "reset">("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,8 +43,9 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) navigate({ to: "/", replace: true });
+      if (data.user) goNext();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const signIn = async (e: React.FormEvent) => {
@@ -44,7 +55,7 @@ function AuthPage() {
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Sessão iniciada.");
-    navigate({ to: "/", replace: true });
+    goNext();
   };
 
   const signUp = async (e: React.FormEvent) => {
@@ -54,7 +65,7 @@ function AuthPage() {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: safeNext ? `${window.location.origin}${safeNext}` : window.location.origin,
         data: { name },
       },
     });
@@ -78,12 +89,14 @@ function AuthPage() {
   const google = async () => {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: safeNext
+        ? `${window.location.origin}/auth?next=${encodeURIComponent(safeNext)}`
+        : window.location.origin,
     });
     setBusy(false);
     if (result.error) return toast.error(result.error.message ?? "Erro ao entrar com Google.");
     if (result.redirected) return;
-    navigate({ to: "/", replace: true });
+    goNext();
   };
 
   return (
