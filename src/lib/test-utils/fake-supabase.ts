@@ -37,8 +37,12 @@ export function makeFakeSupabase(seed: Record<string, Row[]> = {}) {
     const run = () => {
       if (mode === "insert") {
         const items = Array.isArray(payload) ? payload : [payload];
-        for (const it of items) table(name).push({ id: `${name}-${table(name).length + 1}`, ...it });
-        return { data: items, error: null, count: items.length };
+        const stored = items.map((it: Row) => {
+          const row = { id: `${name}-${table(name).length + 1}`, ...it };
+          table(name).push(row);
+          return row;
+        });
+        return { data: stored, error: null, count: stored.length };
       }
       if (mode === "update") {
         const hit = rows();
