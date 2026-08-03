@@ -41,6 +41,14 @@ const mobileNav = [
   { to: "/mais", label: "Mais", icon: MoreHorizontal },
 ] as const;
 
+// "/negocio" (Faturação) e "/negocios" (Negócios) partilham prefixo: um
+// startsWith simples destacava os dois ao mesmo tempo. Só conta a rota exata
+// ou um filho separado por barra.
+export function isNavActive(pathname: string, to: string) {
+  if (to === "/hoje") return pathname === "/hoje";
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
 export function AppShell({ children, fullBleed = false }: { children: ReactNode; fullBleed?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Enquanto o tier ainda não carregou, assume 'base' — menos módulos visíveis,
@@ -94,7 +102,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         </Link>
         <nav className="flex flex-col gap-0.5">
           {visibleDesktopNav.map(({ to, label, icon: Icon }) => {
-            const active = pathname === to || (to !== "/hoje" && pathname.startsWith(to));
+            const active = isNavActive(pathname, to);
             return (
               <Link
                 key={to}
@@ -111,10 +119,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
           <p className="text-xs">Por conversa ou aqui no dashboard.</p>
           <Link
             to="/sobre-a-ia"
-            className={cn(
-              "navitem text-xs",
-              (pathname === "/sobre-a-ia" || pathname.startsWith("/sobre-a-ia")) && "active",
-            )}
+            className={cn("navitem text-xs", isNavActive(pathname, "/sobre-a-ia") && "active")}
           >
             <Sparkles className="h-4 w-4 shrink-0" />
             <span className="truncate">Sobre a IA</span>
@@ -155,7 +160,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
           style={{ gridTemplateColumns: `repeat(${visibleMobileNav.length}, minmax(0, 1fr))` }}
         >
           {visibleMobileNav.map(({ to, label, icon: Icon }) => {
-            const active = pathname === to || (to !== "/hoje" && pathname.startsWith(to));
+            const active = isNavActive(pathname, to);
             return (
               <Link
                 key={to}
