@@ -403,10 +403,11 @@ function HojePage() {
             <AlertTriangle className="h-4 w-4" />
             Isto merece atenção
           </div>
-          <h2 className="c-serif text-[18px] font-medium">{atencao.action}</h2>
+          {/* O título é sempre o assunto (negócio/pessoa/imóvel); a ação sugerida vive na frase. */}
+          <h2 className="c-serif text-[18px] font-medium">{atencao.entity_label || atencao.action}</h2>
           <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
             {explainPriority(atencao)}
-            {atencao.entity_label ? ` ${atencao.entity_label}.` : ""}
+            {atencao.entity_label && atencao.action ? ` Vale a pena ${atencao.action.toLowerCase()}.` : ""}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {atencao.subject_type === "follow_up" ? (
