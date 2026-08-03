@@ -54,9 +54,13 @@ export const Route = createFileRoute("/_authenticated/drive")({
       { property: "og:description", content: "Todos os teus ficheiros, organizados automaticamente." },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>): { tab?: Tab; q?: string } => ({
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { tab?: Tab; q?: string; nif?: string; artigo?: string } => ({
     tab: (s.tab as Tab | undefined) ?? undefined,
     q: (s.q as string | undefined) ?? undefined,
+    nif: (s.nif as string | undefined) ?? undefined,
+    artigo: (s.artigo as string | undefined) ?? undefined,
   }),
   component: DrivePage,
 });
@@ -122,6 +126,10 @@ function DrivePage() {
   const qParam = search.q ?? "";
   const navigate = Route.useNavigate();
   const [q, setQ] = useState(qParam);
+  const nifParam = search.nif ?? "";
+  const artigoParam = search.artigo ?? "";
+  const [nif, setNif] = useState(nifParam);
+  const [artigo, setArtigo] = useState(artigoParam);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchList = useServerFn(listDriveFiles);
@@ -151,8 +159,9 @@ function DrivePage() {
   };
 
   const listQ = useQuery({
-    queryKey: ["drive", "list", tab, qParam, categoryId],
-    queryFn: () => fetchList({ data: { tab, q: qParam, categoryId } }),
+    queryKey: ["drive", "list", tab, qParam, categoryId, nifParam, artigoParam],
+    queryFn: () =>
+      fetchList({ data: { tab, q: qParam, categoryId, nif: nifParam, artigo: artigoParam } }),
   });
   const countsQ = useQuery({
     queryKey: ["drive", "counts"],
@@ -271,6 +280,44 @@ function DrivePage() {
             className="pl-8"
           />
         </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Input
+          value={nif}
+          onChange={(e) => setNif(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") navigate({ search: (s: any) => ({ ...s, nif: nif || undefined }) });
+          }}
+          onBlur={() => navigate({ search: (s: any) => ({ ...s, nif: nif || undefined }) })}
+          inputMode="numeric"
+          placeholder="NIF do documento"
+          className="h-9 w-full sm:w-48"
+        />
+        <Input
+          value={artigo}
+          onChange={(e) => setArtigo(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter")
+              navigate({ search: (s: any) => ({ ...s, artigo: artigo || undefined }) });
+          }}
+          onBlur={() => navigate({ search: (s: any) => ({ ...s, artigo: artigo || undefined }) })}
+          placeholder="Artigo matricial ou fração"
+          className="h-9 w-full sm:w-56"
+        />
+        {(nifParam || artigoParam) && (
+          <button
+            type="button"
+            className="tap-44 text-xs underline text-muted-foreground"
+            onClick={() => {
+              setNif("");
+              setArtigo("");
+              navigate({ search: (s: any) => ({ ...s, nif: undefined, artigo: undefined }) });
+            }}
+          >
+            Limpar filtros de documento
+          </button>
+        )}
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5 overflow-x-auto">
