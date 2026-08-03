@@ -341,27 +341,7 @@ export async function handleDocumentRequest(
     if (cmd) {
       const candidates = ((pending?.structured_payload as any)?.candidates ?? []) as DocHit[];
       let hit = candidates.find((c) => shortDocId(c.id) === cmd) ?? null;
-      if (!hit) {
-        const { data: row } = await supabase
-          .from("uploaded_files")
-          .select("id, original_file_name, internal_file_name, mime_type, document_type")
-          .eq("user_id", userId)
-          .is("deleted_at", null)
-          .ilike("id::text", `${cmd.slice(0, 8)}%`)
-          .maybeSingle();
-        if (row) {
-          hit = {
-            id: row.id,
-            fileName: String(row.original_file_name ?? row.internal_file_name ?? "documento"),
-            mimeType: String(row.mime_type ?? "application/octet-stream"),
-            storagePath: null,
-            docType: row.document_type ?? null,
-            summary: null,
-            entityLabels: [],
-            score: 1,
-          };
-        }
-      }
+      if (!hit) hit = await findDocByShortId(supabase, userId, cmd);
       if (pending?.intent === DOC_CHOICE_INTENT) {
         await markPendingActionStatus(supabase, pending.id, "executed");
       }
@@ -379,6 +359,14 @@ export async function handleDocumentRequest(
       const candidates = ((pending.structured_payload as any)?.candidates ?? []) as DocHit[];
       const idx = parseChoice(content, candidates.length);
       if (idx === null) {
+        // Texto livre pode ainda ser o nome do documento ("CPU Gondomar").
+        const byName = matchCandidateByText(content, candidates);
+        if (byName) {
+          await markPendingActionStatus(supabase, pending.id, "executed");
+          if (await confirmBeforeSending(adapter, supabase, { userId, to, content, hit: byName })) return true;
+          await deliverDocument(adapter, supabase, userId, to, byName);
+          return true;
+        }
         // Não é uma escolha — deixa o turno seguir para o motor normal.
         await markPendingActionStatus(supabase, pending.id, "cancelled");
         return false;
