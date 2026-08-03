@@ -10,6 +10,7 @@
 import {
   BRIEFING_GRACE_MINUTES,
   BRIEFING_LEAD_MINUTES,
+  briefingTemplateParams,
   formatMeetingBriefing,
   hasBriefContent,
   isBriefingDue,
@@ -76,10 +77,28 @@ export async function sendMeetingBriefing(
   if (target.channel === "whatsapp") {
     const { isWithin24hWindow } = await import("./push.server");
     if (!(await isWithin24hWindow(supabase, event.user_id, "whatsapp"))) {
-      // Fora da janela de 24h só passa template aprovado. Enquanto o
-      // `afonso_briefing_compromisso` não estiver aprovado, não enviamos —
-      // melhor silêncio do que uma mensagem bloqueada pela Meta.
-      return { sent: false, reason: "outside_24h_window" };
+      // Fora da janela de 24h só passa template aprovado. O template usado é
+      // o que estiver escolhido no admin; sem escolha activa, silêncio.
+      const { resolveUsableBinding } = await import("@/lib/whatsapp/template-binding.server");
+      const binding = await resolveUsableBinding(supabase, "meeting_briefing");
+      if (!binding) return { sent: false, reason: "no_approved_template" };
+
+      const { data: prof } = await supabase
+        .from("profiles").select("name").eq("id", event.user_id).maybeSingle();
+      const firstName = String((prof as any)?.name ?? "").split(" ")[0] ?? "";
+      const params = briefingTemplateParams(event, lookup.brief, firstName)
+        .slice(0, Math.max(0, binding.param_count));
+
+      const { meetingBriefingTemplatePayload } = await import("./templates");
+      const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
+      const sentTpl = await sendWhatsAppPayload(
+        target.externalId,
+        meetingBriefingTemplatePayload(binding.template_name, params, binding.language),
+        { kind: opts.force ? "test" : "auto" },
+      );
+      if (!sentTpl.ok) return { sent: false, reason: "send_failed" };
+      await markBriefingSent(supabase, event, target.channel, text, nowMs);
+      return { sent: true, via: "template" };
     }
   }
 
@@ -87,7 +106,18 @@ export async function sendMeetingBriefing(
   const r = await sendReplyForChannel(target.channel, target.externalId, text);
   if (!r.ok) return { sent: false, reason: "send_failed" };
 
-  // Marca já — mesmo que a corrida se repita no mesmo intervalo.
+  await markBriefingSent(supabase, event, target.channel, text, nowMs);
+  return { sent: true, via: "text" };
+}
+
+/** Marca já — mesmo que a corrida se repita no mesmo intervalo. */
+async function markBriefingSent(
+  supabase: any,
+  event: BriefingEvent & { user_id: string },
+  channel: string,
+  text: string,
+  nowMs: number,
+) {
   await supabase
     .from("follow_ups")
     .update({ briefing_sent_at: new Date(nowMs).toISOString() } as never)
@@ -97,14 +127,12 @@ export async function sendMeetingBriefing(
     user_id: event.user_id,
     role: "assistant",
     content: text,
-    channel: target.channel,
+    channel,
     message_type: "meeting_briefing",
     status: "sent",
     related_resource_type: "follow_up",
     related_resource_id: event.id,
   } as never);
-
-  return { sent: true };
 }
 
 /** Corrida periódica (a cada 5 minutos). */
