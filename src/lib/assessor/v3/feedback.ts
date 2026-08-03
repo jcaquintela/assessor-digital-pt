@@ -55,10 +55,16 @@ export function feedbackLabel(kind: FeedbackKind): string {
 }
 
 export function feedbackConfirmQuestion(kind: FeedbackKind): string {
-  return `Queres que registe isto como ${feedbackLabel(kind)} para a equipa? Diz-me em poucas palavras o que aconteceu.`;
+  return kind === "bug"
+    ? "Queres que registe isto como erro para a equipa? Diz-me em poucas palavras o que aconteceu — se tiveres um screenshot, envia-o agora que junto ao registo."
+    : "Queres que registe isto como sugestão para a equipa? Diz-me em poucas palavras a ideia — se tiveres uma imagem ou ficheiro que ajude, envia agora que junto ao registo.";
 }
 
 export const FEEDBACK_SAVED_REPLY = "Obrigado, registei. A equipa vai olhar para isto.";
+export const FEEDBACK_SAVED_WITH_ATTACHMENT_REPLY =
+  "Obrigado, registei com o anexo. A equipa vai olhar para isto.";
+export const FEEDBACK_ATTACHMENT_ADDED_REPLY =
+  "Guardei o anexo. Confirmas que registo isto para a equipa?";
 export const FEEDBACK_CANCELLED_REPLY = "Sem problema, não registei nada.";
 export const FEEDBACK_FAILED_REPLY = "Tentei registar isso para a equipa e não consegui. Podes repetir?";
 
