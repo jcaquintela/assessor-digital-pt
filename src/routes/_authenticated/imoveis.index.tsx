@@ -222,7 +222,7 @@ function ImoveisPage() {
         <div className="c-empty">Nenhum imóvel corresponde à procura.</div>
       )}
 
-      <div className={view === "grelha" ? "grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4" : "grid gap-3"}>
+      <div className={view === "grelha" ? "grid min-w-0 grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4" : "grid min-w-0 gap-2 sm:gap-3"}>
         {list.map((i: any) => (
           <PropertyCard
             key={i.id} i={i} org={org} view={view}
