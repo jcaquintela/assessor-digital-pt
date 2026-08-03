@@ -73,13 +73,17 @@ function NegociosPage() {
     [all, mostrarArquivados],
   );
   const emRisco = visiveis.filter((d) => d.alert?.level === "risco");
-  const valorAtivo = visiveis.reduce((s, d) => s + d.value, 0);
+  const precisamAtencao = visiveis.filter((d) => !!d.alert).length;
 
   return (
     <AppShell>
       <PageHeader
         title="Negócios"
-        subtitle={`${visiveis.length} ${mostrarArquivados ? "arquivado(s)" : "em curso"} · ${formatEUR(valorAtivo)} em jogo`}
+        subtitle={`${visiveis.length} ${mostrarArquivados ? "arquivado(s)" : "em curso"} · ${
+          precisamAtencao === 0
+            ? "nenhum precisa de atenção"
+            : `${precisamAtencao} precisa${precisamAtencao > 1 ? "m" : ""} de atenção`
+        }`}
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => setMostrarArquivados((v) => !v)}>
