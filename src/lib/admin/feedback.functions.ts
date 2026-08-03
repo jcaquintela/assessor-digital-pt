@@ -17,11 +17,32 @@ export const listProductFeedback = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("product_feedback")
-      .select("id, user_id, kind, body, channel, status, internal_note, created_at, handled_at")
+      .select("id, user_id, kind, body, channel, status, internal_note, created_at, handled_at, attachment_file_id")
       .order("created_at", { ascending: false })
       .limit(300);
     if (error) throw new Error(error.message);
     const rows = data ?? [];
+    // Anexos (screenshot/ficheiro) enviados junto com o report.
+    const fileIds = Array.from(
+      new Set(rows.map((r: any) => r.attachment_file_id).filter(Boolean)),
+    ) as string[];
+    const attachments: Record<string, { name: string; mime: string | null; url: string | null }> = {};
+    if (fileIds.length) {
+      const { data: files } = await supabaseAdmin
+        .from("uploaded_files")
+        .select("id, file_name, mime_type, storage_path")
+        .in("id", fileIds);
+      for (const f of (files as any[]) ?? []) {
+        let url: string | null = null;
+        if (f.storage_path) {
+          const { data: signed } = await supabaseAdmin.storage
+            .from("assessor-files")
+            .createSignedUrl(f.storage_path, 600);
+          url = signed?.signedUrl ?? null;
+        }
+        attachments[f.id] = { name: f.file_name ?? "ficheiro", mime: f.mime_type ?? null, url };
+      }
+    }
     const ids = Array.from(new Set(rows.map((r: any) => r.user_id)));
     const names: Record<string, { name: string | null; email: string | null }> = {};
     if (ids.length) {
@@ -36,6 +57,7 @@ export const listProductFeedback = createServerFn({ method: "GET" })
         ...r,
         consultant_name: names[r.user_id]?.name ?? null,
         consultant_email: names[r.user_id]?.email ?? null,
+        attachment: r.attachment_file_id ? (attachments[r.attachment_file_id] ?? null) : null,
       })),
     };
   });

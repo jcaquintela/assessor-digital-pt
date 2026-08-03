@@ -2386,6 +2386,7 @@ export type Database = {
       }
       product_feedback: {
         Row: {
+          attachment_file_id: string | null
           body: string
           channel: string
           created_at: string
@@ -2399,6 +2400,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachment_file_id?: string | null
           body: string
           channel?: string
           created_at?: string
@@ -2412,6 +2414,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachment_file_id?: string | null
           body?: string
           channel?: string
           created_at?: string
@@ -2424,7 +2427,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_feedback_attachment_file_id_fkey"
+            columns: ["attachment_file_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_files"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_updates: {
         Row: {

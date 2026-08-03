@@ -445,6 +445,27 @@ async function handleInboundMediaInner(
     sourceMessageId: persistedUuid,
   });
 
+  // Anexo a um erro/sugestão por confirmar → junta ao rascunho e não segue
+  // pelo fluxo normal de Drive/visão.
+  if (result.ok && result.fileId) {
+    const { attachFileToPendingFeedback } = await import("@/lib/assessor/v3/feedback.server");
+    const attached = await attachFileToPendingFeedback(supabaseAdmin, {
+      userId,
+      channel: adapter.channel,
+      fileId: result.fileId,
+    });
+    if (attached) {
+      const { FEEDBACK_ATTACHMENT_ADDED_REPLY } = await import("@/lib/assessor/v3/feedback");
+      await deliverReply(adapter, supabaseAdmin, {
+        userId,
+        externalConversationId: inbound.externalConversationId,
+        outcome: { reply: FEEDBACK_ATTACHMENT_ADDED_REPLY },
+        replyTo: inbound.replyToMessageId ?? null,
+      });
+      return;
+    }
+  }
+
   // Áudio → transcreve e re-entra no motor com o texto resultante.
   if (result.ok && inbound.messageType === "audio") {
     try {
