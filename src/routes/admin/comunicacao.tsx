@@ -16,6 +16,7 @@ import {
   type Segment,
 } from "@/lib/admin/comunicacao.functions";
 import { TIER_DISPLAY_NAME } from "@/lib/subscription/tiers";
+import { AnnouncementCard, sameText } from "@/components/announcement-banner";
 
 export const Route = createFileRoute("/admin/comunicacao")({
   head: () => ({ meta: [{ title: "Comunicação — Afonso admin" }] }),
@@ -277,12 +278,31 @@ function ComunicacaoPage() {
         <div className="admin-card p-4">
           {body.trim().length === 0 ? (
             <div className="mini" style={{ color: "var(--muted)" }}>Escreve a mensagem para veres a pré-visualização.</div>
+          ) : channel === "dashboard" ? (
+            <div>
+              <div className="mini" style={{ color: "var(--muted)" }}>
+                Topo do dashboard do consultor — aspeto exato do aviso
+              </div>
+              <div className="mt-2 rounded-xl bg-background p-3">
+                <AnnouncementCard
+                  title={previewTitle}
+                  body={sameText(previewTitle, body.trim()) ? null : body.trim()}
+                />
+              </div>
+              <div className="mini mt-2" style={{ color: "var(--muted)" }}>
+                {expiresIn === "never"
+                  ? "Fica até o consultor fechar."
+                  : `Desaparece sozinho ${
+                      { "6h": "daqui a 6 horas", "24h": "daqui a 24 horas", "7d": "daqui a 7 dias", "30d": "daqui a 30 dias" }[expiresIn]
+                    }.`}
+              </div>
+            </div>
           ) : (
             <div>
               <div className="mini" style={{ color: "var(--muted)" }}>
                 {channel === "email"
                   ? "De: Afonso <ola@meuafonso.com>"
-                  : "Aviso no topo do dashboard do consultor"}
+                  : "Mensagem no canal do consultor"}
               </div>
               <div className="mt-1"><strong>{previewTitle}</strong></div>
               <div className="mt-2 whitespace-pre-wrap">{body}</div>
