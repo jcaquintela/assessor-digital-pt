@@ -1,6 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { seguimentosSeed, oportunidadesSeed, pessoasSeed } from "@/lib/demo-data";
+import { NOT_AUTHENTICATED, isSignedIn } from "../require-auth";
 
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -12,7 +13,8 @@ export default defineTool({
   description: "Resumo do dia do consultor: compromissos, tarefas de hoje, atrasados e oportunidades sem próxima ação.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: () => {
+  handler: (_input, ctx) => {
+    if (!isSignedIn(ctx)) return NOT_AUTHENTICATED;
     const now = new Date();
     const eventosHoje = seguimentosSeed.filter(
       (s) => s.tipo === "Evento" && sameDay(new Date(s.data), now) && isOpenFollowUpStatus(s.estado),

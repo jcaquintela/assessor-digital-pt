@@ -3,19 +3,14 @@
 // Autenticado via header `apikey` com a chave anon.
 
 import { createFileRoute } from "@tanstack/react-router";
+import { requireCronSecret } from "@/lib/security/cron-auth";
 
 export const Route = createFileRoute("/api/public/hooks/whatsapp-template-status")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apikey = request.headers.get("apikey") ?? "";
-        const expected =
-          process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
-        if (!apikey || !expected || apikey !== expected) {
-          return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
-            status: 401, headers: { "Content-Type": "application/json" },
-          });
-        }
+        const denied = requireCronSecret(request);
+        if (denied) return denied;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { syncTemplateApproval } = await import("@/lib/whatsapp/template-status.server");
         const result = await syncTemplateApproval(supabaseAdmin as any);

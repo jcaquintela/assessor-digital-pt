@@ -80,6 +80,7 @@ import { Route as AuthenticatedGruposIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedDriveIdRouteImport } from './routes/_authenticated/drive.$id'
 import { Route as AuthenticatedDiversosIdRouteImport } from './routes/_authenticated/diversos.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedOportunidadesProspecaoIndexRouteImport } from './routes/_authenticated/oportunidades.prospecao.index'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksWhatsappTemplateStatusRouteImport } from './routes/api/public/hooks/whatsapp-template-status'
@@ -466,6 +467,11 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedOportunidadesProspecaoIndexRoute =
   AuthenticatedOportunidadesProspecaoIndexRouteImport.update({
     id: '/oportunidades/prospecao/',
@@ -598,6 +604,7 @@ export interface FileRoutesByFullPath {
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/diversos/$id': typeof AuthenticatedDiversosIdRoute
   '/drive/$id': typeof AuthenticatedDriveIdRoute
@@ -683,6 +690,7 @@ export interface FileRoutesByTo {
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin': typeof AdminIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/diversos/$id': typeof AuthenticatedDiversosIdRoute
   '/drive/$id': typeof AuthenticatedDriveIdRoute
@@ -771,6 +779,7 @@ export interface FileRoutesById {
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/': typeof AdminIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/diversos/$id': typeof AuthenticatedDiversosIdRoute
   '/_authenticated/drive/$id': typeof AuthenticatedDriveIdRoute
@@ -859,6 +868,7 @@ export interface FileRouteTypes {
     | '/admin/utilizacao'
     | '/admin/utilizadores'
     | '/admin/'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/diversos/$id'
     | '/drive/$id'
@@ -944,6 +954,7 @@ export interface FileRouteTypes {
     | '/admin/utilizacao'
     | '/admin/utilizadores'
     | '/admin'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/diversos/$id'
     | '/drive/$id'
@@ -1031,6 +1042,7 @@ export interface FileRouteTypes {
     | '/admin/utilizacao'
     | '/admin/utilizadores'
     | '/admin/'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/diversos/$id'
     | '/_authenticated/drive/$id'
@@ -1083,6 +1095,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicBeaconRoute: typeof ApiPublicBeaconRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
@@ -1599,6 +1612,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/oportunidades/prospecao/': {
       id: '/_authenticated/oportunidades/prospecao/'
       path: '/oportunidades/prospecao'
@@ -1919,6 +1939,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicBeaconRoute: ApiPublicBeaconRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
