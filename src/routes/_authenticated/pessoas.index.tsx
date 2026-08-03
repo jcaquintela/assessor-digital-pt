@@ -188,7 +188,7 @@ function PessoasPage() {
         <div className="c-empty">Nenhum contacto corresponde à procura.</div>
       )}
 
-      <div className={view === "grelha" ? "grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid gap-3"}>
+      <div className={view === "grelha" ? "grid min-w-0 grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4" : "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 sm:gap-3"}>
         {filtradas.map((p) => (
           <PersonCard
             key={p.id} p={p} org={org} view={view}
