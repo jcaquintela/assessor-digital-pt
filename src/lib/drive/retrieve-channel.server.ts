@@ -12,7 +12,13 @@ import {
   parseDocCommand,
   shortDocId,
 } from "./retrieve";
-import { findDocuments, findDocumentsForSubject, loadDocument, type DocHit } from "./retrieve.server";
+import {
+  findDocuments,
+  findDocumentsByMeta,
+  findDocumentsForSubject,
+  loadDocument,
+  type DocHit,
+} from "./retrieve.server";
 
 export const DOC_CHOICE_INTENT = "choosing_document";
 export const DOC_CONFIRM_INTENT = "confirming_document_send";
@@ -354,6 +360,42 @@ export async function handleDocumentRequest(
       }
       const header = `Tenho ${hits.length} documentos${label ? ` de ${label}` : ""}:`;
       await askWhichDocument(adapter, supabase, { userId, to, content, header, hits });
+      return true;
+    }
+
+    // (3) "Manda-me a caderneta predial do T2 de Benfica"
+    // (2b) "documento com o NIF 221498605" / "artigo matricial 1234"
+    if (req.kind === "meta") {
+      const metaHits = await findDocumentsByMeta(supabase, userId, {
+        nif: req.nif,
+        artigo: req.artigo,
+      });
+      if (!metaHits.length) {
+        const alvo = req.nif
+          ? `com o NIF ${req.nif}`
+          : `com o artigo/fração ${req.artigo}`;
+        await say(
+          adapter,
+          supabase,
+          userId,
+          to,
+          `Não encontrei nenhum documento ${alvo} no Drive. Se mo enviares, guardo e fico com esses dados.`,
+        );
+        return true;
+      }
+      if (metaHits.length === 1) {
+        const only = metaHits[0]!;
+        if (await confirmBeforeSending(adapter, supabase, { userId, to, content, hit: only })) return true;
+        await deliverDocument(adapter, supabase, userId, to, only);
+        return true;
+      }
+      await askWhichDocument(adapter, supabase, {
+        userId,
+        to,
+        content,
+        header: `Tenho ${metaHits.length} documentos ${req.nif ? `com o NIF ${req.nif}` : `com o artigo/fração ${req.artigo}`}:`,
+        hits: metaHits,
+      });
       return true;
     }
 
