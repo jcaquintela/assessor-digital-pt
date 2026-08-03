@@ -347,7 +347,9 @@ export async function handleDocumentRequest(
         return true;
       }
       if (hits.length === 1) {
-        await deliverDocument(adapter, supabase, userId, to, hits[0]!);
+        const only = hits[0]!;
+        if (await confirmBeforeSending(adapter, supabase, { userId, to, content, hit: only })) return true;
+        await deliverDocument(adapter, supabase, userId, to, only);
         return true;
       }
       const header = `Tenho ${hits.length} documentos${label ? ` de ${label}` : ""}:`;
@@ -368,7 +370,9 @@ export async function handleDocumentRequest(
       return true;
     }
     if (hits.length === 1 || hits[0]!.score >= (hits[1]?.score ?? 0) + 3) {
-      const ok = await deliverDocument(adapter, supabase, userId, to, hits[0]!);
+      const best = hits[0]!;
+      if (await confirmBeforeSending(adapter, supabase, { userId, to, content, hit: best })) return true;
+      const ok = await deliverDocument(adapter, supabase, userId, to, best);
       return ok || true;
     }
     await askWhichDocument(adapter, supabase, {
