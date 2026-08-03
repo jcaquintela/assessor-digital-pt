@@ -75,8 +75,8 @@ export function formatBreakdownProposal(breakdown: AudioBreakdown): string {
     : `Ouvi o áudio. Separei em ${breakdown.items.length} coisas:`;
   const confidential = breakdown.items.some((i) => i.kind === "note" && i.confidential);
   const tail = confidential
-    ? "A nota confidencial fica só para ti — nunca sai em nada que eu prepare para outra pessoa.\n\nGuardo tudo assim?"
-    : "Guardo tudo assim?";
+    ? "A nota confidencial fica só para ti — nunca sai em nada que eu prepare para outra pessoa.\n\nSe algum ponto estiver errado, diz-me qual (ex.: 'o 2 é amanhã às 10h'). Guardo tudo assim?"
+    : "Se algum ponto estiver errado, diz-me qual (ex.: 'o 2 é amanhã às 10h'). Guardo tudo assim?";
   return `${head}\n\n${lines.join("\n")}\n\n${tail}`;
 }
 
@@ -87,6 +87,12 @@ export function formatBreakdownDone(created: { facts: number; followUps: number;
   if (created.notes) parts.push(`${created.notes} ${created.notes === 1 ? "nota" : "notas"}`);
   if (!parts.length) return "Não consegui guardar nada deste áudio. Queres tentar outra vez?";
   return `Feito — guardei ${parts.join(", ")}.`;
+}
+
+/** Proposta reescrita depois de uma correção a um item. */
+export function formatBreakdownRevised(breakdown: AudioBreakdown, note: string): string {
+  const lines = breakdown.items.map((it, i) => `${i + 1}. ${labelFor(it)}: ${it.text}${dueSuffix(it)}`);
+  return `${note}\n\n${lines.join("\n")}\n\nAssim está certo? Guardo tudo?`;
 }
 
 /** Heurística barata: vale a pena separar este áudio em vários itens? */

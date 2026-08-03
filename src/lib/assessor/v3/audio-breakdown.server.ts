@@ -17,7 +17,7 @@ import {
 
 export const AUDIO_BREAKDOWN_INTENT = "audio_breakdown";
 
-function todayLisbonYmd(): string {
+export function todayLisbonYmd(): string {
   const p = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
   }).formatToParts(new Date());
