@@ -1001,11 +1001,34 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
         (t) => t.name === "create_financial_movement",
       )?.arguments ?? {}) as Record<string, any>;
       const hasDeal = !!(mv.opportunity_id ?? (finOk.data as any)?.opportunity_id);
-      const propertyId: string | null = finArgs.property_id ?? null;
-      const personId: string | null = (convState as any)?.active_person_id ?? null;
-      if (!hasDeal && (propertyId || personId)) {
+      let propertyId: string | null = finArgs.property_id ?? null;
+      let personId: string | null = (convState as any)?.active_person_id ?? null;
+
+      // O imóvel pode existir só nas palavras ("comissão do terreno"). Nesse
+      // caso procuramos o registo que corresponde à descrição e as visitas
+      // que falam do mesmo imóvel — é isso que revela o processo comercial.
+      const { extractPropertyHint } = await import("@/lib/deals/property-hint");
+      const hint = extractPropertyHint(
+        `${trimmed} ${String(finArgs.property_reference ?? "")} ${String(finArgs.description ?? "")}`,
+      );
+      let visitHits: Array<{ personId: string | null; propertyId: string | null }> = [];
+      if (hint) {
+        const { findPropertyByHint, findVisitsForHint } = await import("@/lib/deals/property-hint.server");
+        if (!propertyId) {
+          const found = await findPropertyByHint(supabase, userId, hint);
+          if (found) propertyId = found.id;
+        }
+        visitHits = await findVisitsForHint(supabase, userId, hint);
+        if (!propertyId) propertyId = visitHits.find((v) => v.propertyId)?.propertyId ?? null;
+        if (!personId) personId = visitHits.find((v) => v.personId)?.personId ?? null;
+      }
+
+      if (!hasDeal && (propertyId || personId || hint)) {
         const label = String(finArgs.opportunity_title ?? finArgs.description ?? "").trim();
-        const title = label.length > 3 ? label.slice(0, 120) : "Novo negócio";
+        const { dealTitleFromHint } = await import("@/lib/deals/property-hint");
+        const title = label.length > 3
+          ? label.slice(0, 120)
+          : hint ? dealTitleFromHint(hint) : "Novo negócio";
         const { createPendingAction: createPending } = await import("../memory.server");
         await createPending(supabase, {
           userId, channel, intent: "create_deal",
@@ -1015,12 +1038,17 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
             kind: "venda",
             person_id: personId,
             property_id: propertyId,
+            property_hint: !propertyId && hint ? hint.label : null,
             value: Number(finArgs.deal_value ?? 0) || 0,
             link_movement_ids: mv.id ? [mv.id] : [],
           } as Record<string, unknown>,
           sourceMessageId: ctx.sourceMessageId ?? null,
         });
-        reply = `${reply} Isto ainda não está ligado a nenhum negócio. Queres que abra "${title}" para juntar tudo?`.trim();
+        const visitNote = visitHits.length
+          ? ` Já tinhas ${visitHits.length === 1 ? "uma visita" : `${visitHits.length} visitas`} ao mesmo ${hint?.label ?? "imóvel"}.`
+          : "";
+        const propNote = !propertyId && hint ? ` Crio também a ficha do ${hint.label}.` : "";
+        reply = `${reply}${visitNote} Isto ainda não está ligado a nenhum negócio.${propNote} Queres que abra "${title}" para juntar tudo?`.trim();
       }
     } catch { /* a sugestão nunca pode estragar o registo */ }
   }

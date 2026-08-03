@@ -1181,12 +1181,26 @@ async function execCreateDeal(ctx: DomainContext, args: unknown): Promise<Domain
   const v = p.value;
   try {
     const { createDealCore } = await import("@/lib/deals/create.server");
+    // O imóvel pode ainda só existir nas palavras do consultor. Depois do
+    // "sim", ou reaproveitamos o registo que corresponde à descrição, ou
+    // criamos a ficha para o negócio ter mesmo um imóvel.
+    let propertyId = v.property_id ?? null;
+    if (!propertyId && v.property_hint) {
+      const { extractPropertyHint } = await import("@/lib/deals/property-hint");
+      const hint = extractPropertyHint(v.property_hint);
+      if (hint) {
+        const { findPropertyByHint, createPropertyFromHint } = await import("@/lib/deals/property-hint.server");
+        const found = await findPropertyByHint(ctx.supabase, ctx.userId, hint);
+        const prop = found ?? await createPropertyFromHint(ctx.supabase, ctx.userId, hint, v.value ?? null);
+        propertyId = prop.id;
+      }
+    }
     const res = await createDealCore(ctx.supabase, ctx.userId, {
       title: v.title,
       kind: v.kind ?? null,
       stage: v.stage ?? null,
       personId: v.person_id ?? null,
-      propertyId: v.property_id ?? null,
+      propertyId,
       value: v.value ?? 0,
       notes: v.notes ?? null,
       source: "assessor",
