@@ -401,19 +401,12 @@ function HojePage() {
       {/* A-bis. "Isto merece atenção": UMA observação por dia, nunca uma lista. */}
       {!filtroAtivo && atencao && (
         <section className="c-spotlight mb-4">
-          <div className="c-spot-tag mb-2">
-            <AlertTriangle className="h-4 w-4" />
-            Isto merece atenção
-          </div>
-          {/* O título é sempre o assunto (negócio/pessoa/imóvel); a ação sugerida vive na frase. */}
-          <h2 className="c-serif text-[18px] font-medium">{assuntoDe(atencao)}</h2>
-          <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
-            {explainPriority(atencao)}
-            {assuntoDe(atencao) !== atencao.action && atencao.action
-              ? ` Vale a pena ${atencao.action.charAt(0).toLowerCase()}${atencao.action.slice(1)}.`
-              : ""}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <AssuntoCard
+            destaque
+            tag={<><AlertTriangle className="h-4 w-4" /> Isto merece atenção</>}
+            titulo={assuntoDe(atencao)}
+            frase={fraseComAcao(atencao, explainPriority(atencao))}
+            actions={<>
             {atencao.subject_type === "follow_up" ? (
               <Link className="c-cta" to="/seguimentos/$id" params={{ id: atencao.subject_id }}>
                 <ArrowRight className="h-3.5 w-3.5" /> Tratar
@@ -437,7 +430,8 @@ function HojePage() {
                 <Briefcase className="h-3.5 w-3.5" /> Ver negócio
               </Link>
             ) : null}
-          </div>
+            </>}
+          />
         </section>
       )}
 
