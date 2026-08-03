@@ -308,6 +308,16 @@ function DrivePage() {
             <Link key={f.id} to="/drive/$id" params={{ id: f.id }} className="c-card c-card-hover block p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
+                  <span
+                    className="mt-0.5 flex h-5 items-center"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  >
+                    <Checkbox
+                      checked={selected.includes(f.id)}
+                      onCheckedChange={(v) => toggleOne(f.id, v === true)}
+                      aria-label={`Selecionar ${f.original_file_name ?? "ficheiro"}`}
+                    />
+                  </span>
                   <Icon className="c-muted mt-0.5 h-5 w-5 shrink-0" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -399,6 +409,18 @@ function DrivePage() {
                         }}
                       >
                         <Tag className="h-3 w-3" /> {catName ? "Mudar categoria" : "Categoria"}
+                      </button>
+                      <button
+                        type="button"
+                        className="c-badge tap-44 text-destructive"
+                        disabled={deleteMany.isPending}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" /> Eliminar
                       </button>
                     </div>
                   </div>
