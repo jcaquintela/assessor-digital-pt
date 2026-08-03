@@ -44,8 +44,12 @@ import { buildPersonBrief } from "./person-brief.server";
 import { detectWhatsNewQuery, formatWhatsNewReply, noRecentUpdatesReply, NO_UPDATES_REPLY } from "./whats-new";
 import { lastProductUpdate, listRecentProductUpdates } from "./whats-new.server";
 import {
-  detectFeedbackIntent,
+  detectFeedbackTarget,
   feedbackConfirmQuestion,
+  feedbackClarifyQuestion,
+  readClarifyAnswer,
+  FEEDBACK_CLARIFY_RETRY,
+  FEEDBACK_NOT_PRODUCT_REPLY,
   FEEDBACK_CANCELLED_REPLY,
   FEEDBACK_FAILED_REPLY,
   FEEDBACK_SAVED_REPLY,
