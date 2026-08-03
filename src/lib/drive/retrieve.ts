@@ -92,11 +92,54 @@ export function extractSubject(text: string, docLabel: string | null): string | 
 
 export type DocRequest =
   | { kind: "send"; docLabel: string | null; docType: DocTypeKey | null; subject: string | null }
-  | { kind: "list"; subject: string | null };
+  | { kind: "list"; subject: string | null }
+  | { kind: "meta"; nif: string | null; artigo: string | null };
+
+const NIF_WORD = /\b(nif|nipc|contribuinte|n[ºo°]?\s*de\s*contribuinte)\b/i;
+const ARTIGO_WORD = /\b(artigo\s*matricial|artigo|matriz|matricial|fra[cç][ãa]o)\b/i;
+
+/**
+ * Pesquisa de documento por metadado extraído: NIF ("NIF 221498605"),
+ * artigo matricial ("artigo 1234") ou fração ("fração B").
+ * Isto NÃO é procura de pessoa por nome — um número nunca é um nome.
+ */
+export function detectDocMetaQuery(text: string): { nif: string | null; artigo: string | null } | null {
+  const raw = String(text ?? "").trim();
+  if (!raw || raw.length > 400) return null;
+
+  let nif: string | null = null;
+  const nifNear = raw.match(/\b(?:nif|nipc|contribuinte)\b[^0-9]{0,12}(\d[\d\s.]{7,14})/i);
+  if (nifNear) {
+    const digits = nifNear[1].replace(/\D/g, "");
+    if (digits.length === 9) nif = digits;
+  }
+  if (!nif) {
+    // 9 dígitos isolados só contam quando o pedido fala de documentos.
+    const bare = raw.match(/(?<!\d)(\d{9})(?!\d)/);
+    if (bare && (GENERIC_DOC.test(raw) || NIF_WORD.test(raw) || detectDocType(raw))) {
+      nif = bare[1];
+    }
+  }
+
+  let artigo: string | null = null;
+  const art = raw.match(
+    /\b(?:artigo(?:\s+matricial)?|matriz|matricial|fra[cç][ãa]o)\b[^\w]{0,6}([\p{L}\d][\p{L}\d\-/.]{0,15})/iu,
+  );
+  if (art && !/^(matricial|do|da|de|no|na|com|este|esta|deste)$/i.test(art[1])) {
+    artigo = art[1].replace(/[.,;:]$/, "");
+  }
+
+  if (!nif && !artigo) return null;
+  // Precisa de contexto documental ou de um NIF explícito para não roubar turnos.
+  if (!nif && !(GENERIC_DOC.test(raw) || detectDocType(raw) || ARTIGO_WORD.test(raw))) return null;
+  return { nif, artigo };
+}
 
 export function detectDocumentRequest(text: string): DocRequest | null {
   const raw = String(text ?? "").trim();
   if (!raw || raw.length > 400) return null;
+  const meta = detectDocMetaQuery(raw);
+  if (meta) return { kind: "meta", nif: meta.nif, artigo: meta.artigo };
   const doc = detectDocType(raw);
   const hasGeneric = GENERIC_DOC.test(raw);
 
