@@ -68,7 +68,7 @@ export function detectDocType(text: string): { key: DocTypeKey; label: string } 
 }
 
 const SUBJECT_STOP =
-  /^(o|a|os|as|do|da|dos|das|de|d|para|no|na|em|meu|minha|meus|minhas|sr|sra|senhor|senhora|dona|dr|dra|que|tenho|temos|ha|existe|existem|guardados?|arquivados?|drive|por|favor|ja|agora|se|faz|favor|me|te|nos|um|uma|uns|umas|documento|documentos|ficheiro|ficheiros|anexo|anexos|pdf)$/;
+  /^(o|a|os|as|do|da|dos|das|de|d|para|no|na|em|meu|minha|meus|minhas|sr|sra|senhor|senhora|dona|dr|dra|que|tenho|temos|ha|existe|existem|guardados?|arquivados?|drive|por|favor|ja|agora|se|faz|favor|me|te|nos|um|uma|uns|umas|documento|documentos|ficheiro|ficheiros|anexo|anexos)$/;
 
 /** Extrai o "assunto" (imóvel, morada ou pessoa) a que o documento diz respeito. */
 export function extractSubject(text: string, docLabel: string | null): string | null {
@@ -78,7 +78,7 @@ export function extractSubject(text: string, docLabel: string | null): string | 
   n = n
     .replace(/[?!.,;:]/g, " ")
     .replace(SEND_VERB, " ")
-    .replace(GENERIC_DOC, " ")
+    .replace(/\b(documento|documentos|ficheiro|ficheiros|anexo|anexos|papelada)\b/g, " ")
     .replace(/\b(afonso|por favor|se faz favor|obrigado|obrigada)\b/g, " ");
   const words = n
     .replace(/-\s*(me|mos|nos|lo|la)\b/g, " ")
