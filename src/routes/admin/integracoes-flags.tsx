@@ -14,6 +14,12 @@ import {
   listFeatureFlags,
   upsertFeatureFlag,
 } from "@/lib/admin.functions";
+import {
+  getBriefingTemplateSetup,
+  listBriefingTestCandidates,
+  saveBriefingTemplate,
+  sendBriefingTemplateTest,
+} from "@/lib/admin/template-binding.functions";
 
 export const Route = createFileRoute("/admin/integracoes-flags")({
   head: () => ({ meta: [{ title: "Integrações & flags — Afonso admin" }] }),
@@ -208,6 +214,176 @@ function TelegramSelfTestBlock() {
 }
 
 function FlagRow({ flag, disabled, onSave }: { flag: any; disabled: boolean; onSave: (v: any) => void }) {
+  return <FlagRowInner flag={flag} disabled={disabled} onSave={onSave} />;
+}
+
+function BriefingTemplateBlock({ canEdit }: { canEdit: boolean }) {
+  const fetchSetup = useServerFn(getBriefingTemplateSetup);
+  const fetchCandidates = useServerFn(listBriefingTestCandidates);
+  const save = useServerFn(saveBriefingTemplate);
+  const test = useServerFn(sendBriefingTemplateTest);
+  const qc = useQueryClient();
+
+  const { data: setup, isLoading } = useQuery({
+    queryKey: ["admin", "briefing-template"],
+    queryFn: () => fetchSetup(),
+  });
+  const { data: candidates } = useQuery({
+    queryKey: ["admin", "briefing-candidates"],
+    queryFn: () => fetchCandidates(),
+  });
+
+  const [name, setName] = useState<string>("");
+  const [enabled, setEnabled] = useState<boolean>(false);
+  const [followUpId, setFollowUpId] = useState<string>("");
+  const [mode, setMode] = useState<"template" | "auto">("template");
+  const [result, setResult] = useState<string | null>(null);
+
+  const binding = setup?.binding ?? null;
+  const templates = setup?.templates ?? [];
+  const approved = templates.filter((t: any) => t.status === "APPROVED");
+  const selectedName = name || binding?.template_name || "";
+  const selected = templates.find((t: any) => t.name === selectedName) ?? null;
+  const selectedEnabled = name || binding ? (name ? enabled : !!binding?.enabled) : false;
+
+  const saveMut = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          template_name: selectedName,
+          language: selected?.language ?? "pt_PT",
+          param_count: selected?.paramCount ?? 3,
+          enabled: selectedEnabled,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Template guardado.");
+      qc.invalidateQueries({ queryKey: ["admin", "briefing-template"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const testMut = useMutation({
+    mutationFn: () => test({ data: { followUpId, mode } }),
+    onSuccess: (r: any) => {
+      setResult(
+        r?.sent
+          ? `Enviado (${r.via === "template" ? "template aprovado" : "texto livre, dentro das 24h"}).`
+          : `Não enviado — motivo: ${r?.reason ?? "desconhecido"}.`,
+      );
+      if (r?.sent) toast.success("Cartela enviada.");
+    },
+    onError: (e) => { setResult(null); toast.error((e as Error).message); },
+  });
+
+  if (isLoading) return <Empty>A ler templates na Meta…</Empty>;
+
+  return (
+    <>
+      <p className="mini mb-2" style={{ color: "var(--muted)" }}>
+        Fora da janela de 24h a Meta só deixa passar templates aprovados. Escolhe aqui qual dos
+        templates APPROVED da conta é usado na cartela de briefing e testa-o com um compromisso real.
+        Sem template ligado, o Afonso fica em silêncio fora das 24h (nunca envia mensagem bloqueada).
+      </p>
+
+      {approved.length === 0 ? (
+        <Empty>Nenhum template APPROVED na conta WhatsApp Business (ou credenciais em falta).</Empty>
+      ) : (
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="mini flex flex-col gap-1">
+            Template aprovado
+            <select
+              className="admin-input min-h-[44px]"
+              value={selectedName}
+              onChange={(e) => { setName(e.target.value); setEnabled(true); }}
+            >
+              <option value="">— escolher —</option>
+              {approved.map((t: any) => (
+                <option key={`${t.name}:${t.language}`} value={t.name}>
+                  {t.name} · {t.language} · {t.paramCount} variáveis
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="mini flex items-center gap-2 min-h-[44px]">
+            <input
+              type="checkbox"
+              checked={selectedEnabled}
+              disabled={!canEdit}
+              onChange={(e) => { setName(selectedName); setEnabled(e.target.checked); }}
+            />
+            Usar nos envios fora das 24h
+          </label>
+          <button
+            type="button"
+            className="admin-btn min-h-[44px]"
+            disabled={!canEdit || !selectedName || saveMut.isPending}
+            onClick={() => saveMut.mutate()}
+          >
+            {saveMut.isPending ? "A guardar…" : "Guardar escolha"}
+          </button>
+        </div>
+      )}
+
+      {selected ? (
+        <p className="mini mt-2 break-words" style={{ color: "var(--muted)" }}>
+          Corpo na Meta: “{selected.body}”
+        </p>
+      ) : null}
+      <p className="mini mt-1" style={{ color: "var(--muted)" }}>
+        Em uso agora:{" "}
+        {binding?.enabled
+          ? `${binding.template_name} (${binding.language})`
+          : "nenhum — silêncio fora das 24h"}
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <label className="mini flex flex-col gap-1">
+          Compromisso de teste (teus, com pessoa associada)
+          <select
+            className="admin-input min-h-[44px]"
+            value={followUpId}
+            onChange={(e) => { setFollowUpId(e.target.value); setResult(null); }}
+          >
+            <option value="">— escolher —</option>
+            {(candidates ?? []).map((c: any) => (
+              <option key={c.id} value={c.id}>
+                {fmt(c.due_date)}{c.due_time ? ` ${c.due_time}` : ""} · {c.title} · {c.person ?? "—"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="mini flex flex-col gap-1">
+          Modo
+          <select
+            className="admin-input min-h-[44px]"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as "template" | "auto")}
+          >
+            <option value="template">Forçar template (simula fora das 24h)</option>
+            <option value="auto">Regra normal (texto se estiver dentro das 24h)</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="admin-btn min-h-[44px]"
+          disabled={!followUpId || testMut.isPending}
+          onClick={() => { setResult(null); testMut.mutate(); }}
+        >
+          {testMut.isPending ? "A enviar…" : "Enviar cartela de teste"}
+        </button>
+        {result ? <span className="mini" style={{ color: "var(--muted)" }}>{result}</span> : null}
+      </div>
+      <p className="mini mt-2" style={{ color: "var(--muted)" }}>
+        O teste usa o conteúdo real da pessoa e não marca o compromisso como avisado — a cartela
+        automática continua a sair na hora certa.
+      </p>
+      <Source>Graph API message_templates × whatsapp_template_bindings × follow_ups</Source>
+    </>
+  );
+}
+
+function FlagRowInner({ flag, disabled, onSave }: { flag: any; disabled: boolean; onSave: (v: any) => void }) {
   const [enabled, setEnabled] = useState<boolean>(!!flag.enabled_globally);
   const inert = !flag.readAt;
   return (
@@ -290,6 +466,9 @@ function IntegracoesFlagsPage() {
 
       <SectionTitle>Telegram — onboarding automático</SectionTitle>
       <TelegramSelfTestBlock />
+
+      <SectionTitle>Cartela de briefing fora das 24h</SectionTitle>
+      <BriefingTemplateBlock canEdit={isSuper} />
 
       <SectionTitle>Outras integrações</SectionTitle>
       <p className="mini mb-2" style={{ color: "var(--muted)" }}>
