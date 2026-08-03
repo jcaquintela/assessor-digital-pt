@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Lock, Sparkles } from "lucide-react";
+import { Check, Lock } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -87,9 +88,7 @@ function RegistoPage() {
     <div className="consult-root min-h-screen px-4 py-10">
       <main className="mx-auto w-full max-w-5xl">
         <div className="mb-8 flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="h-4 w-4" />
-          </div>
+          <BrandMark size={36} />
           <div>
             <div className="text-sm font-semibold leading-tight">Afonso</div>
             <div className="text-xs text-muted-foreground">assistente de IA</div>
