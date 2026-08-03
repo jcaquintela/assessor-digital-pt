@@ -16,7 +16,10 @@ import { Plus, AlertTriangle, Camera, ChevronRight, Archive } from "lucide-react
 import { formatData, formatEUR } from "@/lib/demo-data";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { createDeal, listDeals, type DealListItem } from "@/lib/deals/deals.functions";
+import {
+  createDeal, listDeals, listOrphanMovements, linkMovementToDeal, createDealFromMovement,
+  type DealListItem,
+} from "@/lib/deals/deals.functions";
 import { DEAL_KINDS, KIND_LABEL, STAGE_GROUPS, STAGE_LABEL, groupOfStage } from "@/lib/deals/stages";
 
 export const Route = createFileRoute("/_authenticated/negocios/")({
@@ -169,6 +172,8 @@ function NegociosPage() {
           </div>
         </div>
       )}
+
+      {!mostrarArquivados && <OrphanMovements deals={visiveis} />}
 
       {deals.isLoading && <p className="text-sm text-muted-foreground">A carregar negócios…</p>}
       {!deals.isLoading && visiveis.length === 0 && (
