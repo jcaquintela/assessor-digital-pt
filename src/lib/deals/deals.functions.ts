@@ -126,7 +126,7 @@ export const getDeal = createServerFn({ method: "GET" })
       supabase.from("follow_ups").select("id, title, due_date, status, notes, kind").eq("opportunity_id", o.id).eq("user_id", userId).order("due_date"),
       supabase.from("financial_movements").select("id, type, description, amount, status, movement_date").eq("opportunity_id", o.id).eq("user_id", userId).order("movement_date", { ascending: false }),
       supabase.from("opportunity_events").select("id, kind, summary, source, occurred_at").eq("opportunity_id", o.id).eq("user_id", userId).order("occurred_at", { ascending: false }).limit(100),
-      supabase.from("interactions").select("id, original_content, summary, occurred_at, source_channel").eq("opportunity_id", o.id).eq("user_id", userId).order("occurred_at", { ascending: false }).limit(50),
+      supabase.from("interactions").select("id, original_content, summary, occurred_at, source_channel, is_confidential").eq("opportunity_id", o.id).eq("user_id", userId).order("occurred_at", { ascending: false }).limit(50),
       (async () => {
         // Documentos do negócio incluem os da pessoa e dos imóveis envolvidos.
         const { listRelatedFiles } = await import("@/lib/drive/related-files.server");
@@ -181,6 +181,7 @@ export const getDeal = createServerFn({ method: "GET" })
       })),
       interactions: ((interRes.data ?? []) as Row[]).map((i) => ({
         id: i.id, content: i.summary || i.original_content, channel: i.source_channel, occurredAt: i.occurred_at,
+        confidential: i.is_confidential === true,
       })),
       files: ((filesRes.data ?? []) as any[]).map((f) => ({
         id: f.id,

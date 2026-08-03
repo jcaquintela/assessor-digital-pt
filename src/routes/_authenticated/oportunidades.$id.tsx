@@ -470,6 +470,11 @@ function DealDetail() {
             ))}
             {d.interactions.map((i) => (
               <div key={i.id} className="rounded-lg border border-border p-3 text-sm">
+                {i.confidential && (
+                  <div className="mb-1 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    Confidencial · só para ti
+                  </div>
+                )}
                 <div>{i.content}</div>
                 <div className="text-xs text-muted-foreground">
                   {formatDataHora(i.occurredAt)}{i.channel ? ` · ${i.channel}` : ""}

@@ -372,9 +372,22 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       }
     }
 
-    // Sugestão de ligação extra de um documento (Drive Inteligente).
-    // Confirmar acrescenta a ligação; recusar não mexe em nada.
+    // Processador de Áudio Imobiliário — proposta única com vários itens.
+    if (pending && pending.intent === "audio_breakdown") {
+      if (saIsConfirmation(trimmed)) {
+        const { executeAudioBreakdown } = await import("./audio-breakdown.server");
+        const reply = await executeAudioBreakdown(ctx, pending);
+        return { reply };
+      }
+      if (saIsRejection(trimmed)) {
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        return { reply: "Está bem, não guardei nada do áudio." };
+      }
+    }
+
     if (pending && pending.intent === "suggest_file_link") {
+      // Sugestão de ligação extra de um documento (Drive Inteligente).
+      // Confirmar acrescenta a ligação; recusar não mexe em nada.
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
       if (saIsConfirmation(trimmed)) {
         const { applyLinkSuggestion } = await import("@/lib/drive/link-suggestions.server");
