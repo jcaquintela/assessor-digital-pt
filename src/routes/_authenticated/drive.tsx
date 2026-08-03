@@ -48,9 +48,9 @@ type Tab =
 export const Route = createFileRoute("/_authenticated/drive")({
   head: () => ({
     meta: [
-      { title: "Drive — Afonso" },
+      { title: "Drive Inteligente — Afonso" },
       { name: "description", content: "Todos os teus ficheiros, organizados automaticamente por imóvel, pessoa e oportunidade." },
-      { property: "og:title", content: "Drive — Afonso" },
+      { property: "og:title", content: "Drive Inteligente — Afonso" },
       { property: "og:description", content: "Todos os teus ficheiros, organizados automaticamente." },
     ],
   }),
@@ -249,7 +249,7 @@ function DrivePage() {
   return (
     <AppShell>
       <PageHeader
-        title="Drive"
+        title="Drive Inteligente"
         subtitle="Envia. O Assessor organiza."
         action={
           <>
