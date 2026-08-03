@@ -89,6 +89,21 @@ export function formatBreakdownDone(created: { facts: number; followUps: number;
   return `Feito — guardei ${parts.join(", ")}.`;
 }
 
+/** Proposta reescrita depois de uma correção a um item. */
+export function formatBreakdownRevised(breakdown: AudioBreakdown, note: string): string {
+  const lines = breakdown.items.map((it, i) => `${i + 1}. ${labelFor(it)}: ${it.text}${dueSuffix(it)}`);
+  return `${note}\n\n${lines.join("\n")}\n\nAssim está certo? Guardo tudo?`;
+}
+
+function unusedFormatBreakdownDone(created: { facts: number; followUps: number; notes: number }): string {
+  const parts: string[] = [];
+  if (created.facts) parts.push(`${created.facts} ${created.facts === 1 ? "facto" : "factos"}`);
+  if (created.followUps) parts.push(`${created.followUps} ${created.followUps === 1 ? "seguimento" : "seguimentos"}`);
+  if (created.notes) parts.push(`${created.notes} ${created.notes === 1 ? "nota" : "notas"}`);
+  if (!parts.length) return "Não consegui guardar nada deste áudio. Queres tentar outra vez?";
+  return `Feito — guardei ${parts.join(", ")}.`;
+}
+
 /** Heurística barata: vale a pena separar este áudio em vários itens? */
 export function worthBreakingDown(transcript: string): boolean {
   const t = String(transcript ?? "").trim();
