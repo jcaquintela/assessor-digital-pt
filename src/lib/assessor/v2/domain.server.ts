@@ -21,6 +21,7 @@ import {
   SearchAgendaArgs,
   CreateEventArgs,
   CreateFollowUpArgs,
+  CreateRoutineArgs,
   SaveInteractionArgs,
   SaveMiscellaneousArgs,
   CreateFinancialMovementArgs,
