@@ -40,6 +40,16 @@ const MISC_MODULE_RE = /\b(diversos|notas?|ideias?|apontamentos?)\b/i;
 const MISC_QUESTION_RE =
   /\b(?:(?:o\s+)?que\s+(?:tenho|h[áa]|est[áa])|tenho|mostra(?:-me)?|lista(?:r|-me)?|ver)\b/i;
 
+// Pedidos de criação/lembrete. Bug real: "Amanhã tenho uma visita ... às
+// 14:30. Recorda-me pela manhã. ... todos os dias às 9:45. Combinado?"
+// era intercetado como consulta de agenda ("visita" + "?") e respondido com
+// "Não tens compromissos para amanhã" — perdendo os dois pedidos.
+const CREATE_INTENT_RE =
+  /\b(recorda[-\s]?me|lembra[-\s]?me|lembrar[-\s]?me|avisa[-\s]?me|marca(?:r)?\b|agenda(?:r)?[-\s]?me|regista(?:r)?\b|apontar?\b|todos\s+os\s+dias|todas\s+as\s+(?:semanas|manh[ãa]s)|diariamente|sempre\s+[àa]s)\b/i;
+
+// Hora explícita ("às 14:30", "14h30", "9:45").
+const EXPLICIT_TIME_RE = /(?:\b[àa]s\s*)?\b([01]?\d|2[0-3])\s*(?:[:h]\s*[0-5]\d)\b/i;
+
 export function detectMiscQuery(text: string): boolean {
   const t = (text ?? "").trim();
   if (!t) return false;
@@ -52,6 +62,10 @@ export function detectAgendaQuery(text: string): AgendaPeriod | null {
   const t = (text ?? "").trim();
   if (!t) return null;
   if (MISC_MODULE_RE.test(t) && !AGENDA_WORD_RE.test(t)) return null;
+
+  // Mensagem que pede para criar/lembrar, ou que declara um compromisso com
+  // hora, nunca é uma simples consulta: tem de ir ao motor de raciocínio.
+  if (CREATE_INTENT_RE.test(t) || EXPLICIT_TIME_RE.test(t)) return null;
 
   const period: AgendaPeriod | null =
     TODAY_RE.test(t) ? "today" :

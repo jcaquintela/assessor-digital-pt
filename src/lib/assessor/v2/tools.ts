@@ -191,6 +191,21 @@ export const SaveInteractionArgs = z.object({
 });
 export type SaveInteractionArgs = z.infer<typeof SaveInteractionArgs>;
 
+// Lembrete recorrente ("todos os dias às 9:45", "todas as segundas às 10h").
+// Sem esta ferramenta o pedido de recorrência perdia-se em silêncio.
+export const CreateRoutineArgs = z.object({
+  title: z.string().min(1),
+  frequency: z.enum(["daily", "weekly", "monthly"]).default("daily"),
+  time_of_day: HhMm,
+  interval_n: z.number().int().positive().max(52).optional().nullable(),
+  weekday: z.number().int().min(0).max(6).optional().nullable(),
+  day_of_month: z.number().int().min(1).max(31).optional().nullable(),
+  priority: FollowUpPriority.optional().nullable(),
+  person_id: z.string().uuid().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+export type CreateRoutineArgs = z.infer<typeof CreateRoutineArgs>;
+
 export const SaveMiscellaneousArgs = z.object({
   title: z.string().min(1),
   summary: z.string().optional().nullable(),
@@ -530,6 +545,29 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
   {
     type: "function",
     function: {
+      name: "create_routine",
+      description:
+        "Cria um lembrete RECORRENTE ('todos os dias às 9:45', 'todas as segundas às 10h', 'no dia 1 de cada mês'). Usa sempre que o pedido se repete no tempo — create_follow_up é só para uma vez.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          frequency: { type: "string", enum: ["daily", "weekly", "monthly"] },
+          time_of_day: { type: "string", description: "HH:MM" },
+          interval_n: { type: ["integer", "null"], description: "De quantos em quantos períodos (1 por defeito)." },
+          weekday: { type: ["integer", "null"], description: "0=Domingo .. 6=Sábado (só frequency=weekly)." },
+          day_of_month: { type: ["integer", "null"], description: "1-31 (só frequency=monthly)." },
+          priority: { type: ["string", "null"], enum: ["baixa", "media", "alta", null] },
+          person_id: { type: ["string", "null"], format: "uuid" },
+          notes: { type: ["string", "null"] },
+        },
+        required: ["title", "frequency", "time_of_day"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "save_miscellaneous",
       description:
         "Guarda uma nota profissional em Diversos quando não encaixa em nenhum outro módulo. Não pede confirmação.",
@@ -817,6 +855,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   create_event: CreateEventArgs,
   create_follow_up: CreateFollowUpArgs,
   save_interaction: SaveInteractionArgs,
+  create_routine: CreateRoutineArgs,
   save_miscellaneous: SaveMiscellaneousArgs,
   create_financial_movement: CreateFinancialMovementArgs,
   create_prospecting_lead: CreateProspectingLeadArgs,

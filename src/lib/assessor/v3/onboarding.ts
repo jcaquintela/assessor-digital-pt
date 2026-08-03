@@ -47,6 +47,18 @@ const KEEP_NAME_RE =
 
 const NAME_TOKEN_RE = /^[\p{L}][\p{L}'’-]{1,29}$/u;
 
+// Cláusulas de cortesia/condicionais que antecedem o nome real.
+// Bug real: "Se não te importares, fica Vanessa" era lido como "não",
+// porque o "Se" inicial casava com o padrão "sê X".
+const COURTESY_PREFIX_RE =
+  /^\s*(?:se\s+(?:n[ãa]o\s+)?(?:te\s+|lhe\s+)?(?:importares|importas|importa|faz\s+diferen[çc]a|for\s+poss[íi]vel)\s*[,.:;-]*\s*|por\s+favor\s*[,.:;-]*\s*|olha\s*[,.:;-]*\s*|ent[ãa]o\s*[,.:;-]*\s*|acho\s+que\s+|na\s+verdade\s*[,.:;-]*\s*)+/iu;
+
+// Palavras que nunca podem ser lidas como nome do Assessor.
+const NOT_A_NAME = new Set([
+  "não", "nao", "sim", "assim", "bem", "como", "isso", "igual", "tudo",
+  "melhor", "claro", "ok", "talvez", "antes", "depois", "agora", "que",
+]);
+
 export type NameAnswer =
   | { kind: "keep" }
   | { kind: "rename"; name: string }
@@ -55,22 +67,38 @@ export type NameAnswer =
 
 /** Interpreta a resposta à pergunta do nome. Conservador por desenho. */
 export function readNameAnswer(raw: string): NameAnswer {
-  const text = (raw ?? "").trim();
+  const text = (raw ?? "").trim().replace(COURTESY_PREFIX_RE, "").trim();
   if (!text) return { kind: "not_an_answer" };
+
+  // "fica Vanessa" / "chama-me Vanessa" são inequívocos e têm prioridade
+  // sobre recusas e sobre "fica assim".
+  const strong = text.match(
+    /\b(?:fica(?:s)?|chama[-\s]?me|chama[-\s]?te|passas?\s+a\s+ser|podes\s+(?:ser|ficar))\s+(?:o\s+|a\s+)?([\p{L}][\p{L}'’-]{1,29})/iu,
+  );
+  const strongName = strong?.[1];
+  if (strongName && !NOT_A_NAME.has(strongName.toLowerCase())) {
+    return { kind: "rename", name: strongName };
+  }
+
   if (REFUSAL_RE.test(text)) return { kind: "skip" };
   if (KEEP_NAME_RE.test(text)) return { kind: "keep" };
 
-  // "chama-te Rui", "prefiro Rui", "podes ser Rui"
+  // "prefiro Rui", "sê Rui"
   const explicit = text.match(
-    /(?:chama[-\s]?te|chamar[-\s]?te|prefiro|podes\s+(?:ser|ficar)|s[êe]|fica)\s+([\p{L}][\p{L}'’-]{1,29})/iu,
+    /\b(?:chamar[-\s]?te|prefiro|prefer[íi]a|s[ê])\s+(?:o\s+|a\s+)?([\p{L}][\p{L}'’-]{1,29})/iu,
   );
-  if (explicit?.[1]) return { kind: "rename", name: explicit[1] };
+  if (explicit?.[1] && !NOT_A_NAME.has(explicit[1].toLowerCase())) {
+    return { kind: "rename", name: explicit[1] };
+  }
 
   if (TASK_RE.test(text)) return { kind: "not_an_answer" };
 
   // Nome solto ("Rui", "Rui Miguel").
   const words = text.replace(/[.!?,]/g, "").split(/\s+/);
-  if (words.length <= 2 && words.every((w) => NAME_TOKEN_RE.test(w))) {
+  if (
+    words.length <= 2 &&
+    words.every((w) => NAME_TOKEN_RE.test(w) && !NOT_A_NAME.has(w.toLowerCase()))
+  ) {
     return { kind: "rename", name: words.join(" ") };
   }
   return { kind: "not_an_answer" };
