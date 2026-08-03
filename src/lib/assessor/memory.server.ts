@@ -7,8 +7,11 @@
 // the authenticated path.
 
 import { describePendingPt, sanitizeMiscFields } from "./misc-text";
+import { pendingSlot, type PendingSlot } from "./pending-slots";
 
 export { describePendingPt };
+export { pendingSlot };
+export type { PendingSlot };
 
 export type PendingActionStatus =
   | "collecting_information"
@@ -54,6 +57,7 @@ export async function findActivePendingAction(
   supabase: any,
   userId: string,
   channel: string,
+  slot: PendingSlot = "main",
 ): Promise<PendingActionRow | null> {
   const { data } = await supabase
     .from("pending_actions")
@@ -62,9 +66,11 @@ export async function findActivePendingAction(
     .eq("channel", channel)
     .in("status", ["pending_confirmation", "collecting_information", "correction_pending"])
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const row = (data as PendingActionRow | null) ?? null;
+    .limit(10);
+  const rows = ((data as PendingActionRow[] | null) ?? []).filter(
+    (r) => pendingSlot(r.intent) === slot,
+  );
+  const row = rows[0] ?? null;
   if (!row) return null;
   if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) {
     await supabase
