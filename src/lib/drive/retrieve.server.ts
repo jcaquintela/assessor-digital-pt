@@ -89,6 +89,8 @@ export async function findDocuments(
   }
 
   const words = typeWords(q.docType ?? null);
+  // "manda-me o pdf" restringe ao formato pedido.
+  const wantsPdf = /\bpdf\b/i.test(String(q.subject ?? "")) || /\bpdf\b/i.test(String(q.docLabel ?? ""));
   const subject = q.subject ? normalize(q.subject) : null;
   const subjectTokens = (subject ?? "")
     .split(/\s+/)
@@ -96,6 +98,7 @@ export async function findDocuments(
 
   const hits: DocHit[] = [];
   for (const r of rows) {
+    if (wantsPdf && !String(r.mime_type ?? "").includes("pdf")) continue;
     const fileName = String(r.original_file_name ?? r.internal_file_name ?? "ficheiro");
     const entityLabels = labelsByFile.get(r.id) ?? [];
     const haystack = normalize(

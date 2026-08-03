@@ -68,7 +68,7 @@ export function detectDocType(text: string): { key: DocTypeKey; label: string } 
 }
 
 const SUBJECT_STOP =
-  /^(o|a|os|as|do|da|dos|das|de|d|para|no|na|em|meu|minha|meus|minhas|sr|sra|senhor|senhora|dona|dr|dra|que|tenho|temos|ha|existe|existem|guardados?|arquivados?|drive|por|favor|ja|agora|se|faz|favor|me|te|nos|um|uma|uns|umas|documento|documentos|ficheiro|ficheiros|anexo|anexos|pdf)$/;
+  /^(o|a|os|as|do|da|dos|das|de|d|para|no|na|em|meu|minha|meus|minhas|sr|sra|senhor|senhora|dona|dr|dra|que|tenho|temos|ha|existe|existem|guardados?|arquivados?|drive|por|favor|ja|agora|se|faz|favor|me|te|nos|um|uma|uns|umas|documento|documentos|ficheiro|ficheiros|anexo|anexos)$/;
 
 /** Extrai o "assunto" (imóvel, morada ou pessoa) a que o documento diz respeito. */
 export function extractSubject(text: string, docLabel: string | null): string | null {
@@ -78,7 +78,7 @@ export function extractSubject(text: string, docLabel: string | null): string | 
   n = n
     .replace(/[?!.,;:]/g, " ")
     .replace(SEND_VERB, " ")
-    .replace(GENERIC_DOC, " ")
+    .replace(/\b(documento|documentos|ficheiro|ficheiros|anexo|anexos|papelada)\b/g, " ")
     .replace(/\b(afonso|por favor|se faz favor|obrigado|obrigada)\b/g, " ");
   const words = n
     .replace(/-\s*(me|mos|nos|lo|la)\b/g, " ")
@@ -144,4 +144,33 @@ export function formatCandidateList(
     return `${i + 1}. ${it.fileName}${extra}`;
   });
   return `${header}\n${lines.join("\n")}\n\nDiz-me o número do que queres que te mande.`;
+}
+
+// ---- Escolha por toque -------------------------------------------------
+// Quando há vários documentos possíveis, a lista é enviada como opções
+// tocáveis (botões / lista do canal). O id codifica o ficheiro escolhido —
+// o consultor não tem de escrever nada. Escrever o número continua a valer.
+
+export const DOC_COMMAND_PREFIX = "#documento:";
+
+/** Id curto (cabe no limite de 64 bytes do callback do Telegram). */
+export function shortDocId(fileId: string): string {
+  return String(fileId).replace(/-/g, "").slice(0, 10);
+}
+
+export function encodeDocCommand(fileId: string): string {
+  return `${DOC_COMMAND_PREFIX}${shortDocId(fileId)}`;
+}
+
+export function parseDocCommand(text: string | null | undefined): string | null {
+  const raw = String(text ?? "").trim();
+  if (!raw.startsWith(DOC_COMMAND_PREFIX)) return null;
+  const id = raw.slice(DOC_COMMAND_PREFIX.length).trim();
+  return id || null;
+}
+
+/** Rótulo curto e legível para um documento na lista de escolha. */
+export function docOptionLabel(fileName: string, max = 24): string {
+  const clean = fileName.replace(/\.[a-z0-9]{2,5}$/i, "").replace(/[_-]+/g, " ").trim();
+  return clean.length <= max ? clean : `${clean.slice(0, max - 1)}…`;
 }

@@ -34,3 +34,24 @@ describe("recuperador do drive", () => {
     expect(parseChoice("não é nenhum", 3)).toBeNull();
   });
 });
+
+import { encodeDocCommand, parseDocCommand, docOptionLabel, shortDocId } from "./retrieve";
+
+describe("escolha do documento", () => {
+  const id = "502cbf2f-4551-4e43-9e37-5d344f086d40";
+
+  it("codifica e lê a escolha por toque", () => {
+    const cmd = encodeDocCommand(id);
+    expect(parseDocCommand(cmd)).toBe(shortDocId(id));
+    expect(parseDocCommand("bom dia")).toBeNull();
+  });
+
+  it("cabe no limite de um botão", () => {
+    expect(encodeDocCommand(id).length).toBeLessThanOrEqual(24);
+  });
+
+  it("mostra nomes legíveis", () => {
+    expect(docOptionLabel("CPU_Consortes.pdf")).toBe("CPU Consortes");
+    expect(docOptionLabel("CertidaoPermanente-PA-2880-34210-131216.pdf").length).toBeLessThanOrEqual(24);
+  });
+});
