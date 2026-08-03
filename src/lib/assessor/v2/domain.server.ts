@@ -1059,6 +1059,8 @@ async function execSendReminderNow(ctx: DomainContext, args: unknown): Promise<D
 }
 
 export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
+  // Lembrete recorrente ("todos os dias às 9:45"). Guarda uma rotina e
+  // materializa o primeiro seguimento na próxima ocorrência.
   search_people: execSearchPeople,
   create_routine: execCreateRoutine,
   list_property_categories: execListPropertyCategories,
