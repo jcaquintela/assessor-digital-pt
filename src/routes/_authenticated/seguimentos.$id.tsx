@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
-import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
+import { assuntoDeSeguimento } from "@/lib/assessor/assunto";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
@@ -173,7 +173,7 @@ function SeguimentoView({ s }: { s: Seguimento }) {
         </Button>
       </div>
       <PageHeader
-        title={assuntoDe({ subject_type: "follow_up", titulo: s.titulo })}
+        title={assuntoDeSeguimento(s).titulo}
         subtitle={`${s.tipo === "Evento" ? "Evento" : "Tarefa"} · ${formatData(s.data)}${s.hora ? ` · ${s.hora}` : ""}`}
         action={
           <div className="flex gap-2">
@@ -235,12 +235,7 @@ function SeguimentoView({ s }: { s: Seguimento }) {
           <div>
             <div className="text-xs text-muted-foreground">Próximo passo</div>
             <div className="text-sm">
-              {s.estado === "Concluído"
-                ? "Já está tratado."
-                : fraseComAcao(
-                    { subject_type: "follow_up", titulo: s.titulo },
-                    `${assuntoDe({ subject_type: "follow_up", titulo: s.titulo })} — ${new Date(s.data) < new Date() ? "já devia estar feito" : "por fazer"}.`,
-                  )}
+              {assuntoDeSeguimento(s).frase}
             </div>
           </div>
           <div className="md:col-span-2">

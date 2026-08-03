@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AssuntoCard } from "@/components/assunto-card";
-import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
+import { assuntoDeSeguimento } from "@/lib/assessor/assunto";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatData, formatDataHora, type Seguimento } from "@/lib/demo-data";
 import { Calendar, CheckCircle2, Clock } from "lucide-react";
@@ -66,12 +66,9 @@ function SeguimentosPage() {
     <div className="space-y-2">
       {items.length === 0 && <p className="text-sm text-muted-foreground">Nada aqui.</p>}
       {items.map((s) => {
-        // Mesma regra de Hoje: título = assunto, ação sugerida dentro da frase.
-        const assunto = assuntoDe({ titulo: s.titulo });
-        const acao = s.tipo === "Evento" ? "Preparar o compromisso" : "Tratar este seguimento";
-        const explicacao = new Date(s.data) < new Date()
-          ? "Está em atraso."
-          : s.tipo === "Evento" ? "Está agendado." : "Está por fazer.";
+        // Mesma fonte da ficha: título = assunto, ação sugerida dentro da frase.
+        const vista = assuntoDeSeguimento(s);
+        const assunto = vista.titulo;
         return (
         <Link
           key={s.id}
@@ -89,7 +86,7 @@ function SeguimentosPage() {
                     ? <><Calendar className="h-3.5 w-3.5 text-primary" /></>
                     : <><Clock className="h-3.5 w-3.5 text-muted-foreground" /></>}
                   titulo={assunto}
-                  frase={fraseComAcao({ titulo: s.titulo, action: acao }, explicacao)}
+                  frase={vista.frase}
                   /* A hora guardada manda: evita divergir da ficha por causa do fuso. */
                   meta={`${s.hora ? `${formatData(s.data)}, ${s.hora}` : formatDataHora(s.data)} · ${nomePessoa(s.pessoaId) || "—"}`}
                   plano
