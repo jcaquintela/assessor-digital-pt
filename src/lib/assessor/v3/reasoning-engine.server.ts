@@ -287,6 +287,31 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   try {
     let pending = await findActivePendingAction(supabase, userId, channel);
 
+    // Ranhura "media": a pergunta lateral "guardo o ficheiro ou descarto?".
+    // Só é resolvida quando não há outro assunto principal em aberto, para
+    // um "não" nunca cair no rascunho errado.
+    if (!pending) {
+      const mediaPending = await findActivePendingAction(supabase, userId, channel, "media");
+      if (mediaPending && mediaPending.intent === "confirm_keep_audio") {
+        const payload = (mediaPending.structured_payload ?? {}) as Record<string, any>;
+        const fileId = payload.file_id ? String(payload.file_id) : null;
+        const { discardAudioFile, keepAudioFile } = await import("./audio-keep.server");
+        if (saIsConfirmation(trimmed)) {
+          if (fileId) await keepAudioFile(supabase, fileId, userId);
+          await markPendingActionStatus(supabase, mediaPending.id, "executed", {
+            created_resource_type: "uploaded_file",
+            created_resource_id: fileId,
+          });
+          return { reply: "Guardei o áudio no Drive Inteligente." };
+        }
+        if (saIsRejection(trimmed)) {
+          if (fileId) await discardAudioFile(supabase, fileId, userId);
+          await markPendingActionStatus(supabase, mediaPending.id, "cancelled");
+          return { reply: "Certo, descartei o áudio. O que percebi dele fica guardado." };
+        }
+      }
+    }
+
     // Um pendente antigo, cuja pergunta já não é a que está em aberto, não
     // pode ser resolvido por uma resposta destinada a outro assunto.
     if (pending && !isAnswerablePending(pending, { lastAssistantContent: lastAssistantContent0 })) {
