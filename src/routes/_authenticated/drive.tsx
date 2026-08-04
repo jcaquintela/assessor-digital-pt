@@ -278,9 +278,9 @@ function DrivePage() {
         continue;
       }
       for (const l of links) {
-        const prev = porNeg.get(l.entity_id) ?? {
+        const prev: { label: string; files: any[] } = porNeg.get(l.entity_id) ?? {
           label: l.entity_name ?? "Negócio",
-          files: [],
+          files: [] as any[],
         };
         prev.files.push(f);
         porNeg.set(l.entity_id, prev);
