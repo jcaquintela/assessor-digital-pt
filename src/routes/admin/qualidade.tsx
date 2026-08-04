@@ -5,6 +5,7 @@ import { Fragment, useState } from "react";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
 import { requestContentAccess } from "@/lib/admin/consent.functions";
 import { fmtPct, fmtScore100, fmtShare } from "@/lib/admin/metrics-format";
+import { dateStamp, downloadText, toCsv } from "@/lib/export/download";
 import {
   getQualityOverview,
   getReformulationTrend,
@@ -317,6 +318,40 @@ function QualidadePage() {
         <Empty>Ainda sem turnos nos últimos 14 dias.</Empty>
       ) : (
         <>
+          <div className="mb-2">
+            <button
+              className="admin-btn tap-44"
+              onClick={() =>
+                downloadText(
+                  `reformulacao-14-dias-${dateStamp()}.csv`,
+                  "text/csv",
+                  toCsv(
+                    ["Dia", "Turnos", "Critério antigo", "Taxa antiga", "Critério atual", "Taxa atual"],
+                    [
+                      ...trend.daily.map((d: any) => [
+                        d.day,
+                        d.n,
+                        d.legacy,
+                        d.n ? (d.legacy / d.n).toFixed(4).replace(".", ",") : "",
+                        d.current,
+                        d.n ? (d.current / d.n).toFixed(4).replace(".", ",") : "",
+                      ]),
+                      [
+                        "Total",
+                        trend.total,
+                        trend.legacyTotal,
+                        trend.legacyRate != null ? trend.legacyRate.toFixed(4).replace(".", ",") : "",
+                        trend.currentTotal,
+                        trend.currentRate != null ? trend.currentRate.toFixed(4).replace(".", ",") : "",
+                      ],
+                    ],
+                  ),
+                )
+              }
+            >
+              Exportar CSV (14 dias)
+            </button>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="admin-card p-3">
               <div className="mini" style={{ color: "var(--muted)" }}>Critério antigo (só &lt; 60 s)</div>
