@@ -74,13 +74,14 @@ export async function proposeAudioBreakdown(
   ctx: DomainContext,
   transcript: string,
   breakdown: AudioBreakdown,
+  audioFileId?: string | null,
 ): Promise<string> {
   await createPendingAction(ctx.supabase, {
     userId: ctx.userId,
     channel: ctx.channel,
     intent: AUDIO_BREAKDOWN_INTENT,
     originalContent: transcript.slice(0, 4000),
-    payload: breakdown as unknown as Record<string, any>,
+    payload: { ...(breakdown as unknown as Record<string, any>), audio_file_id: audioFileId ?? null },
     confidence: 0.8,
     sourceMessageId: ctx.sourceMessageId ?? null,
   });
