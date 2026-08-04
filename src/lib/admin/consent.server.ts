@@ -27,6 +27,10 @@ export async function canOpenRealContent(
   supabaseAdmin: any,
   opts: { targetUserId: string; adminId: string; resourceId?: string | null },
 ): Promise<ContentAccessDecision> {
+  // A própria conta do admin: os dados são dele, não precisa de se autorizar.
+  if (opts.adminId && opts.adminId === opts.targetUserId) {
+    return { allowed: true, basis: "synthetic", consentId: null, expiresAt: null };
+  }
   const { data: profile } = await supabaseAdmin
     .from("profiles")
     .select("email")
@@ -56,6 +60,54 @@ export async function canOpenRealContent(
   }
 
   return { allowed: false, basis: null, consentId: null, expiresAt: null };
+}
+
+/**
+ * Mesma regra, resolvida em lote para listas (ex.: Ações autónomas).
+ * Faz duas leituras no total em vez de duas por linha.
+ */
+export async function buildContentAccessResolver(
+  supabaseAdmin: any,
+  opts: { userIds: string[]; adminId: string },
+): Promise<(targetUserId: string, resourceId?: string | null) => ContentAccessDecision> {
+  const ids = [...new Set(opts.userIds.filter(Boolean))];
+  const denied: ContentAccessDecision = { allowed: false, basis: null, consentId: null, expiresAt: null };
+  if (ids.length === 0) return () => denied;
+
+  const [{ data: profiles }, { data: consents }] = await Promise.all([
+    supabaseAdmin.from("profiles").select("id, email").in("id", ids),
+    supabaseAdmin
+      .from("content_access_consents")
+      .select("id, user_id, scope, resource_id, status, expires_at")
+      .in("user_id", ids)
+      .eq("status", "approved"),
+  ]);
+
+  const emailById = new Map(((profiles as any[]) ?? []).map((p) => [p.id, p.email as string | null]));
+  const consentsByUser = new Map<string, any[]>();
+  for (const c of ((consents as any[]) ?? [])) {
+    consentsByUser.set(c.user_id, [...(consentsByUser.get(c.user_id) ?? []), c]);
+  }
+  const nowIso = new Date().toISOString();
+
+  return (targetUserId: string, resourceId?: string | null) => {
+    if (opts.adminId && opts.adminId === targetUserId) {
+      return { allowed: true, basis: "synthetic", consentId: null, expiresAt: null };
+    }
+    if (isSyntheticEmail(emailById.get(targetUserId))) {
+      return { allowed: true, basis: "synthetic", consentId: null, expiresAt: null };
+    }
+    for (const c of consentsByUser.get(targetUserId) ?? []) {
+      if (c.expires_at && c.expires_at <= nowIso) continue;
+      if (c.scope === "evaluation_program") {
+        return { allowed: true, basis: "evaluation_program", consentId: c.id, expiresAt: c.expires_at };
+      }
+      if (c.scope === "conversation" && (!c.resource_id || c.resource_id === resourceId)) {
+        return { allowed: true, basis: "consent", consentId: c.id, expiresAt: c.expires_at };
+      }
+    }
+    return denied;
+  };
 }
 
 /** Toda a abertura de conteúdo real fica auditada, com motivo. */
