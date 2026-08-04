@@ -16,6 +16,10 @@ import { ORIGEM, PropertyCard } from "@/components/imoveis/properties-explorer";
 import { PropertyCategoryDialog, PropertyCategoryFilter, usePropertyCategories } from "@/components/imoveis/property-categories";
 import { FilterSection } from "@/components/organizer/filter-section";
 import { usePersistedView } from "@/lib/ui/view-pref";
+import { PresetRow } from "@/components/organizer/preset-row";
+import {
+  PROPERTY_PRESETS, isPropertyPreset, matchPropertyPreset, usePersistedPreset, type PropertyPreset,
+} from "@/lib/ui/presets";
 import { toast } from "sonner";
 import { exportProperties } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
@@ -28,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/imoveis/")({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     cat: typeof search.cat === "string" && search.cat ? search.cat : undefined,
     view: search.view === "grelha" ? ("grelha" as const) : undefined,
+    preset: isPropertyPreset(search.preset) ? search.preset : undefined,
   }),
   head: () => ({
     meta: [
@@ -56,6 +61,7 @@ function ImoveisPage() {
   const q = search.q ?? "";
   const catId = search.cat ?? null;
   const view: PeopleView = search.view ?? "lista";
+  const preset: PropertyPreset = search.preset ?? "todos";
   const setQ = (v: string) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
   const setCatId = (v: string | null) =>
@@ -63,6 +69,9 @@ function ImoveisPage() {
   const setView = (v: PeopleView) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, view: v === "grelha" ? "grelha" : undefined }), replace: true });
   usePersistedView(view, setView, search.view !== undefined);
+  const setPreset = (v: PropertyPreset) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, preset: v === "todos" ? undefined : v }), replace: true });
+  usePersistedPreset("afonso.preset.imoveis", preset, setPreset, search.preset !== undefined, isPropertyPreset);
 
   const [editId, setEditId] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
@@ -126,11 +135,18 @@ function ImoveisPage() {
 
   const term = q.trim().toLowerCase();
   const list = useMemo(() => all.filter((i) => {
+    if (!matchPropertyPreset(i, preset)) return false;
     if (catId && i.category_id !== catId) return false;
     if (!term) return true;
     return [i.title, i.address, i.city, i.location, i.typology, i.property_type]
       .filter(Boolean).join(" ").toLowerCase().includes(term);
-  }), [all, catId, term]);
+  }), [all, catId, term, preset]);
+
+  const contagens = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const def of PROPERTY_PRESETS) c[def.id] = all.filter((i) => matchPropertyPreset(i, def.id)).length;
+    return c;
+  }, [all]);
 
   const aviso = atencao.data;
 
@@ -181,6 +197,7 @@ function ImoveisPage() {
       </div>
 
       <div className="mb-6 flex flex-col gap-2">
+        <PresetRow presets={PROPERTY_PRESETS} value={preset} onChange={setPreset} counts={contagens} />
         <FilterSection
           title="Categoria"
           count={cats.categories.length}
@@ -221,7 +238,7 @@ function ImoveisPage() {
         </div>
       )}
       {all.length > 0 && list.length === 0 && (
-        <div className="c-empty">Nenhum imóvel corresponde à procura.</div>
+        <div className="c-empty">Nenhum imóvel corresponde a esta vista.</div>
       )}
 
       <div className={view === "grelha" ? "grid min-w-0 grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4" : "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 sm:gap-3"}>

@@ -14,6 +14,10 @@ import {
 } from "@/components/pessoas/people-explorer";
 import { FilterSection } from "@/components/organizer/filter-section";
 import { usePersistedView } from "@/lib/ui/view-pref";
+import { PresetRow } from "@/components/organizer/preset-row";
+import {
+  PEOPLE_PRESETS, isPeoplePreset, matchPeoplePreset, usePersistedPreset, type PeoplePreset,
+} from "@/lib/ui/presets";
 import { toast } from "sonner";
 import { exportPeople } from "@/lib/export/export.functions";
 import { getPersonAttention } from "@/lib/people/attention.functions";
@@ -26,6 +30,7 @@ export const Route = createFileRoute("/_authenticated/pessoas/")({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
     view: search.view === "grelha" ? ("grelha" as const) : undefined,
+    preset: isPeoplePreset(search.preset) ? search.preset : undefined,
   }),
   head: () => ({
     meta: [
@@ -45,6 +50,7 @@ function PessoasPage() {
   const q = search.q ?? "";
   const tagId = search.tag ?? null;
   const view: PeopleView = search.view ?? "lista";
+  const preset: PeoplePreset = search.preset ?? "todos";
   const setQ = (v: string) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
   const setTagId = (v: string | null) =>
@@ -52,6 +58,9 @@ function PessoasPage() {
   const setView = (v: PeopleView) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, view: v === "grelha" ? "grelha" : undefined }), replace: true });
   usePersistedView(view, setView, search.view !== undefined);
+  const setPreset = (v: PeoplePreset) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, preset: v === "todos" ? undefined : v }), replace: true });
+  usePersistedPreset("afonso.preset.pessoas", preset, setPreset, search.preset !== undefined, isPeoplePreset);
   const [editId, setEditId] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
   const [orgId, setOrgId] = useState<string | null>(null);
@@ -103,12 +112,19 @@ function PessoasPage() {
   const term = q.trim().toLowerCase();
   const digits = term.replace(/\D/g, "");
   const filtradas = useMemo(() => pessoas.filter((p) => {
+    if (!matchPeoplePreset(p, preset)) return false;
     if (tagId && !org.tagsOf(p.id).some((t) => t.id === tagId)) return false;
     if (!term) return true;
     const byText = (p.nome + " " + p.email + " " + p.resumo).toLowerCase().includes(term);
     const byPhone = digits.length >= 3 && p.telefone.replace(/\D/g, "").includes(digits);
     return byText || byPhone;
-  }), [pessoas, tagId, term, digits, org.tagLinks, org.tags]);
+  }), [pessoas, tagId, term, digits, preset, org.tagLinks, org.tags]);
+
+  const contagens = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const def of PEOPLE_PRESETS) c[def.id] = pessoas.filter((p) => matchPeoplePreset(p, def.id)).length;
+    return c;
+  }, [pessoas]);
 
   const aviso = atencao.data;
 
@@ -155,6 +171,7 @@ function PessoasPage() {
       </div>
 
       <div className="mb-6 flex flex-col gap-2">
+        <PresetRow presets={PEOPLE_PRESETS} value={preset} onChange={setPreset} counts={contagens} />
         <FilterSection
           title="Etiquetas"
           count={org.tags.length}
@@ -187,7 +204,7 @@ function PessoasPage() {
         <div className="c-empty">Ainda não tens contactos. Usa "+ Adicionar" ou fala com o teu assessor por WhatsApp.</div>
       )}
       {!loading && pessoas.length > 0 && filtradas.length === 0 && (
-        <div className="c-empty">Nenhum contacto corresponde à procura.</div>
+        <div className="c-empty">Nenhum contacto corresponde a esta vista.</div>
       )}
 
       <div className={view === "grelha" ? "grid min-w-0 grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4" : "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 sm:gap-3"}>
