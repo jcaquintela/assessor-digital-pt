@@ -143,6 +143,33 @@ export async function buildContentAccessResolver(
 }
 
 /** Toda a abertura de conteúdo real fica auditada, com motivo. */
+export async function auditConsentDecision(
+  supabaseAdmin: any,
+  opts: { consentId: string; targetUserId: string; decision: "approved" | "denied" | "revoked" },
+) {
+  const { data: row } = await supabaseAdmin
+    .from("content_access_consents")
+    .select("resource_id, requested_by")
+    .eq("id", opts.consentId)
+    .maybeSingle();
+  const action =
+    opts.decision === "approved"
+      ? "content.access_granted"
+      : opts.decision === "revoked"
+        ? "content.access_revoked"
+        : "content.access_denied";
+  await supabaseAdmin.from("admin_audit_logs").insert({
+    admin_user_id: (row as any)?.requested_by ?? null,
+    action,
+    target_user_id: opts.targetUserId,
+    resource_type: "assessor_reasoning_traces",
+    resource_id: (row as any)?.resource_id ?? opts.consentId,
+    reason: "Decisão do consultor sobre acesso ao conteúdo da conversa.",
+    metadata: { consent_id: opts.consentId, decision: opts.decision } as any,
+  } as never);
+}
+
+/** Toda a abertura de conteúdo real fica auditada, com motivo. */
 export async function auditContentAccess(
   supabaseAdmin: any,
   opts: {
