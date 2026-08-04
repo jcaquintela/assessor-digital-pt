@@ -1183,13 +1183,24 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   // AQS — Assistant Quality Score.
   let aqsScore: number | null = null;
   try {
-    const prevUserAt = ((recentRows as any[]) ?? [])
-      .find((r) => r?.role === "user")?.created_at ?? null;
+    // A mensagem ACTUAL do consultor já está gravada em `recentRows`; se a
+    // apanhássemos aqui, a diferença seria ≈0 s e quase tudo virava
+    // "reformulação". Excluímo-la explicitamente.
+    const userRows = ((recentRows as any[]) ?? []).filter((r) => r?.role === "user");
+    const prevUserRow = userRows.find(
+      (r) =>
+        (sourceMessageId ? r?.id !== sourceMessageId : true) &&
+        String(r?.content ?? "").trim() !== trimmed,
+    ) ?? null;
+    const prevUserAt = prevUserRow?.created_at ?? null;
     const signals = computeQualitySignals({
       decision: decideR.decision,
       toolResults,
       reply,
       previousUserTurnAt: prevUserAt ? new Date(prevUserAt) : null,
+      message: trimmed,
+      previousUserMessage: prevUserRow ? String(prevUserRow.content ?? "") : null,
+      lastAssistantReply,
     });
     aqsScore = signals.score;
     await persistQualityScore(supabase, { userId, channel, traceId, signals });
