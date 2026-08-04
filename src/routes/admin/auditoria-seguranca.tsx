@@ -96,8 +96,8 @@ function AuditoriaSegurancaPage() {
       )}
 
       <SectionTitle>Acesso de suporte temporário</SectionTitle>
-      <Empty note="Terá de ser autorizado pelo próprio consultor, com motivo, duração e registo em auditoria.">
-        Em preparação. Por defeito, administradores não veem conversas, contactos, oportunidades, despesas, comissões ou documentos.
+      <Empty note="Cada abertura é autorizada pelo próprio consultor, exige motivo escrito, expira em 2 horas e fica registada em auditoria (content.open).">
+        Já em funcionamento. Por defeito, administradores não veem conversas, contactos, oportunidades, despesas, comissões ou documentos — em Qualidade e em Ações autónomas o conteúdo aparece fechado até o consultor autorizar. Exceções: contas de teste, programa de avaliação e a própria conta do administrador.
       </Empty>
     </div>
   );
