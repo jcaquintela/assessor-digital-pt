@@ -465,14 +465,31 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
     // Processador de Áudio Imobiliário — proposta única com vários itens.
     if (pending && pending.intent === "audio_breakdown") {
+      // A pergunta lateral do ficheiro só sai quando a proposta fecha, para
+      // não competir com o "sim" que confirma os itens.
+      const askAudioFile = async (reply: string): Promise<string> => {
+        const payload = (pending!.structured_payload ?? {}) as Record<string, any>;
+        const fileId = payload.audio_file_id ? String(payload.audio_file_id) : null;
+        if (!fileId) return reply;
+        const { askKeepAudio } = await import("./audio-keep.server");
+        const { appendKeepQuestion } = await import("./audio-keep");
+        const question = await askKeepAudio(supabase, {
+          userId,
+          channel,
+          fileId,
+          transcript: String(pending!.original_content ?? ""),
+          subject: payload.subject ?? null,
+        });
+        return question ? appendKeepQuestion(reply, question) : reply;
+      };
       if (saIsConfirmation(trimmed)) {
         const { executeAudioBreakdown } = await import("./audio-breakdown.server");
         const reply = await executeAudioBreakdown(ctx, pending);
-        return { reply };
+        return { reply: await askAudioFile(reply) };
       }
       if (saIsRejection(trimmed)) {
         await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: "Está bem, não guardei nada do áudio." };
+        return { reply: await askAudioFile("Está bem, não guardei nada do áudio.") };
       }
       // Correção a um item específico antes do "sim" — a proposta mantém-se
       // aberta e é reescrita já corrigida.
@@ -493,13 +510,18 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           const next = applyBreakdownEdit(current, edit);
           if (!next.items.length) {
             await markPendingActionStatus(supabase, pending.id, "cancelled");
-            return { reply: "Tirei o último ponto — já não fica nada por guardar deste áudio." };
+            return {
+              reply: await askAudioFile("Tirei o último ponto — já não fica nada por guardar deste áudio."),
+            };
           }
           const { updatePendingActionPayload } = await import("../memory.server");
           await updatePendingActionPayload(
             supabase,
             pending.id,
-            next as unknown as Record<string, any>,
+            {
+              ...(next as unknown as Record<string, any>),
+              audio_file_id: (pending.structured_payload as any)?.audio_file_id ?? null,
+            },
             { status: "pending_confirmation" },
           );
           return { reply: formatBreakdownRevised(next, describeBreakdownEdit(edit, removedItem)) };
