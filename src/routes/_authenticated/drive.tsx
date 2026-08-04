@@ -35,6 +35,8 @@ import {
   Undo2,
   MessageCircle,
   AlertTriangle,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 type Tab =
