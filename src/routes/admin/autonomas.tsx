@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
 import { listAutonomousActions } from "@/lib/admin/autonomas.functions";
+import { requestContentAccess } from "@/lib/admin/consent.functions";
 
 export const Route = createFileRoute("/admin/autonomas")({
   head: () => ({ meta: [{ title: "Ações autónomas — Afonso admin" }] }),
@@ -36,6 +38,55 @@ function fmt(dt: string) {
   return new Intl.DateTimeFormat("pt-PT", { dateStyle: "short", timeStyle: "short" }).format(new Date(dt));
 }
 
+// Mesmo fluxo de Qualidade: motivo obrigatório, autorização temporária do
+// consultor, abertura registada em auditoria.
+function RequestContent({ targetUserId, traceId }: { targetUserId: string; traceId: string }) {
+  const askFn = useServerFn(requestContentAccess);
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const ask = useMutation({
+    mutationFn: () => askFn({ data: { targetUserId, resourceId: traceId, reason } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "autonomas"] }),
+  });
+
+  return (
+    <div>
+      <div className="mini" style={{ color: "var(--muted)" }}>
+        Conteúdo oculto — requer autorização temporária do consultor.
+      </div>
+      {!open ? (
+        <button className="admin-btn mt-1 tap-44" onClick={() => setOpen(true)}>
+          Pedir acesso ao conteúdo
+        </button>
+      ) : (
+        <>
+          <textarea
+            className="admin-input mt-1 w-full"
+            rows={2}
+            placeholder="Porque precisas de ver este pedido? (fica no registo)"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <button
+            className="admin-btn mt-1 tap-44"
+            disabled={reason.trim().length < 10 || ask.isPending}
+            onClick={() => ask.mutate()}
+          >
+            {ask.isPending ? "A pedir…" : "Pedir acesso"}
+          </button>
+        </>
+      )}
+      {ask.isSuccess ? (
+        <div className="mini mt-1">Pedido enviado. Fica pendente até o consultor autorizar (válido 2 horas).</div>
+      ) : null}
+      {ask.isError ? (
+        <div className="mini mt-1" style={{ color: "var(--coral)" }}>{(ask.error as Error).message}</div>
+      ) : null}
+    </div>
+  );
+}
+
 function AutonomasPage() {
   const fn = useServerFn(listAutonomousActions);
   const { data, isLoading } = useQuery({ queryKey: ["admin", "autonomas"], queryFn: () => fn() });
@@ -47,7 +98,7 @@ function AutonomasPage() {
     <div>
       <PageTitle
         title="Ações autónomas"
-        sub="Escritas que o Assessor fez sem pedir confirmação. Consultas não contam — e uma escrita que falhou não aconteceu."
+        sub="Escritas que o Assessor fez sem pedir confirmação. Consultas não contam — e uma escrita que falhou não aconteceu. O texto do pedido do consultor está fechado até ele autorizar."
       />
 
       <SectionTitle first>Últimos 14 dias</SectionTitle>
@@ -101,7 +152,22 @@ function AutonomasPage() {
                       <div className="mini" style={{ color: "var(--muted)" }}>{a.channel}</div>
                     </td>
                     <td className="mini">{AUTONOMY_LABEL[a.autonomyLevel] ?? a.autonomyLevel}</td>
-                    <td className="mini" style={{ maxWidth: 260 }}>{a.request}</td>
+                    <td className="mini" style={{ maxWidth: 260 }}>
+                      {a.contentVisible ? (
+                        <>
+                          {a.request}
+                          <div style={{ color: "var(--muted)" }}>
+                            {a.contentBasis === "consent"
+                              ? `aberto com autorização do consultor${a.contentExpiresAt ? ` até ${fmt(a.contentExpiresAt)}` : ""}`
+                              : a.contentBasis === "evaluation_program"
+                                ? "programa de avaliação"
+                                : "conta de teste / própria conta"}
+                          </div>
+                        </>
+                      ) : (
+                        <RequestContent targetUserId={a.userId} traceId={a.traceId} />
+                      )}
+                    </td>
                     <td className="mono mini">
                       {a.writeTools.join(", ") || "—"}
                       {a.readTools.length ? (
