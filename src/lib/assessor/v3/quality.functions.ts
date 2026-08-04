@@ -255,3 +255,22 @@ export const getTrustOverview = createServerFn({ method: "GET" })
       readiness,
     };
   });
+// Comparativo de tendência da reformulação (critério antigo vs novo),
+// mesmos filtros e mesma janela de 14 dias do resto de Qualidade.
+export const getReformulationTrend = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { computeReformulationTrend } = await import("./reformulation-trend.server");
+    const since = new Date(Date.now() - 14 * 864e5).toISOString();
+
+    const { data } = await supabaseAdmin
+      .from("assessor_quality_scores")
+      .select("created_at, user_id, channel, reformulated")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(2000);
+
+    return computeReformulationTrend(((data as any[]) ?? []) as any);
+  });
