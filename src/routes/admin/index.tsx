@@ -25,6 +25,11 @@ function OverviewPage() {
 
   if (isPending || !data) return <p className="sub">A carregar…</p>;
 
+  // Evita duplicar o que a faixa de saúde já mostra (WhatsApp, Telegram, …).
+  const healthLabels = new Set(
+    (health.data?.items ?? []).map((i) => i.label.toLowerCase()),
+  );
+
   const b = data.usersBreakdown;
   const ts = data.taskSuccess;
 
