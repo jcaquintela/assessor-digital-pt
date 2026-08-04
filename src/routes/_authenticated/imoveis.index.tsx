@@ -15,6 +15,7 @@ import { GroupCards, ViewToggle, type PeopleView } from "@/components/pessoas/pe
 import { ORIGEM, PropertyCard } from "@/components/imoveis/properties-explorer";
 import { PropertyCategoryDialog, PropertyCategoryFilter, usePropertyCategories } from "@/components/imoveis/property-categories";
 import { FilterSection } from "@/components/organizer/filter-section";
+import { usePersistedView } from "@/lib/ui/view-pref";
 import { toast } from "sonner";
 import { exportProperties } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
@@ -61,6 +62,7 @@ function ImoveisPage() {
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, cat: v ?? undefined }), replace: true });
   const setView = (v: PeopleView) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, view: v === "grelha" ? "grelha" : undefined }), replace: true });
+  usePersistedView(view, setView, search.view !== undefined);
 
   const [editId, setEditId] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
