@@ -182,8 +182,10 @@ function Transcript({ traceId }: { traceId: string }) {
 function QualidadePage() {
   const fetchFn = useServerFn(getQualityOverview);
   const fetchTrust = useServerFn(getTrustOverview);
+  const fetchTrend = useServerFn(getReformulationTrend);
   const { data, isLoading, error } = useQuery({ queryKey: ["admin", "qualidade"], queryFn: () => fetchFn() });
   const trustQ = useQuery({ queryKey: ["admin", "trust"], queryFn: () => fetchTrust() });
+  const trendQ = useQuery({ queryKey: ["admin", "reformulacao-trend"], queryFn: () => fetchTrend() });
   const [openTrace, setOpenTrace] = useState<string | null>(null);
 
   if (isLoading) return <Empty>A carregar…</Empty>;
@@ -192,6 +194,7 @@ function QualidadePage() {
   const maxAvg = Math.max(...data.daily.map((d) => d.avg ?? 0), 0.01);
   const trust = trustQ.data;
   const maxAts = trust ? Math.max(...trust.daily.map((d: any) => d.ats ?? 0), 1) : 1;
+  const trend = trendQ.data;
 
   return (
     <div>
@@ -307,6 +310,63 @@ function QualidadePage() {
           hint="Percentagem de respostas em PT-PT natural, sem jargão técnico. Quanto maior, melhor."
         />
       </div>
+      <Source>assessor_quality_scores</Source>
+
+      <SectionTitle>Reformulação · antes vs depois da correção</SectionTitle>
+      {!trend || trend.total === 0 ? (
+        <Empty>Ainda sem turnos nos últimos 14 dias.</Empty>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="admin-card p-3">
+              <div className="mini" style={{ color: "var(--muted)" }}>Critério antigo (só &lt; 60 s)</div>
+              <div className="mono">{fmtPct(trend.legacyRate)}</div>
+              <div className="mini" style={{ color: "var(--muted)" }}>{trend.legacyTotal} de {trend.total} turnos</div>
+            </div>
+            <div className="admin-card p-3">
+              <div className="mini" style={{ color: "var(--muted)" }}>Critério atual</div>
+              <div className="mono">{fmtPct(trend.currentRate)}</div>
+              <div className="mini" style={{ color: "var(--muted)" }}>{trend.currentTotal} de {trend.total} turnos</div>
+            </div>
+            <div className="admin-card p-3">
+              <div className="mini" style={{ color: "var(--muted)" }}>Diferença</div>
+              <div className="mono">
+                {trend.legacyRate != null && trend.currentRate != null
+                  ? `−${fmtPct(trend.legacyRate - trend.currentRate)}`
+                  : "—"}
+              </div>
+              <div className="mini" style={{ color: "var(--muted)" }}>falsos positivos removidos</div>
+            </div>
+          </div>
+          <div className="admin-card mt-2 flex h-40 items-end gap-2 p-3">
+            {trend.daily.map((d: any) => {
+              const legacyPct = d.n ? (d.legacy / d.n) * 100 : 0;
+              const currentPct = d.n ? (d.current / d.n) * 100 : 0;
+              return (
+                <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
+                  <div className="flex h-full w-full items-end justify-center gap-[2px]">
+                    <div
+                      style={{ width: "45%", background: "var(--coral)", opacity: 0.45, borderRadius: "4px 4px 0 0", height: `${legacyPct}%` }}
+                      title={`${d.day} — critério antigo ${fmtShare(d.legacy, d.n)} (${d.legacy} de ${d.n})`}
+                    />
+                    <div
+                      style={{ width: "45%", background: "var(--ink)", borderRadius: "4px 4px 0 0", height: `${currentPct}%` }}
+                      title={`${d.day} — critério atual ${fmtShare(d.current, d.n)} (${d.current} de ${d.n})`}
+                    />
+                  </div>
+                  <span className="mini" style={{ color: "var(--muted)" }}>{d.day.slice(5)}</span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mini mt-1" style={{ color: "var(--muted)" }}>
+            Barra clara = como o número seria com o critério antigo (qualquer mensagem a menos de 60 s da anterior).
+            Barra escura = critério atual (repetição quase idêntica até 10 min, ou mesmo assunto/correção explícita em
+            menos de 60 s sem pergunta prévia do Afonso). Mesmos turnos, mesma janela de 14 dias — serve para validar
+            que o impacto se mantém dia após dia.
+          </p>
+        </>
+      )}
       <Source>assessor_quality_scores</Source>
 
       <SectionTitle>Últimos 20 turnos com AQS &lt; 0,75</SectionTitle>
