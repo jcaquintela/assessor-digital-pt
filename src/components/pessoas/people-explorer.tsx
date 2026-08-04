@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Check, ChevronRight, LayoutGrid, List, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
+import { Check, ChevronRight, LayoutGrid, List, Plus, Trash2, X } from "lucide-react";
+import { CardActionsMenu } from "@/components/organizer/card-actions-menu";
 import { createFolder, createTag, deleteFolder, deleteTag } from "@/lib/organizer/organizer.functions";
 import type { Organizer } from "@/components/organizer/organizer";
 import type { Pessoa } from "@/lib/demo-data";
@@ -251,17 +252,16 @@ export function PersonCard({
               ))}
             </div>
           </div>
-          {view === "lista" && <ChevronRight className="ml-auto h-5 w-5 self-center shrink-0" style={{ color: "var(--line)" }} />}
         </Link>
+      </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <button type="button" className="c-badge tap-44" onClick={onEdit}><Pencil className="h-3 w-3" /> Editar</button>
-          <button type="button" className="c-badge tap-44" onClick={onOrganize}><Tags className="h-3 w-3" /> Organizar</button>
-          <button type="button" className="c-badge tap-44" onClick={onDelete}><Trash2 className="h-3 w-3" /> Eliminar</button>
-          {view === "grelha" && (
-            <Link to="/pessoas/$id" params={{ id: p.id }} className="c-badge tap-44">Abrir <ChevronRight className="h-3 w-3" /></Link>
-          )}
-        </div>
+      <div className="flex shrink-0 items-center gap-1 self-start">
+        <CardActionsMenu label={p.nome} onEdit={onEdit} onOrganize={onOrganize} onDelete={onDelete} />
+        {view === "lista" && (
+          <Link to="/pessoas/$id" params={{ id: p.id }} aria-label={`Abrir ficha de ${p.nome}`} className="tap-44 hidden shrink-0 sm:block">
+            <ChevronRight className="h-5 w-5" style={{ color: "var(--line)" }} />
+          </Link>
+        )}
       </div>
     </div>
   );
