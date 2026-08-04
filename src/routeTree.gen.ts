@@ -90,6 +90,7 @@ import { Route as ApiPublicHooksTelegramRetentionRouteImport } from './routes/ap
 import { Route as ApiPublicHooksSubmitCheckinTemplateRouteImport } from './routes/api/public/hooks/submit-checkin-template'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
 import { Route as ApiPublicHooksProactivePushRouteImport } from './routes/api/public/hooks/proactive-push'
+import { Route as ApiPublicHooksObjectionGuideRouteImport } from './routes/api/public/hooks/objection-guide'
 import { Route as ApiPublicHooksMeetingBriefingRouteImport } from './routes/api/public/hooks/meeting-briefing'
 import { Route as ApiPublicHooksCalendarPollRouteImport } from './routes/api/public/hooks/calendar-poll'
 import { Route as ApiPublicHooksBetaExpiryRouteImport } from './routes/api/public/hooks/beta-expiry'
@@ -526,6 +527,12 @@ const ApiPublicHooksProactivePushRoute =
     path: '/api/public/hooks/proactive-push',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksObjectionGuideRoute =
+  ApiPublicHooksObjectionGuideRouteImport.update({
+    id: '/api/public/hooks/objection-guide',
+    path: '/api/public/hooks/objection-guide',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksMeetingBriefingRoute =
   ApiPublicHooksMeetingBriefingRouteImport.update({
     id: '/api/public/hooks/meeting-briefing',
@@ -642,6 +649,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/meeting-briefing': typeof ApiPublicHooksMeetingBriefingRoute
+  '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
@@ -729,6 +737,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/meeting-briefing': typeof ApiPublicHooksMeetingBriefingRoute
+  '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
@@ -819,6 +828,7 @@ export interface FileRoutesById {
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/meeting-briefing': typeof ApiPublicHooksMeetingBriefingRoute
+  '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
@@ -909,6 +919,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/meeting-briefing'
+    | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/hooks/submit-checkin-template'
@@ -996,6 +1007,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/meeting-briefing'
+    | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/hooks/submit-checkin-template'
@@ -1085,6 +1097,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/meeting-briefing'
+    | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
     | '/api/public/hooks/submit-checkin-template'
@@ -1116,6 +1129,7 @@ export interface RootRouteChildren {
   ApiPublicHooksBetaExpiryRoute: typeof ApiPublicHooksBetaExpiryRoute
   ApiPublicHooksCalendarPollRoute: typeof ApiPublicHooksCalendarPollRoute
   ApiPublicHooksMeetingBriefingRoute: typeof ApiPublicHooksMeetingBriefingRoute
+  ApiPublicHooksObjectionGuideRoute: typeof ApiPublicHooksObjectionGuideRoute
   ApiPublicHooksProactivePushRoute: typeof ApiPublicHooksProactivePushRoute
   ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
   ApiPublicHooksSubmitCheckinTemplateRoute: typeof ApiPublicHooksSubmitCheckinTemplateRoute
@@ -1694,6 +1708,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProactivePushRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/objection-guide': {
+      id: '/api/public/hooks/objection-guide'
+      path: '/api/public/hooks/objection-guide'
+      fullPath: '/api/public/hooks/objection-guide'
+      preLoaderRoute: typeof ApiPublicHooksObjectionGuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/meeting-briefing': {
       id: '/api/public/hooks/meeting-briefing'
       path: '/api/public/hooks/meeting-briefing'
@@ -1969,6 +1990,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksBetaExpiryRoute: ApiPublicHooksBetaExpiryRoute,
   ApiPublicHooksCalendarPollRoute: ApiPublicHooksCalendarPollRoute,
   ApiPublicHooksMeetingBriefingRoute: ApiPublicHooksMeetingBriefingRoute,
+  ApiPublicHooksObjectionGuideRoute: ApiPublicHooksObjectionGuideRoute,
   ApiPublicHooksProactivePushRoute: ApiPublicHooksProactivePushRoute,
   ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
   ApiPublicHooksSubmitCheckinTemplateRoute:
