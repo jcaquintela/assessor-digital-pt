@@ -61,6 +61,7 @@ function formatDia(iso: string) {
 }
 
 function AssessorPage() {
+  useRedirectColdLaunchToHoje();
   const { name: assessorName } = useAssessorName();
   const { channel } = useLinkedChannel();
   const [msgs, setMsgs] = useState<MensagemDb[]>([]);
