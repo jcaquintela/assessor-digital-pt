@@ -7,6 +7,7 @@ import { requestContentAccess } from "@/lib/admin/consent.functions";
 import { fmtPct, fmtScore100, fmtShare } from "@/lib/admin/metrics-format";
 import {
   getQualityOverview,
+  getReformulationTrend,
   getTrustOverview,
   getTurnTranscript,
 } from "@/lib/assessor/v3/quality.functions";
