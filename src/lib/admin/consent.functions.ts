@@ -83,9 +83,7 @@ export const decideContentAccess = createServerFn({ method: "POST" })
       .from("content_access_consents")
       .update({ status: data.decision, decided_at: new Date().toISOString() } as never)
       .eq("id", data.id)
-      .eq("user_id", context.userId)
-      .select("id, resource_id, requested_by")
-      .maybeSingle();
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     // Cada decisão do consultor fica registada: autorizar, recusar, retirar.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

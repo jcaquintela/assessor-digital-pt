@@ -24,6 +24,12 @@ const EXPECTED_ACTIONS: { action: string; label: string }[] = [
   { action: "flag.upsert", label: "Alteração de flag" },
   { action: "plan_config.update", label: "Alteração de plano/preço" },
   { action: "security.mfa_required", label: "MFA obrigatório" },
+  { action: "content.access_requested", label: "Pedido de acesso a conversa" },
+  { action: "content.access_granted", label: "Acesso autorizado pelo consultor" },
+  { action: "content.access_denied", label: "Acesso recusado pelo consultor" },
+  { action: "content.access_revoked", label: "Acesso retirado pelo consultor" },
+  { action: "content.access_expired", label: "Acesso expirado (2 horas)" },
+  { action: "content.open", label: "Abertura de conteúdo real" },
 ];
 
 function AuditoriaSegurancaPage() {
