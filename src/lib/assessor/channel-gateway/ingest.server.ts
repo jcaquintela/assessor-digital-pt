@@ -504,6 +504,14 @@ async function handleInboundMediaInner(
           .eq("id", result.fileId);
         await refineFileName(supabaseAdmin, result.fileId, "audio", t.text);
       }
+      // Áudio puramente social ("olá", "obrigado", "ok"): não entra no Drive
+      // Inteligente de todo, e não gera pergunta nenhuma.
+      const { isSocialAudio } = await import("@/lib/assessor/v3/audio-keep");
+      const socialAudio = isSocialAudio(t.text);
+      if (socialAudio && result.fileId) {
+        const { discardAudioFile } = await import("@/lib/assessor/v3/audio-keep.server");
+        await discardAudioFile(supabaseAdmin, result.fileId, userId);
+      }
       // Log da transcrição como user turn para o motor ter contexto textual.
       await supabaseAdmin.from("assessor_messages").insert({
         user_id: userId,
@@ -535,6 +543,7 @@ async function handleInboundMediaInner(
               } as never,
               t.text,
               breakdown,
+              result.fileId ?? null,
             );
             outcome = { reply };
           }
@@ -553,6 +562,27 @@ async function handleInboundMediaInner(
         receivedAt: inbound.receivedAt,
         sourceMessageId: persistedUuid,
       });
+
+      // Regra generalizada: depois de QUALQUER áudio com conteúdo — mesmo
+      // sem registo estruturado criado — pergunta-se uma vez o que fazer ao
+      // ficheiro. Se ficou outro assunto por confirmar (ex.: a proposta do
+      // áudio), a pergunta sai depois, quando esse assunto fechar.
+      if (!socialAudio && result.fileId) {
+        const { findActivePendingAction } = await import("@/lib/assessor/memory.server");
+        const mainPending = await findActivePendingAction(supabaseAdmin, userId, adapter.channel);
+        if (!mainPending) {
+          const { askKeepAudio } = await import("@/lib/assessor/v3/audio-keep.server");
+          const { appendKeepQuestion } = await import("@/lib/assessor/v3/audio-keep");
+          const question = await askKeepAudio(supabaseAdmin, {
+            userId,
+            channel: adapter.channel,
+            fileId: result.fileId,
+            transcript: t.text,
+            sourceMessageId: persistedUuid,
+          });
+          if (question) outcome = { reply: appendKeepQuestion(outcome.reply, question) };
+        }
+      }
       await deliverReply(adapter, supabaseAdmin, {
         userId,
         externalConversationId: inbound.externalConversationId,
