@@ -1,0 +1,1 @@
+delete from public.follow_ups where title = 'TESTE briefing — visita com Ana Silva';
