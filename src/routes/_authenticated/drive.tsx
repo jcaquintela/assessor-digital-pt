@@ -2,7 +2,7 @@ import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -258,11 +258,28 @@ function DrivePage() {
   );
 
   // Listas grandes: cada secção rende por blocos, mantendo a contagem total à vista.
+  // As chaves são únicas por agrupamento, por isso o "mostrar mais" de cada secção
+  // sobrevive à troca de vista; só reinicia quando a lista de ficheiros muda.
   const PAGE = 40;
   const [shown, setShown] = useState<Record<string, number>>({});
   useEffect(() => {
     setShown({});
-  }, [groupBy, files]);
+  }, [files]);
+
+  // Trocar de agrupamento não deve fazer perder a posição na página:
+  // guardamos o scroll no clique e repomo-lo depois de renderizar a nova vista.
+  const scrollKeep = useRef<number | null>(null);
+  const mudarAgrupamento = (next: GroupBy) => {
+    if (next === groupBy) return;
+    scrollKeep.current = typeof window !== "undefined" ? window.scrollY : null;
+    setGroupBy(next);
+  };
+  useLayoutEffect(() => {
+    if (scrollKeep.current == null) return;
+    const y = scrollKeep.current;
+    scrollKeep.current = null;
+    window.scrollTo({ top: y });
+  }, [groupBy]);
 
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
@@ -427,7 +444,7 @@ function DrivePage() {
               type="button"
               aria-pressed={groupBy === g.key}
               className={"c-pill tap-44" + (groupBy === g.key ? " active" : "")}
-              onClick={() => setGroupBy(g.key)}
+                onClick={() => mudarAgrupamento(g.key)}
             >
               {g.label}
             </button>
