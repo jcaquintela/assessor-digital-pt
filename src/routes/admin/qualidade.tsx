@@ -291,7 +291,7 @@ function QualidadePage() {
           value={data.dist.reformulated}
           max={data.total}
           worseWhenHigher
-          hint="Percentagem de turnos em que o consultor teve de reescrever o pedido logo a seguir (menos de 60 s depois). Quanto maior, PIOR — é o sinal negativo, não o positivo."
+          hint="Percentagem de turnos em que o consultor teve mesmo de repetir ou corrigir o MESMO pedido: repetição quase idêntica (até 10 min) ou, sem pergunta prévia do Assessor, uma nova mensagem sobre o mesmo assunto ou com correção explícita ('afinal', 'não era') em menos de 60 s. Responder a uma pergunta do Assessor ou mudar de assunto NÃO conta. Quanto maior, PIOR — é o sinal negativo, não o positivo."
         />
         <Bar
           label="Executou com sucesso"
