@@ -13,6 +13,7 @@ import {
   GroupCards, PersonCard, TagFilterRow, ViewToggle, type PeopleView,
 } from "@/components/pessoas/people-explorer";
 import { FilterSection } from "@/components/organizer/filter-section";
+import { usePersistedView } from "@/lib/ui/view-pref";
 import { toast } from "sonner";
 import { exportPeople } from "@/lib/export/export.functions";
 import { getPersonAttention } from "@/lib/people/attention.functions";
@@ -50,6 +51,7 @@ function PessoasPage() {
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, tag: v ?? undefined }), replace: true });
   const setView = (v: PeopleView) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, view: v === "grelha" ? "grelha" : undefined }), replace: true });
+  usePersistedView(view, setView, search.view !== undefined);
   const [editId, setEditId] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
   const [orgId, setOrgId] = useState<string | null>(null);
