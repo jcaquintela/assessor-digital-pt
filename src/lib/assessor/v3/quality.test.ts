@@ -34,10 +34,46 @@ describe("AQS — sinais", () => {
     expect(s.human_tone).toBe(false);
   });
 
-  it("reformulação detectada quando anterior é < 60s", () => {
+  it("resposta normal a uma pergunta do Afonso NÃO conta como reformulação", () => {
     const s = computeQualitySignals({
-      decision: baseDecision(), toolResults: [], reply: "Ok.",
+      decision: baseDecision(), toolResults: [], reply: "Marcado.",
       previousUserTurnAt: new Date(Date.now() - 10_000),
+      message: "Às 15h",
+      previousUserMessage: "Marca visita com a Iolanda amanhã",
+      lastAssistantReply: "A que horas queres a visita?",
+    });
+    expect(s.reformulated).toBe(false);
+  });
+
+  it("continuação com outro assunto NÃO conta", () => {
+    const s = computeQualitySignals({
+      decision: baseDecision(), toolResults: [], reply: "Registado.",
+      previousUserTurnAt: new Date(Date.now() - 20_000),
+      message: "Recebi a caderneta predial do T3 da Boavista",
+      previousUserMessage: "Liga-me à tarde ao Sr. Costa",
+      lastAssistantReply: "Combinado.",
+    });
+    expect(s.reformulated).toBe(false);
+  });
+
+  it("repetição genuína do mesmo pedido conta", () => {
+    const s = computeQualitySignals({
+      decision: baseDecision(), toolResults: [], reply: "Não percebi.",
+      previousUserTurnAt: new Date(Date.now() - 30_000),
+      message: "Placa Santa Maria da Feira T2 varanda 165000",
+      previousUserMessage: "Placa Santa Maria da Feira T2 varanda 165000",
+      lastAssistantReply: "Não percebi bem essa parte.",
+    });
+    expect(s.reformulated).toBe(true);
+  });
+
+  it("correção explícita logo a seguir conta", () => {
+    const s = computeQualitySignals({
+      decision: baseDecision(), toolResults: [], reply: "Corrigido.",
+      previousUserTurnAt: new Date(Date.now() - 15_000),
+      message: "Afinal não era a Iolanda, era a Iolanda Sousa",
+      previousUserMessage: "Marca visita com a Iolanda amanhã às 10h",
+      lastAssistantReply: "Marquei a visita.",
     });
     expect(s.reformulated).toBe(true);
   });
