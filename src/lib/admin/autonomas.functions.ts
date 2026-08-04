@@ -36,6 +36,10 @@ export type AutonomousAction = {
   outcome: ActionOutcome;
   correctionCategory: string | null;
   correctionMessage: string | null;
+  /** O texto do pedido só sai daqui com autorização viva do consultor. */
+  contentVisible: boolean;
+  contentBasis: "consent" | "synthetic" | "evaluation_program" | null;
+  contentExpiresAt: string | null;
 };
 
 export type AutonomyCounters = {
@@ -113,6 +117,15 @@ export const listAutonomousActions = createServerFn({ method: "GET" })
     const autonomyById = new Map(((prefs as any[]) ?? []).map((p) => [p.user_id, p.autonomy_level]));
     const correctionByTrace = new Map(((corrections as any[]) ?? []).map((c) => [c.turn_id, c]));
 
+    // Mesma regra de privacidade usada em Qualidade: sem consentimento vivo
+    // (ou conta de teste / programa de avaliação / a própria conta do admin),
+    // as palavras do consultor não são mostradas.
+    const { buildContentAccessResolver, auditContentAccess } = await import("./consent.server");
+    const resolveAccess = await buildContentAccessResolver(supabaseAdmin, {
+      userIds,
+      adminId: context.userId,
+    });
+
     // Duplicado = a mesma escrita, do mesmo consultor, repetida em menos de
     // 5 minutos. Dois registos iguais são um incidente, não dois sucessos.
     const dupKeySeen = new Map<string, number>();
@@ -134,6 +147,7 @@ export const listAutonomousActions = createServerFn({ method: "GET" })
     const items: AutonomousAction[] = traces.map(({ t, tools }) => {
       const correction = correctionByTrace.get(t.id) ?? null;
       const p = profileById.get(t.user_id);
+      const access = resolveAccess(t.user_id, t.id);
       const writes = tools.filter((c: ClassifiedTool) => c.kind === "write");
       const deleted = writes.some((c) => c.ok && c.entityId != null && !alive.has(c.entityId));
       const outcome = resolveOutcome({
@@ -150,7 +164,10 @@ export const listAutonomousActions = createServerFn({ method: "GET" })
         consultant: p?.name || p?.email || String(t.user_id ?? "").slice(0, 8),
         autonomyLevel: autonomyById.get(t.user_id) ?? "equilibrado",
         channel: t.channel,
-        request: String(t.input_content ?? "").slice(0, 240),
+        request: access.allowed ? String(t.input_content ?? "").slice(0, 240) : "",
+        contentVisible: access.allowed,
+        contentBasis: access.basis,
+        contentExpiresAt: access.expiresAt,
         tools: tools.map((c: ClassifiedTool) => c.name),
         writeTools: writes.map((c) => c.name),
         readTools: tools.filter((c: ClassifiedTool) => c.kind === "read").map((c) => c.name),
@@ -158,12 +175,30 @@ export const listAutonomousActions = createServerFn({ method: "GET" })
         error: t.error ?? writes.find((c) => !c.ok)?.error ?? null,
         outcome,
         correctionCategory: correction?.category ?? null,
-        correctionMessage: correction?.correction_message ?? null,
+        correctionMessage: access.allowed ? (correction?.correction_message ?? null) : null,
       };
     });
 
     const counters: AutonomyCounters = { ...empty };
     for (const i of items) counters[i.outcome] += 1;
 
-    return { items: items.slice(0, 100), total: items.length, readOnlyTurns, counters };
+    const shown = items.slice(0, 100);
+
+    // Toda a abertura de conteúdo real fica auditada, tal como em Qualidade.
+    await Promise.all(
+      shown
+        .filter((i) => i.contentVisible && i.contentBasis === "consent")
+        .map((i) =>
+          auditContentAccess(supabaseAdmin, {
+            adminId: context.userId,
+            targetUserId: i.userId,
+            resourceId: i.traceId,
+            basis: i.contentBasis ?? "consent",
+            consentId: null,
+            reason: "Abertura de conteúdo em Ações autónomas",
+          }),
+        ),
+    );
+
+    return { items: shown, total: items.length, readOnlyTurns, counters };
   });
