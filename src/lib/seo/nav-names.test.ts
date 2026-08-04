@@ -21,7 +21,8 @@ function ficheiros(dir: string): string[] {
   });
 }
 
-/** Rótulos usados em navegação: `label: "..."`, `title: "..."` em itens com `to:`/`href:`, e texto de <Link>. */
+/** Rótulos usados em navegação: `label: "..."`, `title: "..."` em itens com `to:`/`href:`,
+ * texto de <Link>, e `aria-label`/`data-testid` em elementos de navegação. */
 function rotulosDeNavegacao(codigo: string): string[] {
   const rotulos: string[] = [];
 
@@ -31,11 +32,23 @@ function rotulosDeNavegacao(codigo: string): string[] {
     for (const [, valor] of item.matchAll(/\b(?:label|title|name)\s*:\s*["'`]([^"'`]+)["'`]/g)) {
       rotulos.push(valor.trim());
     }
+    // Props de acessibilidade/teste em itens de navegação declarativos.
+    for (const [, valor] of item.matchAll(/\b(?:ariaLabel|dataTestid|"aria-label"|"data-testid")\s*:\s*["'`]([^"'`]+)["'`]/g)) {
+      rotulos.push(valor.trim());
+    }
   }
 
   // Links JSX com texto literal: <Link to="/x">Texto</Link>, <a href="...">Texto</a>
   const linkRe = /<(?:Link|a)\b[^>]*\b(?:to|href)=[^>]*>([^<>{}]+)<\/(?:Link|a)>/g;
   for (const [, texto] of codigo.matchAll(linkRe)) rotulos.push(texto.trim());
+
+  // aria-label / data-testid em elementos de navegação JSX (<Link>, <a>, <button> com to/href/onClick).
+  const navElRe = /<(?:Link|a|button)\b[^>]*\b(?:to|href|onClick)=[^>]*>/g;
+  for (const [el] of codigo.matchAll(navElRe)) {
+    for (const [, valor] of el.matchAll(/\b(?:aria-label|data-testid)=["'`]([^"'`]+)["'`]/g)) {
+      rotulos.push(valor.trim());
+    }
+  }
 
   return rotulos.filter(Boolean);
 }
@@ -68,5 +81,25 @@ describe("nomes visíveis na navegação", () => {
   it("deteta um item de menu proibido", () => {
     const mau = `const items = [{ to: "/documentos", label: "Documentos", icon: X }];`;
     expect(rotulosDeNavegacao(mau)).toContain("Documentos");
+  });
+
+  it('deteta "Documentos" em aria-label de link JSX', () => {
+    const mau = `<Link to="/documentos" aria-label="Documentos">Ir</Link>`;
+    expect(rotulosDeNavegacao(mau)).toContain("Documentos");
+  });
+
+  it('deteta "Drive" em data-testid de link JSX', () => {
+    const mau = `<a href="/drive" data-testid="Drive">Ir</a>`;
+    expect(rotulosDeNavegacao(mau)).toContain("Drive");
+  });
+
+  it('deteta rótulo de acessibilidade em item de navegação declarativo', () => {
+    const mau = `{ to: "/drive", label: "Drive Inteligente", ariaLabel: "Documentos" }`;
+    expect(rotulosDeNavegacao(mau)).toContain("Documentos");
+  });
+
+  it('não deteta aria-label fora de elementos de navegação', () => {
+    const bom = `<section aria-label="Documentos"><h2>Documentos</h2></section>`;
+    expect(rotulosDeNavegacao(bom)).not.toContain("Documentos");
   });
 });
