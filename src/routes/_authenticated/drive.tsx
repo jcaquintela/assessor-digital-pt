@@ -444,7 +444,7 @@ function DrivePage() {
               type="button"
               aria-pressed={groupBy === g.key}
               className={"c-pill tap-44" + (groupBy === g.key ? " active" : "")}
-              onClick={() => setGroupBy(g.key)}
+                onClick={() => mudarAgrupamento(g.key)}
             >
               {g.label}
             </button>
