@@ -21,7 +21,8 @@ function ficheiros(dir: string): string[] {
   });
 }
 
-/** Rótulos usados em navegação: `label: "..."`, `title: "..."` em itens com `to:`/`href:`, e texto de <Link>. */
+/** Rótulos usados em navegação: `label: "..."`, `title: "..."` em itens com `to:`/`href:`,
+ * texto de <Link>, e `aria-label`/`data-testid` em elementos de navegação. */
 function rotulosDeNavegacao(codigo: string): string[] {
   const rotulos: string[] = [];
 
@@ -31,11 +32,23 @@ function rotulosDeNavegacao(codigo: string): string[] {
     for (const [, valor] of item.matchAll(/\b(?:label|title|name)\s*:\s*["'`]([^"'`]+)["'`]/g)) {
       rotulos.push(valor.trim());
     }
+    // Props de acessibilidade/teste em itens de navegação declarativos.
+    for (const [, valor] of item.matchAll(/\b(?:ariaLabel|dataTestid|"aria-label"|"data-testid")\s*:\s*["'`]([^"'`]+)["'`]/g)) {
+      rotulos.push(valor.trim());
+    }
   }
 
   // Links JSX com texto literal: <Link to="/x">Texto</Link>, <a href="...">Texto</a>
   const linkRe = /<(?:Link|a)\b[^>]*\b(?:to|href)=[^>]*>([^<>{}]+)<\/(?:Link|a)>/g;
   for (const [, texto] of codigo.matchAll(linkRe)) rotulos.push(texto.trim());
+
+  // aria-label / data-testid em elementos de navegação JSX (<Link>, <a>, <button> com to/href/onClick).
+  const navElRe = /<(?:Link|a|button)\b[^>]*\b(?:to|href|onClick)=[^>]*>/g;
+  for (const [el] of codigo.matchAll(navElRe)) {
+    for (const [, valor] of el.matchAll(/\b(?:aria-label|data-testid)=["'`]([^"'`]+)["'`]/g)) {
+      rotulos.push(valor.trim());
+    }
+  }
 
   return rotulos.filter(Boolean);
 }
