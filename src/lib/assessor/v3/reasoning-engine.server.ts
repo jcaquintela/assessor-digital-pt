@@ -1187,11 +1187,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     // apanhássemos aqui, a diferença seria ≈0 s e quase tudo virava
     // "reformulação". Excluímo-la explicitamente.
     const userRows = ((recentRows as any[]) ?? []).filter((r) => r?.role === "user");
-    const prevUserRow = userRows.find(
-      (r) =>
-        (sourceMessageId ? r?.id !== sourceMessageId : true) &&
-        String(r?.content ?? "").trim() !== trimmed,
-    ) ?? null;
+    // Índice da mensagem actual (por id, ou a mais recente com o mesmo texto).
+    let curIdx = sourceMessageId ? userRows.findIndex((r) => r?.id === sourceMessageId) : -1;
+    if (curIdx < 0) curIdx = userRows.findIndex((r) => String(r?.content ?? "").trim() === trimmed);
+    // A repetição genuína tem o mesmo texto: só saltamos UMA ocorrência.
+    const prevUserRow = userRows[(curIdx < 0 ? -1 : curIdx) + 1] ?? null;
     const prevUserAt = prevUserRow?.created_at ?? null;
     const signals = computeQualitySignals({
       decision: decideR.decision,
