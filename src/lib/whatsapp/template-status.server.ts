@@ -90,22 +90,26 @@ export async function syncTemplateApproval(
     .maybeSingle();
 
   const was = Boolean((current as any)?.enabled_globally);
+
+  // A flag do check-in v2 é independente da flag global: acompanha sempre o
+  // estado real na Meta, mesmo quando a global não mudou.
+  await supabase
+    .from("feature_flags")
+    .upsert(
+      {
+        key: CHECKIN_V2_APPROVED_FLAG,
+        enabled_globally: checkinV2Approved,
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "key" },
+    );
+
   if (was === approved) return { approved, changed: false, templates };
 
   await supabase
     .from("feature_flags")
     .update({ enabled_globally: approved, updated_at: new Date().toISOString() } as never)
     .eq("key", TEMPLATES_APPROVED_FLAG);
-
-  // Regista separadamente se o v2 já pode ser usado.
-  await supabase
-    .from("feature_flags")
-    .upsert({
-      key: CHECKIN_V2_APPROVED_FLAG,
-      enabled_globally: checkinV2Approved,
-      updated_at: new Date().toISOString(),
-    } as never)
-    .eq("key", CHECKIN_V2_APPROVED_FLAG);
 
   return { approved, changed: true, templates };
 }
