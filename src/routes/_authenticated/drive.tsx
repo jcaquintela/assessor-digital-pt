@@ -2,7 +2,7 @@ import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
 import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
+import { groupDriveFiles, type GroupBy } from "@/lib/drive/group-files";
 import {
   FileText,
   Image as ImageIcon,
@@ -146,7 +147,7 @@ function DrivePage() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const { categories } = useFileCategories();
-  const catById = new Map(categories.map((c) => [c.id, c]));
+  const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
   // "Ver": abre o documento original numa nova janela via URL assinada temporária.
   const abrirFicheiro = async (id: string) => {
@@ -214,7 +215,12 @@ function DrivePage() {
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível eliminar."),
   });
 
-  const selectedVisible = selected.filter((id) => files.some((f: any) => f.id === id));
+  const visibleIds = useMemo(() => new Set(files.map((f: any) => f.id)), [files]);
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const selectedVisible = useMemo(
+    () => selected.filter((id) => visibleIds.has(id)),
+    [selected, visibleIds],
+  );
   const allSelected = files.length > 0 && selectedVisible.length === files.length;
   const toggleOne = (id: string, on: boolean) =>
     setSelected((prev) => (on ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
@@ -239,65 +245,24 @@ function DrivePage() {
   const naReciclagem = tab === "reciclagem";
 
   // Agrupamento da vista principal: por categoria (defeito), por negócio ou lista plana.
-  const [groupBy, setGroupBy] = useState<"categoria" | "negocio" | "lista">("categoria");
+  const [groupBy, setGroupBy] = useState<GroupBy>("categoria");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const toggleGroup = (key: string) =>
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  type Grupo = { key: string; label: string; files: any[]; destaque?: boolean };
-  const grupos: Grupo[] = (() => {
-    if (groupBy === "lista") return [{ key: "todos", label: "", files }];
+  // Agrupamento memoizado: só recalcula quando a lista, as ligações, as categorias
+  // ou o modo mudam — mesmo com centenas de ficheiros.
+  const grupos = useMemo(
+    () => groupDriveFiles(files as any[], linksByFile as any, categories, groupBy),
+    [files, linksByFile, categories, groupBy],
+  );
 
-    if (groupBy === "categoria") {
-      const semCategoria: any[] = [];
-      const porCat = new Map<string, any[]>();
-      for (const f of files as any[]) {
-        const id = f.custom_category_id as string | null;
-        if (!id || !catById.has(id)) semCategoria.push(f);
-        else porCat.set(id, [...(porCat.get(id) ?? []), f]);
-      }
-      const out: Grupo[] = [];
-      if (semCategoria.length)
-        out.push({ key: "cat:none", label: "Por categorizar", files: semCategoria, destaque: true });
-      for (const c of categories) {
-        const fs = porCat.get(c.id);
-        if (fs?.length) out.push({ key: `cat:${c.id}`, label: c.name, files: fs });
-      }
-      return out;
-    }
-
-    // Por negócio: usa as ligações já existentes a oportunidades/negócios.
-    const semNegocio: any[] = [];
-    const porNeg = new Map<string, { label: string; files: any[] }>();
-    for (const f of files as any[]) {
-      const links = ((linksByFile[f.id] as any[]) ?? []).filter(
-        (l) => l.entity_type === "opportunity",
-      );
-      if (!links.length) {
-        semNegocio.push(f);
-        continue;
-      }
-      for (const l of links) {
-        const prev: { label: string; files: any[] } = porNeg.get(l.entity_id) ?? {
-          label: l.entity_name ?? "Negócio",
-          files: [] as any[],
-        };
-        prev.files.push(f);
-        porNeg.set(l.entity_id, prev);
-      }
-    }
-    const out: Grupo[] = [...porNeg.entries()]
-      .sort((a, b) => a[1].label.localeCompare(b[1].label, "pt-PT"))
-      .map(([id, v]) => ({ key: `neg:${id}`, label: v.label, files: v.files }));
-    if (semNegocio.length)
-      out.push({
-        key: "neg:none",
-        label: "Sem negócio associado",
-        files: semNegocio,
-        destaque: true,
-      });
-    return out;
-  })();
+  // Listas grandes: cada secção rende por blocos, mantendo a contagem total à vista.
+  const PAGE = 40;
+  const [shown, setShown] = useState<Record<string, number>>({});
+  useEffect(() => {
+    setShown({});
+  }, [groupBy, files]);
 
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
@@ -547,7 +512,7 @@ function DrivePage() {
                 <span className="c-muted text-[12px] font-normal">{g.files.length}</span>
               </button>
             )}
-            {(collapsed[g.key] ? [] : g.files).map((f: any) => {
+            {(collapsed[g.key] ? [] : g.files.slice(0, shown[g.key] ?? PAGE)).map((f: any) => {
           const Icon = fileIcon(f.mime_type);
           const links = (linksByFile[f.id] as any[]) ?? [];
           const needsReview =
@@ -567,7 +532,7 @@ function DrivePage() {
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   >
                     <Checkbox
-                      checked={selected.includes(f.id)}
+                      checked={selectedSet.has(f.id)}
                       onCheckedChange={(v) => toggleOne(f.id, v === true)}
                       aria-label={`Selecionar ${f.original_file_name ?? "ficheiro"}`}
                     />
@@ -716,6 +681,17 @@ function DrivePage() {
             </Link>
           );
             })}
+            {!collapsed[g.key] && g.files.length > (shown[g.key] ?? PAGE) && (
+              <button
+                type="button"
+                className="c-pill tap-44 w-full"
+                onClick={() =>
+                  setShown((prev) => ({ ...prev, [g.key]: (prev[g.key] ?? PAGE) + PAGE }))
+                }
+              >
+                Mostrar mais ({g.files.length - (shown[g.key] ?? PAGE)} por ver)
+              </button>
+            )}
           </section>
         ))}
       </div>
