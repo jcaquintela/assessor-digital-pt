@@ -526,7 +526,28 @@ function DrivePage() {
             )}
           </div>
         )}
-        {files.map((f: any) => {
+        {grupos.map((g) => (
+          <section key={g.key} className="space-y-2" data-grupo={g.key}>
+            {g.label && (
+              <button
+                type="button"
+                onClick={() => toggleGroup(g.key)}
+                aria-expanded={!collapsed[g.key]}
+                className={
+                  "flex w-full items-center gap-2 rounded-lg px-1 py-2 text-left text-[13px] font-semibold" +
+                  (g.destaque ? " text-amber-600 dark:text-amber-400" : "")
+                }
+              >
+                {collapsed[g.key] ? (
+                  <ChevronRight className="h-4 w-4 shrink-0" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 shrink-0" />
+                )}
+                <span className="min-w-0 truncate">{g.label}</span>
+                <span className="c-muted text-[12px] font-normal">{g.files.length}</span>
+              </button>
+            )}
+            {(collapsed[g.key] ? [] : g.files).map((f: any) => {
           const Icon = fileIcon(f.mime_type);
           const links = (linksByFile[f.id] as any[]) ?? [];
           const needsReview =
