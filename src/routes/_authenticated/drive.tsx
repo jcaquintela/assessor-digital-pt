@@ -35,6 +35,8 @@ import {
   Undo2,
   MessageCircle,
   AlertTriangle,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 type Tab =
@@ -236,6 +238,67 @@ function DrivePage() {
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string | null } | null>(null);
   const naReciclagem = tab === "reciclagem";
 
+  // Agrupamento da vista principal: por categoria (defeito), por negócio ou lista plana.
+  const [groupBy, setGroupBy] = useState<"categoria" | "negocio" | "lista">("categoria");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleGroup = (key: string) =>
+    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  type Grupo = { key: string; label: string; files: any[]; destaque?: boolean };
+  const grupos: Grupo[] = (() => {
+    if (groupBy === "lista") return [{ key: "todos", label: "", files }];
+
+    if (groupBy === "categoria") {
+      const semCategoria: any[] = [];
+      const porCat = new Map<string, any[]>();
+      for (const f of files as any[]) {
+        const id = f.custom_category_id as string | null;
+        if (!id || !catById.has(id)) semCategoria.push(f);
+        else porCat.set(id, [...(porCat.get(id) ?? []), f]);
+      }
+      const out: Grupo[] = [];
+      if (semCategoria.length)
+        out.push({ key: "cat:none", label: "Por categorizar", files: semCategoria, destaque: true });
+      for (const c of categories) {
+        const fs = porCat.get(c.id);
+        if (fs?.length) out.push({ key: `cat:${c.id}`, label: c.name, files: fs });
+      }
+      return out;
+    }
+
+    // Por negócio: usa as ligações já existentes a oportunidades/negócios.
+    const semNegocio: any[] = [];
+    const porNeg = new Map<string, { label: string; files: any[] }>();
+    for (const f of files as any[]) {
+      const links = ((linksByFile[f.id] as any[]) ?? []).filter(
+        (l) => l.entity_type === "opportunity",
+      );
+      if (!links.length) {
+        semNegocio.push(f);
+        continue;
+      }
+      for (const l of links) {
+        const prev: { label: string; files: any[] } = porNeg.get(l.entity_id) ?? {
+          label: l.entity_name ?? "Negócio",
+          files: [] as any[],
+        };
+        prev.files.push(f);
+        porNeg.set(l.entity_id, prev);
+      }
+    }
+    const out: Grupo[] = [...porNeg.entries()]
+      .sort((a, b) => a[1].label.localeCompare(b[1].label, "pt-PT"))
+      .map(([id, v]) => ({ key: `neg:${id}`, label: v.label, files: v.files }));
+    if (semNegocio.length)
+      out.push({
+        key: "neg:none",
+        label: "Sem negócio associado",
+        files: semNegocio,
+        destaque: true,
+      });
+    return out;
+  })();
+
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
     if (!confirm(`Eliminar ${label}? Fica na Reciclagem 24 horas — podes recuperar com as ligações dentro desse prazo.`)) return;
@@ -387,6 +450,26 @@ function DrivePage() {
 
       <CategoriesBar selected={categoryId} onSelect={setCategoryId} />
 
+      {files.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          {([
+            { key: "categoria", label: "Por categoria" },
+            { key: "negocio", label: "Por negócio" },
+            { key: "lista", label: "Lista" },
+          ] as const).map((g) => (
+            <button
+              key={g.key}
+              type="button"
+              aria-pressed={groupBy === g.key}
+              className={"c-pill tap-44" + (groupBy === g.key ? " active" : "")}
+              onClick={() => setGroupBy(g.key)}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {!listQ.isLoading && files.length === 0 && (
         <div className="c-empty">
           {categoryId
@@ -443,7 +526,28 @@ function DrivePage() {
             )}
           </div>
         )}
-        {files.map((f: any) => {
+        {grupos.map((g) => (
+          <section key={g.key} className="space-y-2" data-grupo={g.key}>
+            {g.label && (
+              <button
+                type="button"
+                onClick={() => toggleGroup(g.key)}
+                aria-expanded={!collapsed[g.key]}
+                className={
+                  "flex w-full items-center gap-2 rounded-lg px-1 py-2 text-left text-[13px] font-semibold" +
+                  (g.destaque ? " text-amber-600 dark:text-amber-400" : "")
+                }
+              >
+                {collapsed[g.key] ? (
+                  <ChevronRight className="h-4 w-4 shrink-0" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 shrink-0" />
+                )}
+                <span className="min-w-0 truncate">{g.label}</span>
+                <span className="c-muted text-[12px] font-normal">{g.files.length}</span>
+              </button>
+            )}
+            {(collapsed[g.key] ? [] : g.files).map((f: any) => {
           const Icon = fileIcon(f.mime_type);
           const links = (linksByFile[f.id] as any[]) ?? [];
           const needsReview =
@@ -611,7 +715,9 @@ function DrivePage() {
               </div>
             </Link>
           );
-        })}
+            })}
+          </section>
+        ))}
       </div>
 
       <FixLinkDialog
