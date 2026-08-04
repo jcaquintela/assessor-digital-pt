@@ -1,7 +1,7 @@
 /* Afonso — minimal app-shell service worker.
    NetworkFirst for HTML navigations, CacheFirst for hashed assets.
    Bumps CACHE_VERSION to invalidate old caches on release. */
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const RUNTIME_CACHE = `assessor-runtime-${CACHE_VERSION}`;
 const ASSET_CACHE = `assessor-assets-${CACHE_VERSION}`;
 
@@ -44,6 +44,15 @@ self.addEventListener("fetch", (event) => {
   ) return;
 
   if (req.mode === "navigate") {
+    // Arranque a frio da app instalada: o start_url foi congelado na
+    // instalação e pode ainda apontar para a conversa. Reencaminhamos para
+    // "Hoje" sem obrigar a reinstalar.
+    const coldLaunch =
+      req.headers.get("sec-fetch-site") === "none" && !req.referrer;
+    if (coldLaunch && /^\/(assessor)?$/.test(url.pathname)) {
+      event.respondWith(Response.redirect(new URL("/hoje", self.location.origin).href, 302));
+      return;
+    }
     event.respondWith(
       (async () => {
         try {
