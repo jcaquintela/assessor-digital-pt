@@ -13,6 +13,34 @@ export type ContentAccessDecision = {
 
 const SYNTHETIC_MARKERS = ["ci-", "test.assessor.local", "@shadow.assessor.local", "@example.com"];
 
+/**
+ * Autorizações vencidas fecham-se sozinhas: passam a "expired" e deixam
+ * rasto em auditoria, sem ninguém ter de carregar num botão.
+ */
+export async function expireStaleConsents(
+  supabaseAdmin: any,
+  rows: { id: string; user_id: string; resource_id: string | null; requested_by?: string | null; expires_at: string | null }[],
+) {
+  const nowIso = new Date().toISOString();
+  const stale = rows.filter((r) => r.expires_at && r.expires_at <= nowIso);
+  if (stale.length === 0) return;
+  await supabaseAdmin
+    .from("content_access_consents")
+    .update({ status: "expired" } as never)
+    .in("id", stale.map((r) => r.id));
+  await supabaseAdmin.from("admin_audit_logs").insert(
+    stale.map((r) => ({
+      admin_user_id: r.requested_by ?? null,
+      action: "content.access_expired",
+      target_user_id: r.user_id,
+      resource_type: "assessor_reasoning_traces",
+      resource_id: r.resource_id ?? r.id,
+      reason: "Autorização terminou automaticamente ao fim de 2 horas.",
+      metadata: { consent_id: r.id, expires_at: r.expires_at } as any,
+    })) as never,
+  );
+}
+
 export function isSyntheticEmail(email: string | null | undefined): boolean {
   const e = (email ?? "").toLowerCase();
   return !!e && SYNTHETIC_MARKERS.some((m) => e.includes(m));
@@ -44,9 +72,11 @@ export async function canOpenRealContent(
   const nowIso = new Date().toISOString();
   const { data: consents } = await supabaseAdmin
     .from("content_access_consents")
-    .select("id, scope, resource_id, status, expires_at")
+    .select("id, user_id, requested_by, scope, resource_id, status, expires_at")
     .eq("user_id", opts.targetUserId)
     .eq("status", "approved");
+
+  await expireStaleConsents(supabaseAdmin, ((consents as any[]) ?? []) as any);
 
   for (const c of ((consents as any[]) ?? [])) {
     const live = !c.expires_at || c.expires_at > nowIso;
@@ -78,10 +108,12 @@ export async function buildContentAccessResolver(
     supabaseAdmin.from("profiles").select("id, email").in("id", ids),
     supabaseAdmin
       .from("content_access_consents")
-      .select("id, user_id, scope, resource_id, status, expires_at")
+      .select("id, user_id, requested_by, scope, resource_id, status, expires_at")
       .in("user_id", ids)
       .eq("status", "approved"),
   ]);
+
+  await expireStaleConsents(supabaseAdmin, ((consents as any[]) ?? []) as any);
 
   const emailById = new Map(((profiles as any[]) ?? []).map((p) => [p.id, p.email as string | null]));
   const consentsByUser = new Map<string, any[]>();

@@ -83,8 +83,32 @@ export const decideContentAccess = createServerFn({ method: "POST" })
       .from("content_access_consents")
       .update({ status: data.decision, decided_at: new Date().toISOString() } as never)
       .eq("id", data.id)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .select("id, resource_id, requested_by")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    // Cada decisão do consultor fica registada: autorizar, recusar, retirar.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("content_access_consents")
+      .select("resource_id, requested_by")
+      .eq("id", data.id)
+      .maybeSingle();
+    const action =
+      data.decision === "approved"
+        ? "content.access_granted"
+        : data.decision === "revoked"
+          ? "content.access_revoked"
+          : "content.access_denied";
+    await supabaseAdmin.from("admin_audit_logs").insert({
+      admin_user_id: (row as any)?.requested_by ?? null,
+      action,
+      target_user_id: context.userId,
+      resource_type: "assessor_reasoning_traces",
+      resource_id: (row as any)?.resource_id ?? data.id,
+      reason: "Decisão do consultor sobre acesso ao conteúdo da conversa.",
+      metadata: { consent_id: data.id, decision: data.decision } as any,
+    } as never);
     return { ok: true };
   });
 
