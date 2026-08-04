@@ -512,7 +512,7 @@ function DrivePage() {
                 <span className="c-muted text-[12px] font-normal">{g.files.length}</span>
               </button>
             )}
-            {(collapsed[g.key] ? [] : g.files).map((f: any) => {
+            {(collapsed[g.key] ? [] : g.files.slice(0, shown[g.key] ?? PAGE)).map((f: any) => {
           const Icon = fileIcon(f.mime_type);
           const links = (linksByFile[f.id] as any[]) ?? [];
           const needsReview =
@@ -532,7 +532,7 @@ function DrivePage() {
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   >
                     <Checkbox
-                      checked={selected.includes(f.id)}
+                      checked={selectedSet.has(f.id)}
                       onCheckedChange={(v) => toggleOne(f.id, v === true)}
                       aria-label={`Selecionar ${f.original_file_name ?? "ficheiro"}`}
                     />
@@ -681,6 +681,17 @@ function DrivePage() {
             </Link>
           );
             })}
+            {!collapsed[g.key] && g.files.length > (shown[g.key] ?? PAGE) && (
+              <button
+                type="button"
+                className="c-pill tap-44 w-full"
+                onClick={() =>
+                  setShown((prev) => ({ ...prev, [g.key]: (prev[g.key] ?? PAGE) + PAGE }))
+                }
+              >
+                Mostrar mais ({g.files.length - (shown[g.key] ?? PAGE)} por ver)
+              </button>
+            )}
           </section>
         ))}
       </div>
