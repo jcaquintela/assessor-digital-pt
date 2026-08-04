@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Check, ChevronRight, FileText, Home, Pencil, Tag, Tags, Trash2 } from "lucide-react";
+import { Check, ChevronRight, FileText, Home } from "lucide-react";
+import { CardActionsMenu } from "@/components/organizer/card-actions-menu";
 import type { Organizer } from "@/components/organizer/organizer";
 import type { PeopleView } from "@/components/pessoas/people-explorer";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
@@ -35,25 +36,6 @@ export function PropertyCard({
   const angariado = i.status && i.status !== "em_angariacao" && i.status !== "por_angariar";
 
   const grelha = view === "grelha";
-  const acoes = (
-    <div className={`mt-2 flex flex-wrap items-center gap-1.5 ${grelha ? "" : "sm:gap-2"}`}>
-      <button type="button" className="c-badge tap-44" onClick={onEdit} aria-label="Editar">
-        <Pencil className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Editar</span>
-      </button>
-      <button type="button" className="c-badge tap-44" onClick={onCategory} aria-label="Categoria">
-        <Tag className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Categoria</span>
-      </button>
-      <button type="button" className="c-badge tap-44" onClick={onOrganize} aria-label="Organizar">
-        <Tags className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Organizar</span>
-      </button>
-      <button type="button" className="c-badge tap-44" onClick={onDelete} aria-label="Eliminar">
-        <Trash2 className="h-3 w-3 shrink-0" /> <span className="hidden sm:inline">Eliminar</span>
-      </button>
-      <Link to="/imoveis/$id" params={{ id: i.id }} className="c-badge tap-44 ml-auto">
-        Abrir <ChevronRight className="h-3 w-3 shrink-0" />
-      </Link>
-    </div>
-  );
 
   return (
     <div className={`c-personcard min-w-0 overflow-hidden ${grelha ? "p-2.5 sm:p-3" : ""}`}>
@@ -102,8 +84,12 @@ export function PropertyCard({
           </div>
           {!grelha && <ChevronRight className="hidden h-5 w-5 shrink-0 self-center sm:block" style={{ color: "var(--line)" }} />}
         </Link>
+      </div>
 
-        {acoes}
+      <div className="shrink-0 self-start">
+        <CardActionsMenu
+          label={i.title} onEdit={onEdit} onOrganize={onOrganize} onDelete={onDelete} onCategory={onCategory}
+        />
       </div>
     </div>
   );
