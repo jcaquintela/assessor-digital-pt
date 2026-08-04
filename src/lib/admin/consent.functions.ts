@@ -85,6 +85,14 @@ export const decideContentAccess = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
+    // Cada decisão do consultor fica registada: autorizar, recusar, retirar.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { auditConsentDecision } = await import("./consent.server");
+    await auditConsentDecision(supabaseAdmin, {
+      consentId: data.id,
+      targetUserId: context.userId,
+      decision: data.decision,
+    });
     return { ok: true };
   });
 
