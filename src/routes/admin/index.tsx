@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAfonsoBusiness } from "@/lib/admin/afonso.functions";
+import { getIntegrationsOverview } from "@/lib/admin.functions";
 import { useSystemHealth } from "@/components/admin/health-strip";
 import { Badge, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { fmtPct } from "@/lib/admin/metrics-format";
@@ -15,6 +16,12 @@ function OverviewPage() {
   const fn = useServerFn(getAfonsoBusiness);
   const { data, isPending } = useQuery({ queryKey: ["admin", "afonso", "business"], queryFn: () => fn() });
   const health = useSystemHealth();
+  // Mesma fonte que Integrações & flags — nada de listas estáticas aqui.
+  const integrationsFn = useServerFn(getIntegrationsOverview);
+  const integrations = useQuery({
+    queryKey: ["admin", "integrations", "overview"],
+    queryFn: () => integrationsFn(),
+  });
 
   if (isPending || !data) return <p className="sub">A carregar…</p>;
 
@@ -73,8 +80,19 @@ function OverviewPage() {
               <td className="mini">{i.detail || "—"}</td>
             </tr>
           ))}
-          <tr><td>Google Calendar</td><td><Badge tone="bad">Planeado</Badge></td><td className="mini">—</td></tr>
-          <tr><td>Stripe</td><td><Badge tone="bad">Planeado</Badge></td><td className="mini">—</td></tr>
+          {(integrations.data ?? [])
+            .filter((i) => !healthLabels.has(i.name.toLowerCase()))
+            .map((i) => (
+              <tr key={i.name}>
+                <td>{i.name}</td>
+                <td>
+                  <Badge tone={i.status === "active" ? "ok" : "bad"}>
+                    {i.status === "active" ? "Ativo" : "Planeado"}
+                  </Badge>
+                </td>
+                <td className="mini">{i.detail || "—"}</td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </div>
