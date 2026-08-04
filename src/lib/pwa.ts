@@ -38,7 +38,19 @@ export function registerServiceWorker(): void {
   }
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register(SW_PATH, { scope: "/" })
+      .register(SW_PATH, { scope: "/", updateViaCache: "none" })
+      .then((reg) => {
+        // Força a procura de uma versão nova a cada arranque, para que
+        // correções de arranque cheguem sem reinstalar a app.
+        void reg.update();
+        reg.addEventListener("updatefound", () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener("statechange", () => {
+            if (nw.state === "activated") void reg.update();
+          });
+        });
+      })
       .catch((err) => console.warn("[pwa] SW register failed", err));
   });
 }

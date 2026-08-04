@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { toast } from "sonner";
@@ -28,6 +28,25 @@ export const Route = createFileRoute("/_authenticated/assessor")({
   component: AssessorPage,
 });
 
+/**
+ * Apps instaladas antes da mudança de arranque guardaram "/assessor" como
+ * start_url. Se a app abrir a frio (standalone, sem histórico) nesta rota,
+ * reencaminhamos para "Hoje" — sem reinstalar.
+ */
+function useRedirectColdLaunchToHoje() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const standalone =
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    if (!standalone) return;
+    if (window.history.length > 1) return;
+    if (document.referrer) return;
+    navigate({ to: "/hoje", replace: true });
+  }, [navigate]);
+}
+
 function formatHora(iso: string) {
   return new Intl.DateTimeFormat("pt-PT", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
@@ -42,6 +61,7 @@ function formatDia(iso: string) {
 }
 
 function AssessorPage() {
+  useRedirectColdLaunchToHoje();
   const { name: assessorName } = useAssessorName();
   const { channel } = useLinkedChannel();
   const [msgs, setMsgs] = useState<MensagemDb[]>([]);
