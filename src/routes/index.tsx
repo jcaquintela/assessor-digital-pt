@@ -27,8 +27,9 @@ function Index() {
       } catch {
         // segue para o painel — ligar o canal continua disponível em Definições
       }
-      const target = window.matchMedia("(max-width: 767px)").matches ? "/assessor" : "/hoje";
-      navigate({ to: target, replace: true });
+      // O arranque é sempre "Hoje", em mobile e desktop. A conversa com o
+      // Afonso só se abre explicitamente (botão "Falar com Afonso" ou "Mais").
+      navigate({ to: "/hoje", replace: true });
     })();
   }, [navigate]);
 

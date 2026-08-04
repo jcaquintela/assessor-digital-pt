@@ -2,7 +2,7 @@
   "name": "Afonso",
   "short_name": "Afonso",
   "description": "Assessor pessoal digital para consultores imobiliários.",
-  "start_url": "/assessor",
+  "start_url": "/hoje",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
