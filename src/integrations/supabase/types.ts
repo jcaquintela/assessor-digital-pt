@@ -1729,6 +1729,7 @@ export type Database = {
           id: string
           next_action_created_id: string | null
           notes: string | null
+          objection_guide_sent_at: string | null
           opportunity_id: string | null
           outcome: string | null
           outcome_notes: string | null
@@ -1758,6 +1759,7 @@ export type Database = {
           id?: string
           next_action_created_id?: string | null
           notes?: string | null
+          objection_guide_sent_at?: string | null
           opportunity_id?: string | null
           outcome?: string | null
           outcome_notes?: string | null
@@ -1787,6 +1789,7 @@ export type Database = {
           id?: string
           next_action_created_id?: string | null
           notes?: string | null
+          objection_guide_sent_at?: string | null
           opportunity_id?: string | null
           outcome?: string | null
           outcome_notes?: string | null

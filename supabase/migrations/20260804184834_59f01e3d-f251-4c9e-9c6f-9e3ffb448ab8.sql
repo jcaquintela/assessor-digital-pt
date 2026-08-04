@@ -1,0 +1,1 @@
+ALTER TABLE public.follow_ups ADD COLUMN IF NOT EXISTS objection_guide_sent_at timestamptz;
