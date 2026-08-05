@@ -33,12 +33,14 @@ import {
   RescheduleReminderArgs,
   SearchActiveRemindersArgs,
   CancelReminderArgs,
+  CancelFollowUpArgs,
   SendReminderNowArgs,
   ListUncategorizedPropertiesArgs,
   SetPropertyCategoryArgs,
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
+import { CANCELLED_STATUS, CANCELLED_OUTCOME, matchByHint } from "../v3/cancel-agenda";
 import { pushEventToProviders } from "@/lib/calendar/sync.server";
 import {
   upsertReminder,
@@ -1028,7 +1030,89 @@ async function execCancelReminder(ctx: DomainContext, args: unknown): Promise<Do
   const p = parse(CancelReminderArgs, args); if (!p.ok) return fail(p.error);
   const r = await cancelReminder(ctx.supabase, ctx.userId, p.value.reminder_id);
   if (!r.ok) return fail(r.error ?? "cancel_failed");
-  return ok({ cancelled: true });
+  if (r.cancelled > 0) return ok({ cancelled: true, count: r.cancelled });
+  // O id pode ser de um compromisso e não de um aviso: em vez de mentir
+  // "Feito.", tenta desmarcar mesmo o seguimento correspondente.
+  const viaFollowUp = await cancelFollowUpsByIds(ctx, [p.value.reminder_id], null);
+  if (viaFollowUp.length) {
+    return ok({ cancelled: true, count: viaFollowUp.length, items: viaFollowUp });
+  }
+  return fail("nada_para_cancelar");
+}
+
+// ---------- Desmarcar compromissos/seguimentos ----------
+
+const OPEN_FOLLOW_UP_STATUSES = ["agendado", "pendente", "Agendado", "Pendente", "em curso"];
+
+async function cancelFollowUpsByIds(
+  ctx: DomainContext,
+  ids: string[],
+  reason: string | null,
+): Promise<Array<{ id: string; title: string | null; due_time: string | null }>> {
+  if (!ids.length) return [];
+  const { data } = await ctx.supabase
+    .from("follow_ups")
+    .update({
+      status: CANCELLED_STATUS,
+      outcome: CANCELLED_OUTCOME,
+      ...(reason ? { outcome_notes: reason } : {}),
+    } as never)
+    .eq("user_id", ctx.userId)
+    .in("id", ids)
+    .neq("status", CANCELLED_STATUS)
+    .select("id, title, due_time");
+  return Array.isArray(data) ? (data as any[]) : [];
+}
+
+async function listOpenFollowUps(
+  ctx: DomainContext,
+  range: { startIso: string; endIso: string } | null,
+): Promise<Array<{ id: string; title: string | null; due_date: string; due_time: string | null }>> {
+  let q = ctx.supabase
+    .from("follow_ups")
+    .select("id, title, due_date, due_time, status")
+    .eq("user_id", ctx.userId)
+    .in("status", OPEN_FOLLOW_UP_STATUSES);
+  if (range) q = q.gte("due_date", range.startIso).lte("due_date", range.endIso);
+  const { data } = await q.order("due_date", { ascending: true }).limit(100);
+  return Array.isArray(data) ? (data as any[]) : [];
+}
+
+/**
+ * "Limpa a agenda de hoje" / "desmarca tudo" / "cancela a visita ao Sr.
+ * Duarte". Escreve mesmo em `follow_ups` (status Arquivado + resultado
+ * cancelado) e devolve a lista do que foi desmarcado, para a resposta nunca
+ * poder afirmar mais do que aconteceu.
+ */
+async function execCancelFollowUp(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(CancelFollowUpArgs, args); if (!p.ok) return fail(p.error);
+  const a = p.value;
+  const reason = a.reason ?? null;
+
+  if (a.follow_up_ids?.length) {
+    const items = await cancelFollowUpsByIds(ctx, a.follow_up_ids, reason);
+    return ok({ cancelled: items.length, items, period_label: null });
+  }
+
+  const period = a.period ?? (a.all_in_period ? "today" : null);
+  const range = period ? agendaRange(period) : null;
+  const open = await listOpenFollowUps(ctx, range);
+
+  // Pista de assunto: restringe. Sem pista, só o período manda (e só quando o
+  // pedido foi explicitamente "tudo").
+  let targets = open;
+  if (a.subject_hint) {
+    targets = matchByHint(open, a.subject_hint);
+    if (!targets.length) return ok({ cancelled: 0, items: [], period_label: range?.label ?? null });
+    if (targets.length > 1 && !a.all_in_period) {
+      return ok({ ambiguous: true, candidates: targets.slice(0, 5), cancelled: 0, items: [] });
+    }
+  } else if (!a.all_in_period && !period) {
+    return fail("indicar_o_que_cancelar");
+  }
+
+  const items = await cancelFollowUpsByIds(ctx, targets.map((t) => t.id), reason);
+  return ok({ cancelled: items.length, items, period_label: range?.label ?? null });
 }
 
 async function execSendReminderNow(ctx: DomainContext, args: unknown): Promise<DomainResult> {
@@ -1237,6 +1321,7 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   reschedule_reminder: execRescheduleReminder,
   search_active_reminders: execSearchActiveReminders,
   cancel_reminder: execCancelReminder,
+  cancel_follow_up: execCancelFollowUp,
   send_reminder_now: execSendReminderNow,
 };
 
