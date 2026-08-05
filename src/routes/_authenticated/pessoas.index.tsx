@@ -26,7 +26,9 @@ import { AssuntoCard } from "@/components/assunto-card";
 import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { q?: string; tag?: string; view?: "grelha"; preset?: PeoplePreset } => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
     view: search.view === "grelha" ? ("grelha" as const) : undefined,
@@ -46,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/pessoas/")({
 function PessoasPage() {
   const { pessoas, loading, deletePessoa } = useStore();
   const search = Route.useSearch();
-  const navigate = useNavigate({ from: "/pessoas" });
+  const navigate = useNavigate({ from: "/pessoas/" });
   const q = search.q ?? "";
   const tagId = search.tag ?? null;
   const view: PeopleView = search.view ?? "lista";
