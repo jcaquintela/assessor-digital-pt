@@ -59,6 +59,7 @@ import {
   detectCorrection as saDetectCorrection,
 } from "./culture/short-answers";
 import { blockedChannelReason } from "./channel-guard";
+import { resolveCommand } from "./commands";
 
 export interface EngineInput {
   supabase: any; // service-role client (admin)
@@ -365,7 +366,30 @@ async function findPeopleByName(supabase: any, userId: string, nome: string) {
   return (data as { id: string; name: string }[]) ?? [];
 }
 
+/**
+ * Comandos de barra são tratados antes de qualquer motor: ou executam, ou
+ * dizem claramente que não são reconhecidos. Nunca resposta genérica.
+ */
 export async function processAssessorMessage(input: EngineInput): Promise<EngineOutcome> {
+  if (input.userId) {
+    const cmd = resolveCommand(input.content);
+    if (cmd.kind === "reply") {
+      logBranch("command_known", { command: cmd.command });
+      return { reply: cmd.reply, messageType: "command_help" };
+    }
+    if (cmd.kind === "unknown") {
+      logBranch("command_unknown", { command: cmd.command });
+      return { reply: cmd.reply, messageType: "command_unknown" };
+    }
+    if (cmd.kind === "rewrite") {
+      logBranch("command_rewrite", { command: cmd.command });
+      return await processAssessorMessageInner({ ...input, content: cmd.content });
+    }
+  }
+  return await processAssessorMessageInner(input);
+}
+
+async function processAssessorMessageInner(input: EngineInput): Promise<EngineOutcome> {
   const { supabase, userId, channel, content } = input;
 
   if (!userId) return { reply: REPLY_UNASSOCIATED };
