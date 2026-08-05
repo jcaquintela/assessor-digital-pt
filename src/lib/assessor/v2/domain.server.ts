@@ -31,6 +31,9 @@ import {
   CreateProspectingLeadArgs,
   SearchProspectingLeadsArgs,
   UpdateProspectingLeadArgs,
+  UpdatePersonArgs,
+  UpdatePropertyArgs,
+  ArchiveRecordArgs,
   RescheduleReminderArgs,
   SearchActiveRemindersArgs,
   CancelReminderArgs,
@@ -1012,6 +1015,112 @@ async function execUpdateProspectingLead(ctx: DomainContext, args: unknown): Pro
   return ok({ lead: data });
 }
 
+// ---------- Editar com recibo e arquivar (nunca apagar) ----------
+
+/** Campos como o consultor lhes chama — o recibo tem de ser legível. */
+const FIELD_LABELS: Record<string, string> = {
+  name: "nome", phone: "telefone", email: "email",
+  relationship_type: "relação", notes: "notas",
+  title: "título", address: "morada", typology: "tipologia",
+  asking_price: "preço", status: "estado",
+};
+
+function buildReceipt(before: Record<string, unknown> | null, patch: Record<string, unknown>) {
+  return Object.keys(patch).map((k) => ({
+    campo: FIELD_LABELS[k] ?? k,
+    antes: before?.[k] ?? null,
+    depois: patch[k],
+  }));
+}
+
+async function execUpdatePerson(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(UpdatePersonArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  const patch: Record<string, unknown> = {};
+  if (v.name !== undefined && v.name !== null && v.name.trim()) patch.name = v.name.trim().slice(0, 200);
+  if (v.phone !== undefined) patch.phone = v.phone === null ? null : normalizePhone(v.phone);
+  if (v.email !== undefined) patch.email = v.email?.trim() || null;
+  if (v.relationship_type !== undefined && v.relationship_type) patch.relationship_type = v.relationship_type;
+  if (v.notes !== undefined) patch.notes = v.notes?.slice(0, 2000) ?? null;
+  if (!Object.keys(patch).length) return fail("nada_para_actualizar");
+
+  const { data: before } = await ctx.supabase
+    .from("people" as never)
+    .select("name, phone, email, relationship_type, notes")
+    .eq("id", v.id).eq("user_id", ctx.userId).maybeSingle();
+  if (!before) return fail("pessoa_nao_encontrada");
+
+  const { data, error } = await ctx.supabase
+    .from("people" as never)
+    .update(patch as never)
+    .eq("id", v.id).eq("user_id", ctx.userId)
+    .select("id, name")
+    .single();
+  if (error) return fail(error.message);
+  return ok({ person: data, recibo: buildReceipt(before as Record<string, unknown>, patch) });
+}
+
+async function execUpdateProperty(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(UpdatePropertyArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  const patch: Record<string, unknown> = {};
+  if (v.title !== undefined && v.title !== null && v.title.trim()) patch.title = v.title.trim().slice(0, 200);
+  if (v.address !== undefined) patch.address = v.address?.trim() || null;
+  if (v.typology !== undefined) patch.typology = v.typology?.trim() || null;
+  if (v.asking_price !== undefined) patch.asking_price = v.asking_price ?? null;
+  if (v.status !== undefined && v.status) patch.status = v.status;
+  if (v.notes !== undefined) patch.notes = v.notes?.slice(0, 2000) ?? null;
+  if (!Object.keys(patch).length) return fail("nada_para_actualizar");
+
+  const { data: before } = await ctx.supabase
+    .from("properties" as never)
+    .select("title, address, typology, asking_price, status, notes")
+    .eq("id", v.id).eq("user_id", ctx.userId).maybeSingle();
+  if (!before) return fail("imovel_nao_encontrado");
+
+  const { data, error } = await ctx.supabase
+    .from("properties" as never)
+    .update(patch as never)
+    .eq("id", v.id).eq("user_id", ctx.userId)
+    .select("id, title")
+    .single();
+  if (error) return fail(error.message);
+  return ok({ property: data, recibo: buildReceipt(before as Record<string, unknown>, patch) });
+}
+
+const ARCHIVE_TABLES: Record<string, string> = {
+  person: "people",
+  property: "properties",
+  deal: "opportunities",
+  follow_up: "follow_ups",
+  movement: "financial_movements",
+  interaction: "interactions",
+};
+
+/**
+ * Por conversa nunca se apaga: arquiva-se. O registo sai das listas de
+ * trabalho, continua na ficha e o consultor pode repor quando quiser.
+ */
+async function execArchiveRecord(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(ArchiveRecordArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  const table = ARCHIVE_TABLES[v.entity];
+  if (!table) return fail("entidade_desconhecida");
+  const undo = v.undo === true;
+  const patch: Record<string, unknown> = { archived_at: undo ? null : new Date().toISOString() };
+  if (v.entity === "property") patch.status = undo ? "por_angariar" : "arquivado";
+
+  const { data, error } = await ctx.supabase
+    .from(table as never)
+    .update(patch as never)
+    .eq("id", v.id).eq("user_id", ctx.userId)
+    .select("id")
+    .maybeSingle();
+  if (error) return fail(error.message);
+  if (!data) return fail("registo_nao_encontrado");
+  return ok({ entity: v.entity, id: v.id, arquivado: !undo, reversivel: true });
+}
+
 // ---------------------- registo público ----------------------
 
 export type ToolExecutor = (ctx: DomainContext, args: unknown) => Promise<DomainResult>;
@@ -1350,6 +1459,9 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   create_prospecting_lead: execCreateProspectingLead,
   search_prospecting_leads: execSearchProspectingLeads,
   update_prospecting_lead: execUpdateProspectingLead,
+  update_person: execUpdatePerson,
+  update_property: execUpdateProperty,
+  archive_record: execArchiveRecord,
   reschedule_reminder: execRescheduleReminder,
   search_active_reminders: execSearchActiveReminders,
   cancel_reminder: execCancelReminder,
