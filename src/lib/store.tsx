@@ -28,6 +28,8 @@ export interface Interacao {
   conteudo: string;
   resumo?: string;
   data: string;
+  /** Preenchido quando a interação foi arquivada (soft-delete reversível). */
+  arquivadoEm?: string;
 }
 
 const toInteracao = (r: Row): Interacao => ({
@@ -39,6 +41,7 @@ const toInteracao = (r: Row): Interacao => ({
   conteudo: r.original_content ?? "",
   resumo: r.summary ?? undefined,
   data: r.occurred_at,
+  arquivadoEm: r.archived_at ?? undefined,
 });
 
 const toPessoa = (r: Row): Pessoa => ({
@@ -52,6 +55,7 @@ const toPessoa = (r: Row): Pessoa => ({
   proximaAcaoData: r.next_action_date ?? undefined,
   canal: r.source_channel ?? undefined,
   criadoEm: r.created_at ?? undefined,
+  arquivadoEm: r.archived_at ?? undefined,
 });
 
 const toOportunidade = (r: Row): Oportunidade => ({
@@ -65,6 +69,7 @@ const toOportunidade = (r: Row): Oportunidade => ({
   proximaAcaoData: r.next_action_date ?? undefined,
   notas: r.notes ?? undefined,
   imovelId: r.property_id ?? undefined,
+  arquivadoEm: r.archived_at ?? undefined,
 });
 
 const toImovel = (r: Row): Imovel => ({
@@ -78,6 +83,7 @@ const toImovel = (r: Row): Imovel => ({
   notas: r.notes ?? undefined,
   canal: r.source_channel ?? undefined,
   criadoEm: r.created_at ?? undefined,
+  arquivadoEm: r.archived_at ?? undefined,
 });
 
 const toSeguimento = (r: Row): Seguimento => ({
@@ -91,6 +97,7 @@ const toSeguimento = (r: Row): Seguimento => ({
   estado: (r.status ?? "Pendente") as Seguimento["estado"],
   prioridade: (r.priority ?? "Média") as Seguimento["prioridade"],
   notas: r.notes ?? undefined,
+  arquivadoEm: r.archived_at ?? undefined,
 });
 
 const toDespesa = (r: Row): Despesa => ({
@@ -99,6 +106,7 @@ const toDespesa = (r: Row): Despesa => ({
   categoria: (r.category ?? "Outros") as Despesa["categoria"],
   valor: Number(r.amount ?? 0),
   data: r.movement_date,
+  arquivadoEm: r.archived_at ?? undefined,
 });
 
 const toComissao = (r: Row): Comissao => ({
@@ -107,12 +115,14 @@ const toComissao = (r: Row): Comissao => ({
   valor: Number(r.amount ?? 0),
   data: r.movement_date,
   estado: (r.status ?? "Prevista") as Comissao["estado"],
+  arquivadoEm: r.archived_at ?? undefined,
 });
 
 /* ---------- Store contract ---------- */
 
 interface AppStore {
   loading: boolean;
+  /** Listas de trabalho: nunca incluem registos arquivados. */
   pessoas: Pessoa[];
   oportunidades: Oportunidade[];
   imoveis: Imovel[];
@@ -122,28 +132,46 @@ interface AppStore {
   despesas: Despesa[];
   entradas: EntradaAssessor[];
   interacoes: Interacao[];
+  /** Inclui arquivados — para fichas, restauro e referências antigas. */
+  pessoasTodas: Pessoa[];
+  oportunidadesTodas: Oportunidade[];
+  imoveisTodos: Imovel[];
+  seguimentosTodos: Seguimento[];
+  comissoesTodas: Comissao[];
+  despesasTodas: Despesa[];
+  interacoesTodas: Interacao[];
   addSeguimento: (s: Omit<Seguimento, "id">) => Promise<void>;
   addSeguimentoReturning: (s: Omit<Seguimento, "id">) => Promise<Seguimento | null>;
   concluirSeguimento: (id: string) => Promise<void>;
   reagendarSeguimento: (id: string, novaData: string) => Promise<void>;
   atualizarSeguimento: (id: string, patch: Partial<Omit<Seguimento, "id">>) => Promise<void>;
-  eliminarSeguimento: (id: string) => Promise<void>;
+  arquivarSeguimento: (id: string) => Promise<void>;
+  desarquivarSeguimento: (id: string) => Promise<void>;
+  apagarSeguimentoDefinitivo: (id: string) => Promise<void>;
   addDespesa: (d: Omit<Despesa, "id">) => Promise<void>;
   addDespesaReturning: (d: Omit<Despesa, "id"> & { oportunidadeId?: string; imovelId?: string }) => Promise<{ id: string } | null>;
   atualizarMovimento: (id: string, patch: Record<string, unknown>) => Promise<void>;
-  eliminarMovimento: (id: string) => Promise<void>;
+  arquivarMovimento: (id: string) => Promise<void>;
+  desarquivarMovimento: (id: string) => Promise<void>;
+  apagarMovimentoDefinitivo: (id: string) => Promise<void>;
   addComissao: (c: Omit<Comissao, "id">) => Promise<void>;
   addComissaoReturning: (c: Omit<Comissao, "id"> & { descricao?: string }) => Promise<{ id: string } | null>;
   addEntrada: (e: Omit<EntradaAssessor, "id">) => Promise<void>;
   addInteracao: (i: { pessoaId?: string; oportunidadeId?: string; conteudoOriginal: string; resumo?: string; proximaAcao?: string }) => Promise<void>;
   addPessoa: (p: Omit<Pessoa, "id">) => Promise<Pessoa | null>;
   updatePessoa: (id: string, patch: Partial<Omit<Pessoa, "id">>) => Promise<void>;
-  deletePessoa: (id: string) => Promise<void>;
+  arquivarPessoa: (id: string) => Promise<void>;
+  desarquivarPessoa: (id: string) => Promise<void>;
+  apagarPessoaDefinitivo: (id: string) => Promise<void>;
   addOportunidade: (o: Omit<Oportunidade, "id">) => Promise<Oportunidade | null>;
   updateOportunidade: (id: string, patch: Partial<Omit<Oportunidade, "id">>) => Promise<void>;
-  deleteOportunidade: (id: string) => Promise<void>;
+  arquivarOportunidade: (id: string) => Promise<void>;
+  desarquivarOportunidade: (id: string) => Promise<void>;
+  apagarOportunidadeDefinitivo: (id: string) => Promise<void>;
   updateInteracao: (id: string, patch: Partial<Omit<Interacao, "id">>) => Promise<void>;
-  deleteInteracao: (id: string) => Promise<void>;
+  arquivarInteracao: (id: string) => Promise<void>;
+  desarquivarInteracao: (id: string) => Promise<void>;
+  apagarInteracaoDefinitivo: (id: string) => Promise<void>;
   refresh: () => void;
 }
 
@@ -274,9 +302,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("follow_ups");
   }, [qc]);
 
-  const eliminarSeguimento = useCallback(async (id: string) => {
-    // Espera pela remoção externa antes de apagar localmente: o registo de
-    // ligação desaparece em cascata com o compromisso.
+  // Arquivar é reversível e é a única remoção que o produto faz por omissão.
+  // O calendário externo deixa de mostrar o compromisso, tal como antes.
+  const arquivarSeguimento = useCallback(async (id: string) => {
+    await pushFollowUpToCalendars({ data: { followUpId: id, action: "delete" } }).catch(() => {});
+    const { error } = await supabase.from("follow_ups").update({ archived_at: new Date().toISOString() } as never).eq("id", id);
+    if (error) throw error;
+    invalidate("follow_ups");
+  }, [qc]);
+
+  const desarquivarSeguimento = useCallback(async (id: string) => {
+    const { error } = await supabase.from("follow_ups").update({ archived_at: null } as never).eq("id", id);
+    if (error) throw error;
+    syncCalendars(id, "upsert");
+    invalidate("follow_ups");
+  }, [qc]);
+
+  // Apagar definitivo existe só na ficha, sobre um registo já arquivado.
+  const apagarSeguimentoDefinitivo = useCallback(async (id: string) => {
     await pushFollowUpToCalendars({ data: { followUpId: id, action: "delete" } }).catch(() => {});
     const { error } = await supabase.from("follow_ups").delete().eq("id", id);
     if (error) throw error;
@@ -335,7 +378,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("financial_movements");
   }, [qc]);
 
-  const eliminarMovimento = useCallback(async (id: string) => {
+  const arquivarMovimento = useCallback(async (id: string) => {
+    const { error } = await supabase.from("financial_movements").update({ archived_at: new Date().toISOString() } as never).eq("id", id);
+    if (error) throw error;
+    invalidate("financial_movements");
+  }, [qc]);
+
+  const desarquivarMovimento = useCallback(async (id: string) => {
+    const { error } = await supabase.from("financial_movements").update({ archived_at: null } as never).eq("id", id);
+    if (error) throw error;
+    invalidate("financial_movements");
+  }, [qc]);
+
+  const apagarMovimentoDefinitivo = useCallback(async (id: string) => {
     const { error } = await supabase.from("financial_movements").delete().eq("id", id);
     if (error) throw error;
     invalidate("financial_movements");
@@ -435,7 +490,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("people");
   }, [qc]);
 
-  const deletePessoa = useCallback(async (id: string) => {
+  const arquivarPessoa = useCallback(async (id: string) => {
+    const { error } = await supabase.from("people").update({ archived_at: new Date().toISOString() } as never).eq("id", id);
+    if (error) throw error;
+    invalidate("people");
+  }, [qc]);
+
+  const desarquivarPessoa = useCallback(async (id: string) => {
+    const { error } = await supabase.from("people").update({ archived_at: null } as never).eq("id", id);
+    if (error) throw error;
+    invalidate("people");
+  }, [qc]);
+
+  const apagarPessoaDefinitivo = useCallback(async (id: string) => {
     const { error } = await supabase.from("people").delete().eq("id", id);
     if (error) throw error;
     invalidate("people");
@@ -476,7 +543,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("opportunities");
   }, [qc]);
 
-  const deleteOportunidade = useCallback(async (id: string) => {
+  const arquivarOportunidade = useCallback(async (id: string) => {
+    const { error } = await supabase.from("opportunities").update({ archived_at: new Date().toISOString() } as never).eq("id", id);
+    if (error) throw error;
+    invalidate("opportunities");
+  }, [qc]);
+
+  const desarquivarOportunidade = useCallback(async (id: string) => {
+    const { error } = await supabase.from("opportunities").update({ archived_at: null } as never).eq("id", id);
+    if (error) throw error;
+    invalidate("opportunities");
+  }, [qc]);
+
+  const apagarOportunidadeDefinitivo = useCallback(async (id: string) => {
     const { error } = await supabase.from("opportunities").delete().eq("id", id);
     if (error) throw error;
     invalidate("opportunities");
@@ -496,7 +575,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("interactions");
   }, [qc]);
 
-  const deleteInteracao = useCallback(async (id: string) => {
+  const arquivarInteracao = useCallback(async (id: string) => {
+    const { error } = await supabase.from("interactions").update({ archived_at: new Date().toISOString() } as never).eq("id", id);
+    if (error) throw error;
+    invalidate("interactions");
+  }, [qc]);
+
+  const desarquivarInteracao = useCallback(async (id: string) => {
+    const { error } = await supabase.from("interactions").update({ archived_at: null } as never).eq("id", id);
+    if (error) throw error;
+    invalidate("interactions");
+  }, [qc]);
+
+  const apagarInteracaoDefinitivo = useCallback(async (id: string) => {
     const { error } = await supabase.from("interactions").delete().eq("id", id);
     if (error) throw error;
     invalidate("interactions");
@@ -508,44 +599,67 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AppStore>(() => {
     const movs = movements.data ?? [];
-    const comissoes = movs.filter((m: Row) => m.type === "commission").map(toComissao);
-    const despesas = movs.filter((m: Row) => m.type === "expense").map(toDespesa);
+    const comissoesTodas = movs.filter((m: Row) => m.type === "commission").map(toComissao);
+    const despesasTodas = movs.filter((m: Row) => m.type === "expense").map(toDespesa);
+    const pessoasTodas = people.data ?? [];
+    const oportunidadesTodas = opps.data ?? [];
+    const imoveisTodos = props.data ?? [];
+    const seguimentosTodos = followups.data ?? [];
+    const interacoesTodas = interactions.data ?? [];
+    const ativos = <T extends { arquivadoEm?: string | undefined }>(rows: readonly T[]): T[] => rows.filter((r) => !r.arquivadoEm);
     return {
       loading: people.isLoading || opps.isLoading || props.isLoading || followups.isLoading || movements.isLoading || interactions.isLoading,
-      pessoas: people.data ?? [],
-      oportunidades: opps.data ?? [],
-      imoveis: props.data ?? [],
-      seguimentos: followups.data ?? [],
+      pessoas: ativos(pessoasTodas),
+      oportunidades: ativos(oportunidadesTodas),
+      imoveis: ativos(imoveisTodos),
+      seguimentos: ativos(seguimentosTodos),
       documentos: [],
-      comissoes,
-      despesas,
+      comissoes: ativos(comissoesTodas),
+      despesas: ativos(despesasTodas),
       entradas: [],
-      interacoes: interactions.data ?? [],
+      interacoes: ativos(interacoesTodas),
+      pessoasTodas,
+      oportunidadesTodas,
+      imoveisTodos,
+      seguimentosTodos,
+      comissoesTodas,
+      despesasTodas,
+      interacoesTodas,
       addSeguimento,
       addSeguimentoReturning,
       concluirSeguimento,
       reagendarSeguimento,
       atualizarSeguimento,
-      eliminarSeguimento,
+      arquivarSeguimento,
+      desarquivarSeguimento,
+      apagarSeguimentoDefinitivo,
       addDespesa,
       addDespesaReturning,
       atualizarMovimento,
-      eliminarMovimento,
+      arquivarMovimento,
+      desarquivarMovimento,
+      apagarMovimentoDefinitivo,
       addComissao,
       addComissaoReturning,
       addEntrada,
       addInteracao,
       addPessoa,
       updatePessoa,
-      deletePessoa,
+      arquivarPessoa,
+      desarquivarPessoa,
+      apagarPessoaDefinitivo,
       addOportunidade,
       updateOportunidade,
-      deleteOportunidade,
+      arquivarOportunidade,
+      desarquivarOportunidade,
+      apagarOportunidadeDefinitivo,
       updateInteracao,
-      deleteInteracao,
+      arquivarInteracao,
+      desarquivarInteracao,
+      apagarInteracaoDefinitivo,
       refresh,
     };
-  }, [people.data, opps.data, props.data, followups.data, movements.data, interactions.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, interactions.isLoading, addSeguimento, addSeguimentoReturning, concluirSeguimento, reagendarSeguimento, atualizarSeguimento, eliminarSeguimento, addDespesa, addDespesaReturning, atualizarMovimento, eliminarMovimento, addComissao, addComissaoReturning, addEntrada, addInteracao, addPessoa, updatePessoa, deletePessoa, addOportunidade, updateOportunidade, deleteOportunidade, updateInteracao, deleteInteracao, refresh]);
+  }, [people.data, opps.data, props.data, followups.data, movements.data, interactions.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, interactions.isLoading, addSeguimento, addSeguimentoReturning, concluirSeguimento, reagendarSeguimento, atualizarSeguimento, arquivarSeguimento, desarquivarSeguimento, apagarSeguimentoDefinitivo, addDespesa, addDespesaReturning, atualizarMovimento, arquivarMovimento, desarquivarMovimento, apagarMovimentoDefinitivo, addComissao, addComissaoReturning, addEntrada, addInteracao, addPessoa, updatePessoa, arquivarPessoa, desarquivarPessoa, apagarPessoaDefinitivo, addOportunidade, updateOportunidade, arquivarOportunidade, desarquivarOportunidade, apagarOportunidadeDefinitivo, updateInteracao, arquivarInteracao, desarquivarInteracao, apagarInteracaoDefinitivo, refresh]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

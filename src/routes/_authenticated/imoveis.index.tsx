@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
-import { listProperties, deleteProperty } from "@/lib/assessor/properties.functions";
+import { listProperties, archiveProperty } from "@/lib/assessor/properties.functions";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
 import { AlertTriangle, Download, Plus, Search } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/_authenticated/imoveis/")({
 function ImoveisPage() {
   const fetchList = useServerFn(listProperties);
   const qc = useQueryClient();
-  const remove = useServerFn(deleteProperty);
+  const arquivar = useServerFn(archiveProperty);
   const { data: rows, isLoading } = useQuery({ queryKey: ["properties", "list"], queryFn: () => fetchList() });
   const all = (rows ?? []) as any[];
 
@@ -104,11 +104,11 @@ function ImoveisPage() {
     setSel((cur) => { const n = new Set(cur); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   async function eliminar(id: string, titulo: string) {
-    if (!confirm(`Apagar "${titulo}"? Esta ação não pode ser desfeita.`)) return;
+    if (!confirm(`Arquivar "${titulo}"? Sai das listas, mas podes repor na ficha.`)) return;
     try {
-      await remove({ data: { id } });
+      await arquivar({ data: { id } });
       await qc.invalidateQueries({ queryKey: ["properties"] });
-      toast.success("Imóvel eliminado.");
+      toast.success("Imóvel arquivado.");
     } catch (e) { toast.error((e as Error).message); }
   }
 

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type Comissao } from "@/lib/demo-data";
-import { ChevronLeft, Save, Trash2 } from "lucide-react";
+import { ChevronLeft, Save, Trash2, Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
 
@@ -33,8 +33,8 @@ export const Route = createFileRoute("/_authenticated/negocio/comissoes/$id")({
 function ComissaoFicha() {
   const { id } = Route.useParams();
   const nav = useNavigate();
-  const { comissoes, oportunidades, pessoas, atualizarMovimento, eliminarMovimento } = useStore();
-  const c = useMemo(() => comissoes.find((x) => x.id === id), [comissoes, id]);
+  const { comissoesTodas, oportunidades, pessoas, atualizarMovimento, arquivarMovimento, desarquivarMovimento, apagarMovimentoDefinitivo } = useStore();
+  const c = useMemo(() => comissoesTodas.find((x) => x.id === id), [comissoesTodas, id]);
 
   const [valor, setValor] = useState("");
   const [estado, setEstado] = useState<Comissao["estado"]>("Prevista");
@@ -62,10 +62,21 @@ function ComissaoFicha() {
       toast.success("Guardado");
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
+  async function repor() {
+    try { await desarquivarMovimento(id); toast.success("Registo reposto."); }
+    catch (e) { toast.error((e as Error).message); }
+  }
+
+  async function apagarDefinitivo() {
+    if (!confirm("Apagar definitivamente? Isto não tem volta.")) return;
+    try { await apagarMovimentoDefinitivo(id); toast.success("Registo apagado definitivamente."); nav({ to: "/negocio/comissoes" }); }
+    catch (e) { toast.error((e as Error).message); }
+  }
+
   async function apagar() {
-    if (!confirm("Eliminar esta comissão?")) return;
+    if (!confirm("Arquivar esta comissão? Sai das listas e podes repor aqui.")) return;
     try {
-      await eliminarMovimento(id);
+      await arquivarMovimento(id);
       toast.success("Eliminada");
       nav({ to: "/negocio/comissoes" });
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
@@ -102,7 +113,14 @@ function ComissaoFicha() {
           <Link to="/negocios/$id" params={{ id: opp.id }} className="text-sm text-primary hover:underline">Abrir oportunidade →</Link>
         )}
         <div className="flex justify-between">
-          <Button variant="ghost" className="text-destructive" onClick={apagar}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
+          {c.arquivadoEm ? (
+            <>
+              <Button variant="ghost" onClick={repor}><RotateCcw className="mr-1 h-4 w-4" />Repor</Button>
+              <Button variant="ghost" className="text-destructive" onClick={apagarDefinitivo}><Trash2 className="mr-1 h-4 w-4" />Apagar definitivamente</Button>
+            </>
+          ) : (
+            <Button variant="ghost" onClick={apagar}><Archive className="mr-1 h-4 w-4" />Arquivar</Button>
+          )}
           <Button onClick={guardar}><Save className="mr-1 h-4 w-4" />Guardar</Button>
         </div>
       </CardContent></Card>

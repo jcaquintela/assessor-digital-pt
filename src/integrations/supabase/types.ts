@@ -1593,6 +1593,7 @@ export type Database = {
       financial_movements: {
         Row: {
           amount: number
+          archived_at: string | null
           category: string | null
           created_at: string
           description: string
@@ -1609,6 +1610,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          archived_at?: string | null
           category?: string | null
           created_at?: string
           description: string
@@ -1625,6 +1627,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          archived_at?: string | null
           category?: string | null
           created_at?: string
           description?: string
@@ -1720,6 +1723,7 @@ export type Database = {
       }
       follow_ups: {
         Row: {
+          archived_at: string | null
           briefing_sent_at: string | null
           created_at: string
           created_by_assessor: boolean
@@ -1750,6 +1754,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           briefing_sent_at?: string | null
           created_at?: string
           created_by_assessor?: boolean
@@ -1780,6 +1785,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           briefing_sent_at?: string | null
           created_at?: string
           created_by_assessor?: boolean
@@ -1849,6 +1855,7 @@ export type Database = {
       }
       interactions: {
         Row: {
+          archived_at: string | null
           created_at: string
           id: string
           interaction_type: string | null
@@ -1863,6 +1870,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           interaction_type?: string | null
@@ -1877,6 +1885,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           interaction_type?: string | null
@@ -1943,6 +1952,7 @@ export type Database = {
       }
       miscellaneous_items: {
         Row: {
+          archived_at: string | null
           category: string | null
           created_at: string
           id: string
@@ -1962,6 +1972,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           category?: string | null
           created_at?: string
           id?: string
@@ -1981,6 +1992,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           category?: string | null
           created_at?: string
           id?: string
@@ -2267,6 +2279,7 @@ export type Database = {
       }
       people: {
         Row: {
+          archived_at: string | null
           budget_max: number | null
           budget_min: number | null
           company: string | null
@@ -2293,6 +2306,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           budget_max?: number | null
           budget_min?: number | null
           company?: string | null
@@ -2319,6 +2333,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           budget_max?: number | null
           budget_min?: number | null
           company?: string | null
@@ -2756,6 +2771,7 @@ export type Database = {
       properties: {
         Row: {
           address: string | null
+          archived_at: string | null
           area_gross: number | null
           area_useful: number | null
           asking_price: number | null
@@ -2791,6 +2807,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          archived_at?: string | null
           area_gross?: number | null
           area_useful?: number | null
           asking_price?: number | null
@@ -2826,6 +2843,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          archived_at?: string | null
           area_gross?: number | null
           area_useful?: number | null
           asking_price?: number | null

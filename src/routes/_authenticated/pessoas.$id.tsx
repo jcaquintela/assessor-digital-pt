@@ -19,7 +19,7 @@ import {
 import { formatData } from "@/lib/demo-data";
 import {
   ChevronLeft, Mail, Phone, Trash2, MessageSquare, MoreHorizontal,
-  CalendarPlus, Pencil, MessageSquarePlus,
+  CalendarPlus, Pencil, MessageSquarePlus, Archive, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PersonExtrasCard } from "@/components/pessoas/person-extras-card";
@@ -68,12 +68,15 @@ function PessoaDetail() {
     else navigate({ to: "/pessoas" });
   };
   const {
-    pessoas, seguimentos, interacoes,
-    deletePessoa, addInteracao, addSeguimento, loading,
+    pessoasTodas, seguimentos, interacoes,
+    arquivarPessoa, desarquivarPessoa, apagarPessoaDefinitivo,
+    addInteracao, addSeguimento, loading,
   } = useStore();
   const { name: assessorName } = useAssessorName();
 
-  const pessoa = useMemo(() => pessoas.find((p) => p.id === id), [pessoas, id]);
+  // A ficha continua acessível depois de arquivada: é aqui que se repõe
+  // ou, em último caso, se apaga definitivamente.
+  const pessoa = useMemo(() => pessoasTodas.find((p) => p.id === id), [pessoasTodas, id]);
 
   const [editar, setEditar] = useState(false);
   const [interacao, setInteracao] = useState("");
@@ -150,11 +153,32 @@ function PessoaDetail() {
     }
   };
 
-  const apagar = async () => {
-    if (!confirm(`Apagar ${pessoa.nome}?`)) return;
+  const arquivar = async () => {
+    if (!confirm(`Arquivar ${pessoa.nome}? Sai das listas e podes repor aqui.`)) return;
     try {
-      await deletePessoa(pessoa.id);
-      toast.success("Pessoa apagada.");
+      await arquivarPessoa(pessoa.id);
+      toast.success("Pessoa arquivada.");
+      navigate({ to: "/pessoas" });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const repor = async () => {
+    try {
+      await desarquivarPessoa(pessoa.id);
+      toast.success("Pessoa reposta.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  // Único sítio da app onde se apaga mesmo — e só sobre um registo arquivado.
+  const apagarDefinitivo = async () => {
+    if (!confirm(`Apagar definitivamente ${pessoa.nome}${pessoa.telefone ? `, ${pessoa.telefone}` : ""}? Isto não tem volta.`)) return;
+    try {
+      await apagarPessoaDefinitivo(pessoa.id);
+      toast.success("Pessoa apagada definitivamente.");
       navigate({ to: "/pessoas" });
     } catch (e) {
       toast.error((e as Error).message);
@@ -193,13 +217,34 @@ function PessoaDetail() {
                 <Pencil className="mr-2 h-3.5 w-3.5" /> Editar dados
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onSelect={() => void apagar()}>
-                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-              </DropdownMenuItem>
+              {pessoa.arquivadoEm ? (
+                <>
+                  <DropdownMenuItem onSelect={() => void repor()}>
+                    <RotateCcw className="mr-2 h-3.5 w-3.5" /> Repor
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive" onSelect={() => void apagarDefinitivo()}>
+                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Apagar definitivamente
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem onSelect={() => void arquivar()}>
+                  <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         }
       />
+
+      {pessoa.arquivadoEm && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-dashed p-3 text-sm">
+          <Archive className="h-4 w-4" />
+          <span>
+            Arquivada em {new Date(pessoa.arquivadoEm).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}. Não aparece nas listas.
+          </span>
+          <Button size="sm" variant="outline" onClick={() => void repor()}>Repor</Button>
+        </div>
+      )}
 
       {/* Identidade e contacto, em leitura */}
       <div className="c-muted mb-4 flex flex-wrap items-center gap-3 text-xs">

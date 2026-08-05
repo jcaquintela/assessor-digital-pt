@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   AlertTriangle, CalendarClock, CheckCircle2, Clock, MessageSquare, Sparkles,
-  FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote, Trash2,
+  FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote, Archive,
   Home, X,
 } from "lucide-react";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
@@ -95,7 +95,7 @@ function HojePage() {
     });
   };
 
-  const { seguimentos, oportunidades, pessoas, imoveis, concluirSeguimento, reagendarSeguimento, eliminarSeguimento } = useStore();
+  const { seguimentos, oportunidades, pessoas, imoveis, concluirSeguimento, reagendarSeguimento, arquivarSeguimento } = useStore();
   void oportunidades;
   const { name: assessorName } = useAssessorName();
   const now = new Date();
@@ -324,12 +324,12 @@ function HojePage() {
       .catch((e) => toast.error(e.message));
   };
 
-  // Eliminar é sempre acção do dashboard — nunca do chat.
+  // Arquivar é sempre acção do dashboard — nunca do chat. Nada se apaga aqui.
   const deletePriority = async (p: Priority) => {
     if (p.subject_type !== "follow_up") return;
-    if (!window.confirm(`Eliminar “${p.action}”? Esta ação não pode ser desfeita.`)) return;
+    if (!window.confirm(`Arquivar “${p.action}”? Sai da lista, mas podes repor na ficha.`)) return;
     try {
-      await eliminarSeguimento(p.subject_id);
+      await arquivarSeguimento(p.subject_id);
       qc.invalidateQueries({ queryKey: ["supreme", "hoje"] });
       toast.success("Eliminado.");
     } catch (e) {
@@ -544,7 +544,7 @@ function HojePage() {
                           </DropdownMenuItem>
                           {p.subject_type === "follow_up" && (
                             <DropdownMenuItem className="text-destructive" onSelect={() => void deletePriority(p)}>
-                              <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                              <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>

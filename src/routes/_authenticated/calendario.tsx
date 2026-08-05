@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { formatData } from "@/lib/demo-data";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Archive, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-grid";
 
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/calendario")({
 });
 
 function CalendarioPage() {
-  const { seguimentos, atualizarSeguimento, eliminarSeguimento } = useStore();
+  const { seguimentos, atualizarSeguimento, arquivarSeguimento } = useStore();
   const [editing, setEditing] = useState<null | {
     id: string; titulo: string; data: string; hora: string; notas: string;
   }>(null);
@@ -70,9 +70,9 @@ function CalendarioPage() {
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
 
   const remover = async (id: string, titulo: string) => {
-    if (!window.confirm(`Eliminar “${titulo}”? Esta ação não pode ser desfeita.`)) return;
+    if (!window.confirm(`Arquivar “${titulo}”? Sai da agenda, mas podes repor na ficha.`)) return;
     try {
-      await eliminarSeguimento(id);
+      await arquivarSeguimento(id);
       toast.success("Compromisso eliminado.");
     } catch (e) {
       toast.error((e as Error).message);
@@ -179,7 +179,7 @@ function CalendarioPage() {
                     <Pencil className="h-3 w-3" /> Editar
                   </button>
                   <button type="button" className="c-badge tap-44 text-destructive" onClick={() => remover(e.id, e.titulo)}>
-                    <Trash2 className="h-3 w-3" /> Eliminar
+                    <Archive className="h-3 w-3" /> Arquivar
                   </button>
                 </div>
               </div>
