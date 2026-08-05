@@ -332,8 +332,6 @@ export const addContactAttempt = createServerFn({ method: "POST" })
 export const archiveProspectingLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => ({ id: String((v as any)?.id ?? "") }))
-  .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) => ({ id: String((v as any)?.id ?? "") }))
   .handler(async ({ context, data }) => {
     if (!data.id) throw new Error("id required");
     const { error } = await context.supabase
