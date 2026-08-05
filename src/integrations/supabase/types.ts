@@ -2481,6 +2481,39 @@ export type Database = {
           },
         ]
       }
+      product_telemetry_events: {
+        Row: {
+          channel: string | null
+          created_at: string
+          event: string
+          id: string
+          lead_id: string | null
+          occurred_at: string
+          properties: Json
+          user_id: string
+        }
+        Insert: {
+          channel?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          lead_id?: string | null
+          occurred_at?: string
+          properties?: Json
+          user_id: string
+        }
+        Update: {
+          channel?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          lead_id?: string | null
+          occurred_at?: string
+          properties?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_updates: {
         Row: {
           category: string

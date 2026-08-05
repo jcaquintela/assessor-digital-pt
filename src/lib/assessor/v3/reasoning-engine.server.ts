@@ -45,6 +45,7 @@ import {
 } from "./person-brief";
 import { buildPersonBrief } from "./person-brief.server";
 import { detectWhatsNewQuery, formatWhatsNewReply, noRecentUpdatesReply, NO_UPDATES_REPLY } from "./whats-new";
+import { detectEllipticEntity, ellipticConfirmQuestion } from "./elliptic";
 import { lastProductUpdate, listRecentProductUpdates } from "./whats-new.server";
 import {
   detectFeedbackTarget,
@@ -428,6 +429,55 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       }
     }
 
+    // Frase elíptica confirmada ("Seguimento à lead Maria Manuela 912...").
+    // Só aqui é que se escreve: o Afonso propôs, o consultor disse sim.
+    if (pending && pending.intent === "create_person_elliptic") {
+      if (saIsConfirmation(trimmed)) {
+        const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+        const name = String(payload.name ?? "").trim();
+        const created = await TOOL_REGISTRY.create_person(ctx, {
+          name,
+          phone: payload.phone ?? null,
+          relationship_type: "potencial_cliente",
+          summary: String(pending.original_content ?? "").slice(0, 300) || null,
+        });
+        const personId = (created.data as any)?.person?.id ?? (created.data as any)?.id ?? null;
+        let followUpOk = false;
+        if (created.ok && payload.with_follow_up) {
+          const due = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const fu = await TOOL_REGISTRY.create_follow_up(ctx, {
+            title: `Seguimento a ${name}`,
+            type: "tarefa",
+            due_date: due,
+            priority: "media",
+            person_id: personId,
+          });
+          followUpOk = !!fu.ok;
+        }
+        await markPendingActionStatus(supabase, pending.id, created.ok ? "executed" : "failed", {
+          created_resource_type: created.ok ? "person" : null,
+          created_resource_id: created.ok ? personId : null,
+          error_message: created.ok ? null : (created.error ?? "not_created"),
+        });
+        const baseReply = created.ok
+          ? (followUpOk
+              ? `Feito. Registei a ${name} e deixei um seguimento para amanhã.`
+              : `Feito. Registei a ${name}.`)
+          : "Tentei registar e não consegui. Podes repetir o nome e o número?";
+        const reply = await applySafetyNet(ctx, {
+          content: pending.original_content || trimmed,
+          outcome: created.ok ? "executed_ok" : "tool_failed",
+          reason: created.error ?? "not_created",
+          reply: baseReply,
+        });
+        return { reply };
+      }
+      if (saIsRejection(trimmed)) {
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        return { reply: "Está bem, não registei nada." };
+      }
+    }
+
     // Negócio proposto pelo Afonso — só cria depois do "sim".
     if (pending && pending.intent === "create_deal") {
       if (saIsConfirmation(trimmed)) {
@@ -690,6 +740,52 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
 
     // ---------- Router determinístico ----------
+    // (0-) Frase elíptica sem verbo: "[intenção] à [entidade] [nome] [contacto]".
+    // Quando a pessoa ainda não existe, isto falhava com "não percebi". Agora
+    // propõe criação assistida — nunca cria sem confirmação.
+    if (!pending) {
+      const elliptic = detectEllipticEntity(trimmed);
+      if (elliptic) {
+        let alreadyKnown = false;
+        try {
+          if (elliptic.phone) {
+            const { data: byPhone } = await supabase
+              .from("people").select("id")
+              .eq("user_id", userId).ilike("phone", `%${elliptic.phone.slice(-9)}%`)
+              .limit(1).maybeSingle();
+            if (byPhone) alreadyKnown = true;
+          }
+          if (!alreadyKnown) {
+            const { data: byName } = await supabase
+              .from("people").select("id")
+              .eq("user_id", userId).ilike("name", `%${elliptic.name}%`)
+              .limit(1).maybeSingle();
+            if (byName) alreadyKnown = true;
+          }
+        } catch { /* em dúvida, segue o caminho normal */ }
+
+        if (!alreadyKnown) {
+          const question = ellipticConfirmQuestion(elliptic);
+          const { createPendingAction } = await import("../memory.server");
+          await createPendingAction(supabase, {
+            userId,
+            channel,
+            intent: "create_person_elliptic",
+            originalContent: trimmed,
+            payload: {
+              name: elliptic.name,
+              phone: elliptic.phone,
+              with_follow_up: elliptic.withFollowUp,
+              entity_word: elliptic.entityWord,
+            },
+            pendingQuestion: question,
+            currentQuestion: question,
+          });
+          return { reply: question };
+        }
+      }
+    }
+
     // (0) Resumo rápido de pessoa — leitura pura, sem confirmação e sem
     // depender do nível de autonomia. Vem antes da agenda porque "o que
     // tenho sobre a Marta" partilha o mesmo verbo.

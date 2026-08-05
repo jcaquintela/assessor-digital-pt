@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { TELEMETRY_EVENTS, trackEvent, hoursBetween, leadSource } from "@/lib/telemetry/events";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { detectProspecting } from "./detect";
 
@@ -221,7 +222,15 @@ export const createProspectingLead = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
-    return { duplicate: false, id: (created as any).id as string };
+    const leadId = (created as any).id as string;
+    await trackEvent(context.supabase, {
+      userId: context.userId,
+      event: TELEMETRY_EVENTS.leadRegistado,
+      leadId,
+      channel: data.source_channel,
+      properties: { fonte: leadSource(data), source_type: data.source_type },
+    });
+    return { duplicate: false, id: leadId };
   });
 
 export const updateProspectingLead = createServerFn({ method: "POST" })
@@ -239,12 +248,32 @@ export const updateProspectingLead = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     if (!data.id) throw new Error("id required");
+    let previous: any = null;
+    if (data.patch["status"] === "contacted") {
+      const { data: cur } = await context.supabase
+        .from("prospecting_leads" as never)
+        .select("status, created_at, source_channel")
+        .eq("id", data.id)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      previous = cur;
+    }
     const { error } = await context.supabase
       .from("prospecting_leads" as never)
       .update(data.patch as never)
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
+    // Só conta como contacto confirmado pelo consultor (nunca lembretes enviados).
+    if (previous && previous.status !== "contacted") {
+      await trackEvent(context.supabase, {
+        userId: context.userId,
+        event: TELEMETRY_EVENTS.leadContactado,
+        leadId: data.id,
+        channel: previous.source_channel ?? null,
+        properties: { horas_desde_registo: hoursBetween(previous.created_at), origem: "dashboard" },
+      });
+    }
     return { ok: true };
   });
 
@@ -262,7 +291,7 @@ export const addContactAttempt = createServerFn({ method: "POST" })
     if (!data.id) throw new Error("id required");
     const { data: current } = await context.supabase
       .from("prospecting_leads" as never)
-      .select("contact_attempts, notes")
+      .select("contact_attempts, notes, status, created_at, source_channel")
       .eq("id", data.id)
       .eq("user_id", context.userId)
       .maybeSingle();
@@ -284,10 +313,25 @@ export const addContactAttempt = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
+    if (data.outcome === "contacted" && (current as any)?.status !== "contacted") {
+      await trackEvent(context.supabase, {
+        userId: context.userId,
+        event: TELEMETRY_EVENTS.leadContactado,
+        leadId: data.id,
+        channel: (current as any)?.source_channel ?? null,
+        properties: {
+          horas_desde_registo: hoursBetween((current as any)?.created_at),
+          origem: "confirmacao_consultor",
+          tentativas: attempts,
+        },
+      });
+    }
     return { ok: true };
   });
 
 export const archiveProspectingLead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => ({ id: String((v as any)?.id ?? "") }))
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => ({ id: String((v as any)?.id ?? "") }))
   .handler(async ({ context, data }) => {
