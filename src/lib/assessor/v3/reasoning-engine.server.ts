@@ -37,6 +37,7 @@ import {
 import { applySafetyNet, buildArchiveContent, archiveToMiscellaneous } from "./safety-net.server";
 import { isRegisterOnly, isAnswerablePending } from "../pending-answerable";
 import { formatQueryResults, isQueryTool } from "./query-results";
+import { detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
 import {
   detectPersonBriefQuery,
   formatPersonBrief,
@@ -1062,6 +1063,21 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   }
 
   // 5) ACT — só executa se DECIDE disse "act".
+  // Pedido de leitura pura ("lista os contactos que tens meus"): nunca pode
+  // entrar no caminho de escrita. Descartamos escritas e garantimos a
+  // ferramenta de consulta correspondente.
+  const readReq = detectReadRequest(trimmed);
+  if (readReq.pure && !sparringActive) {
+    decideR.decision.memory_writes = [];
+    const reads = decideR.decision.tool_calls.filter((t) => isQueryTool(t.name));
+    decideR.decision.tool_calls = reads.length
+      ? reads
+      : readReq.tool
+        ? [{ name: readReq.tool, arguments: readReq.arguments }]
+        : [];
+    if (decideR.decision.tool_calls.length) decideR.decision.action = "act";
+    else if (decideR.decision.action === "act") decideR.decision.action = "acknowledge";
+  }
   const shouldAct = decideR.decision.action === "act" && decideR.decision.tool_calls.length > 0;
   // Guarda simétrica à do "executou e mesmo assim perguntou": decidiu agir mas
   // não indicou ferramenta nenhuma. Caso real: "Desmarca tudo." → action=act,
@@ -1094,9 +1110,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     archiveOutcome = "tool_failed";
     archiveReason = toolResults.filter((r) => !r.ok)
       .map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ") || "tool_failed";
-    reply = "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
+    reply = readReq.pure
+      ? READ_FAILED_REPLY
+      : "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
   }
-  if (actedWithoutTools) {
+  if (actedWithoutTools && !readReq.pure) {
     archiveOutcome = "not_understood";
     archiveReason = "act sem ferramenta";
     if (!reply || CLAIMS_COMPLETION_RE.test(reply)) {

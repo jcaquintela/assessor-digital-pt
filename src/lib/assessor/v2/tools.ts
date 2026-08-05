@@ -15,7 +15,8 @@ import type { GatewayToolSpec } from "./gateway.server";
 // ---------- schemas Zod ----------
 
 export const SearchPeopleArgs = z.object({
-  query: z.string().min(1),
+  // Vazio = listar tudo ("lista os contactos todos que tens meus").
+  query: z.string().default(""),
   relationship_type: z.string().optional().nullable(),
 });
 export type SearchPeopleArgs = z.infer<typeof SearchPeopleArgs>;
@@ -37,7 +38,7 @@ export const CreatePersonArgs = z.object({
 export type CreatePersonArgs = z.infer<typeof CreatePersonArgs>;
 
 export const SearchPropertiesArgs = z.object({
-  query: z.string().min(1),
+  query: z.string().default(""),
   status: z.string().optional().nullable(),
 });
 export type SearchPropertiesArgs = z.infer<typeof SearchPropertiesArgs>;

@@ -41,10 +41,9 @@ describe("dispatchToolCall — contratos das ferramentas", () => {
     expect(r.error).toBe("invalid_json_args");
   });
 
-  it("valida argumentos obrigatórios (search_people sem query)", async () => {
+  it("search_people sem query lista tudo (pedido de leitura pura)", async () => {
     const r = await dispatchToolCall({ supabase: fakeSb({}), userId: "u1", channel: "web" }, "search_people", "{}");
-    expect(r.ok).toBe(false);
-    expect(r.error).toMatch(/query/);
+    expect(r.ok).toBe(true);
   });
 
   it("create_event exige data e hora bem formadas", async () => {
