@@ -234,7 +234,16 @@ function PropertyDetail() {
         {deal && <Badge>{STAGE_LABEL[deal.stage as keyof typeof STAGE_LABEL] ?? deal.stage}</Badge>}
         <Badge variant="outline">{propertyStatusLabel(p.status)}</Badge>
         {p.category && <Badge variant="secondary">● {p.category}</Badge>}
-        {p.source_channel && <Badge variant="secondary">via {ORIGEM_LABEL[p.source_channel] ?? p.source_channel}</Badge>}
+        {/* Proveniência: quando entrou e por onde. */}
+        {p.created_at && (
+          <Badge variant="secondary">
+            criado em {new Date(p.created_at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}
+            {p.source_channel ? ` · via ${ORIGEM_LABEL[p.source_channel] ?? p.source_channel}` : ""}
+          </Badge>
+        )}
+        {!p.created_at && p.source_channel && (
+          <Badge variant="secondary">via {ORIGEM_LABEL[p.source_channel] ?? p.source_channel}</Badge>
+        )}
         {caracteristicas && <Badge variant="secondary">{caracteristicas}</Badge>}
         <div className="ml-auto">
           <DropdownMenu>
