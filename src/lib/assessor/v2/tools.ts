@@ -398,6 +398,37 @@ export const UpdateProspectingLeadArgs = z.object({
 });
 export type UpdateProspectingLeadArgs = z.infer<typeof UpdateProspectingLeadArgs>;
 
+// Editar é execução directa: o consultor pede, o Assessor altera e mostra o
+// antes/depois. Não há pergunta de confirmação por conversa.
+export const UpdatePersonArgs = z.object({
+  id: z.string().uuid(),
+  name: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  relationship_type: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+export type UpdatePersonArgs = z.infer<typeof UpdatePersonArgs>;
+
+export const UpdatePropertyArgs = z.object({
+  id: z.string().uuid(),
+  title: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  typology: z.string().optional().nullable(),
+  asking_price: z.number().optional().nullable(),
+  status: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+export type UpdatePropertyArgs = z.infer<typeof UpdatePropertyArgs>;
+
+// Não existe ferramenta de apagar: por conversa só se arquiva, e é reversível.
+export const ArchiveRecordArgs = z.object({
+  entity: z.enum(["person", "property", "deal", "follow_up", "movement", "interaction"]),
+  id: z.string().uuid(),
+  undo: z.boolean().optional().nullable(),
+});
+export type ArchiveRecordArgs = z.infer<typeof ArchiveRecordArgs>;
+
 // ---------- specs OpenAI/Gateway (function-calling) ----------
 
 export const TOOL_SPECS: GatewayToolSpec[] = [
@@ -760,6 +791,67 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "update_person",
+      description:
+        "Altera dados de uma pessoa já existente (nome, telefone, email, relação, notas). Execução directa: não perguntes confirmação, altera e diz o que estava antes e o que ficou. Requer id obtido de search_people.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: ["string", "null"] },
+          phone: { type: ["string", "null"] },
+          email: { type: ["string", "null"] },
+          relationship_type: { type: ["string", "null"] },
+          notes: { type: ["string", "null"] },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_property",
+      description:
+        "Altera dados de um imóvel já existente (título, morada, tipologia, preço, estado, notas). Execução directa, com recibo do antes/depois. Requer id obtido de search_properties.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          title: { type: ["string", "null"] },
+          address: { type: ["string", "null"] },
+          typology: { type: ["string", "null"] },
+          asking_price: { type: ["number", "null"] },
+          status: { type: ["string", "null"] },
+          notes: { type: ["string", "null"] },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "archive_record",
+      description:
+        "Arquiva um registo (sai das listas, continua na ficha e pode ser reposto). Usa isto sempre que o consultor pedir para apagar, eliminar ou remover — nunca apagas nada definitivamente. Com undo=true, repõe o registo.",
+      parameters: {
+        type: "object",
+        properties: {
+          entity: { type: "string", enum: ["person", "property", "deal", "follow_up", "movement", "interaction"] },
+          id: { type: "string", format: "uuid" },
+          undo: { type: ["boolean", "null"] },
+        },
+        required: ["entity", "id"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 // Ferramentas de lembretes (reminders) — SEMPRE que o consultor pedir
@@ -946,6 +1038,9 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   create_prospecting_lead: CreateProspectingLeadArgs,
   search_prospecting_leads: SearchProspectingLeadsArgs,
   update_prospecting_lead: UpdateProspectingLeadArgs,
+  update_person: UpdatePersonArgs,
+  update_property: UpdatePropertyArgs,
+  archive_record: ArchiveRecordArgs,
   reschedule_reminder: RescheduleReminderArgs,
   search_active_reminders: SearchActiveRemindersArgs,
   cancel_reminder: CancelReminderArgs,
