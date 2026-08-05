@@ -14,6 +14,8 @@ export interface Pessoa {
   proximaAcao?: string;
   proximaAcaoData?: string;
   canal?: string;
+  /** Proveniência: quando e por onde entrou. */
+  criadoEm?: string;
 }
 
 export type OportunidadeTipo =
@@ -57,6 +59,8 @@ export interface Imovel {
   proprietarioId?: string;
   oportunidadeId?: string;
   notas?: string;
+  canal?: string;
+  criadoEm?: string;
 }
 
 export type SeguimentoTipo = "Tarefa" | "Evento";
