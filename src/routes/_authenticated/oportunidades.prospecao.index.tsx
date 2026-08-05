@@ -16,6 +16,7 @@ import { Camera, ChevronRight, ImagePlus, Loader2, Sparkles } from "lucide-react
 import {
   analyzeProspectingImage, analyzeProspectingText,
   createProspectingLead, listProspectingLeads,
+  getProspectingConversionStats,
   LISTING_LABEL, SOURCE_LABEL, STATUS_LABEL, type LeadStatus,
 } from "@/lib/prospecting/prospecting.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,11 @@ function ProspecaoPage() {
     queryFn: () => listFn(),
   });
   const [open, setOpen] = useState(false);
+  const statsFn = useServerFn(getProspectingConversionStats);
+  const { data: stats } = useQuery({
+    queryKey: ["prospecting", "stats"],
+    queryFn: () => statsFn({ data: { days: 30 } }),
+  });
 
   const grouped = useMemo(() => {
     const g: Record<LeadStatus, any[]> = {
@@ -64,6 +70,21 @@ function ProspecaoPage() {
         subtitle={`${leads.length} placa${leads.length === 1 ? "" : "s"} e leads`}
         action={<Button onClick={() => setOpen(true)}><Camera className="mr-1 h-4 w-4" /> Nova placa</Button>}
       />
+      {!!stats && stats.registados > 0 && (
+        <Card className="mb-4">
+          <CardContent className="flex flex-wrap items-baseline gap-x-6 gap-y-1 p-4">
+            <div>
+              <div className="text-2xl font-semibold">{stats.pct_48h}%</div>
+              <div className="text-xs text-muted-foreground">
+                contactadas em menos de 48h (últimos 30 dias)
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {stats.contactados_48h} de {stats.registados} leads registadas, com contacto confirmado por ti.
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {isLoading && <p className="text-sm text-muted-foreground">A carregar…</p>}
       {!isLoading && leads.length === 0 && (
         <Card className="border-dashed">
