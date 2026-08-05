@@ -1073,7 +1073,13 @@ async function listOpenFollowUps(
     .select("id, title, due_date, due_time, status")
     .eq("user_id", ctx.userId)
     .in("status", OPEN_FOLLOW_UP_STATUSES);
-  if (range) q = q.gte("due_date", range.startIso).lte("due_date", range.endIso);
+  // `due_date` é timestamptz: comparar com "YYYY-MM-DD" lê meia-noite e deixa
+  // de fora tudo o que tem hora. Usamos o intervalo real do dia em Lisboa.
+  if (range) {
+    q = q
+      .gte("due_date", lisbonLocalToUtcIso(range.startIso, "00:00"))
+      .lt("due_date", lisbonLocalToUtcIso(addDaysYmd(range.endIso, 1), "00:00"));
+  }
   const { data } = await q.order("due_date", { ascending: true }).limit(100);
   return Array.isArray(data) ? (data as any[]) : [];
 }

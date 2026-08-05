@@ -59,13 +59,23 @@ function today(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
 }
 
+/** Data/hora local de Lisboa convertida para ISO UTC, como grava a app. */
+function iso(ymd: string, hhmm: string): string {
+  const guess = new Date(`${ymd}T${hhmm}:00Z`);
+  const local = new Date(guess.toLocaleString("en-US", { timeZone: "Europe/Lisbon" }));
+  const offset = local.getTime() - new Date(guess.toLocaleString("en-US", { timeZone: "UTC" })).getTime();
+  return new Date(guess.getTime() - offset).toISOString();
+}
+
 function makeDb() {
   const messages: any[] = [];
   const follow_ups: any[] = [
-    { id: "fu-1", user_id: USER, title: "Visita na Alameda da República - Sr. Duarte", due_date: today(), due_time: "11:00", status: "agendado", outcome: null },
-    { id: "fu-2", user_id: USER, title: "Ligar a 5 contactos da esfera", due_date: today(), due_time: null, status: "agendado", outcome: null },
-    { id: "fu-3", user_id: USER, title: "Reunião de angariação", due_date: today(), due_time: "16:30", status: "agendado", outcome: null },
-    { id: "fu-4", user_id: USER, title: "Visita futura", due_date: "2099-01-01", due_time: "10:00", status: "agendado", outcome: null },
+    // `due_date` é timestamptz na base real: guardamos com hora, para o
+    // intervalo do dia ser exercitado como em produção.
+    { id: "fu-1", user_id: USER, title: "Visita na Alameda da República - Sr. Duarte", due_date: iso(today(), "11:00"), due_time: "11:00", status: "agendado", outcome: null },
+    { id: "fu-2", user_id: USER, title: "Ligar a 5 contactos da esfera", due_date: iso(today(), "09:00"), due_time: null, status: "agendado", outcome: null },
+    { id: "fu-3", user_id: USER, title: "Reunião de angariação", due_date: iso(today(), "16:30"), due_time: "16:30", status: "agendado", outcome: null },
+    { id: "fu-4", user_id: USER, title: "Visita futura", due_date: iso("2099-01-01", "10:00"), due_time: "10:00", status: "agendado", outcome: null },
   ];
   const state: Record<string, any[]> = {
     follow_ups,
@@ -102,6 +112,7 @@ function makeDb() {
       not() { return q; },
       gte(c: string, v: any) { filters.push((r) => String(r[c]) >= String(v)); return q; },
       lte(c: string, v: any) { filters.push((r) => String(r[c]) <= String(v)); return q; },
+      lt(c: string, v: any) { filters.push((r) => String(r[c]) < String(v)); return q; },
       order(c: string, o?: any) { orderKey = c; asc = !(o?.ascending === false); return q; },
       limit(n: number) { return Promise.resolve({ data: run().slice(0, n), error: null }); },
       maybeSingle() { return Promise.resolve({ data: run()[0] ?? null, error: null }); },

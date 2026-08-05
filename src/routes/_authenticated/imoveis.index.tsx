@@ -28,7 +28,9 @@ import { assuntoDeImovel } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
 
 export const Route = createFileRoute("/_authenticated/imoveis/")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { q?: string; cat?: string; view?: "grelha"; preset?: PropertyPreset } => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     cat: typeof search.cat === "string" && search.cat ? search.cat : undefined,
     view: search.view === "grelha" ? ("grelha" as const) : undefined,
@@ -57,7 +59,7 @@ function ImoveisPage() {
   const all = (rows ?? []) as any[];
 
   const search = Route.useSearch();
-  const navigate = useNavigate({ from: "/imoveis" });
+  const navigate = useNavigate({ from: "/imoveis/" });
   const q = search.q ?? "";
   const catId = search.cat ?? null;
   const view: PeopleView = search.view ?? "lista";
