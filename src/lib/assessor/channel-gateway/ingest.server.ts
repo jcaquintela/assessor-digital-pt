@@ -194,11 +194,25 @@ async function routeInbound(
 
     try {
       const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
+      // Rajada de mensagens seguidas: junta-as num só turno em vez de correr
+      // um ciclo de raciocínio por mensagem (evita perguntas duplicadas).
+      let engineContent = content;
+      if (inbound.messageType === "text") {
+        const { coalesceInboundText } = await import("./coalesce.server");
+        const c = await coalesceInboundText(supabaseAdmin, {
+          userId,
+          channel: adapter.channel,
+          currentMessageId: persistedUuid,
+          fallbackContent: content,
+        });
+        if (c.yield) return; // mensagem mais recente responde por esta.
+        engineContent = c.content;
+      }
       const outcome = await processAssessorMessage({
         supabase: supabaseAdmin,
         userId,
         channel: inbound.channel,
-        content,
+        content: engineContent,
         receivedAt: inbound.receivedAt,
         sourceMessageId: persistedUuid,
       });

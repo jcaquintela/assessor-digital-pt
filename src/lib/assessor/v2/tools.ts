@@ -320,6 +320,18 @@ export const CancelReminderArgs = z.object({
 });
 export type CancelReminderArgs = z.infer<typeof CancelReminderArgs>;
 
+// Desmarcar compromissos/seguimentos reais (tabela `follow_ups`).
+// `cancel_reminder` só mexe em avisos; sem isto não havia forma nenhuma de
+// cumprir "limpa a agenda de hoje" ou "desmarca tudo".
+export const CancelFollowUpArgs = z.object({
+  follow_up_ids: z.array(z.string().uuid()).max(50).optional().nullable(),
+  subject_hint: z.string().min(2).max(160).optional().nullable(),
+  period: z.enum(["today", "tomorrow", "week", "next_week"]).optional().nullable(),
+  all_in_period: z.boolean().optional().nullable(),
+  reason: z.string().max(300).optional().nullable(),
+});
+export type CancelFollowUpArgs = z.infer<typeof CancelFollowUpArgs>;
+
 export const SendReminderNowArgs = z.object({
   reminder_id: z.string().uuid().optional().nullable(),
   subject_hint: z.string().min(2).max(120).optional().nullable(),
@@ -936,6 +948,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   reschedule_reminder: RescheduleReminderArgs,
   search_active_reminders: SearchActiveRemindersArgs,
   cancel_reminder: CancelReminderArgs,
+  cancel_follow_up: CancelFollowUpArgs,
   send_reminder_now: SendReminderNowArgs,
   list_property_categories: ListPropertyCategoriesArgs,
   list_uncategorized_properties: ListUncategorizedPropertiesArgs,

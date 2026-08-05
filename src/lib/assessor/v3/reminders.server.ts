@@ -281,14 +281,19 @@ export async function cancelReminder(
   supabase: any,
   userId: string,
   reminder_id: string,
-): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase
+): Promise<{ ok: boolean; cancelled: number; error?: string }> {
+  // Devolve quantas linhas foram mesmo afectadas. Antes devolvia sempre
+  // ok=true, mesmo quando o id não era de um aviso (caso real: o motor passou
+  // ids de `follow_ups`), e o consultor ouvia "Feito." sem nada ter mudado.
+  const { data, error } = await supabase
     .from("reminders")
     .update({ status: "cancelled" } as never)
     .eq("id", reminder_id)
     .eq("user_id", userId)
-    .in("status", ["scheduled", "processing", "failed"]);
-  return { ok: !error, error: error?.message };
+    .in("status", ["scheduled", "processing", "failed"])
+    .select("id");
+  if (error) return { ok: false, cancelled: 0, error: error.message };
+  return { ok: true, cancelled: Array.isArray(data) ? data.length : 0 };
 }
 
 export async function searchActiveReminders(

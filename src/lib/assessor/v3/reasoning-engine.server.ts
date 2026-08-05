@@ -103,6 +103,9 @@ const HISTORY_LIMIT = 6;
 // falha depois de uma execução bem sucedida e (b) para reclassificar o
 // outcome apenas quando nada foi executado.
 const NOT_UNDERSTOOD_RE = /n[ãa]o\s+(percebi|entendi|compreendi)|podes\s+explicar\s+de\s+outra\s+forma/i;
+// Linguagem que afirma conclusão. Só pode sair depois de escrita real.
+const CLAIMS_COMPLETION_RE =
+  /\b(feito|combinado|tratado|resolvido|est[áa]\s+feito|j[áa]\s+est[áa]|desmarquei|desmarcado|cancelei|cancelado|apaguei|limpei|registei|guardei|marquei|actualizei|atualizei)\b/i;
 
 function parsePtAmount(raw: string | null | undefined): number | null {
   if (!raw) return null;
@@ -964,6 +967,12 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
   // 5) ACT — só executa se DECIDE disse "act".
   const shouldAct = decideR.decision.action === "act" && decideR.decision.tool_calls.length > 0;
+  // Guarda simétrica à do "executou e mesmo assim perguntou": decidiu agir mas
+  // não indicou ferramenta nenhuma. Caso real: "Desmarca tudo." → action=act,
+  // tool_calls=[], reply="Feito." e zero escritas na base de dados. Sem
+  // ferramenta não houve acção — a resposta não pode afirmar conclusão.
+  const actedWithoutTools =
+    decideR.decision.action === "act" && decideR.decision.tool_calls.length === 0;
   const toolResults = shouldAct ? await executeToolCalls(ctx, decideR.decision.tool_calls) : [];
   const allOk = toolResults.every((r) => r.ok);
 
@@ -990,6 +999,13 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     archiveReason = toolResults.filter((r) => !r.ok)
       .map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ") || "tool_failed";
     reply = "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
+  }
+  if (actedWithoutTools) {
+    archiveOutcome = "not_understood";
+    archiveReason = "act sem ferramenta";
+    if (!reply || CLAIMS_COMPLETION_RE.test(reply)) {
+      reply = "Não cheguei a mexer em nada. Diz-me exactamente o que queres que faça?";
+    }
   }
 
   // Idempotência: se `create_follow_up`/`create_event` devolveu um recurso
@@ -1032,6 +1048,17 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     } else if (leadTool.ok && dup) {
       reply = "Já tens uma placa registada com esse número. É a mesma?";
     }
+  }
+
+  // Desmarcações: a frase é construída a partir do que foi mesmo escrito na
+  // base de dados. Zero linhas afectadas → nunca "Feito.".
+  const cancelTool = toolResults.find((t) => t.name === "cancel_follow_up" && t.ok);
+  if (cancelTool) {
+    const d = (cancelTool.data ?? {}) as any;
+    const { formatCancelReply, ambiguousCancelReply } = await import("./cancel-agenda");
+    reply = d?.ambiguous
+      ? ambiguousCancelReply(d.candidates ?? [])
+      : formatCancelReply(d.items ?? [], d.period_label ?? null);
   }
 
   // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
@@ -1116,8 +1143,9 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   const queryReply = toolResults.some((t) => t.ok && isQueryTool(t.name))
     ? formatQueryResults(toolResults)
     : null;
-  if (queryReply) {
-    reply = queryReply;
+  // A lista de desmarcações também não passa pelo corte de 2 frases.
+  if (queryReply || cancelTool) {
+    if (queryReply) reply = queryReply;
   } else {
     reply = enforceHumanTone(reply, { actionExecutedOk: (shouldAct && allOk) || prospectingActed });
     if (decideR.decision.action === "ask") {
