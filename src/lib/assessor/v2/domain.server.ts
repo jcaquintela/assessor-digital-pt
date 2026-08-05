@@ -1072,11 +1072,9 @@ async function listOpenFollowUps(
     .from("follow_ups")
     .select("id, title, due_date, due_time, status")
     .eq("user_id", ctx.userId)
-    .in("status", OPEN_FOLLOW_UP_STATUSES)
-    .order("due_date", { ascending: true })
-    .limit(100);
+    .in("status", OPEN_FOLLOW_UP_STATUSES);
   if (range) q = q.gte("due_date", range.startIso).lte("due_date", range.endIso);
-  const { data } = await q;
+  const { data } = await q.order("due_date", { ascending: true }).limit(100);
   return Array.isArray(data) ? (data as any[]) : [];
 }
 

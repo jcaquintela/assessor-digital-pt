@@ -120,7 +120,7 @@ function makeDb() {
     say(role: string, content: string, createdAt?: string) {
       messages.push({
         id: String(messages.length + 1), role, content,
-        message_type: "whatsapp_text", channel: CHANNEL,
+        message_type: "whatsapp_text", channel: CHANNEL, user_id: USER,
         created_at: createdAt ?? new Date().toISOString(),
       });
       return messages[messages.length - 1];
