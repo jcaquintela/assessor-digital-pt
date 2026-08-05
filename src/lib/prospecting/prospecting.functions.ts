@@ -471,3 +471,40 @@ export const convertProspectingLead = createServerFn({ method: "POST" })
 
     return { person_id: personId, property_id: propertyId };
   });
+// Métrica derivada: % de leads registadas com contacto confirmado dentro de 48h.
+// Só contam confirmações explícitas do consultor — lembretes enviados não contam.
+export const getProspectingConversionStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => ({ days: Number((v as any)?.days ?? 30) || 30 }))
+  .handler(async ({ context, data }) => {
+    const since = new Date(Date.now() - data.days * 864e5).toISOString();
+    const { data: rows, error } = await context.supabase
+      .from("product_telemetry_events" as never)
+      .select("event, lead_id, properties, occurred_at")
+      .eq("user_id", context.userId)
+      .gte("occurred_at", since)
+      .in("event", [TELEMETRY_EVENTS.leadRegistado, TELEMETRY_EVENTS.leadContactado]);
+    if (error) throw new Error(error.message);
+
+    const registados = new Set<string>();
+    const contactados48h = new Set<string>();
+    let contactadosTotal = 0;
+    for (const r of (rows ?? []) as any[]) {
+      if (!r.lead_id) continue;
+      if (r.event === TELEMETRY_EVENTS.leadRegistado) registados.add(r.lead_id);
+      if (r.event === TELEMETRY_EVENTS.leadContactado) {
+        contactadosTotal += 1;
+        const h = Number(r.properties?.horas_desde_registo);
+        if (Number.isFinite(h) && h <= 48) contactados48h.add(r.lead_id);
+      }
+    }
+    const total = registados.size;
+    const dentro48h = [...contactados48h].filter((id) => registados.has(id)).length;
+    return {
+      dias: data.days,
+      registados: total,
+      contactados: contactadosTotal,
+      contactados_48h: dentro48h,
+      pct_48h: total ? Math.round((dentro48h / total) * 100) : 0,
+    };
+  });
