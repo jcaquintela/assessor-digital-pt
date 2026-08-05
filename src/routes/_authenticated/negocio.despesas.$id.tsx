@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type Despesa } from "@/lib/demo-data";
-import { ChevronLeft, Save, Trash2 } from "lucide-react";
+import { ChevronLeft, Save, Trash2, Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
 
@@ -33,8 +33,8 @@ export const Route = createFileRoute("/_authenticated/negocio/despesas/$id")({
 function DespesaFicha() {
   const { id } = Route.useParams();
   const nav = useNavigate();
-  const { despesas, atualizarMovimento, eliminarMovimento } = useStore();
-  const d = useMemo(() => despesas.find((x) => x.id === id), [despesas, id]);
+  const { despesasTodas, atualizarMovimento, arquivarMovimento, desarquivarMovimento, apagarMovimentoDefinitivo } = useStore();
+  const d = useMemo(() => despesasTodas.find((x) => x.id === id), [despesasTodas, id]);
 
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState<Despesa["categoria"]>("Outros");
@@ -61,10 +61,21 @@ function DespesaFicha() {
       toast.success("Guardado");
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
+  async function repor() {
+    try { await desarquivarMovimento(id); toast.success("Registo reposto."); }
+    catch (e) { toast.error((e as Error).message); }
+  }
+
+  async function apagarDefinitivo() {
+    if (!confirm("Apagar definitivamente? Isto não tem volta.")) return;
+    try { await apagarMovimentoDefinitivo(id); toast.success("Registo apagado definitivamente."); nav({ to: "/negocio/despesas" }); }
+    catch (e) { toast.error((e as Error).message); }
+  }
+
   async function apagar() {
-    if (!confirm("Eliminar esta despesa?")) return;
+    if (!confirm("Arquivar esta despesa? Sai das listas e podes repor aqui.")) return;
     try {
-      await eliminarMovimento(id);
+      await arquivarMovimento(id);
       toast.success("Eliminada");
       nav({ to: "/negocio/despesas" });
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
@@ -87,7 +98,14 @@ function DespesaFicha() {
           <div><Label>Data</Label><Input type="date" value={data} onChange={(e) => setData(e.target.value)} /></div>
         </div>
         <div className="flex justify-between">
-          <Button variant="ghost" className="text-destructive" onClick={apagar}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
+          {d.arquivadoEm ? (
+            <>
+              <Button variant="ghost" onClick={repor}><RotateCcw className="mr-1 h-4 w-4" />Repor</Button>
+              <Button variant="ghost" className="text-destructive" onClick={apagarDefinitivo}><Trash2 className="mr-1 h-4 w-4" />Apagar definitivamente</Button>
+            </>
+          ) : (
+            <Button variant="ghost" onClick={apagar}><Archive className="mr-1 h-4 w-4" />Arquivar</Button>
+          )}
           <Button onClick={guardar}><Save className="mr-1 h-4 w-4" />Guardar</Button>
         </div>
       </CardContent></Card>

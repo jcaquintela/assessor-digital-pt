@@ -18,7 +18,7 @@ import {
   type SeguimentoPrioridade,
   type Seguimento,
 } from "@/lib/demo-data";
-import { ChevronLeft, Trash2, Save, CheckCircle2, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { ChevronLeft, Trash2, Save, CheckCircle2, Calendar as CalendarIcon, Clock, Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,10 +44,10 @@ function SeguimentoDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const {
-    seguimentos, loading,
+    seguimentosTodos, loading,
   } = useStore();
 
-  const s = useMemo(() => seguimentos.find((x) => x.id === id), [seguimentos, id]);
+  const s = useMemo(() => seguimentosTodos.find((x) => x.id === id), [seguimentosTodos, id]);
 
   // Rede de segurança: se ainda não está na cache local (ou veio de uma
   // prioridade calculada no servidor), vai buscá-lo à base de dados. Antes,
@@ -95,7 +95,7 @@ function SeguimentoDetail() {
 
 function SeguimentoView({ s }: { s: Seguimento }) {
   const navigate = useNavigate();
-  const { pessoas, oportunidades, atualizarSeguimento, eliminarSeguimento, concluirSeguimento } = useStore();
+  const { pessoas, oportunidades, seguimentosTodos, atualizarSeguimento, arquivarSeguimento, desarquivarSeguimento, apagarSeguimentoDefinitivo, concluirSeguimento } = useStore();
 
   const [tipo, setTipo] = useState<SeguimentoTipo>(s?.tipo ?? "Tarefa");
   const [titulo, setTitulo] = useState(s?.titulo ?? "");
@@ -144,10 +144,21 @@ function SeguimentoView({ s }: { s: Seguimento }) {
     }
   };
 
+  const repor = async () => {
+    try { await desarquivarSeguimento(s.id); toast.success("Seguimento reposto."); }
+    catch (e) { toast.error((e as Error).message); }
+  };
+
+  const apagarDefinitivo = async () => {
+    if (!confirm("Apagar definitivamente este seguimento? Isto não tem volta.")) return;
+    try { await apagarSeguimentoDefinitivo(s.id); toast.success("Seguimento apagado definitivamente."); navigate({ to: "/calendario" }); }
+    catch (e) { toast.error((e as Error).message); }
+  };
+
   const apagar = async () => {
-    if (!confirm("Apagar este seguimento?")) return;
+    if (!confirm("Arquivar este seguimento? Sai da agenda e podes repor aqui.")) return;
     try {
-      await eliminarSeguimento(s.id);
+      await arquivarSeguimento(s.id);
       toast.success("Seguimento apagado.");
       navigate({ to: "/seguimentos" });
     } catch (e) {
@@ -182,9 +193,20 @@ function SeguimentoView({ s }: { s: Seguimento }) {
                 <CheckCircle2 className="mr-1 h-4 w-4" /> Concluir
               </Button>
             )}
-            <Button variant="ghost" className="text-destructive" onClick={apagar}>
-              <Trash2 className="mr-1 h-4 w-4" /> Apagar
+            {s.arquivadoEm ? (
+              <>
+                <Button variant="ghost" onClick={repor}>
+                  <RotateCcw className="mr-1 h-4 w-4" /> Repor
+                </Button>
+                <Button variant="ghost" className="text-destructive" onClick={apagarDefinitivo}>
+                  <Trash2 className="mr-1 h-4 w-4" /> Apagar definitivamente
+                </Button>
+              </>
+            ) : (
+            <Button variant="ghost" onClick={apagar}>
+              <Archive className="mr-1 h-4 w-4" /> Arquivar
             </Button>
+            )}
             <Button onClick={guardar} disabled={!dirty || busy}>
               <Save className="mr-1 h-4 w-4" /> Guardar
             </Button>

@@ -1,4 +1,4 @@
-import { MoreHorizontal, Pencil, Tag, Tags, Trash2 } from "lucide-react";
+import { Archive, MoreHorizontal, Pencil, Tag, Tags } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,8 +45,8 @@ export function CardActionsMenu({
         <DropdownMenuItem onSelect={() => onOrganize()}>
           <Tags className="h-4 w-4" /> Organizar
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onDelete()} className="text-destructive focus:text-destructive">
-          <Trash2 className="h-4 w-4" /> Eliminar
+        <DropdownMenuItem onSelect={() => onDelete()} >
+          <Archive className="h-4 w-4" /> Arquivar
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

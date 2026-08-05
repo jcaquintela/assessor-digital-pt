@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/grupos/$id")({
 
 function GrupoPage() {
   const { id } = Route.useParams();
-  const { pessoas, deletePessoa } = useStore();
+  const { pessoas, arquivarPessoa } = useStore();
   const org = useOrganizer("person");
   const [view, setView] = useState<PeopleView>("lista");
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -37,8 +37,8 @@ function GrupoPage() {
     setSel((cur) => { const n = new Set(cur); n.has(pid) ? n.delete(pid) : n.add(pid); return n; });
 
   async function eliminar(pid: string, nome: string) {
-    if (!confirm(`Apagar ${nome}? Esta ação não pode ser desfeita.`)) return;
-    try { await deletePessoa(pid); toast.success("Pessoa eliminada."); }
+    if (!confirm(`Arquivar ${nome}? Sai das listas, mas podes repor na ficha.`)) return;
+    try { await arquivarPessoa(pid); toast.success("Pessoa arquivada."); }
     catch (e) { toast.error((e as Error).message); }
   }
 

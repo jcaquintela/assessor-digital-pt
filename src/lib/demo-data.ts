@@ -15,7 +15,8 @@ export interface Pessoa {
   proximaAcaoData?: string;
   canal?: string;
   /** Proveniência: quando e por onde entrou. */
-  criadoEm?: string;
+  criadoEm?: string;  /** Arquivado (soft-delete reversível). Nada é apagado por conversa. */
+  arquivadoEm?: string;
 }
 
 export type OportunidadeTipo =
@@ -46,7 +47,8 @@ export interface Oportunidade {
   proximaAcao?: string;
   proximaAcaoData?: string;
   notas?: string;
-  imovelId?: string;
+  imovelId?: string;  /** Arquivado (soft-delete reversível). Nada é apagado por conversa. */
+  arquivadoEm?: string;
 }
 
 export interface Imovel {
@@ -60,7 +62,8 @@ export interface Imovel {
   oportunidadeId?: string;
   notas?: string;
   canal?: string;
-  criadoEm?: string;
+  criadoEm?: string;  /** Arquivado (soft-delete reversível). Nada é apagado por conversa. */
+  arquivadoEm?: string;
 }
 
 export type SeguimentoTipo = "Tarefa" | "Evento";
@@ -77,7 +80,8 @@ export interface Seguimento {
   oportunidadeId?: string;
   estado: SeguimentoEstado;
   prioridade: SeguimentoPrioridade;
-  notas?: string;
+  notas?: string;  /** Arquivado (soft-delete reversível). Nada é apagado por conversa. */
+  arquivadoEm?: string;
 }
 
 export interface Documento {
@@ -96,6 +100,8 @@ export interface Comissao {
   valor: number;
   data: string;
   estado: "Prevista" | "Faturada" | "Recebida";
+  /** Arquivado (soft-delete reversível). */
+  arquivadoEm?: string;
 }
 
 export interface Despesa {
@@ -104,6 +110,8 @@ export interface Despesa {
   categoria: "Deslocação" | "Marketing" | "Escritório" | "Formação" | "Outros";
   valor: number;
   data: string;
+  /** Arquivado (soft-delete reversível). */
+  arquivadoEm?: string;
 }
 
 // INTEGRATION POINT: canal de entrada agnóstico (WhatsApp/Voz/Web).

@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/pessoas/")({
 });
 
 function PessoasPage() {
-  const { pessoas, loading, deletePessoa } = useStore();
+  const { pessoas, loading, arquivarPessoa } = useStore();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/pessoas/" });
   const q = search.q ?? "";
@@ -84,8 +84,8 @@ function PessoasPage() {
     setSel((cur) => { const n = new Set(cur); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   async function eliminar(id: string, nome: string) {
-    if (!confirm(`Apagar ${nome}? Esta ação não pode ser desfeita.`)) return;
-    try { await deletePessoa(id); toast.success("Pessoa eliminada."); }
+    if (!confirm(`Arquivar ${nome}? Sai das listas, mas podes repor na ficha.`)) return;
+    try { await arquivarPessoa(id); toast.success("Pessoa arquivada."); }
     catch (e) { toast.error((e as Error).message); }
   }
 

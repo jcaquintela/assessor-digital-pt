@@ -60,7 +60,7 @@ function DealDetail() {
   const { destaque } = Route.useSearch();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { pessoas, imoveis, deleteOportunidade } = useStore();
+  const { pessoas, imoveis, apagarOportunidadeDefinitivo } = useStore();
 
   const getFn = useServerFn(getDeal);
   const updateFn = useServerFn(updateDeal);
@@ -189,11 +189,12 @@ function DealDetail() {
     );
   }
 
+  // Só chega aqui um negócio já arquivado: apagar definitivo vive só na ficha.
   const apagar = async () => {
     try {
       await supabase.from("financial_movements").delete().eq("opportunity_id", d.id);
       await supabase.from("file_links").delete().eq("entity_type", "opportunity").eq("entity_id", d.id);
-      await deleteOportunidade(d.id);
+      await apagarOportunidadeDefinitivo(d.id);
       toast.success("Negócio e registos ligados apagados.");
       navigate({ to: "/negocios" });
     } catch (e) {
@@ -232,9 +233,11 @@ function DealDetail() {
             <Button variant="ghost" onClick={() => arquivar.mutate(!d.archivedAt)}>
               <Archive className="mr-1 h-4 w-4" /> {d.archivedAt ? "Reabrir" : "Arquivar"}
             </Button>
-            <Button variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="mr-1 h-4 w-4" /> Eliminar
-            </Button>
+            {d.archivedAt && (
+              <Button variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="mr-1 h-4 w-4" /> Apagar definitivamente
+              </Button>
+            )}
             <Button onClick={() => guardar.mutate()} disabled={guardar.isPending}>
               <Save className="mr-1 h-4 w-4" /> Guardar
             </Button>
@@ -517,16 +520,16 @@ function DealDetail() {
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Eliminar este negócio?</DialogTitle>
+            <DialogTitle>Apagar definitivamente este negócio?</DialogTitle>
             <DialogDescription>
               Apaga também {d.movements.length} movimento{d.movements.length === 1 ? "" : "s"} financeiro
               {d.movements.length === 1 ? "" : "s"} e as ligações de ficheiros. Não há forma de recuperar.
-              Se só queres tirar isto da frente, usa Arquivar.
+              Se só queres tirar isto da frente, deixa-o arquivado.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={apagar}>Eliminar tudo</Button>
+            <Button variant="destructive" onClick={apagar}>Apagar tudo</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

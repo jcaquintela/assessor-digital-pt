@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { deleteProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
+import { archiveProperty, deleteProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
 import {
   addMarketingActivity, addPropertyCost, addPropertyInterest, addPropertyNote,
   addPropertyOffer, addPropertyVisit, createDealForProperty, deleteInterest,
@@ -29,7 +29,7 @@ import { PROPERTY_STATUSES, propertyStatusLabel } from "@/lib/assessor/propertie
 import { STAGE_LABEL } from "@/lib/deals/stages";
 import { EntityFilesCard } from "@/components/drive/entity-files-card";
 import { formatData, formatEUR } from "@/lib/demo-data";
-import { ChevronLeft, MoreHorizontal, Pencil, Trash2, Archive, MessageSquare, Plus } from "lucide-react";
+import { ChevronLeft, MoreHorizontal, Pencil, Trash2, Archive, RotateCcw, MessageSquare, Plus } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -91,6 +91,7 @@ function PropertyDetail() {
   const fetchDossier = useServerFn(getPropertyDossier);
   const update = useServerFn(updatePropertyFields);
   const remove = useServerFn(deleteProperty);
+  const arquivar = useServerFn(archiveProperty);
   const values = useServerFn(setPropertyValues);
   const commercial = useServerFn(setPropertyCommercialState);
   const newDeal = useServerFn(createDealForProperty);
@@ -167,12 +168,29 @@ function PropertyDetail() {
     mutation.mutate(patch, { onSuccess: () => setDraft(null) });
   };
 
+  const arquivarImovel = async () => {
+    if (!confirm(`Arquivar "${p.title}"? Sai das listas e podes repor aqui.`)) return;
+    try {
+      await arquivar({ data: { id } });
+      qc.invalidateQueries({ queryKey: ["properties"] });
+      toast.success("Imóvel arquivado.");
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  const reporImovel = async () => {
+    try {
+      await arquivar({ data: { id, archived: false } });
+      qc.invalidateQueries({ queryKey: ["properties"] });
+      toast.success("Imóvel reposto.");
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
   const eliminar = async () => {
-    if (!confirm(`Apagar "${p.title}"? Esta ação não pode ser desfeita.`)) return;
+    if (!confirm(`Apagar definitivamente "${p.title}"? Isto não tem volta.`)) return;
     try {
       await remove({ data: { id } });
       qc.invalidateQueries({ queryKey: ["properties"] });
-      toast.success("Imóvel eliminado.");
+      toast.success("Imóvel apagado definitivamente.");
       navigate({ to: "/imoveis" });
     } catch (e) { toast.error((e as Error).message); }
   };
@@ -260,15 +278,23 @@ function PropertyDetail() {
               <DropdownMenuItem onSelect={() => startEdit()}>
                 <Pencil className="mr-2 h-3.5 w-3.5" /> Editar dados
               </DropdownMenuItem>
-              {p.status !== "arquivado" && (
-                <DropdownMenuItem onSelect={() => mutation.mutate({ status: "arquivado" })}>
+              {p.status !== "arquivado" ? (
+                <DropdownMenuItem onSelect={() => void arquivarImovel()}>
                   <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
                 </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => void reporImovel()}>
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" /> Repor
+                </DropdownMenuItem>
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onSelect={() => void eliminar()}>
-                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-              </DropdownMenuItem>
+              {p.status === "arquivado" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive" onSelect={() => void eliminar()}>
+                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Apagar definitivamente
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

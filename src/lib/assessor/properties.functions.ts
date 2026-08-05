@@ -135,11 +135,30 @@ export const createProperty = createServerFn({ method: "POST" })
     return row as { id: string };
   });
 
+// Arquivar é o "eliminar" do produto: reversível e sem perder histórico.
+export const archiveProperty = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; archived?: boolean }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { error } = await (supabase.from("properties") as any)
+      .update(data.archived === false
+        ? { archived_at: null, status: "por_angariar" }
+        : { archived_at: new Date().toISOString(), status: "arquivado" })
+      .eq("id", data.id).eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// Apagar definitivo só existe na ficha de um imóvel já arquivado.
 export const deleteProperty = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const { data: row } = await (supabase.from("properties") as any)
+      .select("archived_at, status").eq("id", data.id).eq("user_id", userId).maybeSingle();
+    if (!row?.archived_at && row?.status !== "arquivado") throw new Error("Arquiva o imóvel primeiro. Só se apaga definitivamente o que já está arquivado.");
     const { error } = await (supabase.from("properties") as any)
       .delete().eq("id", data.id).eq("user_id", userId);
     if (error) throw new Error(error.message);

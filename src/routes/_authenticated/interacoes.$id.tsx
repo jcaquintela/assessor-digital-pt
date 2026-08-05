@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, Trash2, Save } from "lucide-react";
+import { ChevronLeft, Trash2, Save, Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { formatData, formatEUR } from "@/lib/demo-data";
 
@@ -28,9 +28,9 @@ export const Route = createFileRoute("/_authenticated/interacoes/$id")({
 function InteracaoDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { interacoes, pessoas, oportunidades, updateInteracao, deleteInteracao, loading } = useStore();
+  const { interacoesTodas, pessoas, oportunidades, updateInteracao, arquivarInteracao, desarquivarInteracao, apagarInteracaoDefinitivo, loading } = useStore();
 
-  const i = useMemo(() => interacoes.find((x) => x.id === id), [interacoes, id]);
+  const i = useMemo(() => interacoesTodas.find((x) => x.id === id), [interacoesTodas, id]);
 
   const [conteudo, setConteudo] = useState(i?.conteudo ?? "");
   const [resumo, setResumo] = useState(i?.resumo ?? "");
@@ -81,10 +81,21 @@ function InteracaoDetail() {
     }
   };
 
+  const repor = async () => {
+    try { await desarquivarInteracao(i.id); toast.success("Interação reposta."); }
+    catch (e) { toast.error((e as Error).message); }
+  };
+
+  const apagarDefinitivo = async () => {
+    if (!confirm("Apagar definitivamente esta interação? Isto não tem volta.")) return;
+    try { await apagarInteracaoDefinitivo(i.id); toast.success("Interação apagada definitivamente."); navigate({ to: "/interacoes" }); }
+    catch (e) { toast.error((e as Error).message); }
+  };
+
   const apagar = async () => {
-    if (!confirm("Apagar esta interação?")) return;
+    if (!confirm("Arquivar esta interação? Sai do histórico e podes repor aqui.")) return;
     try {
-      await deleteInteracao(i.id);
+      await arquivarInteracao(i.id);
       toast.success("Interação apagada.");
       navigate({ to: "/interacoes" });
     } catch (e) {
@@ -104,9 +115,20 @@ function InteracaoDetail() {
         subtitle={`${formatData(i.data)} · ${i.canal}`}
         action={
           <div className="flex gap-2">
-            <Button variant="ghost" className="text-destructive" onClick={apagar}>
-              <Trash2 className="mr-1 h-4 w-4" /> Apagar
+            {i.arquivadoEm ? (
+              <>
+                <Button variant="ghost" onClick={repor}>
+                  <RotateCcw className="mr-1 h-4 w-4" /> Repor
+                </Button>
+                <Button variant="ghost" className="text-destructive" onClick={apagarDefinitivo}>
+                  <Trash2 className="mr-1 h-4 w-4" /> Apagar definitivamente
+                </Button>
+              </>
+            ) : (
+            <Button variant="ghost" onClick={apagar}>
+              <Archive className="mr-1 h-4 w-4" /> Arquivar
             </Button>
+            )}
             <Button onClick={guardar} disabled={!dirty || busy}>
               <Save className="mr-1 h-4 w-4" /> Guardar
             </Button>
