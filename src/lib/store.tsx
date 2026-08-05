@@ -51,6 +51,7 @@ const toPessoa = (r: Row): Pessoa => ({
   proximaAcao: r.next_action ?? undefined,
   proximaAcaoData: r.next_action_date ?? undefined,
   canal: r.source_channel ?? undefined,
+  criadoEm: r.created_at ?? undefined,
 });
 
 const toOportunidade = (r: Row): Oportunidade => ({
@@ -75,6 +76,8 @@ const toImovel = (r: Row): Imovel => ({
   estado: (r.status ?? "Angariado") as Imovel["estado"],
   proprietarioId: r.owner_person_id ?? undefined,
   notas: r.notes ?? undefined,
+  canal: r.source_channel ?? undefined,
+  criadoEm: r.created_at ?? undefined,
 });
 
 const toSeguimento = (r: Row): Seguimento => ({

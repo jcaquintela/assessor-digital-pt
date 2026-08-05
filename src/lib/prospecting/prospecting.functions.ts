@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { TELEMETRY_EVENTS, trackEvent, hoursBetween, leadSource } from "@/lib/telemetry/events";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { detectProspecting } from "./detect";
 
@@ -221,7 +222,15 @@ export const createProspectingLead = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
-    return { duplicate: false, id: (created as any).id as string };
+    const leadId = (created as any).id as string;
+    await trackEvent(context.supabase, {
+      userId: context.userId,
+      event: TELEMETRY_EVENTS.leadRegistado,
+      leadId,
+      channel: data.source_channel,
+      properties: { fonte: leadSource(data), source_type: data.source_type },
+    });
+    return { duplicate: false, id: leadId };
   });
 
 export const updateProspectingLead = createServerFn({ method: "POST" })
@@ -239,12 +248,32 @@ export const updateProspectingLead = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     if (!data.id) throw new Error("id required");
+    let previous: any = null;
+    if (data.patch["status"] === "contacted") {
+      const { data: cur } = await context.supabase
+        .from("prospecting_leads" as never)
+        .select("status, created_at, source_channel")
+        .eq("id", data.id)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      previous = cur;
+    }
     const { error } = await context.supabase
       .from("prospecting_leads" as never)
       .update(data.patch as never)
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
+    // Só conta como contacto confirmado pelo consultor (nunca lembretes enviados).
+    if (previous && previous.status !== "contacted") {
+      await trackEvent(context.supabase, {
+        userId: context.userId,
+        event: TELEMETRY_EVENTS.leadContactado,
+        leadId: data.id,
+        channel: previous.source_channel ?? null,
+        properties: { horas_desde_registo: hoursBetween(previous.created_at), origem: "dashboard" },
+      });
+    }
     return { ok: true };
   });
 
@@ -262,7 +291,7 @@ export const addContactAttempt = createServerFn({ method: "POST" })
     if (!data.id) throw new Error("id required");
     const { data: current } = await context.supabase
       .from("prospecting_leads" as never)
-      .select("contact_attempts, notes")
+      .select("contact_attempts, notes, status, created_at, source_channel")
       .eq("id", data.id)
       .eq("user_id", context.userId)
       .maybeSingle();
@@ -284,6 +313,19 @@ export const addContactAttempt = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
+    if (data.outcome === "contacted" && (current as any)?.status !== "contacted") {
+      await trackEvent(context.supabase, {
+        userId: context.userId,
+        event: TELEMETRY_EVENTS.leadContactado,
+        leadId: data.id,
+        channel: (current as any)?.source_channel ?? null,
+        properties: {
+          horas_desde_registo: hoursBetween((current as any)?.created_at),
+          origem: "confirmacao_consultor",
+          tentativas: attempts,
+        },
+      });
+    }
     return { ok: true };
   });
 
@@ -428,4 +470,41 @@ export const convertProspectingLead = createServerFn({ method: "POST" })
       .eq("user_id", context.userId);
 
     return { person_id: personId, property_id: propertyId };
+  });
+// Métrica derivada: % de leads registadas com contacto confirmado dentro de 48h.
+// Só contam confirmações explícitas do consultor — lembretes enviados não contam.
+export const getProspectingConversionStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => ({ days: Number((v as any)?.days ?? 30) || 30 }))
+  .handler(async ({ context, data }) => {
+    const since = new Date(Date.now() - data.days * 864e5).toISOString();
+    const { data: rows, error } = await context.supabase
+      .from("product_telemetry_events" as never)
+      .select("event, lead_id, properties, occurred_at")
+      .eq("user_id", context.userId)
+      .gte("occurred_at", since)
+      .in("event", [TELEMETRY_EVENTS.leadRegistado, TELEMETRY_EVENTS.leadContactado]);
+    if (error) throw new Error(error.message);
+
+    const registados = new Set<string>();
+    const contactados48h = new Set<string>();
+    let contactadosTotal = 0;
+    for (const r of (rows ?? []) as any[]) {
+      if (!r.lead_id) continue;
+      if (r.event === TELEMETRY_EVENTS.leadRegistado) registados.add(r.lead_id);
+      if (r.event === TELEMETRY_EVENTS.leadContactado) {
+        contactadosTotal += 1;
+        const h = Number(r.properties?.horas_desde_registo);
+        if (Number.isFinite(h) && h <= 48) contactados48h.add(r.lead_id);
+      }
+    }
+    const total = registados.size;
+    const dentro48h = [...contactados48h].filter((id) => registados.has(id)).length;
+    return {
+      dias: data.days,
+      registados: total,
+      contactados: contactadosTotal,
+      contactados_48h: dentro48h,
+      pct_48h: total ? Math.round((dentro48h / total) * 100) : 0,
+    };
   });

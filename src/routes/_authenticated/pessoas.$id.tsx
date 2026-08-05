@@ -206,7 +206,16 @@ function PessoaDetail() {
         <Badge variant="secondary">{pessoa.relacao}</Badge>
         {pessoa.telefone && <span className="c-mono flex items-center gap-1"><Phone className="h-3 w-3" />{pessoa.telefone}</span>}
         {pessoa.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{pessoa.email}</span>}
-        {pessoa.canal && <span className="c-badge">criada via {CANAL_LABEL[pessoa.canal] ?? pessoa.canal}</span>}
+        {/* Proveniência: quando entrou e por onde. */}
+        {pessoa.criadoEm && (
+          <span className="c-badge">
+            criada em {new Date(pessoa.criadoEm).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}
+            {pessoa.canal ? ` · via ${CANAL_LABEL[pessoa.canal] ?? pessoa.canal}` : ""}
+          </span>
+        )}
+        {!pessoa.criadoEm && pessoa.canal && (
+          <span className="c-badge">criada via {CANAL_LABEL[pessoa.canal] ?? pessoa.canal}</span>
+        )}
       </div>
 
       {/* Bloco de contexto: quem é, o que procura, último contacto, próximo passo */}

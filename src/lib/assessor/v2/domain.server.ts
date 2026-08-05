@@ -1,3 +1,4 @@
+import { TELEMETRY_EVENTS, trackEvent, hoursBetween } from "@/lib/telemetry/events";
 import { sanitizeMiscFields } from "../misc-text";
 // Assessor v2 — Domain Services.
 //
@@ -932,6 +933,13 @@ async function execCreateProspectingLead(ctx: DomainContext, args: unknown): Pro
     .select("id, title, phone, location, status")
     .single();
   if (error) return fail(error.message);
+  await trackEvent(ctx.supabase, {
+    userId: ctx.userId,
+    event: TELEMETRY_EVENTS.leadRegistado,
+    leadId: (data as any)?.id ?? null,
+    channel: ctx.channel,
+    properties: { origem: "assessor" },
+  });
   return ok({ duplicate: false, lead: data });
 }
 
@@ -975,6 +983,14 @@ async function execUpdateProspectingLead(ctx: DomainContext, args: unknown): Pro
 
   if (!Object.keys(patch).length) return fail("nada_para_actualizar");
 
+  let before: any = null;
+  if (patch.status === "contacted") {
+    const { data: cur } = await ctx.supabase
+      .from("prospecting_leads" as never)
+      .select("status, created_at")
+      .eq("id", v.id).eq("user_id", ctx.userId).maybeSingle();
+    before = cur;
+  }
   const { data, error } = await ctx.supabase
     .from("prospecting_leads" as never)
     .update(patch as never)
@@ -983,6 +999,16 @@ async function execUpdateProspectingLead(ctx: DomainContext, args: unknown): Pro
     .select("id, title, status")
     .single();
   if (error) return fail(error.message);
+  // Guardrail: só a confirmação explícita do consultor conta como contacto.
+  if (before && before.status !== "contacted") {
+    await trackEvent(ctx.supabase, {
+      userId: ctx.userId,
+      event: TELEMETRY_EVENTS.leadContactado,
+      leadId: v.id,
+      channel: ctx.channel,
+      properties: { horas_desde_registo: hoursBetween(before.created_at), origem: "assessor" },
+    });
+  }
   return ok({ lead: data });
 }
 
