@@ -257,6 +257,12 @@ async function deliverReply(
   const { outcome, externalConversationId, userId, replyTo } = args;
   const alreadyPersisted = outcome.messageType === "__ALREADY_PERSISTED__";
 
+  // Idempotência de entrega: um reenvio do mesmo evento (retry do webhook,
+  // worker duplicado) não pode voltar a mandar a mesma frase ao consultor.
+  if (await alreadyDelivered(supabaseAdmin, userId, adapter.channel, outcome.reply)) {
+    return { ok: true } as AdapterSendResult;
+  }
+
   // Perguntas de resposta fechada seguem como botões tocáveis. Se o canal
   // não suportar, ou o envio interativo falhar (ex.: fora da janela de 24h),
   // cai para texto simples — a conversa nunca bloqueia por isto.
@@ -301,6 +307,35 @@ async function deliverReply(
     });
   }
   return send;
+}
+
+// Janela curta: só bloqueia repetições sem novo pedido do consultor.
+const DELIVERY_DEDUPE_MS = 120_000;
+
+export async function alreadyDelivered(
+  supabaseAdmin: any,
+  userId: string,
+  channel: string,
+  content: string,
+): Promise<boolean> {
+  const text = String(content ?? "").trim();
+  if (!text) return false;
+  try {
+    const since = new Date(Date.now() - DELIVERY_DEDUPE_MS).toISOString();
+    const { data } = await supabaseAdmin
+      .from("assessor_messages")
+      .select("id, content, created_at, role")
+      .eq("user_id", userId)
+      .eq("channel", channel)
+      .eq("role", "assistant")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (!Array.isArray(data)) return false;
+    return data.some((r: any) => String(r?.content ?? "").trim() === text);
+  } catch {
+    return false;
+  }
 }
 
 // Só propomos "Sim"/"Ainda não" quando existe mesmo um rascunho à espera de
