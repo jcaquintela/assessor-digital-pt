@@ -21,12 +21,17 @@ export function normalizeLoginToken(raw: string | null | undefined): string {
     .toLowerCase();
 }
 
+// Domínio público oficial do produto. Os links de entrada enviados ao consultor
+// (WhatsApp, Telegram, painel) usam sempre este domínio, nunca o de preview.
+export const PRODUCTION_APP_URL = "https://app.meuafonso.com";
+
 export function appBaseUrl(): string {
-  return (
-    process.env.APP_PUBLIC_URL ||
-    process.env.SITE_URL ||
-    "https://assessor-digital-pt.lovable.app"
-  ).replace(/\/+$/, "");
+  const configured = (process.env.APP_PUBLIC_URL || process.env.SITE_URL || "").trim();
+  // Ignora valores de staging/preview: um link interno do Lovable não serve
+  // para quem recebe a mensagem.
+  const usable =
+    configured && !/lovable\.(app|dev)/i.test(configured) ? configured : PRODUCTION_APP_URL;
+  return usable.replace(/\/+$/, "");
 }
 
 const LOGIN_RE = /^\/?(entrar|login|painel|dashboard|abrir painel|entrar no painel)$/i;
