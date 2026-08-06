@@ -255,6 +255,9 @@ function DealCard({ deal }: { deal: DealListItem }) {
               {deal.alert.label}
             </div>
           )}
+          {!deal.personName && deal.stage !== "concluido" && (
+            <div className="text-xs text-amber-600">Sem pessoa associada</div>
+          )}
         </CardContent>
       </Card>
     </Link>
