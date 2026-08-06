@@ -369,6 +369,90 @@ export const previewInviteMessage = createServerFn({ method: "POST" })
     return buildInvitePreview({ canal: data.canal, nome: data.nome ?? null, phone: data.phone ?? null });
   });
 
+// Emitir o convite a sério para uma conta já criada, sem depender de canal
+// ligado: o admin copia o texto (link mágico + número do Afonso + código) e
+// envia-o por onde quiser. Reemitir invalida o link anterior por usar.
+export type IssuedInvite = {
+  texto: string;
+  url: string;
+  codigo: string | null;
+  numeroAfonso: string | null;
+  waUrl: string | null;
+  enviado: boolean;
+  erroEnvio?: string;
+};
+
+export const issueInviteLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        target_user_id: z.string().uuid(),
+        canal: z.enum(["whatsapp", "telegram"]).default("whatsapp"),
+        enviar: z.boolean().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }): Promise<IssuedInvite> => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("name, phone")
+      .eq("id", data.target_user_id)
+      .maybeSingle();
+    const nome = (prof as { name?: string | null } | null)?.name ?? null;
+    const phoneRaw = (prof as { phone?: string | null } | null)?.phone ?? null;
+    const { normalizePhone } = await import("@/lib/whatsapp/phone");
+    const phone = data.canal === "whatsapp" ? normalizePhone(phoneRaw) : null;
+
+    const { buildInviteMessage } = await import("@/lib/admin/invite-message.server");
+    const convite = await buildInviteMessage(supabaseAdmin, {
+      userId: data.target_user_id,
+      canal: data.canal,
+      nome,
+      phone,
+      reason: "Link de acesso gerado no admin.",
+      issuedBy: context.userId,
+    });
+
+    let enviado = false;
+    let erroEnvio: string | undefined;
+    if (data.enviar) {
+      const { data: link } = await supabaseAdmin
+        .from("channel_links")
+        .select("external_id")
+        .eq("user_id", data.target_user_id)
+        .eq("channel", data.canal)
+        .maybeSingle();
+      const externalId = (link as { external_id?: string } | null)?.external_id;
+      if (!externalId) {
+        erroEnvio = `Esta conta ainda não tem ${data.canal} ligado — copia a mensagem e envia à mão.`;
+      } else {
+        try {
+          const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+          await sendReplyForChannel(data.canal as any, externalId, convite.texto);
+          enviado = true;
+        } catch (e) {
+          erroEnvio = e instanceof Error ? e.message : "Não foi possível enviar a mensagem.";
+        }
+      }
+    }
+
+    await auditAccess(context.userId, "access.invite_link_issued", {
+      targetUserId: data.target_user_id,
+      metadata: { canal: data.canal, enviado },
+    });
+
+    const waUrl =
+      phone && data.canal === "whatsapp"
+        ? `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(convite.texto)}`
+        : null;
+
+    return { ...convite, waUrl, enviado, ...(erroEnvio ? { erroEnvio } : {}) };
+  });
+
 // Mesmo mecanismo usado para subir uma conta manualmente a Team/beta:
 // cria o utilizador em auth e escreve o tier em profiles. Sem checkout.
 export const createAccess = createServerFn({ method: "POST" })
