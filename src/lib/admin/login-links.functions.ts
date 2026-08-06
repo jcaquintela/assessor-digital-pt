@@ -153,13 +153,25 @@ export const resendLoginLink = createServerFn({ method: "POST" })
       return { ok: false, erro: `Este consultor não tem ${canal} ligado à conta.` };
     }
 
-    const { url, expiresAt } = await issueDashboardLoginLink(supabaseAdmin, data.userId, canal, {
+    // Reenviar é reenviar o convite inteiro: link, número do Afonso e código.
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("name")
+      .eq("id", data.userId)
+      .maybeSingle();
+    const { buildInviteMessage } = await import("@/lib/admin/invite-message.server");
+    const convite = await buildInviteMessage(supabaseAdmin, {
+      userId: data.userId,
+      canal,
+      nome: (prof as { name?: string | null } | null)?.name ?? null,
+      phone: canal === "whatsapp" ? externalId : null,
       reason: data.motivo,
       issuedBy: context.userId,
     });
+    const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
 
     const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
-    await sendReplyForChannel(canal as any, externalId, LOGIN_LINK_REPLY(url));
+    await sendReplyForChannel(canal as any, externalId, convite.texto);
 
     await supabaseAdmin.from("admin_audit_logs").insert({
       admin_user_id: context.userId,
