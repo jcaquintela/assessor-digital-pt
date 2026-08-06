@@ -42,6 +42,8 @@ export type ProcessIncomingFileInput = {
   size: number;
   bytes: Uint8Array | ArrayBuffer;
   sourceMessageId?: string | null;
+  /** Imagens no gateway: a ligação automática corre só depois do OCR. */
+  deferAutoLink?: boolean;
 };
 
 export type ProcessIncomingFileResult = {
@@ -395,7 +397,7 @@ export async function processIncomingFile(
   // Drive Inteligente: se o conteúdo aponta claramente para registos já
   // existentes, liga o mais óbvio e propõe o seguinte (com confirmação).
   try {
-    if (classification !== "audio") {
+    if (classification !== "audio" && !input.deferAutoLink) {
       let extraText: string | null = null;
       if (mimeType.startsWith("text/") || mimeType === "application/json") {
         extraText = new TextDecoder().decode(body).slice(0, 20000);
