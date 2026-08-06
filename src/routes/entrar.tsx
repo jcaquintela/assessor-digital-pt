@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { redeemLoginLink, requestNewLoginLink } from "@/lib/auth/login-link.functions";
+import { getPasswordSetupState } from "@/lib/auth/password-setup.functions";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 
@@ -53,6 +54,17 @@ function EntrarPage() {
           setFailed(true);
           setMsg("Não consegui abrir a sessão. Pede um novo link ao Afonso.");
           return;
+        }
+        // Passo opcional: só a quem ainda não tem palavra-passe nem disse
+        // "agora não". Nunca bloqueia a entrada no painel.
+        try {
+          const state = await getPasswordSetupState();
+          if (state.shouldOffer) {
+            navigate({ to: "/definir-password", replace: true });
+            return;
+          }
+        } catch {
+          // Ignora: a entrada no painel é mais importante que o passo opcional.
         }
         navigate({ to: "/", replace: true });
       } catch {

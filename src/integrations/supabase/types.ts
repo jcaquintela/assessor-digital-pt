@@ -2583,6 +2583,8 @@ export type Database = {
           onboarding_last_offer_at: string | null
           onboarding_offers: number
           onboarding_stage: string
+          password_prompt_skipped_at: string | null
+          password_set_at: string | null
           phone: string | null
           phone_verified_at: string | null
           primary_channel: string
@@ -2615,6 +2617,8 @@ export type Database = {
           onboarding_last_offer_at?: string | null
           onboarding_offers?: number
           onboarding_stage?: string
+          password_prompt_skipped_at?: string | null
+          password_set_at?: string | null
           phone?: string | null
           phone_verified_at?: string | null
           primary_channel?: string
@@ -2647,6 +2651,8 @@ export type Database = {
           onboarding_last_offer_at?: string | null
           onboarding_offers?: number
           onboarding_stage?: string
+          password_prompt_skipped_at?: string | null
+          password_set_at?: string | null
           phone?: string | null
           phone_verified_at?: string | null
           primary_channel?: string
