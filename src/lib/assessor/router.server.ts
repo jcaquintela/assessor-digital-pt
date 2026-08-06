@@ -257,6 +257,48 @@ function extractJsonString(payload: any): string | null {
   return null;
 }
 
+/**
+ * Tenta ler o JSON do router mesmo quando a resposta vem cortada.
+ * A causa mais comum de "invalid json from router" é o modelo atingir o
+ * limite de tokens a meio do objeto: nesse caso fechamos os parêntesis em
+ * falta em vez de deitar fora a interpretação toda.
+ */
+export function parseRouterJson(raw: string): unknown | null {
+  const attempt = (s: string): unknown | null => {
+    try { return JSON.parse(s); } catch { return null; }
+  };
+  const direct = attempt(raw);
+  if (direct) return direct;
+
+  const start = raw.indexOf("{");
+  if (start < 0) return null;
+  const body = raw.slice(start);
+
+  const braced = body.match(/\{[\s\S]*\}/);
+  if (braced) {
+    const parsed = attempt(braced[0]);
+    if (parsed) return parsed;
+  }
+
+  // Reparação de truncatura: fecha string aberta e parêntesis em falta.
+  let inString = false;
+  let escaped = false;
+  const stack: string[] = [];
+  for (const ch of body) {
+    if (escaped) { escaped = false; continue; }
+    if (ch === "\\") { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  let repaired = body;
+  if (inString) repaired += '"';
+  repaired = repaired.replace(/,\s*$/, "").replace(/:\s*$/, ": null");
+  while (stack.length) repaired += stack.pop() === "[" ? "]" : "}";
+  return attempt(repaired);
+}
+
 // -------- Chamada --------
 
 export async function interpretAssessorMessage(input: RouterInput): Promise<RouterResult> {
