@@ -19,6 +19,7 @@ import {
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
 import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
+import { ReorderPagesDialog } from "@/components/drive/reorder-pages-dialog";
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import { groupDriveFiles, type GroupBy } from "@/lib/drive/group-files";
 import {
@@ -38,6 +39,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  ListOrdered,
 } from "lucide-react";
 
 type Tab =
@@ -242,6 +244,7 @@ function DrivePage() {
   });
 
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string | null } | null>(null);
+  const [orderTarget, setOrderTarget] = useState<string | null>(null);
   const naReciclagem = tab === "reciclagem";
 
   // Agrupamento da vista principal: por categoria (defeito), por negócio ou lista plana.
@@ -634,6 +637,20 @@ function DrivePage() {
                       >
                         <Link2 className="h-3 w-3" /> Ligações
                       </button>
+                      {f.doc_group_id && (
+                        <button
+                          type="button"
+                          className="c-badge tap-44"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setOrderTarget(f.id);
+                          }}
+                        >
+                          <ListOrdered className="h-3 w-3" /> Ordenar páginas
+                          {f.doc_page_number ? ` (pág. ${f.doc_page_number})` : ""}
+                        </button>
+                      )}
                       <button
                         type="button"
                         aria-label={`Categoria de ${f.original_file_name ?? "ficheiro"}`}
@@ -725,6 +742,12 @@ function DrivePage() {
         fileName={shareTarget?.name}
         open={!!shareTarget}
         onOpenChange={(v) => { if (!v) setShareTarget(null); }}
+      />
+
+      <ReorderPagesDialog
+        fileId={orderTarget}
+        open={!!orderTarget}
+        onOpenChange={(v) => { if (!v) setOrderTarget(null); }}
       />
 
       <FileCategoryDialog
