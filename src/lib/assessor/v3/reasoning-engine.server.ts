@@ -1378,7 +1378,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       user_id: userId,
       channel,
       model: "reasoning-engine-v3",
-      billed_model: V2_MODEL_DEFAULT,
+      billed_model: "google/gemini-3.6-flash",
       modality: "texto",
       intent: "reasoning_engine_v3",
       confidence: decideR.decision.confidence,
