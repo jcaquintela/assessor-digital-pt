@@ -43,6 +43,8 @@ export interface MentorTip {
   reason: string;
 }
 
+import { isDealClosed } from "@/lib/deals/stages";
+
 const CLOSED_PROPERTY = new Set(["vendido", "arquivado"]);
 
 function isoDaysAgo(n: number): string {
@@ -63,7 +65,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
   const { start, end } = todayRangeLisbon();
 
   const [deals, props, people, misc, events, movements, interactions] = await Promise.all([
-    supabase.from("opportunities").select("id, status, value, archived_at").eq("user_id", userId),
+    supabase.from("opportunities").select("id, status, stage, value, archived_at").eq("user_id", userId),
     supabase.from("properties").select("id, status").eq("user_id", userId),
     supabase.from("people").select("id").eq("user_id", userId),
     supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox"),
@@ -74,7 +76,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
   ]);
 
   const dealRows = ((deals.data as any[]) ?? []).filter(
-    (d) => !d.archived_at && !CLOSED_DEAL.has(String(d.status ?? "").toLowerCase()),
+    (d) => !d.archived_at && !isDealClosed(d),
   );
   const propRows = ((props.data as any[]) ?? []).filter(
     (p) => !CLOSED_PROPERTY.has(String(p.status ?? "").toLowerCase()),
@@ -192,7 +194,7 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
 
   // 2. Negócios na mesma fase há 25+ dias e sem contacto real nesse período.
   const presos = ((deals.data as any[]) ?? []).filter((d) => {
-    if (d.archived_at || CLOSED_DEAL.has(String(d.status ?? "").toLowerCase())) return false;
+    if (d.archived_at || isDealClosed(d)) return false;
     if (days(d.stage_changed_at) < 25) return false;
     const contacto = lastByDeal.get(d.id) ?? null;
     return !contacto || days(contacto) >= 25;
