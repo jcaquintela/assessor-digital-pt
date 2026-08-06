@@ -202,6 +202,7 @@ function DrivePage() {
   const linksByFile = listQ.data?.linksByFile ?? {};
 
   const removeFiles = useServerFn(deleteDriveFiles);
+  const confirmacao = useDestructiveConfirm();
   const deleteMany = useMutation({
     mutationFn: (ids: string[]) => removeFiles({ data: { ids } }),
     onSuccess: (res: any, ids) => {
@@ -312,6 +313,7 @@ function DrivePage() {
 
   return (
     <AppShell>
+      {confirmacao.dialog}
       <PageHeader
         title={MODULE_NAME.drive}
         subtitle="Envia. O Assessor organiza."
