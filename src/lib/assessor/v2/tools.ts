@@ -505,6 +505,21 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
   {
     type: "function",
     function: {
+      name: "search_files",
+      description:
+        "Lista ficheiros/documentos guardados no Drive Inteligente do consultor. Sem query devolve todos os mais recentes — usa sempre esta ferramenta quando o consultor pede a lista de ficheiros ou documentos, nunca peças para afunilar antes de mostrar.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Texto livre no nome, resumo ou tipo. Vazio = todos." },
+          document_type: { type: ["string", "null"] },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_property",
       description:
         "Cria uma ficha de imóvel. Preenche o que sabes; o consultor pode enriquecer depois.",
