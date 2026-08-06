@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { listProperties, archiveProperty } from "@/lib/assessor/properties.functions";
+import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
 import { AlertTriangle, Download, Plus, Search } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
