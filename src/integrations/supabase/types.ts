@@ -1322,6 +1322,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           body: string
+          body_edited: boolean
           broadcast_id: string | null
           created_at: string
           digest_date: string
@@ -1337,6 +1338,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           body?: string
+          body_edited?: boolean
           broadcast_id?: string | null
           created_at?: string
           digest_date: string
@@ -1352,6 +1354,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           body?: string
+          body_edited?: boolean
           broadcast_id?: string | null
           created_at?: string
           digest_date?: string
