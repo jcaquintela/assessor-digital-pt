@@ -192,7 +192,7 @@ export const listDuplicateAccountAlerts = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [{ data: profs }, { data: links }, { data: msgs }] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, name, email, subscription_tier, created_at"),
+      supabaseAdmin.from("profiles").select("id, name, email, subscription_tier, created_at, account_kind"),
       supabaseAdmin.from("channel_links").select("user_id, channel"),
       supabaseAdmin.from("assessor_messages").select("user_id"),
     ]);
@@ -206,7 +206,10 @@ export const listDuplicateAccountAlerts = createServerFn({ method: "GET" })
       if (m.user_id) actMap.set(m.user_id, (actMap.get(m.user_id) ?? 0) + 1);
     });
 
-    const rows = (profs ?? []).map((p: any) => ({
+    const rows = (profs ?? [])
+      // Já fundidas: não voltam a aparecer como duplicados a rever.
+      .filter((p: any) => p.account_kind !== "merged")
+      .map((p: any) => ({
       id: p.id as string,
       email: (p.email ?? "") as string,
       name: (p.name ?? null) as string | null,
