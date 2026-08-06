@@ -315,6 +315,23 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           return { reply: "Certo, descartei o áudio. O que percebi dele fica guardado." };
         }
       }
+
+      // "Descarta" dito DEPOIS de já ter confirmado o guardar: ou desfazemos
+      // mesmo, ou dizemos claramente que o ficheiro ficou guardado e como
+      // removê-lo. Nunca "fica sem efeito" sem dizer que efeito.
+      if (!mediaPending && isDiscardAudioRequest(trimmed)) {
+        const { discardAudioFile, findRecentlyKeptAudio } = await import("./audio-keep.server");
+        const kept = await findRecentlyKeptAudio(supabase, userId, channel, UNDO_KEEP_WINDOW_MS);
+        if (kept) {
+          await discardAudioFile(supabase, kept.fileId, userId);
+          await markPendingActionStatus(supabase, kept.pendingId, "cancelled", {
+            error_message: "consultor desfez o guardar do áudio",
+          });
+          return { reply: UNDO_KEEP_DONE_REPLY };
+        }
+        const older = await findRecentlyKeptAudio(supabase, userId, channel, 7 * 24 * 60 * 60 * 1000);
+        if (older) return { reply: UNDO_KEEP_TOO_LATE_REPLY };
+      }
     }
 
     // Um pendente antigo, cuja pergunta já não é a que está em aberto, não
