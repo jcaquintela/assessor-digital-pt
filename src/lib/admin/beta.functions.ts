@@ -165,6 +165,7 @@ export const convertBeta = createServerFn({ method: "POST" })
         target_user_id: z.string().uuid(),
         subscription_tier: tierSchema.optional(),
         reason: z.string().max(280).optional(),
+        force: z.boolean().optional(),
       })
       .parse(d),
   )
@@ -172,6 +173,30 @@ export const convertBeta = createServerFn({ method: "POST" })
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const before: any = await readProfile(supabaseAdmin, data.target_user_id);
+
+    // Rede de segurança: não converter uma conta "sombra" (criada pelo canal)
+    // quando existe outra conta com o mesmo número — isso duplicaria o cliente.
+    if (!data.force) {
+      const { data: full } = await supabaseAdmin
+        .from("profiles")
+        .select("email, phone")
+        .eq("id", data.target_user_id)
+        .maybeSingle();
+      const phone = ((full as any)?.phone ?? "").replace(/\D/g, "");
+      if (phone.length >= 9) {
+        const { data: dups } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .ilike("phone", `%${phone.slice(-9)}%`)
+          .neq("id", data.target_user_id);
+        if ((dups ?? []).length > 0) {
+          throw new Error(
+            "Existe outra conta com este número. Usa Fundir contas antes de converter, para não ficares com o mesmo cliente duplicado.",
+          );
+        }
+      }
+    }
+
     const tier = data.subscription_tier ?? (before?.subscription_tier ?? "base");
     const after = { subscription_tier: tier, is_beta_tester: false, beta_expires_at: null };
     const { error } = await supabaseAdmin
