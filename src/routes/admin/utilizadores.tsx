@@ -16,6 +16,8 @@ import {
   listDuplicateAccountAlerts,
   confirmAccessEmail,
   findAccountsByContact,
+  issueInviteLink,
+  type IssuedInvite,
   type AccessUser,
   type ExistingAccountMatch,
 } from "@/lib/admin/acessos.functions";
@@ -147,6 +149,7 @@ function AcessosPage() {
   const [deleting, setDeleting] = useState<AccessUser | null>(null);
   const [merging, setMerging] = useState<MergeSource | null>(null);
   const [support, setSupport] = useState<AccessUser | null>(null);
+  const [invite, setInvite] = useState<AccessUser | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["admin", "access-users"] });
@@ -224,6 +227,13 @@ function AcessosPage() {
                   disabled={!isSuper || me?.userId === u.id}
                   onClick={() => setSupport(u)}
                 >Entrar como utilizador</button>
+                {" · "}
+                <button
+                  type="button"
+                  className="admin-link"
+                  disabled={!isSuper}
+                  onClick={() => setInvite(u)}
+                >Link de acesso</button>
                 {" · "}
                 {!u.email_confirmed && (
                   <>
@@ -331,6 +341,10 @@ function AcessosPage() {
 
       {support && (
         <SupportModeDialog key={support.id} user={support} onClose={() => setSupport(null)} />
+      )}
+
+      {invite && (
+        <InviteLinkDialog key={invite.id} user={invite} onClose={() => setInvite(null)} />
       )}
 
       <SectionTitle>Códigos promocionais</SectionTitle>
