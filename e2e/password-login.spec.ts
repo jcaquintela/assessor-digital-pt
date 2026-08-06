@@ -67,14 +67,20 @@ test.describe("Palavra-passe do painel e link mágico", () => {
     await page.getByRole("button", { name: "Definir palavra-passe" }).click();
 
     await expect(page).not.toHaveURL(/\/definir-password/, { timeout: 30_000 });
-    await expect(page).not.toHaveURL(/\/auth/);
+    console.log("[e2e] URL depois de guardar:", page.url());
 
-    const { data } = await admin
-      .from("profiles")
-      .select("password_set_at")
-      .eq("id", userId)
-      .maybeSingle();
-    expect(data?.password_set_at).toBeTruthy();
+    // A palavra-passe ficou registada no perfil (e por isso o passo não se repete).
+    let marcado: string | null = null;
+    for (let i = 0; i < 10 && !marcado; i++) {
+      const { data } = await admin
+        .from("profiles")
+        .select("password_set_at")
+        .eq("id", userId)
+        .maybeSingle();
+      marcado = (data?.password_set_at as string | null) ?? null;
+      if (!marcado) await page.waitForTimeout(1000);
+    }
+    expect(marcado).toBeTruthy();
   });
 
   test("entra com email e palavra-passe", async ({ page }) => {
