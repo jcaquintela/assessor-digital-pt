@@ -34,6 +34,32 @@ export async function keepAudioFile(
 }
 
 /**
+ * Último áudio que o consultor mandou guardar, dentro da janela de desfazer.
+ * Devolve o id do ficheiro, ou null quando não há nada recente para desfazer.
+ */
+export async function findRecentlyKeptAudio(
+  supabase: any,
+  userId: string,
+  channel: string,
+  windowMs: number,
+): Promise<{ pendingId: string; fileId: string } | null> {
+  const since = new Date(Date.now() - windowMs).toISOString();
+  const { data } = await supabase
+    .from("pending_actions")
+    .select("id, created_resource_id, updated_at")
+    .eq("user_id", userId)
+    .eq("channel", channel)
+    .eq("intent", CONFIRM_KEEP_AUDIO_INTENT)
+    .eq("status", "executed")
+    .gte("updated_at", since)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  const row = Array.isArray(data) ? data[0] : null;
+  if (!row?.created_resource_id) return null;
+  return { pendingId: String(row.id), fileId: String(row.created_resource_id) };
+}
+
+/**
  * Cria o rascunho "confirm_keep_audio" e devolve a pergunta, ou null quando
  * não se aplica (áudio social, sem ficheiro, ou outra pergunta em aberto).
  */
