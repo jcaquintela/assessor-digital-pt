@@ -483,6 +483,48 @@ async function deliverContactCard(
   );
 }
 
+/**
+ * Resposta a uma imagem, com coalescência de rajada.
+ *
+ * Uma rajada de fotos (páginas de um documento) é um assunto só: cada foto é
+ * tratada e ligada normalmente, mas só a última fala — e fala por todas.
+ */
+async function deliverMediaReply(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  persistedUuid: string | null,
+  outcome: EngineOutcome,
+): Promise<void> {
+  let finalOutcome = outcome;
+  if (inbound.messageType === "image") {
+    const { decideImageBurstReply, buildImageBurstReply } = await import("./image-burst.server");
+    const decision = await decideImageBurstReply(supabaseAdmin, {
+      userId,
+      channel: adapter.channel,
+      currentMessageId: persistedUuid,
+    });
+    // Vem outra foto a seguir: esta cala-se.
+    if (!decision.answer) return;
+    if (decision.count > 1) {
+      const reply = await buildImageBurstReply(supabaseAdmin, {
+        userId,
+        channel: adapter.channel,
+        count: decision.count,
+        since: decision.since,
+      });
+      finalOutcome = { ...outcome, reply };
+    }
+  }
+  await deliverReply(adapter, supabaseAdmin, {
+    userId,
+    externalConversationId: inbound.externalConversationId,
+    outcome: finalOutcome,
+    replyTo: inbound.replyToMessageId ?? null,
+  });
+}
+
 async function handleInboundMediaInner(
   adapter: ChannelAdapter,
   supabaseAdmin: any,
