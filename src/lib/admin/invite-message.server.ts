@@ -11,9 +11,59 @@ export type InvitePayload = {
   numeroAfonso: string | null;
 };
 
+// Pré-visualização: mesma mensagem, sem emitir nada (sem link real, sem
+// gastar código). O admin lê exatamente o que vai sair, por canal.
+export type InvitePreview = InvitePayload & { placeholders: boolean };
+
 function prettyNumber(digits: string | null): string | null {
   if (!digits) return null;
   return `+${digits}`;
+}
+
+// Um só sítio a escrever a mensagem — pré-visualização e envio nunca divergem.
+export function formatInviteMessage(opts: {
+  nome?: string | null;
+  url: string;
+  codigo: string | null;
+  numeroAfonso: string | null;
+}): string {
+  const primeiroNome = (opts.nome ?? "").trim().split(/\s+/)[0] || "";
+  const linhas: string[] = [
+    primeiroNome ? `Olá ${primeiroNome}, bem-vindo ao Afonso.` : "Bem-vindo ao Afonso.",
+    "",
+    "1) Finaliza o registo no painel:",
+    opts.url,
+    `(válido ${LOGIN_TOKEN_TTL_MIN} minutos e só funciona uma vez)`,
+  ];
+  if (opts.numeroAfonso) {
+    linhas.push("", `2) Guarda o número do Afonso: ${opts.numeroAfonso}`);
+  }
+  if (opts.codigo) {
+    linhas.push(
+      "",
+      `${opts.numeroAfonso ? "3" : "2"}) Manda-lhe este código de acesso na primeira mensagem: ${opts.codigo}`,
+      `(válido ${WHATSAPP_CODE_TTL_MIN} minutos)`,
+    );
+  }
+  linhas.push("", "Depois disso é só falares com ele como falas comigo.");
+  return linhas.join("\n");
+}
+
+export async function buildInvitePreview(opts: {
+  canal: string;
+  nome?: string | null;
+  phone?: string | null;
+}): Promise<InvitePreview> {
+  const numeroAfonso = prettyNumber(await getDisplayNumber());
+  const url = "https://app.meuafonso.com/entrar?token=…(gerado no envio)";
+  const codigo = opts.canal === "whatsapp" && opts.phone ? "LIGAR-XXXX (gerado no envio)" : null;
+  return {
+    texto: formatInviteMessage({ nome: opts.nome, url, codigo, numeroAfonso }),
+    url,
+    codigo,
+    numeroAfonso,
+    placeholders: true,
+  };
 }
 
 // Código de acesso: o consultor manda-o ao Afonso na primeira mensagem e o
@@ -63,26 +113,10 @@ export async function buildInviteMessage(
   ]);
   const numeroAfonso = prettyNumber(numero);
 
-  const primeiroNome = (opts.nome ?? "").trim().split(/\s+/)[0] || "";
-  const linhas: string[] = [
-    primeiroNome ? `Olá ${primeiroNome}, bem-vindo ao Afonso.` : "Bem-vindo ao Afonso.",
-    "",
-    "1) Finaliza o registo no painel:",
+  return {
+    texto: formatInviteMessage({ nome: opts.nome, url, codigo, numeroAfonso }),
     url,
-    `(válido ${LOGIN_TOKEN_TTL_MIN} minutos e só funciona uma vez)`,
-  ];
-
-  if (numeroAfonso) {
-    linhas.push("", `2) Guarda o número do Afonso: ${numeroAfonso}`);
-  }
-  if (codigo) {
-    linhas.push(
-      "",
-      `${numeroAfonso ? "3" : "2"}) Manda-lhe este código de acesso na primeira mensagem: ${codigo}`,
-      `(válido ${WHATSAPP_CODE_TTL_MIN} minutos)`,
-    );
-  }
-  linhas.push("", "Depois disso é só falares com ele como falas comigo.");
-
-  return { texto: linhas.join("\n"), url, codigo, numeroAfonso };
+    codigo,
+    numeroAfonso,
+  };
 }
