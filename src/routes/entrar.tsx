@@ -32,6 +32,7 @@ function EntrarPage() {
   useEffect(() => {
     (async () => {
       const raw = new URLSearchParams(window.location.search).get("token");
+      const wantsPassword = new URLSearchParams(window.location.search).get("pw") === "1";
       const token = (raw ?? "").trim().replace(/[>"')\].,;:!?]+$/, "");
       setToken(token || null);
       if (!token) {
@@ -53,6 +54,11 @@ function EntrarPage() {
         if (error) {
           setFailed(true);
           setMsg("Não consegui abrir a sessão. Pede um novo link ao Afonso.");
+          return;
+        }
+        // Link de recuperação: vai direto ao ecrã da nova palavra-passe.
+        if (wantsPassword) {
+          navigate({ to: "/definir-password", replace: true });
           return;
         }
         // Passo opcional: só a quem ainda não tem palavra-passe nem disse

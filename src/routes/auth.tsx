@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BrandMark } from "@/components/brand-mark";
 import { toast } from "sonner";
+import { requestPasswordRecovery } from "@/lib/auth/password-recovery.functions";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -78,12 +79,23 @@ function AuthPage() {
   const reset = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Se a conta existir, enviámos um email com instruções.");
+    try {
+      // Contas sem email entregável (WhatsApp/Telegram) recebem o link pelo
+      // canal; as restantes seguem pelo email normal.
+      const r = await requestPasswordRecovery({ data: { email } });
+      if (r.sendEmail) {
+        await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+      }
+      toast.success(
+        "Se a conta existir, enviámos instruções por email ou pela conversa com o Afonso.",
+      );
+    } catch {
+      toast.error("Não consegui enviar agora. Tenta outra vez daqui a pouco.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const google = async () => {
@@ -143,7 +155,13 @@ function AuthPage() {
               <TabsContent value="reset">
                 <form onSubmit={reset} className="mt-4 space-y-3">
                   <Field label="Email" value={email} onChange={setEmail} type="email" />
-                  <Button type="submit" className="w-full" disabled={busy}>Enviar email</Button>
+                  <p className="text-xs text-muted-foreground">
+                    Enviamos um link para definires uma nova palavra-passe. Se só falas com o
+                    Afonso por WhatsApp ou Telegram, o link chega aí.
+                  </p>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "A enviar…" : "Enviar link de recuperação"}
+                  </Button>
                 </form>
               </TabsContent>
             </Tabs>
