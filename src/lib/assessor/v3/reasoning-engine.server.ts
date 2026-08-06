@@ -1378,6 +1378,8 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       user_id: userId,
       channel,
       model: "reasoning-engine-v3",
+      billed_model: V2_MODEL_DEFAULT,
+      modality: "texto",
       intent: "reasoning_engine_v3",
       confidence: decideR.decision.confidence,
       input_tokens: inputTokens,
