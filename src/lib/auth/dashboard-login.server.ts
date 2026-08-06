@@ -6,6 +6,21 @@
 
 export const LOGIN_TOKEN_TTL_MIN = 15;
 
+// Um link acabado de usar continua a funcionar durante uns minutos: recarregar
+// a página, voltar atrás ou o browser repetir o pedido não pode deixar o
+// consultor sem entrada.
+export const REDEEM_GRACE_MS = 5 * 60_000;
+
+// Clientes de mensagens (WhatsApp, Outlook, etc.) colam pontuação ao link.
+export function normalizeLoginToken(raw: string | null | undefined): string {
+  return (raw ?? "")
+    .trim()
+    .replace(/^[<"'(\[]+/, "")
+    .replace(/[>"')\].,;:!?]+$/, "")
+    .trim()
+    .toLowerCase();
+}
+
 export function appBaseUrl(): string {
   return (
     process.env.APP_PUBLIC_URL ||
@@ -57,13 +72,16 @@ export type RedeemResult =
 export async function redeemDashboardLoginToken(token: string): Promise<RedeemResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+  const clean = normalizeLoginToken(token);
   const { data } = await supabaseAdmin
     .from("dashboard_login_tokens")
     .select("token, user_id, expires_at, used_at")
-    .eq("token", token)
+    .eq("token", clean)
     .maybeSingle();
   const row = data as { user_id: string; expires_at: string; used_at: string | null } | null;
-  if (!row || row.used_at || new Date(row.expires_at).getTime() < Date.now()) {
+  const usedTooLongAgo =
+    !!row?.used_at && Date.now() - new Date(row.used_at).getTime() > REDEEM_GRACE_MS;
+  if (!row || usedTooLongAgo || new Date(row.expires_at).getTime() < Date.now()) {
     return { ok: false, reason: "invalid" };
   }
 
@@ -84,7 +102,55 @@ export async function redeemDashboardLoginToken(token: string): Promise<RedeemRe
   await supabaseAdmin
     .from("dashboard_login_tokens")
     .update({ used_at: new Date().toISOString() })
-    .eq("token", token);
+    .eq("token", clean);
 
   return { ok: true, email, tokenHash };
+}
+
+/* ------------------------- Pedir um link novo ---------------------------- */
+
+export type ReissueResult =
+  | { ok: true; channel: string }
+  | { ok: false; reason: "unknown_token" | "no_channel" | "too_soon" };
+
+// Recuperação a partir do próprio ecrã de erro: o token antigo (gasto ou
+// expirado) diz-nos quem é o consultor e por onde falar com ele.
+export async function reissueLoginLinkFromToken(token: string): Promise<ReissueResult> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const clean = normalizeLoginToken(token);
+
+  const { data } = await supabaseAdmin
+    .from("dashboard_login_tokens")
+    .select("user_id, channel, created_at")
+    .eq("token", clean)
+    .maybeSingle();
+  const row = data as { user_id: string; channel: string; created_at: string } | null;
+  if (!row) return { ok: false, reason: "unknown_token" };
+
+  const { data: fresh } = await supabaseAdmin
+    .from("dashboard_login_tokens")
+    .select("created_at")
+    .eq("user_id", row.user_id)
+    .is("used_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const last = (fresh as { created_at: string }[] | null)?.[0]?.created_at;
+  if (last && Date.now() - new Date(last).getTime() < 30_000) {
+    return { ok: false, reason: "too_soon" };
+  }
+
+  const channel = row.channel === "telegram" ? "telegram" : "whatsapp";
+  const { data: link } = await supabaseAdmin
+    .from("channel_links")
+    .select("external_id")
+    .eq("user_id", row.user_id)
+    .eq("channel", channel)
+    .maybeSingle();
+  const externalId = (link as { external_id?: string } | null)?.external_id;
+  if (!externalId) return { ok: false, reason: "no_channel" };
+
+  const { url } = await issueDashboardLoginLink(supabaseAdmin, row.user_id, channel);
+  const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+  await sendReplyForChannel(channel as any, externalId, LOGIN_LINK_REPLY(url));
+  return { ok: true, channel };
 }
