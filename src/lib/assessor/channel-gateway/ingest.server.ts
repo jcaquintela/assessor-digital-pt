@@ -778,10 +778,57 @@ async function handleInboundMediaInner(
           const caption = inbound.media?.caption ?? inbound.text ?? null;
           const { docLinkText, documentToEngineText } = await import("@/lib/drive/doc-engine-text");
           let autoReply: string | null = null;
+          // Documento de várias páginas: consolidamos a leitura das páginas
+          // anteriores para haver uma ligação única ao imóvel.
+          let pageInfo: Awaited<
+            ReturnType<typeof import("@/lib/drive/doc-pages.server").consolidateDocumentPage>
+          > | null = null;
+          let effectiveReading = docMeta?.reading ?? null;
+          if (result.fileId && docMeta?.reading) {
+            const { consolidateDocumentPage } = await import("@/lib/drive/doc-pages.server");
+            pageInfo = await consolidateDocumentPage({
+              supabase: supabaseAdmin,
+              userId,
+              fileId: result.fileId,
+              reading: {
+                ...docMeta.reading,
+                visible_text: docMeta.reading.visible_text ?? reading.visible_text ?? null,
+              },
+            });
+            effectiveReading = { ...docMeta.reading, ...pageInfo.merged } as typeof docMeta.reading;
+          }
+
+          // Página seguinte de um documento já identificado e ligado: não se
+          // volta a perguntar nada, só se confirma que entrou no mesmo sítio.
+          if (pageInfo?.joined) {
+            const { pageJoinedText } = await import("@/lib/drive/doc-pages");
+            const { findActivePendingAction, markPendingActionStatus } =
+              await import("@/lib/assessor/memory.server");
+            const prevPending = await findActivePendingAction(supabaseAdmin, userId, adapter.channel);
+            if (prevPending?.intent === "classify_file") {
+              await markPendingActionStatus(supabaseAdmin, prevPending.id, "cancelled");
+            }
+            await deliverReply(adapter, supabaseAdmin, {
+              userId,
+              externalConversationId: inbound.externalConversationId,
+              outcome: {
+                reply: pageJoinedText(
+                  pageInfo.pageNumber,
+                  effectiveReading?.doc_type ?? null,
+                  pageInfo.linkedLabel,
+                ),
+              },
+              replyTo: inbound.replyToMessageId ?? null,
+            });
+            return;
+          }
           if (result.fileId) {
             visionDone = true;
             const extraText =
-              docLinkText({ ...(docMeta?.reading ?? {}), visible_text: reading.visible_text }) ?? null;
+              docLinkText({
+                ...(effectiveReading ?? {}),
+                visible_text: effectiveReading?.visible_text ?? reading.visible_text,
+              }) ?? null;
             try {
               const { autoLinkAndSuggest } = await import("@/lib/drive/link-suggestions.server");
               const auto = await autoLinkAndSuggest({
@@ -803,8 +850,8 @@ async function handleInboundMediaInner(
           }
 
           // Documento fotografado: dizemos o que é, em vez de "a que se refere?".
-          const docText = docMeta?.reading
-            ? documentToEngineText(docMeta.reading, autoReply ? null : caption)
+          const docText = effectiveReading
+            ? documentToEngineText(effectiveReading, autoReply ? null : caption)
             : null;
           if (docText && autoReply) {
             const { findActivePendingAction, markPendingActionStatus } =

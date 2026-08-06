@@ -3521,9 +3521,11 @@ export type Database = {
           doc_artigo_matricial: string | null
           doc_expires_on: string | null
           doc_fracao: string | null
+          doc_group_id: string | null
           doc_issued_on: string | null
           doc_morada: string | null
           doc_nif: string | null
+          doc_page_number: number | null
           document_type: string | null
           error_code: string | null
           error_message: string | null
@@ -3565,9 +3567,11 @@ export type Database = {
           doc_artigo_matricial?: string | null
           doc_expires_on?: string | null
           doc_fracao?: string | null
+          doc_group_id?: string | null
           doc_issued_on?: string | null
           doc_morada?: string | null
           doc_nif?: string | null
+          doc_page_number?: number | null
           document_type?: string | null
           error_code?: string | null
           error_message?: string | null
@@ -3609,9 +3613,11 @@ export type Database = {
           doc_artigo_matricial?: string | null
           doc_expires_on?: string | null
           doc_fracao?: string | null
+          doc_group_id?: string | null
           doc_issued_on?: string | null
           doc_morada?: string | null
           doc_nif?: string | null
+          doc_page_number?: number | null
           document_type?: string | null
           error_code?: string | null
           error_message?: string | null
