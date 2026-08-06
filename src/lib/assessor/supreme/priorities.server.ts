@@ -66,9 +66,9 @@ export async function computePriorities(
       .limit(50),
     supabase
       .from("opportunities")
-      .select("id, type, status, value, next_action, next_action_date, person_id, updated_at")
+      .select("id, type, status, stage, archived_at, value, next_action, next_action_date, person_id, updated_at")
       .eq("user_id", userId)
-      .not("status", "in", "(Perdida,Escritura,closed_lost,closed_won,cancelled)")
+      .is("archived_at", null)
       .limit(50),
   ]);
 
@@ -159,6 +159,8 @@ export async function computePriorities(
 
   // Oportunidades sem próxima acção OU com next_action_date passada
   for (const o of ((opps as any[]) ?? [])) {
+    // A fase manda: negócio concluído nunca é prioridade de hoje.
+    if (isDealClosed(o)) continue;
     const noAction = !o.next_action;
     const naDate = o.next_action_date ? new Date(o.next_action_date) : null;
     const staleUpdate = o.updated_at ? daysBetween(now, new Date(o.updated_at)) : 0;
