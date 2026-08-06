@@ -106,10 +106,18 @@ d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
   let a: { client: SupabaseClient; userId: string };
   let b: { client: SupabaseClient; userId: string };
   let aPath: string;
+  let provisioned = false;
 
   beforeAll(async () => {
-    a = await signIn(aEmail!, aPass!);
-    b = await signIn(bEmail!, bPass!);
+    if (canProvision) {
+      const [ca, cb] = await Promise.all([provisionUser("a"), provisionUser("b")]);
+      provisioned = true;
+      a = await signIn(ca.email, ca.password);
+      b = await signIn(cb.email, cb.password);
+    } else {
+      a = await signIn(aEmail!, aPass!);
+      b = await signIn(bEmail!, bPass!);
+    }
     expect(a.userId).not.toBe(b.userId);
 
     aPath = `${a.userId}/isolation-test/${crypto.randomUUID()}.txt`;
@@ -128,6 +136,12 @@ d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
       await a?.client.auth.signOut();
       await b?.client.auth.signOut();
     } catch {}
+    if (provisioned) {
+      try {
+        if (a?.userId) await deleteUser(a.userId);
+        if (b?.userId) await deleteUser(b.userId);
+      } catch {}
+    }
   });
 
   it("B cannot list A's prefix via storage.list", async () => {
