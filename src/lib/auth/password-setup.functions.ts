@@ -3,6 +3,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isPlaceholderEmail } from "@/lib/profile/email";
 
 // Deve mostrar-se o passo? Só a quem ainda não definiu palavra-passe nem
 // disse "agora não".
@@ -17,10 +18,14 @@ export const getPasswordSetupState = createServerFn({ method: "GET" })
 
     const hasPassword = !!data?.password_set_at;
     const skipped = !!data?.password_prompt_skipped_at;
+    // Contas criadas pelo canal (WhatsApp/Telegram) têm email sintético: uma
+    // palavra-passe com esse email nunca serviria para entrar. Não se oferece.
+    const email = (data?.email as string | null) ?? null;
+    const semEmailReal = isPlaceholderEmail(email);
     return {
-      email: (data?.email as string | null) ?? null,
+      email,
       hasPassword,
-      shouldOffer: !hasPassword && !skipped,
+      shouldOffer: !hasPassword && !skipped && !semEmailReal,
     };
   });
 
