@@ -15,8 +15,8 @@ export type SendTelemetry = {
 };
 
 export type SendResult =
-  | ({ ok: true; messageId: string | null } & { telemetry: SendTelemetry })
-  | ({ ok: false; error: string } & { telemetry: SendTelemetry });
+  | ({ ok: true; messageId: string | null } & { telemetry: SendTelemetry; logId?: string | null })
+  | ({ ok: false; error: string } & { telemetry: SendTelemetry; logId?: string | null });
 
 function sanitize(msg: string | null | undefined): string | null {
   if (!msg) return null;
@@ -129,7 +129,7 @@ export async function sendWhatsAppText(
 export async function sendWhatsAppPayload(
   to: string,
   payload: Record<string, unknown>,
-  opts: { triggeredBy?: string | null; kind?: "auto" | "test" } = {},
+  opts: SendOpts = {},
 ): Promise<SendResult> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? null;
@@ -158,8 +158,8 @@ export async function sendWhatsAppPayload(
       errorMessage: `Credenciais WhatsApp em falta: ${missing}`,
     };
     console.error("[whatsapp-send] config incompleta:", missing);
-    await persistLog({ telemetry, ...opts });
-    return { ok: false, error: telemetry.errorMessage!, telemetry };
+    const logId = await persistLog({ telemetry, ...opts });
+    return { ok: false, error: telemetry.errorMessage!, telemetry, logId };
   }
 
   const url = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
@@ -204,8 +204,8 @@ export async function sendWhatsAppPayload(
           phone_number_id_suffix: phoneNumberId.slice(-4),
         }),
       );
-      await persistLog({ telemetry, ...opts });
-      return { ok: false, error: telemetry.errorMessage ?? `HTTP ${res.status}`, telemetry };
+      const logId = await persistLog({ telemetry, ...opts });
+      return { ok: false, error: telemetry.errorMessage ?? `HTTP ${res.status}`, telemetry, logId };
     }
 
     const messageId: string | null = json?.messages?.[0]?.id ?? null;
@@ -215,8 +215,8 @@ export async function sendWhatsAppPayload(
       httpStatus: res.status,
       messageId,
     };
-    await persistLog({ telemetry, ...opts });
-    return { ok: true, messageId, telemetry };
+    const logId = await persistLog({ telemetry, ...opts });
+    return { ok: true, messageId, telemetry, logId };
   } catch (err) {
     const msg = sanitize(err instanceof Error ? err.message : String(err));
     const telemetry: SendTelemetry = {
@@ -225,7 +225,7 @@ export async function sendWhatsAppPayload(
       errorMessage: msg,
     };
     console.error("[whatsapp-send] erro de rede:", msg);
-    await persistLog({ telemetry, ...opts });
-    return { ok: false, error: msg ?? "network error", telemetry };
+    const logId = await persistLog({ telemetry, ...opts });
+    return { ok: false, error: msg ?? "network error", telemetry, logId };
   }
 }
