@@ -27,14 +27,55 @@ function sanitize(msg: string | null | undefined): string | null {
     .slice(0, 500);
 }
 
+/** Contexto de custo/proatividade de um envio (fica no log para COGS). */
+export interface SendMeta {
+  purpose?: string | null;
+  templateName?: string | null;
+  templateCategory?: string | null;
+  templateLanguage?: string | null;
+  outsideWindow?: boolean | null;
+  hoursSinceLastInbound?: number | null;
+  testId?: string | null;
+}
+
+export type SendOpts = {
+  triggeredBy?: string | null;
+  kind?: "auto" | "test";
+  meta?: SendMeta;
+  /** Devolve o id da linha de log criada (usado pelos testes de proatividade). */
+  returnLogId?: boolean;
+};
+
 async function persistLog(entry: {
   telemetry: SendTelemetry;
   triggeredBy?: string | null;
   kind?: "auto" | "test";
-}) {
+  meta?: SendMeta;
+}): Promise<string | null> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("whatsapp_send_logs" as never).insert({
+    const meta = entry.meta ?? {};
+    const isTemplate = !!meta.templateName;
+
+    // Custo: só sai valor quando existe tarifa registada para a categoria e
+    // país. Sem tarifa fica a null — "por confirmar", nunca zero.
+    let billable: boolean | null = null;
+    let costEur: number | null = null;
+    let costSource: string | null = null;
+    try {
+      const { priceSend } = await import("./pricing.server");
+      const est = await priceSend(supabaseAdmin, {
+        isTemplate,
+        outsideWindow: meta.outsideWindow ?? null,
+        category: meta.templateCategory ?? null,
+        toPhone: entry.telemetry.to,
+      });
+      billable = est.billable;
+      costEur = est.costEur;
+      costSource = est.source;
+    } catch { /* sem custo calculável */ }
+
+    const { data } = await supabaseAdmin.from("whatsapp_send_logs" as never).insert({
       to_phone: entry.telemetry.to,
       phone_number_id: entry.telemetry.phoneNumberId,
       http_status: entry.telemetry.httpStatus,
@@ -47,16 +88,29 @@ async function persistLog(entry: {
       fbtrace_id: entry.telemetry.fbtraceId,
       triggered_by: entry.triggeredBy ?? null,
       kind: entry.kind ?? "auto",
-    } as never);
+      purpose: meta.purpose ?? null,
+      template_name: meta.templateName ?? null,
+      template_category: meta.templateCategory ?? null,
+      template_language: meta.templateLanguage ?? null,
+      outside_window: meta.outsideWindow ?? null,
+      hours_since_last_inbound: meta.hoursSinceLastInbound ?? null,
+      billable,
+      cost_eur: costEur,
+      cost_source: costSource,
+      delivery_status: entry.telemetry.ok ? "sent" : "failed",
+      test_id: meta.testId ?? null,
+    } as never).select("id").maybeSingle();
+    return ((data as any)?.id as string) ?? null;
   } catch (err) {
     console.error("[whatsapp-send] falha a gravar log:", err instanceof Error ? err.message : err);
+    return null;
   }
 }
 
 export async function sendWhatsAppText(
   to: string,
   body: string,
-  opts: { triggeredBy?: string | null; kind?: "auto" | "test" } = {},
+  opts: SendOpts = {},
 ): Promise<SendResult> {
   // Formatação consistente: sintaxe WhatsApp (não Markdown), listas com "- ".
   const { formatForWhatsApp } = await import("@/lib/assessor/culture/whatsapp-format");
