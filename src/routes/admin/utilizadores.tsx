@@ -14,7 +14,9 @@ import {
   revokePromoCode,
   listDuplicateAccountAlerts,
   confirmAccessEmail,
+  findAccountsByContact,
   type AccessUser,
+  type ExistingAccountMatch,
 } from "@/lib/admin/acessos.functions";
 import { getMyAdminRole } from "@/lib/admin.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
@@ -51,7 +53,6 @@ function AcessosPage() {
   const listFn = useServerFn(listAccessUsers);
   const promosFn = useServerFn(listPromoCodes);
   const dupsFn = useServerFn(listDuplicateAccountAlerts);
-  const createFn = useServerFn(createAccess);
   const updateFn = useServerFn(updateAccess);
   const deactivateFn = useServerFn(deactivateAccess);
   const reactivateFn = useServerFn(reactivateAccess);
@@ -292,7 +293,7 @@ function AcessosPage() {
       <CreateAccessDialog
         open={creating}
         onOpenChange={setCreating}
-        onSubmit={(payload) => run("Acesso criado.", createFn({ data: payload }).then(() => setCreating(false)))}
+        onDone={() => { setCreating(false); invalidate(); }}
       />
       <EditAccessDialog
         user={editing}
@@ -341,30 +342,101 @@ function TierSelect({ value, onChange }: { value: SubscriptionTier; onChange: (v
 }
 
 function CreateAccessDialog({
-  open, onOpenChange, onSubmit,
+  open, onOpenChange, onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onSubmit: (p: { email: string; subscription_tier: SubscriptionTier; is_beta_tester?: boolean; beta_expires_at?: string | null }) => void;
+  onDone: () => void;
 }) {
+  const createFn = useServerFn(createAccess);
+  const findFn = useServerFn(findAccountsByContact);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [sendChannel, setSendChannel] = useState<"whatsapp" | "telegram" | "nenhum">("whatsapp");
   const [tier, setTier] = useState<SubscriptionTier>("consultor");
   const [beta, setBeta] = useState(false);
   const [expires, setExpires] = useState("");
+  const [dups, setDups] = useState<ExistingAccountMatch[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const reset = () => {
+    setName(""); setEmail(""); setPhone(""); setTier("consultor");
+    setBeta(false); setExpires(""); setDups(null); setSendChannel("whatsapp");
+  };
+
+  const payload = (associateTo?: string) => ({
+    email: email.trim(),
+    name: name.trim() || undefined,
+    phone: phone.trim() || null,
+    subscription_tier: tier,
+    is_beta_tester: beta,
+    beta_expires_at: beta && expires ? new Date(expires).toISOString() : null,
+    send_link_channel: sendChannel,
+    associate_to_user_id: associateTo ?? null,
+  });
+
+  const submit = async (associateTo?: string) => {
+    if (!email.trim() && !associateTo) { toast.error("Indica o email."); return; }
+    setBusy(true);
+    try {
+      const res = await createFn({ data: payload(associateTo) });
+      if (!res.ok) {
+        setDups(res.duplicates);
+        return;
+      }
+      toast.success(
+        res.associated ? "Canais associados à conta existente." : "Acesso criado e confirmado.",
+      );
+      if (res.erroEnvio) toast.error(res.erroEnvio);
+      else if (res.linkEnviado) toast.success(`Link de acesso enviado por ${res.canal}.`);
+      reset();
+      onDone();
+    } catch (e) {
+      toast.error((e as Error).message || "Não foi possível concluir.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Verificação de duplicado enquanto o admin preenche — antes de criar seja o que for.
+  const checkDuplicates = async () => {
+    if (!email.trim() && !phone.trim()) return;
+    try {
+      const found = await findFn({ data: { email: email.trim() || null, phone: phone.trim() || null } });
+      setDups(found.length ? found : null);
+    } catch { /* verificação silenciosa: o servidor volta a validar ao criar */ }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Criar acesso</DialogTitle>
-          <DialogDescription>Cria a conta e aplica o plano diretamente, sem checkout.</DialogDescription>
+          <DialogDescription>
+            Nome, email e telefone no mesmo passo. A conta nasce confirmada, com os canais já ligados,
+            e recebe um único link de acesso.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
+          <label className="block text-sm">Nome
+            <input className="admin-input mt-1 w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do consultor" />
+          </label>
           <label className="block text-sm">Email
-            <input className="admin-input mt-1 w-full" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@empresa.pt" />
+            <input className="admin-input mt-1 w-full" type="email" value={email} onChange={(e) => setEmail(e.target.value)} onBlur={checkDuplicates} placeholder="nome@empresa.pt" />
+          </label>
+          <label className="block text-sm">Telefone (WhatsApp)
+            <input className="admin-input mt-1 w-full" value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={checkDuplicates} placeholder="351912345678" />
           </label>
           <label className="block text-sm">Plano
             <TierSelect value={tier} onChange={setTier} />
+          </label>
+          <label className="block text-sm">Enviar link de acesso por
+            <select className="admin-input mt-1 w-full" value={sendChannel} onChange={(e) => setSendChannel(e.target.value as any)}>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="telegram">Telegram</option>
+              <option value="nenhum">Não enviar agora</option>
+            </select>
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
@@ -375,19 +447,37 @@ function CreateAccessDialog({
               <input className="admin-input mt-1 w-full" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
             </label>
           ) : null}
+
+          {dups?.length ? (
+            <div className="rounded-md border p-3 text-sm" style={{ borderColor: "var(--warn, #d97706)" }}>
+              <p className="font-medium">
+                Já existe uma conta com este {Array.from(new Set(dups.flatMap((d) => d.matchedOn))).join(" / ")} — queres associar a esta em vez de criar nova?
+              </p>
+              <ul className="mt-2 space-y-2">
+                {dups.map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-3">
+                    <span className="mini">
+                      {d.name || d.email}
+                      {d.isShadow ? " (conta-sombra)" : ""} · {tierLabel(d.tier)}
+                      {d.channels.length ? ` · ${d.channels.join(", ")}` : ""}
+                    </span>
+                    <button type="button" className="admin-btn" disabled={busy} onClick={() => submit(d.id)}>
+                      Associar a esta
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
         <DialogFooter>
           <button type="button" className="admin-btn" onClick={() => onOpenChange(false)}>Cancelar</button>
           <button
             type="button"
             className="admin-btn-primary"
-            onClick={() => onSubmit({
-              email: email.trim(),
-              subscription_tier: tier,
-              is_beta_tester: beta,
-              beta_expires_at: beta && expires ? new Date(expires).toISOString() : null,
-            })}
-          >Criar acesso</button>
+            disabled={busy || !!dups?.length}
+            onClick={() => submit()}
+          >{busy ? "A criar…" : "Criar acesso"}</button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
