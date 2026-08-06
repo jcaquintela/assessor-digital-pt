@@ -4144,6 +4144,7 @@ export type Database = {
           table_name: string
         }[]
       }
+      purge_admin_audit_logs: { Args: { _keep_days?: number }; Returns: number }
       release_conversation_lock: {
         Args: { _channel: string; _holder?: string; _user_id: string }
         Returns: undefined
