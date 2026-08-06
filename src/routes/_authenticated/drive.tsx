@@ -7,6 +7,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 import { toast } from "sonner";
 import {
   listDriveFiles,
