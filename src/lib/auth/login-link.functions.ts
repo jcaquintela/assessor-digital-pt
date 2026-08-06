@@ -13,3 +13,14 @@ export const redeemLoginLink = createServerFn({ method: "POST" })
     if (!r.ok) return { ok: false as const, reason: r.reason };
     return { ok: true as const, email: r.email, tokenHash: r.tokenHash };
   });
+
+// Recuperação directa no ecrã de erro: reenvia um link novo pelo canal em que
+// o consultor já fala com o Afonso.
+export const requestNewLoginLink = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => schema.parse(data))
+  .handler(async ({ data }) => {
+    const { reissueLoginLinkFromToken } = await import("./dashboard-login.server");
+    const r = await reissueLoginLinkFromToken(data.token);
+    if (!r.ok) return { ok: false as const, reason: r.reason };
+    return { ok: true as const, channel: r.channel };
+  });
