@@ -71,6 +71,22 @@ export const getSystemHealth = createServerFn({ method: "GET" })
     };
 
     const tgKey = !!process.env.TELEGRAM_API_KEY;
+
+    // Interpretação: percentagem de chamadas ao modelo que falharam nas últimas
+    // 24h (inclui respostas ilegíveis do router). Acima de 3% já se nota.
+    const aiTotal = aiCalls.count ?? 0;
+    const aiBad = aiFails.count ?? 0;
+    const failRate = aiTotal > 0 ? (aiBad / aiTotal) * 100 : 0;
+    const interpretacao: HealthItem = {
+      key: "interpretacao",
+      label: "Interpretação",
+      level: aiTotal === 0 ? "warn" : failRate >= 5 ? "bad" : failRate >= 3 ? "warn" : "ok",
+      detail:
+        aiTotal === 0
+          ? "sem chamadas nas últimas 24h"
+          : `${failRate.toFixed(1)}% falhas · ${aiBad}/${aiTotal} em 24h`,
+    };
+
     const telegram: HealthItem = {
       key: "telegram",
       label: "Telegram",
