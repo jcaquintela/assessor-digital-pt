@@ -24,6 +24,7 @@ import { getPersonAttention } from "@/lib/people/attention.functions";
 import { assuntoDePessoa } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
 import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
+import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
   validateSearch: (
@@ -83,10 +84,21 @@ function PessoasPage() {
   const toggle = (id: string) =>
     setSel((cur) => { const n = new Set(cur); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  async function eliminar(id: string, nome: string) {
-    if (!confirm(`Arquivar ${nome}? Sai das listas, mas podes repor na ficha.`)) return;
-    try { await arquivarPessoa(id); toast.success("Pessoa arquivada."); }
-    catch (e) { toast.error((e as Error).message); }
+  function eliminar(id: string, nome: string) {
+    confirmacao.pedir({
+      acao: "Arquivar pessoa",
+      alvo: nome,
+      efeito: "arquivo",
+      resumo: [
+        "A pessoa sai das listas, pesquisas e sugestões do Assessor.",
+        "Seguimentos, interações e ficheiros ligados mantêm-se guardados.",
+        "Nada é enviado a terceiros.",
+      ],
+      onConfirm: async () => {
+        try { await arquivarPessoa(id); toast.success("Pessoa arquivada."); }
+        catch (e) { toast.error((e as Error).message); }
+      },
+    });
   }
 
   async function exportar(tipo: "csv" | "vcf") {
