@@ -3,6 +3,7 @@
 // evitar barulho, respeitando a Regra de Ouro.
 
 import { sanitizeReply } from "../culture/sanitize";
+import { isDealClosed } from "@/lib/deals/stages";
 
 export type NudgeKind =
   | "person_silence"       // pessoa com oportunidade sem contacto há N dias
@@ -69,11 +70,13 @@ export async function generateNudgesForUser(
   // 1) Pessoas silenciadas há ≥21 dias com oportunidade aberta.
   const { data: opps } = await supabase
     .from("opportunities")
-    .select("id, person_id, next_action, next_action_date, updated_at")
+    .select("id, person_id, stage, status, archived_at, next_action, next_action_date, updated_at")
     .eq("user_id", userId)
-    .not("status", "in", "(closed_won,closed_lost,cancelled)")
+    .is("archived_at", null)
     .limit(50);
-  const personIds = Array.from(new Set(((opps as any[]) ?? []).map((o) => o.person_id).filter(Boolean)));
+  // A fase é a fonte de verdade: negócio concluído não gera proatividade.
+  const abertos = ((opps as any[]) ?? []).filter((o) => !isDealClosed(o));
+  const personIds = Array.from(new Set(abertos.map((o) => o.person_id).filter(Boolean)));
   if (personIds.length) {
     const { data: people } = await supabase
       .from("people")
