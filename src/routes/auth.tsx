@@ -159,7 +159,9 @@ function AuthPage() {
                     Enviamos um link para definires uma nova palavra-passe. Se só falas com o
                     Afonso por WhatsApp ou Telegram, o link chega aí.
                   </p>
-                  <Button type="submit" className="w-full" disabled={busy}>Enviar email</Button>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "A enviar…" : "Enviar link de recuperação"}
+                  </Button>
                 </form>
               </TabsContent>
             </Tabs>
