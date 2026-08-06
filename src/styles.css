@@ -232,9 +232,9 @@ html[data-keyboard="open"] .mobile-bottom-nav {
 
 /* =====================================================================
  * Sistema de design do Admin do Afonso.
- * Escopo em .admin-root para não afetar a app do consultor.
+ * Escopo em :is(.admin-root,.admin-surface) para não afetar a app do consultor.
  * ===================================================================== */
-.admin-root {
+:is(.admin-root,.admin-surface) {
   --ink: #16192B;
   --ink-soft: #4A5068;
   --paper: #F7F7F5;
@@ -259,10 +259,10 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   -webkit-font-smoothing: antialiased;
 }
 
-.admin-root .mono,
-.admin-root .metric,
-.admin-root .mini,
-.admin-root .source {
+:is(.admin-root,.admin-surface) .mono,
+:is(.admin-root,.admin-surface) .metric,
+:is(.admin-root,.admin-surface) .mini,
+:is(.admin-root,.admin-surface) .source {
   font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
@@ -275,66 +275,66 @@ html[data-keyboard="open"] .mobile-bottom-nav {
 .admin-nav .navitem.active { background: #242840; color: #fff; font-weight: 500; }
 .admin-nav .navfoot { padding: 16px 22px; margin-top: 8px; border-top: 1px solid #232637; font-size: 11.5px; color: #666B80; }
 
-.admin-root h1 { font-size: 21px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
-.admin-root .sub { color: var(--muted); font-size: 13px; margin: 0 0 26px; line-height: 1.5; }
-.admin-root .sectiontitle { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin: 30px 0 12px; color: var(--muted); }
+:is(.admin-root,.admin-surface) h1 { font-size: 21px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+:is(.admin-root,.admin-surface) .sub { color: var(--muted); font-size: 13px; margin: 0 0 26px; line-height: 1.5; }
+:is(.admin-root,.admin-surface) .sectiontitle { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin: 30px 0 12px; color: var(--muted); }
 
 .admin-card { background: var(--card); border: 1px solid var(--line); box-shadow: var(--admin-shadow); border-radius: 12px; padding: 20px; }
 .admin-card h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
-.admin-root .metric { font-size: 25px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
-.admin-root .metric-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
-.admin-root .source { font-size: 10.5px; color: #ADAB9F; margin-top: 12px; display: flex; align-items: center; gap: 5px; }
-.admin-root .source .sdot { width: 5px; height: 5px; border-radius: 50%; background: var(--sage); }
-.admin-root .source.stale .sdot { background: var(--coral); }
+:is(.admin-root,.admin-surface) .metric { font-size: 25px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+:is(.admin-root,.admin-surface) .metric-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+:is(.admin-root,.admin-surface) .source { font-size: 10.5px; color: #ADAB9F; margin-top: 12px; display: flex; align-items: center; gap: 5px; }
+:is(.admin-root,.admin-surface) .source .sdot { width: 5px; height: 5px; border-radius: 50%; background: var(--sage); }
+:is(.admin-root,.admin-surface) .source.stale .sdot { background: var(--coral); }
 
-.admin-root .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
-.admin-root .badge.ok { background: var(--sage-bg); color: var(--sage); }
-.admin-root .badge.warn { background: var(--amber-bg); color: var(--amber); }
-.admin-root .badge.bad { background: var(--coral-bg); color: var(--coral); }
+:is(.admin-root,.admin-surface) .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+:is(.admin-root,.admin-surface) .badge.ok { background: var(--sage-bg); color: var(--sage); }
+:is(.admin-root,.admin-surface) .badge.warn { background: var(--amber-bg); color: var(--amber); }
+:is(.admin-root,.admin-surface) .badge.bad { background: var(--coral-bg); color: var(--coral); }
 
-.admin-root table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--admin-shadow); border-radius: 12px; overflow: hidden; }
-.admin-root th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; padding: 11px 14px; border-bottom: 1px solid var(--line); background: #FBFBFA; }
-.admin-root td { padding: 11px 14px; border-bottom: 1px solid var(--line); color: var(--ink-soft); }
-.admin-root tr:last-child td { border-bottom: none; }
-.admin-root tbody tr:hover td { background: #FBFBFA; }
-.admin-root .mini { font-size: 11.5px; }
+:is(.admin-root,.admin-surface) table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--admin-shadow); border-radius: 12px; overflow: hidden; }
+:is(.admin-root,.admin-surface) th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; padding: 11px 14px; border-bottom: 1px solid var(--line); background: #FBFBFA; }
+:is(.admin-root,.admin-surface) td { padding: 11px 14px; border-bottom: 1px solid var(--line); color: var(--ink-soft); }
+:is(.admin-root,.admin-surface) tr:last-child td { border-bottom: none; }
+:is(.admin-root,.admin-surface) tbody tr:hover td { background: #FBFBFA; }
+:is(.admin-root,.admin-surface) .mini { font-size: 11.5px; }
 
-.admin-root .empty { color: var(--muted); font-size: 13px; padding: 26px 20px; text-align: center; background: var(--card); border: 1px dashed var(--line); border-radius: 12px; line-height: 1.6; }
+:is(.admin-root,.admin-surface) .empty { color: var(--muted); font-size: 13px; padding: 26px 20px; text-align: center; background: var(--card); border: 1px dashed var(--line); border-radius: 12px; line-height: 1.6; }
 
-.admin-root .healthstrip { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--admin-shadow); border-radius: 11px; padding: 11px 18px; margin-bottom: 26px; font-size: 12.5px; }
-.admin-root .hs-item { display: flex; align-items: center; gap: 6px; font-weight: 500; color: var(--ink-soft); }
-.admin-root .hs-dot { width: 6px; height: 6px; border-radius: 50%; }
-.admin-root .hs-dot.ok { background: var(--sage); }
-.admin-root .hs-dot.warn { background: var(--amber); }
-.admin-root .hs-dot.bad { background: var(--coral); }
-.admin-root .hs-note { margin-left: auto; color: var(--muted); font-size: 11px; }
+:is(.admin-root,.admin-surface) .healthstrip { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--admin-shadow); border-radius: 11px; padding: 11px 18px; margin-bottom: 26px; font-size: 12.5px; }
+:is(.admin-root,.admin-surface) .hs-item { display: flex; align-items: center; gap: 6px; font-weight: 500; color: var(--ink-soft); }
+:is(.admin-root,.admin-surface) .hs-dot { width: 6px; height: 6px; border-radius: 50%; }
+:is(.admin-root,.admin-surface) .hs-dot.ok { background: var(--sage); }
+:is(.admin-root,.admin-surface) .hs-dot.warn { background: var(--amber); }
+:is(.admin-root,.admin-surface) .hs-dot.bad { background: var(--coral); }
+:is(.admin-root,.admin-surface) .hs-note { margin-left: auto; color: var(--muted); font-size: 11px; }
 
-.admin-root .admin-input { padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; background: #fff; color: var(--ink); }
-.admin-root .admin-link { color: var(--brass-dark); cursor: pointer; }
-.admin-root .admin-cta { background: var(--brass); color: #241703; border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.admin-root .admin-link-danger { color: var(--coral); cursor: pointer; }
-.admin-root .admin-link:disabled, .admin-root .admin-link-danger:disabled { opacity: 0.4; cursor: not-allowed; }
-.admin-root .admin-btn { background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
-.admin-root .admin-btn-danger { background: var(--coral); color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
-.admin-root .admin-btn:hover { background: #FBFBFA; }
-.admin-root .admin-btn-primary { background: var(--brass); color: #241703; border: 1px solid transparent; border-radius: 8px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
-.admin-root .admin-btn:disabled, .admin-root .admin-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
-.admin-root .admin-pill { background: #fff; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
-.admin-root .admin-pill.active { background: var(--ink); color: #fff; border-color: var(--ink); }
-.admin-root textarea.admin-input { font-family: "IBM Plex Sans", sans-serif; font-size: 13px; line-height: 1.6; }
+:is(.admin-root,.admin-surface) .admin-input { padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; background: #fff; color: var(--ink); }
+:is(.admin-root,.admin-surface) .admin-link { color: var(--brass-dark); cursor: pointer; }
+:is(.admin-root,.admin-surface) .admin-cta { background: var(--brass); color: #241703; border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+:is(.admin-root,.admin-surface) .admin-link-danger { color: var(--coral); cursor: pointer; }
+:is(.admin-root,.admin-surface) .admin-link:disabled, :is(.admin-root,.admin-surface) .admin-link-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+:is(.admin-root,.admin-surface) .admin-btn { background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+:is(.admin-root,.admin-surface) .admin-btn-danger { background: var(--coral); color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+:is(.admin-root,.admin-surface) .admin-btn:hover { background: #FBFBFA; }
+:is(.admin-root,.admin-surface) .admin-btn-primary { background: var(--brass); color: #241703; border: 1px solid transparent; border-radius: 8px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+:is(.admin-root,.admin-surface) .admin-btn:disabled, :is(.admin-root,.admin-surface) .admin-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+:is(.admin-root,.admin-surface) .admin-pill { background: #fff; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+:is(.admin-root,.admin-surface) .admin-pill.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+:is(.admin-root,.admin-surface) textarea.admin-input { font-family: "IBM Plex Sans", sans-serif; font-size: 13px; line-height: 1.6; }
 
 /* Qualidade — linhas expansíveis com a conversa real por trace_id. */
-.admin-root .qa-row { cursor: pointer; }
-.admin-root .qa-row.open td { background: #FBFBFA; }
-.admin-root .qa-summary { display: flex; align-items: center; gap: 8px; }
-.admin-root .qa-caret { color: var(--muted); font-size: 10px; }
-.admin-root .qa-transcript td { background: #FBFBFA; padding: 14px 18px; }
-.admin-root .qa-bubbles { display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
-.admin-root .qa-bubble { border-radius: 12px; padding: 8px 12px; font-size: 12.5px; line-height: 1.55; max-width: 85%; white-space: pre-wrap; }
-.admin-root .qa-bubble.user { background: var(--ink); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
-.admin-root .qa-bubble.assessor { background: #fff; color: var(--ink); border: 1px solid var(--line); align-self: flex-start; border-bottom-left-radius: 4px; }
-.admin-root .qa-bubble .qa-when { display: block; font-size: 10px; opacity: 0.6; margin-top: 4px; }
-.admin-root .qa-meta { margin-top: 12px; font-size: 11.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 14px; }
+:is(.admin-root,.admin-surface) .qa-row { cursor: pointer; }
+:is(.admin-root,.admin-surface) .qa-row.open td { background: #FBFBFA; }
+:is(.admin-root,.admin-surface) .qa-summary { display: flex; align-items: center; gap: 8px; }
+:is(.admin-root,.admin-surface) .qa-caret { color: var(--muted); font-size: 10px; }
+:is(.admin-root,.admin-surface) .qa-transcript td { background: #FBFBFA; padding: 14px 18px; }
+:is(.admin-root,.admin-surface) .qa-bubbles { display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+:is(.admin-root,.admin-surface) .qa-bubble { border-radius: 12px; padding: 8px 12px; font-size: 12.5px; line-height: 1.55; max-width: 85%; white-space: pre-wrap; }
+:is(.admin-root,.admin-surface) .qa-bubble.user { background: var(--ink); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+:is(.admin-root,.admin-surface) .qa-bubble.assessor { background: #fff; color: var(--ink); border: 1px solid var(--line); align-self: flex-start; border-bottom-left-radius: 4px; }
+:is(.admin-root,.admin-surface) .qa-bubble .qa-when { display: block; font-size: 10px; opacity: 0.6; margin-top: 4px; }
+:is(.admin-root,.admin-surface) .qa-meta { margin-top: 12px; font-size: 11.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 14px; }
 
 /* =====================================================================
  * Sistema de design do Dashboard do Consultor.
