@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
-import { listAuditLogs, listMfaRequired } from "@/lib/admin.functions";
+import { listAuditLogs, listMfaRequired, listSensitiveAccessLogs } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin/auditoria-seguranca")({
   head: () => ({ meta: [{ title: "Auditoria & segurança — Afonso admin" }] }),
@@ -35,10 +35,16 @@ const EXPECTED_ACTIONS: { action: string; label: string }[] = [
 function AuditoriaSegurancaPage() {
   const auditFn = useServerFn(listAuditLogs);
   const mfaFn = useServerFn(listMfaRequired);
+  const sensitiveFn = useServerFn(listSensitiveAccessLogs);
   const { data, isLoading } = useQuery({ queryKey: ["admin", "audit"], queryFn: () => auditFn() });
   const { data: mfa } = useQuery({ queryKey: ["admin", "mfa"], queryFn: () => mfaFn() });
+  const { data: sensitive } = useQuery({
+    queryKey: ["admin", "audit", "sensivel"],
+    queryFn: () => sensitiveFn(),
+  });
 
   const rows = (data ?? []) as any[];
+  const sensitiveRows = (sensitive ?? []) as any[];
   const seen = new Set(rows.map((r) => r.action));
 
   return (
@@ -91,6 +97,36 @@ function AuditoriaSegurancaPage() {
         </div>
       )}
       <Source>admin_audit_logs</Source>
+
+      <SectionTitle>Acessos a tabelas sensíveis</SectionTitle>
+      {sensitiveRows.length === 0 ? (
+        <Empty note="Cada criação, alteração ou remoção nestas tabelas é registada automaticamente pela base de dados; as leituras de segredos são registadas pela aplicação.">
+          Sem acessos registados ainda.
+        </Empty>
+      ) : (
+        <div className="overflow-x-auto">
+          <table>
+            <thead>
+              <tr><th>Data</th><th>Tabela</th><th>O quê</th><th>Quem</th><th>Consultor</th><th>Resultado</th></tr>
+            </thead>
+            <tbody>
+              {sensitiveRows.map((row) => (
+                <tr key={row.id}>
+                  <td className="mini whitespace-nowrap">{new Date(row.created_at).toLocaleString("pt-PT")}</td>
+                  <td className="mini">{row.resource_type ?? "—"}</td>
+                  <td className="mono mini">{String(row.action).replace(/^sensivel\.[^.]+\./, "")}</td>
+                  <td className="mono mini">
+                    {row.admin_user_id ? `${row.admin_user_id.slice(0, 8)}…` : (row.metadata?.db_role ?? "servidor")}
+                  </td>
+                  <td className="mono mini">{row.target_user_id ? `${row.target_user_id.slice(0, 8)}…` : "—"}</td>
+                  <td className="mini" style={{ color: "var(--muted)" }}>{row.metadata?.outcome ?? row.reason ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Source>admin_audit_logs · sensivel.*</Source>
 
       <SectionTitle>MFA obrigatório</SectionTitle>
       {((mfa as any[]) ?? []).length === 0 ? (
