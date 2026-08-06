@@ -72,14 +72,17 @@ function NegociosPage() {
     () => all.filter((d) => (mostrarArquivados ? !!d.archivedAt : !d.archivedAt)),
     [all, mostrarArquivados],
   );
-  const emRisco = visiveis.filter((d) => d.alert?.level === "risco");
-  const precisamAtencao = visiveis.filter((d) => !!d.alert).length;
+  // Concluído sai do quadro ativo e não conta como "em curso".
+  const concluidos = useMemo(() => visiveis.filter((d) => d.stage === "concluido"), [visiveis]);
+  const ativos = useMemo(() => visiveis.filter((d) => d.stage !== "concluido"), [visiveis]);
+  const emRisco = ativos.filter((d) => d.alert?.level === "risco");
+  const precisamAtencao = ativos.filter((d) => !!d.alert).length;
 
   return (
     <AppShell>
       <PageHeader
         title="Negócios"
-        subtitle={`${visiveis.length} ${mostrarArquivados ? "arquivado(s)" : "em curso"} · ${
+        subtitle={`${mostrarArquivados ? `${visiveis.length} arquivado(s)` : `${ativos.length} em curso${concluidos.length ? ` · ${concluidos.length} concluído${concluidos.length > 1 ? "s" : ""}` : ""}`} · ${
           precisamAtencao === 0
             ? "nenhum precisa de atenção"
             : `${precisamAtencao} precisa${precisamAtencao > 1 ? "m" : ""} de atenção`
@@ -190,7 +193,7 @@ function NegociosPage() {
           Desktop: quadro em colunas. */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {STAGE_GROUPS.map((g) => {
-          const items = visiveis.filter((d) => groupOfStage(d.stage) === g.key);
+          const items = ativos.filter((d) => groupOfStage(d.stage) === g.key);
           return (
             <section key={g.key} className={cn("min-w-0", items.length === 0 && "hidden md:block")}>
               <div className="mb-2 flex items-baseline justify-between gap-2">
@@ -205,6 +208,18 @@ function NegociosPage() {
           );
         })}
       </div>
+
+      {concluidos.length > 0 && (
+        <section className="mt-6">
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold">Concluídos</h2>
+            <span className="text-xs text-muted-foreground">{concluidos.length}</span>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+            {concluidos.map((d) => <DealCard key={d.id} deal={d} />)}
+          </div>
+        </section>
+      )}
     </AppShell>
   );
 }
@@ -239,6 +254,9 @@ function DealCard({ deal }: { deal: DealListItem }) {
             <div className={deal.alert.level === "risco" ? "text-xs font-medium text-destructive" : "text-xs text-amber-600"}>
               {deal.alert.label}
             </div>
+          )}
+          {!deal.personName && deal.stage !== "concluido" && (
+            <div className="text-xs text-amber-600">Sem pessoa associada</div>
           )}
         </CardContent>
       </Card>
