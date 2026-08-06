@@ -67,6 +67,7 @@ export async function issueDashboardLoginLink(
   supabaseAdmin: any,
   userId: string,
   channel: string,
+  opts?: { reason?: string | null; issuedBy?: string | null },
 ): Promise<{ url: string; expiresAt: string }> {
   const { randomBytes } = await import("crypto");
 
@@ -81,7 +82,14 @@ export async function issueDashboardLoginLink(
   const expiresAt = new Date(Date.now() + LOGIN_TOKEN_TTL_MIN * 60_000).toISOString();
   const { error } = await supabaseAdmin
     .from("dashboard_login_tokens")
-    .insert({ token, user_id: userId, channel, expires_at: expiresAt });
+    .insert({
+      token,
+      user_id: userId,
+      channel,
+      expires_at: expiresAt,
+      reason: opts?.reason?.trim() || null,
+      issued_by: opts?.issuedBy ?? null,
+    });
   if (error) throw new Error(error.message);
 
   const url = assertPublicLoginUrl(`${appBaseUrl()}/entrar?token=${token}`);
