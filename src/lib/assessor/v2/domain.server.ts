@@ -1478,6 +1478,7 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   set_property_category: execSetPropertyCategory,
   create_person: execCreatePerson,
   search_properties: execSearchProperties,
+  search_files: execSearchFiles,
   create_property: execCreateProperty,
   search_agenda: execSearchAgenda,
   create_event: execCreateEvent,
