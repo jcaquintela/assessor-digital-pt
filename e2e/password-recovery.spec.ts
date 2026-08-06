@@ -46,10 +46,10 @@ test.describe("Recuperar palavra-passe com email real", () => {
   test("pedir recuperação no ecrã de entrada", async ({ page }) => {
     await page.goto("/auth");
     await page.getByRole("tab", { name: "Recuperar" }).click();
-    const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Enviar link" }) }).first();
-    const alvo = (await form.count()) ? form : page.locator("form").first();
-    await alvo.locator('input[type="email"]').fill(email);
-    await alvo.getByRole("button").last().click();
+    const enviar = page.getByRole("button", { name: /Enviar link de recuperação/i });
+    const form = page.locator("form").filter({ has: enviar }).first();
+    await form.locator('input[type="email"]').fill(email);
+    await enviar.click();
 
     // Resposta neutra: nunca revela se a conta existe.
     await expect(page.getByText(/enviámos instruções/i)).toBeVisible({ timeout: 30_000 });
