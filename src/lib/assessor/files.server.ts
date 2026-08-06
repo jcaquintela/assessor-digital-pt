@@ -201,7 +201,7 @@ export async function applyDocumentExtraction(args: {
   bytes: Uint8Array;
   mimeType: string;
   currentName: string | null;
-}): Promise<{ text: string | null; expiresOn: string | null } | null> {
+}): Promise<{ text: string | null; expiresOn: string | null; reading: import("@/lib/ai/doc-extract.server").DocReading } | null> {
   try {
     const { readDocument, supportsDocExtraction, hasAnyDocData } = await import(
       "@/lib/ai/doc-extract.server"
@@ -233,7 +233,7 @@ export async function applyDocumentExtraction(args: {
     }
 
     await args.supabase.from("uploaded_files").update(patch as never).eq("id", args.fileId);
-    return { text: r.visible_text, expiresOn: r.expires_on };
+    return { text: r.visible_text, expiresOn: r.expires_on, reading: r };
   } catch (err) {
     console.error("[files] applyDocumentExtraction:", err instanceof Error ? err.message : err);
     return null;
