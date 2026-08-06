@@ -43,7 +43,6 @@ export interface MentorTip {
   reason: string;
 }
 
-const CLOSED_DEAL = new Set(["perdida", "escritura", "closed_lost", "closed_won", "cancelled", "concluido", "concluído"]);
 const CLOSED_PROPERTY = new Set(["vendido", "arquivado"]);
 
 function isoDaysAgo(n: number): string {
