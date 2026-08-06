@@ -183,6 +183,12 @@ export const convertBeta = createServerFn({ method: "POST" })
         .eq("id", data.target_user_id)
         .maybeSingle();
       const phone = ((full as any)?.phone ?? "").replace(/\D/g, "");
+      const isShadow = /@shadow\.assessor\.local$/i.test(((full as any)?.email ?? "") as string);
+      if (isShadow) {
+        throw new Error(
+          "Esta conta foi criada pelo canal (WhatsApp/Telegram) e ainda não tem email próprio. Usa Fundir contas para a juntar à conta de email da mesma pessoa antes de converter.",
+        );
+      }
       if (phone.length >= 9) {
         const { data: dups } = await supabaseAdmin
           .from("profiles")
