@@ -94,6 +94,7 @@ import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/pu
 import { Route as ApiPublicHooksProactivePushRouteImport } from './routes/api/public/hooks/proactive-push'
 import { Route as ApiPublicHooksObjectionGuideRouteImport } from './routes/api/public/hooks/objection-guide'
 import { Route as ApiPublicHooksMeetingBriefingRouteImport } from './routes/api/public/hooks/meeting-briefing'
+import { Route as ApiPublicHooksDailyDigestRouteImport } from './routes/api/public/hooks/daily-digest'
 import { Route as ApiPublicHooksCalendarPollRouteImport } from './routes/api/public/hooks/calendar-poll'
 import { Route as ApiPublicHooksBetaExpiryRouteImport } from './routes/api/public/hooks/beta-expiry'
 import { Route as AuthenticatedOportunidadesProspecaoIdRouteImport } from './routes/_authenticated/oportunidades.prospecao.$id'
@@ -551,6 +552,12 @@ const ApiPublicHooksMeetingBriefingRoute =
     path: '/api/public/hooks/meeting-briefing',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDailyDigestRoute =
+  ApiPublicHooksDailyDigestRouteImport.update({
+    id: '/api/public/hooks/daily-digest',
+    path: '/api/public/hooks/daily-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksCalendarPollRoute =
   ApiPublicHooksCalendarPollRouteImport.update({
     id: '/api/public/hooks/calendar-poll',
@@ -662,6 +669,7 @@ export interface FileRoutesByFullPath {
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
+  '/api/public/hooks/daily-digest': typeof ApiPublicHooksDailyDigestRoute
   '/api/public/hooks/meeting-briefing': typeof ApiPublicHooksMeetingBriefingRoute
   '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
@@ -752,6 +760,7 @@ export interface FileRoutesByTo {
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
+  '/api/public/hooks/daily-digest': typeof ApiPublicHooksDailyDigestRoute
   '/api/public/hooks/meeting-briefing': typeof ApiPublicHooksMeetingBriefingRoute
   '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
@@ -845,6 +854,7 @@ export interface FileRoutesById {
   '/_authenticated/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
+  '/api/public/hooks/daily-digest': typeof ApiPublicHooksDailyDigestRoute
   '/api/public/hooks/meeting-briefing': typeof ApiPublicHooksMeetingBriefingRoute
   '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
@@ -938,6 +948,7 @@ export interface FileRouteTypes {
     | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
+    | '/api/public/hooks/daily-digest'
     | '/api/public/hooks/meeting-briefing'
     | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
@@ -1028,6 +1039,7 @@ export interface FileRouteTypes {
     | '/oportunidades/prospecao/$id'
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
+    | '/api/public/hooks/daily-digest'
     | '/api/public/hooks/meeting-briefing'
     | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
@@ -1120,6 +1132,7 @@ export interface FileRouteTypes {
     | '/_authenticated/oportunidades/prospecao/$id'
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
+    | '/api/public/hooks/daily-digest'
     | '/api/public/hooks/meeting-briefing'
     | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
@@ -1153,6 +1166,7 @@ export interface RootRouteChildren {
   OauthOutlookReturnRoute: typeof OauthOutlookReturnRoute
   ApiPublicHooksBetaExpiryRoute: typeof ApiPublicHooksBetaExpiryRoute
   ApiPublicHooksCalendarPollRoute: typeof ApiPublicHooksCalendarPollRoute
+  ApiPublicHooksDailyDigestRoute: typeof ApiPublicHooksDailyDigestRoute
   ApiPublicHooksMeetingBriefingRoute: typeof ApiPublicHooksMeetingBriefingRoute
   ApiPublicHooksObjectionGuideRoute: typeof ApiPublicHooksObjectionGuideRoute
   ApiPublicHooksProactivePushRoute: typeof ApiPublicHooksProactivePushRoute
@@ -1761,6 +1775,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksMeetingBriefingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/daily-digest': {
+      id: '/api/public/hooks/daily-digest'
+      path: '/api/public/hooks/daily-digest'
+      fullPath: '/api/public/hooks/daily-digest'
+      preLoaderRoute: typeof ApiPublicHooksDailyDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/calendar-poll': {
       id: '/api/public/hooks/calendar-poll'
       path: '/api/public/hooks/calendar-poll'
@@ -2031,6 +2052,7 @@ const rootRouteChildren: RootRouteChildren = {
   OauthOutlookReturnRoute: OauthOutlookReturnRoute,
   ApiPublicHooksBetaExpiryRoute: ApiPublicHooksBetaExpiryRoute,
   ApiPublicHooksCalendarPollRoute: ApiPublicHooksCalendarPollRoute,
+  ApiPublicHooksDailyDigestRoute: ApiPublicHooksDailyDigestRoute,
   ApiPublicHooksMeetingBriefingRoute: ApiPublicHooksMeetingBriefingRoute,
   ApiPublicHooksObjectionGuideRoute: ApiPublicHooksObjectionGuideRoute,
   ApiPublicHooksProactivePushRoute: ApiPublicHooksProactivePushRoute,
