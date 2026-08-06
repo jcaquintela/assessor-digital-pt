@@ -112,10 +112,9 @@ test.describe("Recuperar palavra-passe com email real", () => {
     expect(sessão).toBe(true);
 
     // A antiga já não serve.
-    const anon = createClient(URL!, process.env.SUPABASE_ANON_KEY ?? "", {
-      auth: { persistSession: false },
-    });
-    if (process.env.SUPABASE_ANON_KEY) {
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+    if (anonKey) {
+      const anon = createClient(URL!, anonKey, { auth: { persistSession: false } });
       const { error } = await anon.auth.signInWithPassword({ email, password: ANTIGA });
       expect(error).toBeTruthy();
     }
