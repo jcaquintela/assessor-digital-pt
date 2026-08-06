@@ -3,7 +3,7 @@
 // (ferramenta create_deal). Regra mínima e dedupe vivem aqui — não em cada
 // caminho — para que nenhuma via consiga criar um negócio vazio ou repetido.
 
-import { normalizeStage } from "./stages";
+import { legacyStatusForStage, normalizeStage } from "./stages";
 import { validateDealMinimum } from "./rules";
 
 type Row = Record<string, any>;
@@ -135,7 +135,7 @@ export async function createDealCore(
     deal_kind: min.kind,
     type: min.kind,
     stage,
-    status: "Novo",
+    status: legacyStatusForStage(stage),
     person_id: personId,
     property_id: propertyId,
     value: input.value ?? 0,
