@@ -7,6 +7,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 import { toast } from "sonner";
 import {
   listDriveFiles,
@@ -202,6 +203,7 @@ function DrivePage() {
   const linksByFile = listQ.data?.linksByFile ?? {};
 
   const removeFiles = useServerFn(deleteDriveFiles);
+  const confirmacao = useDestructiveConfirm();
   const deleteMany = useMutation({
     mutationFn: (ids: string[]) => removeFiles({ data: { ids } }),
     onSuccess: (res: any, ids) => {
@@ -286,8 +288,23 @@ function DrivePage() {
 
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
-    if (!confirm(`Eliminar ${label}? Fica na Reciclagem 24 horas — podes recuperar com as ligações dentro desse prazo.`)) return;
-    deleteMany.mutate(ids);
+    const ligacoes = ids.reduce(
+      (n, id) => n + (((linksByFile as any)[id] ?? []).length as number),
+      0,
+    );
+    confirmacao.pedir({
+      acao: ids.length === 1 ? "Eliminar documento" : "Eliminar documentos",
+      alvo: label,
+      efeito: "reciclagem",
+      resumo: [
+        `${ids.length} ${ids.length === 1 ? "ficheiro sai" : "ficheiros saem"} do Drive Inteligente e das pesquisas.`,
+        ligacoes > 0
+          ? `${ligacoes} ${ligacoes === 1 ? "ligação" : "ligações"} a pessoas, imóveis ou negócios ${ligacoes === 1 ? "deixa" : "deixam"} de aparecer nas fichas.`
+          : "Não há ligações a pessoas, imóveis ou negócios.",
+        "A leitura automática do documento também deixa de estar disponível.",
+      ],
+      onConfirm: () => deleteMany.mutate(ids),
+    });
   };
 
   const recuperar = (ids: string[]) => {
@@ -297,6 +314,7 @@ function DrivePage() {
 
   return (
     <AppShell>
+      {confirmacao.dialog}
       <PageHeader
         title={MODULE_NAME.drive}
         subtitle="Envia. O Assessor organiza."
