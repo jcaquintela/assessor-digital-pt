@@ -259,6 +259,10 @@ function AcessosPage() {
         />
       )}
 
+      {support && (
+        <SupportModeDialog key={support.id} user={support} onClose={() => setSupport(null)} />
+      )}
+
       <SectionTitle>Códigos promocionais</SectionTitle>
       <div className="mb-2.5 flex justify-end">
         <button type="button" className="admin-btn" disabled={!isSuper} onClick={() => setPromoOpen(true)}>+ Criar código</button>
