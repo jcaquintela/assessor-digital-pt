@@ -55,6 +55,7 @@ function ImoveisPage() {
   const fetchList = useServerFn(listProperties);
   const qc = useQueryClient();
   const arquivar = useServerFn(archiveProperty);
+  const confirmacao = useDestructiveConfirm();
   const { data: rows, isLoading } = useQuery({ queryKey: ["properties", "list"], queryFn: () => fetchList() });
   const all = (rows ?? []) as any[];
 
@@ -103,13 +104,24 @@ function ImoveisPage() {
   const toggle = (id: string) =>
     setSel((cur) => { const n = new Set(cur); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  async function eliminar(id: string, titulo: string) {
-    if (!confirm(`Arquivar "${titulo}"? Sai das listas, mas podes repor na ficha.`)) return;
-    try {
-      await arquivar({ data: { id } });
-      await qc.invalidateQueries({ queryKey: ["properties"] });
-      toast.success("Imóvel arquivado.");
-    } catch (e) { toast.error((e as Error).message); }
+  function eliminar(id: string, titulo: string) {
+    confirmacao.pedir({
+      acao: "Arquivar imóvel",
+      alvo: titulo,
+      efeito: "arquivo",
+      resumo: [
+        "O imóvel sai das listas, pesquisas e sugestões do Assessor.",
+        "Negócios, visitas e documentos ligados mantêm-se guardados.",
+        "Nada é enviado a proprietários ou compradores.",
+      ],
+      onConfirm: async () => {
+        try {
+          await arquivar({ data: { id } });
+          await qc.invalidateQueries({ queryKey: ["properties"] });
+          toast.success("Imóvel arquivado.");
+        } catch (e) { toast.error((e as Error).message); }
+      },
+    });
   }
 
   async function exportarCsv() {
@@ -161,6 +173,7 @@ function ImoveisPage() {
 
   return (
     <AppShell>
+      {confirmacao.dialog}
       <PageHeader
         title="Imóveis"
         subtitle={`${emCarteira} em carteira · criados aqui ou por conversa`}
