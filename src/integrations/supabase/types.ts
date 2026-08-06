@@ -3769,52 +3769,162 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_proactive_tests: {
+        Row: {
+          cost_eur: number | null
+          created_at: string
+          created_by: string | null
+          forced: boolean
+          hours_since_last_inbound: number | null
+          id: string
+          message_id: string | null
+          notes: string | null
+          outside_window: boolean
+          purpose: string
+          send_log_id: string | null
+          status: string
+          target_user_id: string | null
+          template_category: string | null
+          template_name: string | null
+          to_phone: string
+          updated_at: string
+        }
+        Insert: {
+          cost_eur?: number | null
+          created_at?: string
+          created_by?: string | null
+          forced?: boolean
+          hours_since_last_inbound?: number | null
+          id?: string
+          message_id?: string | null
+          notes?: string | null
+          outside_window?: boolean
+          purpose?: string
+          send_log_id?: string | null
+          status?: string
+          target_user_id?: string | null
+          template_category?: string | null
+          template_name?: string | null
+          to_phone: string
+          updated_at?: string
+        }
+        Update: {
+          cost_eur?: number | null
+          created_at?: string
+          created_by?: string | null
+          forced?: boolean
+          hours_since_last_inbound?: number | null
+          id?: string
+          message_id?: string | null
+          notes?: string | null
+          outside_window?: boolean
+          purpose?: string
+          send_log_id?: string | null
+          status?: string
+          target_user_id?: string | null
+          template_category?: string | null
+          template_name?: string | null
+          to_phone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_proactive_tests_send_log_id_fkey"
+            columns: ["send_log_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_send_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_send_logs: {
         Row: {
+          billable: boolean | null
+          cost_eur: number | null
+          cost_source: string | null
           created_at: string
+          delivered_at: string | null
+          delivery_status: string
           error_code: number | null
           error_message: string | null
           error_subcode: number | null
           error_type: string | null
           fbtrace_id: string | null
+          hours_since_last_inbound: number | null
           http_status: number | null
           id: string
           kind: string
           message_id: string | null
           ok: boolean
+          outside_window: boolean | null
           phone_number_id: string | null
+          purpose: string | null
+          read_at: string | null
+          replied_at: string | null
+          template_category: string | null
+          template_language: string | null
+          template_name: string | null
+          test_id: string | null
           to_phone: string
           triggered_by: string | null
         }
         Insert: {
+          billable?: boolean | null
+          cost_eur?: number | null
+          cost_source?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string
           error_code?: number | null
           error_message?: string | null
           error_subcode?: number | null
           error_type?: string | null
           fbtrace_id?: string | null
+          hours_since_last_inbound?: number | null
           http_status?: number | null
           id?: string
           kind?: string
           message_id?: string | null
           ok?: boolean
+          outside_window?: boolean | null
           phone_number_id?: string | null
+          purpose?: string | null
+          read_at?: string | null
+          replied_at?: string | null
+          template_category?: string | null
+          template_language?: string | null
+          template_name?: string | null
+          test_id?: string | null
           to_phone: string
           triggered_by?: string | null
         }
         Update: {
+          billable?: boolean | null
+          cost_eur?: number | null
+          cost_source?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string
           error_code?: number | null
           error_message?: string | null
           error_subcode?: number | null
           error_type?: string | null
           fbtrace_id?: string | null
+          hours_since_last_inbound?: number | null
           http_status?: number | null
           id?: string
           kind?: string
           message_id?: string | null
           ok?: boolean
+          outside_window?: boolean | null
           phone_number_id?: string | null
+          purpose?: string | null
+          read_at?: string | null
+          replied_at?: string | null
+          template_category?: string | null
+          template_language?: string | null
+          template_name?: string | null
+          test_id?: string | null
           to_phone?: string
           triggered_by?: string | null
         }
@@ -3845,6 +3955,48 @@ export type Database = {
           param_count?: number
           purpose?: string
           template_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_template_rates: {
+        Row: {
+          category: string
+          country_code: string
+          created_at: string
+          currency: string
+          effective_from: string
+          id: string
+          notes: string | null
+          price_eur: number
+          source: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category: string
+          country_code?: string
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          id?: string
+          notes?: string | null
+          price_eur: number
+          source?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string
+          country_code?: string
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          id?: string
+          notes?: string | null
+          price_eur?: number
+          source?: string | null
           updated_at?: string
           updated_by?: string | null
         }

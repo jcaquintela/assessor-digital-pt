@@ -60,9 +60,27 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
         try {
           const adapter = getAdapter("whatsapp");
           const inbounds = adapter.parseUpdate(payload);
+
+          // Relatórios de entrega/leitura (sent → delivered → read).
+          const statuses: any[] = [];
+          for (const entry of ((payload as any)?.entry ?? [])) {
+            for (const change of (entry?.changes ?? [])) {
+              if (Array.isArray(change?.value?.statuses)) statuses.push(...change.value.statuses);
+            }
+          }
+          if (statuses.length > 0) {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { applyDeliveryStatuses } = await import("@/lib/whatsapp/delivery-status.server");
+            await applyDeliveryStatuses(supabaseAdmin, statuses);
+          }
+
           if (inbounds.length > 0) {
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { markInboundReply } = await import("@/lib/whatsapp/delivery-status.server");
             for (const n of inbounds) {
+              if (n.externalConversationId) {
+                await markInboundReply(supabaseAdmin, n.externalConversationId);
+              }
               await runInboundPipeline(adapter, supabaseAdmin, n);
             }
           }

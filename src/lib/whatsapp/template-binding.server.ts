@@ -16,6 +16,8 @@ export interface TemplateBinding {
   param_count: number;
   enabled: boolean;
   updated_at?: string | null;
+  /** Categoria na Meta (utility/marketing/...): define o preço fora das 24h. */
+  category?: string | null;
 }
 
 export interface MetaTemplate {
@@ -109,5 +111,9 @@ export async function resolveUsableBinding(
     (t) => t.name === binding.template_name && t.status === "APPROVED",
   );
   if (!match) return null;
-  return { ...binding, param_count: match.paramCount || binding.param_count };
+  return {
+    ...binding,
+    param_count: match.paramCount || binding.param_count,
+    category: match.category ?? null,
+  };
 }

@@ -15,8 +15,8 @@ export type SendTelemetry = {
 };
 
 export type SendResult =
-  | ({ ok: true; messageId: string | null } & { telemetry: SendTelemetry })
-  | ({ ok: false; error: string } & { telemetry: SendTelemetry });
+  | ({ ok: true; messageId: string | null } & { telemetry: SendTelemetry; logId?: string | null })
+  | ({ ok: false; error: string } & { telemetry: SendTelemetry; logId?: string | null });
 
 function sanitize(msg: string | null | undefined): string | null {
   if (!msg) return null;
@@ -27,14 +27,55 @@ function sanitize(msg: string | null | undefined): string | null {
     .slice(0, 500);
 }
 
+/** Contexto de custo/proatividade de um envio (fica no log para COGS). */
+export interface SendMeta {
+  purpose?: string | null;
+  templateName?: string | null;
+  templateCategory?: string | null;
+  templateLanguage?: string | null;
+  outsideWindow?: boolean | null;
+  hoursSinceLastInbound?: number | null;
+  testId?: string | null;
+}
+
+export type SendOpts = {
+  triggeredBy?: string | null;
+  kind?: "auto" | "test";
+  meta?: SendMeta;
+  /** Devolve o id da linha de log criada (usado pelos testes de proatividade). */
+  returnLogId?: boolean;
+};
+
 async function persistLog(entry: {
   telemetry: SendTelemetry;
   triggeredBy?: string | null;
   kind?: "auto" | "test";
-}) {
+  meta?: SendMeta;
+}): Promise<string | null> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("whatsapp_send_logs" as never).insert({
+    const meta = entry.meta ?? {};
+    const isTemplate = !!meta.templateName;
+
+    // Custo: só sai valor quando existe tarifa registada para a categoria e
+    // país. Sem tarifa fica a null — "por confirmar", nunca zero.
+    let billable: boolean | null = null;
+    let costEur: number | null = null;
+    let costSource: string | null = null;
+    try {
+      const { priceSend } = await import("./pricing.server");
+      const est = await priceSend(supabaseAdmin, {
+        isTemplate,
+        outsideWindow: meta.outsideWindow ?? null,
+        category: meta.templateCategory ?? null,
+        toPhone: entry.telemetry.to,
+      });
+      billable = est.billable;
+      costEur = est.costEur;
+      costSource = est.source;
+    } catch { /* sem custo calculável */ }
+
+    const { data } = await supabaseAdmin.from("whatsapp_send_logs" as never).insert({
       to_phone: entry.telemetry.to,
       phone_number_id: entry.telemetry.phoneNumberId,
       http_status: entry.telemetry.httpStatus,
@@ -47,16 +88,29 @@ async function persistLog(entry: {
       fbtrace_id: entry.telemetry.fbtraceId,
       triggered_by: entry.triggeredBy ?? null,
       kind: entry.kind ?? "auto",
-    } as never);
+      purpose: meta.purpose ?? null,
+      template_name: meta.templateName ?? null,
+      template_category: meta.templateCategory ?? null,
+      template_language: meta.templateLanguage ?? null,
+      outside_window: meta.outsideWindow ?? null,
+      hours_since_last_inbound: meta.hoursSinceLastInbound ?? null,
+      billable,
+      cost_eur: costEur,
+      cost_source: costSource,
+      delivery_status: entry.telemetry.ok ? "sent" : "failed",
+      test_id: meta.testId ?? null,
+    } as never).select("id").maybeSingle();
+    return ((data as any)?.id as string) ?? null;
   } catch (err) {
     console.error("[whatsapp-send] falha a gravar log:", err instanceof Error ? err.message : err);
+    return null;
   }
 }
 
 export async function sendWhatsAppText(
   to: string,
   body: string,
-  opts: { triggeredBy?: string | null; kind?: "auto" | "test" } = {},
+  opts: SendOpts = {},
 ): Promise<SendResult> {
   // Formatação consistente: sintaxe WhatsApp (não Markdown), listas com "- ".
   const { formatForWhatsApp } = await import("@/lib/assessor/culture/whatsapp-format");
@@ -75,7 +129,7 @@ export async function sendWhatsAppText(
 export async function sendWhatsAppPayload(
   to: string,
   payload: Record<string, unknown>,
-  opts: { triggeredBy?: string | null; kind?: "auto" | "test" } = {},
+  opts: SendOpts = {},
 ): Promise<SendResult> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? null;
@@ -104,8 +158,8 @@ export async function sendWhatsAppPayload(
       errorMessage: `Credenciais WhatsApp em falta: ${missing}`,
     };
     console.error("[whatsapp-send] config incompleta:", missing);
-    await persistLog({ telemetry, ...opts });
-    return { ok: false, error: telemetry.errorMessage!, telemetry };
+    const logId = await persistLog({ telemetry, ...opts });
+    return { ok: false, error: telemetry.errorMessage!, telemetry, logId };
   }
 
   const url = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
@@ -150,8 +204,8 @@ export async function sendWhatsAppPayload(
           phone_number_id_suffix: phoneNumberId.slice(-4),
         }),
       );
-      await persistLog({ telemetry, ...opts });
-      return { ok: false, error: telemetry.errorMessage ?? `HTTP ${res.status}`, telemetry };
+      const logId = await persistLog({ telemetry, ...opts });
+      return { ok: false, error: telemetry.errorMessage ?? `HTTP ${res.status}`, telemetry, logId };
     }
 
     const messageId: string | null = json?.messages?.[0]?.id ?? null;
@@ -161,8 +215,8 @@ export async function sendWhatsAppPayload(
       httpStatus: res.status,
       messageId,
     };
-    await persistLog({ telemetry, ...opts });
-    return { ok: true, messageId, telemetry };
+    const logId = await persistLog({ telemetry, ...opts });
+    return { ok: true, messageId, telemetry, logId };
   } catch (err) {
     const msg = sanitize(err instanceof Error ? err.message : String(err));
     const telemetry: SendTelemetry = {
@@ -171,7 +225,7 @@ export async function sendWhatsAppPayload(
       errorMessage: msg,
     };
     console.error("[whatsapp-send] erro de rede:", msg);
-    await persistLog({ telemetry, ...opts });
-    return { ok: false, error: msg ?? "network error", telemetry };
+    const logId = await persistLog({ telemetry, ...opts });
+    return { ok: false, error: msg ?? "network error", telemetry, logId };
   }
 }

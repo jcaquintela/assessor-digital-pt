@@ -49,8 +49,25 @@ async function loadDueEvents(
 export async function sendMeetingBriefing(
   supabase: any,
   event: BriefingEvent & { user_id: string },
-  opts: { now?: Date; force?: boolean; forceTemplate?: boolean; markSent?: boolean } = {},
-): Promise<{ sent: boolean; reason?: string; via?: "text" | "template" }> {
+  opts: {
+    now?: Date;
+    force?: boolean;
+    forceTemplate?: boolean;
+    markSent?: boolean;
+    testId?: string | null;
+  } = {},
+): Promise<{
+  sent: boolean;
+  reason?: string;
+  via?: "text" | "template";
+  logId?: string | null;
+  messageId?: string | null;
+  templateName?: string | null;
+  templateCategory?: string | null;
+  hoursSinceLastInbound?: number | null;
+  outsideWindow?: boolean | null;
+  costEur?: number | null;
+}> {
   const nowMs = (opts.now ?? new Date()).getTime();
   if (!opts.force && !isBriefingDue(event, nowMs)) return { sent: false, reason: "not_due" };
   if (!event.person_id) return { sent: false, reason: "no_person" };
@@ -76,7 +93,8 @@ export async function sendMeetingBriefing(
 
   if (target.channel === "whatsapp") {
     const { isWithin24hWindow } = await import("./push.server");
-    if (opts.forceTemplate || !(await isWithin24hWindow(supabase, event.user_id, "whatsapp"))) {
+    const within = await isWithin24hWindow(supabase, event.user_id, "whatsapp");
+    if (opts.forceTemplate || !within) {
       // Fora da janela de 24h só passa template aprovado. O template usado é
       // o que estiver escolhido no admin; sem escolha activa, silêncio.
       const { resolveUsableBinding } = await import("@/lib/whatsapp/template-binding.server");
@@ -91,14 +109,36 @@ export async function sendMeetingBriefing(
 
       const { meetingBriefingTemplatePayload } = await import("./templates");
       const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
+      const { hoursSinceLastInbound } = await import("@/lib/whatsapp/pricing.server");
+      const silentHours = await hoursSinceLastInbound(supabase, event.user_id, "whatsapp");
       const sentTpl = await sendWhatsAppPayload(
         target.externalId,
         meetingBriefingTemplatePayload(binding.template_name, params, binding.language),
-        { kind: opts.force ? "test" : "auto" },
+        {
+          kind: opts.force ? "test" : "auto",
+          meta: {
+            purpose: "meeting_briefing",
+            templateName: binding.template_name,
+            templateCategory: binding.category ?? null,
+            templateLanguage: binding.language,
+            // Fora da janela a sério (não apenas forçado no teste).
+            outsideWindow: !within,
+            hoursSinceLastInbound: silentHours,
+            testId: opts.testId ?? null,
+          },
+        },
       );
-      if (!sentTpl.ok) return { sent: false, reason: "send_failed" };
+      const common = {
+        logId: sentTpl.logId ?? null,
+        messageId: sentTpl.ok ? sentTpl.messageId : null,
+        templateName: binding.template_name,
+        templateCategory: binding.category ?? null,
+        hoursSinceLastInbound: silentHours,
+        outsideWindow: !within,
+      };
+      if (!sentTpl.ok) return { sent: false, reason: "send_failed", ...common };
       if (opts.markSent !== false) await markBriefingSent(supabase, event, target.channel, text, nowMs);
-      return { sent: true, via: "template" };
+      return { sent: true, via: "template", ...common };
     }
   }
 
