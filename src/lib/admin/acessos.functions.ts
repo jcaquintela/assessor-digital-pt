@@ -441,7 +441,7 @@ export const issueInviteLink = createServerFn({ method: "POST" })
     }
 
     await auditAccess(context.userId, "access.invite_link_issued", {
-      targetUserId: data.target_user_id,
+      target_user_id: data.target_user_id,
       metadata: { canal: data.canal, enviado },
     });
 
