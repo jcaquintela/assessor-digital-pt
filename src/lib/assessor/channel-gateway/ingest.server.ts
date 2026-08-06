@@ -876,6 +876,37 @@ async function handleInboundMediaInner(
         err instanceof Error ? err.message : err,
       );
     }
+
+    // Sem leitura possível: a ligação automática, que tinha ficado adiada,
+    // corre agora à mesma para o ficheiro não ficar solto.
+    if (!visionDone && result.fileId) {
+      try {
+        const { autoLinkAndSuggest } = await import("@/lib/drive/link-suggestions.server");
+        const auto = await autoLinkAndSuggest({
+          supabase: supabaseAdmin,
+          userId,
+          channel: adapter.channel,
+          fileId: result.fileId,
+          fileLabel: "a imagem",
+          extraText: null,
+          sourceMessageId: persistedUuid,
+        });
+        if (auto.reply) {
+          await deliverReply(adapter, supabaseAdmin, {
+            userId,
+            externalConversationId: inbound.externalConversationId,
+            outcome: { reply: auto.reply },
+            replyTo: inbound.replyToMessageId ?? null,
+          });
+          return;
+        }
+      } catch (err) {
+        console.error(
+          `[channel-gateway/${adapter.channel}] autoLink fallback:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
   }
 
   await adapter.sendText(inbound.externalConversationId, result.reply);
