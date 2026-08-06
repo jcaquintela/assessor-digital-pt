@@ -63,7 +63,7 @@ test.describe("Recuperar palavra-passe com email real", () => {
     expect((data ?? []).length).toBe(0);
   });
 
-  test("abre o link e define uma nova palavra-passe", async ({ page, baseURL }) => {
+  test("abre o link e define uma nova palavra-passe", async ({ page, baseURL, request }) => {
     const { data, error } = await admin.auth.admin.generateLink({
       type: "recovery",
       email,
@@ -75,7 +75,15 @@ test.describe("Recuperar palavra-passe com email real", () => {
     verify.searchParams.set("token", data.properties.hashed_token);
     verify.searchParams.set("type", "recovery");
     verify.searchParams.set("redirect_to", `${baseURL}/reset-password`);
-    await page.goto(verify.toString());
+
+    // O redirect do email traz a sessão de recuperação no fragmento. Em local
+    // o destino permitido é o site publicado, por isso reaproveitamos aqui só
+    // o fragmento e abrimos o mesmo ecrã na app em teste.
+    const res = await request.get(verify.toString(), { maxRedirects: 0 });
+    const destino = res.headers()["location"] ?? "";
+    const hash = destino.slice(destino.indexOf("#"));
+    expect(hash).toContain("access_token=");
+    await page.goto(`${baseURL}/reset-password${hash}`);
 
     await expect(page).toHaveURL(/\/reset-password/, { timeout: 30_000 });
     const campo = page.locator('input[type="password"]');
