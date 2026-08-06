@@ -13,15 +13,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - name: Run assessor-files cross-tenant isolation test
         env:
+          CI: "true"
           TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
-          TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          # Chave publicável atual (sb_publishable_…). A antiga chave anon em JWT
+          # deixou de ser aceite quando o projeto passou a chaves assimétricas.
+          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          # Com esta chave o teste cria e apaga as suas próprias contas.
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          # Alternativa (só usada se não houver service role key): contas fixas.
           TEST_USER_A_EMAIL: ${{ secrets.TEST_USER_A_EMAIL }}
           TEST_USER_A_PASSWORD: ${{ secrets.TEST_USER_A_PASSWORD }}
           TEST_USER_B_EMAIL: ${{ secrets.TEST_USER_B_EMAIL }}
