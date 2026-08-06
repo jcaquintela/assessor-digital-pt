@@ -160,18 +160,16 @@ export async function ensureDraft(supabaseAdmin: any, dateISO: string) {
     return { digest: created, updates, autoBody: auto };
   }
 
-  // Só refresca automaticamente enquanto o texto não foi editado nem aprovado.
-  if (existing.status === "rascunho" && !existing.approved_at && existing.body !== auto) {
-    const untouched = existing.body === "" || existing.body === composeDigestBody(updates.slice(0, -1), dateISO);
-    if (untouched) {
-      const { data: refreshed } = await supabaseAdmin
-        .from("daily_digests")
-        .update({ body: auto } as never)
-        .eq("id", existing.id)
-        .select("*")
-        .maybeSingle();
-      return { digest: refreshed ?? existing, updates, autoBody: auto };
-    }
+  // Enquanto ninguém editou o texto à mão, o rascunho acompanha as novidades
+  // que forem sendo registadas ao longo do dia.
+  if (existing.status === "rascunho" && !existing.body_edited && existing.body !== auto) {
+    const { data: refreshed } = await supabaseAdmin
+      .from("daily_digests")
+      .update({ body: auto } as never)
+      .eq("id", existing.id)
+      .select("*")
+      .maybeSingle();
+    return { digest: refreshed ?? existing, updates, autoBody: auto };
   }
   return { digest: existing, updates, autoBody: auto };
 }
