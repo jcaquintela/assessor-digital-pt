@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -24,6 +24,12 @@ export type MergeSource = { id: string; label: string; suggestedTargetId?: strin
 export function acctLabel(a: MergeAccount) {
   return `${a.name || "sem nome"} · ${a.email || "sem email"}${a.phone ? ` · ${a.phone}` : ""}`;
 }
+
+const REASON_SUGGESTIONS = [
+  "Mesma pessoa: conta do WhatsApp e conta do painel.",
+  "Duplicado criado no registo — fica a conta de email.",
+  "Pedido do consultor para juntar os acessos.",
+];
 
 export function AccountMergeDialog({
   source,
@@ -62,17 +68,30 @@ export function AccountMergeDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Pré-visualização automática assim que houver conta escolhida — deixa de ser um clique obrigatório.
+  useEffect(() => {
+    if (!source || !targetId || preview || doPreview.isPending) return;
+    doPreview.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source?.id, targetId, preview]);
+
   const doApply = useMutation({
     mutationFn: () =>
       applyFn({ data: { source_user_id: source!.id, target_user_id: targetId!, reason: reason.trim() } }),
     onSuccess: () => {
-      toast.success("Contas fundidas.");
+      const alvo = preview ? acctLabel(preview.target) : "a conta escolhida";
+      toast.success(`Contas fundidas. Fica ${alvo}.`);
       onDone();
       reset();
       onClose();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || "Não foi possível fundir as contas."),
   });
+
+  const missing: string[] = [];
+  if (!targetId) missing.push("escolhe a conta que fica");
+  else if (!preview) missing.push(doPreview.isPending ? "a calcular a pré-visualização" : "clica em Pré-visualizar");
+  if (reason.trim().length < 3) missing.push("escreve o motivo da fusão");
 
   return (
     <Dialog
@@ -105,7 +124,7 @@ export function AccountMergeDialog({
           )}
 
           <label className="block">
-            Procurar a conta que fica (nome, email ou telemóvel)
+            1 · Procurar a conta que fica (nome, email ou telemóvel)
             <input
               className="admin-input mt-1 w-full"
               value={query}
@@ -157,7 +176,7 @@ export function AccountMergeDialog({
           )}
 
           <label className="block">
-            Motivo da fusão (fica na auditoria)
+            2 · Motivo da fusão (fica na auditoria)
             <input
               className="admin-input mt-1 w-full"
               value={reason}
@@ -165,7 +184,20 @@ export function AccountMergeDialog({
               placeholder="Mesma pessoa: conta do WhatsApp e conta do painel."
             />
           </label>
+          <div className="flex flex-wrap gap-2">
+            {REASON_SUGGESTIONS.map((r) => (
+              <button key={r} type="button" className="admin-pill" onClick={() => setReason(r)}>
+                {r}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {missing.length > 0 && (
+          <p className="mini text-right" style={{ color: "var(--muted)" }}>
+            Para fundir: {missing.join(" · ")}.
+          </p>
+        )}
 
         <DialogFooter>
           <button type="button" className="admin-btn" onClick={onClose}>
@@ -177,7 +209,7 @@ export function AccountMergeDialog({
             disabled={!targetId || doPreview.isPending}
             onClick={() => doPreview.mutate()}
           >
-            {doPreview.isPending ? "A calcular…" : "Pré-visualizar"}
+            {doPreview.isPending ? "A calcular…" : preview ? "Recalcular" : "Pré-visualizar"}
           </button>
           <button
             type="button"
