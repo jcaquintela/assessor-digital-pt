@@ -470,6 +470,9 @@ function IntegracoesFlagsPage() {
       <SectionTitle>Cartela de briefing fora das 24h</SectionTitle>
       <BriefingTemplateBlock canEdit={isSuper} />
 
+      <SectionTitle>Teste real de proatividade fora das 24h</SectionTitle>
+      <ProactiveTestBlock canRun={isSuper} />
+
       <SectionTitle>Outras integrações</SectionTitle>
       <p className="mini mb-2" style={{ color: "var(--muted)" }}>
         Esta tabela responde a “a integração está montada e com credenciais no servidor?”, não a
