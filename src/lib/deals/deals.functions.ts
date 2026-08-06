@@ -3,7 +3,7 @@
 // Domain Services do motor.
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { dealAlert, normalizeKind, normalizeStage, type DealStage } from "./stages";
+import { dealAlert, legacyStatusForStage, normalizeKind, normalizeStage, type DealStage } from "./stages";
 
 type Row = Record<string, any>;
 
@@ -327,7 +327,9 @@ export const setDealStage = createServerFn({ method: "POST" })
       .from("opportunities").select("stage").eq("id", data.id).eq("user_id", userId).maybeSingle();
     const { error } = await supabase
       .from("opportunities")
-      .update({ stage, stage_changed_at: new Date().toISOString() } as never)
+      // `status` é legado, mas continua a ser lido por outros ecrãs: manter
+      // em sintonia com a fase evita "concluído aqui, em curso ali".
+      .update({ stage, status: legacyStatusForStage(stage), stage_changed_at: new Date().toISOString() } as never)
       .eq("id", data.id).eq("user_id", userId);
     if (error) throw new Error(error.message);
     await logEvent(
