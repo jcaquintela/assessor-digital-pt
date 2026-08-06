@@ -149,6 +149,66 @@ function ConsultorPage() {
       )}
       <Source>assistant_trust_scores × assessor_quality_scores</Source>
 
+      <SectionTitle>Custo (últimos 30 dias)</SectionTitle>
+      {(() => {
+        const c = data.cost;
+        const eur = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
+        const cr = (v: number) => v.toFixed(2).replace(".", ",");
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              <Field label="Créditos de IA">{cr(c.aiCredits)}</Field>
+              <Field label="Chamadas ao modelo">{c.aiCalls}</Field>
+              <Field label="WhatsApp">{c.whatsappEur > 0 ? eur(c.whatsappEur) : "—"}</Field>
+              <Field label="Custo total estimado">
+                {c.totalCostEur === null ? "—" : eur(c.totalCostEur)}
+              </Field>
+            </div>
+            {c.byModality.length > 0 && (
+              <table className="mt-3">
+                <thead>
+                  <tr><th>Tipo</th><th>Chamadas</th><th>Tokens</th><th>Créditos</th></tr>
+                </thead>
+                <tbody>
+                  {c.byModality.map((m) => (
+                    <tr key={m.modality}>
+                      <td className="mini">{m.modality}</td>
+                      <td className="mini">{m.calls}</td>
+                      <td className="mini">{(m.inputTokens + m.outputTokens).toLocaleString("pt-PT")}</td>
+                      <td className="mini">{cr(m.credits)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Field label="Plano paga (mês)">{c.planPriceEur === null ? "—" : eur(c.planPriceEur)}</Field>
+              <Field label="Margem estimada">
+                {c.marginEur === null ? "—" : (
+                  <span style={{ color: c.marginEur >= 0 ? "var(--ok, #16a34a)" : "var(--bad, #dc2626)" }}>
+                    {eur(c.marginEur)}
+                  </span>
+                )}
+              </Field>
+              <Field label="Preço do crédito">
+                {c.creditPriceEur === null ? "por definir" : `${c.creditPriceEur} €`}
+              </Field>
+            </div>
+            {c.creditPriceEur === null && (
+              <p className="mini mt-2" style={{ color: "var(--muted)" }}>
+                Sem preço de crédito definido, o custo em euros e a margem ficam por calcular — só os créditos são fiáveis.
+                Define o preço em Custos.
+              </p>
+            )}
+            <p className="mini mt-2" style={{ color: "var(--muted)" }}>
+              Só atividade real deste consultor (mensagens, imagens, áudio, documentos e envios WhatsApp).
+              O consumo de desenvolvimento do produto não é atribuível a ninguém e fica de fora.
+            </p>
+          </>
+        );
+      })()}
+      <Source>assessor_ai_logs × ai_model_rates × whatsapp_send_logs × plan_configs</Source>
+
       <SectionTitle>Ações</SectionTitle>
       <div className="admin-card flex flex-wrap items-end gap-3 p-4">
         <div>
