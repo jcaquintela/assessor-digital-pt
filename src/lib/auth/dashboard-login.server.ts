@@ -125,6 +125,12 @@ export async function redeemDashboardLoginToken(token: string): Promise<RedeemRe
   const email = userRes?.user?.email as string | undefined;
   if (!email) return { ok: false, reason: "failed" };
 
+  // Rede de segurança: quem entra por um link que nós próprios emitimos já foi
+  // convidado por nós — nunca fica preso à espera de confirmar o email.
+  if (!userRes?.user?.email_confirmed_at) {
+    await supabaseAdmin.auth.admin.updateUserById(row.user_id, { email_confirm: true });
+  }
+
   const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
     type: "magiclink",
     email,
