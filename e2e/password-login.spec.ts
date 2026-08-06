@@ -67,7 +67,8 @@ test.describe("Palavra-passe do painel e link mágico", () => {
     await page.getByRole("button", { name: "Definir palavra-passe" }).click();
 
     await expect(page).not.toHaveURL(/\/definir-password/, { timeout: 30_000 });
-    console.log("[e2e] URL depois de guardar:", page.url());
+    // Continua com sessão: definir a palavra-passe não pode atirar para o login.
+    await expect(page).not.toHaveURL(/\/auth/);
 
     // A palavra-passe ficou registada no perfil (e por isso o passo não se repete).
     let marcado: string | null = null;
