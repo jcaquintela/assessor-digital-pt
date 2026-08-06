@@ -60,10 +60,7 @@ function DefinirPasswordPage() {
       }
       // Mudar a palavra-passe pode encerrar a sessão actual: voltamos a entrar
       // com as novas credenciais para o consultor não cair no ecrã de login.
-      if (email) {
-        const { data } = await supabase.auth.getSession();
-        if (!data.session) await supabase.auth.signInWithPassword({ email, password });
-      }
+      if (email) await supabase.auth.signInWithPassword({ email, password });
       toast.success("Palavra-passe definida. Já podes entrar com email e palavra-passe.");
       goOn();
     } catch {
