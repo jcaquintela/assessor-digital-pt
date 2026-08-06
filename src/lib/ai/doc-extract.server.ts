@@ -4,6 +4,9 @@
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "openai/gpt-5.6-sol";
+// PDFs digitalizados (páginas que são imagens, sem camada de texto) precisam de
+// um modelo que faça OCR nativo das páginas. É o mesmo caminho das fotos.
+const OCR_MODEL = "google/gemini-3.6-flash";
 
 export interface DocReading {
   doc_type: string | null;       // ex.: "Caderneta Predial", "Certidão Permanente"
@@ -31,6 +34,19 @@ const SUPPORTED_DOC = new Set([
 
 export function supportsDocExtraction(mimeType: string): boolean {
   return SUPPORTED_DOC.has(mimeType.toLowerCase().split(";")[0].trim());
+}
+
+/**
+ * Heurística barata: um PDF com texto real tem operadores de texto (Tj/TJ) e
+ * fontes fora dos fluxos comprimidos, ou fluxos comprimidos com fontes.
+ * Quando nada disto aparece, é quase de certeza um scan (imagens por página),
+ * como os PDFs criados pelo scanner do WhatsApp.
+ */
+export function pdfLikelyHasTextLayer(bytes: Uint8Array): boolean {
+  const head = new TextDecoder("latin1").decode(bytes.subarray(0, Math.min(bytes.length, 400_000)));
+  const hasFont = /\/(Font|BaseFont)\b/.test(head);
+  const hasTextOps = /\bTJ\b|\bTj\b|\bBT\b/.test(head);
+  return hasFont && hasTextOps;
 }
 
 const PROMPT = `És um assistente de um consultor imobiliário português.
@@ -121,22 +137,34 @@ export async function readDocument(
           { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
         ];
 
-  const res = await fetch(GATEWAY, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      reasoning_effort: "none",
-      messages: [{ role: "user", content }],
-      response_format: { type: "json_object" },
-    }),
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    return { ok: false, error: `Gateway ${res.status}: ${t.slice(0, 300)}` };
+  // PDF-scan (sem camada de texto) vai directo ao modelo com OCR de páginas;
+  // os restantes tentam o modelo principal e só depois o de OCR.
+  const scanned = mime === "application/pdf" && !pdfLikelyHasTextLayer(bytes);
+  const models = scanned ? [OCR_MODEL, MODEL] : [MODEL, OCR_MODEL];
+
+  let lastError = "Sem conteúdo interpretável";
+  for (const model of models) {
+    const res = await fetch(GATEWAY, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        ...(model === MODEL ? { reasoning_effort: "none" } : {}),
+        messages: [{ role: "user", content }],
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      lastError = `Gateway ${res.status}: ${t.slice(0, 300)}`;
+      continue;
+    }
+    const json = (await res.json()) as any;
+    const parsed = parseJsonLoose(json?.choices?.[0]?.message?.content ?? "");
+    if (!parsed) continue;
+    const reading = coerce(parsed);
+    if (hasAnyDocData(reading) || reading.visible_text) return { ok: true, reading };
+    lastError = "Documento sem dados legíveis";
   }
-  const json = (await res.json()) as any;
-  const parsed = parseJsonLoose(json?.choices?.[0]?.message?.content ?? "");
-  if (!parsed) return { ok: false, error: "Sem conteúdo interpretável" };
-  return { ok: true, reading: coerce(parsed) };
+  return { ok: false, error: lastError };
 }
