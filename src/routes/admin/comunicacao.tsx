@@ -467,6 +467,8 @@ function ComunicacaoPage() {
       <p className="mini mt-2" style={{ color: "var(--muted)" }}>
         Clica num envio para ver o estado real de cada destinatário e repetir só os que falharam.
       </p>
+      </>
+      )}
     </div>
   );
 }
