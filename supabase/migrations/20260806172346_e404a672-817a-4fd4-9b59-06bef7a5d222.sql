@@ -1,0 +1,2 @@
+INSERT INTO public.product_updates (released_on, title, description, category, is_published)
+VALUES (CURRENT_DATE, 'PDFs digitalizados agora são lidos', 'Os PDFs criados pelo scanner do WhatsApp (páginas que são fotografias) passam agora pela mesma leitura das fotos: o Afonso identifica o tipo de documento, datas, NIF, artigo matricial e morada, e diz logo do que se trata em vez de perguntar "a que se refere?". Quando não consegue identificar, pergunta se queres associar a alguém ou a um imóvel, em vez de adivinhar.', 'melhoria', true);

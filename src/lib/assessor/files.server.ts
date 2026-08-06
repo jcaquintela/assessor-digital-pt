@@ -392,7 +392,7 @@ export async function processIncomingFile(
   const fileId = (fileRow as { id: string }).id;
   const label = friendlyLabel(classification);
   const article = label === "imagem" || label === "mensagem de voz" ? "a" : "o";
-  const reply = `Recebi ${article} ${label}. A que se refere?`;
+  let reply = `Recebi ${article} ${label}. A que se refere?`;
 
   // Drive Inteligente: se o conteúdo aponta claramente para registos já
   // existentes, liga o mais óbvio e propõe o seguinte (com confirmação).
@@ -419,6 +419,17 @@ export async function processIncomingFile(
           currentName: originalName,
         });
         if (meta?.text) extraText = [extraText, meta.text].filter(Boolean).join("\n").slice(0, 20000);
+        // Já sabemos o que é o documento: dizemos-lhe o nome em vez de
+        // perguntar "a que se refere?" às cegas.
+        if (meta?.reading) {
+          const { documentToEngineText, docLinkText } = await import("@/lib/drive/doc-engine-text");
+          const link = docLinkText(meta.reading);
+          if (link) extraText = [extraText, link].filter(Boolean).join("\n").slice(0, 20000);
+          const docText = documentToEngineText(meta.reading);
+          if (docText) {
+            reply = `${docText} Queres que associe este documento a alguém ou a um imóvel em particular?`;
+          }
+        }
       }
 
       const { autoLinkAndSuggest } = await import("@/lib/drive/link-suggestions.server");

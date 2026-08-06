@@ -1683,6 +1683,45 @@ async function handleFileClassificationTurn(
       });
       return { reply };
     }
+    // A descrição pode apontar para uma pessoa/imóvel/negócio já existente.
+    // Se houver correspondência clara, liga; se for uma frase descritiva sem
+    // correspondência, pergunta em vez de adivinhar (e nunca assume pesquisa
+    // de pessoa por defeito).
+    if (fileId) {
+      try {
+        const { findLinkCandidates, addFileLink } = await import(
+          "@/lib/drive/link-suggestions.server"
+        );
+        const { LINKABLE_LABEL } = await import("@/lib/drive/link-match");
+        const candidates = await findLinkCandidates(supabase, userId, fileId, description);
+        const strong = candidates.filter((c) => c.score >= 0.8);
+        if (strong.length > 0) {
+          const best = strong[0];
+          await addFileLink(supabase, userId, fileId, best.entityType, best.entityId, "user");
+          const reply = `Feito. Liguei ${article} ${label} a ${best.label} (${LINKABLE_LABEL[best.entityType].toLowerCase()}). Queres que te lembre de tratar disso?`;
+          await updatePendingActionPayload(
+            supabase,
+            pending.id,
+            { ...payload, user_description: description, linked_entity_id: best.entityId },
+            { status: "collecting_information", pending_question: reply, current_question: "reminder_confirmation" },
+          );
+          return { reply };
+        }
+        const looksDescriptive = description.split(/\s+/).length >= 3;
+        if (looksDescriptive && (payload.link_asked ?? false) !== true) {
+          const reply = `Percebi: ${description}. Queres que associe este ${label} a alguém ou a um imóvel em particular?`;
+          await updatePendingActionPayload(
+            supabase,
+            pending.id,
+            { ...payload, user_description: description, link_asked: true },
+            { status: "collecting_information", pending_question: reply, current_question: "file_description" },
+          );
+          return { reply };
+        }
+      } catch (err) {
+        console.error("[engine] file link on description:", err instanceof Error ? err.message : err);
+      }
+    }
     const newPayload = { ...payload, user_description: description };
     const reply = `Percebi: ${description}. Vou guardar este ${label}. Queres que te lembre de tratar disso?`;
     await updatePendingActionPayload(supabase, pending.id, newPayload, {
