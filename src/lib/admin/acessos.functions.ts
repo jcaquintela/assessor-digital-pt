@@ -65,6 +65,8 @@ export type AccessUser = {
   state: "active" | "inactive" | "test";
   created_at: string;
   email_confirmed: boolean;
+  /** Créditos de IA consumidos nos últimos 30 dias (run usage). */
+  credits30d: number;
 };
 
 const TEST_MARKERS = ["ci-", "test.assessor.local"];
@@ -93,6 +95,9 @@ export const listAccessUsers = createServerFn({ method: "GET" })
     });
     const linkMap = new Map<string, string>();
     (links ?? []).forEach((l: any) => linkMap.set(l.user_id, l.channel));
+
+    const { aiCostsByUser } = await import("@/lib/admin/ai-costs.server");
+    const costMap = await aiCostsByUser(supabaseAdmin, ids, 30);
 
     return users
       // Contas fundidas deixam de existir para o admin: só fica a conta ativa que
@@ -127,6 +132,7 @@ export const listAccessUsers = createServerFn({ method: "GET" })
         state: banned ? "inactive" : isTest ? "test" : "active",
         created_at: u.created_at,
         email_confirmed: !!((u as any).email_confirmed_at ?? (u as any).confirmed_at),
+        credits30d: costMap.get(u.id)?.credits ?? 0,
       } satisfies AccessUser;
     });
   });
