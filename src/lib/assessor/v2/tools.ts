@@ -43,6 +43,12 @@ export const SearchPropertiesArgs = z.object({
 });
 export type SearchPropertiesArgs = z.infer<typeof SearchPropertiesArgs>;
 
+export const SearchFilesArgs = z.object({
+  query: z.string().default(""),
+  document_type: z.string().optional().nullable(),
+});
+export type SearchFilesArgs = z.infer<typeof SearchFilesArgs>;
+
 export const CreatePropertyArgs = z.object({
   title: z.string().min(1),
   property_type: z.string().optional().nullable(),
