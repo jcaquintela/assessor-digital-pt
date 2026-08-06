@@ -442,13 +442,18 @@ export const createAccess = createServerFn({ method: "POST" })
         if (!externalId) {
           erroEnvio = `Não há ${canalEnvio} ligado a esta conta para enviar o link.`;
         } else {
-          const { issueDashboardLoginLink, LOGIN_LINK_REPLY } = await import("@/lib/auth/dashboard-login.server");
-          const { url } = await issueDashboardLoginLink(supabaseAdmin, userId, canalEnvio, {
+          // Convite completo: link mágico + número do Afonso + código de acesso.
+          const { buildInviteMessage } = await import("@/lib/admin/invite-message.server");
+          const convite = await buildInviteMessage(supabaseAdmin, {
+            userId,
+            canal: canalEnvio,
+            nome: data.name ?? null,
+            phone: canalEnvio === "whatsapp" ? phone : null,
             reason: associated ? "Convite: canal associado a conta existente." : "Convite: conta criada pela equipa.",
             issuedBy: context.userId,
           });
           const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
-          await sendReplyForChannel(canalEnvio as any, externalId, LOGIN_LINK_REPLY(url));
+          await sendReplyForChannel(canalEnvio as any, externalId, convite.texto);
           linkEnviado = true;
         }
       } catch (e) {
