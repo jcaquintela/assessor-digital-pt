@@ -424,6 +424,24 @@ export const listAuditLogs = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("admin_audit_logs")
       .select("*")
+      .not("action", "like", "sensivel.%")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    return data ?? [];
+  });
+
+// Acessos a tabelas sensíveis (tokens de calendário, códigos de entrada,
+// sessões de suporte, tarifas). Escritas vêm de triggers na base de dados;
+// leituras de segredos são registadas pela app.
+export const listSensitiveAccessLogs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    assertAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("admin_audit_logs")
+      .select("*")
+      .like("action", "sensivel.%")
       .order("created_at", { ascending: false })
       .limit(200);
     return data ?? [];
