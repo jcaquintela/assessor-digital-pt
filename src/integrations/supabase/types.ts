@@ -3823,6 +3823,17 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      merge_accounts_apply: {
+        Args: { _source: string; _target: string }
+        Returns: Json
+      }
+      merge_accounts_preview: {
+        Args: { _source: string }
+        Returns: {
+          rows: number
+          table_name: string
+        }[]
+      }
       release_conversation_lock: {
         Args: { _channel: string; _holder?: string; _user_id: string }
         Returns: undefined
