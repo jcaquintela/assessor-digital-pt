@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,6 +13,7 @@ import {
   getAiCostSettings,
   saveAiRate,
   saveCreditPrice,
+  getMarginAlerts,
 } from "@/lib/admin/cost-settings.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +44,8 @@ function CustosPage() {
   return (
     <div>
       <PageTitle title="Custos" sub="O que custa operar o Afonso, hoje — sem isto não há margem real, só receita." />
+
+      <MarginAlertsBlock />
 
       <Grid cols={3}>
         <MetricCard
