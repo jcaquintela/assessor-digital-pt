@@ -130,6 +130,27 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_cost_settings: {
+        Row: {
+          key: string
+          source: string | null
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          key: string
+          source?: string | null
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          key?: string
+          source?: string | null
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
       admin_mfa_required: {
         Row: {
           required_at: string
@@ -145,6 +166,36 @@ export type Database = {
           required_at?: string
           required_by?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      ai_model_rates: {
+        Row: {
+          credits_per_1m_input: number
+          credits_per_1m_output: number
+          effective_from: string
+          id: string
+          model: string
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          credits_per_1m_input: number
+          credits_per_1m_output: number
+          effective_from?: string
+          id?: string
+          model: string
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          credits_per_1m_input?: number
+          credits_per_1m_output?: number
+          effective_from?: string
+          id?: string
+          model?: string
+          source?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -227,6 +278,7 @@ export type Database = {
       }
       assessor_ai_logs: {
         Row: {
+          billed_model: string | null
           channel: string
           confidence: number | null
           created_at: string
@@ -238,6 +290,7 @@ export type Database = {
           input_tokens: number | null
           intent: string | null
           latency_ms: number | null
+          modality: string | null
           model: string
           output_tokens: number | null
           route: string | null
@@ -248,6 +301,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          billed_model?: string | null
           channel: string
           confidence?: number | null
           created_at?: string
@@ -259,6 +313,7 @@ export type Database = {
           input_tokens?: number | null
           intent?: string | null
           latency_ms?: number | null
+          modality?: string | null
           model: string
           output_tokens?: number | null
           route?: string | null
@@ -269,6 +324,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          billed_model?: string | null
           channel?: string
           confidence?: number | null
           created_at?: string
@@ -280,6 +336,7 @@ export type Database = {
           input_tokens?: number | null
           intent?: string | null
           latency_ms?: number | null
+          modality?: string | null
           model?: string
           output_tokens?: number | null
           route?: string | null

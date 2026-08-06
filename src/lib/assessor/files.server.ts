@@ -203,13 +203,19 @@ export async function applyDocumentExtraction(args: {
   bytes: Uint8Array;
   mimeType: string;
   currentName: string | null;
+  userId?: string | null;
+  channel?: string | null;
 }): Promise<{ text: string | null; expiresOn: string | null; reading: import("@/lib/ai/doc-extract.server").DocReading } | null> {
   try {
     const { readDocument, supportsDocExtraction, hasAnyDocData } = await import(
       "@/lib/ai/doc-extract.server"
     );
     if (!supportsDocExtraction(args.mimeType)) return null;
-    const res = await readDocument(args.bytes, args.mimeType, args.currentName);
+    const res = await readDocument(args.bytes, args.mimeType, args.currentName, {
+      supabase: args.supabase,
+      userId: args.userId ?? null,
+      channel: args.channel ?? null,
+    });
     if (!res.ok) {
       console.error("[files] doc-extract:", res.error);
       return null;
@@ -417,6 +423,8 @@ export async function processIncomingFile(
           bytes: body,
           mimeType,
           currentName: originalName,
+          userId,
+          channel,
         });
         if (meta?.text) extraText = [extraText, meta.text].filter(Boolean).join("\n").slice(0, 20000);
         // Já sabemos o que é o documento: dizemos-lhe o nome em vez de

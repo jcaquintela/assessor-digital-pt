@@ -40,6 +40,18 @@ export type ConsultantDetail = {
   };
   volume: { people: number; properties: number; openDeals: number; pendingFollowUps: number };
   quality: { ats: number | null; aqs: number | null; samples: number };
+  cost: {
+    days: number;
+    aiCredits: number;
+    aiCalls: number;
+    byModality: { modality: string; calls: number; credits: number; inputTokens: number; outputTokens: number }[];
+    whatsappEur: number;
+    creditPriceEur: number | null;
+    aiCostEur: number | null;
+    totalCostEur: number | null;
+    planPriceEur: number | null;
+    marginEur: number | null;
+  };
   audit: {
     id: string;
     action: string;
@@ -83,6 +95,24 @@ export const getConsultantDetail = createServerFn({ method: "GET" })
 
     const p = (prof.data ?? null) as any;
     if (!p) throw new Error("Conta não encontrada.");
+
+    // Custo atribuível (run usage): IA + WhatsApp. Build usage fica de fora.
+    const { aiCostsByUser, whatsappCostByUser, creditPriceEur, planPricesByTier } = await import(
+      "@/lib/admin/ai-costs.server"
+    );
+    const [aiMap, waMap, price, planPrices] = await Promise.all([
+      aiCostsByUser(supabaseAdmin, [id], 30),
+      whatsappCostByUser(supabaseAdmin, [id], 30),
+      creditPriceEur(supabaseAdmin),
+      planPricesByTier(supabaseAdmin),
+    ]);
+    const ai = aiMap.get(id) ?? { credits: 0, calls: 0, byModality: [] };
+    const whatsappEur = waMap.get(id) ?? 0;
+    const aiCostEur = price != null ? ai.credits * price : null;
+    const totalCostEur = aiCostEur != null ? aiCostEur + whatsappEur : null;
+    const planPriceEur = planPrices.get(p.subscription_tier ?? "base") ?? null;
+    const marginEur =
+      totalCostEur != null && planPriceEur != null ? planPriceEur - totalCostEur : null;
 
     const msgRows = ((msgs.data ?? []) as any[]);
     const byChannelMap = new Map<string, number>();
@@ -140,6 +170,18 @@ export const getConsultantDetail = createServerFn({ method: "GET" })
         ats: avg(atsRows),
         aqs: avg(aqsRows),
         samples: atsRows.length + aqsRows.length,
+      },
+      cost: {
+        days: 30,
+        aiCredits: ai.credits,
+        aiCalls: ai.calls,
+        byModality: ai.byModality,
+        whatsappEur,
+        creditPriceEur: price,
+        aiCostEur,
+        totalCostEur,
+        planPriceEur,
+        marginEur,
       },
       audit: ((audit.data ?? []) as any[]).map((a) => ({
         id: a.id,

@@ -109,7 +109,11 @@ export function supportsVision(mimeType: string): boolean {
   return SUPPORTED.has(mimeType.toLowerCase().split(";")[0].trim());
 }
 
-export async function readImage(bytes: Uint8Array, mimeType: string): Promise<ReadImageResult> {
+export async function readImage(
+  bytes: Uint8Array,
+  mimeType: string,
+  telemetry?: import("./usage-log.server").AiTelemetry,
+): Promise<ReadImageResult> {
   const key = process.env.LOVABLE_API_KEY;
   if (!key) return { ok: false, error: "LOVABLE_API_KEY missing" };
   const mime = mimeType.toLowerCase().split(";")[0].trim();
@@ -133,6 +137,8 @@ export async function readImage(bytes: Uint8Array, mimeType: string): Promise<Re
     response_format: { type: "json_object" },
   };
 
+  const t0 = Date.now();
+  const { logAiUsage, readGatewayUsage } = await import("./usage-log.server");
   const res = await fetch(GATEWAY, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -140,11 +146,21 @@ export async function readImage(bytes: Uint8Array, mimeType: string): Promise<Re
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
+    await logAiUsage(telemetry, {
+      modality: "imagem", model: VISION_MODEL, intent: "read_image",
+      tokens: { input: 0, output: 0 }, latencyMs: Date.now() - t0,
+      success: false, error: `Gateway ${res.status}`,
+    });
     return { ok: false, error: `Gateway ${res.status}: ${t.slice(0, 300)}` };
   }
   const json = (await res.json()) as any;
   const content: string | undefined = json?.choices?.[0]?.message?.content;
   const parsed = parseJsonLoose(content ?? "");
+  await logAiUsage(telemetry, {
+    modality: "imagem", model: VISION_MODEL, intent: "read_image",
+    tokens: readGatewayUsage(json), latencyMs: Date.now() - t0,
+    success: !!parsed, error: parsed ? null : "no_parsable_content",
+  });
   if (!parsed) return { ok: false, error: "Vision returned no parsable content" };
   return { ok: true, reading: coerce(parsed) };
 }
