@@ -143,3 +143,65 @@ export async function planPricesByTier(supabaseAdmin: any): Promise<Map<string, 
   }
   return map;
 }
+export type MarginAlert = {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  tier: string;
+  aiCredits: number;
+  costEur: number;
+  planPriceEur: number;
+  marginEur: number;
+};
+
+/**
+ * Consultores em margem negativa: o que custam (IA + WhatsApp, run usage dos
+ * últimos `days` dias) é superior ao que o plano deles paga. Só devolve casos
+ * calculáveis — sem preço do crédito definido, não inventamos euros.
+ */
+export async function negativeMarginUsers(
+  supabaseAdmin: any,
+  days = 30,
+): Promise<{ alerts: MarginAlert[]; priceMissing: boolean }> {
+  const price = await creditPriceEur(supabaseAdmin);
+  if (price == null) return { alerts: [], priceMissing: true };
+
+  const { data: profs } = await supabaseAdmin
+    .from("profiles")
+    .select("id, name, email, subscription_tier");
+  const rows = (profs ?? []) as any[];
+  const ids = rows.map((r) => r.id as string);
+  if (!ids.length) return { alerts: [], priceMissing: false };
+
+  const [aiMap, waMap, planPrices] = await Promise.all([
+    aiCostsByUser(supabaseAdmin, ids, days),
+    whatsappCostByUser(supabaseAdmin, ids, days),
+    planPricesByTier(supabaseAdmin),
+  ]);
+
+  const alerts: MarginAlert[] = [];
+  for (const r of rows) {
+    const ai = aiMap.get(r.id);
+    const wa = waMap.get(r.id) ?? 0;
+    const credits = ai?.credits ?? 0;
+    const costEur = credits * price + wa;
+    if (costEur <= 0) continue;
+    const tier = r.subscription_tier ?? "base";
+    const planPriceEur = planPrices.get(tier);
+    if (planPriceEur == null) continue;
+    const marginEur = planPriceEur - costEur;
+    if (marginEur >= 0) continue;
+    alerts.push({
+      userId: r.id,
+      name: r.name ?? null,
+      email: r.email ?? null,
+      tier,
+      aiCredits: credits,
+      costEur,
+      planPriceEur,
+      marginEur,
+    });
+  }
+  alerts.sort((a, b) => a.marginEur - b.marginEur);
+  return { alerts, priceMissing: false };
+}
