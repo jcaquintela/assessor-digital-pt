@@ -20,6 +20,8 @@ export type LoginLinkRow = {
   expiresAt: string;
   usedAt: string | null;
   estado: "usado" | "expirado" | "ativo" | "substituido";
+  motivo: string | null;
+  emitidoPorEquipa: boolean;
 };
 
 export type LoginLinkConsultant = {
@@ -62,7 +64,7 @@ export const listLoginLinkStatus = createServerFn({ method: "GET" })
 
     const { data: tokens, error: tErr } = await supabaseAdmin
       .from("dashboard_login_tokens")
-      .select("token, user_id, channel, created_at, expires_at, used_at")
+      .select("token, user_id, channel, created_at, expires_at, used_at, reason, issued_by")
       .in("user_id", ids)
       .order("created_at", { ascending: false })
       .limit(500);
@@ -84,6 +86,8 @@ export const listLoginLinkStatus = createServerFn({ method: "GET" })
           expiresAt: t.expires_at,
           usedAt: t.used_at,
           estado: usado ? (substituido ? "substituido" : "usado") : expirado ? "expirado" : "ativo",
+          motivo: (t.reason as string | null) ?? null,
+          emitidoPorEquipa: !!t.issued_by,
         };
       });
       return {
