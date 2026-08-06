@@ -81,7 +81,7 @@ export const listAccessUsers = createServerFn({ method: "GET" })
     const [{ data: profs }, { data: roles }, { data: links }] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("id, name, subscription_tier, is_beta_tester, beta_expires_at, whatsapp_link_status, primary_channel")
+        .select("id, name, subscription_tier, is_beta_tester, beta_expires_at, whatsapp_link_status, primary_channel, account_kind")
         .in("id", guard),
       supabaseAdmin.from("user_roles").select("user_id, role").in("user_id", guard),
       supabaseAdmin.from("channel_links").select("user_id, channel").in("user_id", guard),
@@ -94,7 +94,11 @@ export const listAccessUsers = createServerFn({ method: "GET" })
     const linkMap = new Map<string, string>();
     (links ?? []).forEach((l: any) => linkMap.set(l.user_id, l.channel));
 
-    return users.map((u) => {
+    return users
+      // Contas fundidas deixam de existir para o admin: só fica a conta ativa que
+      // recebeu os dados. Continuam acessíveis no histórico de auditoria da fusão.
+      .filter((u) => (profMap.get(u.id) as any)?.account_kind !== "merged")
+      .map((u) => {
       const p: any = profMap.get(u.id) ?? {};
       const rs = roleMap.get(u.id) ?? ["consultant"];
       const role: Role = rs.includes("super_admin")
