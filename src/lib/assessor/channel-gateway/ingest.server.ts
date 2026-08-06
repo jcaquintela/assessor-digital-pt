@@ -512,6 +512,8 @@ async function handleInboundMediaInner(
     size: dl.bytes.byteLength,
     bytes: dl.bytes,
     sourceMessageId: persistedUuid,
+    // Imagens: só ligamos depois de ler o documento (morada, NIF, artigo).
+    deferAutoLink: inbound.messageType === "image",
   });
 
   // Anexo a um erro/sugestão por confirmar → junta ao rascunho e não segue
