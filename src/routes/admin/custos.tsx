@@ -179,6 +179,14 @@ function AiRatesBlockInner() {
         consultor mostra euros e margem face ao plano que ele paga.
       </p>
 
+      {(data?.missingRates ?? []).length > 0 && (
+        <p className="sub mb-3">
+          Faltam tarifas para modelos que o Afonso já usa:{" "}
+          <strong>{(data?.missingRates ?? []).join(", ")}</strong>. Enquanto faltarem, esse consumo é
+          calculado pela tarifa de referência e o custo real fica subestimado.
+        </p>
+      )}
+
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <div>
           <div className="mini mb-1">Preço de 1 crédito (€)</div>

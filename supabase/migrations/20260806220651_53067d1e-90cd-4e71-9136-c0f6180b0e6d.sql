@@ -1,0 +1,14 @@
+REVOKE ALL ON public.admin_cost_settings FROM anon, authenticated;
+REVOKE ALL ON public.ai_model_rates FROM anon, authenticated;
+REVOKE ALL ON public.app_user_connections FROM anon, authenticated;
+REVOKE ALL ON public.app_user_connection_aliases FROM anon, authenticated;
+REVOKE ALL ON public.dashboard_login_tokens FROM anon, authenticated;
+REVOKE ALL ON public.support_sessions FROM anon, authenticated;
+REVOKE ALL ON public.telegram_pairings FROM anon, authenticated;
+GRANT ALL ON public.admin_cost_settings TO service_role;
+GRANT ALL ON public.ai_model_rates TO service_role;
+GRANT ALL ON public.app_user_connections TO service_role;
+GRANT ALL ON public.app_user_connection_aliases TO service_role;
+GRANT ALL ON public.dashboard_login_tokens TO service_role;
+GRANT ALL ON public.support_sessions TO service_role;
+GRANT ALL ON public.telegram_pairings TO service_role;

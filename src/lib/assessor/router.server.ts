@@ -257,6 +257,48 @@ function extractJsonString(payload: any): string | null {
   return null;
 }
 
+/**
+ * Tenta ler o JSON do router mesmo quando a resposta vem cortada.
+ * A causa mais comum de "invalid json from router" é o modelo atingir o
+ * limite de tokens a meio do objeto: nesse caso fechamos os parêntesis em
+ * falta em vez de deitar fora a interpretação toda.
+ */
+export function parseRouterJson(raw: string): unknown | null {
+  const attempt = (s: string): unknown | null => {
+    try { return JSON.parse(s); } catch { return null; }
+  };
+  const direct = attempt(raw);
+  if (direct) return direct;
+
+  const start = raw.indexOf("{");
+  if (start < 0) return null;
+  const body = raw.slice(start);
+
+  const braced = body.match(/\{[\s\S]*\}/);
+  if (braced) {
+    const parsed = attempt(braced[0]);
+    if (parsed) return parsed;
+  }
+
+  // Reparação de truncatura: fecha string aberta e parêntesis em falta.
+  let inString = false;
+  let escaped = false;
+  const stack: string[] = [];
+  for (const ch of body) {
+    if (escaped) { escaped = false; continue; }
+    if (ch === "\\") { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  let repaired = body;
+  if (inString) repaired += '"';
+  repaired = repaired.replace(/,\s*$/, "").replace(/:\s*$/, ": null");
+  while (stack.length) repaired += stack.pop() === "[" ? "]" : "}";
+  return attempt(repaired);
+}
+
 // -------- Chamada --------
 
 export async function interpretAssessorMessage(input: RouterInput): Promise<RouterResult> {
@@ -274,57 +316,59 @@ export async function interpretAssessorMessage(input: RouterInput): Promise<Rout
     return { ok: false, error: "LOVABLE_API_KEY missing", telemetry: emptyTelemetry };
   }
 
-  const body = {
+  const buildBody = (maxTokens: number) => ({
     model,
     messages: [
       { role: "system", content: buildSystemPrompt(input) },
       { role: "user", content: buildUserPrompt(input) },
     ],
     response_format: { type: "json_object" },
-    max_tokens: 500,
+    max_tokens: maxTokens,
     temperature: 0.1,
-  };
+  });
 
-  try {
-    const res = await fetch(GATEWAY, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": key,
-      },
-      body: JSON.stringify(body),
-    });
-    const latencyMs = Date.now() - started;
-    const payload: any = await res.json().catch(() => ({}));
-    const inputTokens = Number(payload?.usage?.prompt_tokens ?? 0);
-    const outputTokens = Number(payload?.usage?.completion_tokens ?? 0);
-    const totalTokens = Number(payload?.usage?.total_tokens ?? inputTokens + outputTokens);
-    const telemetry: RouterTelemetry = { model, inputTokens, outputTokens, totalTokens, latencyMs };
-    if (!res.ok) {
-      return {
-        ok: false,
-        error: payload?.error?.message || `HTTP ${res.status}`,
-        telemetry,
-      };
-    }
-    const raw = extractJsonString(payload);
-    if (!raw) return { ok: false, error: "empty router response", telemetry };
-    let parsed: unknown;
+  // Duas tentativas no máximo: a segunda com mais espaço de resposta, porque
+  // a falha típica é o JSON vir cortado a meio.
+  const budgets = [900, 1500];
+  let lastError = "invalid json from router";
+  let lastTelemetry: RouterTelemetry = emptyTelemetry;
+
+  for (const budget of budgets) {
     try {
-      parsed = JSON.parse(raw);
-    } catch {
-      const m = raw.match(/\{[\s\S]*\}/);
-      if (!m) return { ok: false, error: "invalid json from router", telemetry };
-      try { parsed = JSON.parse(m[0]); } catch { return { ok: false, error: "invalid json from router", telemetry }; }
+      const attemptStart = Date.now();
+      const res = await fetch(GATEWAY, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+        body: JSON.stringify(buildBody(budget)),
+      });
+      const latencyMs = Date.now() - attemptStart;
+      const payload: any = await res.json().catch(() => ({}));
+      const inputTokens = Number(payload?.usage?.prompt_tokens ?? 0);
+      const outputTokens = Number(payload?.usage?.completion_tokens ?? 0);
+      const totalTokens = Number(payload?.usage?.total_tokens ?? inputTokens + outputTokens);
+      const telemetry: RouterTelemetry = { model, inputTokens, outputTokens, totalTokens, latencyMs };
+      lastTelemetry = telemetry;
+
+      if (!res.ok) {
+        lastError = payload?.error?.message || `HTTP ${res.status}`;
+        // 429/5xx podem passar numa segunda tentativa; o resto não.
+        if (res.status === 429 || res.status >= 500) continue;
+        return { ok: false, error: lastError, telemetry };
+      }
+
+      const raw = extractJsonString(payload);
+      if (!raw) { lastError = "empty router response"; continue; }
+
+      const parsed = parseRouterJson(raw);
+      if (parsed) return { ok: true, decision: coerceDecision(parsed), telemetry };
+      lastError = "invalid json from router";
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      lastTelemetry = { ...emptyTelemetry, latencyMs: Date.now() - started };
     }
-    return { ok: true, decision: coerceDecision(parsed), telemetry };
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
-      telemetry: { ...emptyTelemetry, latencyMs: Date.now() - started },
-    };
   }
+
+  return { ok: false, error: lastError, telemetry: lastTelemetry };
 }
 
 // Índice de confiança mínima para não pedir esclarecimento adicional.

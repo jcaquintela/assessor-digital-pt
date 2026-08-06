@@ -23,7 +23,15 @@ export type AiRateRow = {
   source: string | null;
 };
 
-export type AiCostSettings = { rates: AiRateRow[]; creditPriceEur: number | null };
+export type AiCostSettings = {
+  rates: AiRateRow[];
+  creditPriceEur: number | null;
+  /** Modelos que o Afonso usa mas ainda não têm tarifa definida. */
+  missingRates: string[];
+};
+
+// Modelos efetivamente usados pelo produto (motor, visão, áudio, documentos).
+const MODELS_IN_USE = ["google/gemini-3.6-flash", "openai/gpt-5.6-sol"];
 
 export const getAiCostSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -38,6 +46,7 @@ export const getAiCostSettings = createServerFn({ method: "GET" })
       supabaseAdmin.from("admin_cost_settings").select("value").eq("key", "credit_price_eur").maybeSingle(),
     ]);
     const price = Number((setting as any)?.value);
+    const known = new Set(((rates ?? []) as any[]).map((r) => r.model as string));
     return {
       rates: ((rates ?? []) as any[]).map((r) => ({
         model: r.model,
@@ -46,6 +55,7 @@ export const getAiCostSettings = createServerFn({ method: "GET" })
         source: r.source ?? null,
       })),
       creditPriceEur: Number.isFinite(price) && price > 0 ? price : null,
+      missingRates: MODELS_IN_USE.filter((m) => !known.has(m)),
     };
   });
 
