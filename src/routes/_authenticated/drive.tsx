@@ -286,8 +286,23 @@ function DrivePage() {
 
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
-    if (!confirm(`Eliminar ${label}? Fica na Reciclagem 24 horas — podes recuperar com as ligações dentro desse prazo.`)) return;
-    deleteMany.mutate(ids);
+    const ligacoes = ids.reduce(
+      (n, id) => n + (((linksByFile as any)[id] ?? []).length as number),
+      0,
+    );
+    confirmacao.pedir({
+      acao: ids.length === 1 ? "Eliminar documento" : "Eliminar documentos",
+      alvo: label,
+      efeito: "reciclagem",
+      resumo: [
+        `${ids.length} ${ids.length === 1 ? "ficheiro sai" : "ficheiros saem"} do Drive Inteligente e das pesquisas.`,
+        ligacoes > 0
+          ? `${ligacoes} ${ligacoes === 1 ? "ligação" : "ligações"} a pessoas, imóveis ou negócios ${ligacoes === 1 ? "deixa" : "deixam"} de aparecer nas fichas.`
+          : "Não há ligações a pessoas, imóveis ou negócios.",
+        "A leitura automática do documento também deixa de estar disponível.",
+      ],
+      onConfirm: () => deleteMany.mutate(ids),
+    });
   };
 
   const recuperar = (ids: string[]) => {
