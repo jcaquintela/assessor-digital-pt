@@ -23,7 +23,7 @@ export const Route = createFileRoute("/api/public/hooks/daily-digest")({
           });
         }
         const result = await d.sendDigestForDate(supabaseAdmin, d.lisbonDate());
-        return new Response(JSON.stringify({ ok: true, ...result }), {
+        return new Response(JSON.stringify(result), {
           headers: { "Content-Type": "application/json" },
         });
       },
