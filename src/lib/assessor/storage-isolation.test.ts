@@ -1,29 +1,57 @@
 // End-to-end tenant isolation test for the `assessor-files` bucket.
 //
-// Uses two REAL Supabase accounts (email/password) provided via env vars.
-// Verifies that account B — with its own valid JWT — cannot list, read or
-// delete files owned by account A, even when B knows A's storage path.
+// Two REAL accounts sign in with email/password and get real JWTs. Account B
+// must never be able to list, read or delete files owned by account A, even
+// knowing A's exact storage path.
 //
-// Required env vars (provide in CI as secrets):
-//   TEST_SUPABASE_URL, TEST_SUPABASE_ANON_KEY,
-//   TEST_USER_A_EMAIL, TEST_USER_A_PASSWORD,
-//   TEST_USER_B_EMAIL, TEST_USER_B_PASSWORD
+// Credentials: the suite provisions two throwaway accounts with the service
+// role key and deletes them afterwards, so it can never break because someone
+// rotated a shared test password or deleted a fixture account. If no service
+// role key is available it falls back to pre-created accounts from
+// TEST_USER_A_* / TEST_USER_B_*.
 //
-// Accounts must be pre-created and email-confirmed (mailer_autoconfirm is
-// off in production). If any var is missing the suite is skipped so local
-// runs don't fail; CI must set them so regressions are caught.
+// Env vars (CI secrets):
+//   TEST_SUPABASE_URL              (falls back to SUPABASE_URL / VITE_SUPABASE_URL)
+//   TEST_SUPABASE_PUBLISHABLE_KEY  (falls back to TEST_SUPABASE_ANON_KEY /
+//                                   SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PUBLISHABLE_KEY)
+//   TEST_SUPABASE_SERVICE_ROLE_KEY (falls back to SUPABASE_SERVICE_ROLE_KEY)
+//   TEST_USER_A_EMAIL/PASSWORD, TEST_USER_B_EMAIL/PASSWORD (only without service key)
+//
+// Locally the suite skips when nothing is configured. In CI (process.env.CI)
+// it fails loudly instead of silently skipping.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const url = process.env.TEST_SUPABASE_URL;
-const anon = process.env.TEST_SUPABASE_ANON_KEY;
+const url =
+  process.env.TEST_SUPABASE_URL || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+// Publishable (`sb_publishable_…`) keys are the current format; the legacy
+// `anon` JWT stops working once a project migrates to asymmetric signing keys,
+// which is exactly how this suite broke before. Accept either name.
+const anon =
+  process.env.TEST_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.TEST_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const serviceKey =
+  process.env.TEST_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 const aEmail = process.env.TEST_USER_A_EMAIL;
 const aPass = process.env.TEST_USER_A_PASSWORD;
 const bEmail = process.env.TEST_USER_B_EMAIL;
 const bPass = process.env.TEST_USER_B_PASSWORD;
 
-const hasEnv = Boolean(url && anon && aEmail && aPass && bEmail && bPass);
+const canProvision = Boolean(url && anon && serviceKey);
+const hasFixtures = Boolean(url && anon && aEmail && aPass && bEmail && bPass);
+const hasEnv = canProvision || hasFixtures;
+
+if (!hasEnv && process.env.CI) {
+  throw new Error(
+    "storage-isolation: falta configuração. Define TEST_SUPABASE_URL + " +
+      "TEST_SUPABASE_PUBLISHABLE_KEY e (TEST_SUPABASE_SERVICE_ROLE_KEY ou as contas TEST_USER_*).",
+  );
+}
+
 const d = hasEnv ? describe : describe.skip;
 
 const BUCKET = "assessor-files";
@@ -34,10 +62,43 @@ function newClient(): SupabaseClient {
   });
 }
 
+function adminHeaders() {
+  return {
+    apikey: serviceKey!,
+    Authorization: `Bearer ${serviceKey}`,
+    "Content-Type": "application/json",
+  };
+}
+
+/** Cria uma conta descartável já confirmada e devolve as credenciais. */
+async function provisionUser(tag: string) {
+  const email = `ci-isolation-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.assessor.local`;
+  const password = `Ci!${crypto.randomUUID()}`;
+  const res = await fetch(`${url}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({ email, password, email_confirm: true }),
+  });
+  if (!res.ok) {
+    throw new Error(`provisionamento da conta ${tag} falhou [${res.status}]: ${await res.text()}`);
+  }
+  return { email, password };
+}
+
+async function deleteUser(userId: string) {
+  if (!serviceKey) return;
+  await fetch(`${url}/auth/v1/admin/users/${userId}`, {
+    method: "DELETE",
+    headers: adminHeaders(),
+  });
+}
+
 async function signIn(email: string, password: string) {
   const client = newClient();
   const { data, error } = await client.auth.signInWithPassword({ email, password });
-  if (error || !data.session) throw new Error(`sign-in failed for ${email}: ${error?.message}`);
+  if (error || !data.session) {
+    throw new Error(`sign-in failed for ${email}: ${error?.message ?? "sem sessão devolvida"}`);
+  }
   return { client, userId: data.user!.id };
 }
 
