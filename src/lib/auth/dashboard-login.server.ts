@@ -25,12 +25,34 @@ export function normalizeLoginToken(raw: string | null | undefined): string {
 // (WhatsApp, Telegram, painel) usam sempre este domínio, nunca o de preview.
 export const PRODUCTION_APP_URL = "https://app.meuafonso.com";
 
+// Domínios internos do Lovable (preview/staging). Nunca podem sair num link
+// enviado ao consultor.
+export const INTERNAL_HOST_RE = /(^|\.)lovable\.(app|dev)$/i;
+
+export function isInternalPreviewUrl(url: string): boolean {
+  try {
+    return INTERNAL_HOST_RE.test(new URL(url).hostname);
+  } catch {
+    return /lovable\.(app|dev)/i.test(url);
+  }
+}
+
+// Rede de segurança: se alguma regressão fizer um link apontar para preview,
+// falhamos em vez de enviar um link inútil ao consultor.
+export function assertPublicLoginUrl(url: string): string {
+  if (isInternalPreviewUrl(url)) {
+    throw new Error(
+      `[dashboard-login] link de entrada com domínio interno recusado: ${url}. Usa ${PRODUCTION_APP_URL}.`,
+    );
+  }
+  return url;
+}
+
 export function appBaseUrl(): string {
   const configured = (process.env.APP_PUBLIC_URL || process.env.SITE_URL || "").trim();
   // Ignora valores de staging/preview: um link interno do Lovable não serve
   // para quem recebe a mensagem.
-  const usable =
-    configured && !/lovable\.(app|dev)/i.test(configured) ? configured : PRODUCTION_APP_URL;
+  const usable = configured && !isInternalPreviewUrl(configured) ? configured : PRODUCTION_APP_URL;
   return usable.replace(/\/+$/, "");
 }
 
@@ -62,7 +84,8 @@ export async function issueDashboardLoginLink(
     .insert({ token, user_id: userId, channel, expires_at: expiresAt });
   if (error) throw new Error(error.message);
 
-  return { url: `${appBaseUrl()}/entrar?token=${token}`, expiresAt };
+  const url = assertPublicLoginUrl(`${appBaseUrl()}/entrar?token=${token}`);
+  return { url, expiresAt };
 }
 
 export const LOGIN_LINK_REPLY = (url: string) =>
