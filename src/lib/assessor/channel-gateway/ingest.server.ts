@@ -850,17 +850,12 @@ async function handleInboundMediaInner(
             if (prevPending?.intent === "classify_file") {
               await markPendingActionStatus(supabaseAdmin, prevPending.id, "cancelled");
             }
-            await deliverReply(adapter, supabaseAdmin, {
-              userId,
-              externalConversationId: inbound.externalConversationId,
-              outcome: {
-                reply: pageJoinedText(
-                  pageInfo.pageNumber,
-                  effectiveReading?.doc_type ?? null,
-                  pageInfo.linkedLabel,
-                ),
-              },
-              replyTo: inbound.replyToMessageId ?? null,
+            await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+              reply: pageJoinedText(
+                pageInfo.pageNumber,
+                effectiveReading?.doc_type ?? null,
+                pageInfo.linkedLabel,
+              ),
             });
             return;
           }
@@ -902,20 +897,14 @@ async function handleInboundMediaInner(
             if (prev?.intent === "classify_file") {
               await markPendingActionStatus(supabaseAdmin, prev.id, "cancelled");
             }
-            await deliverReply(adapter, supabaseAdmin, {
-              userId,
-              externalConversationId: inbound.externalConversationId,
-              outcome: { reply: `${docText} ${autoReply}` },
-              replyTo: inbound.replyToMessageId ?? null,
+            await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+              reply: `${docText} ${autoReply}`,
             });
             return;
           }
           if (autoReply && !docText) {
-            await deliverReply(adapter, supabaseAdmin, {
-              userId,
-              externalConversationId: inbound.externalConversationId,
-              outcome: { reply: autoReply },
-              replyTo: inbound.replyToMessageId ?? null,
+            await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+              reply: autoReply,
             });
             return;
           }
@@ -947,12 +936,7 @@ async function handleInboundMediaInner(
               receivedAt: inbound.receivedAt,
               sourceMessageId: persistedUuid,
             });
-            await deliverReply(adapter, supabaseAdmin, {
-              userId,
-              externalConversationId: inbound.externalConversationId,
-              outcome,
-              replyTo: inbound.replyToMessageId ?? null,
-            });
+            await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, outcome);
             return;
           }
         } else {
@@ -981,11 +965,8 @@ async function handleInboundMediaInner(
           sourceMessageId: persistedUuid,
         });
         if (auto.reply) {
-          await deliverReply(adapter, supabaseAdmin, {
-            userId,
-            externalConversationId: inbound.externalConversationId,
-            outcome: { reply: auto.reply },
-            replyTo: inbound.replyToMessageId ?? null,
+          await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+            reply: auto.reply,
           });
           return;
         }
@@ -998,6 +979,12 @@ async function handleInboundMediaInner(
     }
   }
 
+  if (inbound.messageType === "image") {
+    await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+      reply: result.reply,
+    });
+    return;
+  }
   await adapter.sendText(inbound.externalConversationId, result.reply);
 }
 
