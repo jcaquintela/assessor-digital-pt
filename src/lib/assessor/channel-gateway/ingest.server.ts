@@ -312,6 +312,7 @@ async function deliverReply(
       await new Promise((r) => setTimeout(r, REPLY_RETRY_BASE_MS * attempt));
     }
   }
+  if (!send) send = { ok: false, error: "sem envio" } as AdapterSendResult;
   if (!alreadyPersisted) {
     await supabaseAdmin.from("assessor_messages").insert({
       user_id: userId,
