@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,11 +13,12 @@ import {
   getAiCostSettings,
   saveAiRate,
   saveCreditPrice,
+  getMarginAlerts,
 } from "@/lib/admin/cost-settings.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
+import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 
 export const Route = createFileRoute("/admin/custos")({
   head: () => ({ meta: [{ title: "Custos — Afonso admin" }] }),
@@ -42,6 +44,8 @@ function CustosPage() {
   return (
     <div>
       <PageTitle title="Custos" sub="O que custa operar o Afonso, hoje — sem isto não há margem real, só receita." />
+
+      <MarginAlertsBlock />
 
       <Grid cols={3}>
         <MetricCard
@@ -85,6 +89,72 @@ function CustosPage() {
 }
 
 function AiRatesBlock() {
+  return <AiRatesBlockInner />;
+}
+
+const eur = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
+
+/** Consultores que custam mais do que o plano deles paga. Sempre no topo. */
+function MarginAlertsBlock() {
+  const fn = useServerFn(getMarginAlerts);
+  const { data } = useQuery({ queryKey: ["admin", "margin-alerts"], queryFn: () => fn() });
+  if (!data) return null;
+
+  if (data.priceMissing) {
+    return (
+      <div className="my-4">
+        <SectionTitle first>Margem negativa</SectionTitle>
+        <Empty note="define o preço de 1 crédito em baixo para o Afonso poder comparar custo com o plano">
+          Ainda não é possível detetar margens negativas.
+        </Empty>
+      </div>
+    );
+  }
+
+  if (data.alerts.length === 0) {
+    return (
+      <div className="my-4">
+        <SectionTitle first>Margem negativa</SectionTitle>
+        <p className="sub">Nenhum consultor a custar mais do que o plano paga (últimos 30 dias).</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="my-4">
+      <SectionTitle first>
+        Margem negativa · {data.alerts.length} {data.alerts.length === 1 ? "consultor" : "consultores"}
+      </SectionTitle>
+      <p className="sub mb-3">
+        Custo estimado (IA + WhatsApp, 30 dias) acima do que o plano paga. Do pior para o menos mau.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Consultor</th><th>Plano</th><th>Custo 30d</th><th>Plano paga</th><th>Margem</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.alerts.map((a) => (
+            <tr key={a.userId}>
+              <td className="mini">
+                <Link to="/admin/consultor/$id" params={{ id: a.userId }}>
+                  {a.name ?? a.email ?? "sem nome"}
+                </Link>
+              </td>
+              <td className="mini">{a.tier}</td>
+              <td className="mini">{eur(a.costEur)} · {a.aiCredits.toFixed(2).replace(".", ",")} créd.</td>
+              <td className="mini">{eur(a.planPriceEur)}</td>
+              <td className="mini"><Badge tone="bad">{eur(a.marginEur)}</Badge></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AiRatesBlockInner() {
   const qc = useQueryClient();
   const listFn = useServerFn(getAiCostSettings);
   const saveRateFn = useServerFn(saveAiRate);
@@ -98,6 +168,7 @@ function AiRatesBlock() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["admin", "ai-cost-settings"] });
     qc.invalidateQueries({ queryKey: ["admin", "access-users"] });
+    qc.invalidateQueries({ queryKey: ["admin", "margin-alerts"] });
   };
 
   return (

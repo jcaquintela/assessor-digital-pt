@@ -96,3 +96,12 @@ export const saveCreditPrice = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const getMarginAlerts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { negativeMarginUsers } = await import("@/lib/admin/ai-costs.server");
+    return negativeMarginUsers(supabaseAdmin, 30);
+  });
