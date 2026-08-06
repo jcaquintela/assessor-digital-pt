@@ -14,6 +14,13 @@ import {
   type BetaInviteResult,
 } from "@/lib/admin/beta.functions";
 import { getMyAdminRole } from "@/lib/admin.functions";
+import {
+  findMergeCandidates,
+  previewMerge,
+  applyMerge,
+  type MergeAccount,
+  type MergePreview,
+} from "@/lib/admin/merge.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { formatForWhatsApp } from "@/lib/assessor/culture/whatsapp-format";
@@ -144,6 +151,7 @@ function BetaPage() {
     "Olá {nome}! 👋\n\nTens acesso ao Afonso — o teu Assessor pessoal — durante {dias} dias no plano {plano}.\n\nEnvia este código por WhatsApp ou Telegram ao Afonso para começares:\n\n{codigo}\n\nFica à vontade para responder com dúvidas.",
   );
   const [generated, setGenerated] = useState<BetaInviteResult[] | null>(null);
+  const [merging, setMerging] = useState<BetaTester | null>(null);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "beta-testers"] });
 
