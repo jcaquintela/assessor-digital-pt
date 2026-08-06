@@ -1,5 +1,6 @@
 // Motor de priorização — "o que devo fazer agora?".
 // Determinístico. Cada item traz razões legíveis para o Assessor verbalizar.
+import { isDealClosed } from "@/lib/deals/stages";
 
 export interface PriorityItem {
   subject_type: "follow_up" | "opportunity" | "property";
