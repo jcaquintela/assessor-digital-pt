@@ -292,8 +292,27 @@ async function deliverReply(
     }
   }
   if (!send) {
-    send = await adapter.sendText(externalConversationId, outcome.reply, { replyTo });
+    // Tecto duro de tentativas por resposta, seja qual for a causa da falha:
+    // um envio que não passa não pode transformar-se em repetição infinita.
+    const { MAX_REPLY_ATTEMPTS, REPLY_RETRY_BASE_MS } = await import("./image-burst");
+    for (let attempt = 1; attempt <= MAX_REPLY_ATTEMPTS; attempt++) {
+      try {
+        send = await adapter.sendText(externalConversationId, outcome.reply, { replyTo });
+      } catch (err) {
+        send = {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        } as AdapterSendResult;
+      }
+      if (send.ok || attempt === MAX_REPLY_ATTEMPTS) break;
+      console.error(
+        `[channel-gateway/${adapter.channel}] envio falhou (tentativa ${attempt}/${MAX_REPLY_ATTEMPTS}):`,
+        send.error ?? "unknown",
+      );
+      await new Promise((r) => setTimeout(r, REPLY_RETRY_BASE_MS * attempt));
+    }
   }
+  if (!send) send = { ok: false, error: "sem envio" } as AdapterSendResult;
   if (!alreadyPersisted) {
     await supabaseAdmin.from("assessor_messages").insert({
       user_id: userId,
@@ -481,6 +500,48 @@ async function deliverContactCard(
     externalConversationId,
     `Não consegui enviar o ficheiro do contacto. Fica aqui: ${linha}`,
   );
+}
+
+/**
+ * Resposta a uma imagem, com coalescência de rajada.
+ *
+ * Uma rajada de fotos (páginas de um documento) é um assunto só: cada foto é
+ * tratada e ligada normalmente, mas só a última fala — e fala por todas.
+ */
+async function deliverMediaReply(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  persistedUuid: string | null,
+  outcome: EngineOutcome,
+): Promise<void> {
+  let finalOutcome = outcome;
+  if (inbound.messageType === "image") {
+    const { decideImageBurstReply, buildImageBurstReply } = await import("./image-burst.server");
+    const decision = await decideImageBurstReply(supabaseAdmin, {
+      userId,
+      channel: adapter.channel,
+      currentMessageId: persistedUuid,
+    });
+    // Vem outra foto a seguir: esta cala-se.
+    if (!decision.answer) return;
+    if (decision.count > 1) {
+      const reply = await buildImageBurstReply(supabaseAdmin, {
+        userId,
+        channel: adapter.channel,
+        count: decision.count,
+        since: decision.since,
+      });
+      finalOutcome = { ...outcome, reply };
+    }
+  }
+  await deliverReply(adapter, supabaseAdmin, {
+    userId,
+    externalConversationId: inbound.externalConversationId,
+    outcome: finalOutcome,
+    replyTo: inbound.replyToMessageId ?? null,
+  });
 }
 
 async function handleInboundMediaInner(
@@ -808,17 +869,12 @@ async function handleInboundMediaInner(
             if (prevPending?.intent === "classify_file") {
               await markPendingActionStatus(supabaseAdmin, prevPending.id, "cancelled");
             }
-            await deliverReply(adapter, supabaseAdmin, {
-              userId,
-              externalConversationId: inbound.externalConversationId,
-              outcome: {
-                reply: pageJoinedText(
-                  pageInfo.pageNumber,
-                  effectiveReading?.doc_type ?? null,
-                  pageInfo.linkedLabel,
-                ),
-              },
-              replyTo: inbound.replyToMessageId ?? null,
+            await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+              reply: pageJoinedText(
+                pageInfo.pageNumber,
+                effectiveReading?.doc_type ?? null,
+                pageInfo.linkedLabel,
+              ),
             });
             return;
           }
@@ -860,20 +916,14 @@ async function handleInboundMediaInner(
             if (prev?.intent === "classify_file") {
               await markPendingActionStatus(supabaseAdmin, prev.id, "cancelled");
             }
-            await deliverReply(adapter, supabaseAdmin, {
-              userId,
-              externalConversationId: inbound.externalConversationId,
-              outcome: { reply: `${docText} ${autoReply}` },
-              replyTo: inbound.replyToMessageId ?? null,
+            await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+              reply: `${docText} ${autoReply}`,
             });
             return;
           }
           if (autoReply && !docText) {
-            await deliverReply(adapter, supabaseAdmin, {
-              userId,
-              externalConversationId: inbound.externalConversationId,
-              outcome: { reply: autoReply },
-              replyTo: inbound.replyToMessageId ?? null,
+            await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+              reply: autoReply,
             });
             return;
           }
@@ -905,12 +955,7 @@ async function handleInboundMediaInner(
               receivedAt: inbound.receivedAt,
               sourceMessageId: persistedUuid,
             });
-            await deliverReply(adapter, supabaseAdmin, {
-              userId,
-              externalConversationId: inbound.externalConversationId,
-              outcome,
-              replyTo: inbound.replyToMessageId ?? null,
-            });
+            await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, outcome);
             return;
           }
         } else {
@@ -939,11 +984,8 @@ async function handleInboundMediaInner(
           sourceMessageId: persistedUuid,
         });
         if (auto.reply) {
-          await deliverReply(adapter, supabaseAdmin, {
-            userId,
-            externalConversationId: inbound.externalConversationId,
-            outcome: { reply: auto.reply },
-            replyTo: inbound.replyToMessageId ?? null,
+          await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+            reply: auto.reply,
           });
           return;
         }
@@ -956,6 +998,12 @@ async function handleInboundMediaInner(
     }
   }
 
+  if (inbound.messageType === "image") {
+    await deliverMediaReply(adapter, supabaseAdmin, inbound, userId, persistedUuid, {
+      reply: result.reply,
+    });
+    return;
+  }
   await adapter.sendText(inbound.externalConversationId, result.reply);
 }
 
