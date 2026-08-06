@@ -1,6 +1,7 @@
 // Armazenamento server-only das chaves de ligação por consultor/provider.
 // Nunca devolver a chave ao browser.
 import { encryptConnectionKey, decryptConnectionKey } from "./connection-key-crypto.server";
+import { auditSensitiveRead } from "@/lib/security/sensitive-audit.server";
 import type { CalendarProvider } from "./providers";
 
 export async function saveConnectionKeyForUser(
@@ -33,10 +34,34 @@ export async function getConnectionKeyForUser(
     .eq("connector_id", connectorId)
     .maybeSingle();
   if (error) throw error;
-  if (!data) return null;
+  if (!data) {
+    await auditSensitiveRead({
+      table: "app_user_connections",
+      purpose: `Leitura da chave de ligação (${connectorId})`,
+      targetUserId: userId,
+      outcome: "vazio",
+      metadata: { connector_id: connectorId },
+    });
+    return null;
+  }
   try {
-    return decryptConnectionKey((data as any).connection_key_ciphertext);
+    const key = decryptConnectionKey((data as any).connection_key_ciphertext);
+    await auditSensitiveRead({
+      table: "app_user_connections",
+      purpose: `Leitura da chave de ligação (${connectorId})`,
+      targetUserId: userId,
+      outcome: "ok",
+      metadata: { connector_id: connectorId },
+    });
+    return key;
   } catch {
+    await auditSensitiveRead({
+      table: "app_user_connections",
+      purpose: `Leitura da chave de ligação (${connectorId})`,
+      targetUserId: userId,
+      outcome: "erro",
+      metadata: { connector_id: connectorId, erro: "decifra falhou" },
+    });
     return null;
   }
 }

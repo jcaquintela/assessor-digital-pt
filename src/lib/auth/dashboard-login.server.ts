@@ -107,6 +107,7 @@ export type RedeemResult =
 // pelo Telegram não é entregável — nunca enviamos email, só devolvemos o hash).
 export async function redeemDashboardLoginToken(token: string): Promise<RedeemResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { auditSensitiveRead } = await import("@/lib/security/sensitive-audit.server");
 
   const clean = normalizeLoginToken(token);
   const { data } = await supabaseAdmin
@@ -118,8 +119,26 @@ export async function redeemDashboardLoginToken(token: string): Promise<RedeemRe
   const usedTooLongAgo =
     !!row?.used_at && Date.now() - new Date(row.used_at).getTime() > REDEEM_GRACE_MS;
   if (!row || usedTooLongAgo || new Date(row.expires_at).getTime() < Date.now()) {
+    await auditSensitiveRead({
+      table: "dashboard_login_tokens",
+      purpose: "Tentativa de entrada por link temporário",
+      targetUserId: row?.user_id ?? null,
+      outcome: "invalido",
+      metadata: {
+        motivo: !row ? "token desconhecido" : usedTooLongAgo ? "já usado" : "expirado",
+        token_prefixo: clean.slice(0, 6),
+      },
+    });
     return { ok: false, reason: "invalid" };
   }
+
+  await auditSensitiveRead({
+    table: "dashboard_login_tokens",
+    purpose: "Entrada por link temporário",
+    targetUserId: row.user_id,
+    outcome: "ok",
+    metadata: { token_prefixo: clean.slice(0, 6) },
+  });
 
   const { data: userRes } = await supabaseAdmin.auth.admin.getUserById(row.user_id);
   const email = userRes?.user?.email as string | undefined;
