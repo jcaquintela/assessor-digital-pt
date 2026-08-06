@@ -21,14 +21,20 @@ function toBase64(bytes: Uint8Array): string {
 
 export type TranscribeResult = { ok: true; text: string } | { ok: false; error: string };
 
-export async function transcribeAudio(bytes: Uint8Array, mimeType: string): Promise<TranscribeResult> {
+const AUDIO_MODEL = "google/gemini-3.6-flash";
+
+export async function transcribeAudio(
+  bytes: Uint8Array,
+  mimeType: string,
+  telemetry?: import("./usage-log.server").AiTelemetry,
+): Promise<TranscribeResult> {
   const key = process.env.LOVABLE_API_KEY;
   if (!key) return { ok: false, error: "LOVABLE_API_KEY missing" };
   const fmt = mimeToGeminiFormat(mimeType);
   if (!fmt) return { ok: false, error: `Unsupported audio mime: ${mimeType}` };
 
   const body = {
-    model: "google/gemini-3.6-flash",
+    model: AUDIO_MODEL,
     messages: [
       {
         role: "user",
@@ -44,6 +50,8 @@ export async function transcribeAudio(bytes: Uint8Array, mimeType: string): Prom
     temperature: 0,
   };
 
+  const t0 = Date.now();
+  const { logAiUsage, readGatewayUsage } = await import("./usage-log.server");
   const res = await fetch(GATEWAY, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -51,10 +59,21 @@ export async function transcribeAudio(bytes: Uint8Array, mimeType: string): Prom
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
+    await logAiUsage(telemetry, {
+      modality: "audio", model: AUDIO_MODEL, intent: "transcribe_audio",
+      tokens: { input: 0, output: 0 }, latencyMs: Date.now() - t0,
+      success: false, error: `Gateway ${res.status}`,
+    });
     return { ok: false, error: `Gateway ${res.status}: ${t.slice(0, 300)}` };
   }
   const json = (await res.json()) as any;
   const text: string | undefined = json?.choices?.[0]?.message?.content;
+  await logAiUsage(telemetry, {
+    modality: "audio", model: AUDIO_MODEL, intent: "transcribe_audio",
+    tokens: readGatewayUsage(json), latencyMs: Date.now() - t0,
+    success: typeof text === "string" && !!text,
+    error: text ? null : "no_content",
+  });
   if (!text || typeof text !== "string") return { ok: false, error: "Gateway returned no content" };
   return { ok: true, text: text.trim() };
 }
