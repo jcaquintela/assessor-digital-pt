@@ -29,13 +29,15 @@ export const getSystemHealth = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const since24h = new Date(Date.now() - 864e5).toISOString();
 
-    const [flag, flagUsers, waMsgs, waFails, tgLinks, profilesPing] = await Promise.all([
+    const [flag, flagUsers, waMsgs, waFails, tgLinks, profilesPing, aiCalls, aiFails] = await Promise.all([
       supabaseAdmin.from("feature_flags").select("enabled_globally").eq("key", "assessor.engine.v3").maybeSingle(),
       supabaseAdmin.from("feature_flag_users").select("user_id", { count: "exact", head: true }).eq("flag_key", "assessor.engine.v3"),
       supabaseAdmin.from("assessor_messages").select("id", { count: "exact", head: true }).eq("channel", "whatsapp").gte("created_at", since24h),
       supabaseAdmin.from("assessor_messages").select("id", { count: "exact", head: true }).eq("channel", "whatsapp").eq("status", "failed").gte("created_at", since24h),
       supabaseAdmin.from("channel_links").select("id", { count: "exact", head: true }).eq("channel", "telegram"),
       supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
+      supabaseAdmin.from("assessor_ai_logs").select("id", { count: "exact", head: true }).gte("created_at", since24h),
+      supabaseAdmin.from("assessor_ai_logs").select("id", { count: "exact", head: true }).eq("success", false).gte("created_at", since24h),
     ]);
 
     const v3Global = !!(flag.data as any)?.enabled_globally;
@@ -77,7 +79,7 @@ export const getSystemHealth = createServerFn({ method: "GET" })
     };
 
     return {
-      items: [engine, whatsapp, supabaseHealth, telegram],
+      items: [engine, interpretacao, whatsapp, supabaseHealth, telegram],
       checkedAt: new Date().toISOString(),
     };
   });
