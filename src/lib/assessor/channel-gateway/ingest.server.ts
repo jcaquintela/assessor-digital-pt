@@ -654,6 +654,10 @@ async function handleInboundMediaInner(
   // Imagem → o modelo lê o texto visível (placas "Vende-se") e o motor
   // segue o fluxo normal, como se o consultor tivesse escrito o número.
   if (result.ok && inbound.messageType === "image") {
+    let docMeta: Awaited<
+      ReturnType<typeof import("@/lib/assessor/files.server").applyDocumentExtraction>
+    > = null;
+    let visionDone = false;
     try {
       const { readImage, readingToEngineText, supportsVision } = await import("@/lib/ai/vision.server");
       if (supportsVision(mimeType)) {
@@ -693,7 +697,7 @@ async function handleInboundMediaInner(
                 .select("original_file_name")
                 .eq("id", result.fileId)
                 .maybeSingle();
-              await applyDocumentExtraction({
+              docMeta = await applyDocumentExtraction({
                 supabase: supabaseAdmin,
                 fileId: result.fileId,
                 bytes: dl.bytes,
@@ -769,7 +773,65 @@ async function handleInboundMediaInner(
             return;
           }
 
-          const engineText = readingToEngineText(reading, inbound.media?.caption ?? inbound.text);
+          // Ligação automática com o que foi lido: a morada/NIF da caderneta
+          // servem para encontrar o imóvel certo (antes corria sem OCR).
+          const caption = inbound.media?.caption ?? inbound.text ?? null;
+          const { docLinkText, documentToEngineText } = await import("@/lib/drive/doc-engine-text");
+          let autoReply: string | null = null;
+          if (result.fileId) {
+            visionDone = true;
+            const extraText =
+              docLinkText({ ...(docMeta?.reading ?? {}), visible_text: reading.visible_text }) ?? null;
+            try {
+              const { autoLinkAndSuggest } = await import("@/lib/drive/link-suggestions.server");
+              const auto = await autoLinkAndSuggest({
+                supabase: supabaseAdmin,
+                userId,
+                channel: adapter.channel,
+                fileId: result.fileId,
+                fileLabel: "a imagem",
+                extraText,
+                sourceMessageId: persistedUuid,
+              });
+              autoReply = auto.reply;
+            } catch (err) {
+              console.error(
+                `[channel-gateway/${adapter.channel}] autoLink:`,
+                err instanceof Error ? err.message : err,
+              );
+            }
+          }
+
+          // Documento fotografado: dizemos o que é, em vez de "a que se refere?".
+          const docText = docMeta?.reading
+            ? documentToEngineText(docMeta.reading, autoReply ? null : caption)
+            : null;
+          if (docText && autoReply) {
+            const { findActivePendingAction, markPendingActionStatus } =
+              await import("@/lib/assessor/memory.server");
+            const prev = await findActivePendingAction(supabaseAdmin, userId, adapter.channel);
+            if (prev?.intent === "classify_file") {
+              await markPendingActionStatus(supabaseAdmin, prev.id, "cancelled");
+            }
+            await deliverReply(adapter, supabaseAdmin, {
+              userId,
+              externalConversationId: inbound.externalConversationId,
+              outcome: { reply: `${docText} ${autoReply}` },
+              replyTo: inbound.replyToMessageId ?? null,
+            });
+            return;
+          }
+          if (autoReply && !docText) {
+            await deliverReply(adapter, supabaseAdmin, {
+              userId,
+              externalConversationId: inbound.externalConversationId,
+              outcome: { reply: autoReply },
+              replyTo: inbound.replyToMessageId ?? null,
+            });
+            return;
+          }
+
+          const engineText = readingToEngineText(reading, caption) ?? docText;
           if (engineText) {
             // A pergunta "A que se refere?" deixa de fazer sentido: já sabemos.
             const { findActivePendingAction, markPendingActionStatus } =
