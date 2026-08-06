@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin/acessos.functions";
 import { getMyAdminRole } from "@/lib/admin.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
+import { AccountMergeDialog, type MergeSource } from "@/components/admin/merge-dialog";
 import { tierLabel, TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tiers";
 import {
   Dialog,
@@ -69,10 +70,12 @@ function AcessosPage() {
   const [editing, setEditing] = useState<AccessUser | null>(null);
   const [promoOpen, setPromoOpen] = useState(false);
   const [deleting, setDeleting] = useState<AccessUser | null>(null);
+  const [merging, setMerging] = useState<MergeSource | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["admin", "access-users"] });
     qc.invalidateQueries({ queryKey: ["admin", "promo-codes"] });
+    qc.invalidateQueries({ queryKey: ["admin", "duplicate-accounts"] });
   };
 
   const run = (label: string, p: Promise<unknown>) =>
@@ -183,12 +186,18 @@ function AcessosPage() {
       <SectionTitle>Contas a rever (possíveis duplicados)</SectionTitle>
       <table>
         <thead>
-          <tr><th>Pessoa</th><th>Motivo</th><th>Contas</th></tr>
+          <tr><th>Pessoa</th><th>Motivo</th><th>Contas</th><th>Ações</th></tr>
         </thead>
         <tbody>
           {(dups ?? []).length === 0 ? (
-            <tr><td colSpan={3} className="mini">Nada a rever — nenhuma conta-sombra nem nomes repetidos em canais diferentes.</td></tr>
-          ) : (dups ?? []).map((d) => (
+            <tr><td colSpan={4} className="mini">Nada a rever — nenhuma conta-sombra nem nomes repetidos em canais diferentes.</td></tr>
+          ) : (dups ?? []).map((d) => {
+            const isShadow = (a: { email: string }) => a.email.endsWith("@shadow.assessor.local");
+            const shadow = d.accounts.find(isShadow);
+            const main = d.accounts.find((a) => !isShadow(a));
+            const src = shadow ?? d.accounts[0];
+            const tgt = shadow ? main : d.accounts[1];
+            return (
             <tr key={d.key}>
               <td>{d.name}</td>
               <td>
@@ -203,13 +212,39 @@ function AcessosPage() {
                   </div>
                 ))}
               </td>
+              <td className="mini">
+                <button
+                  type="button"
+                  className="admin-link"
+                  disabled={!isSuper || !src}
+                  onClick={() =>
+                    setMerging({
+                      id: src!.id,
+                      label: `${src!.name || d.name} · ${src!.email}`,
+                      suggestedTargetId: tgt?.id ?? null,
+                    })
+                  }
+                >Fundir contas</button>
+              </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
       <Empty note="nunca funde sozinho — homónimos existem e a decisão é humana">
-        Sinaliza contas que podem ser a mesma pessoa em canais diferentes. A fusão é feita manualmente, caso a caso.
+        Sinaliza contas que podem ser a mesma pessoa em canais diferentes. “Fundir contas” passa plano, estado de
+        beta, canais e todos os registos para a conta que ficar (por norma a conta de email), desliga a conta-sombra
+        e regista tudo na auditoria.
       </Empty>
+
+      {merging && (
+        <AccountMergeDialog
+          key={merging.id}
+          source={merging}
+          onClose={() => setMerging(null)}
+          onDone={invalidate}
+        />
+      )}
 
       <SectionTitle>Códigos promocionais</SectionTitle>
       <div className="mb-2.5 flex justify-end">
