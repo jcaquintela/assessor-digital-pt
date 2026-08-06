@@ -292,7 +292,25 @@ async function deliverReply(
     }
   }
   if (!send) {
-    send = await adapter.sendText(externalConversationId, outcome.reply, { replyTo });
+    // Tecto duro de tentativas por resposta, seja qual for a causa da falha:
+    // um envio que não passa não pode transformar-se em repetição infinita.
+    const { MAX_REPLY_ATTEMPTS, REPLY_RETRY_BASE_MS } = await import("./image-burst");
+    for (let attempt = 1; attempt <= MAX_REPLY_ATTEMPTS; attempt++) {
+      try {
+        send = await adapter.sendText(externalConversationId, outcome.reply, { replyTo });
+      } catch (err) {
+        send = {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        } as AdapterSendResult;
+      }
+      if (send.ok || attempt === MAX_REPLY_ATTEMPTS) break;
+      console.error(
+        `[channel-gateway/${adapter.channel}] envio falhou (tentativa ${attempt}/${MAX_REPLY_ATTEMPTS}):`,
+        send.error ?? "unknown",
+      );
+      await new Promise((r) => setTimeout(r, REPLY_RETRY_BASE_MS * attempt));
+    }
   }
   if (!alreadyPersisted) {
     await supabaseAdmin.from("assessor_messages").insert({
