@@ -146,6 +146,7 @@ function AcessosPageInner() {
   const { data: dups } = useQuery({ queryKey: ["admin", "duplicate-accounts"], queryFn: () => dupsFn() });
 
   const [q, setQ] = useState("");
+  const [sortCredits, setSortCredits] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AccessUser | null>(null);
   const [promoOpen, setPromoOpen] = useState(false);
@@ -164,11 +165,13 @@ function AcessosPageInner() {
     p.then(() => { toast.success(label); invalidate(); })
      .catch((e: Error) => toast.error(e.message || "Não foi possível concluir."));
 
-  const filtered = (users ?? []).filter((u) => {
-    if (!q) return true;
-    const s = q.toLowerCase();
-    return (u.email ?? "").toLowerCase().includes(s) || (u.name ?? "").toLowerCase().includes(s);
-  });
+  const filtered = (users ?? [])
+    .filter((u) => {
+      if (!q) return true;
+      const s = q.toLowerCase();
+      return (u.email ?? "").toLowerCase().includes(s) || (u.name ?? "").toLowerCase().includes(s);
+    })
+    .sort((a, b) => (sortCredits ? (b.credits30d ?? 0) - (a.credits30d ?? 0) : 0));
 
   return (
     <div>
@@ -191,13 +194,26 @@ function AcessosPageInner() {
 
       <table>
         <thead>
-          <tr><th>Nome</th><th>Plano</th><th>Canal</th><th>Beta</th><th>Estado</th><th>Ações</th></tr>
+          <tr>
+            <th>Nome</th><th>Plano</th><th>Canal</th><th>Beta</th>
+            <th>
+              <button
+                type="button"
+                className="admin-link"
+                title="Créditos de IA consumidos pela atividade deste consultor nos últimos 30 dias"
+                onClick={() => setSortCredits((v) => !v)}
+              >
+                Créditos (30d){sortCredits ? " ↓" : ""}
+              </button>
+            </th>
+            <th>Estado</th><th>Ações</th>
+          </tr>
         </thead>
         <tbody>
           {isPending ? (
-            <tr><td colSpan={6} className="mini">A carregar…</td></tr>
+            <tr><td colSpan={7} className="mini">A carregar…</td></tr>
           ) : filtered.length === 0 ? (
-            <tr><td colSpan={6} className="mini">Sem utilizadores.</td></tr>
+            <tr><td colSpan={7} className="mini">Sem utilizadores.</td></tr>
           ) : filtered.map((u) => (
             <tr key={u.id}>
               <td>
@@ -210,6 +226,9 @@ function AcessosPageInner() {
               <td><Badge tone={u.tier === "base" ? "warn" : "ok"}>{tierLabel(u.tier)}</Badge></td>
               <td className="mini">{u.channel}</td>
               <td className="mini">{betaLabel(u)}</td>
+              <td className="mini" style={{ textAlign: "right" }}>
+                {(u.credits30d ?? 0) >= 0.01 ? (u.credits30d ?? 0).toFixed(2).replace(".", ",") : "—"}
+              </td>
               <td>
                 <Badge tone={u.state === "active" ? "ok" : u.state === "test" ? "warn" : "bad"}>
                   {u.state === "active" ? "Ativo" : u.state === "test" ? "Teste" : "Inativo"}
