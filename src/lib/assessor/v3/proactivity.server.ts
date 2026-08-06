@@ -72,10 +72,9 @@ export async function generateNudgesForUser(
     .from("opportunities")
     .select("id, person_id, stage, status, archived_at, next_action, next_action_date, updated_at")
     .eq("user_id", userId)
-    .is("archived_at", null)
     .limit(50);
   // A fase é a fonte de verdade: negócio concluído não gera proatividade.
-  const abertos = ((opps as any[]) ?? []).filter((o) => !isDealClosed(o));
+  const abertos = ((opps as any[]) ?? []).filter((o) => !o.archived_at && !isDealClosed(o));
   const personIds = Array.from(new Set(abertos.map((o) => o.person_id).filter(Boolean)));
   if (personIds.length) {
     const { data: people } = await supabase
