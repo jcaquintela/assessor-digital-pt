@@ -27,7 +27,10 @@ export const getPasswordSetupState = createServerFn({ method: "GET" })
 export const skipPasswordSetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await context.supabase
+    // O próprio consultor não tem escrita directa no perfil: o registo do
+    // passo opcional é feito do lado do servidor, já com o utilizador validado.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
       .from("profiles")
       .update({ password_prompt_skipped_at: new Date().toISOString() })
       .eq("id", context.userId);
@@ -46,7 +49,7 @@ export const setDashboardPassword = createServerFn({ method: "POST" })
     });
     if (error) return { ok: false as const, message: error.message };
 
-    await context.supabase
+    await supabaseAdmin
       .from("profiles")
       .update({
         password_set_at: new Date().toISOString(),
