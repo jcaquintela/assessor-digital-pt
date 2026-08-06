@@ -243,15 +243,28 @@ export const getAfonsoCosts = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const since24h = new Date(Date.now() - 864e5).toISOString();
 
-    const [waMsgs, files, aiCalls] = await Promise.all([
+    const since30d = new Date(Date.now() - 30 * 864e5).toISOString();
+    const [waMsgs, files, aiCalls, tplSends] = await Promise.all([
       supabaseAdmin.from("assessor_messages").select("id", { count: "exact", head: true }).eq("channel", "whatsapp").gte("created_at", since24h),
       supabaseAdmin.from("uploaded_files").select("size_bytes"),
       supabaseAdmin.from("assessor_ai_logs").select("estimated_cost_usd, total_tokens").gte("created_at", since24h).limit(2000),
+      supabaseAdmin
+        .from("whatsapp_send_logs")
+        .select("created_at, billable, cost_eur, template_name, outside_window")
+        .not("template_name", "is", null)
+        .gte("created_at", since30d)
+        .limit(5000),
     ]);
 
     const storageBytes = ((files.data ?? []) as any[]).reduce((a, r) => a + Number(r.size_bytes ?? 0), 0);
     const aiRows = ((aiCalls.data ?? []) as any[]);
     const knownCost = aiRows.some((r) => typeof r.estimated_cost_usd === "number" && r.estimated_cost_usd > 0);
+
+    // WhatsApp: só o que é mesmo faturável (template fora da janela de 24h).
+    const tplRows = ((tplSends.data ?? []) as any[]);
+    const billable = tplRows.filter((r) => r.billable === true);
+    const priced = billable.filter((r) => typeof r.cost_eur === "number");
+    const wa24h = billable.filter((r) => r.created_at >= since24h);
 
     return {
       // Custo real de IA: só o mostramos se o preço por token estiver confirmado.
@@ -260,6 +273,11 @@ export const getAfonsoCosts = createServerFn({ method: "GET" })
       aiTokens24h: aiRows.reduce((a, r) => a + Number(r.total_tokens ?? 0), 0),
       storageBytes,
       whatsappMessages24h: waMsgs.count ?? 0,
+      // Custo de templates fora das 24h — null quando falta tarifa registada.
+      whatsappTemplateCost30d: priced.length ? priced.reduce((a, r) => a + Number(r.cost_eur), 0) : null,
+      whatsappBillable30d: billable.length,
+      whatsappBillable24h: wa24h.length,
+      whatsappUnpriced30d: billable.length - priced.length,
     };
   });
 
