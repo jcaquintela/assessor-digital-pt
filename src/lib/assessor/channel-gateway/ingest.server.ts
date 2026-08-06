@@ -602,7 +602,11 @@ async function handleInboundMediaInner(
   if (result.ok && inbound.messageType === "audio") {
     try {
       const { transcribeAudio } = await import("@/lib/ai/transcribe.server");
-      const t = await transcribeAudio(dl.bytes, mimeType);
+      const t = await transcribeAudio(dl.bytes, mimeType, {
+        supabase: supabaseAdmin,
+        userId,
+        channel: adapter.channel,
+      });
       if (!t.ok || !t.text) {
         await adapter.sendText(inbound.externalConversationId, adapter.replyTranscribeFail);
         return;
@@ -722,7 +726,11 @@ async function handleInboundMediaInner(
     try {
       const { readImage, readingToEngineText, supportsVision } = await import("@/lib/ai/vision.server");
       if (supportsVision(mimeType)) {
-        const vision = await readImage(dl.bytes, mimeType);
+        const vision = await readImage(dl.bytes, mimeType, {
+          supabase: supabaseAdmin,
+          userId,
+          channel: adapter.channel,
+        });
         if (vision.ok) {
           const reading = vision.reading;
           if (result.fileId) {
@@ -764,6 +772,8 @@ async function handleInboundMediaInner(
                 bytes: dl.bytes,
                 mimeType,
                 currentName: (cur as any)?.original_file_name ?? null,
+                userId,
+                channel: adapter.channel,
               });
             }
 
