@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
-import { Brain, Shield, Lock, Eye, Trash2, MessageSquare, FileText, Mic } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Brain, Shield, Lock, Eye, Trash2, MessageSquare, FileText, Mic, SlidersHorizontal } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/sobre-a-ia")({
   head: () => ({
@@ -82,7 +83,10 @@ function SobreAPage() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[var(--brass-dark)]">•</span>
-              <span>Proponho rascunhos de ações; só executo depois da tua confirmação.</span>
+              <span>
+                Proponho rascunhos de ações. O que executo sozinho depende do nível de autonomia
+                que escolheres em Definições — ver abaixo.
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[var(--brass-dark)]">•</span>
@@ -156,9 +160,55 @@ function SobreAPage() {
           </ul>
 
           <p className="c-muted mt-4 text-xs leading-relaxed">
-            Em qualquer destes casos, a escrita na base de dados só acontece
-            depois da tua confirmação. Podes editar ou rejeitar cada rascunho
-            antes de o tornar definitivo.
+            Criar pessoas, imóveis, alterar preços ou proprietários, juntar
+            registos, cancelar compromissos, apagar ou enviar seja o que for
+            para um cliente exige sempre a tua confirmação — em qualquer nível
+            de autonomia. Nos outros casos, a escrita pode acontecer
+            automaticamente conforme o nível que escolheste. Podes sempre
+            editar, reverter ou rejeitar o que ficou registado.
+          </p>
+        </Section>
+
+        <Section icon={SlidersHorizontal} title="Quando atuo sozinho">
+          <p className="c-muted text-sm leading-relaxed">
+            Não confirmo tudo sempre — isso tornar-me-ia inútil. O que faço
+            sozinho depende do nível de autonomia que escolheste em{" "}
+            <Link to="/definicoes" className="underline">Definições</Link>.
+          </p>
+
+          <div className="mt-4 grid gap-3">
+            <div className="rounded-[10px] border p-3" style={{ borderColor: "var(--line)" }}>
+              <div className="mb-1 text-sm font-medium">Conservador</div>
+              <p className="c-muted text-xs leading-relaxed">
+                Confirmo sempre antes de escrever seja o que for. Nada entra na
+                base de dados sem tu dizeres que sim.
+              </p>
+            </div>
+            <div className="rounded-[10px] border p-3" style={{ borderColor: "var(--line)" }}>
+              <div className="mb-1 text-sm font-medium">Equilibrado e Proativo</div>
+              <p className="c-muted text-xs leading-relaxed">
+                Atuo autonomamente dentro dos limites que definires — por
+                exemplo, guardar notas, contexto e seguimentos de rotina — e
+                informo-te sempre do que fiz. Podes reverter qualquer ação.
+              </p>
+            </div>
+            <div
+              className="rounded-[10px] border p-3"
+              style={{ borderColor: "var(--brass)", background: "rgba(184,134,59,.06)" }}
+            >
+              <div className="mb-1 text-sm font-medium">Nunca sozinho, em nenhum nível</div>
+              <p className="c-muted text-xs leading-relaxed">
+                Criar pessoas ou imóveis; alterar preços ou proprietários;
+                juntar registos duplicados; cancelar compromissos; apagar ou
+                arquivar registos; ações financeiras; e qualquer mensagem
+                dirigida a um cliente. Estas peço-te sempre confirmação.
+              </p>
+            </div>
+          </div>
+
+          <p className="c-muted mt-4 text-xs leading-relaxed">
+            Podes ainda afinar, ação a ação, o que exige confirmação, e o teu
+            plano define o nível máximo de autonomia disponível.
           </p>
         </Section>
 
