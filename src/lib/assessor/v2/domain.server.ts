@@ -217,6 +217,37 @@ async function execCreatePerson(ctx: DomainContext, args: unknown): Promise<Doma
 }
 
 async function execSearchProperties(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  return execSearchPropertiesInner(ctx, args);
+}
+
+// Lista o Drive Inteligente. Sem query devolve os ficheiros mais recentes e o
+// total real, para a resposta poder oferecer "a lista toda".
+async function execSearchFiles(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const a = (args ?? {}) as { query?: string | null; document_type?: string | null };
+  const query = String(a.query ?? "").trim();
+  let q = ctx.supabase
+    .from("uploaded_files")
+    .select("id, original_file_name, document_type, classification, ai_summary, mime_type, created_at", {
+      count: "exact",
+    })
+    .eq("user_id", ctx.userId)
+    .is("deleted_at", null)
+    .is("archived_at", null)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (query) {
+    q = q.or(
+      `original_file_name.ilike.%${query}%,ai_summary.ilike.%${query}%,document_type.ilike.%${query}%`,
+    );
+  }
+  if (a.document_type) q = q.eq("document_type", a.document_type);
+  const { data, error, count } = await q;
+  if (error) return fail(error.message);
+  const results = (data ?? []) as Record<string, unknown>[];
+  return ok({ results, total: typeof count === "number" ? count : results.length });
+}
+
+async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(SearchPropertiesArgs, args); if (!p.ok) return fail(p.error);
   const { query, status } = p.value;
   let q = ctx.supabase
@@ -1447,6 +1478,7 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   set_property_category: execSetPropertyCategory,
   create_person: execCreatePerson,
   search_properties: execSearchProperties,
+  search_files: execSearchFiles,
   create_property: execCreateProperty,
   search_agenda: execSearchAgenda,
   create_event: execCreateEvent,

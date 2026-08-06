@@ -43,6 +43,12 @@ export const SearchPropertiesArgs = z.object({
 });
 export type SearchPropertiesArgs = z.infer<typeof SearchPropertiesArgs>;
 
+export const SearchFilesArgs = z.object({
+  query: z.string().default(""),
+  document_type: z.string().optional().nullable(),
+});
+export type SearchFilesArgs = z.infer<typeof SearchFilesArgs>;
+
 export const CreatePropertyArgs = z.object({
   title: z.string().min(1),
   property_type: z.string().optional().nullable(),
@@ -493,6 +499,21 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
           status: { type: ["string", "null"] },
         },
         required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_files",
+      description:
+        "Lista ficheiros/documentos guardados no Drive Inteligente do consultor. Sem query devolve todos os mais recentes — usa sempre esta ferramenta quando o consultor pede a lista de ficheiros ou documentos, nunca peças para afunilar antes de mostrar.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Texto livre no nome, resumo ou tipo. Vazio = todos." },
+          document_type: { type: ["string", "null"] },
+        },
       },
     },
   },
@@ -1025,6 +1046,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   search_people: SearchPeopleArgs,
   create_person: CreatePersonArgs,
   search_properties: SearchPropertiesArgs,
+  search_files: SearchFilesArgs,
   create_property: CreatePropertyArgs,
   search_agenda: SearchAgendaArgs,
   create_event: CreateEventArgs,

@@ -15,6 +15,7 @@ export const QUERY_TOOLS = new Set([
   "search_prospecting_leads",
   "search_active_reminders",
   "search_agenda",
+  "search_files",
 ]);
 
 export function isQueryTool(name: string): boolean {
@@ -91,6 +92,12 @@ function lineFor(tool: string, row: Record<string, unknown>): string {
     const t = s(row.due_time).slice(0, 5);
     return joinParts([t ? boldWa(t.replace(":", "h")) : null, boldWa(s(row.title) || "compromisso")], " — ");
   }
+  if (tool === "search_files") {
+    return joinParts([
+      boldWa(s(row.original_file_name) || "Ficheiro"),
+      italicWa(s(row.document_type) || s(row.classification)),
+    ]);
+  }
   return joinParts([boldWa(s(row.title) || s(row.name))]);
 }
 
@@ -119,6 +126,11 @@ const HEADER: Record<string, { one: string; many: (n: number) => string; empty: 
     one: "Tens 1 compromisso:",
     many: (n) => `Tens ${n} compromissos:`,
     empty: "Não tens compromissos nesse período.",
+  },
+  search_files: {
+    one: "Tens 1 ficheiro no Drive Inteligente:",
+    many: (n) => `Tens ${n} ficheiros no Drive Inteligente:`,
+    empty: "Não tens ficheiros no Drive Inteligente.",
   },
 };
 
@@ -149,8 +161,16 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
     }
     const shown = rows.slice(0, MAX_ITEMS);
     const lines = shown.map((row) => `- ${lineFor(r.name, row)}`.trim());
-    const header = rows.length === 1 ? head.one : head.many(rows.length);
-    const more = rows.length > shown.length ? `\n${italicWa(`mostro os primeiros ${shown.length}`)}` : "";
+    const total = Number((r.data as any)?.total);
+    const count = Number.isFinite(total) && total > rows.length ? total : rows.length;
+    const header = count === 1 ? head.one : head.many(count);
+    // Quando a lista é grande, mostramos os mais recentes mas nunca trocamos
+    // silenciosamente o pedido de "todos" por uma pergunta fechada: a opção de
+    // ver tudo tem de estar sempre na resposta.
+    const more =
+      count > shown.length
+        ? `\n${italicWa(`mostro os ${shown.length} mais recentes`)}\nQueres a lista toda ou só de uma pessoa/imóvel?`
+        : "";
     blocks.push(`${header}\n${lines.join("\n")}${more}`);
   }
   return blocks.join("\n\n").trim() || null;
