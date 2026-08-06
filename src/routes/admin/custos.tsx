@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
+import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 
 export const Route = createFileRoute("/admin/custos")({
   head: () => ({ meta: [{ title: "Custos — Afonso admin" }] }),
@@ -168,6 +168,7 @@ function AiRatesBlockInner() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["admin", "ai-cost-settings"] });
     qc.invalidateQueries({ queryKey: ["admin", "access-users"] });
+    qc.invalidateQueries({ queryKey: ["admin", "margin-alerts"] });
   };
 
   return (
