@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InvitePreview } from "@/components/admin/invite-preview";
 
 export const Route = createFileRoute("/admin/entradas")({
   component: EntradasPage,
@@ -181,6 +182,9 @@ function EntradasPage() {
                   <Button type="submit" disabled={reenviar.isPending}>
                     {reenviar.isPending ? "A enviar…" : "Enviar link novo"}
                   </Button>
+                  <div className="w-full">
+                    <InvitePreview canal={canal} nome={c.nome} phone={c.telefone} />
+                  </div>
                   <p className="w-full text-xs text-muted-foreground">
                     O link novo invalida os anteriores por usar. O motivo fica registado no histórico.
                   </p>

@@ -448,6 +448,10 @@ function CreateAccessDialog({
             </label>
           ) : null}
 
+          {sendChannel !== "nenhum" ? (
+            <InvitePreview canal={sendChannel} nome={name} phone={phone} />
+          ) : null}
+
           {dups?.length ? (
             <div className="rounded-md border p-3 text-sm" style={{ borderColor: "var(--warn, #d97706)" }}>
               <p className="font-medium">
