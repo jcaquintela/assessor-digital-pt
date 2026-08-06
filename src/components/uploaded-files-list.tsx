@@ -10,6 +10,7 @@ import {
   getUploadedFileSignedUrl,
   deleteUploadedFile,
 } from "@/lib/assessor/files.functions";
+import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 
 function iconFor(mime: string) {
   if (mime.startsWith("audio/")) return <Mic className="h-4 w-4" />;
@@ -30,6 +31,7 @@ export function UploadedFilesList() {
   const list = useServerFn(listUploadedFiles);
   const sign = useServerFn(getUploadedFileSignedUrl);
   const del = useServerFn(deleteUploadedFile);
+  const confirmacao = useDestructiveConfirm();
 
   const files = useQuery({
     queryKey: ["uploaded-files"],
@@ -65,6 +67,7 @@ export function UploadedFilesList() {
   }
   return (
     <div className="grid gap-2">
+      {confirmacao.dialog}
       {rows.map((r) => (
         <Card key={r.id}>
           <CardContent className="flex flex-wrap items-center gap-3 p-3">
@@ -107,7 +110,18 @@ export function UploadedFilesList() {
               size="sm"
               variant="ghost"
               className="text-destructive"
-              onClick={() => remove.mutate(r.id)}
+              onClick={() =>
+                confirmacao.pedir({
+                  acao: "Eliminar ficheiro",
+                  alvo: r.original_file_name || "(sem nome)",
+                  efeito: "permanente",
+                  resumo: [
+                    "O ficheiro sai da lista de recebidos e do armazenamento.",
+                    "A leitura automática e as ligações associadas deixam de existir.",
+                  ],
+                  onConfirm: () => remove.mutate(r.id),
+                })
+              }
             >
               <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
             </Button>
