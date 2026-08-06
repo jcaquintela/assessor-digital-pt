@@ -8,6 +8,11 @@ import {
   saveTemplateRate,
   deleteTemplateRate,
 } from "@/lib/admin/proactive-test.functions";
+import {
+  getAiCostSettings,
+  saveAiRate,
+  saveCreditPrice,
+} from "@/lib/admin/cost-settings.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -69,11 +74,98 @@ function CustosPage() {
 
       <TemplateRatesBlock />
 
+      <AiRatesBlock />
+
       <SectionTitle>Custo por utilizador ativo</SectionTitle>
       <Empty note="objetivo: custo total ÷ utilizadores ativos, por plano — decide se o Nível 0 grátis é sustentável">
         Não calculável até os 3 custos acima estarem ligados a dados reais.
       </Empty>
     </div>
+  );
+}
+
+function AiRatesBlock() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(getAiCostSettings);
+  const saveRateFn = useServerFn(saveAiRate);
+  const savePriceFn = useServerFn(saveCreditPrice);
+  const { data } = useQuery({ queryKey: ["admin", "ai-cost-settings"], queryFn: () => listFn() });
+  const [model, setModel] = useState("");
+  const [inRate, setInRate] = useState("");
+  const [outRate, setOutRate] = useState("");
+  const [price, setPrice] = useState("");
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin", "ai-cost-settings"] });
+    qc.invalidateQueries({ queryKey: ["admin", "access-users"] });
+  };
+
+  return (
+    <>
+      <SectionTitle>Tarifas de IA e preço do crédito</SectionTitle>
+      <p className="sub mb-3">
+        Sem estas tarifas, o custo por consultor fica só em créditos. Com elas, a ficha de cada
+        consultor mostra euros e margem face ao plano que ele paga.
+      </p>
+
+      <div className="mb-4 flex flex-wrap items-end gap-2">
+        <div>
+          <div className="mini mb-1">Preço de 1 crédito (€)</div>
+          <Input
+            className="w-40"
+            inputMode="decimal"
+            placeholder={data?.creditPriceEur != null ? String(data.creditPriceEur) : "ex.: 0,20"}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </div>
+        <Button
+          onClick={() => {
+            const v = Number(price.replace(",", "."));
+            if (!Number.isFinite(v) || v <= 0) return toast.error("Indica um valor válido.");
+            savePriceFn({ data: { eur: v } })
+              .then(() => { toast.success("Preço do crédito guardado."); setPrice(""); invalidate(); })
+              .catch((e: Error) => toast.error(e.message));
+          }}
+        >Guardar preço</Button>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Modelo</th><th>Créditos / 1M entrada</th><th>Créditos / 1M saída</th><th>Origem</th></tr>
+        </thead>
+        <tbody>
+          {(data?.rates ?? []).length === 0 ? (
+            <tr><td colSpan={4} className="mini">Sem tarifas definidas.</td></tr>
+          ) : data!.rates.map((r) => (
+            <tr key={r.model}>
+              <td className="mini">{r.model}</td>
+              <td className="mini">{r.creditsPerMillionInput}</td>
+              <td className="mini">{r.creditsPerMillionOutput}</td>
+              <td className="mini">{r.source ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <Input className="w-64" placeholder="modelo (ex.: google/gemini-3.6-flash)" value={model} onChange={(e) => setModel(e.target.value)} />
+        <Input className="w-36" inputMode="decimal" placeholder="entrada" value={inRate} onChange={(e) => setInRate(e.target.value)} />
+        <Input className="w-36" inputMode="decimal" placeholder="saída" value={outRate} onChange={(e) => setOutRate(e.target.value)} />
+        <Button
+          onClick={() => {
+            const i = Number(inRate.replace(",", "."));
+            const o = Number(outRate.replace(",", "."));
+            if (!model.trim() || !Number.isFinite(i) || !Number.isFinite(o)) {
+              return toast.error("Preenche modelo e as duas tarifas.");
+            }
+            saveRateFn({ data: { model: model.trim(), creditsPerMillionInput: i, creditsPerMillionOutput: o } })
+              .then(() => { toast.success("Tarifa guardada."); setModel(""); setInRate(""); setOutRate(""); invalidate(); })
+              .catch((e: Error) => toast.error(e.message));
+          }}
+        >Guardar tarifa</Button>
+      </div>
+    </>
   );
 }
 
