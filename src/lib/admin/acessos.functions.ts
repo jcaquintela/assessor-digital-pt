@@ -349,6 +349,26 @@ export const findAccountsByContact = createServerFn({ method: "POST" })
     return findExistingAccounts(supabaseAdmin, data);
   });
 
+// Pré-visualização da mensagem de convite, por canal, antes de enviar.
+// Não emite link nem código: mostra o texto exato com marcadores no lugar
+// dos valores que só nascem no envio.
+export const previewInviteMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        canal: z.enum(["whatsapp", "telegram"]),
+        nome: z.string().trim().max(120).optional().nullable(),
+        phone: z.string().trim().max(32).optional().nullable(),
+      })
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { buildInvitePreview } = await import("@/lib/admin/invite-message.server");
+    return buildInvitePreview({ canal: data.canal, nome: data.nome ?? null, phone: data.phone ?? null });
+  });
+
 // Mesmo mecanismo usado para subir uma conta manualmente a Team/beta:
 // cria o utilizador em auth e escreve o tier em profiles. Sem checkout.
 export const createAccess = createServerFn({ method: "POST" })

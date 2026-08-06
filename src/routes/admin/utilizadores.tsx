@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { InvitePreview } from "@/components/admin/invite-preview";
 import { toast } from "sonner";
 import {
   listAccessUsers,
@@ -446,6 +447,10 @@ function CreateAccessDialog({
             <label className="block text-sm">Beta expira em (opcional)
               <input className="admin-input mt-1 w-full" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
             </label>
+          ) : null}
+
+          {sendChannel !== "nenhum" ? (
+            <InvitePreview canal={sendChannel} nome={name} phone={phone} />
           ) : null}
 
           {dups?.length ? (
