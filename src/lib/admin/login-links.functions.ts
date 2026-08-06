@@ -20,6 +20,8 @@ export type LoginLinkRow = {
   expiresAt: string;
   usedAt: string | null;
   estado: "usado" | "expirado" | "ativo" | "substituido";
+  motivo: string | null;
+  emitidoPorEquipa: boolean;
 };
 
 export type LoginLinkConsultant = {
@@ -62,7 +64,7 @@ export const listLoginLinkStatus = createServerFn({ method: "GET" })
 
     const { data: tokens, error: tErr } = await supabaseAdmin
       .from("dashboard_login_tokens")
-      .select("token, user_id, channel, created_at, expires_at, used_at")
+      .select("token, user_id, channel, created_at, expires_at, used_at, reason, issued_by")
       .in("user_id", ids)
       .order("created_at", { ascending: false })
       .limit(500);
@@ -84,6 +86,8 @@ export const listLoginLinkStatus = createServerFn({ method: "GET" })
           expiresAt: t.expires_at,
           usedAt: t.used_at,
           estado: usado ? (substituido ? "substituido" : "usado") : expirado ? "expirado" : "ativo",
+          motivo: (t.reason as string | null) ?? null,
+          emitidoPorEquipa: !!t.issued_by,
         };
       });
       return {
@@ -101,4 +105,71 @@ export const listLoginLinkStatus = createServerFn({ method: "GET" })
 
     consultores.sort((a, b) => (b.ultimoEmitido ?? "").localeCompare(a.ultimoEmitido ?? ""));
     return { consultores };
+  });
+
+/* -------------------- Reenvio manual pela equipa ------------------------- */
+
+export type ResendLoginLinkResult =
+  | { ok: true; canal: string; expiraEm: string }
+  | { ok: false; erro: string };
+
+export const resendLoginLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string; canal?: "whatsapp" | "telegram"; motivo: string }) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        canal: z.enum(["whatsapp", "telegram"]).optional(),
+        motivo: z.string().trim().min(3, "Indica o motivo do reenvio.").max(300),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }): Promise<ResendLoginLinkResult> => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { issueDashboardLoginLink, LOGIN_LINK_REPLY } = await import("@/lib/auth/dashboard-login.server");
+
+    // Canal: o pedido manda um, senão usamos o último usado e por fim WhatsApp.
+    let canal = data.canal ?? null;
+    if (!canal) {
+      const { data: last } = await supabaseAdmin
+        .from("dashboard_login_tokens")
+        .select("channel")
+        .eq("user_id", data.userId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const prev = (last as { channel: string }[] | null)?.[0]?.channel;
+      canal = prev === "telegram" ? "telegram" : "whatsapp";
+    }
+
+    const { data: link } = await supabaseAdmin
+      .from("channel_links")
+      .select("external_id")
+      .eq("user_id", data.userId)
+      .eq("channel", canal)
+      .maybeSingle();
+    const externalId = (link as { external_id?: string } | null)?.external_id;
+    if (!externalId) {
+      return { ok: false, erro: `Este consultor não tem ${canal} ligado à conta.` };
+    }
+
+    const { url, expiresAt } = await issueDashboardLoginLink(supabaseAdmin, data.userId, canal, {
+      reason: data.motivo,
+      issuedBy: context.userId,
+    });
+
+    const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+    await sendReplyForChannel(canal as any, externalId, LOGIN_LINK_REPLY(url));
+
+    await supabaseAdmin.from("admin_audit_logs").insert({
+      admin_user_id: context.userId,
+      action: "login_link.resent",
+      target_user_id: data.userId,
+      resource_type: "dashboard_login_token",
+      resource_id: data.userId,
+      reason: data.motivo,
+      metadata: { channel: canal, expires_at: expiresAt },
+    });
+
+    return { ok: true, canal, expiraEm: expiresAt };
   });
