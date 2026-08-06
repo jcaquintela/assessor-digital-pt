@@ -64,6 +64,7 @@ export type AccessUser = {
   role: Role;
   state: "active" | "inactive" | "test";
   created_at: string;
+  email_confirmed: boolean;
 };
 
 const TEST_MARKERS = ["ci-", "test.assessor.local"];
@@ -121,8 +122,34 @@ export const listAccessUsers = createServerFn({ method: "GET" })
         role,
         state: banned ? "inactive" : isTest ? "test" : "active",
         created_at: u.created_at,
+        email_confirmed: !!((u as any).email_confirmed_at ?? (u as any).confirmed_at),
       } satisfies AccessUser;
     });
+  });
+
+// Rede de segurança de onboarding: uma conta convidada por nós nunca deve ficar
+// à espera de um email de confirmação que pode cair em spam ou nunca chegar.
+export const confirmAccessEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ target_user_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: before } = await supabaseAdmin.auth.admin.getUserById(data.target_user_id);
+    if (before?.user?.email_confirmed_at) return { ok: true, alreadyConfirmed: true };
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.target_user_id, {
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+    await auditAccess(context.userId, "user.email_confirmed_manually", {
+      target_user_id: data.target_user_id,
+      resource_type: "auth_user",
+      resource_id: data.target_user_id,
+      reason: "Conta criada/convidada pela equipa: confirmação manual para desbloquear a entrada.",
+      before: { email_confirmed: false },
+      after: { email_confirmed: true },
+    });
+    return { ok: true, alreadyConfirmed: false };
   });
 
 const tierSchema = z.enum(["base", "consultor", "pro", "hub"]);
