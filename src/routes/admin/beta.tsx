@@ -612,7 +612,12 @@ function MergeDialog({
               >
                 <div>{acctLabel(c)}</div>
                 <div className="mini">
-                  {c.is_shadow ? <Badge>criada pelo canal</Badge> : <Badge>conta de email</Badge>} · Plano:{" "}
+                  {c.is_shadow ? (
+                    <Badge tone="warn">criada pelo canal</Badge>
+                  ) : (
+                    <Badge tone="ok">conta de email</Badge>
+                  )}{" "}
+                  · Plano:{" "}
                   {c.tier} · Canais: {c.channels.join(", ") || "—"}
                 </div>
               </button>
