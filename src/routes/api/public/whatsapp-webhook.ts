@@ -78,7 +78,9 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
             const { markInboundReply } = await import("@/lib/whatsapp/delivery-status.server");
             for (const n of inbounds) {
-              if (n.externalId) await markInboundReply(supabaseAdmin, n.externalId);
+              if (n.externalConversationId) {
+                await markInboundReply(supabaseAdmin, n.externalConversationId);
+              }
               await runInboundPipeline(adapter, supabaseAdmin, n);
             }
           }
