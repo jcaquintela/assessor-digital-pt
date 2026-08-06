@@ -20,6 +20,12 @@ import {
   saveBriefingTemplate,
   sendBriefingTemplateTest,
 } from "@/lib/admin/template-binding.functions";
+import {
+  listProactiveTestTargets,
+  listProactiveTests,
+  runProactiveTemplateTest,
+} from "@/lib/admin/proactive-test.functions";
+
 
 export const Route = createFileRoute("/admin/integracoes-flags")({
   head: () => ({ meta: [{ title: "Integrações & flags — Afonso admin" }] }),
@@ -519,6 +525,145 @@ function IntegracoesFlagsPage() {
         </div>
       )}
       <Source>feature_flags</Source>
+    </div>
+  );
+}
+
+/**
+ * Prova concreta de que um template chega a um consultor em silêncio há mais
+ * de 24h. Mostra silêncio actual por consultor, força o envio e acompanha
+ * entregue → lido → resposta, com o custo estimado do envio.
+ */
+function ProactiveTestBlock({ canRun }: { canRun: boolean }) {
+  const qc = useQueryClient();
+  const listTargets = useServerFn(listProactiveTestTargets);
+  const listTests = useServerFn(listProactiveTests);
+  const run = useServerFn(runProactiveTemplateTest);
+
+  const { data: targets } = useQuery({
+    queryKey: ["admin", "wa", "proactive-targets"],
+    queryFn: () => listTargets(),
+  });
+  const { data: tests } = useQuery({
+    queryKey: ["admin", "wa", "proactive-tests"],
+    queryFn: () => listTests(),
+    refetchInterval: 15000,
+  });
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const doRun = async (t: any, acknowledgeInsideWindow: boolean) => {
+    setBusy(t.userId);
+    try {
+      const r: any = await run({
+        data: { targetUserId: t.userId, followUpId: t.followUpId ?? undefined, acknowledgeInsideWindow },
+      });
+      toast.success(
+        r.sent
+          ? `Enviado por ${r.via}${r.outsideWindow ? " fora da janela" : " (dentro da janela)"}. A aguardar entrega.`
+          : `Não foi enviado: ${r.reason ?? "sem motivo"}`,
+      );
+      qc.invalidateQueries({ queryKey: ["admin", "wa", "proactive-tests"] });
+      qc.invalidateQueries({ queryKey: ["admin", "wa", "proactive-targets"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falhou.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div>
+      <p className="mini mb-2" style={{ color: "var(--muted)" }}>
+        Enquanto ninguém estiver 24h em silêncio, o caminho de template nunca é exercitado em
+        produção. Aqui forças esse envio a um consultor real e ficas com a prova: entregue, lido,
+        resposta — e o custo.
+      </p>
+
+      <div className="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Consultor</th>
+              <th>Silêncio</th>
+              <th>Compromisso</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {(targets ?? []).map((t: any) => (
+              <tr key={t.userId}>
+                <td>{t.name}</td>
+                <td>
+                  {t.hoursSinceLastInbound == null
+                    ? "nunca escreveu"
+                    : `${Math.round(t.hoursSinceLastInbound * 10) / 10} h`}
+                  {t.outsideWindow === false ? " · dentro da janela" : " · fora da janela"}
+                </td>
+                <td>{t.followUpTitle ?? <span className="sub">sem compromisso com pessoa</span>}</td>
+                <td style={{ textAlign: "right" }}>
+                  <Button
+                    size="sm"
+                    disabled={!canRun || busy === t.userId || !t.followUpId}
+                    onClick={() => doRun(t, t.outsideWindow === false)}
+                  >
+                    {busy === t.userId ? "A enviar…" : t.outsideWindow === false ? "Forçar mesmo assim" : "Enviar teste"}
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            {!targets?.length && (
+              <tr>
+                <td colSpan={4} className="sub">Nenhum consultor com WhatsApp ligado.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="mini mt-3 mb-1" style={{ color: "var(--muted)" }}>Resultados</p>
+      <div className="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Quando</th>
+              <th>Template</th>
+              <th>Silêncio</th>
+              <th>Resultado</th>
+              <th>Custo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(tests ?? []).map((t: any) => (
+              <tr key={t.id}>
+                <td>{fmt(t.created_at)}</td>
+                <td>{t.template_name ?? "—"}{t.template_category ? ` · ${t.template_category}` : ""}</td>
+                <td>
+                  {t.hours_since_last_inbound == null ? "—" : `${Math.round(t.hours_since_last_inbound * 10) / 10} h`}
+                  {t.outside_window ? " (fora)" : " (dentro)"}
+                </td>
+                <td>
+                  {t.log?.replied_at
+                    ? "respondeu"
+                    : t.log?.read_at
+                      ? "lido"
+                      : t.log?.delivered_at
+                        ? "entregue"
+                        : t.status}
+                  {t.log && t.log.ok === false ? ` · ${t.log.error_message ?? "falha"}` : ""}
+                </td>
+                <td>
+                  {t.cost_eur == null
+                    ? <span className="sub">por confirmar</span>
+                    : `${Number(t.cost_eur).toFixed(4)} €`}
+                </td>
+              </tr>
+            ))}
+            {!tests?.length && (
+              <tr><td colSpan={5} className="sub">Ainda não corremos nenhum teste.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
