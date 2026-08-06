@@ -351,7 +351,7 @@ function BetaPage() {
 
       {/* Estender */}
       <Dialog open={!!extending} onOpenChange={(o) => !o && setExtending(null)}>
-        <DialogContent>
+        <DialogContent className="admin-surface">
           <DialogHeader>
             <DialogTitle>Estender período de teste</DialogTitle>
             <DialogDescription>{extending?.name || extending?.email}</DialogDescription>
@@ -400,7 +400,7 @@ function BetaPage() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="admin-surface max-w-2xl">
           <DialogHeader>
             <DialogTitle>Convidar beta testers em lote</DialogTitle>
             <DialogDescription>
@@ -560,7 +560,7 @@ function MergeDialog({
         }
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="admin-surface max-w-2xl">
         <DialogHeader>
           <DialogTitle>Fundir contas</DialogTitle>
           <DialogDescription>

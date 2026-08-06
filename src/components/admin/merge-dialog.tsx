@@ -84,7 +84,7 @@ export function AccountMergeDialog({
         }
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="admin-surface max-w-2xl">
         <DialogHeader>
           <DialogTitle>Fundir contas</DialogTitle>
           <DialogDescription>

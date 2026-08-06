@@ -307,7 +307,7 @@ function AcessosPage() {
       />
 
       <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
-        <DialogContent>
+        <DialogContent className="admin-surface">
           <DialogHeader>
             <DialogTitle>Desativar acesso</DialogTitle>
             <DialogDescription>
@@ -410,7 +410,7 @@ function CreateAccessDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
-      <DialogContent>
+      <DialogContent className="admin-surface">
         <DialogHeader>
           <DialogTitle>Criar acesso</DialogTitle>
           <DialogDescription>
@@ -505,7 +505,7 @@ function EditAccessDialog({
 
   return (
     <Dialog open={!!user} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="admin-surface">
         <DialogHeader>
           <DialogTitle>Alterar acesso</DialogTitle>
           <DialogDescription>{user?.email}</DialogDescription>
@@ -557,7 +557,7 @@ function CreatePromoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="admin-surface">
         <DialogHeader>
           <DialogTitle>Criar código promocional</DialogTitle>
           <DialogDescription>Quem entrar por Telegram ou WhatsApp com este código recebe o plano indicado.</DialogDescription>
