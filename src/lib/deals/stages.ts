@@ -25,12 +25,13 @@ export const STAGE_LABEL: Record<DealStage, string> = {
   concluido: "Concluído",
 };
 
-// Agrupamento do quadro: 4 colunas legíveis num relance.
+// Agrupamento do quadro ATIVO: 4 colunas legíveis num relance.
+// "concluido" não entra aqui — negócio fechado sai do quadro ativo.
 export const STAGE_GROUPS: { key: string; label: string; stages: DealStage[] }[] = [
   { key: "inicio", label: "A começar", stages: ["preparacao", "angariacao"] },
   { key: "mercado", label: "No mercado", stages: ["promocao", "visitas"] },
   { key: "negociacao", label: "Em negociação", stages: ["proposta", "cpcv"] },
-  { key: "fecho", label: "A fechar", stages: ["escritura", "concluido"] },
+  { key: "fecho", label: "A fechar", stages: ["escritura"] },
 ];
 
 export function isDealStage(v: unknown): v is DealStage {
@@ -47,7 +48,31 @@ export function stageIndex(v: unknown): number {
 
 export function groupOfStage(v: unknown): string {
   const s = normalizeStage(v);
+  if (s === "concluido") return "concluido";
   return STAGE_GROUPS.find((g) => g.stages.includes(s))?.key ?? "inicio";
+}
+
+// ---- Fechado ou em curso? --------------------------------------------
+// Fonte única de verdade: a FASE (`stage`). O campo legado `status` só é
+// lido como rede de segurança para linhas antigas sem fase coerente.
+// Sem isto, o quadro dizia "concluído" e o resto do produto contava o
+// mesmo negócio como "em curso".
+
+const CLOSED_DEAL_STATUS = new Set([
+  "perdida", "perdido", "ganha", "ganho", "concluida", "concluída", "concluido", "concluído",
+  "fechada", "fechado", "cancelada", "cancelado", "closed_lost", "closed_won", "cancelled",
+]);
+
+export function isDealClosed(row: { stage?: unknown; status?: unknown } | null | undefined): boolean {
+  if (!row) return false;
+  if (normalizeStage(row.stage) === "concluido") return true;
+  if (row.stage != null && String(row.stage).trim() !== "") return false;
+  return CLOSED_DEAL_STATUS.has(String(row.status ?? "").trim().toLowerCase());
+}
+
+/** Estado legado a gravar quando a fase muda — mantém `status` em sintonia. */
+export function legacyStatusForStage(stage: DealStage): string {
+  return stage === "concluido" ? "Concluída" : "Em curso";
 }
 
 export const DEAL_KINDS = [
