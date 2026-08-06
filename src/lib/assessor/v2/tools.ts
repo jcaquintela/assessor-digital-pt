@@ -1046,6 +1046,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   search_people: SearchPeopleArgs,
   create_person: CreatePersonArgs,
   search_properties: SearchPropertiesArgs,
+  search_files: SearchFilesArgs,
   create_property: CreatePropertyArgs,
   search_agenda: SearchAgendaArgs,
   create_event: CreateEventArgs,
