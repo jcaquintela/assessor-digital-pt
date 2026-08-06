@@ -73,6 +73,7 @@ function PessoasPage() {
   const fetchPeople = useServerFn(exportPeople);
   const fetchAttention = useServerFn(getPersonAttention);
   const [aExportar, setAExportar] = useState<"csv" | "vcf" | null>(null);
+  const confirmacao = useDestructiveConfirm();
 
   const atencao = useQuery({ queryKey: ["person-attention"], queryFn: () => fetchAttention() });
 
@@ -144,6 +145,7 @@ function PessoasPage() {
 
   return (
     <AppShell>
+      {confirmacao.dialog}
       <PageHeader
         title="Pessoas"
         subtitle={`${pessoas.length} contacto${pessoas.length === 1 ? "" : "s"} · criados aqui ou por conversa`}
