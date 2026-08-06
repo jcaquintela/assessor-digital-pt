@@ -255,39 +255,201 @@ const createSchema = z.object({
   is_beta_tester: z.boolean().optional(),
   beta_expires_at: z.string().nullable().optional(),
   name: z.string().trim().max(120).optional(),
+  // Fluxo único de convite: telefone e canal de envio entram no mesmo passo.
+  phone: z.string().trim().max(32).optional().nullable(),
+  telegram_id: z.string().trim().max(64).optional().nullable(),
+  send_link_channel: z.enum(["whatsapp", "telegram", "nenhum"]).optional(),
+  // Preenchido quando o admin escolhe associar a uma conta já existente.
+  associate_to_user_id: z.string().uuid().optional().nullable(),
 });
+
+export type ExistingAccountMatch = {
+  id: string;
+  email: string;
+  name: string | null;
+  tier: string;
+  phone: string | null;
+  channels: string[];
+  isShadow: boolean;
+  matchedOn: ("email" | "telefone")[];
+};
+
+export type CreateAccessResult =
+  | { ok: true; userId: string; associated: boolean; linkEnviado: boolean; canal: string | null; erroEnvio?: string }
+  | { ok: false; duplicates: ExistingAccountMatch[] };
+
+// Procura contas já existentes com o mesmo email OU o mesmo telefone.
+// Nunca funde nada: só devolve o que existe para o admin decidir.
+async function findExistingAccounts(
+  supabaseAdmin: any,
+  opts: { email?: string | null; phone?: string | null },
+): Promise<ExistingAccountMatch[]> {
+  const { normalizePhone } = await import("@/lib/whatsapp/phone");
+  const email = (opts.email ?? "").trim().toLowerCase() || null;
+  const phone = normalizePhone(opts.phone ?? null);
+  if (!email && !phone) return [];
+
+  const { data: profs } = await supabaseAdmin
+    .from("profiles")
+    .select("id, name, email, phone, subscription_tier");
+  const rows = (profs ?? []) as any[];
+
+  const { data: links } = await supabaseAdmin.from("channel_links").select("user_id, channel, external_id");
+  const chanMap = new Map<string, string[]>();
+  const byExternal = new Map<string, string[]>();
+  (links ?? []).forEach((l: any) => {
+    chanMap.set(l.user_id, [...(chanMap.get(l.user_id) ?? []), l.channel]);
+    const digits = normalizePhone(l.external_id);
+    if (digits) byExternal.set(digits, [...(byExternal.get(digits) ?? []), l.user_id]);
+  });
+
+  const phoneUserIds = new Set(phone ? (byExternal.get(phone) ?? []) : []);
+
+  const matches: ExistingAccountMatch[] = [];
+  for (const r of rows) {
+    const matchedOn: ("email" | "telefone")[] = [];
+    if (email && String(r.email ?? "").trim().toLowerCase() === email) matchedOn.push("email");
+    if (phone && (normalizePhone(r.phone) === phone || phoneUserIds.has(r.id))) matchedOn.push("telefone");
+    if (!matchedOn.length) continue;
+    matches.push({
+      id: r.id,
+      email: r.email ?? "",
+      name: r.name ?? null,
+      tier: r.subscription_tier ?? "base",
+      phone: r.phone ?? null,
+      channels: chanMap.get(r.id) ?? [],
+      isShadow: String(r.email ?? "").endsWith("@shadow.assessor.local"),
+      matchedOn,
+    });
+  }
+  return matches;
+}
+
+// Pré-verificação chamada pelo formulário antes de submeter.
+export const findAccountsByContact = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        email: z.string().trim().max(255).optional().nullable(),
+        phone: z.string().trim().max(32).optional().nullable(),
+      })
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data, context }): Promise<ExistingAccountMatch[]> => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return findExistingAccounts(supabaseAdmin, data);
+  });
 
 // Mesmo mecanismo usado para subir uma conta manualmente a Team/beta:
 // cria o utilizador em auth e escreve o tier em profiles. Sem checkout.
 export const createAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => createSchema.parse(d))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<CreateAccessResult> => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      email_confirm: true,
-      user_metadata: { name: data.name ?? data.email.split("@")[0], source: "admin_created" },
-    });
-    if (error || !created?.user?.id) {
-      throw new Error(error?.message ?? "Não foi possível criar a conta.");
+    const { normalizePhone } = await import("@/lib/whatsapp/phone");
+    const phone = normalizePhone(data.phone ?? null);
+
+    // Nunca duplicamos por acidente: sem escolha explícita do admin, paramos
+    // e devolvemos as contas que já existem com este email ou telefone.
+    if (!data.associate_to_user_id) {
+      const dups = await findExistingAccounts(supabaseAdmin, { email: data.email, phone });
+      if (dups.length) return { ok: false, duplicates: dups };
     }
-    const userId = created.user.id;
+
+    let userId = data.associate_to_user_id ?? "";
+    const associated = !!data.associate_to_user_id;
+
+    if (!associated) {
+      const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+        email: data.email,
+        email_confirm: true,
+        user_metadata: { name: data.name ?? data.email.split("@")[0], source: "admin_created" },
+      });
+      if (error || !created?.user?.id) {
+        throw new Error(error?.message ?? "Não foi possível criar a conta.");
+      }
+      userId = created.user.id;
+    }
+
     const after = {
       subscription_tier: data.subscription_tier,
       is_beta_tester: data.is_beta_tester ?? false,
       beta_expires_at: data.beta_expires_at || null,
     };
-    await supabaseAdmin.from("profiles").update(after as never).eq("id", userId);
+    const profilePatch: Record<string, unknown> = { ...after };
+    if (data.name) profilePatch.name = data.name;
+    if (phone) {
+      profilePatch.phone = phone;
+      profilePatch.whatsapp_link_status = "linked";
+      profilePatch.whatsapp_linked_at = new Date().toISOString();
+      profilePatch.primary_channel = "whatsapp";
+    }
+    await supabaseAdmin.from("profiles").update(profilePatch as never).eq("id", userId);
+
+    // Liga já todos os canais fornecidos: não é preciso "Converter" nem "Fundir" depois.
+    const canaisLigados: string[] = [];
+    if (phone) {
+      const { error: linkErr } = await supabaseAdmin
+        .from("channel_links")
+        .upsert(
+          { user_id: userId, channel: "whatsapp", external_id: phone, display_name: data.name ?? null } as never,
+          { onConflict: "channel,external_id" },
+        );
+      if (!linkErr) canaisLigados.push("whatsapp");
+    }
+    if (data.telegram_id) {
+      const { error: tgErr } = await supabaseAdmin
+        .from("channel_links")
+        .upsert(
+          { user_id: userId, channel: "telegram", external_id: data.telegram_id, display_name: data.name ?? null } as never,
+          { onConflict: "channel,external_id" },
+        );
+      if (!tgErr) canaisLigados.push("telegram");
+    }
+
     await auditAccess(context.userId, "user.access_created", {
       target_user_id: userId,
       resource_type: "profile",
       resource_id: userId,
       before: null,
-      after: { email: data.email, ...after },
+      after: { email: data.email, ...after, phone, canais: canaisLigados, associado: associated },
     });
-    return { ok: true, userId };
+
+    // Um único link de acesso, no domínio de produção, pelo canal escolhido.
+    const canalEnvio = data.send_link_channel && data.send_link_channel !== "nenhum" ? data.send_link_channel : null;
+    let linkEnviado = false;
+    let erroEnvio: string | undefined;
+    if (canalEnvio) {
+      try {
+        const { data: link } = await supabaseAdmin
+          .from("channel_links")
+          .select("external_id")
+          .eq("user_id", userId)
+          .eq("channel", canalEnvio)
+          .maybeSingle();
+        const externalId = (link as { external_id?: string } | null)?.external_id;
+        if (!externalId) {
+          erroEnvio = `Não há ${canalEnvio} ligado a esta conta para enviar o link.`;
+        } else {
+          const { issueDashboardLoginLink, LOGIN_LINK_REPLY } = await import("@/lib/auth/dashboard-login.server");
+          const { url } = await issueDashboardLoginLink(supabaseAdmin, userId, canalEnvio, {
+            reason: associated ? "Convite: canal associado a conta existente." : "Convite: conta criada pela equipa.",
+            issuedBy: context.userId,
+          });
+          const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+          await sendReplyForChannel(canalEnvio as any, externalId, LOGIN_LINK_REPLY(url));
+          linkEnviado = true;
+        }
+      } catch (e) {
+        erroEnvio = e instanceof Error ? e.message : "Não foi possível enviar o link.";
+      }
+    }
+
+    return { ok: true, userId, associated, linkEnviado, canal: canalEnvio, ...(erroEnvio ? { erroEnvio } : {}) };
   });
 
 const updateSchema = z.object({
