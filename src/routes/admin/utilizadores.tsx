@@ -148,6 +148,13 @@ function AcessosPage() {
               <td className="mini">
                 <button type="button" className="admin-link" disabled={!isSuper} onClick={() => setEditing(u)}>Alterar</button>
                 {" · "}
+                <button
+                  type="button"
+                  className="admin-link"
+                  disabled={!isSuper || me?.userId === u.id}
+                  onClick={() => setSupport(u)}
+                >Entrar como utilizador</button>
+                {" · "}
                 {!u.email_confirmed && (
                   <>
                     <button
