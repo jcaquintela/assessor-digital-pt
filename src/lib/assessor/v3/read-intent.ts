@@ -10,7 +10,8 @@ export type ReadTool =
   | "search_properties"
   | "search_prospecting_leads"
   | "search_agenda"
-  | "search_active_reminders";
+  | "search_active_reminders"
+  | "search_files";
 
 export interface ReadRequest {
   pure: boolean;
@@ -40,7 +41,7 @@ const WRITE_RE =
 
 const TOPICS: Array<{ re: RegExp; tool: ReadTool | null; args?: Record<string, unknown>; topic?: "documents" }> = [
   { re: /\b(placas?|prospe(?:c|ç)ao|prospe(?:c|ç)cao)\b/, tool: "search_prospecting_leads", args: {} },
-  { re: /\b(documentos?|ficheiros?|drive|cadernetas?|certificados?)\b/, tool: null, topic: "documents" },
+  { re: /\b(documentos?|ficheiros?|drive|cadernetas?|certificados?)\b/, tool: "search_files", args: { query: "" }, topic: "documents" },
   { re: /\b(contactos?|pessoas?|clientes?|proprietarios?|compradores?|leads?)\b/, tool: "search_people", args: { query: "" } },
   { re: /\b(imoveis?|casas?|apartamentos?|moradias?|propriedades?|terrenos?)\b/, tool: "search_properties", args: { query: "" } },
   { re: /\b(agenda|compromissos?|visitas?|reunioes?|marca(?:c|ç)oes?)\b/, tool: "search_agenda", args: { period: "today" } },
