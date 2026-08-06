@@ -166,7 +166,7 @@ export const listDriveFiles = createServerFn({ method: "POST" })
     let query = supabase
       .from("uploaded_files")
       .select(
-        "id, channel, original_file_name, mime_type, size_bytes, processing_status, classification, document_type, ai_summary, classification_confidence, requires_review, archived_at, deleted_at, created_at, custom_category_id, doc_nif, doc_artigo_matricial, doc_fracao",
+        "id, channel, original_file_name, mime_type, size_bytes, processing_status, classification, document_type, ai_summary, classification_confidence, requires_review, archived_at, deleted_at, created_at, custom_category_id, doc_nif, doc_artigo_matricial, doc_fracao, doc_group_id, doc_page_number",
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
