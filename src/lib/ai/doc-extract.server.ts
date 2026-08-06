@@ -113,6 +113,7 @@ export async function readDocument(
   bytes: Uint8Array,
   mimeType: string,
   fileName?: string | null,
+  telemetry?: import("./usage-log.server").AiTelemetry,
 ): Promise<ReadDocumentResult> {
   const key = process.env['LOVABLE_API_KEY'];
   if (!key) return { ok: false, error: "LOVABLE_API_KEY missing" };
@@ -143,7 +144,9 @@ export async function readDocument(
   const models = scanned ? [OCR_MODEL, MODEL] : [MODEL, OCR_MODEL];
 
   let lastError = "Sem conteúdo interpretável";
+  const { logAiUsage, readGatewayUsage } = await import("./usage-log.server");
   for (const model of models) {
+    const t0 = Date.now();
     const res = await fetch(GATEWAY, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -157,10 +160,20 @@ export async function readDocument(
     if (!res.ok) {
       const t = await res.text().catch(() => "");
       lastError = `Gateway ${res.status}: ${t.slice(0, 300)}`;
+      await logAiUsage(telemetry, {
+        modality: "documento", model, intent: "read_document",
+        tokens: { input: 0, output: 0 }, latencyMs: Date.now() - t0,
+        success: false, error: `Gateway ${res.status}`,
+      });
       continue;
     }
     const json = (await res.json()) as any;
     const parsed = parseJsonLoose(json?.choices?.[0]?.message?.content ?? "");
+    await logAiUsage(telemetry, {
+      modality: "documento", model, intent: "read_document",
+      tokens: readGatewayUsage(json), latencyMs: Date.now() - t0,
+      success: !!parsed, error: parsed ? null : "no_parsable_content",
+    });
     if (!parsed) continue;
     const reading = coerce(parsed);
     if (hasAnyDocData(reading) || reading.visible_text) return { ok: true, reading };
