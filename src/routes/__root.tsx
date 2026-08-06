@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { ScrollLockGuard } from "@/components/scroll-lock-guard";
+import { SupportModeBanner } from "@/components/support-mode-banner";
 import { supabase } from "@/integrations/supabase/client";
 import { registerServiceWorker } from "@/lib/pwa";
 
@@ -145,6 +146,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <SupportModeBanner />
       <Outlet />
       <Toaster position="top-center" />
       <ScrollLockGuard />

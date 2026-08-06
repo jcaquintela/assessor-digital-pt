@@ -22,6 +22,9 @@ import {
 import { getMyAdminRole } from "@/lib/admin.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { AccountMergeDialog, type MergeSource } from "@/components/admin/merge-dialog";
+import { startSupportSession } from "@/lib/admin/support-mode.functions";
+import { writeSupportMode } from "@/lib/admin/support-mode";
+import { supabase } from "@/integrations/supabase/client";
 import { tierLabel, TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tiers";
 import {
   Dialog,
@@ -38,6 +41,76 @@ export const Route = createFileRoute("/admin/utilizadores")({
 });
 
 const TIERS: SubscriptionTier[] = ["base", "consultor", "pro", "hub"];
+
+function SupportModeDialog({ user, onClose }: { user: AccessUser; onClose: () => void }) {
+  const [motivo, setMotivo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const nome = user.name || user.email;
+
+  const entrar = async () => {
+    setBusy(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const admin = sessionData.session;
+      if (!admin) throw new Error("Sessão de admin expirada. Volta a entrar.");
+
+      const res = await startSupportSession({
+        data: { target_user_id: user.id, reason: motivo.trim() },
+      });
+
+      const { error } = await supabase.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: res.token_hash,
+      });
+      if (error) throw new Error(error.message);
+
+      writeSupportMode({
+        sessionId: res.session_id,
+        targetUserId: res.target_user_id,
+        targetName: res.target_name,
+        adminAccessToken: admin.access_token,
+        adminRefreshToken: admin.refresh_token,
+        startedAt: new Date().toISOString(),
+      });
+      window.location.assign("/hoje");
+    } catch (e) {
+      setBusy(false);
+      toast.error((e as Error).message || "Não foi possível entrar em modo suporte.");
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="admin-surface">
+        <DialogHeader>
+          <DialogTitle>Entrar como {nome}</DialogTitle>
+          <DialogDescription>
+            Abres Hoje, Pessoas, Imóveis, Negócios e Drive tal como {nome} os vê, para corrigires dados
+            em nome dele. Não vês credenciais, pagamentos nem tokens. Tudo o que fizeres fica na
+            auditoria como “admin agiu em nome de {nome}”.
+          </DialogDescription>
+        </DialogHeader>
+        <label className="block text-sm">Motivo do apoio
+          <input
+            className="admin-input mt-1 w-full"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Juntar pessoas duplicadas a pedido do consultor"
+          />
+        </label>
+        <DialogFooter>
+          <button type="button" className="admin-btn" onClick={onClose}>Cancelar</button>
+          <button
+            type="button"
+            className="admin-btn-primary"
+            disabled={busy || motivo.trim().length < 3}
+            onClick={entrar}
+          >{busy ? "A abrir…" : "Entrar em modo suporte"}</button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function fmtDate(v: string | null) {
   return v ? new Date(v).toLocaleDateString("pt-PT") : "—";
@@ -73,6 +146,7 @@ function AcessosPage() {
   const [promoOpen, setPromoOpen] = useState(false);
   const [deleting, setDeleting] = useState<AccessUser | null>(null);
   const [merging, setMerging] = useState<MergeSource | null>(null);
+  const [support, setSupport] = useState<AccessUser | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["admin", "access-users"] });
@@ -143,6 +217,13 @@ function AcessosPage() {
               </td>
               <td className="mini">
                 <button type="button" className="admin-link" disabled={!isSuper} onClick={() => setEditing(u)}>Alterar</button>
+                {" · "}
+                <button
+                  type="button"
+                  className="admin-link"
+                  disabled={!isSuper || me?.userId === u.id}
+                  onClick={() => setSupport(u)}
+                >Entrar como utilizador</button>
                 {" · "}
                 {!u.email_confirmed && (
                   <>
@@ -246,6 +327,10 @@ function AcessosPage() {
           onClose={() => setMerging(null)}
           onDone={invalidate}
         />
+      )}
+
+      {support && (
+        <SupportModeDialog key={support.id} user={support} onClose={() => setSupport(null)} />
       )}
 
       <SectionTitle>Códigos promocionais</SectionTitle>

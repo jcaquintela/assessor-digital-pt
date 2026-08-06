@@ -3380,6 +3380,36 @@ export type Database = {
         }
         Relationships: []
       }
+      support_sessions: {
+        Row: {
+          admin_user_id: string
+          ended_at: string | null
+          id: string
+          last_seen_at: string
+          reason: string | null
+          started_at: string
+          target_user_id: string
+        }
+        Insert: {
+          admin_user_id: string
+          ended_at?: string | null
+          id?: string
+          last_seen_at?: string
+          reason?: string | null
+          started_at?: string
+          target_user_id: string
+        }
+        Update: {
+          admin_user_id?: string
+          ended_at?: string | null
+          id?: string
+          last_seen_at?: string
+          reason?: string | null
+          started_at?: string
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           color: string | null
