@@ -122,11 +122,11 @@ export async function whatsappCostByUser(
   const since = new Date(Date.now() - days * 864e5).toISOString();
   const { data } = await supabaseAdmin
     .from("whatsapp_send_logs")
-    .select("user_id, estimated_cost_eur")
+    .select("user_id, cost_eur")
     .in("user_id", userIds)
     .gte("created_at", since);
   for (const r of (data ?? []) as any[]) {
-    const v = Number(r.estimated_cost_eur) || 0;
+    const v = Number(r.cost_eur) || 0;
     if (!r.user_id || !v) continue;
     out.set(r.user_id, (out.get(r.user_id) ?? 0) + v);
   }
