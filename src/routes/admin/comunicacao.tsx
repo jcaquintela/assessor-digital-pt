@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin/comunicacao.functions";
 import { TIER_DISPLAY_NAME } from "@/lib/subscription/tiers";
 import { AnnouncementCard, sameText } from "@/components/announcement-banner";
+import { DailyDigest } from "@/components/admin/daily-digest";
 
 export const Route = createFileRoute("/admin/comunicacao")({
   head: () => ({ meta: [{ title: "Comunicação — Afonso admin" }] }),
@@ -131,6 +132,7 @@ function ComunicacaoPage() {
   const [sending, setSending] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [openBroadcast, setOpenBroadcast] = useState<string | null>(null);
+  const [tab, setTab] = useState<"mensagem" | "digest">("mensagem");
 
   const { data: preview } = useQuery({
     queryKey: ["admin", "broadcast-preview", segment, channel, includeTest],
@@ -209,6 +211,25 @@ function ComunicacaoPage() {
         sub="Falar com os consultores em massa. Nada sai sem pré-visualização, número final de destinatários e confirmação."
       />
 
+      <div className="mb-1 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={`admin-pill ${tab === "mensagem" ? "active" : ""}`}
+          onClick={() => setTab("mensagem")}
+        >
+          Mensagem em massa
+        </button>
+        <button
+          type="button"
+          className={`admin-pill ${tab === "digest" ? "active" : ""}`}
+          onClick={() => setTab("digest")}
+        >
+          Email diário (beta)
+        </button>
+      </div>
+
+      {tab === "digest" ? <DailyDigest isSuper={!!isSuper} /> : (
+      <>
       <SectionTitle first>Nova mensagem</SectionTitle>
       <div className="rounded-xl border p-4" style={{ borderColor: "var(--line)", background: "var(--card)" }}>
         <div className="mb-3 flex flex-wrap gap-2">
@@ -446,6 +467,8 @@ function ComunicacaoPage() {
       <p className="mini mt-2" style={{ color: "var(--muted)" }}>
         Clica num envio para ver o estado real de cada destinatário e repetir só os que falharam.
       </p>
+      </>
+      )}
     </div>
   );
 }

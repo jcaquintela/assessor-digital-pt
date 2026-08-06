@@ -1317,6 +1317,65 @@ export type Database = {
           },
         ]
       }
+      daily_digests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          body: string
+          body_edited: boolean
+          broadcast_id: string | null
+          created_at: string
+          digest_date: string
+          id: string
+          note: string | null
+          recipients_count: number
+          sent_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          body?: string
+          body_edited?: boolean
+          broadcast_id?: string | null
+          created_at?: string
+          digest_date: string
+          id?: string
+          note?: string | null
+          recipients_count?: number
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          body?: string
+          body_edited?: boolean
+          broadcast_id?: string | null
+          created_at?: string
+          digest_date?: string
+          id?: string
+          note?: string | null
+          recipients_count?: number
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_digests_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "admin_broadcasts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_priorities: {
         Row: {
           action: string

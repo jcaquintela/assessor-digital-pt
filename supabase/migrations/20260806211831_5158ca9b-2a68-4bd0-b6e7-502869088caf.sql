@@ -1,0 +1,1 @@
+ALTER TABLE public.daily_digests ADD COLUMN body_edited boolean NOT NULL DEFAULT false;
