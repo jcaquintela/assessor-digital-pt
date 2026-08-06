@@ -53,7 +53,6 @@ function AcessosPage() {
   const listFn = useServerFn(listAccessUsers);
   const promosFn = useServerFn(listPromoCodes);
   const dupsFn = useServerFn(listDuplicateAccountAlerts);
-  const createFn = useServerFn(createAccess);
   const updateFn = useServerFn(updateAccess);
   const deactivateFn = useServerFn(deactivateAccess);
   const reactivateFn = useServerFn(reactivateAccess);
