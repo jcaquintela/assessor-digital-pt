@@ -1,8 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { listLoginLinkStatus, type LoginLinkConsultant, type LoginLinkRow } from "@/lib/admin/login-links.functions";
+import { toast } from "sonner";
+import {
+  listLoginLinkStatus,
+  resendLoginLink,
+  type LoginLinkConsultant,
+  type LoginLinkRow,
+} from "@/lib/admin/login-links.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,12 +38,33 @@ function EstadoBadge({ estado }: { estado: LoginLinkRow["estado"] }) {
 
 function EntradasPage() {
   const list = useServerFn(listLoginLinkStatus);
+  const resend = useServerFn(resendLoginLink);
+  const queryClient = useQueryClient();
   const [termo, setTermo] = useState("");
   const [filtro, setFiltro] = useState({ query: "", apenasBeta: true });
+  const [aberto, setAberto] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const [canal, setCanal] = useState<"whatsapp" | "telegram">("whatsapp");
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["admin", "login-links", filtro],
     queryFn: () => list({ data: filtro }),
+  });
+
+  const reenviar = useMutation({
+    mutationFn: (vars: { userId: string; motivo: string; canal: "whatsapp" | "telegram" }) =>
+      resend({ data: vars }),
+    onSuccess: (res) => {
+      if (res.ok) {
+        toast.success(`Link novo enviado por ${res.canal}.`);
+        setAberto(null);
+        setMotivo("");
+        queryClient.invalidateQueries({ queryKey: ["admin", "login-links"] });
+      } else {
+        toast.error(res.erro);
+      }
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível reenviar o link."),
   });
 
   const consultores = (data?.consultores ?? []) as LoginLinkConsultant[];
@@ -106,7 +133,59 @@ function EntradasPage() {
                 <p className="text-xs text-muted-foreground">
                   {c.totalEmitidos} link(s) · {c.reenvios} reenvio(s) · último {dt(c.ultimoEmitido)}
                 </p>
+                <Button
+                  size="sm"
+                  variant={aberto === c.id ? "secondary" : "default"}
+                  onClick={() => {
+                    setAberto(aberto === c.id ? null : c.id);
+                    setMotivo("");
+                  }}
+                >
+                  {aberto === c.id ? "Cancelar" : "Reenviar link"}
+                </Button>
               </div>
+
+              {aberto === c.id && (
+                <form
+                  className="flex flex-wrap items-end gap-3 border-b bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (motivo.trim().length < 3) {
+                      toast.error("Escreve o motivo do reenvio.");
+                      return;
+                    }
+                    reenviar.mutate({ userId: c.id, motivo: motivo.trim(), canal });
+                  }}
+                >
+                  <div className="min-w-[260px] flex-1">
+                    <Label htmlFor={`motivo-${c.id}`}>Motivo do reenvio</Label>
+                    <Input
+                      id={`motivo-${c.id}`}
+                      value={motivo}
+                      onChange={(e) => setMotivo(e.target.value)}
+                      placeholder="Ex.: link expirou antes de o consultor clicar"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`canal-${c.id}`}>Canal</Label>
+                    <select
+                      id={`canal-${c.id}`}
+                      className="h-10 rounded-md border bg-background px-3 text-sm dark:border-slate-800"
+                      value={canal}
+                      onChange={(e) => setCanal(e.target.value as "whatsapp" | "telegram")}
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="telegram">Telegram</option>
+                    </select>
+                  </div>
+                  <Button type="submit" disabled={reenviar.isPending}>
+                    {reenviar.isPending ? "A enviar…" : "Enviar link novo"}
+                  </Button>
+                  <p className="w-full text-xs text-muted-foreground">
+                    O link novo invalida os anteriores por usar. O motivo fica registado no histórico.
+                  </p>
+                </form>
+              )}
 
               {!c.links.length ? (
                 <p className="px-4 py-3 text-sm text-muted-foreground">Ainda não foi emitido nenhum link a este consultor.</p>
@@ -119,6 +198,7 @@ function EntradasPage() {
                       <th className="px-4 py-2">Estado</th>
                       <th className="px-4 py-2">Usado</th>
                       <th className="px-4 py-2">Expira</th>
+                      <th className="px-4 py-2">Motivo do reenvio</th>
                       <th className="px-4 py-2">Ref.</th>
                     </tr>
                   </thead>
@@ -132,6 +212,14 @@ function EntradasPage() {
                         </td>
                         <td className="px-4 py-2 text-muted-foreground">{dt(l.usedAt)}</td>
                         <td className="px-4 py-2 text-muted-foreground">{dt(l.expiresAt)}</td>
+                        <td className="px-4 py-2 text-muted-foreground">
+                          {l.motivo ?? "—"}
+                          {l.emitidoPorEquipa && (
+                            <span className="ml-2 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                              equipa
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{l.tokenPrefix}…</td>
                       </tr>
                     ))}
