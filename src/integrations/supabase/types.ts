@@ -1406,6 +1406,8 @@ export type Database = {
           channel: string
           created_at: string
           expires_at: string
+          issued_by: string | null
+          reason: string | null
           token: string
           used_at: string | null
           user_id: string
@@ -1414,6 +1416,8 @@ export type Database = {
           channel?: string
           created_at?: string
           expires_at: string
+          issued_by?: string | null
+          reason?: string | null
           token: string
           used_at?: string | null
           user_id: string
@@ -1422,6 +1426,8 @@ export type Database = {
           channel?: string
           created_at?: string
           expires_at?: string
+          issued_by?: string | null
+          reason?: string | null
           token?: string
           used_at?: string | null
           user_id?: string
