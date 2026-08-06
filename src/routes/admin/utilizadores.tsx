@@ -13,6 +13,7 @@ import {
   createPromoCode,
   revokePromoCode,
   listDuplicateAccountAlerts,
+  confirmAccessEmail,
   type AccessUser,
 } from "@/lib/admin/acessos.functions";
 import { getMyAdminRole } from "@/lib/admin.functions";
@@ -55,6 +56,7 @@ function AcessosPage() {
   const reactivateFn = useServerFn(reactivateAccess);
   const createPromoFn = useServerFn(createPromoCode);
   const revokePromoFn = useServerFn(revokePromoCode);
+  const confirmEmailFn = useServerFn(confirmAccessEmail);
 
   const { data: me } = useQuery({ queryKey: ["admin", "my-role"], queryFn: () => roleFn() });
   const isSuper = me?.role === "super_admin";
@@ -127,10 +129,29 @@ function AcessosPage() {
                 <Badge tone={u.state === "active" ? "ok" : u.state === "test" ? "warn" : "bad"}>
                   {u.state === "active" ? "Ativo" : u.state === "test" ? "Teste" : "Inativo"}
                 </Badge>
+                {!u.email_confirmed && (
+                  <>
+                    {" "}
+                    <Badge tone="bad">Email por confirmar</Badge>
+                  </>
+                )}
               </td>
               <td className="mini">
                 <button type="button" className="admin-link" disabled={!isSuper} onClick={() => setEditing(u)}>Alterar</button>
                 {" · "}
+                {!u.email_confirmed && (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-link"
+                      disabled={!isSuper}
+                      onClick={() =>
+                        run("Email confirmado — já pode entrar.", confirmEmailFn({ data: { target_user_id: u.id } }))
+                      }
+                    >Confirmar email</button>
+                    {" · "}
+                  </>
+                )}
                 {u.state === "inactive" ? (
                   <button
                     type="button"
@@ -153,6 +174,10 @@ function AcessosPage() {
       </table>
       <p className="mini mt-2" style={{ color: "var(--muted)" }}>
         “Eliminar” desativa a conta — perde acesso, os dados ficam. Apagar dados em definitivo não está disponível.
+      </p>
+      <p className="mini" style={{ color: "var(--muted)" }}>
+        Contas criadas aqui nascem já confirmadas. “Email por confirmar” só aparece em contas criadas pelo próprio
+        (registo no site) — “Confirmar email” desbloqueia a entrada na hora, sem esperar por email.
       </p>
 
       <SectionTitle>Contas a rever (possíveis duplicados)</SectionTitle>
