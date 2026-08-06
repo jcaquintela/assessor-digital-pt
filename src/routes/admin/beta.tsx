@@ -315,6 +315,14 @@ function BetaPage() {
                       >
                         Converter
                       </button>
+                      <button
+                        type="button"
+                        className="admin-btn"
+                        disabled={!isSuper}
+                        onClick={() => setMerging(t)}
+                      >
+                        Fundir contas
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -330,6 +338,16 @@ function BetaPage() {
         sozinha. A conta e os dados ficam intactos — só se perde o acesso aos módulos pagos. Cada mudança fica
         registada na auditoria.
       </p>
+
+      <SectionTitle>Contas duplicadas</SectionTitle>
+      <p className="mini">
+        Quando alguém começa a falar pelo WhatsApp ou Telegram antes de entrar no painel, fica com duas contas:
+        uma criada pelo canal e outra criada pelo email. "Fundir contas" passa tudo (pessoas, imóveis, conversas,
+        ficheiros, seguimentos) para a conta que fica, transfere o canal e o número, e desliga a antiga sem apagar
+        nada. Converter uma conta criada pelo canal está bloqueado até a fusão estar feita.
+      </p>
+
+      <MergeDialog tester={merging} onClose={() => setMerging(null)} onDone={invalidate} />
 
       {/* Estender */}
       <Dialog open={!!extending} onOpenChange={(o) => !o && setExtending(null)}>
@@ -475,5 +493,180 @@ function BetaPage() {
       </Dialog>
 
     </div>
+  );
+}
+
+function acctLabel(a: MergeAccount) {
+  return `${a.name || "sem nome"} · ${a.email || "sem email"}${a.phone ? ` · ${a.phone}` : ""}`;
+}
+
+function MergeDialog({
+  tester,
+  onClose,
+  onDone,
+}: {
+  tester: BetaTester | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const candidatesFn = useServerFn(findMergeCandidates);
+  const previewFn = useServerFn(previewMerge);
+  const applyFn = useServerFn(applyMerge);
+
+  const [query, setQuery] = useState("");
+  const [targetId, setTargetId] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [preview, setPreview] = useState<MergePreview | null>(null);
+
+  const reset = () => {
+    setQuery("");
+    setTargetId(null);
+    setReason("");
+    setPreview(null);
+  };
+
+  const { data, isFetching } = useQuery({
+    queryKey: ["admin", "merge-candidates", tester?.id, query],
+    enabled: !!tester,
+    queryFn: () => candidatesFn({ data: { source_user_id: tester!.id, query: query || undefined } }),
+  });
+
+  const doPreview = useMutation({
+    mutationFn: () =>
+      previewFn({ data: { source_user_id: tester!.id, target_user_id: targetId! } }),
+    onSuccess: (p) => setPreview(p),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const doApply = useMutation({
+    mutationFn: () =>
+      applyFn({ data: { source_user_id: tester!.id, target_user_id: targetId!, reason: reason.trim() } }),
+    onSuccess: () => {
+      toast.success("Contas fundidas.");
+      onDone();
+      reset();
+      onClose();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog
+      open={!!tester}
+      onOpenChange={(o) => {
+        if (!o) {
+          reset();
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Fundir contas</DialogTitle>
+          <DialogDescription>
+            Tudo o que existe em <strong>{tester?.name || tester?.email || tester?.phone}</strong> passa para a
+            conta que escolheres. A conta de origem fica desligada, sem plano e sem canais — nada é apagado.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 text-sm">
+          {data?.source && (
+            <div className="rounded-md border p-3">
+              <div className="mini">Conta de origem (vai ser desligada)</div>
+              <div>{acctLabel(data.source)}</div>
+              <div className="mini">
+                Canais: {data.source.channels.join(", ") || "—"} · Plano: {data.source.tier}
+              </div>
+            </div>
+          )}
+
+          <label className="block">
+            Procurar a conta que fica (nome, email ou telemóvel)
+            <input
+              className="admin-input mt-1 w-full"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPreview(null);
+              }}
+              placeholder="nome@empresa.pt"
+            />
+          </label>
+
+          <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+            {isFetching && <p className="mini">A procurar…</p>}
+            {!isFetching && (data?.candidates ?? []).length === 0 && (
+              <Empty>Nenhuma conta encontrada. Escreve o email ou o nome para procurar.</Empty>
+            )}
+            {(data?.candidates ?? []).map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => {
+                  setTargetId(c.id);
+                  setPreview(null);
+                }}
+                className={`w-full rounded-md border p-3 text-left ${
+                  targetId === c.id ? "border-foreground" : ""
+                }`}
+              >
+                <div>{acctLabel(c)}</div>
+                <div className="mini">
+                  {c.is_shadow ? <Badge>criada pelo canal</Badge> : <Badge>conta de email</Badge>} · Plano:{" "}
+                  {c.tier} · Canais: {c.channels.join(", ") || "—"}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {preview && (
+            <div className="rounded-md border p-3">
+              <div className="mini">
+                Vão passar {preview.total} registo(s) para {acctLabel(preview.target)}
+              </div>
+              <ul className="mini mt-1 grid grid-cols-2 gap-x-4">
+                {preview.tables.map((t) => (
+                  <li key={t.table}>
+                    {t.table}: {t.rows}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <label className="block">
+            Motivo da fusão (fica na auditoria)
+            <input
+              className="admin-input mt-1 w-full"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Mesma pessoa: conta do WhatsApp e conta do painel."
+            />
+          </label>
+        </div>
+
+        <DialogFooter>
+          <button type="button" className="admin-btn" onClick={onClose}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="admin-btn"
+            disabled={!targetId || doPreview.isPending}
+            onClick={() => doPreview.mutate()}
+          >
+            {doPreview.isPending ? "A calcular…" : "Pré-visualizar"}
+          </button>
+          <button
+            type="button"
+            className="admin-btn-primary"
+            disabled={!preview || reason.trim().length < 3 || doApply.isPending}
+            onClick={() => doApply.mutate()}
+          >
+            {doApply.isPending ? "A fundir…" : "Fundir contas"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
