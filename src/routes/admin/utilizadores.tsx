@@ -292,7 +292,7 @@ function AcessosPage() {
       <CreateAccessDialog
         open={creating}
         onOpenChange={setCreating}
-        onSubmit={(payload) => run("Acesso criado.", createFn({ data: payload }).then(() => setCreating(false)))}
+        onDone={() => { setCreating(false); invalidate(); }}
       />
       <EditAccessDialog
         user={editing}
