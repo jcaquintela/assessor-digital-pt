@@ -19,6 +19,7 @@ import {
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
 import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
+import { ReorderPagesDialog } from "@/components/drive/reorder-pages-dialog";
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import { groupDriveFiles, type GroupBy } from "@/lib/drive/group-files";
 import {
@@ -38,6 +39,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  ListOrdered,
 } from "lucide-react";
 
 type Tab =
