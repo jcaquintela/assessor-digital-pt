@@ -2,7 +2,8 @@ import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Copy, ExternalLink, MessageCircle, Send } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
+import { ChannelChoice } from "@/components/canais/channel-choice";
 import { toast } from "sonner";
 import { BrandMark } from "@/components/brand-mark";
 import { createTelegramLinkToken, getTelegramLink } from "@/lib/telegram/link.functions";
@@ -58,59 +59,6 @@ function LigarCanalPage() {
   );
 }
 
-function ChannelChoice({ onChoose }: { onChoose: (c: "whatsapp" | "telegram") => void }) {
-  return (
-    <ul data-testid="escolha-canal" className="mt-6 grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-      <li data-testid="canal-whatsapp" className="c-card min-w-0 border-2 border-[var(--accent,#0f766e)] p-5">
-        <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-          <h2 className="c-section-title flex min-w-0 items-center gap-2">
-            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="truncate">WhatsApp</span>
-          </h2>
-          <span className="c-badge ok shrink-0 whitespace-nowrap">14 dias grátis</span>
-        </div>
-        <p className="text-[13px] leading-relaxed break-words">
-          Experimenta o plano Consultor durante 14 dias, sem pagamento e sem cartão.
-          Falas comigo no WhatsApp que já usas o dia todo, envias áudios, fotos e
-          documentos, e eu trato dos seguimentos e lembretes por iniciativa própria.
-        </p>
-        <ul className="c-muted mt-3 space-y-1 text-[13px]">
-          <li className="flex min-w-0 gap-2"><Check className="mt-[3px] h-3.5 w-3.5 shrink-0" aria-hidden="true" /> <span className="min-w-0 break-words">Áudios, fotos e documentos no canal onde já trabalhas</span></li>
-          <li className="flex min-w-0 gap-2"><Check className="mt-[3px] h-3.5 w-3.5 shrink-0" aria-hidden="true" /> <span className="min-w-0 break-words">Lembretes e seguimentos proativos</span></li>
-          <li className="flex min-w-0 gap-2"><Check className="mt-[3px] h-3.5 w-3.5 shrink-0" aria-hidden="true" /> <span className="min-w-0 break-words">No fim dos 14 dias escolhes: continuar num plano pago ou ficar em Base</span></li>
-        </ul>
-        <button
-          type="button"
-          className="c-cta mt-4 min-h-11 w-full justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
-          onClick={() => onChoose("whatsapp")}
-        >
-          Começar os 14 dias no WhatsApp
-        </button>
-      </li>
-
-      <li data-testid="canal-telegram" className="c-card min-w-0 p-5">
-        <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-          <h2 className="c-section-title flex min-w-0 items-center gap-2">
-            <Send className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="truncate">Telegram</span>
-          </h2>
-          <span className="c-badge shrink-0 whitespace-nowrap">Grátis para sempre</span>
-        </div>
-        <p className="text-[13px] leading-relaxed break-words">
-          Plano Base, sem custos e sem prazo. Guardo pessoas, imóveis e seguimentos a
-          partir do que me escreves — mas não tomo iniciativa nem uso WhatsApp.
-        </p>
-        <button
-          type="button"
-          className="c-btn mt-4 min-h-11 w-full justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
-          onClick={() => onChoose("telegram")}
-        >
-          Ligar Telegram (grátis)
-        </button>
-      </li>
-    </ul>
-  );
-}
 
 function BackLink({ onBack }: { onBack: () => void }) {
   return (
