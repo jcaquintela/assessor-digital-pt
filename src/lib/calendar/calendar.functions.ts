@@ -156,3 +156,15 @@ export const pushFollowUpToCalendars = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+// Arquivar um compromisso a partir do dashboard: fecha-o, cala os avisos
+// internos e apaga o evento no calendário externo.
+export const archiveFollowUpEverywhereFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ followUpId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { archiveFollowUpEverywhere } = await import("./stop-triggers.server");
+    await archiveFollowUpEverywhere(supabaseAdmin, context.userId, data.followUpId);
+    return { ok: true };
+  });
