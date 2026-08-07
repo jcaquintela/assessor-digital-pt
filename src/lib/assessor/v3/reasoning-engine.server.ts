@@ -429,12 +429,26 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
               : "Tentei mas não consegui guardar a placa. Podes tentar outra vez?");
         // Rede de segurança: placa confirmada que não chegou a ser criada
         // fica em Diversos > Por tratar (antes desaparecia sem rasto).
-        const reply = await applySafetyNet(ctx, {
+        let reply = await applySafetyNet(ctx, {
           content: pending.original_content || trimmed,
           outcome: okOk ? "executed_ok" : (dupLead ? "duplicate" : "tool_failed"),
           reason: result.error ?? "not_created",
           reply: baseReply,
         });
+        // Placa de particular: além do lembrete, oferecemos preparar um
+        // guião. Continua a ser sempre rascunho para o consultor rever.
+        if (okOk) {
+          const { appendScriptOffer } = await import("@/lib/prospecting/script-offer.server");
+          reply = await appendScriptOffer(
+            { supabase, userId, channel },
+            {
+              reply,
+              leadId,
+              payload: (pending.structured_payload ?? {}) as Record<string, any>,
+              originalContent: pending.original_content || trimmed,
+            },
+          );
+        }
         try {
           await supabase.from("assessor_ai_logs").insert({
             user_id: userId, channel, model: "reasoning-engine-v3",
