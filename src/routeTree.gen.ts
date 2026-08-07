@@ -20,6 +20,7 @@ import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as DevLigarCanalRouteImport } from './routes/dev.ligar-canal'
 import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizadores'
 import { Route as AdminUtilizacaoRouteImport } from './routes/admin/utilizacao'
 import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
@@ -155,6 +156,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const DevLigarCanalRoute = DevLigarCanalRouteImport.update({
+  id: '/dev/ligar-canal',
+  path: '/dev/ligar-canal',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUtilizadoresRoute = AdminUtilizadoresRouteImport.update({
   id: '/utilizadores',
@@ -644,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/dev/ligar-canal': typeof DevLigarCanalRoute
   '/admin/': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -736,6 +743,7 @@ export interface FileRoutesByTo {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/dev/ligar-canal': typeof DevLigarCanalRoute
   '/admin': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -831,6 +839,7 @@ export interface FileRoutesById {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/dev/ligar-canal': typeof DevLigarCanalRoute
   '/admin/': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -926,6 +935,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
+    | '/dev/ligar-canal'
     | '/admin/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -1018,6 +1028,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
+    | '/dev/ligar-canal'
     | '/admin'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -1112,6 +1123,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
+    | '/dev/ligar-canal'
     | '/admin/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -1171,6 +1183,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  DevLigarCanalRoute: typeof DevLigarCanalRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicBeaconRoute: typeof ApiPublicBeaconRoute
@@ -1269,6 +1282,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/dev/ligar-canal': {
+      id: '/dev/ligar-canal'
+      path: '/dev/ligar-canal'
+      fullPath: '/dev/ligar-canal'
+      preLoaderRoute: typeof DevLigarCanalRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/utilizadores': {
       id: '/admin/utilizadores'
@@ -2066,6 +2086,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  DevLigarCanalRoute: DevLigarCanalRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicBeaconRoute: ApiPublicBeaconRoute,
