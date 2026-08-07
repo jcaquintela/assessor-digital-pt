@@ -75,7 +75,7 @@ export async function getIntegrationStatuses(
       detail: telegramReady ? "Ativo (webhook)" : "Credenciais em falta",
     },
     {
-      name: "IA (motor do Assessor)",
+      name: "IA (motor de resposta do Afonso)",
       status: aiReady ? "active" : "planned",
       scope: "plataforma",
       detail: aiReady ? "Ativo" : "Credenciais em falta",
