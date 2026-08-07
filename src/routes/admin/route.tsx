@@ -59,7 +59,7 @@ function AdminLayout() {
     navigate({ to: "/auth", replace: true });
   };
 
-  const renderNav = () =>
+  const renderNav = (onNavClick?: () => void) =>
     navGroups.map((g) => {
       const hasActive = g.items.some((n) => (n.exact ? pathname === n.to : pathname.startsWith(n.to)));
       const open = closed[g.group] ? false : true;
@@ -78,7 +78,12 @@ function AdminLayout() {
             g.items.map((n) => {
               const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
               return (
-                <Link key={n.to} to={n.to as any} className={`navitem ${active ? "active" : ""}`}>
+                <Link
+                  key={n.to}
+                  to={n.to as any}
+                  className={`navitem ${active ? "active" : ""}`}
+                  onClick={onNavClick}
+                >
                   {n.label}
                 </Link>
               );
