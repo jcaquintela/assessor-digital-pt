@@ -186,6 +186,17 @@ function parse<T>(schema: z.ZodType<T>, args: unknown): { ok: true; value: T } |
 
 // ---------------------- executors ----------------------
 
+// Termos para o `or(...)`: o pedaço tal e qual e, em palavras longas, o
+// prefixo sem a última letra (apanha gralhas no fim, como "canelaz").
+function tokenOrTerms(column: string, tokens: string[]): string {
+  const terms = new Set<string>();
+  for (const t of tokens) {
+    terms.add(`${column}.ilike.%${t}%`);
+    if (t.length >= 6) terms.add(`${column}.ilike.%${t.slice(0, -1)}%`);
+  }
+  return [...terms].join(",");
+}
+
 async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(SearchPeopleArgs, args); if (!p.ok) return fail(p.error);
   const { query, relationship_type } = p.value;
@@ -210,17 +221,18 @@ async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<Doma
     .from("people")
     .select("id, name, phone, email, relationship_type, summary")
     .eq("user_id", ctx.userId)
-    .or(tokens.map((t) => `name_norm.ilike.%${t}%`).join(","))
+    .or(tokenOrTerms("name_norm", tokens))
     .limit(30);
   if (relationship_type) q2 = q2.eq("relationship_type", relationship_type);
   const { data: rows, error: e2 } = await q2;
   if (e2) return fail(e2.message);
-  const scored = ((rows ?? []) as Record<string, unknown>[])
+  const scoredPeople = ((rows ?? []) as Record<string, unknown>[])
     .map((r) => {
-      const m = tokenMatchScore(String(r.name ?? ""), tokens);
+      const m = weightedTokenMatchScore([{ text: r.name as string, weight: 1 }], tokens);
       return { score: m.hits, spread: m.spread, row: r };
     })
-    .filter((x) => x.score > 0)
+    .filter((x) => x.score > 0);
+  const scored = filterByRelevance(scoredPeople)
     .sort((a, b) => compareTokenMatches({ hits: a.score, spread: a.spread }, { hits: b.score, spread: b.spread }))
     .slice(0, 8)
     .map((x) => x.row);
