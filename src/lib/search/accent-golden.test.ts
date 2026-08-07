@@ -457,3 +457,98 @@ describe("golden — ordenação estável com empates", () => {
     expect(corridas.every((c) => c.join() === corridas[0].join())).toBe(true);
   });
 });
+
+// Fuzzy: gralhas pequenas ainda encontram; diferenças grandes continuam fora.
+describe("golden — gralhas pequenas (fuzzy) sem alargar o ruído", () => {
+  it("Pessoas: 'sergio canelaz' encontra 'Sérgio Canelas'", async () => {
+    const sb = pgFake({
+      people: [
+        { id: "p1", user_id: "u1", name: "Sérgio Canelas" },
+        { id: "p2", user_id: "u1", name: "Ana Costa" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "sergio canelaz" }));
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["p1"]);
+  });
+
+  it("Pessoas: o nome certo ganha sempre ao nome com gralha", async () => {
+    const sb = pgFake({
+      people: [
+        { id: "p1", user_id: "u1", name: "Sérgio Canelinhas" },
+        { id: "p2", user_id: "u1", name: "Sérgio Canelas" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "sergio canelas" }));
+    expect(r.data.results[0].id).toBe("p2");
+  });
+
+  it("Pessoas: nome completamente diferente não entra", async () => {
+    const sb = pgFake({
+      people: [
+        { id: "p1", user_id: "u1", name: "Sérgio Canelas" },
+        { id: "p2", user_id: "u1", name: "Joaquim Nogueira" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "sergio canelaz" }));
+    expect(r.data.results.map((p: any) => p.id)).not.toContain("p2");
+  });
+
+  it("Imóveis: 'matozinhos' encontra 'Matosinhos'", async () => {
+    const sb = pgFake({
+      properties: [
+        { id: "i1", user_id: "u1", title: "Moradia V3 Rua do Sol", city: "Matosinhos" },
+        { id: "i2", user_id: "u1", title: "T2 Centro", city: "Braga" },
+      ],
+    });
+    const r: any = await dispatchToolCall(
+      ctx(sb) as any, "search_properties", JSON.stringify({ query: "rua sol matozinhos" }),
+    );
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["i1"]);
+  });
+
+  it("Imóveis: palavra curta trocada não casa ('sal' não traz 'Sol')", async () => {
+    const sb = pgFake({
+      properties: [{ id: "i1", user_id: "u1", title: "Moradia Rua do Sol", city: "Braga" }],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "rua sal" }));
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["i1"]); // casa por "rua", não por "sal"
+    const r2: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "sal" }));
+    expect(r2.data.results).toHaveLength(0);
+  });
+
+  it("Drive: 'cadernata predial' encontra a caderneta", async () => {
+    const sb = pgFake({
+      uploaded_files: [
+        {
+          id: "f1", user_id: "u1", deleted_at: null, archived_at: null,
+          original_file_name: "Caderneta Predial — São Brás.pdf", document_type: "caderneta_predial",
+        },
+        {
+          id: "f2", user_id: "u1", deleted_at: null, archived_at: null,
+          original_file_name: "Contrato Braga.pdf", document_type: "contrato",
+        },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_files", JSON.stringify({ query: "cadernata predial" }));
+    expect(r.data.results.map((f: any) => f.id)).toEqual(["f1"]);
+  });
+
+  it("Drive: resultado fraco não aparece ao lado de um forte", async () => {
+    const sb = pgFake({
+      uploaded_files: [
+        {
+          id: "f1", user_id: "u1", deleted_at: null, archived_at: null,
+          original_file_name: "Caderneta Predial São Brás.pdf", document_type: "caderneta_predial",
+        },
+        {
+          id: "f2", user_id: "u1", deleted_at: null, archived_at: null,
+          original_file_name: "Recibo.pdf", document_type: "outro", doc_morada: "Rua de São Brás",
+        },
+      ],
+    });
+    const r: any = await dispatchToolCall(
+      ctx(sb) as any, "search_files", JSON.stringify({ query: "caderneta predial sao bras" }),
+    );
+    expect(r.data.results.map((f: any) => f.id)).toEqual(["f1"]);
+  });
+});
