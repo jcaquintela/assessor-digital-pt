@@ -137,18 +137,17 @@ export async function generateSupremeNudges(
     morningDays.includes(nowP.isoDay) &&
     withinWindow(p.morning_time ?? "08:00", nowP, 15)
   ) {
-    const priorities = await computePriorities(supabase, userId, { limit: 3, now });
-    const dedupe = `${DAILY_BRIEFING_PREFIX}${nowP.ymd}`;
-    const reply = composeBriefingText(priorities);
-    if (await morningBriefingAlreadySent(supabase, userId)) return drafts;
-    drafts.push({
-      kind: "consultant_silence" as any, // reutiliza kind existente para respeitar tipos actuais
-      subject_type: null,
-      subject_id: null,
-      reason: "Briefing diário do Assessor Supremo",
-      suggested_reply: sanitizeReply(reply),
-      dedupe_key: dedupe,
-    });
+    if (!(await morningBriefingAlreadySent(supabase, userId))) {
+      const priorities = await computePriorities(supabase, userId, { limit: 3, now });
+      drafts.push({
+        kind: "consultant_silence" as any, // reutiliza kind existente para respeitar tipos actuais
+        subject_type: null,
+        subject_id: null,
+        reason: "Briefing diário do Assessor Supremo",
+        suggested_reply: sanitizeReply(composeBriefingText(priorities)),
+        dedupe_key: `${DAILY_BRIEFING_PREFIX}${nowP.ymd}`,
+      });
+    }
   }
 
   // ------------ Pré-evento (compromisso a começar em 45–75 min) ------------
