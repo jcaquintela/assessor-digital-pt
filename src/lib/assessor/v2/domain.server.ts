@@ -13,7 +13,7 @@ import { sanitizeMiscFields } from "../misc-text";
 
 import { z } from "zod";
 import { isAgendaEvent } from "@/lib/agenda-kind";
-import { foldLike, foldText, searchTokens } from "@/lib/search/normalize";
+import { compareTokenMatches, foldLike, foldText, searchTokens, tokenMatchScore } from "@/lib/search/normalize";
 import { ensureTitle } from "../titles";
 import {
   SearchPeopleArgs,
@@ -214,11 +214,11 @@ async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<Doma
   if (e2) return fail(e2.message);
   const scored = ((rows ?? []) as Record<string, unknown>[])
     .map((r) => {
-      const folded = foldText(String(r.name ?? ""));
-      return { score: tokens.filter((t) => folded.includes(t)).length, row: r };
+      const m = tokenMatchScore(String(r.name ?? ""), tokens);
+      return { score: m.hits, spread: m.spread, row: r };
     })
     .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => compareTokenMatches({ hits: a.score, spread: a.spread }, { hits: b.score, spread: b.spread }))
     .slice(0, 8)
     .map((x) => x.row);
   return ok({ results: scored });
@@ -337,18 +337,18 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
   if (status) q2 = q2.eq("status", status);
   const { data: rows, error: e2 } = await q2;
   if (e2) return fail(e2.message);
-  type Scored = { score: number; row: Record<string, unknown> };
+  type Scored = { score: number; spread: number; row: Record<string, unknown> };
   const scored: Record<string, unknown>[] = ((rows ?? []) as Record<string, unknown>[])
     .map((r: Record<string, unknown>) => {
       const hay = [r.title, r.location, r.city, r.address]
         .filter((x) => typeof x === "string").join(" ");
-      const folded = foldText(hay);
-      const score = tokens.filter((t) => folded.includes(t)).length;
+      const m = tokenMatchScore(hay, tokens);
       const { address: _a, ...rest } = r;
-      return { score, row: rest } as Scored;
+      return { score: m.hits, spread: m.spread, row: rest } as Scored;
     })
     .filter((x: Scored) => x.score > 0)
-    .sort((a: Scored, b: Scored) => b.score - a.score)
+    .sort((a: Scored, b: Scored) =>
+      compareTokenMatches({ hits: a.score, spread: a.spread }, { hits: b.score, spread: b.spread }))
     .slice(0, 8)
     .map((x: Scored) => x.row);
   return ok({ results: scored });

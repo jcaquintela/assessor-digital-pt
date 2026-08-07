@@ -40,3 +40,31 @@ export function searchTokens(input: string | null | undefined, minLength = 2, ma
     .filter(Boolean)
     .slice(0, max);
 }
+
+/**
+ * Qualidade de uma correspondência parcial: quantos pedaços casaram e quão
+ * próximos ficaram no texto. "sergio can" deve preferir "Sérgio Canelas"
+ * (dois pedaços colados) a "Sérgio Matos ... Cancelas do Norte".
+ */
+export function tokenMatchScore(
+  haystack: string | null | undefined,
+  tokens: string[],
+): { hits: number; spread: number } {
+  const folded = foldText(haystack);
+  const positions: number[] = [];
+  for (const t of tokens) {
+    const i = folded.indexOf(t);
+    if (i >= 0) positions.push(i);
+  }
+  if (!positions.length) return { hits: 0, spread: Number.MAX_SAFE_INTEGER };
+  const spread = Math.max(...positions) - Math.min(...positions);
+  return { hits: positions.length, spread };
+}
+
+/** Ordena melhores primeiro: mais pedaços, depois contexto mais próximo. */
+export function compareTokenMatches(
+  a: { hits: number; spread: number },
+  b: { hits: number; spread: number },
+): number {
+  return b.hits - a.hits || a.spread - b.spread;
+}

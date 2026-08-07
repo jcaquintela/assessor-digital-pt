@@ -281,3 +281,77 @@ describe("golden — Drive com pedaços sem acentos", () => {
     expect(r.data.results).toHaveLength(0);
   });
 });
+
+// Ordenação: mais pedaços primeiro; com o mesmo número de pedaços, ganha o
+// registo onde os pedaços aparecem mais juntos (contexto mais próximo).
+describe("golden — ordenação de correspondências parciais", () => {
+  it("Pessoas: mais pedaços encontrados vem primeiro", async () => {
+    const sb = pgFake({
+      people: [
+        { id: "p1", user_id: "u1", name: "Sérgio Matos" },
+        { id: "p2", user_id: "u1", name: "Sérgio Canelas Nogueira" },
+        { id: "p3", user_id: "u1", name: "Canelas Lda" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "sergio can nog" }));
+    expect(r.data.results[0].id).toBe("p2");
+  });
+
+  it("Pessoas: com os mesmos pedaços, ganha o nome onde ficam mais juntos", async () => {
+    const sb = pgFake({
+      people: [
+        { id: "p1", user_id: "u1", name: "Sérgio Alberto Nogueira da Silva Canelas" },
+        { id: "p2", user_id: "u1", name: "Sérgio Canelas" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "canelas sergio" }));
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["p2", "p1"]);
+  });
+
+  it("Pessoas: ordem da pesquisa não altera o vencedor", async () => {
+    const sb = pgFake({
+      people: [
+        { id: "p1", user_id: "u1", name: "Sérgio Alberto Nogueira da Silva Canelas" },
+        { id: "p2", user_id: "u1", name: "Sérgio Canelas" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "can sergio" }));
+    expect(r.data.results[0].id).toBe("p2");
+  });
+
+  it("Imóveis: mais pedaços encontrados vem primeiro", async () => {
+    const sb = pgFake({
+      properties: [
+        { id: "i1", user_id: "u1", title: "Apartamento T2", location: "Rua do Sol", city: "Porto" },
+        { id: "i2", user_id: "u1", title: "Moradia V3 na Rua do Sol", location: "Matosinhos", city: "Matosinhos" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "rua sol matos" }));
+    expect(r.data.results[0].id).toBe("i2");
+  });
+
+  it("Imóveis: com os mesmos pedaços, ganha o contexto mais próximo", async () => {
+    const sb = pgFake({
+      properties: [
+        {
+          id: "i1", user_id: "u1", title: "Moradia na Rua da Estação com vista para o mar e jardim amplo",
+          location: "Matosinhos Sul", city: "Matosinhos",
+        },
+        { id: "i2", user_id: "u1", title: "T3 Rua da Estação Matosinhos", location: "Matosinhos", city: "Matosinhos" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "matos estacao" }));
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["i2", "i1"]);
+  });
+
+  it("Imóveis: um só pedaço nunca ultrapassa dois pedaços", async () => {
+    const sb = pgFake({
+      properties: [
+        { id: "i1", user_id: "u1", title: "Loja Rua da Estação", location: "Braga", city: "Braga" },
+        { id: "i2", user_id: "u1", title: "T2 Estação", location: "Matosinhos", city: "Matosinhos" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "matos estacao" }));
+    expect(r.data.results[0].id).toBe("i2");
+  });
+});
