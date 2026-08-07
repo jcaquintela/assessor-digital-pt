@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { Check, Pencil, Plus, Tag, Trash2, X } from "lucide-react";
 
 const CATEGORY_COLORS = [
@@ -242,6 +243,7 @@ export function FileCategoryDialog({
   const { categories, invalidate } = useFileCategories();
   const save = useServerFn(setFileCategory);
   const create = useServerFn(createFileCategory);
+  const { name: assessorName } = useAssessorName();
   const [busy, setBusy] = useState(false);
   const [nova, setNova] = useState("");
   const [novaCor, setNovaCor] = useState<string | null>(null);
@@ -286,7 +288,7 @@ export function FileCategoryDialog({
           <DialogTitle>Categoria do ficheiro</DialogTitle>
           <DialogDescription>
             {fileName ? `${fileName}. ` : ""}
-            {autoLabel ? `O Assessor sugeriu "${autoLabel}". ` : ""}
+            {autoLabel ? `O ${assessorName} sugeriu "${autoLabel}". ` : ""}
             Escolhe uma categoria tua — a sugestão automática mantém-se guardada.
           </DialogDescription>
         </DialogHeader>
@@ -300,7 +302,7 @@ export function FileCategoryDialog({
           >
             <span className="text-left">
               <span className="block text-[11px] font-semibold uppercase tracking-wide opacity-70">Automática</span>
-              <span className="block truncate">{autoLabel ? autoLabel : "Sugestão do Assessor"}</span>
+              <span className="block truncate">{autoLabel ? autoLabel : `Sugestão do ${assessorName}`}</span>
             </span>
             <CategoryCheck active={!currentId} />
           </button>

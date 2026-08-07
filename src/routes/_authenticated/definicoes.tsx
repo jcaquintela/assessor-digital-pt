@@ -998,7 +998,7 @@ function PendingCodeView({
     return () => clearInterval(id);
   }, [expiresAt]);
 
-  const message = code ? `Ligar a conta do Assessor. Código: ${code}` : "";
+  const message = code ? `Ligar a conta do ${ASSESSOR_NAME_DEFAULT}. Código: ${code}` : "";
   const waHref = displayNumber && message ? `https://wa.me/${displayNumber}?text=${encodeURIComponent(message)}` : null;
 
   return (

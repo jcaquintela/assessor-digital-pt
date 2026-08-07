@@ -6,6 +6,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { listProperties, archiveProperty } from "@/lib/assessor/properties.functions";
 import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { propertyStatusLabel } from "@/lib/assessor/properties-status";
 import { AlertTriangle, Download, Plus, Search } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
@@ -54,6 +55,7 @@ export const Route = createFileRoute("/_authenticated/imoveis/")({
 
 function ImoveisPage() {
   const fetchList = useServerFn(listProperties);
+  const { name: assessorName } = useAssessorName();
   const qc = useQueryClient();
   const arquivar = useServerFn(archiveProperty);
   const confirmacao = useDestructiveConfirm();
@@ -111,7 +113,7 @@ function ImoveisPage() {
       alvo: titulo,
       efeito: "arquivo",
       resumo: [
-        "O imóvel sai das listas, pesquisas e sugestões do Assessor.",
+        `O imóvel sai das listas, pesquisas e sugestões do ${assessorName}.`,
         "Negócios, visitas e documentos ligados mantêm-se guardados.",
         "Nada é enviado a proprietários ou compradores.",
       ],

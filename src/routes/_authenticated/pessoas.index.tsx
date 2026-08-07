@@ -25,6 +25,7 @@ import { assuntoDePessoa } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
 import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
   validateSearch: (
@@ -48,6 +49,7 @@ export const Route = createFileRoute("/_authenticated/pessoas/")({
 
 function PessoasPage() {
   const { pessoas, loading, arquivarPessoa } = useStore();
+  const { name: assessorName } = useAssessorName();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/pessoas/" });
   const q = search.q ?? "";
@@ -91,7 +93,7 @@ function PessoasPage() {
       alvo: nome,
       efeito: "arquivo",
       resumo: [
-        "A pessoa sai das listas, pesquisas e sugestões do Assessor.",
+        `A pessoa sai das listas, pesquisas e sugestões do ${assessorName}.`,
         "Seguimentos, interações e ficheiros ligados mantêm-se guardados.",
         "Nada é enviado a terceiros.",
       ],

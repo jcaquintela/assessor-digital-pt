@@ -18,6 +18,7 @@ import {
   driveAttention,
 } from "@/lib/drive/drive.functions";
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
 import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
 import { ReorderPagesDialog } from "@/components/drive/reorder-pages-dialog";
@@ -129,6 +130,7 @@ const CANAL_LABEL: Record<string, string> = {
 
 function DrivePage() {
   const search = Route.useSearch();
+  const { name: assessorName } = useAssessorName();
   const tab: Tab = (search.tab ?? "recentes") as Tab;
   const qParam = search.q ?? "";
   const navigate = Route.useNavigate();
@@ -317,7 +319,7 @@ function DrivePage() {
       {confirmacao.dialog}
       <PageHeader
         title={MODULE_NAME.drive}
-        subtitle="Envia. O Assessor organiza."
+        subtitle={`Envia. O ${assessorName} organiza.`}
         action={
           <>
             <input
@@ -620,7 +622,7 @@ function DrivePage() {
                     </div>
                     {catName && (
                       <div className="c-muted mt-1 text-[11px]">
-                        Categoria tua · sugestão do Assessor: {autoLabel}
+                        Categoria tua · sugestão do {assessorName}: {autoLabel}
                       </div>
                     )}
                     {links.length > 0 && (

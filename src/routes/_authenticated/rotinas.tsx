@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, RefreshCw, Repeat } from "lucide-react";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 import {
   FREQ_LABEL,
   WEEKDAY_LABELS,
@@ -40,6 +41,7 @@ function formatWhen(iso: string) {
 
 function RotinasPage() {
   const qc = useQueryClient();
+  const { name: assessorName } = useAssessorName();
 
   const q = useQuery({
     queryKey: ["routines"],
@@ -215,7 +217,7 @@ function RotinasPage() {
       ) : (q.data ?? []).length === 0 ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            Ainda não há rotinas. Cria a primeira em cima — o Assessor gera os seguimentos por ti.
+            Ainda não há rotinas. Cria a primeira em cima — o {assessorName} gera os seguimentos por ti.
           </CardContent>
         </Card>
       ) : (
