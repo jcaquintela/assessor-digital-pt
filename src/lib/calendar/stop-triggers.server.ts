@@ -5,6 +5,22 @@
 // briefing e a lembrar às 11h.
 import { pushEventToProviders } from "./sync.server";
 
+// Arquivar a partir do dashboard ("Hoje" → ficha do evento → Arquivar) tem de
+// ter exactamente o mesmo efeito que desmarcar por conversa: fecha o
+// seguimento, cala os avisos internos e apaga o evento no calendário ligado.
+export async function archiveFollowUpEverywhere(
+  supabase: any,
+  userId: string,
+  followUpId: string,
+): Promise<void> {
+  await stopFollowUpTriggers(supabase, userId, [followUpId]);
+  await supabase
+    .from("follow_ups")
+    .update({ archived_at: new Date().toISOString(), status: "cancelado" } as never)
+    .eq("id", followUpId)
+    .eq("user_id", userId);
+}
+
 export async function stopFollowUpTriggers(
   supabase: any,
   userId: string,
