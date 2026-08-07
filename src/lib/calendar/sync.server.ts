@@ -30,6 +30,7 @@ export interface LocalEvent {
   status: string | null;
   type: string | null;
   updated_at: string | null;
+  archived_at?: string | null;
 }
 
 function lisbonHhMm(iso: string): string {
@@ -89,7 +90,7 @@ function toOutlookBody(ev: LocalEvent) {
 async function fetchLocalEvent(supabaseAdmin: any, userId: string, followUpId: string): Promise<LocalEvent | null> {
   const { data } = await supabaseAdmin
     .from("follow_ups")
-    .select("id, title, notes, due_date, due_time, status, type, updated_at")
+    .select("id, title, notes, due_date, due_time, status, type, updated_at, archived_at")
     .eq("id", followUpId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -399,6 +400,21 @@ export async function pullFromProvider(
 
     if (link?.follow_up_id) {
       const local = await fetchLocalEvent(supabaseAdmin, userId, link.follow_up_id);
+      // O consultor já desmarcou/arquivou este compromisso no Afonso: não o
+      // ressuscitamos com o que vem do calendário — apagamos lá fora.
+      const settledLocally = !!local
+        && (!!local.archived_at
+          || ["cancelado", "cancelada", "arquivado"].includes(String(local.status ?? "").toLowerCase()));
+      if (settledLocally) {
+        await pushOne(supabaseAdmin, userId, provider, link.follow_up_id, null, "delete");
+        await logSync(supabaseAdmin, {
+          userId, provider, followUpId: link.follow_up_id, externalEventId: ext.id,
+          direction: "inbound", action: "delete", origin: "afonso",
+          detail: "arquivado no Afonso: removido do calendário",
+        });
+        applied++;
+        continue;
+      }
       const localT = local?.updated_at ? new Date(local.updated_at).getTime() : 0;
       const extT = ext.updatedIso ? new Date(ext.updatedIso).getTime() : Date.now();
       if (localT > extT) {
