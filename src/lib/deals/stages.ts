@@ -70,6 +70,21 @@ export function isDealClosed(row: { stage?: unknown; status?: unknown } | null |
   return CLOSED_DEAL_STATUS.has(String(row.status ?? "").trim().toLowerCase());
 }
 
+/**
+ * Regra única para qualquer vista operacional: um negócio só está ativo se
+ * não estiver arquivado e a sua fase/estado canónico não for terminal.
+ * Aceita tanto linhas da BD como o modelo PT usado pelo store do cliente.
+ */
+export function isDealActive(row: {
+  stage?: unknown;
+  status?: unknown;
+  archived_at?: unknown;
+  arquivadoEm?: unknown;
+} | null | undefined): boolean {
+  if (!row || row.archived_at || row.arquivadoEm) return false;
+  return !isDealClosed(row);
+}
+
 /** Estado legado a gravar quando a fase muda — mantém `status` em sintonia. */
 export function legacyStatusForStage(stage: DealStage): string {
   return stage === "concluido" ? "Concluída" : "Em curso";

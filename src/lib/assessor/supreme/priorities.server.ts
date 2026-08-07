@@ -1,6 +1,6 @@
 // Motor de priorização — "o que devo fazer agora?".
 // Determinístico. Cada item traz razões legíveis para o Assessor verbalizar.
-import { isDealClosed } from "@/lib/deals/stages";
+import { isDealActive } from "@/lib/deals/stages";
 
 /** De onde veio o item — o consultor tem de perceber o que está a olhar. */
 export type PriorityOrigin = "calendario" | "compromisso" | "tarefa" | "negocio";
@@ -223,7 +223,7 @@ export async function computePriorities(
   // Oportunidades sem próxima acção OU com next_action_date passada
   for (const o of ((opps as any[]) ?? [])) {
     // A fase manda: negócio concluído nunca é prioridade de hoje.
-    if (isDealClosed(o)) continue;
+    if (!isDealActive(o)) continue;
     const noAction = !o.next_action;
     const naDate = o.next_action_date ? new Date(o.next_action_date) : null;
     const staleUpdate = o.updated_at ? daysBetween(now, new Date(o.updated_at)) : 0;
