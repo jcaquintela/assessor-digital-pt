@@ -304,7 +304,7 @@ describe("golden — ordenação de correspondências parciais", () => {
         { id: "p2", user_id: "u1", name: "Sérgio Canelas" },
       ],
     });
-    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "sergio can" }));
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "canelas sergio" }));
     expect(r.data.results.map((p: any) => p.id)).toEqual(["p2", "p1"]);
   });
 
