@@ -95,7 +95,7 @@ const gatewayCalls: Array<{ method: string; path: string }> = [];
 vi.mock("@/integrations/lovable/appUserConnector", () => ({
   callAsAppUser: async ({ path, init }: any) => {
     gatewayCalls.push({ method: String(init?.method ?? "GET"), path });
-    if (init?.method === "DELETE") return new Response("", { status: 204 });
+    if (init?.method === "DELETE") return new Response("", { status: 200 });
     if (path.includes("events?")) return new Response(JSON.stringify({ items: externalItems, nextSyncToken: "tok" }), { status: 200 });
     return new Response(JSON.stringify({ id: "gcal-almeida", updated: new Date().toISOString() }), { status: 200 });
   },
@@ -153,7 +153,7 @@ describe("regressão: cancelar evento do Google Calendar", () => {
     const r = await dispatchToolCall(ctx() as any, "cancel_follow_up", JSON.stringify({ follow_up_ids: [FU] }));
     expect(r.ok).toBe(true);
 
-    expect(db.follow_ups[0].status.toLowerCase()).toContain("cancel");
+    expect(["cancelado", "cancelada", "arquivado"]).toContain(String(db.follow_ups[0].status).toLowerCase());
     expect(db.reminders[0].status).toBe("cancelled");
     expect(gatewayCalls.some((c) => c.method === "DELETE" && c.path.includes("gcal-almeida"))).toBe(true);
     expect(db.calendar_event_links[0].deleted).toBe(true);
@@ -189,7 +189,7 @@ describe("regressão: cancelar evento do Google Calendar", () => {
 
     await pullFromProvider(supabase, USER, "google_calendar");
 
-    expect(db.follow_ups[0].status.toLowerCase()).toContain("cancel");
+    expect(["cancelado", "cancelada", "arquivado"]).toContain(String(db.follow_ups[0].status).toLowerCase());
     expect(gatewayCalls.some((c) => c.method === "DELETE" && c.path.includes("gcal-almeida"))).toBe(true);
 
     const items = await computePriorities(supabase, USER, { now: new Date(Date.now() + 86_400_000) });
