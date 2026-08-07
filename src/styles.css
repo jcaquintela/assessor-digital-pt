@@ -297,6 +297,30 @@ html[data-keyboard="open"] .mobile-bottom-nav {
 :is(.admin-root,.admin-surface) td { padding: 11px 14px; border-bottom: 1px solid var(--line); color: var(--ink-soft); }
 :is(.admin-root,.admin-surface) tr:last-child td { border-bottom: none; }
 :is(.admin-root,.admin-surface) tbody tr:hover td { background: #FBFBFA; }
+
+/* Mobile: tabelas do admin passam a cartões empilhados (uma linha = um cartão).
+   Cada <td> com data-label mostra a etiqueta da coluna à esquerda. */
+@media (max-width: 767px) {
+  :is(.admin-root,.admin-surface) table.cards-sm { display: block; background: transparent; border: none; box-shadow: none; border-radius: 0; }
+  :is(.admin-root,.admin-surface) table.cards-sm thead { display: none; }
+  :is(.admin-root,.admin-surface) table.cards-sm tbody { display: block; }
+  :is(.admin-root,.admin-surface) table.cards-sm tr {
+    display: block; background: var(--card); border: 1px solid var(--line);
+    box-shadow: var(--admin-shadow); border-radius: 12px; margin-bottom: 10px; overflow: hidden;
+  }
+  :is(.admin-root,.admin-surface) table.cards-sm td {
+    display: flex; gap: 12px; align-items: flex-start; justify-content: space-between;
+    padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left !important;
+    min-width: 0; word-break: break-word;
+  }
+  :is(.admin-root,.admin-surface) table.cards-sm tr td:last-child { border-bottom: none; }
+  :is(.admin-root,.admin-surface) table.cards-sm td[data-label]::before {
+    content: attr(data-label); flex: 0 0 38%; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--muted); font-weight: 600; line-height: 1.6;
+  }
+  :is(.admin-root,.admin-surface) table.cards-sm td > * { min-width: 0; }
+  :is(.admin-root,.admin-surface) table.cards-sm tbody tr:hover td { background: transparent; }
+}
 :is(.admin-root,.admin-surface) .mini { font-size: 11.5px; }
 
 :is(.admin-root,.admin-surface) .empty { color: var(--muted); font-size: 13px; padding: 26px 20px; text-align: center; background: var(--card); border: 1px dashed var(--line); border-radius: 12px; line-height: 1.6; }

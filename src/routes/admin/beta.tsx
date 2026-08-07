@@ -235,7 +235,7 @@ function BetaPage() {
         </button>
       </div>
 
-      <table>
+      <table className="cards-sm">
         <thead>
           <tr>
             <th>Pessoa</th>
@@ -261,25 +261,25 @@ function BetaPage() {
               const urgent = t.days_left !== null && t.days_left < 3;
               return (
                 <tr key={t.id}>
-                  <td>
+                  <td data-label="Pessoa">
                     <Link to="/admin/consultor/$id" params={{ id: t.id }} className="admin-link">
                       {t.name || "Ver ficha"}
                     </Link>
                   </td>
-                  <td className="mini">
+                  <td data-label="Contacto" className="mini">
                     {t.phone || "—"}
                     <br />
                     <span style={{ color: "var(--muted)" }}>{t.email || "—"}</span>
                     <br />
                     <span style={{ color: "var(--muted)" }}>{t.channel}</span>
                   </td>
-                  <td>{TIER_DISPLAY_NAME[(t.tier as SubscriptionTier) ?? "base"] ?? t.tier}</td>
-                  <td className="mini">{fmt(t.started_at)}</td>
-                  <td className="mini">{fmt(t.expires_at)}</td>
-                  <td style={urgent ? { color: "var(--coral)", fontWeight: 600 } : undefined}>
+                  <td data-label="Plano">{TIER_DISPLAY_NAME[(t.tier as SubscriptionTier) ?? "base"] ?? t.tier}</td>
+                  <td data-label="Início" className="mini">{fmt(t.started_at)}</td>
+                  <td data-label="Fim" className="mini">{fmt(t.expires_at)}</td>
+                  <td data-label="Dias" style={urgent ? { color: "var(--coral)", fontWeight: 600 } : undefined}>
                     {t.days_left === null ? "sem prazo" : t.days_left < 0 ? "expirado" : `${t.days_left} d`}
                   </td>
-                  <td>
+                  <td data-label="Ações">
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"

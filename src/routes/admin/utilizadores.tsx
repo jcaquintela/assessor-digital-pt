@@ -192,7 +192,7 @@ function AcessosPageInner() {
         </button>
       </div>
 
-      <table>
+      <table className="cards-sm">
         <thead>
           <tr>
             <th>Nome</th><th>Plano</th><th>Canal</th><th>Beta</th>
@@ -216,20 +216,20 @@ function AcessosPageInner() {
             <tr><td colSpan={7} className="mini">Sem utilizadores.</td></tr>
           ) : filtered.map((u) => (
             <tr key={u.id}>
-              <td>
+              <td data-label="Nome">
                 <Link to="/admin/consultor/$id" params={{ id: u.id }} className="admin-link">
                   {u.name || u.email || "Ver ficha"}
                 </Link>
                 <br />
                 <span className="mini" style={{ color: "var(--muted)" }}>{u.email}</span>
               </td>
-              <td><Badge tone={u.tier === "base" ? "warn" : "ok"}>{tierLabel(u.tier)}</Badge></td>
-              <td className="mini">{u.channel}</td>
-              <td className="mini">{betaLabel(u)}</td>
-              <td className="mini" style={{ textAlign: "right" }}>
+              <td data-label="Plano"><Badge tone={u.tier === "base" ? "warn" : "ok"}>{tierLabel(u.tier)}</Badge></td>
+              <td data-label="Canal" className="mini">{u.channel}</td>
+              <td data-label="Beta" className="mini">{betaLabel(u)}</td>
+              <td data-label="Créditos (30d)" className="mini" style={{ textAlign: "right" }}>
                 {(u.credits30d ?? 0) >= 0.01 ? (u.credits30d ?? 0).toFixed(2).replace(".", ",") : "—"}
               </td>
-              <td>
+              <td data-label="Estado">
                 <Badge tone={u.state === "active" ? "ok" : u.state === "test" ? "warn" : "bad"}>
                   {u.state === "active" ? "Ativo" : u.state === "test" ? "Teste" : "Inativo"}
                 </Badge>
@@ -240,7 +240,7 @@ function AcessosPageInner() {
                   </>
                 )}
               </td>
-              <td className="mini">
+              <td data-label="Ações" className="mini">
                 <button type="button" className="admin-link" disabled={!isSuper} onClick={() => setEditing(u)}>Alterar</button>
                 {" · "}
                 <button
@@ -299,7 +299,7 @@ function AcessosPageInner() {
       </p>
 
       <SectionTitle>Contas a rever (possíveis duplicados)</SectionTitle>
-      <table>
+      <table className="cards-sm">
         <thead>
           <tr><th>Pessoa</th><th>Motivo</th><th>Contas</th><th>Ações</th></tr>
         </thead>
@@ -314,20 +314,20 @@ function AcessosPageInner() {
             const tgt = shadow ? main : d.accounts[1];
             return (
             <tr key={d.key}>
-              <td>{d.name}</td>
-              <td>
+              <td data-label="Pessoa">{d.name}</td>
+              <td data-label="Motivo">
                 <Badge tone={d.reason === "shadow_account" ? "bad" : "warn"}>
                   {d.reason === "shadow_account" ? "Conta-sombra por ligar" : "Mesmo nome, canais diferentes"}
                 </Badge>
               </td>
-              <td className="mini">
+              <td data-label="Contas" className="mini">
                 {d.accounts.map((a) => (
                   <div key={a.id}>
                     {a.email} · {tierLabel(a.tier)} · {a.channels.join(", ") || "sem canal"} · {a.activity} mensagens · desde {fmtDate(a.created_at)}
                   </div>
                 ))}
               </td>
-              <td className="mini">
+              <td data-label="Ações" className="mini">
                 <button
                   type="button"
                   className="admin-link"
@@ -378,7 +378,7 @@ function AcessosPageInner() {
       <div className="mb-2.5 flex justify-end">
         <button type="button" className="admin-btn" disabled={!isSuper} onClick={() => setPromoOpen(true)}>+ Criar código</button>
       </div>
-      <table>
+      <table className="cards-sm">
         <thead>
           <tr><th>Código</th><th>Concede</th><th>Usos</th><th>Validade</th><th>Estado</th><th>Ações</th></tr>
         </thead>
@@ -391,16 +391,16 @@ function AcessosPageInner() {
             const live = p.active && !expired && !exhausted;
             return (
               <tr key={p.id}>
-                <td className="mono">{p.code}</td>
-                <td className="mini">{tierLabel(p.grants_tier)}{p.note ? ` · ${p.note}` : ""}</td>
-                <td className="mini">{p.used_count} / {p.max_uses}</td>
-                <td className="mini">{fmtDate(p.expires_at)}</td>
-                <td>
+                <td data-label="Código" className="mono">{p.code}</td>
+                <td data-label="Concede" className="mini">{tierLabel(p.grants_tier)}{p.note ? ` · ${p.note}` : ""}</td>
+                <td data-label="Usos" className="mini">{p.used_count} / {p.max_uses}</td>
+                <td data-label="Validade" className="mini">{fmtDate(p.expires_at)}</td>
+                <td data-label="Estado">
                   <Badge tone={live ? "ok" : "warn"}>
                     {live ? "Ativo" : !p.active ? "Revogado" : expired ? "Expirado" : "Esgotado"}
                   </Badge>
                 </td>
-                <td className="mini">
+                <td data-label="Ações" className="mini">
                   <button
                     type="button"
                     className="admin-link-danger"
