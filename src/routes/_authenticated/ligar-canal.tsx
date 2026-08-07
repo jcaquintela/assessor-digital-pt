@@ -22,7 +22,6 @@ export const Route = createFileRoute("/_authenticated/ligar-canal")({
 });
 
 function LigarCanalPage() {
-function LigarCanalPage() {
   const navigate = useNavigate();
   const [choice, setChoice] = useState<"whatsapp" | "telegram" | null>(null);
 
