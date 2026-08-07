@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { Check, Pencil, Plus, Tag, Trash2, X } from "lucide-react";
 
 const CATEGORY_COLORS = [
@@ -87,6 +88,7 @@ export function CategoriesBar({
   onSelect: (id: string | null) => void;
 }) {
   const { categories, invalidate } = useFileCategories();
+  const { name: assessorName } = useAssessorName();
   const create = useServerFn(createFileCategory);
   const rename = useServerFn(renameFileCategory);
   const remove = useServerFn(deleteFileCategory);
@@ -300,7 +302,7 @@ export function FileCategoryDialog({
           >
             <span className="text-left">
               <span className="block text-[11px] font-semibold uppercase tracking-wide opacity-70">Automática</span>
-              <span className="block truncate">{autoLabel ? autoLabel : "Sugestão do Assessor"}</span>
+              <span className="block truncate">{autoLabel ? autoLabel : `Sugestão do ${assessorName}`}</span>
             </span>
             <CategoryCheck active={!currentId} />
           </button>
