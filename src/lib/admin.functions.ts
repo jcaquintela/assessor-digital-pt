@@ -760,3 +760,46 @@ export const listMfaRequired = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin.from("admin_mfa_required").select("*");
     return data ?? [];
   });
+
+// ── Nome de exibição do WhatsApp ("Afonso") ────────────────────────────────
+
+/** Estado actual do número na Meta + histórico de tentativas da rotina. */
+export const getWhatsappDisplayName = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    assertAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { fetchDisplayNameState, TARGET_DISPLAY_NAME, DISPLAY_NAME_LOG_ACTION } = await import(
+      "@/lib/whatsapp/display-name.server"
+    );
+
+    const [state, logs] = await Promise.all([
+      fetchDisplayNameState().catch(() => null),
+      supabaseAdmin
+        .from("admin_audit_logs")
+        .select("id, created_at, action, reason, metadata")
+        .in("action", [
+          DISPLAY_NAME_LOG_ACTION,
+          "whatsapp.display_name.requested",
+          "whatsapp.display_name.request_failed",
+        ])
+        .order("created_at", { ascending: false })
+        .limit(100),
+    ]);
+
+    return {
+      target: TARGET_DISPLAY_NAME,
+      state,
+      attempts: (logs.data ?? []) as any[],
+    };
+  });
+
+/** Corre a rotina manualmente (fica registada como tentativa). */
+export const runWhatsappDisplayNameSync = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    assertSuperAdmin(await getCallerRoles(context.supabase, context.userId));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { syncDisplayName } = await import("@/lib/whatsapp/display-name.server");
+    return await syncDisplayName(supabaseAdmin as any, `admin:${context.userId.slice(0, 8)}`);
+  });
