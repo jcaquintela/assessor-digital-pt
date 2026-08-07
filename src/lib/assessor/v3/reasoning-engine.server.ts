@@ -1196,6 +1196,18 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           } as never, { onConflict: "user_id,channel,external_conversation_id" });
         } catch { /* noop */ }
       }
+      {
+        const { appendScriptOffer } = await import("@/lib/prospecting/script-offer.server");
+        reply = await appendScriptOffer(
+          { supabase, userId, channel },
+          {
+            reply,
+            leadId,
+            payload: ((leadTool as any).args ?? (leadTool.data as any)?.lead ?? {}) as Record<string, any>,
+            originalContent: trimmed,
+          },
+        );
+      }
     } else if (leadTool.ok && dup) {
       reply = "Já tens uma placa registada com esse número. É a mesma?";
     }
