@@ -300,14 +300,14 @@ async function execSearchFiles(ctx: DomainContext, args: unknown): Promise<Domai
     .eq("user_id", ctx.userId)
     .is("deleted_at", null)
     .is("archived_at", null)
-    .or(tokens.map((t) => `search_norm.ilike.%${t}%`).join(","))
+    .or(tokenOrTerms("search_norm", tokens))
     .order("created_at", { ascending: false })
     .limit(50);
   if (a.document_type) q2 = q2.eq("document_type", a.document_type);
   const { data: rows, error: e2 } = await q2;
   if (e2) return fail(e2.message);
   // Nome do ficheiro manda; tipo de documento ajuda; resumo e morada pesam menos.
-  const scored = ((rows ?? []) as Record<string, unknown>[])
+  const scoredFiles = ((rows ?? []) as Record<string, unknown>[])
     .map((r) => {
       const m = weightedTokenMatchScore(
         [
@@ -321,7 +321,8 @@ async function execSearchFiles(ctx: DomainContext, args: unknown): Promise<Domai
       const { doc_morada: _m, ...rest } = r;
       return { score: m.hits, spread: m.spread, row: rest };
     })
-    .filter((x) => x.score > 0)
+    .filter((x) => x.score > 0);
+  const scored = filterByRelevance(scoredFiles)
     .sort((a2, b2) =>
       compareTokenMatches({ hits: a2.score, spread: a2.spread }, { hits: b2.score, spread: b2.spread }))
     .slice(0, 20)
@@ -353,13 +354,13 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
     .from("properties")
     .select("id, title, typology, property_type, location, city, address, status, asking_price")
     .eq("user_id", ctx.userId)
-    .or(tokens.map((t) => `search_norm.ilike.%${t}%`).join(","))
+    .or(tokenOrTerms("search_norm", tokens))
     .limit(30);
   if (status) q2 = q2.eq("status", status);
   const { data: rows, error: e2 } = await q2;
   if (e2) return fail(e2.message);
   type Scored = { score: number; spread: number; row: Record<string, unknown> };
-  const scored: Record<string, unknown>[] = ((rows ?? []) as Record<string, unknown>[])
+  const scoredProps: Scored[] = ((rows ?? []) as Record<string, unknown>[])
     .map((r: Record<string, unknown>) => {
       // O título é o que o consultor reconhece; morada e zona valem menos.
       const m = weightedTokenMatchScore(
@@ -374,7 +375,8 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
       const { address: _a, ...rest } = r;
       return { score: m.hits, spread: m.spread, row: rest } as Scored;
     })
-    .filter((x: Scored) => x.score > 0)
+    .filter((x: Scored) => x.score > 0);
+  const scored: Record<string, unknown>[] = filterByRelevance(scoredProps)
     .sort((a: Scored, b: Scored) =>
       compareTokenMatches({ hits: a.score, spread: a.spread }, { hits: b.score, spread: b.spread }))
     .slice(0, 8)
