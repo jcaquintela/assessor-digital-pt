@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { foldIncludes } from "@/lib/search/normalize";
 import { listShareContacts, prepareFileShare } from "@/lib/drive/drive.functions";
 
 /**
@@ -37,9 +38,7 @@ export function ShareWhatsAppDialog({
     enabled: open && !!fileId,
   });
 
-  const contacts = (contactsQ.data ?? []).filter((c: any) =>
-    q.trim() ? c.name.toLowerCase().includes(q.trim().toLowerCase()) : true,
-  );
+  const contacts = (contactsQ.data ?? []).filter((c: any) => foldIncludes(c.name, q));
 
   const abrir = (phone?: string) => {
     const texto = shareQ.data?.text;
