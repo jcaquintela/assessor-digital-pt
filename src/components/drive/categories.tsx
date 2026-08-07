@@ -288,7 +288,7 @@ export function FileCategoryDialog({
           <DialogTitle>Categoria do ficheiro</DialogTitle>
           <DialogDescription>
             {fileName ? `${fileName}. ` : ""}
-            {autoLabel ? `O Assessor sugeriu "${autoLabel}". ` : ""}
+            {autoLabel ? `O ${assessorName} sugeriu "${autoLabel}". ` : ""}
             Escolhe uma categoria tua — a sugestão automática mantém-se guardada.
           </DialogDescription>
         </DialogHeader>
