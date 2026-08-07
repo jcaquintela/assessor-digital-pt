@@ -60,8 +60,8 @@ function LigarCanalPage() {
 
 function ChannelChoice({ onChoose }: { onChoose: (c: "whatsapp" | "telegram") => void }) {
   return (
-    <ul className="mt-6 grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-      <li className="c-card min-w-0 border-2 border-[var(--accent,#0f766e)] p-5">
+    <ul data-testid="escolha-canal" className="mt-6 grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+      <li data-testid="canal-whatsapp" className="c-card min-w-0 border-2 border-[var(--accent,#0f766e)] p-5">
         <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <h2 className="c-section-title flex min-w-0 items-center gap-2">
             <MessageCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -88,7 +88,7 @@ function ChannelChoice({ onChoose }: { onChoose: (c: "whatsapp" | "telegram") =>
         </button>
       </li>
 
-      <li className="c-card min-w-0 p-5">
+      <li data-testid="canal-telegram" className="c-card min-w-0 p-5">
         <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <h2 className="c-section-title flex min-w-0 items-center gap-2">
             <Send className="h-4 w-4 shrink-0" aria-hidden="true" />
