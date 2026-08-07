@@ -13,7 +13,9 @@ import { sanitizeMiscFields } from "../misc-text";
 
 import { z } from "zod";
 import { isAgendaEvent } from "@/lib/agenda-kind";
-import { compareTokenMatches, foldLike, foldText, searchTokens, tokenMatchScore } from "@/lib/search/normalize";
+import {
+  compareTokenMatches, foldLike, foldText, searchTokens, tokenMatchScore, weightedTokenMatchScore,
+} from "@/lib/search/normalize";
 import { ensureTitle } from "../titles";
 import {
   SearchPeopleArgs,
@@ -291,18 +293,24 @@ async function execSearchFiles(ctx: DomainContext, args: unknown): Promise<Domai
   if (a.document_type) q2 = q2.eq("document_type", a.document_type);
   const { data: rows, error: e2 } = await q2;
   if (e2) return fail(e2.message);
+  // Nome do ficheiro manda; tipo de documento ajuda; resumo e morada pesam menos.
   const scored = ((rows ?? []) as Record<string, unknown>[])
     .map((r) => {
-      const folded = foldText(
-        [r.original_file_name, r.ai_summary, r.document_type, r.doc_morada]
-          .filter((x) => typeof x === "string")
-          .join(" "),
+      const m = weightedTokenMatchScore(
+        [
+          { text: r.original_file_name as string, weight: 1 },
+          { text: r.document_type as string, weight: 0.7 },
+          { text: r.ai_summary as string, weight: 0.5 },
+          { text: r.doc_morada as string, weight: 0.4 },
+        ],
+        tokens,
       );
       const { doc_morada: _m, ...rest } = r;
-      return { score: tokens.filter((t) => folded.includes(t)).length, row: rest };
+      return { score: m.hits, spread: m.spread, row: rest };
     })
     .filter((x) => x.score > 0)
-    .sort((a2, b2) => b2.score - a2.score)
+    .sort((a2, b2) =>
+      compareTokenMatches({ hits: a2.score, spread: a2.spread }, { hits: b2.score, spread: b2.spread }))
     .slice(0, 20)
     .map((x) => x.row);
   return ok({ results: scored, total: scored.length });
@@ -340,9 +348,16 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
   type Scored = { score: number; spread: number; row: Record<string, unknown> };
   const scored: Record<string, unknown>[] = ((rows ?? []) as Record<string, unknown>[])
     .map((r: Record<string, unknown>) => {
-      const hay = [r.title, r.location, r.city, r.address]
-        .filter((x) => typeof x === "string").join(" ");
-      const m = tokenMatchScore(hay, tokens);
+      // O título é o que o consultor reconhece; morada e zona valem menos.
+      const m = weightedTokenMatchScore(
+        [
+          { text: r.title as string, weight: 1 },
+          { text: r.city as string, weight: 0.6 },
+          { text: r.location as string, weight: 0.6 },
+          { text: r.address as string, weight: 0.5 },
+        ],
+        tokens,
+      );
       const { address: _a, ...rest } = r;
       return { score: m.hits, spread: m.spread, row: rest } as Scored;
     })

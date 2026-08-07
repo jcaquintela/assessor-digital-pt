@@ -356,6 +356,37 @@ describe("golden — ordenação de correspondências parciais", () => {
   });
 });
 
+// Peso dos campos: nome e título contam mais do que morada, zona ou resumo.
+describe("golden — peso do título/nome acima da morada e resumo", () => {
+  it("Imóveis: pedaço no título ganha ao mesmo pedaço só na morada", async () => {
+    const sb = pgFake({
+      properties: [
+        { id: "i1", user_id: "u1", title: "Apartamento T2", address: "Rua do Sol", city: "Braga" },
+        { id: "i2", user_id: "u1", title: "Moradia Rua do Sol", address: "Rua Nova", city: "Braga" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "rua sol" }));
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["i2", "i1"]);
+  });
+
+  it("Drive: pedaço no nome do ficheiro ganha ao mesmo pedaço só no resumo", async () => {
+    const sb = pgFake({
+      uploaded_files: [
+        {
+          id: "f1", user_id: "u1", deleted_at: null, archived_at: null,
+          original_file_name: "Documento.pdf", ai_summary: "Caderneta predial de São Brás",
+        },
+        {
+          id: "f2", user_id: "u1", deleted_at: null, archived_at: null,
+          original_file_name: "Caderneta Predial — São Brás.pdf", ai_summary: null,
+        },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_files", JSON.stringify({ query: "caderneta bras" }));
+    expect(r.data.results.map((f: any) => f.id)).toEqual(["f2", "f1"]);
+  });
+});
+
 // Estabilidade: com muitos empates, a lista não pode dançar entre execuções.
 // A ordenação é estável (JS `sort`), por isso empates mantêm a ordem de entrada.
 describe("golden — ordenação estável com empates", () => {
