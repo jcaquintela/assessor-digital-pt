@@ -12,14 +12,15 @@ import { Archive, Trash2, CheckCircle2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { UploadedFilesList } from "@/components/uploaded-files-list";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 
 export const Route = createFileRoute("/_authenticated/diversos")({
   head: () => ({
     meta: [
       { title: "Diversos — Afonso" },
-      { name: "description", content: "Notas, ideias e observações que o Assessor guardou por ti." },
+      { name: "description", content: "Notas, ideias e observações que o Afonso guardou por ti." },
       { property: "og:title", content: "Diversos — Afonso" },
-      { property: "og:description", content: "Notas, ideias e observações que o Assessor guardou por ti." },
+      { property: "og:description", content: "Notas, ideias e observações que o Afonso guardou por ti." },
     ],
   }),
   component: DiversosPage,
@@ -55,6 +56,7 @@ const CANAL_LABEL: Record<string, string> = {
 
 function DiversosPage() {
   const qc = useQueryClient();
+  const { name: assessorName } = useAssessorName();
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<
     "recentes" | "tratar" | "classificados" | "arquivados" | "ficheiros"
@@ -155,7 +157,7 @@ function DiversosPage() {
     <AppShell>
       <PageHeader
         title="Diversos"
-        subtitle="Notas, ideias e observações que o Assessor guardou por ti."
+        subtitle={`Notas, ideias e observações que o ${assessorName} guardou por ti.`}
       />
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
