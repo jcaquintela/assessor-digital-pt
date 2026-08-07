@@ -134,6 +134,11 @@ export async function sendMorningPush(
   if (!opts.force && (await alreadySentToday(supabase, userId, "proactive_morning"))) {
     return { sent: false, reason: "already_sent" };
   }
+  // Um único briefing por manhã, venha ele deste push ou do nudge do Supremo.
+  const { morningBriefingAlreadySent } = await import("@/lib/assessor/supreme/briefing.server");
+  if (!opts.force && (await morningBriefingAlreadySent(supabase, userId))) {
+    return { sent: false, reason: "already_sent" };
+  }
   const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
   const target = await resolveOutboundTarget(supabase, userId);
   if (!target) return { sent: false, reason: "no_channel" };

@@ -4,6 +4,24 @@
 
 import { sanitizeReply } from "../culture/sanitize";
 import { isDealClosed } from "@/lib/deals/stages";
+import { DAILY_BRIEFING_PREFIX } from "../supreme/briefing.server";
+
+const SETTLED_STATUSES = new Set([
+  "concluido", "concluida", "cancelado", "cancelada", "arquivado", "arquivada", "done",
+]);
+
+/** O seguimento já foi tratado, desmarcado ou arquivado? */
+export async function isFollowUpSettled(supabase: any, followUpId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("follow_ups")
+    .select("status, outcome, archived_at")
+    .eq("id", followUpId)
+    .maybeSingle();
+  if (!data) return true;
+  const status = String((data as any).status ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  return Boolean((data as any).archived_at) || Boolean((data as any).outcome) || SETTLED_STATUSES.has(status);
+}
 
 export type NudgeKind =
   | "person_silence"       // pessoa com oportunidade sem contacto há N dias
@@ -218,7 +236,7 @@ export async function dispatchPendingNudges(
 
   const { data: pending } = await supabase
     .from("assessor_nudges")
-    .select("id, user_id, suggested_reply")
+    .select("id, user_id, suggested_reply, subject_type, subject_id, dedupe_key")
     .eq("status", "pending")
     .lte("scheduled_for", now.toISOString())
     .order("created_at", { ascending: true })
@@ -248,13 +266,32 @@ export async function dispatchPendingNudges(
       skipped++;
       continue;
     }
-    const r = await sendReplyForChannel(target.channel, target.externalId, row.suggested_reply);
+    // O texto foi escrito quando o nudge nasceu; entretanto o consultor pode
+    // ter tratado (ou desmarcado) o assunto. Reavalia antes de falar.
+    let text: string = row.suggested_reply;
+    if (String(row.dedupe_key ?? "").startsWith(DAILY_BRIEFING_PREFIX)) {
+      const { resolveBriefingAtDispatch } = await import("../supreme/briefing.server");
+      const fresh = await resolveBriefingAtDispatch(supabase, row.user_id);
+      if (!fresh.send) {
+        await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
+        skipped++;
+        continue;
+      }
+      text = fresh.text;
+    } else if (row.subject_type === "follow_up" && row.subject_id) {
+      if (await isFollowUpSettled(supabase, row.subject_id)) {
+        await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
+        skipped++;
+        continue;
+      }
+    }
+    const r = await sendReplyForChannel(target.channel, target.externalId, text);
     if (r.ok) {
       await supabase.from("assessor_nudges").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", row.id);
       // Persiste no histórico do chat para o consultor ver na app.
       await supabase.from("assessor_messages").insert({
         user_id: row.user_id, channel: target.channel, role: "assistant",
-        content: row.suggested_reply, message_type: "proactive_nudge",
+        content: text, message_type: "proactive_nudge",
       } as never);
       sent++;
     } else {

@@ -145,10 +145,17 @@ export async function computePriorities(
     if (!f.person_id && !f.opportunity_id && !String(f.notes ?? "").trim()) {
       reasons.push("ainda sem pessoa nem negócio associado");
     }
+    // Um compromisso e a sua preparação são a MESMA coisa — não existe tarefa
+    // "Preparar: X" separada na base de dados. O texto tem de deixar isso
+    // claro, senão parece que há duas entidades com o mesmo nome.
+    const hhmm = f.due_time ? String(f.due_time).slice(0, 5) : null;
+    const eventAction = hhmm
+      ? `Preparar o compromisso das ${hhmm}: ${f.title}`
+      : `Preparar o compromisso: ${f.title}`;
     items.push({
       subject_type: "follow_up",
       subject_id: f.id,
-      action: isEvent ? `Preparar: ${f.title}` : f.title,
+      action: isEvent ? eventAction : f.title,
       reasons,
       priority_score: Math.min(100, score),
       due_at: f.due_date,
