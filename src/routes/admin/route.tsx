@@ -25,16 +25,26 @@ function AdminLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const [menuOpen, setMenuOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
   const fetchRole = useServerFn(getMyAdminRole);
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "my-role"],
     queryFn: () => fetchRole(),
   });
 
-  // Fecha o menu móvel sempre que mudamos de página.
+  // Fecha o menu móvel e move o foco para o conteúdo sempre que mudamos de página.
   useEffect(() => {
     setMenuOpen(false);
+    // Pequeno atraso para o drawer terminar de fechar antes de mover o foco.
+    const t = setTimeout(() => {
+      mainRef.current?.focus();
+    }, 50);
+    return () => clearTimeout(t);
   }, [pathname]);
+
+  const handleNavClick = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
 
   if (isLoading) {
     return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">A verificar permissões…</div>;
