@@ -4,6 +4,24 @@
 
 import { sanitizeReply } from "../culture/sanitize";
 import { isDealClosed } from "@/lib/deals/stages";
+import { DAILY_BRIEFING_PREFIX } from "../supreme/briefing.server";
+
+const SETTLED_STATUSES = new Set([
+  "concluido", "concluida", "cancelado", "cancelada", "arquivado", "arquivada", "done",
+]);
+
+/** O seguimento já foi tratado, desmarcado ou arquivado? */
+export async function isFollowUpSettled(supabase: any, followUpId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("follow_ups")
+    .select("status, outcome, archived_at")
+    .eq("id", followUpId)
+    .maybeSingle();
+  if (!data) return true;
+  const status = String((data as any).status ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  return Boolean((data as any).archived_at) || Boolean((data as any).outcome) || SETTLED_STATUSES.has(status);
+}
 
 export type NudgeKind =
   | "person_silence"       // pessoa com oportunidade sem contacto há N dias
