@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
+import { StackTable, Td, Tr } from "@/components/admin/stack-table";
 import { Button } from "@/components/ui/button";
 import { getWhatsappDisplayName, runWhatsappDisplayNameSync } from "@/lib/admin.functions";
 
@@ -86,36 +87,28 @@ function WhatsappNomePage() {
           Sem tentativas registadas ainda.
         </Empty>
       ) : (
-        <div className="overflow-x-auto">
-          <table>
-            <thead>
-              <tr>
-                <th>Data</th><th>Resultado</th><th>Nome nessa altura</th>
-                <th>Estado Meta</th><th>Origem</th><th>Resposta da Meta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {attempts.map((row) => {
+        <StackTable
+          headers={["Data", "Resultado", "Nome nessa altura", "Estado Meta", "Origem", "Resposta da Meta"]}
+        >
+          {attempts.map((row) => {
                 const outcome = outcomeOf(row);
                 const info = OUTCOME_LABEL[outcome];
                 const meta = row.metadata ?? {};
                 const response = row.reason ?? (meta.meta_response ? JSON.stringify(meta.meta_response) : null);
                 return (
-                  <tr key={row.id}>
-                    <td className="mini whitespace-nowrap">{new Date(row.created_at).toLocaleString("pt-PT")}</td>
-                    <td><Badge tone={info?.tone ?? "warn"}>{info?.label ?? outcome}</Badge></td>
-                    <td className="mini">{meta.current_name ?? meta.previous_name ?? "—"}</td>
-                    <td className="mono mini">{meta.name_status ?? "—"}</td>
-                    <td className="mono mini">{meta.source ?? "—"}</td>
-                    <td className="mini" style={{ color: "var(--muted)", maxWidth: 380, wordBreak: "break-word" }}>
+                  <Tr key={row.id}>
+                    <Td className="mini whitespace-nowrap">{new Date(row.created_at).toLocaleString("pt-PT")}</Td>
+                    <Td><Badge tone={info?.tone ?? "warn"}>{info?.label ?? outcome}</Badge></Td>
+                    <Td className="mini">{meta.current_name ?? meta.previous_name ?? "—"}</Td>
+                    <Td className="mono mini">{meta.name_status ?? "—"}</Td>
+                    <Td className="mono mini">{meta.source ?? "—"}</Td>
+                    <Td className="mini" style={{ color: "var(--muted)", maxWidth: 380, wordBreak: "break-word" }}>
                       {response ?? "sem detalhe"}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
+          })}
+        </StackTable>
       )}
       <Source>admin_audit_logs (whatsapp.display_name.*)</Source>
     </div>
