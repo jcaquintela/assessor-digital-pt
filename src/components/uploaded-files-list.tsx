@@ -11,6 +11,7 @@ import {
   deleteUploadedFile,
 } from "@/lib/assessor/files.functions";
 import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 
 function iconFor(mime: string) {
   if (mime.startsWith("audio/")) return <Mic className="h-4 w-4" />;
@@ -27,6 +28,7 @@ function formatSize(n: number): string {
 }
 
 export function UploadedFilesList() {
+  const { name: assessorName } = useAssessorName();
   const qc = useQueryClient();
   const list = useServerFn(listUploadedFiles);
   const sign = useServerFn(getUploadedFileSignedUrl);
@@ -60,7 +62,7 @@ export function UploadedFilesList() {
       <Card>
         <CardContent className="p-6 text-sm text-muted-foreground">
           Nenhum ficheiro recebido. Envia uma foto, PDF ou mensagem de voz pelo WhatsApp para o
-          teu Assessor.
+          {" "}{assessorName}.
         </CardContent>
       </Card>
     );
