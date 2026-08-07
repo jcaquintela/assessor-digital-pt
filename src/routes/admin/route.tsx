@@ -126,7 +126,7 @@ function AdminLayout() {
                 <span className="dot" />
                 Afonso — admin
               </div>
-              <nav className="flex-1">{renderNav()}</nav>
+              <nav className="flex-1">{renderNav(handleNavClick)}</nav>
               <div className="navfoot">
                 <div className="capitalize">{data.role.replace("_", " ")}</div>
                 <Link to="/" className="mt-2 block hover:underline">← Voltar à app</Link>
