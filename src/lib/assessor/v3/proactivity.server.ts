@@ -291,7 +291,7 @@ export async function dispatchPendingNudges(
       // Persiste no histórico do chat para o consultor ver na app.
       await supabase.from("assessor_messages").insert({
         user_id: row.user_id, channel: target.channel, role: "assistant",
-        content: row.suggested_reply, message_type: "proactive_nudge",
+        content: text, message_type: "proactive_nudge",
       } as never);
       sent++;
     } else {
