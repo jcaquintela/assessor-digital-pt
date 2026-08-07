@@ -88,7 +88,6 @@ export function CategoriesBar({
   onSelect: (id: string | null) => void;
 }) {
   const { categories, invalidate } = useFileCategories();
-  const { name: assessorName } = useAssessorName();
   const create = useServerFn(createFileCategory);
   const rename = useServerFn(renameFileCategory);
   const remove = useServerFn(deleteFileCategory);
