@@ -94,7 +94,7 @@ export function EventDrawer({ item, onClose }: { item: EventDrawerItem | null; o
                 </Button>
                 <Button asChild size="sm" variant="secondary" className="flex-1">
                   <Link to="/assessor">
-                    Falar com {assessorName === ASSESSOR_NAME_DEFAULT ? "o Assessor" : assessorName}
+                    Falar com {assessorName}
                   </Link>
                 </Button>
               </div>
