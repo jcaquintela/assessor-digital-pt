@@ -235,7 +235,7 @@ function BetaPage() {
         </button>
       </div>
 
-      <table>
+      <table className="cards-sm">
         <thead>
           <tr>
             <th>Pessoa</th>
