@@ -72,6 +72,17 @@ type Priority = {
   entity_label: string | null;
   deal_id?: string | null;
   deal_label?: string | null;
+  origin?: "calendario" | "compromisso" | "tarefa" | "negocio";
+  origin_label?: string | null;
+  state_label?: string | null;
+};
+
+type Settled = {
+  subject_id: string;
+  action: string;
+  state_label: string;
+  origin_label: string;
+  due_at: string | null;
 };
 
 type Awaiting = {
@@ -491,7 +502,20 @@ function HojePage() {
                       p.due_at ? formatData(p.due_at) : null,
                     ].filter(Boolean).join(" · ")}
                     extra={
-                      p.deal_id && p.deal_label ? (
+                      <>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          {/* Origem exata: o consultor tem de saber se isto veio
+                              do calendário ligado ou se é um seguimento do Afonso. */}
+                          <span className="c-badge inline-flex max-w-full truncate text-xs">
+                            {p.origin_label ?? (p.subject_type === "opportunity" ? "Negócio em curso" : "Seguimento")}
+                          </span>
+                          {p.state_label ? (
+                            <span className="c-badge inline-flex max-w-full truncate text-xs text-muted-foreground">
+                              Estado: {p.state_label}
+                            </span>
+                          ) : null}
+                        </div>
+                        {p.deal_id && p.deal_label ? (
                           <Link
                             to="/negocios/$id"
                             params={{ id: p.deal_id }}
@@ -500,7 +524,8 @@ function HojePage() {
                           >
                             Negócio: {p.deal_label}
                           </Link>
-                      ) : null
+                        ) : null}
+                      </>
                     }
                     actions={<>
                       <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
