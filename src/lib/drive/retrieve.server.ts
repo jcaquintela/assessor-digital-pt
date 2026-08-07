@@ -6,6 +6,7 @@
 // pelo nome exacto do ficheiro.
 
 import { DOC_TYPES, normalize, type DocTypeKey } from "./retrieve";
+import { foldLike } from "@/lib/search/normalize";
 
 export type DocHit = {
   id: string;
@@ -224,13 +225,16 @@ export async function findDocumentsForSubject(
   const terms = (tokens.length ? tokens : [normalize(subject).slice(0, 40)]).map((t) => `%${t}%`);
   const orFor = (cols: string[]) =>
     terms.flatMap((t) => cols.map((c) => `${c}.ilike.${t}`)).join(",");
+  const foldedTerms = terms.map((t) => `%${foldLike(t.replace(/%/g, ""))}%`);
+  const orFolded = (cols: string[]) =>
+    foldedTerms.flatMap((t) => cols.map((c) => `${c}.ilike.${t}`)).join(",");
   const [people, props] = await Promise.all([
-    supabase.from("people").select("id, name").eq("user_id", userId).or(orFor(["name"])).limit(6),
+    supabase.from("people").select("id, name").eq("user_id", userId).or(orFolded(["name_norm"])).limit(6),
     supabase
       .from("properties")
       .select("id, title, address")
       .eq("user_id", userId)
-      .or(orFor(["title", "address", "city"]))
+      .or(orFolded(["search_norm"]))
       .limit(6),
   ]);
 

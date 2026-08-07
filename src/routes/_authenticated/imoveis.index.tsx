@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import { exportProperties } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
+import { foldText } from "@/lib/search/normalize";
 import { getPropertyAttention } from "@/lib/imoveis/attention.functions";
 import { assuntoDeImovel } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
@@ -150,13 +151,14 @@ function ImoveisPage() {
     }
   }
 
-  const term = q.trim().toLowerCase();
+  const term = foldText(q);
   const list = useMemo(() => all.filter((i) => {
     if (!matchPropertyPreset(i, preset)) return false;
     if (catId && i.category_id !== catId) return false;
     if (!term) return true;
-    return [i.title, i.address, i.city, i.location, i.typology, i.property_type]
-      .filter(Boolean).join(" ").toLowerCase().includes(term);
+    return foldText(
+      [i.title, i.address, i.city, i.location, i.typology, i.property_type].filter(Boolean).join(" "),
+    ).includes(term);
   }), [all, catId, term, preset]);
 
   const contagens = useMemo(() => {

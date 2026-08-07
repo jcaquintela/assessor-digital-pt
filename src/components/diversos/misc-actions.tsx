@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { foldLike } from "@/lib/search/normalize";
 import { CalendarPlus, Home, User, EyeOff } from "lucide-react";
 
 type Kind = "person" | "property";
@@ -52,13 +53,13 @@ function LinkDialog({
     queryFn: async () => {
       if (kind === "person") {
         let sel = supabase.from("people").select("id, name").order("name").limit(20);
-        if (q.trim()) sel = sel.ilike("name", `%${q.trim()}%`);
+        if (q.trim()) sel = sel.ilike("name_norm", `%${foldLike(q)}%`);
         const { data, error } = await sel;
         if (error) throw error;
         return (data ?? []).map((r: any) => ({ id: r.id, label: r.name }));
       }
       let sel = supabase.from("properties").select("id, title, address, location").limit(20);
-      if (q.trim()) sel = sel.ilike("title", `%${q.trim()}%`);
+      if (q.trim()) sel = sel.ilike("search_norm", `%${foldLike(q)}%`);
       const { data, error } = await sel;
       if (error) throw error;
       return (data ?? []).map((r: any) => ({ id: r.id, label: r.title || r.address || r.location || "Imóvel" }));

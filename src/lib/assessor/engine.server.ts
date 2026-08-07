@@ -7,6 +7,7 @@ import { sanitizeMiscFields } from "./misc-text";
 
 import { callAssessorAi, type AiInterpretation, type AiContextMessage } from "./ai.server";
 import { cleanTitle } from "./titles";
+import { foldLike } from "@/lib/search/normalize";
 import {
   interpretAssessorMessage,
   ROUTER_MIN_CONFIDENCE,
@@ -356,12 +357,12 @@ function buildProposalReply(
 }
 
 async function findPeopleByName(supabase: any, userId: string, nome: string) {
-  const firstName = nome.split(/\s+/)[0];
+  const firstName = foldLike(nome).split(/\s+/)[0];
   const { data } = await supabase
     .from("people")
     .select("id, name")
     .eq("user_id", userId)
-    .ilike("name", `${firstName}%`)
+    .ilike("name_norm", `${firstName}%`)
     .limit(6);
   return (data as { id: string; name: string }[]) ?? [];
 }

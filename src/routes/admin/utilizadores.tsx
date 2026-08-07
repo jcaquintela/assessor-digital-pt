@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { foldIncludes } from "@/lib/search/normalize";
 import { InvitePreview } from "@/components/admin/invite-preview";
 import { InviteLinkDialog } from "@/components/admin/invite-link-dialog";
 import { toast } from "sonner";
@@ -168,8 +169,7 @@ function AcessosPageInner() {
   const filtered = (users ?? [])
     .filter((u) => {
       if (!q) return true;
-      const s = q.toLowerCase();
-      return (u.email ?? "").toLowerCase().includes(s) || (u.name ?? "").toLowerCase().includes(s);
+      return foldIncludes(u.email ?? "", q) || foldIncludes(u.name ?? "", q);
     })
     .sort((a, b) => (sortCredits ? (b.credits30d ?? 0) - (a.credits30d ?? 0) : 0));
 

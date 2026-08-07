@@ -13,6 +13,7 @@ import { sanitizeMiscFields } from "../misc-text";
 
 import { z } from "zod";
 import { isAgendaEvent } from "@/lib/agenda-kind";
+import { foldLike, foldText } from "@/lib/search/normalize";
 import { ensureTitle } from "../titles";
 import {
   SearchPeopleArgs,
@@ -189,7 +190,7 @@ async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<Doma
     .from("people")
     .select("id, name, phone, email, relationship_type, summary")
     .eq("user_id", ctx.userId)
-    .ilike("name", `%${query}%`)
+    .ilike("name_norm", `%${foldLike(query)}%`)
     .order("updated_at", { ascending: false })
     .limit(8);
   if (relationship_type) q = q.eq("relationship_type", relationship_type);
@@ -238,7 +239,7 @@ async function execSearchFiles(ctx: DomainContext, args: unknown): Promise<Domai
     .limit(50);
   if (query) {
     q = q.or(
-      `original_file_name.ilike.%${query}%,ai_summary.ilike.%${query}%,document_type.ilike.%${query}%`,
+      `search_norm.ilike.%${foldLike(query)}%`,
     );
   }
   if (a.document_type) q = q.eq("document_type", a.document_type);
@@ -255,7 +256,7 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
     .from("properties")
     .select("id, title, typology, property_type, location, city, status, asking_price")
     .eq("user_id", ctx.userId)
-    .or(`title.ilike.%${query}%,location.ilike.%${query}%,city.ilike.%${query}%,address.ilike.%${query}%`)
+    .ilike("search_norm", `%${foldLike(query)}%`)
     .order("updated_at", { ascending: false })
     .limit(8);
   if (status) q = q.eq("status", status);
@@ -266,7 +267,7 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
   // O consultor diz "Rua do Sol Matosinhos" mas o título é "Moradia V3 na Rua
   // do Sol, Matosinhos": a frase inteira nunca casa. Segunda tentativa por
   // palavras, ordenada pelo número de palavras encontradas.
-  const tokens = query
+  const tokens = foldText(query)
     .split(/[^\p{L}\p{N}]+/u)
     .filter((t) => t.length >= 3)
     .slice(0, 6);
@@ -275,9 +276,7 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
     .from("properties")
     .select("id, title, typology, property_type, location, city, address, status, asking_price")
     .eq("user_id", ctx.userId)
-    .or(tokens.flatMap((t) => [
-      `title.ilike.%${t}%`, `location.ilike.%${t}%`, `city.ilike.%${t}%`, `address.ilike.%${t}%`,
-    ]).join(","))
+    .or(tokens.map((t) => `search_norm.ilike.%${t}%`).join(","))
     .limit(30);
   if (status) q2 = q2.eq("status", status);
   const { data: rows, error: e2 } = await q2;
@@ -286,8 +285,9 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
   const scored: Record<string, unknown>[] = ((rows ?? []) as Record<string, unknown>[])
     .map((r: Record<string, unknown>) => {
       const hay = [r.title, r.location, r.city, r.address]
-        .filter((x) => typeof x === "string").join(" ").toLowerCase();
-      const score = tokens.filter((t) => hay.includes(t.toLowerCase())).length;
+        .filter((x) => typeof x === "string").join(" ");
+      const folded = foldText(hay);
+      const score = tokens.filter((t) => folded.includes(t)).length;
       const { address: _a, ...rest } = r;
       return { score, row: rest } as Scored;
     })
@@ -989,11 +989,11 @@ async function execSearchProspectingLeads(ctx: DomainContext, args: unknown): Pr
     .limit(10);
   const normalized = normalizePhone(phone ?? null);
   if (normalized) q = q.eq("phone", normalized);
-  if (location) q = q.ilike("location", `%${location}%`);
+  if (location) q = q.ilike("search_norm", `%${foldLike(location)}%`);
   if (status) q = q.eq("status", status);
   if (query && query.trim().length >= 2) {
-    const term = `%${query.trim().replace(/[%_]/g, "")}%`;
-    q = q.or(`title.ilike.${term},notes.ilike.${term},address.ilike.${term}`);
+    const term = `%${foldLike(query)}%`;
+    q = q.or(`search_norm.ilike.${term},notes.ilike.${term}`);
   }
   const { data, error } = await q;
   if (error) return fail(error.message);
@@ -1440,7 +1440,7 @@ async function execSearchDeals(ctx: DomainContext, args: unknown): Promise<Domai
     .limit(20);
   if (v.person_id) q = q.eq("person_id", v.person_id);
   if (v.property_id) q = q.eq("property_id", v.property_id);
-  if (v.query) q = q.ilike("title", `%${v.query}%`);
+  if (v.query) q = q.ilike("title_norm", `%${foldLike(v.query)}%`);
   const { data, error } = await q;
   if (error) return fail(error.message);
   return ok({ deals: data ?? [] });

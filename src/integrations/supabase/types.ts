@@ -1871,6 +1871,7 @@ export type Database = {
           status: string
           timezone: string | null
           title: string
+          title_norm: string | null
           type: string
           updated_at: string
           user_id: string
@@ -1902,6 +1903,7 @@ export type Database = {
           status?: string
           timezone?: string | null
           title: string
+          title_norm?: string | null
           type?: string
           updated_at?: string
           user_id: string
@@ -1933,6 +1935,7 @@ export type Database = {
           status?: string
           timezone?: string | null
           title?: string
+          title_norm?: string | null
           type?: string
           updated_at?: string
           user_id?: string
@@ -2090,6 +2093,7 @@ export type Database = {
           summary: string | null
           tags: string[]
           title: string
+          title_norm: string | null
           updated_at: string
           user_id: string
         }
@@ -2110,6 +2114,7 @@ export type Database = {
           summary?: string | null
           tags?: string[]
           title: string
+          title_norm?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2130,6 +2135,7 @@ export type Database = {
           summary?: string | null
           tags?: string[]
           title?: string
+          title_norm?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2174,6 +2180,7 @@ export type Database = {
           stage_changed_at: string
           status: string
           title: string | null
+          title_norm: string | null
           type: string
           updated_at: string
           user_id: string
@@ -2195,6 +2202,7 @@ export type Database = {
           stage_changed_at?: string
           status?: string
           title?: string | null
+          title_norm?: string | null
           type?: string
           updated_at?: string
           user_id: string
@@ -2216,6 +2224,7 @@ export type Database = {
           stage_changed_at?: string
           status?: string
           title?: string | null
+          title_norm?: string | null
           type?: string
           updated_at?: string
           user_id?: string
@@ -2411,6 +2420,7 @@ export type Database = {
           id: string
           job_title: string | null
           name: string
+          name_norm: string | null
           next_action: string | null
           next_action_date: string | null
           phone: string | null
@@ -2438,6 +2448,7 @@ export type Database = {
           id?: string
           job_title?: string | null
           name: string
+          name_norm?: string | null
           next_action?: string | null
           next_action_date?: string | null
           phone?: string | null
@@ -2465,6 +2476,7 @@ export type Database = {
           id?: string
           job_title?: string | null
           name?: string
+          name_norm?: string | null
           next_action?: string | null
           next_action_date?: string | null
           phone?: string | null
@@ -2923,6 +2935,7 @@ export type Database = {
           property_type: string | null
           reserved_at: string | null
           sale_price: number | null
+          search_norm: string | null
           sold_at: string | null
           source_channel: string | null
           source_message_id: string | null
@@ -2959,6 +2972,7 @@ export type Database = {
           property_type?: string | null
           reserved_at?: string | null
           sale_price?: number | null
+          search_norm?: string | null
           sold_at?: string | null
           source_channel?: string | null
           source_message_id?: string | null
@@ -2995,6 +3009,7 @@ export type Database = {
           property_type?: string | null
           reserved_at?: string | null
           sale_price?: number | null
+          search_norm?: string | null
           sold_at?: string | null
           source_channel?: string | null
           source_message_id?: string | null
@@ -3258,6 +3273,7 @@ export type Database = {
           property_type: string | null
           related_person_id: string | null
           related_property_id: string | null
+          search_norm: string | null
           source_channel: string
           source_message_id: string | null
           source_type: Database["public"]["Enums"]["prospecting_source_type"]
@@ -3287,6 +3303,7 @@ export type Database = {
           property_type?: string | null
           related_person_id?: string | null
           related_property_id?: string | null
+          search_norm?: string | null
           source_channel?: string
           source_message_id?: string | null
           source_type?: Database["public"]["Enums"]["prospecting_source_type"]
@@ -3316,6 +3333,7 @@ export type Database = {
           property_type?: string | null
           related_person_id?: string | null
           related_property_id?: string | null
+          search_norm?: string | null
           source_channel?: string
           source_message_id?: string | null
           source_type?: Database["public"]["Enums"]["prospecting_source_type"]
@@ -3697,6 +3715,7 @@ export type Database = {
           requires_review: boolean
           retention_archived_at: string | null
           retention_warned_at: string | null
+          search_norm: string | null
           size_bytes: number
           source_external_file_id: string | null
           source_message_id: string | null
@@ -3743,6 +3762,7 @@ export type Database = {
           requires_review?: boolean
           retention_archived_at?: string | null
           retention_warned_at?: string | null
+          search_norm?: string | null
           size_bytes?: number
           source_external_file_id?: string | null
           source_message_id?: string | null
@@ -3789,6 +3809,7 @@ export type Database = {
           requires_review?: boolean
           retention_archived_at?: string | null
           retention_warned_at?: string | null
+          search_norm?: string | null
           size_bytes?: number
           source_external_file_id?: string | null
           source_message_id?: string | null
@@ -4149,6 +4170,7 @@ export type Database = {
         Args: { _channel: string; _holder?: string; _user_id: string }
         Returns: undefined
       }
+      text_norm: { Args: { _t: string }; Returns: string }
       tier_at_least: {
         Args: { _min: string; _user_id: string }
         Returns: boolean

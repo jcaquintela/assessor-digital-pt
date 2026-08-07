@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
+import { foldText } from "@/lib/search/normalize";
 import { supabase } from "@/integrations/supabase/client";
 import { humanizeMiscText, humanizeMiscTitle } from "@/lib/assessor/misc-text";
 import { miscReason } from "@/lib/assessor/misc-reason";
@@ -137,13 +138,13 @@ function DiversosPage() {
       if (tab === "arquivados") return r.status === "archived";
       return r.status !== "archived";
     });
-    const needle = q.trim().toLowerCase();
+    const needle = foldText(q);
     if (!needle) return byTab;
     return byTab.filter(
       (r) =>
-        r.title.toLowerCase().includes(needle) ||
-        (r.original_content ?? "").toLowerCase().includes(needle) ||
-        (r.summary ?? "").toLowerCase().includes(needle),
+        foldText(r.title).includes(needle) ||
+        foldText(r.original_content ?? "").includes(needle) ||
+        foldText(r.summary ?? "").includes(needle),
     );
   }, [items.data, tab, q]);
 

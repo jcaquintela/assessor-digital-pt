@@ -11,6 +11,8 @@
 //    RETURNING id`) para evitar duplo envio.
 //  - A janela é `now - 30min .. now + 1min` para tolerar cron atrasado.
 
+import { foldLike } from "@/lib/search/normalize";
+
 export type ReminderStatus = "scheduled" | "processing" | "sent" | "failed" | "cancelled";
 export type ReminderResourceType = "follow_up" | "event" | "prospecting_lead" | "other";
 
@@ -200,13 +202,13 @@ export async function rescheduleReminder(
   }
 
   if (!target && input.subject_hint && input.subject_hint.trim().length >= 2) {
-    const hint = input.subject_hint.trim().replace(/[%_]/g, "").slice(0, 60);
+    const hint = foldLike(input.subject_hint).slice(0, 60);
     const { data: fus } = await supabase
       .from("follow_ups")
       .select("id, title, due_date")
       .eq("user_id", input.userId)
       .in("status", ["pendente", "em_progresso", "agendado", "aberto", "pending"])
-      .ilike("title", `%${hint}%`)
+      .ilike("title_norm", `%${hint}%`)
       .order("due_date", { ascending: true })
       .limit(5);
     const followUpIds = ((fus as any[]) ?? []).map((r) => r.id);
@@ -336,8 +338,8 @@ export async function searchActiveReminders(
       : null,
   }));
   if (input.query && input.query.trim().length >= 2) {
-    const needle = input.query.trim().toLowerCase();
-    return decorated.filter((r) => (r.title ?? "").toLowerCase().includes(needle));
+    const needle = foldLike(input.query);
+    return decorated.filter((r) => foldLike(r.title ?? "").includes(needle));
   }
   return decorated;
 }

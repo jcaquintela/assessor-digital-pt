@@ -65,7 +65,15 @@ function makeFakeSupabase(seed: { reminders?: Row[]; follow_ups?: Row[]; profile
       },
       ilike(col: string, val: string) {
         const needle = val.replace(/%/g, "").toLowerCase();
-        filters.push((r) => String(r[col] ?? "").toLowerCase().includes(needle));
+        // Colunas geradas (`title_norm`) não existem nas linhas simuladas:
+        // caem para a coluna base, sem acentos, como no Postgres.
+        const base = col.endsWith("_norm") ? col.slice(0, -5) : col;
+        filters.push((r) =>
+          String(r[col] ?? r[base] ?? "")
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .includes(needle),
+        );
         return api;
       },
       gte(col: string, val: any) { filters.push((r) => r[col] >= val); return api; },
