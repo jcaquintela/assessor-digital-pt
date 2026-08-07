@@ -61,8 +61,10 @@ const toPessoa = (r: Row): Pessoa => ({
 const toOportunidade = (r: Row): Oportunidade => ({
   id: r.id,
   pessoaId: r.person_id ?? "",
+  titulo: r.title ?? undefined,
   tipo: (r.type ?? "Compra") as Oportunidade["tipo"],
   estado: (r.status ?? "Novo") as Oportunidade["estado"],
+  fase: r.stage ?? undefined,
   valor: Number(r.value ?? 0),
   probabilidade: (r.probability ?? "Média") as Oportunidade["probabilidade"],
   proximaAcao: r.next_action ?? undefined,
@@ -518,6 +520,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       user_id: uid,
       person_id: o.pessoaId || null,
       property_id: o.imovelId || null,
+      title: o.titulo ?? o.tipo,
       type: o.tipo,
       status: o.estado,
       value: o.valor,
@@ -535,6 +538,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const p: Record<string, unknown> = {};
     if (patch.pessoaId !== undefined) p.person_id = patch.pessoaId || null;
     if (patch.imovelId !== undefined) p.property_id = patch.imovelId || null;
+    if (patch.titulo !== undefined) p.title = patch.titulo;
     if (patch.tipo !== undefined) p.type = patch.tipo;
     if (patch.estado !== undefined) p.status = patch.estado;
     if (patch.valor !== undefined) p.value = patch.valor;

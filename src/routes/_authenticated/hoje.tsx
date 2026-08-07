@@ -32,6 +32,7 @@ import { Lightbulb, ArrowRight } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { isDealActive } from "@/lib/deals/stages";
 
 type HojeSearch = { filtro?: "imoveis-por-confirmar" };
 
@@ -198,7 +199,11 @@ function HojePage() {
     [seguimentos, now],
   );
   const oportSemAcao = useMemo(
-    () => oportunidades.filter((o) => !o.proximaAcao && o.estado !== "Perdida" && o.estado !== "Escritura"),
+    () => oportunidades.filter((o) => !o.proximaAcao && isDealActive({
+      stage: o.fase,
+      status: o.estado,
+      arquivadoEm: o.arquivadoEm,
+    })),
     [oportunidades],
   );
 
@@ -242,7 +247,7 @@ function HojePage() {
         due_at: null,
         entity_label: nome || null,
         deal_id: o.id,
-        deal_label: o.tipo ?? "Negócio",
+        deal_label: o.titulo?.trim() || o.tipo || "Negócio",
       });
     }
     return items.slice(0, 5);

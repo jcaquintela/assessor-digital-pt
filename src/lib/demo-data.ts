@@ -40,8 +40,12 @@ export type OportunidadeEstado =
 export interface Oportunidade {
   id: string;
   pessoaId: string;
+  /** Nome integral do negócio; `tipo` é apenas a sua categoria. */
+  titulo?: string;
   tipo: OportunidadeTipo;
   estado: OportunidadeEstado;
+  /** Fase canónica que determina se o negócio está em curso ou concluído. */
+  fase?: string;
   valor: number;
   probabilidade: "Baixa" | "Média" | "Alta";
   proximaAcao?: string;

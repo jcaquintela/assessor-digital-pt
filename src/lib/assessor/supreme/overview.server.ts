@@ -43,7 +43,7 @@ export interface MentorTip {
   reason: string;
 }
 
-import { isDealClosed } from "@/lib/deals/stages";
+import { isDealActive } from "@/lib/deals/stages";
 
 const CLOSED_PROPERTY = new Set(["vendido", "arquivado"]);
 
@@ -75,9 +75,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     supabase.from("interactions").select("person_id").eq("user_id", userId).gte("occurred_at", isoDaysAgo(7)),
   ]);
 
-  const dealRows = ((deals.data as any[]) ?? []).filter(
-    (d) => !d.archived_at && !isDealClosed(d),
-  );
+  const dealRows = ((deals.data as any[]) ?? []).filter(isDealActive);
   const propRows = ((props.data as any[]) ?? []).filter(
     (p) => !CLOSED_PROPERTY.has(String(p.status ?? "").toLowerCase()),
   );
@@ -194,7 +192,7 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
 
   // 2. Negócios na mesma fase há 25+ dias e sem contacto real nesse período.
   const presos = ((deals.data as any[]) ?? []).filter((d) => {
-    if (d.archived_at || isDealClosed(d)) return false;
+    if (!isDealActive(d)) return false;
     if (days(d.stage_changed_at) < 25) return false;
     const contacto = lastByDeal.get(d.id) ?? null;
     return !contacto || days(contacto) >= 25;
