@@ -217,7 +217,7 @@ async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<Doma
       const folded = foldText(String(r.name ?? ""));
       return { score: tokens.filter((t) => folded.includes(t)).length, row: r };
     })
-    .filter((x) => x.score === tokens.length || (tokens.length > 1 && x.score > 0))
+    .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 8)
     .map((x) => x.row);
