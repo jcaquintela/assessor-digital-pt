@@ -143,7 +143,7 @@ function AdminLayout() {
         </div>
         <Button variant="ghost" size="sm" className="text-xs text-white" onClick={signOut}>Sair</Button>
       </header>
-      <main className="md:pl-56">
+      <main ref={mainRef} tabIndex={-1} className="md:pl-56 focus:outline-none">
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-10 md:pb-16">
           <HealthStrip />
           <Outlet />
