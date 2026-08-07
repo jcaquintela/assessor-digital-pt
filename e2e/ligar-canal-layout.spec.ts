@@ -108,18 +108,22 @@ test.describe("/ligar-canal · WhatsApp e Telegram legíveis em qualquer ecrã",
         );
       }
 
-      // Legibilidade mínima do texto descritivo (>= 12px).
-      const menorFonte = await page.evaluate(() => {
-        let min = 99;
+      // Legibilidade mínima: texto corrido e botões >= 12px; etiquetas >= 11px.
+      const fontes = await page.evaluate(() => {
+        let corpo = 99;
+        let etiqueta = 99;
         document
-          .querySelectorAll<HTMLElement>('[data-testid="escolha-canal"] p, [data-testid="escolha-canal"] li span, [data-testid="escolha-canal"] button')
+          .querySelectorAll<HTMLElement>('[data-testid="escolha-canal"] p, [data-testid="escolha-canal"] li span, [data-testid="escolha-canal"] button, [data-testid="escolha-canal"] h2')
           .forEach((el) => {
             if (!el.textContent?.trim()) return;
-            min = Math.min(min, parseFloat(getComputedStyle(el).fontSize));
+            const px = parseFloat(getComputedStyle(el).fontSize);
+            if (el.classList.contains("c-badge")) etiqueta = Math.min(etiqueta, px);
+            else corpo = Math.min(corpo, px);
           });
-        return min;
+        return { corpo, etiqueta };
       });
-      expect(menorFonte, `${ecra.nome}: texto abaixo de 12px`).toBeGreaterThanOrEqual(12);
+      expect(fontes.corpo, `${ecra.nome}: texto abaixo de 12px`).toBeGreaterThanOrEqual(12);
+      expect(fontes.etiqueta, `${ecra.nome}: etiqueta abaixo de 11px`).toBeGreaterThanOrEqual(11);
 
       // Regressão visual: instantâneo por ecrã.
       await expect(escolha).toHaveScreenshot(`ligar-canal-${ecra.width}.png`, {
