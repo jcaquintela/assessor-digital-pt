@@ -59,13 +59,13 @@ async function medir(page: Page, testId: string) {
 }
 
 test.describe("/ligar-canal · WhatsApp e Telegram legíveis em qualquer ecrã", () => {
-  test.skip(!SESSION, "Sem sessão do consultor: E2E autenticado indisponível.");
-
   for (const ecra of ECRAS) {
     test(`${ecra.nome} (${ecra.width}px)`, async ({ page }) => {
       await page.setViewportSize({ width: ecra.width, height: ecra.height });
-      await autenticar(page);
-      await page.goto("/ligar-canal");
+      // Harness determinístico: mesmo componente da rota /ligar-canal, sem
+      // sessão nem dados, para que a baseline visual não oscile.
+      if (SESSION) await autenticar(page);
+      await page.goto("/dev/ligar-canal");
       await page.waitForLoadState("networkidle");
 
       const escolha = page.getByTestId("escolha-canal");
