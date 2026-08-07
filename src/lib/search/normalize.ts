@@ -27,3 +27,16 @@ export function foldIncludes(haystack: string | null | undefined, needle: string
   if (!n) return true;
   return foldText(haystack).includes(n);
 }
+
+/**
+ * Palavras da pesquisa, normalizadas e sem wildcards, para correspondências
+ * parciais que atravessam várias palavras ("sergio can" → ["sergio", "can"]).
+ */
+export function searchTokens(input: string | null | undefined, minLength = 2, max = 6): string[] {
+  return foldText(input)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((t) => t.length >= minLength)
+    .map((t) => t.replace(/[%_]/g, ""))
+    .filter(Boolean)
+    .slice(0, max);
+}

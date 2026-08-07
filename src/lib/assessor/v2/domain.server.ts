@@ -13,7 +13,7 @@ import { sanitizeMiscFields } from "../misc-text";
 
 import { z } from "zod";
 import { isAgendaEvent } from "@/lib/agenda-kind";
-import { foldLike, foldText } from "@/lib/search/normalize";
+import { foldLike, foldText, searchTokens } from "@/lib/search/normalize";
 import { ensureTitle } from "../titles";
 import {
   SearchPeopleArgs,
@@ -196,7 +196,32 @@ async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<Doma
   if (relationship_type) q = q.eq("relationship_type", relationship_type);
   const { data, error } = await q;
   if (error) return fail(error.message);
-  return ok({ results: data ?? [] });
+  if (data && data.length) return ok({ results: data });
+
+  // "sergio can" ou "canelas serg": a frase inteira não casa, mas cada pedaço
+  // casa numa palavra do nome. Segunda tentativa por palavras, ordenada pelo
+  // número de pedaços encontrados.
+  const tokens = searchTokens(query);
+  if (!tokens.length) return ok({ results: [] });
+  let q2 = ctx.supabase
+    .from("people")
+    .select("id, name, phone, email, relationship_type, summary")
+    .eq("user_id", ctx.userId)
+    .or(tokens.map((t) => `name_norm.ilike.%${t}%`).join(","))
+    .limit(30);
+  if (relationship_type) q2 = q2.eq("relationship_type", relationship_type);
+  const { data: rows, error: e2 } = await q2;
+  if (e2) return fail(e2.message);
+  const scored = ((rows ?? []) as Record<string, unknown>[])
+    .map((r) => {
+      const folded = foldText(String(r.name ?? ""));
+      return { score: tokens.filter((t) => folded.includes(t)).length, row: r };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map((x) => x.row);
+  return ok({ results: scored });
 }
 
 async function execCreatePerson(ctx: DomainContext, args: unknown): Promise<DomainResult> {
@@ -267,10 +292,7 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
   // O consultor diz "Rua do Sol Matosinhos" mas o título é "Moradia V3 na Rua
   // do Sol, Matosinhos": a frase inteira nunca casa. Segunda tentativa por
   // palavras, ordenada pelo número de palavras encontradas.
-  const tokens = foldText(query)
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((t) => t.length >= 3)
-    .slice(0, 6);
+  const tokens = searchTokens(query);
   if (!tokens.length) return ok({ results: [] });
   let q2 = ctx.supabase
     .from("properties")
