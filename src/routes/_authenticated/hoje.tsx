@@ -577,6 +577,24 @@ function HojePage() {
                     </>}
                   />
                 ))}
+                {settled.length > 0 && (
+                  <div className="mt-3 border-t pt-3">
+                    <p className="c-muted mb-2 text-xs">Já não se aplicam (estavam no briefing anterior):</p>
+                    <div className="space-y-1.5">
+                      {settled.map((s) => (
+                        <div key={s.subject_id} className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <span className="c-badge shrink-0">{s.state_label}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="line-through">{s.action}</span>
+                            <span className="block">
+                              {[s.origin_label, s.due_at ? formatData(s.due_at) : null].filter(Boolean).join(" · ")}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
