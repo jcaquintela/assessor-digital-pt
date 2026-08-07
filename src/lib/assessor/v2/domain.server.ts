@@ -14,7 +14,8 @@ import { sanitizeMiscFields } from "../misc-text";
 import { z } from "zod";
 import { isAgendaEvent } from "@/lib/agenda-kind";
 import {
-  compareTokenMatches, foldLike, foldText, searchTokens, tokenMatchScore, weightedTokenMatchScore,
+  compareTokenMatches, filterByRelevance, foldLike, foldText, searchTokens, tokenMatchScore,
+  weightedTokenMatchScore,
 } from "@/lib/search/normalize";
 import { ensureTitle } from "../titles";
 import {
