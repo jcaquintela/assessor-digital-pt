@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { appSourceColumns } from "@/lib/assessor/follow-ups-source";
 import { isAgendaEvent } from "@/lib/agenda-kind";
-import { pushFollowUpToCalendars } from "@/lib/calendar/calendar.functions";
+import { pushFollowUpToCalendars, archiveFollowUpEverywhereFn } from "@/lib/calendar/calendar.functions";
 import {
   type Comissao,
   type Despesa,
@@ -305,9 +305,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Arquivar é reversível e é a única remoção que o produto faz por omissão.
   // O calendário externo deixa de mostrar o compromisso, tal como antes.
   const arquivarSeguimento = useCallback(async (id: string) => {
-    await pushFollowUpToCalendars({ data: { followUpId: id, action: "delete" } }).catch(() => {});
-    const { error } = await supabase.from("follow_ups").update({ archived_at: new Date().toISOString() } as never).eq("id", id);
-    if (error) throw error;
+    // Arquivar aqui é arquivar em todo o lado: avisos internos + Google/Outlook.
+    try {
+      await archiveFollowUpEverywhereFn({ data: { followUpId: id } });
+    } catch {
+      const { error } = await supabase.from("follow_ups").update({ archived_at: new Date().toISOString() } as never).eq("id", id);
+      if (error) throw error;
+    }
     invalidate("follow_ups");
   }, [qc]);
 
