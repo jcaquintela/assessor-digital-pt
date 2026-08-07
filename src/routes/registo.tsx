@@ -96,11 +96,13 @@ function RegistoPage() {
         </div>
 
         <p className="c-eyebrow">Criar conta</p>
-        <h1 className="c-page-title mt-1">Começa no plano Base</h1>
+        <h1 className="c-page-title mt-1">Cria a conta e escolhes o canal a seguir</h1>
         <p className="c-muted mt-2 max-w-2xl text-[14px] leading-relaxed">
           {AI_DISCLOSURE} Falas com um sistema automático, não com uma pessoa.
-          O Base é grátis e fica activo de imediato. Os outros planos chegam em breve —
-          podes mudar sem perderes nada do que já tiveres, e é sempre a mesma conta em qualquer canal.
+          A conta é grátis e fica activa de imediato. Logo a seguir escolhes por onde
+          falamos: WhatsApp com 14 dias grátis do plano Consultor (sem cartão) ou
+          Telegram gratuito para sempre no plano Base. É sempre a mesma conta e o
+          mesmo histórico em qualquer canal, e podes mudar depois.
         </p>
 
         <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
