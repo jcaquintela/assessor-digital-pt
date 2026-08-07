@@ -46,6 +46,7 @@ import {
 import { lisbonParts, addDaysYmd } from "../agenda";
 import { CANCELLED_STATUS, CANCELLED_OUTCOME, matchByHint } from "../v3/cancel-agenda";
 import { pushEventToProviders } from "@/lib/calendar/sync.server";
+import { stopFollowUpTriggers } from "@/lib/calendar/stop-triggers.server";
 import {
   upsertReminder,
   rescheduleReminder,
@@ -1149,6 +1150,15 @@ async function execArchiveRecord(ctx: DomainContext, args: unknown): Promise<Dom
     .maybeSingle();
   if (error) return fail(error.message);
   if (!data) return fail("registo_nao_encontrado");
+  // Arquivar um compromisso tem de o tirar também do calendário ligado e
+  // travar os avisos já agendados — senão continua a lembrar do lado externo.
+  if (v.entity === "follow_up") {
+    if (undo) {
+      await pushEventToProviders({ userId: ctx.userId, followUpId: v.id, action: "upsert" });
+    } else {
+      await stopFollowUpTriggers(ctx.supabase, ctx.userId, [v.id]);
+    }
+  }
   return ok({ entity: v.entity, id: v.id, arquivado: !undo, reversivel: true });
 }
 
@@ -1227,7 +1237,11 @@ async function cancelFollowUpsByIds(
     .in("id", ids)
     .neq("status", CANCELLED_STATUS)
     .select("id, title, due_time");
-  return Array.isArray(data) ? (data as any[]) : [];
+  const items = Array.isArray(data) ? (data as any[]) : [];
+  // Desmarcar é desmarcar em todo o lado: avisos internos e evento no
+  // Google/Outlook.
+  await stopFollowUpTriggers(ctx.supabase, ctx.userId, items.map((i) => i.id));
+  return items;
 }
 
 async function listOpenFollowUps(
