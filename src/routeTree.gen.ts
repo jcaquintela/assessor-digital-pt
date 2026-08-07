@@ -89,6 +89,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as AuthenticatedOportunidadesProspecaoIndexRouteImport } from './routes/_authenticated/oportunidades.prospecao.index'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksWhatsappTemplateStatusRouteImport } from './routes/api/public/hooks/whatsapp-template-status'
+import { Route as ApiPublicHooksWhatsappDisplayNameRouteImport } from './routes/api/public/hooks/whatsapp-display-name'
 import { Route as ApiPublicHooksTrialLifecycleRouteImport } from './routes/api/public/hooks/trial-lifecycle'
 import { Route as ApiPublicHooksTelegramRetentionRouteImport } from './routes/api/public/hooks/telegram-retention'
 import { Route as ApiPublicHooksSubmitCheckinTemplateRouteImport } from './routes/api/public/hooks/submit-checkin-template'
@@ -523,6 +524,12 @@ const ApiPublicHooksWhatsappTemplateStatusRoute =
     path: '/api/public/hooks/whatsapp-template-status',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksWhatsappDisplayNameRoute =
+  ApiPublicHooksWhatsappDisplayNameRouteImport.update({
+    id: '/api/public/hooks/whatsapp-display-name',
+    path: '/api/public/hooks/whatsapp-display-name',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksTrialLifecycleRoute =
   ApiPublicHooksTrialLifecycleRouteImport.update({
     id: '/api/public/hooks/trial-lifecycle',
@@ -692,6 +699,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
   '/api/public/hooks/telegram-retention': typeof ApiPublicHooksTelegramRetentionRoute
   '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
+  '/api/public/hooks/whatsapp-display-name': typeof ApiPublicHooksWhatsappDisplayNameRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -785,6 +793,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
   '/api/public/hooks/telegram-retention': typeof ApiPublicHooksTelegramRetentionRoute
   '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
+  '/api/public/hooks/whatsapp-display-name': typeof ApiPublicHooksWhatsappDisplayNameRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -881,6 +890,7 @@ export interface FileRoutesById {
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
   '/api/public/hooks/telegram-retention': typeof ApiPublicHooksTelegramRetentionRoute
   '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
+  '/api/public/hooks/whatsapp-display-name': typeof ApiPublicHooksWhatsappDisplayNameRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
@@ -977,6 +987,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/submit-checkin-template'
     | '/api/public/hooks/telegram-retention'
     | '/api/public/hooks/trial-lifecycle'
+    | '/api/public/hooks/whatsapp-display-name'
     | '/api/public/hooks/whatsapp-template-status'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao/'
@@ -1070,6 +1081,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/submit-checkin-template'
     | '/api/public/hooks/telegram-retention'
     | '/api/public/hooks/trial-lifecycle'
+    | '/api/public/hooks/whatsapp-display-name'
     | '/api/public/hooks/whatsapp-template-status'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao'
@@ -1165,6 +1177,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/submit-checkin-template'
     | '/api/public/hooks/telegram-retention'
     | '/api/public/hooks/trial-lifecycle'
+    | '/api/public/hooks/whatsapp-display-name'
     | '/api/public/hooks/whatsapp-template-status'
     | '/api/public/telegram/webhook'
     | '/_authenticated/oportunidades/prospecao/'
@@ -1200,6 +1213,7 @@ export interface RootRouteChildren {
   ApiPublicHooksSubmitCheckinTemplateRoute: typeof ApiPublicHooksSubmitCheckinTemplateRoute
   ApiPublicHooksTelegramRetentionRoute: typeof ApiPublicHooksTelegramRetentionRoute
   ApiPublicHooksTrialLifecycleRoute: typeof ApiPublicHooksTrialLifecycleRoute
+  ApiPublicHooksWhatsappDisplayNameRoute: typeof ApiPublicHooksWhatsappDisplayNameRoute
   ApiPublicHooksWhatsappTemplateStatusRoute: typeof ApiPublicHooksWhatsappTemplateStatusRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -1766,6 +1780,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksWhatsappTemplateStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/whatsapp-display-name': {
+      id: '/api/public/hooks/whatsapp-display-name'
+      path: '/api/public/hooks/whatsapp-display-name'
+      fullPath: '/api/public/hooks/whatsapp-display-name'
+      preLoaderRoute: typeof ApiPublicHooksWhatsappDisplayNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/trial-lifecycle': {
       id: '/api/public/hooks/trial-lifecycle'
       path: '/api/public/hooks/trial-lifecycle'
@@ -2104,6 +2125,8 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksSubmitCheckinTemplateRoute,
   ApiPublicHooksTelegramRetentionRoute: ApiPublicHooksTelegramRetentionRoute,
   ApiPublicHooksTrialLifecycleRoute: ApiPublicHooksTrialLifecycleRoute,
+  ApiPublicHooksWhatsappDisplayNameRoute:
+    ApiPublicHooksWhatsappDisplayNameRoute,
   ApiPublicHooksWhatsappTemplateStatusRoute:
     ApiPublicHooksWhatsappTemplateStatusRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
