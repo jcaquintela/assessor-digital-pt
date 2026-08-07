@@ -178,3 +178,61 @@ describe("golden — sem acentos com correspondência parcial (substring)", () =
     expect(r.data.results).toHaveLength(0);
   });
 });
+
+describe("golden — pedaços de palavras diferentes", () => {
+  it("Pessoas: 'sergio can' encontra 'Sérgio Canelas'", async () => {
+    const sb = pgFake({
+      people: [
+        { id: "p1", user_id: "u1", name: "Sérgio Canelas" },
+        { id: "p2", user_id: "u1", name: "Ana Costa" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "sergio can" }));
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["p1"]);
+  });
+
+  it("Pessoas: ordem invertida 'canelas serg' também encontra", async () => {
+    const sb = pgFake({
+      people: [
+        { id: "p1", user_id: "u1", name: "Sérgio Canelas" },
+        { id: "p2", user_id: "u1", name: "Sérgio Matos" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "canelas serg" }));
+    expect(r.data.results[0].id).toBe("p1");
+  });
+
+  it("Pessoas: nome do meio omitido — 'maria sa' encontra 'Maria da Conceição Sá'", async () => {
+    const sb = pgFake({ people: [{ id: "p1", user_id: "u1", name: "Maria da Conceição Sá" }] });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "maria sa" }));
+    expect(r.data.results).toHaveLength(1);
+  });
+
+  it("Pessoas: pedaços que não batem em ninguém devolvem vazio", async () => {
+    const sb = pgFake({ people: [{ id: "p1", user_id: "u1", name: "Sérgio Canelas" }] });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "joaquim pereira" }));
+    expect(r.data.results).toHaveLength(0);
+  });
+
+  it("Imóveis: 'rua sol matos' encontra 'Moradia V3 na Rua do Sol, Matosinhos'", async () => {
+    const sb = pgFake({
+      properties: [
+        { id: "i1", user_id: "u1", title: "Moradia V3 na Rua do Sol", city: "Matosinhos" },
+        { id: "i2", user_id: "u1", title: "T2 Centro", city: "Braga" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "rua sol matos" }));
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["i1"]);
+  });
+
+  it("Imóveis: 'sao joao estacao' (sem acentos, pedaços) encontra o imóvel certo", async () => {
+    const sb = pgFake({
+      properties: [
+        { id: "i1", user_id: "u1", title: "T2", address: "Rua da Estação", city: "São João da Madeira" },
+        { id: "i2", user_id: "u1", title: "T1", address: "Rua Nova", city: "Braga" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "sao joao estacao" }));
+    expect(r.data.results[0].id).toBe("i1");
+  });
+});
