@@ -98,6 +98,14 @@ export async function orchestrateAssessorV2(input: EngineInput): Promise<EngineO
   const trimmed = content.trim();
   if (!trimmed) return { reply: "Não percebi. Podes repetir?" };
 
+  // Guião de abordagem: se houver uma oferta em aberto ("Chamada"/"Mensagem"/
+  // "Sem guião"), resolve-se aqui, antes de gastar IA.
+  try {
+    const { resolveScriptPending } = await import("@/lib/prospecting/script-offer.server");
+    const scriptReply = await resolveScriptPending({ supabase, userId, channel }, trimmed);
+    if (scriptReply) return { reply: scriptReply };
+  } catch { /* segue o fluxo normal */ }
+
   const [{ data: prof }, { data: recentRows }] = await Promise.all([
     supabase.from("profiles").select("name, assessor_name").eq("id", userId).maybeSingle(),
     supabase
@@ -161,7 +169,29 @@ export async function orchestrateAssessorV2(input: EngineInput): Promise<EngineO
     }
   } catch { /* ignore telemetry failures */ }
 
-  return { reply: result.reply };
+  let reply = result.reply;
+
+  // Depois de registar uma placa de particular, oferece o guião (3 botões).
+  try {
+    const lead = result.toolCalls.find(
+      (tc) => tc.name === "create_prospecting_lead" && tc.result.ok,
+    );
+    if (lead) {
+      const args = safeParseJson(lead.args) as Record<string, any>;
+      const { appendScriptOffer } = await import("@/lib/prospecting/script-offer.server");
+      reply = await appendScriptOffer(
+        { supabase, userId, channel },
+        {
+          reply,
+          leadId: ((lead.result as any)?.data?.id ?? (lead.result as any)?.id ?? null) as string | null,
+          payload: args ?? {},
+          originalContent: trimmed,
+        },
+      );
+    }
+  } catch { /* a oferta é opcional, nunca parte a resposta */ }
+
+  return { reply };
 }
 
 function safeParseJson(raw: string): unknown {
