@@ -5,8 +5,10 @@
 // altura não vale a pena "tentar outra vez": o consultor tem de voltar a
 // autorizar. Este módulo é puro (sem I/O) para poder ser testado.
 
+// Nota: "sync token expired" (410) NÃO é um problema de autorização — é só o
+// token de sincronização do Google a caducar, e resolve-se sozinho.
 const REAUTH_TEXT_RE =
-  /(invalid_grant|invalid_token|token[_\s-]?(expired|revoked)|credentials not found|unauthorized|insufficient authentication|permission_denied)/i;
+  /(invalid_grant|invalid_token|revoked|credentials not found|unauthorized|insufficient authentication|permission_denied)/i;
 
 /** A resposta do gateway/provider indica que é preciso voltar a autorizar? */
 export function isCalendarAuthError(status: number, body: string | null | undefined): boolean {
