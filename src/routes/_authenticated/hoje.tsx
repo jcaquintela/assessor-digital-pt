@@ -211,7 +211,7 @@ function HojePage() {
       items.push({
         subject_type: "follow_up",
         subject_id: e.id,
-        action: `Preparar: ${e.titulo}`,
+        action: `Preparar o compromisso${e.hora ? ` das ${e.hora}` : ""}: ${e.titulo}`,
         reasons: ["compromisso de hoje"],
         priority_score: 70,
         due_at: now.toISOString(),
