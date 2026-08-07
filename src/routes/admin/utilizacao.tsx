@@ -18,14 +18,14 @@ const nf = (v: number, d = 0) =>
 const eur = (v: number | null | undefined) => (v == null ? "—" : `${nf(v, 2)} €`);
 
 /** Variação face à janela anterior, em texto curto e honesto. */
-function delta(cur: number, prev: number): { text: string; tone: "good" | "bad" | "neutral" } {
-  if (prev === 0 && cur === 0) return { text: "sem alteração", tone: "neutral" };
-  if (prev === 0) return { text: "novo neste período", tone: "neutral" };
+function delta(cur: number, prev: number): { text: string; tone: "ok" | "bad" | "warn" } {
+  if (prev === 0 && cur === 0) return { text: "sem alteração", tone: "warn" };
+  if (prev === 0) return { text: "novo neste período", tone: "warn" };
   const pct = ((cur - prev) / prev) * 100;
   const sign = pct > 0 ? "+" : "";
   return {
     text: `${sign}${nf(pct, 0)}% vs. período anterior`,
-    tone: Math.abs(pct) < 5 ? "neutral" : pct > 0 ? "bad" : "good",
+    tone: Math.abs(pct) < 5 ? "warn" : pct > 0 ? "bad" : "ok",
   };
 }
 
@@ -136,7 +136,7 @@ function UtilizacaoPage() {
                 {p.marginEur == null ? (
                   "—"
                 ) : (
-                  <Badge tone={p.marginEur < 0 ? "bad" : "good"}>{eur(p.marginEur)}</Badge>
+                  <Badge tone={p.marginEur < 0 ? "bad" : "ok"}>{eur(p.marginEur)}</Badge>
                 )}
               </Td>
             </Tr>
@@ -160,7 +160,7 @@ function UtilizacaoPage() {
               <Td>{nf(r.c, r.dec)}</Td>
               <Td>{nf(r.p, r.dec)}</Td>
               <Td>
-                <Badge tone={d.tone === "neutral" ? "muted" : d.tone}>{d.text}</Badge>
+                <Badge tone={d.tone}>{d.text}</Badge>
               </Td>
             </Tr>
           );
