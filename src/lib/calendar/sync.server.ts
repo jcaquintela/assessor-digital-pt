@@ -382,8 +382,16 @@ export async function pullFromProvider(
     if (ext.cancelled) {
       if (link?.follow_up_id) {
         await supabaseAdmin.from("follow_ups")
-          .update({ status: "cancelado" })
+          .update({ status: "cancelado", archived_at: new Date().toISOString() })
           .eq("id", link.follow_up_id).eq("user_id", userId);
+        // Sem isto, o aviso interno das 11h continuava a sair mesmo depois de
+        // o evento ter sido cancelado no calendário.
+        await supabaseAdmin.from("reminders")
+          .update({ status: "cancelled" })
+          .eq("user_id", userId)
+          .eq("related_resource_type", "follow_up")
+          .eq("related_resource_id", link.follow_up_id)
+          .in("status", ["scheduled", "processing", "failed"]);
         await supabaseAdmin.from("calendar_event_links")
           .update({ deleted: true, last_origin: provider, external_updated_at: ext.updatedIso, last_synced_at: new Date().toISOString() })
           .eq("id", link.id);
