@@ -2,6 +2,9 @@
 // Determinístico. Cada item traz razões legíveis para o Assessor verbalizar.
 import { isDealClosed } from "@/lib/deals/stages";
 
+/** De onde veio o item — o consultor tem de perceber o que está a olhar. */
+export type PriorityOrigin = "calendario" | "compromisso" | "tarefa" | "negocio";
+
 export interface PriorityItem {
   subject_type: "follow_up" | "opportunity" | "property";
   subject_id: string;
@@ -13,6 +16,12 @@ export interface PriorityItem {
   /** Negócio associado (quando existe) — mostrado como "Negócio: X". */
   deal_id: string | null;
   deal_label: string | null;
+  /** Origem do item (evento sincronizado, compromisso do Afonso, tarefa, negócio). */
+  origin: PriorityOrigin;
+  /** Texto curto da origem, pronto a mostrar. */
+  origin_label: string;
+  /** Estado atual quando já não está em aberto (cancelado, arquivado, concluído). */
+  state_label: string | null;
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -28,6 +37,25 @@ const norm = (v: unknown) =>
 const DONE_STATUSES = new Set(["concluido", "concluida", "done", "cancelado", "cancelada", "arquivado"]);
 const EVENT_TYPES = new Set(["evento", "event", "visita", "reuniao"]);
 const HIGH_PRIORITIES = new Set(["alta", "high", "urgente"]);
+
+const PROVIDER_LABEL: Record<string, string> = {
+  google_calendar: "Google Calendar",
+  microsoft_outlook: "Microsoft Outlook",
+};
+
+/** Como se diz ao consultor o estado atual de um seguimento fechado. */
+export function followUpStateLabel(row: {
+  status?: unknown;
+  outcome?: unknown;
+  archived_at?: unknown;
+}): string | null {
+  const s = norm(row.status);
+  if (s === "cancelado" || s === "cancelada") return "Cancelado";
+  if (row.archived_at || s === "arquivado") return "Arquivado";
+  if (s === "concluido" || s === "concluida" || s === "done") return "Concluído";
+  if (row.outcome) return "Já com resultado registado";
+  return null;
+}
 
 function startOfDayLisbon(now = new Date()): Date {
   const p = new Intl.DateTimeFormat("en-CA", {
