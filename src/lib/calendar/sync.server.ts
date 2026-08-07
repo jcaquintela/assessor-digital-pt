@@ -11,6 +11,7 @@
 // do lado do gateway, nunca na app).
 import { callAsAppUser } from "@/integrations/lovable/appUserConnector";
 import { getConnectionKeyForUser } from "./connections.server";
+import { isCalendarAuthError } from "./auth-error";
 import {
   CALENDAR_PROVIDERS,
   GATEWAY_BASE_URL,
@@ -124,6 +125,13 @@ async function callProvider(
   const text = await res.text();
   let body: any = null;
   try { body = text ? JSON.parse(text) : null; } catch { /* resposta vazia */ }
+  // Autorização caducada ou revogada: fica registado para a UI poder oferecer
+  // "Voltar a ligar" em vez de tentar sincronizar em vão.
+  if (!res.ok && isCalendarAuthError(res.status, text)) {
+    await saveSyncState(supabaseAdmin, userId, provider, {
+      last_error: `${res.status}: ${text.slice(0, 200)}`,
+    });
+  }
   return { ok: res.ok, status: res.status, body, text };
 }
 

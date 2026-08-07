@@ -92,6 +92,7 @@ export const getCalendarStatus = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { listConnectedProviders } = await import("./connections.server");
     const connected = await listConnectedProviders(supabaseAdmin, context.userId);
+    const { needsReconnect } = await import("./auth-error");
     const { data: states } = await supabaseAdmin
       .from("calendar_sync_state")
       .select("provider, last_polled_at, last_error")
@@ -105,6 +106,8 @@ export const getCalendarStatus = createServerFn({ method: "GET" })
       connected: connected.includes(p),
       lastPolledAt: byProvider[p]?.last_polled_at ?? null,
       lastError: byProvider[p]?.last_error ?? null,
+      // Ligação existe, mas o provider recusa: é preciso voltar a autorizar.
+      needsReconnect: connected.includes(p) && needsReconnect(byProvider[p]?.last_error ?? null),
     }));
   });
 

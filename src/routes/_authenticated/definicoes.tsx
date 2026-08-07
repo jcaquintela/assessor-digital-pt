@@ -800,6 +800,7 @@ function CalendarioSection() {
 
   const rows = status.data ?? CALENDAR_PROVIDERS.map((p) => ({
     provider: p, connected: false, lastPolledAt: null as string | null, lastError: null as string | null,
+    needsReconnect: false,
   }));
   const algumLigado = rows.some((r) => r.connected);
 
@@ -812,20 +813,28 @@ function CalendarioSection() {
               <CalendarDays className="c-muted h-4 w-4" />
               <div>
                 <div className="text-[13.5px] font-semibold">{CALENDAR_PROVIDER_LABEL[r.provider as CalendarProvider]}</div>
-                <span className={`c-badge mt-1 inline-flex${r.connected ? " ok" : ""}`}>
-                  {r.connected ? "Ligado" : "Não ligado"}
+                <span className={`c-badge mt-1 inline-flex${r.connected && !r.needsReconnect ? " ok" : ""}`}>
+                  {r.needsReconnect ? "Autorização expirada" : r.connected ? "Ligado" : "Não ligado"}
                 </span>
+                {r.needsReconnect && (
+                  <p className="c-muted mt-1 text-[12px]">
+                    O acesso deixou de ser válido. Volta a ligar para o Afonso continuar a ver a tua agenda.
+                  </p>
+                )}
               </div>
             </div>
-            {r.connected ? (
-              <button className="c-btn" disabled={busy !== null} onClick={() => desligar(r.provider as CalendarProvider)}>
-                Desligar
-              </button>
-            ) : (
-              <button className="c-btn" disabled={busy !== null} onClick={() => ligar(r.provider as CalendarProvider)}>
-                {busy === r.provider ? "A ligar…" : "Ligar"}
-              </button>
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {(!r.connected || r.needsReconnect) && (
+                <button className="c-btn" disabled={busy !== null} onClick={() => ligar(r.provider as CalendarProvider)}>
+                  {busy === r.provider ? "A ligar…" : r.needsReconnect ? "Voltar a ligar" : "Ligar"}
+                </button>
+              )}
+              {r.connected && (
+                <button className="c-btn" disabled={busy !== null} onClick={() => desligar(r.provider as CalendarProvider)}>
+                  Desligar
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
