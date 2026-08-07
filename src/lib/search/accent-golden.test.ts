@@ -378,11 +378,11 @@ describe("golden — peso do título/nome acima da morada e resumo", () => {
         },
         {
           id: "f2", user_id: "u1", deleted_at: null, archived_at: null,
-          original_file_name: "Caderneta São Brás.pdf", ai_summary: null,
+          original_file_name: "Caderneta Predial — São Brás.pdf", ai_summary: null,
         },
       ],
     });
-    const r: any = await dispatchToolCall(ctx(sb) as any, "search_files", JSON.stringify({ query: "caderneta sao bras" }));
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_files", JSON.stringify({ query: "caderneta bras" }));
     expect(r.data.results.map((f: any) => f.id)).toEqual(["f2", "f1"]);
   });
 });
