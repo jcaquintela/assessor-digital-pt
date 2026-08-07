@@ -236,3 +236,48 @@ describe("golden — pedaços de palavras diferentes", () => {
     expect(r.data.results[0].id).toBe("i1");
   });
 });
+
+describe("golden — Drive com pedaços sem acentos", () => {
+  const seed = () => ({
+    uploaded_files: [
+      {
+        id: "f1", user_id: "u1", deleted_at: null, archived_at: null,
+        original_file_name: "Caderneta Predial — São Brás.pdf",
+        document_type: "caderneta_predial",
+        ai_summary: "Prédio urbano em São Brás",
+        doc_morada: "Rua da Estação, São Brás",
+        mime_type: "application/pdf",
+      },
+      {
+        id: "f2", user_id: "u1", deleted_at: null, archived_at: null,
+        original_file_name: "Contrato Braga.pdf", document_type: "contrato", ai_summary: null, doc_morada: null,
+      },
+    ],
+  });
+
+  it("'cad sao bras' (pedaços, sem acentos) encontra a caderneta", async () => {
+    const r: any = await dispatchToolCall(ctx(pgFake(seed())) as any, "search_files", JSON.stringify({ query: "cad sao bras" }));
+    expect(r.ok).toBe(true);
+    expect(r.data.results.map((f: any) => f.id)).toEqual(["f1"]);
+  });
+
+  it("pedaço da morada associada ('estacao bras') encontra o ficheiro", async () => {
+    const r: any = await dispatchToolCall(ctx(pgFake(seed())) as any, "search_files", JSON.stringify({ query: "estacao bras" }));
+    expect(r.data.results.map((f: any) => f.id)).toEqual(["f1"]);
+  });
+
+  it("pedaço do resumo ('predio urbano') encontra o ficheiro", async () => {
+    const r: any = await dispatchToolCall(ctx(pgFake(seed())) as any, "search_files", JSON.stringify({ query: "predio urbano" }));
+    expect(r.data.results).toHaveLength(1);
+  });
+
+  it("não devolve a morada interna nos resultados", async () => {
+    const r: any = await dispatchToolCall(ctx(pgFake(seed())) as any, "search_files", JSON.stringify({ query: "cad sao bras" }));
+    expect(r.data.results[0]).not.toHaveProperty("doc_morada");
+  });
+
+  it("pedaços sem correspondência devolvem lista vazia", async () => {
+    const r: any = await dispatchToolCall(ctx(pgFake(seed())) as any, "search_files", JSON.stringify({ query: "certidao energetica" }));
+    expect(r.data.results).toHaveLength(0);
+  });
+});
