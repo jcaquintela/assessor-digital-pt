@@ -126,3 +126,55 @@ describe("golden — pesquisa sem acentos", () => {
     expect(r.data.results).toHaveLength(1);
   });
 });
+
+describe("golden — sem acentos com correspondência parcial (substring)", () => {
+  it("Pessoas: primeiro nome parcial 'serg' encontra 'Sérgio Canelas'", async () => {
+    const sb = pgFake({
+      people: [
+        { id: "p1", user_id: "u1", name: "Sérgio Canelas" },
+        { id: "p2", user_id: "u1", name: "Ana Costa" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "serg" }));
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["p1"]);
+  });
+
+  it("Pessoas: apelido parcial 'canel' encontra o registo acentuado", async () => {
+    const sb = pgFake({ people: [{ id: "p1", user_id: "u1", name: "Sérgio Canelas" }] });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "canel" }));
+    expect(r.data.results).toHaveLength(1);
+  });
+
+  it("Pessoas: substring no meio do nome ('conceicao') encontra 'Maria da Conceição Sá'", async () => {
+    const sb = pgFake({ people: [{ id: "p1", user_id: "u1", name: "Maria da Conceição Sá" }] });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_people", JSON.stringify({ query: "conceicao" }));
+    expect(r.data.results).toHaveLength(1);
+  });
+
+  it("Imóveis: 'estacao' (parcial, sem acento) encontra 'Rua da Estação'", async () => {
+    const sb = pgFake({
+      properties: [
+        { id: "i1", user_id: "u1", title: "T3", address: "Rua da Estação", city: "Aveiro" },
+        { id: "i2", user_id: "u1", title: "T2", address: "Rua do Sol", city: "Braga" },
+      ],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "estacao" }));
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["i1"]);
+  });
+
+  it("Imóveis: 'sao joao' encontra cidade acentuada por substring", async () => {
+    const sb = pgFake({
+      properties: [{ id: "i1", user_id: "u1", title: "Apartamento T2", city: "São João da Madeira" }],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "sao joao" }));
+    expect(r.data.results).toHaveLength(1);
+  });
+
+  it("Imóveis: substring que não existe não devolve nada", async () => {
+    const sb = pgFake({
+      properties: [{ id: "i1", user_id: "u1", title: "T3", address: "Rua da Estação", city: "Aveiro" }],
+    });
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "matosinhos" }));
+    expect(r.data.results).toHaveLength(0);
+  });
+});
