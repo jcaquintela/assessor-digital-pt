@@ -5,6 +5,59 @@ import type { NudgeDraft } from "../v3/proactivity.server";
 import { sanitizeReply } from "../culture/sanitize";
 import { computePriorities } from "./priorities.server";
 
+export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
+
+/**
+ * O briefing da manhã tem de ser ÚNICO por dia. Existem dois emissores
+ * (o push horário `proactive_morning` e este nudge), por isso ambos passam
+ * por aqui antes de falar.
+ */
+export async function morningBriefingAlreadySent(supabase: any, userId: string): Promise<boolean> {
+  const since = new Date(Date.now() - 20 * 3600_000).toISOString();
+  const { data: pushed } = await supabase
+    .from("assessor_messages")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("message_type", "proactive_morning")
+    .gte("created_at", since)
+    .limit(1);
+  if (((pushed as any[]) ?? []).length) return true;
+  const { data: nudged } = await supabase
+    .from("assessor_nudges")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "sent")
+    .like("dedupe_key", `${DAILY_BRIEFING_PREFIX}%`)
+    .gte("sent_at", since)
+    .limit(1);
+  return Boolean(((nudged as any[]) ?? []).length);
+}
+
+/** Texto do briefing a partir das prioridades actuais (nunca de cache). */
+export function composeBriefingText(
+  priorities: Array<{ action: string; entity_label: string | null; reasons: string[] }>,
+): string {
+  if (!priorities.length) return "Bom dia. Hoje não tens compromissos nem seguimentos urgentes.";
+  const top = priorities[0]!;
+  const rest = priorities.length - 1;
+  return `Bom dia. Prioridade de hoje: ${top.action}${top.entity_label ? ` (${top.entity_label})` : ""}. ${top.reasons[0] ?? ""}.${rest > 0 ? ` Tens mais ${rest} para tratar.` : ""}`;
+}
+
+/**
+ * Reavalia o briefing no momento do envio. Entre gerar (madrugada) e enviar
+ * (manhã) o consultor pode ter limpo a agenda — o texto guardado ficaria
+ * a falar de compromissos já desmarcados.
+ */
+export async function resolveBriefingAtDispatch(
+  supabase: any,
+  userId: string,
+): Promise<{ send: false } | { send: true; text: string }> {
+  if (await morningBriefingAlreadySent(supabase, userId)) return { send: false };
+  const priorities = await computePriorities(supabase, userId, { limit: 3 });
+  if (!priorities.length) return { send: false };
+  return { send: true, text: sanitizeReply(composeBriefingText(priorities)) };
+}
+
 function nowLisbonParts(now: Date) {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Lisbon",
@@ -85,15 +138,9 @@ export async function generateSupremeNudges(
     withinWindow(p.morning_time ?? "08:00", nowP, 15)
   ) {
     const priorities = await computePriorities(supabase, userId, { limit: 3, now });
-    const dedupe = `supreme_daily_briefing:${nowP.ymd}`;
-    let reply: string;
-    if (!priorities.length) {
-      reply = "Bom dia. Hoje não tens compromissos nem seguimentos urgentes.";
-    } else {
-      const top = priorities[0];
-      const rest = priorities.length - 1;
-      reply = `Bom dia. Prioridade de hoje: ${top.action}${top.entity_label ? ` (${top.entity_label})` : ""}. ${top.reasons[0] ?? ""}.${rest > 0 ? ` Tens mais ${rest} para tratar.` : ""}`;
-    }
+    const dedupe = `${DAILY_BRIEFING_PREFIX}${nowP.ymd}`;
+    const reply = composeBriefingText(priorities);
+    if (await morningBriefingAlreadySent(supabase, userId)) return drafts;
     drafts.push({
       kind: "consultant_silence" as any, // reutiliza kind existente para respeitar tipos actuais
       subject_type: null,
