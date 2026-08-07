@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { foldIncludes } from "@/lib/search/normalize";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { X, Plus } from "lucide-react";
@@ -73,9 +74,7 @@ export function FixLinkDialog({
     if (open) { setSelected(null); setQ(""); }
   }, [open, fileId]);
 
-  const list = (targets.data?.[type] ?? []).filter(
-    (o: any) => !q.trim() || o.label.toLowerCase().includes(q.trim().toLowerCase()),
-  );
+  const list = (targets.data?.[type] ?? []).filter((o: any) => foldIncludes(o.label, q));
 
   async function invalidar() {
     await qc.invalidateQueries({ queryKey: ["drive"] });
