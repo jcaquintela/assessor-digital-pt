@@ -582,10 +582,20 @@ function HojePage() {
                 ))}
                 {settled.length > 0 && (
                   <div className="mt-3 border-t pt-3">
-                    <p className="c-muted mb-2 text-xs">Já não se aplicam (estavam no briefing anterior):</p>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="c-muted text-xs">Já não se aplicam (estavam no briefing anterior):</p>
+                      <Link to="/briefing/detalhes" className="c-btn-ghost shrink-0 text-xs">
+                        Ver detalhes
+                      </Link>
+                    </div>
                     <div className="space-y-1.5">
                       {settled.map((s) => (
-                        <div key={s.subject_id} className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <Link
+                          key={s.subject_id}
+                          to="/briefing/detalhes"
+                          hash={s.subject_id}
+                          className="flex items-start gap-2 text-xs text-muted-foreground hover:opacity-80"
+                        >
                           <span className="c-badge shrink-0">{s.state_label}</span>
                           <span className="min-w-0 flex-1">
                             <span className="line-through">{s.action}</span>
@@ -593,7 +603,7 @@ function HojePage() {
                               {[s.origin_label, s.due_at ? formatData(s.due_at) : null].filter(Boolean).join(" · ")}
                             </span>
                           </span>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>
