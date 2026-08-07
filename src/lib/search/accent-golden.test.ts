@@ -340,7 +340,7 @@ describe("golden — ordenação de correspondências parciais", () => {
         { id: "i2", user_id: "u1", title: "T3 Rua da Estação Matosinhos", location: "Matosinhos", city: "Matosinhos" },
       ],
     });
-    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "estacao matos" }));
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "matos estacao" }));
     expect(r.data.results.map((p: any) => p.id)).toEqual(["i2", "i1"]);
   });
 
@@ -351,7 +351,7 @@ describe("golden — ordenação de correspondências parciais", () => {
         { id: "i2", user_id: "u1", title: "T2 Estação", location: "Matosinhos", city: "Matosinhos" },
       ],
     });
-    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "estacao matos" }));
+    const r: any = await dispatchToolCall(ctx(sb) as any, "search_properties", JSON.stringify({ query: "matos estacao" }));
     expect(r.data.results[0].id).toBe("i2");
   });
 });
