@@ -1,6 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { pessoasSeed } from "@/lib/demo-data";
+import { foldText } from "@/lib/search/normalize";
 import { NOT_AUTHENTICATED, isSignedIn } from "../require-auth";
 
 export default defineTool({
@@ -13,10 +14,10 @@ export default defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: ({ query }, ctx) => {
     if (!isSignedIn(ctx)) return NOT_AUTHENTICATED;
-    const q = query?.trim().toLowerCase();
+    const q = foldText(query ?? "");
     const items = q
       ? pessoasSeed.filter((p) =>
-          [p.nome, p.email, p.resumo].some((f) => f.toLowerCase().includes(q)),
+          [p.nome, p.email, p.resumo].some((f) => foldText(f).includes(q)),
         )
       : pessoasSeed;
     return {

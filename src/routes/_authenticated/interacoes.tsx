@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
+import { foldText } from "@/lib/search/normalize";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -33,12 +34,12 @@ function InteracoesPage() {
   }, [interacoes]);
 
   const filtradas = useMemo(() => {
-    const term = q.trim().toLowerCase();
+    const term = foldText(q);
     return interacoes.filter((i) => {
       if (canal !== "todos" && i.canal !== canal) return false;
       if (!term) return true;
       const pessoa = pessoas.find((p) => p.id === i.pessoaId)?.nome ?? "";
-      const hay = `${i.conteudo} ${i.resumo ?? ""} ${pessoa} ${i.tipo ?? ""}`.toLowerCase();
+      const hay = foldText(`${i.conteudo} ${i.resumo ?? ""} ${pessoa} ${i.tipo ?? ""}`);
       return hay.includes(term);
     });
   }, [interacoes, pessoas, q, canal]);

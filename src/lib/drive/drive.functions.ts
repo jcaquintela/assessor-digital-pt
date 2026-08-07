@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { LinkableType } from "./link-match";
+import { foldLike } from "@/lib/search/normalize";
 
 type Tab =
   | "recentes"
@@ -191,9 +192,10 @@ export const listDriveFiles = createServerFn({ method: "POST" })
     }
 
     if (data.q && data.q.trim().length >= 2) {
-      const term = `%${data.q.trim().replace(/[%_]/g, "")}%`;
+      const raw = `%${data.q.trim().replace(/[%_]/g, "")}%`;
+      const term = `%${foldLike(data.q)}%`;
       query = query.or(
-        `original_file_name.ilike.${term},ai_summary.ilike.${term},extracted_text.ilike.${term},doc_nif.ilike.${term},doc_artigo_matricial.ilike.${term},doc_fracao.ilike.${term},doc_morada.ilike.${term}`,
+        `search_norm.ilike.${term},extracted_text.ilike.${raw},doc_nif.ilike.${raw},doc_artigo_matricial.ilike.${raw},doc_fracao.ilike.${raw}`,
       );
     }
 

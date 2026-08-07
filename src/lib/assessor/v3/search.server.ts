@@ -2,6 +2,7 @@
 
 import { TOOL_REGISTRY, type DomainContext } from "../v2/domain.server";
 import type { Observation, SearchName, SearchResults } from "./types";
+import { foldLike } from "@/lib/search/normalize";
 
 function firstOf(observations: Observation[], type: Observation["type"]): Observation | undefined {
   return observations.find((o) => o.type === type);
@@ -117,13 +118,13 @@ export async function search(
       firstOf(observations, "name")?.value ??
       firstOf(observations, "reference")?.value;
     if (loc) {
-      const term = `%${String(loc).replace(/[%_]/g, "").slice(0, 60)}%`;
+      const term = `%${foldLike(String(loc)).slice(0, 60)}%`;
       const { data } = await ctx.supabase
         .from("prospecting_leads" as never)
         .select("id, title, phone, location, address, property_type, typology, status")
         .eq("user_id", ctx.userId)
         .neq("status", "archived")
-        .or(`location.ilike.${term},address.ilike.${term},title.ilike.${term}`)
+        .ilike("search_norm", term)
         .order("created_at", { ascending: false })
         .limit(5);
       const existing = (out.prospecting_leads as any[]) ?? [];

@@ -4,6 +4,7 @@ import { Search, User, Building2, StickyNote, ListChecks, Loader2 } from "lucide
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { foldLike } from "@/lib/search/normalize";
 
 type Hit = { type: "pessoa" | "imovel" | "nota" | "seguimento"; id: string; label: string; sub?: string };
 
@@ -28,12 +29,12 @@ export function GlobalSearch({ size = "default" }: { size?: "default" | "lg" }) 
     if (term.length < 2) { setHits([]); return; }
     setLoading(true);
     const t = setTimeout(async () => {
-      const like = `%${term}%`;
+      const like = `%${foldLike(term)}%`;
       const [p, im, n, f] = await Promise.all([
-        supabase.from("people").select("id,name,phone").ilike("name", like).limit(5),
-        supabase.from("properties").select("id,title,location").ilike("title", like).limit(5),
-        supabase.from("miscellaneous_items").select("id,title").ilike("title", like).limit(5),
-        supabase.from("follow_ups").select("id,title,due_date").ilike("title", like).limit(5),
+        supabase.from("people").select("id,name,phone").ilike("name_norm", like).limit(5),
+        supabase.from("properties").select("id,title,location").ilike("search_norm", like).limit(5),
+        supabase.from("miscellaneous_items").select("id,title").ilike("title_norm", like).limit(5),
+        supabase.from("follow_ups").select("id,title,due_date").ilike("title_norm", like).limit(5),
       ]);
       const merged: Hit[] = [
         ...((p.data as any[]) ?? []).map((r) => ({ type: "pessoa" as const, id: r.id, label: r.name, sub: r.phone ?? undefined })),

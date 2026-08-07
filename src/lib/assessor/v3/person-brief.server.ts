@@ -2,6 +2,7 @@
 
 import type { DomainContext } from "../v2/domain.server";
 import type { PersonBrief } from "./person-brief";
+import { foldLike } from "@/lib/search/normalize";
 
 export type PersonBriefLookup =
   | { kind: "not_found" }
@@ -18,7 +19,7 @@ export async function buildPersonBrief(
     .from("people")
     .select("id, name, phone, relationship_type, summary, next_action, next_action_date")
     .eq("user_id", userId)
-    .ilike("name", `%${name}%`)
+    .ilike("name_norm", `%${foldLike(name)}%`)
     .order("updated_at", { ascending: false })
     .limit(5);
 

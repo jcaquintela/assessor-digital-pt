@@ -26,6 +26,7 @@ import { AssuntoCard } from "@/components/assunto-card";
 import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { foldText } from "@/lib/search/normalize";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
   validateSearch: (
@@ -126,13 +127,13 @@ function PessoasPage() {
     }
   }
 
-  const term = q.trim().toLowerCase();
+  const term = foldText(q);
   const digits = term.replace(/\D/g, "");
   const filtradas = useMemo(() => pessoas.filter((p) => {
     if (!matchPeoplePreset(p, preset)) return false;
     if (tagId && !org.tagsOf(p.id).some((t) => t.id === tagId)) return false;
     if (!term) return true;
-    const byText = (p.nome + " " + p.email + " " + p.resumo).toLowerCase().includes(term);
+    const byText = foldText(p.nome + " " + p.email + " " + p.resumo).includes(term);
     const byPhone = digits.length >= 3 && p.telefone.replace(/\D/g, "").includes(digits);
     return byText || byPhone;
   }), [pessoas, tagId, term, digits, preset, org.tagLinks, org.tags]);

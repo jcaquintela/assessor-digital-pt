@@ -7,6 +7,7 @@ import { callGateway, V2_MODEL_DEFAULT } from "../v2/gateway.server";
 import { TOOL_REGISTRY, type DomainContext, resolvePropertyFromText } from "../v2/domain.server";
 import { createPendingAction, markPendingActionStatus, type PendingActionRow } from "../memory.server";
 import { looksConfidential } from "../culture/confidential";
+import { foldLike } from "@/lib/search/normalize";
 import {
   coerceBreakdown,
   formatBreakdownDone,
@@ -95,7 +96,7 @@ async function resolvePersonId(ctx: DomainContext, name: string | null | undefin
     .from("people")
     .select("id")
     .eq("user_id", ctx.userId)
-    .ilike("name", `%${q}%`)
+    .ilike("name_norm", `%${foldLike(q)}%`)
     .order("updated_at", { ascending: false })
     .limit(1);
   return ((data as any[]) ?? [])[0]?.id ?? null;
