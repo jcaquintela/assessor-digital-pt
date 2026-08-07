@@ -77,22 +77,12 @@ export async function syncDisplayName(
   }
 
   const result = await requestDisplayName(TARGET_DISPLAY_NAME);
-  if (supabaseAdmin) {
-    try {
-      await supabaseAdmin.from("admin_audit_logs").insert({
-        admin_user_id: null,
-        action: result.ok ? "whatsapp.display_name.requested" : "whatsapp.display_name.request_failed",
-        resource_type: "whatsapp_phone_number",
-        resource_id: TARGET_DISPLAY_NAME,
-        reason: result.ok ? null : (result.error ?? null),
-        metadata: {
-          source: "cron:whatsapp-display-name",
-          previous_name: state.verifiedName,
-          name_status: state.nameStatus,
-        },
-      } as never);
-    } catch { /* auditoria não bloqueia a rotina */ }
-  }
+  await logDisplayNameAttempt(supabaseAdmin, {
+    outcome: result.ok ? "submitted" : "submit_failed",
+    state,
+    error: result.error ?? null,
+    metaResponse: result.meta ?? null,
+  });
 
   return result.ok
     ? { outcome: "submitted", state }
