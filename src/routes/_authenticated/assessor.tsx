@@ -18,9 +18,9 @@ export const Route = createFileRoute("/_authenticated/assessor")({
   head: () => ({
     meta: [
       { title: "Conversa — Afonso" },
-      { name: "description", content: "Histórico da conversa com o teu assessor." },
+      { name: "description", content: "Histórico da tua conversa com o Afonso." },
       { property: "og:title", content: "Conversa — Afonso" },
-      { property: "og:description", content: "Histórico da conversa com o teu assessor." },
+      { property: "og:description", content: "Histórico da tua conversa com o Afonso." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

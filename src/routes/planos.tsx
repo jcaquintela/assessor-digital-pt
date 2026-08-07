@@ -14,9 +14,9 @@ export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
       { title: "Planos — Afonso" },
-      { name: "description", content: "Compara os planos do teu assessor pessoal: módulos incluídos e nível de autonomia." },
+      { name: "description", content: "Compara os planos do Afonso, o teu assessor pessoal: módulos incluídos e nível de autonomia." },
       { property: "og:title", content: "Planos — Afonso" },
-      { property: "og:description", content: "Compara os planos do teu assessor pessoal: módulos incluídos e nível de autonomia." },
+      { property: "og:description", content: "Compara os planos do Afonso, o teu assessor pessoal: módulos incluídos e nível de autonomia." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -43,7 +43,7 @@ function PlanosPage() {
         <p className="c-eyebrow">Afonso</p>
         <h1 className="c-page-title mt-1">Planos</h1>
         <p className="c-muted mt-2 max-w-2xl text-[14px] leading-relaxed">
-          Todos os planos incluem o teu assessor na conversa. O que muda é quanto ele
+          Todos os planos incluem o Afonso na conversa. O que muda é quanto ele
           pode fazer sozinho e que áreas ficam disponíveis no painel.
         </p>
 
