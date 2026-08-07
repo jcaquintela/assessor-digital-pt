@@ -292,6 +292,14 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   // o pedido real ("bloco de agenda amanhã para chamadas à rede").
   let pendingForArchive: { original_content?: string | null; intent?: string | null } | null = null;
 
+  // Guião de abordagem a uma placa de particular: só responde a uma escolha
+  // explícita ("chamada"/"mensagem"), para não roubar o "sim" ao lembrete.
+  try {
+    const { resolveScriptPending } = await import("@/lib/prospecting/script-offer.server");
+    const scriptReply = await resolveScriptPending({ supabase, userId, channel }, trimmed);
+    if (scriptReply) return { reply: scriptReply };
+  } catch { /* noop */ }
+
   // Fast-path prospeção — se existe uma proposta pendente de placa e o
   // consultor confirma/cancela, resolvemos sem passar por THINK/DECIDE.
   // Garante que o "Feito" só sai depois da persistência real.
