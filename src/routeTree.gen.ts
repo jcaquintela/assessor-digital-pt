@@ -21,6 +21,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as DevLigarCanalRouteImport } from './routes/dev.ligar-canal'
+import { Route as AdminWhatsappNomeRouteImport } from './routes/admin/whatsapp-nome'
 import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizadores'
 import { Route as AdminUtilizacaoRouteImport } from './routes/admin/utilizacao'
 import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
@@ -162,6 +163,11 @@ const DevLigarCanalRoute = DevLigarCanalRouteImport.update({
   id: '/dev/ligar-canal',
   path: '/dev/ligar-canal',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminWhatsappNomeRoute = AdminWhatsappNomeRouteImport.update({
+  id: '/whatsapp-nome',
+  path: '/whatsapp-nome',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminUtilizadoresRoute = AdminUtilizadoresRouteImport.update({
   id: '/utilizadores',
@@ -657,6 +663,7 @@ export interface FileRoutesByFullPath {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/admin/whatsapp-nome': typeof AdminWhatsappNomeRoute
   '/dev/ligar-canal': typeof DevLigarCanalRoute
   '/admin/': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -751,6 +758,7 @@ export interface FileRoutesByTo {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/admin/whatsapp-nome': typeof AdminWhatsappNomeRoute
   '/dev/ligar-canal': typeof DevLigarCanalRoute
   '/admin': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -848,6 +856,7 @@ export interface FileRoutesById {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/admin/whatsapp-nome': typeof AdminWhatsappNomeRoute
   '/dev/ligar-canal': typeof DevLigarCanalRoute
   '/admin/': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -945,6 +954,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
+    | '/admin/whatsapp-nome'
     | '/dev/ligar-canal'
     | '/admin/'
     | '/.lovable/oauth/consent'
@@ -1039,6 +1049,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
+    | '/admin/whatsapp-nome'
     | '/dev/ligar-canal'
     | '/admin'
     | '/.lovable/oauth/consent'
@@ -1135,6 +1146,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
+    | '/admin/whatsapp-nome'
     | '/dev/ligar-canal'
     | '/admin/'
     | '/.lovable/oauth/consent'
@@ -1303,6 +1315,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dev/ligar-canal'
       preLoaderRoute: typeof DevLigarCanalRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/whatsapp-nome': {
+      id: '/admin/whatsapp-nome'
+      path: '/whatsapp-nome'
+      fullPath: '/admin/whatsapp-nome'
+      preLoaderRoute: typeof AdminWhatsappNomeRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/utilizadores': {
       id: '/admin/utilizadores'
@@ -2056,6 +2075,7 @@ interface AdminRouteRouteChildren {
   AdminSuporteRoute: typeof AdminSuporteRoute
   AdminUtilizacaoRoute: typeof AdminUtilizacaoRoute
   AdminUtilizadoresRoute: typeof AdminUtilizadoresRoute
+  AdminWhatsappNomeRoute: typeof AdminWhatsappNomeRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminConsultorIdRoute: typeof AdminConsultorIdRoute
 }
@@ -2085,6 +2105,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSuporteRoute: AdminSuporteRoute,
   AdminUtilizacaoRoute: AdminUtilizacaoRoute,
   AdminUtilizadoresRoute: AdminUtilizadoresRoute,
+  AdminWhatsappNomeRoute: AdminWhatsappNomeRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminConsultorIdRoute: AdminConsultorIdRoute,
 }
