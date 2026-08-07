@@ -82,6 +82,7 @@ import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedGruposIdRouteImport } from './routes/_authenticated/grupos.$id'
 import { Route as AuthenticatedDriveIdRouteImport } from './routes/_authenticated/drive.$id'
 import { Route as AuthenticatedDiversosIdRouteImport } from './routes/_authenticated/diversos.$id'
+import { Route as AuthenticatedBriefingDetalhesRouteImport } from './routes/_authenticated/briefing.detalhes'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedOportunidadesProspecaoIndexRouteImport } from './routes/_authenticated/oportunidades.prospecao.index'
@@ -481,6 +482,12 @@ const AuthenticatedDiversosIdRoute = AuthenticatedDiversosIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedDiversosRoute,
 } as any)
+const AuthenticatedBriefingDetalhesRoute =
+  AuthenticatedBriefingDetalhesRouteImport.update({
+    id: '/briefing/detalhes',
+    path: '/briefing/detalhes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -640,6 +647,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/briefing/detalhes': typeof AuthenticatedBriefingDetalhesRoute
   '/diversos/$id': typeof AuthenticatedDiversosIdRoute
   '/drive/$id': typeof AuthenticatedDriveIdRoute
   '/grupos/$id': typeof AuthenticatedGruposIdRoute
@@ -731,6 +739,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/briefing/detalhes': typeof AuthenticatedBriefingDetalhesRoute
   '/diversos/$id': typeof AuthenticatedDiversosIdRoute
   '/drive/$id': typeof AuthenticatedDriveIdRoute
   '/grupos/$id': typeof AuthenticatedGruposIdRoute
@@ -825,6 +834,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/briefing/detalhes': typeof AuthenticatedBriefingDetalhesRoute
   '/_authenticated/diversos/$id': typeof AuthenticatedDiversosIdRoute
   '/_authenticated/drive/$id': typeof AuthenticatedDriveIdRoute
   '/_authenticated/grupos/$id': typeof AuthenticatedGruposIdRoute
@@ -919,6 +929,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/briefing/detalhes'
     | '/diversos/$id'
     | '/drive/$id'
     | '/grupos/$id'
@@ -1010,6 +1021,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/briefing/detalhes'
     | '/diversos/$id'
     | '/drive/$id'
     | '/grupos/$id'
@@ -1103,6 +1115,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/briefing/detalhes'
     | '/_authenticated/diversos/$id'
     | '/_authenticated/drive/$id'
     | '/_authenticated/grupos/$id'
@@ -1691,6 +1704,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDiversosIdRouteImport
       parentRoute: typeof AuthenticatedDiversosRoute
     }
+    '/_authenticated/briefing/detalhes': {
+      id: '/_authenticated/briefing/detalhes'
+      path: '/briefing/detalhes'
+      fullPath: '/briefing/detalhes'
+      preLoaderRoute: typeof AuthenticatedBriefingDetalhesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -1910,6 +1930,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
   AuthenticatedSobreAIaRoute: typeof AuthenticatedSobreAIaRoute
+  AuthenticatedBriefingDetalhesRoute: typeof AuthenticatedBriefingDetalhesRoute
   AuthenticatedGruposIdRoute: typeof AuthenticatedGruposIdRoute
   AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
   AuthenticatedNegocioComissoesRoute: typeof AuthenticatedNegocioComissoesRouteWithChildren
@@ -1942,6 +1963,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
   AuthenticatedSobreAIaRoute: AuthenticatedSobreAIaRoute,
+  AuthenticatedBriefingDetalhesRoute: AuthenticatedBriefingDetalhesRoute,
   AuthenticatedGruposIdRoute: AuthenticatedGruposIdRoute,
   AuthenticatedImoveisIdRoute: AuthenticatedImoveisIdRoute,
   AuthenticatedNegocioComissoesRoute:
