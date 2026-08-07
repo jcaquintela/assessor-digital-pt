@@ -3,6 +3,7 @@
 
 import type { NudgeDraft } from "../v3/proactivity.server";
 import { sanitizeReply } from "../culture/sanitize";
+import { hasCommercialOutcomeContext } from "../outcome-eligibility";
 import { computePriorities } from "./priorities.server";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
@@ -187,7 +188,7 @@ export async function generateSupremeNudges(
   const ago30 = new Date(now.getTime() - 30 * 60000).toISOString();
   const { data: ended } = await supabase
     .from("follow_ups")
-    .select("id, title, person_id, outcome")
+    .select("id, title, person_id, related_property_id, opportunity_id, outcome")
     .eq("user_id", userId)
     .eq("type", "Evento")
     .is("outcome", null)
@@ -196,6 +197,7 @@ export async function generateSupremeNudges(
     .lte("due_date", ago30)
     .limit(3);
   for (const ev of ((ended as any[]) ?? [])) {
+    if (!hasCommercialOutcomeContext(ev)) continue;
     let personName: string | null = null;
     if (ev.person_id) {
       const { data: person } = await supabase.from("people").select("name").eq("id", ev.person_id).maybeSingle();
