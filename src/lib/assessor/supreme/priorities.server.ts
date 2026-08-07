@@ -85,9 +85,10 @@ export async function computePriorities(
   const [{ data: follows }, { data: opps }] = await Promise.all([
     supabase
       .from("follow_ups")
-      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, outcome, created_at, notes")
+      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, outcome, created_at, notes, archived_at")
       .eq("user_id", userId)
       .is("outcome", null)
+      .is("archived_at", null)
       // Só o que está em atraso ou é para hoje. Compromissos futuros
       // (ex.: amanhã à noite) não são prioridades de hoje.
       .lte("due_date", endOfDayLisbonIso(now))
