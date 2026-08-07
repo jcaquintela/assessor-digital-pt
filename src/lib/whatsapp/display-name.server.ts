@@ -56,43 +56,73 @@ export type SyncOutcome =
   | "submitted"
   | "submit_failed";
 
+export const DISPLAY_NAME_LOG_ACTION = "whatsapp.display_name.attempt";
+
+/** Regista no histórico cada passagem da rotina (e a resposta da Meta). */
+export async function logDisplayNameAttempt(
+  supabaseAdmin: any,
+  entry: {
+    outcome: SyncOutcome;
+    state: DisplayNameState | null;
+    error?: string | null;
+    metaResponse?: unknown;
+    source?: string;
+  },
+): Promise<void> {
+  if (!supabaseAdmin) return;
+  try {
+    await supabaseAdmin.from("admin_audit_logs").insert({
+      admin_user_id: null,
+      action: DISPLAY_NAME_LOG_ACTION,
+      resource_type: "whatsapp_phone_number",
+      resource_id: TARGET_DISPLAY_NAME,
+      reason: entry.error ?? null,
+      metadata: {
+        source: entry.source ?? "cron:whatsapp-display-name",
+        outcome: entry.outcome,
+        target_name: TARGET_DISPLAY_NAME,
+        current_name: entry.state?.verifiedName ?? null,
+        name_status: entry.state?.nameStatus ?? null,
+        meta_response: entry.metaResponse ?? null,
+      },
+    } as never);
+  } catch { /* o histórico nunca bloqueia a rotina */ }
+}
+
 /**
  * Uma passagem da rotina: lê o estado e, se não houver revisão a decorrer e o
  * nome ainda não for o pretendido, submete o pedido.
  */
 export async function syncDisplayName(
   supabaseAdmin?: any,
+  source?: string,
 ): Promise<{ outcome: SyncOutcome; state: DisplayNameState | null; error?: string }> {
   const state = await fetchDisplayNameState();
-  if (!state) return { outcome: "no_credentials", state: null };
+  if (!state) {
+    await logDisplayNameAttempt(supabaseAdmin, { outcome: "no_credentials", state: null, source });
+    return { outcome: "no_credentials", state: null };
+  }
 
   const current = (state.verifiedName ?? "").trim().toLowerCase();
   if (current === TARGET_DISPLAY_NAME.toLowerCase()) {
+    await logDisplayNameAttempt(supabaseAdmin, { outcome: "already_target", state, source });
     return { outcome: "already_target", state };
   }
 
   // Enquanto a Meta estiver a rever (nome actual ou pedido anterior), esperar.
   if ((state.nameStatus ?? "").includes("PENDING")) {
+    await logDisplayNameAttempt(supabaseAdmin, { outcome: "pending_review", state, source });
     return { outcome: "pending_review", state };
   }
 
   const result = await requestDisplayName(TARGET_DISPLAY_NAME);
-  if (supabaseAdmin) {
-    try {
-      await supabaseAdmin.from("admin_audit_logs").insert({
-        admin_user_id: null,
-        action: result.ok ? "whatsapp.display_name.requested" : "whatsapp.display_name.request_failed",
-        resource_type: "whatsapp_phone_number",
-        resource_id: TARGET_DISPLAY_NAME,
-        reason: result.ok ? null : (result.error ?? null),
-        metadata: {
-          source: "cron:whatsapp-display-name",
-          previous_name: state.verifiedName,
-          name_status: state.nameStatus,
-        },
-      } as never);
-    } catch { /* auditoria não bloqueia a rotina */ }
-  }
+  await logDisplayNameAttempt(supabaseAdmin, {
+    outcome: result.ok ? "submitted" : "submit_failed",
+    state,
+    error: result.error ?? null,
+    metaResponse: result.meta ?? null,
+    source,
+  });
 
   return result.ok
     ? { outcome: "submitted", state }
