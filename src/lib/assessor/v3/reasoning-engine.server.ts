@@ -1203,7 +1203,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           {
             reply,
             leadId,
-            payload: ((leadTool as any).args ?? (leadTool.data as any)?.lead ?? {}) as Record<string, any>,
+            payload: (((leadTool.data as any)?.lead ?? {}) as Record<string, any>),
             originalContent: trimmed,
           },
         );
