@@ -271,7 +271,41 @@ async function execSearchFiles(ctx: DomainContext, args: unknown): Promise<Domai
   const { data, error, count } = await q;
   if (error) return fail(error.message);
   const results = (data ?? []) as Record<string, unknown>[];
-  return ok({ results, total: typeof count === "number" ? count : results.length });
+  if (!query || results.length) {
+    return ok({ results, total: typeof count === "number" ? count : results.length });
+  }
+
+  // "caderneta sao bras" ou "cad predial": a frase inteira não casa, mas cada
+  // pedaço casa numa palavra do nome do ficheiro, resumo ou morada.
+  const tokens = searchTokens(query);
+  if (!tokens.length) return ok({ results: [], total: 0 });
+  let q2 = ctx.supabase
+    .from("uploaded_files")
+    .select("id, original_file_name, document_type, classification, ai_summary, mime_type, created_at, doc_morada")
+    .eq("user_id", ctx.userId)
+    .is("deleted_at", null)
+    .is("archived_at", null)
+    .or(tokens.map((t) => `search_norm.ilike.%${t}%`).join(","))
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (a.document_type) q2 = q2.eq("document_type", a.document_type);
+  const { data: rows, error: e2 } = await q2;
+  if (e2) return fail(e2.message);
+  const scored = ((rows ?? []) as Record<string, unknown>[])
+    .map((r) => {
+      const folded = foldText(
+        [r.original_file_name, r.ai_summary, r.document_type, r.doc_morada]
+          .filter((x) => typeof x === "string")
+          .join(" "),
+      );
+      const { doc_morada: _m, ...rest } = r;
+      return { score: tokens.filter((t) => folded.includes(t)).length, row: rest };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a2, b2) => b2.score - a2.score)
+    .slice(0, 20)
+    .map((x) => x.row);
+  return ok({ results: scored, total: scored.length });
 }
 
 async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
