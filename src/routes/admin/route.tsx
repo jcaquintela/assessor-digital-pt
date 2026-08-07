@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Outlet, Link, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -25,16 +25,26 @@ function AdminLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const [menuOpen, setMenuOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
   const fetchRole = useServerFn(getMyAdminRole);
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "my-role"],
     queryFn: () => fetchRole(),
   });
 
-  // Fecha o menu móvel sempre que mudamos de página.
+  // Fecha o menu móvel e move o foco para o conteúdo sempre que mudamos de página.
   useEffect(() => {
     setMenuOpen(false);
+    // Pequeno atraso para o drawer terminar de fechar antes de mover o foco.
+    const t = setTimeout(() => {
+      mainRef.current?.focus();
+    }, 50);
+    return () => clearTimeout(t);
   }, [pathname]);
+
+  const handleNavClick = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
 
   if (isLoading) {
     return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">A verificar permissões…</div>;
@@ -49,7 +59,7 @@ function AdminLayout() {
     navigate({ to: "/auth", replace: true });
   };
 
-  const renderNav = () =>
+  const renderNav = (onNavClick?: () => void) =>
     navGroups.map((g) => {
       const hasActive = g.items.some((n) => (n.exact ? pathname === n.to : pathname.startsWith(n.to)));
       const open = closed[g.group] ? false : true;
@@ -68,7 +78,12 @@ function AdminLayout() {
             g.items.map((n) => {
               const active = n.exact ? pathname === n.to : pathname.startsWith(n.to);
               return (
-                <Link key={n.to} to={n.to as any} className={`navitem ${active ? "active" : ""}`}>
+                <Link
+                  key={n.to}
+                  to={n.to as any}
+                  className={`navitem ${active ? "active" : ""}`}
+                  onClick={onNavClick}
+                >
                   {n.label}
                 </Link>
               );
@@ -111,10 +126,10 @@ function AdminLayout() {
                 <span className="dot" />
                 Afonso — admin
               </div>
-              <nav className="flex-1">{renderNav()}</nav>
+              <nav className="flex-1">{renderNav(handleNavClick)}</nav>
               <div className="navfoot">
                 <div className="capitalize">{data.role.replace("_", " ")}</div>
-                <Link to="/" className="mt-2 block hover:underline">← Voltar à app</Link>
+                <Link to="/" onClick={handleNavClick} className="mt-2 block hover:underline">← Voltar à app</Link>
                 <button type="button" onClick={signOut} className="mt-2 flex items-center gap-1 hover:underline">
                   <LogOut className="h-3 w-3" /> Terminar sessão
                 </button>
@@ -128,7 +143,7 @@ function AdminLayout() {
         </div>
         <Button variant="ghost" size="sm" className="text-xs text-white" onClick={signOut}>Sair</Button>
       </header>
-      <main className="md:pl-56">
+      <main ref={mainRef} tabIndex={-1} className="md:pl-56 focus:outline-none">
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-10 md:pb-16">
           <HealthStrip />
           <Outlet />
