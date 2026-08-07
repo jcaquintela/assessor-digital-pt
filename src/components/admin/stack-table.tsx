@@ -1,4 +1,11 @@
-import { createContext, useContext, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes } from "react";
+import {
+  createContext,
+  useContext,
+  type HTMLAttributes,
+  type ReactNode,
+  type TdHTMLAttributes,
+  type ThHTMLAttributes,
+} from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -49,7 +56,7 @@ export function StackTable({
 }
 
 /** Linha: reinicia o contador de colunas para o <Td> saber a sua etiqueta. */
-export function Tr({ children, ...rest }: { children: ReactNode } & React.HTMLAttributes<HTMLTableRowElement>) {
+export function Tr({ children, ...rest }: { children: ReactNode } & HTMLAttributes<HTMLTableRowElement>) {
   return (
     <IndexCtx.Provider value={{ i: 0 }}>
       <tr {...rest}>{children}</tr>
