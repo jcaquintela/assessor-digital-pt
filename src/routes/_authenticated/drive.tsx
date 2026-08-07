@@ -319,7 +319,7 @@ function DrivePage() {
       {confirmacao.dialog}
       <PageHeader
         title={MODULE_NAME.drive}
-        subtitle="Envia. O Assessor organiza."
+        subtitle={`Envia. O ${assessorName} organiza.`}
         action={
           <>
             <input
