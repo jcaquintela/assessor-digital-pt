@@ -3,14 +3,11 @@ import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState, useEffect } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AssuntoCard } from "@/components/assunto-card";
 import { assuntoDeSeguimento } from "@/lib/assessor/assunto";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatData, formatDataHora, type Seguimento } from "@/lib/demo-data";
-import { Calendar, CheckCircle2, Clock } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 type SeguimentosSearch = { status?: "overdue" | "hoje" | "semana" | "concluidos" };
@@ -63,12 +60,18 @@ function SeguimentosPage() {
   };
 
   const Lista = ({ items }: { items: Seguimento[] }) => (
-    <div className="space-y-2">
-      {items.length === 0 && <p className="text-sm text-muted-foreground">Nada aqui.</p>}
+    <div className="space-y-2.5">
+      {items.length === 0 && <p className="c-seg-line">Nada aqui.</p>}
       {items.map((s) => {
         // Mesma fonte da ficha: título = assunto, ação sugerida dentro da frase.
         const vista = assuntoDeSeguimento(s);
         const assunto = vista.titulo;
+        const aberto = isOpenFollowUpStatus(s.estado);
+        const data = new Date(s.data);
+        const atrasado = aberto && data < now && !same(data, now);
+        const eHoje = aberto && same(data, now);
+        const estadoClasse = !aberto ? "feito" : atrasado ? "atrasado" : eHoje ? "hoje" : "";
+        const prio = s.prioridade === "Alta" ? "alta" : s.prioridade === "Baixa" ? "baixa" : "media";
         return (
         <Link
           key={s.id}
@@ -77,26 +80,29 @@ function SeguimentosPage() {
           className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary"
           aria-label={`Abrir seguimento ${assunto}`}
         >
-          <Card className="transition-colors group-hover:border-primary/40 group-focus-visible:border-primary/60">
-            <CardContent className="p-3">
+          <div className={`c-seg p-3.5 ${estadoClasse}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                <AssuntoCard
-                  tag={s.tipo === "Evento"
-                    ? <><Calendar className="h-3.5 w-3.5 text-primary" /></>
-                    : <><Clock className="h-3.5 w-3.5 text-muted-foreground" /></>}
-                  titulo={assunto}
-                  frase={vista.frase}
-                  /* A hora guardada manda: evita divergir da ficha por causa do fuso. */
-                  meta={`${s.hora ? `${formatData(s.data)}, ${s.hora}` : formatDataHora(s.data)} · ${nomePessoa(s.pessoaId) || "—"}`}
-                  plano
-                />
+                  <div className="flex items-center gap-2">
+                    {s.tipo === "Evento"
+                      ? <Calendar className="h-4 w-4 shrink-0" style={{ color: "var(--blue)" }} />
+                      : <Clock className="h-4 w-4 shrink-0" style={{ color: "var(--ink-soft)" }} />}
+                    <span className="c-seg-title truncate">{assunto}</span>
+                  </div>
+                  <p className="c-seg-line mt-1.5">{vista.frase}</p>
+                  {/* A hora guardada manda: evita divergir da ficha por causa do fuso. */}
+                  <div className="c-seg-meta mt-1">
+                    {s.hora ? `${formatData(s.data)}, ${s.hora}` : formatDataHora(s.data)} · {nomePessoa(s.pessoaId) || "—"}
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Badge variant={s.prioridade === "Alta" ? "destructive" : "secondary"}>{s.prioridade}</Badge>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  {atrasado && (
+                    <span className="c-seg-flag"><AlertTriangle className="h-3 w-3" /> Atrasado</span>
+                  )}
+                  <span className={`c-prio ${prio}`}>{s.prioridade}</span>
                 </div>
               </div>
-            {isOpenFollowUpStatus(s.estado) && (
+            {aberto && (
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   size="sm"
@@ -114,8 +120,7 @@ function SeguimentosPage() {
                 </Button>
               </div>
             )}
-            </CardContent>
-          </Card>
+          </div>
         </Link>
         );
       })}
@@ -125,13 +130,16 @@ function SeguimentosPage() {
   return (
     <AppShell>
       <PageHeader title="Seguimentos" subtitle="Tarefas com prazo e eventos com hora." />
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={setTab} className="c-seg-tabs">
         <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:px-0 md:overflow-visible">
           <TabsList className="w-max md:w-auto">
-            <TabsTrigger value="hoje">Hoje ({grupos.hoje.length})</TabsTrigger>
-            <TabsTrigger value="semana">Esta semana ({grupos.semana.length})</TabsTrigger>
-            <TabsTrigger value="atrasados">Atrasados ({grupos.atrasados.length})</TabsTrigger>
-            <TabsTrigger value="concluidos">Concluídos ({grupos.concluidos.length})</TabsTrigger>
+            <TabsTrigger value="hoje">Hoje<span className="c-tabcount">{grupos.hoje.length}</span></TabsTrigger>
+            <TabsTrigger value="semana">Esta semana<span className="c-tabcount">{grupos.semana.length}</span></TabsTrigger>
+            <TabsTrigger value="atrasados" aria-label={`Atrasados: ${grupos.atrasados.length}`}>
+              Atrasados
+              <span className={`c-tabcount ${grupos.atrasados.length > 0 ? "alerta" : ""}`}>{grupos.atrasados.length}</span>
+            </TabsTrigger>
+            <TabsTrigger value="concluidos">Concluídos<span className="c-tabcount">{grupos.concluidos.length}</span></TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="hoje" className="mt-4"><Lista items={grupos.hoje} /></TabsContent>
