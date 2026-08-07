@@ -103,6 +103,22 @@ export async function computePriorities(
 
   const dealIds = new Set<string>();
   for (const f of ((follows as any[]) ?? [])) if (f.opportunity_id) dealIds.add(f.opportunity_id);
+
+  // Origem real: um evento sincronizado com o calendário externo não é a mesma
+  // coisa que um compromisso criado aqui — o consultor precisa de distinguir.
+  const followIds = ((follows as any[]) ?? []).map((f) => f.id);
+  const calendarProviderByFollowUp = new Map<string, string>();
+  if (followIds.length) {
+    const { data: links } = await supabase
+      .from("calendar_event_links")
+      .select("follow_up_id, provider, deleted")
+      .eq("user_id", userId)
+      .in("follow_up_id", followIds);
+    for (const l of ((links as any[]) ?? [])) {
+      if (l.deleted) continue;
+      calendarProviderByFollowUp.set(l.follow_up_id, String(l.provider ?? ""));
+    }
+  }
   for (const o of ((opps as any[]) ?? [])) dealIds.add(o.id);
   const dealById = new Map<string, string>();
   if (dealIds.size) {
@@ -180,6 +196,13 @@ export async function computePriorities(
     const eventAction = hhmm
       ? `Preparar o compromisso das ${hhmm}: ${f.title}`
       : `Preparar o compromisso: ${f.title}`;
+    const provider = calendarProviderByFollowUp.get(f.id);
+    const origin: PriorityOrigin = provider ? "calendario" : isEvent ? "compromisso" : "tarefa";
+    const originLabel = provider
+      ? `Evento do ${PROVIDER_LABEL[provider] ?? "calendário ligado"}`
+      : isEvent
+        ? "Compromisso no Afonso"
+        : "Tarefa de seguimento";
     items.push({
       subject_type: "follow_up",
       subject_id: f.id,
@@ -190,6 +213,9 @@ export async function computePriorities(
       entity_label: f.person_id ? nameById.get(f.person_id) ?? null : null,
       deal_id: f.opportunity_id ?? null,
       deal_label: f.opportunity_id ? dealById.get(f.opportunity_id) ?? null : null,
+      origin,
+      origin_label: originLabel,
+      state_label: followUpStateLabel(f),
     });
   }
 
@@ -221,6 +247,9 @@ export async function computePriorities(
       entity_label: nome,
       deal_id: o.id,
       deal_label: dealById.get(o.id) ?? "Negócio",
+      origin: "negocio",
+      origin_label: "Negócio em curso",
+      state_label: null,
     });
   }
 
