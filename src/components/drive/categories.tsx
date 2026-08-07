@@ -243,6 +243,7 @@ export function FileCategoryDialog({
   const { categories, invalidate } = useFileCategories();
   const save = useServerFn(setFileCategory);
   const create = useServerFn(createFileCategory);
+  const { name: assessorName } = useAssessorName();
   const [busy, setBusy] = useState(false);
   const [nova, setNova] = useState("");
   const [novaCor, setNovaCor] = useState<string | null>(null);
