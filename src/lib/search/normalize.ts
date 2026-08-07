@@ -68,3 +68,42 @@ export function compareTokenMatches(
 ): number {
   return b.hits - a.hits || a.spread - b.spread;
 }
+
+/**
+ * Campo pesquisável com o peso que tem na relevância. Nome e título valem
+ * mais do que morada ou resumo: quem escreve "sol matosinhos" quer o imóvel
+ * cujo título fala do Sol, não um qualquer com a morada parecida.
+ */
+export type WeightedField = { text: string | null | undefined; weight: number };
+
+/**
+ * Pontuação ponderada: cada pedaço conta o peso do melhor campo onde aparece.
+ * `spread` continua a medir a proximidade dos pedaços, no campo que mais
+ * pedaços apanhou (desempate por contexto mais próximo).
+ * Determinística — a ordenação (estável) nunca muda entre execuções.
+ */
+export function weightedTokenMatchScore(
+  fields: WeightedField[],
+  tokens: string[],
+): { hits: number; spread: number } {
+  const folded = fields.map((f) => ({ text: foldText(f.text), weight: f.weight }));
+  let hits = 0;
+  for (const t of tokens) {
+    let best = 0;
+    for (const f of folded) if (f.text.includes(t) && f.weight > best) best = f.weight;
+    hits += best;
+  }
+  if (hits === 0) return { hits: 0, spread: Number.MAX_SAFE_INTEGER };
+
+  let spread = Number.MAX_SAFE_INTEGER;
+  let bestCount = 0;
+  for (const f of folded) {
+    const m = tokenMatchScore(f.text, tokens);
+    if (m.hits === 0) continue;
+    if (m.hits > bestCount || (m.hits === bestCount && m.spread < spread)) {
+      bestCount = m.hits;
+      spread = m.spread;
+    }
+  }
+  return { hits, spread };
+}
