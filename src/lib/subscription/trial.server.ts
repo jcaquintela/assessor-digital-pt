@@ -489,3 +489,52 @@ export async function runTrialLifecycle(supabaseAdmin: any, opts: { now?: Date }
     details: exp.expired,
   };
 }
+
+/**
+ * Arranca o período experimental quando o consultor escolhe WhatsApp logo no
+ * ecrã de escolha de canal — antes de existir ligação. Sem isto, quem chega
+ * pelo site cai sempre em Base (o WhatsApp está fechado abaixo de Consultor)
+ * e nunca vê o trial de 14 dias.
+ */
+export async function startTrialForChannelChoice(
+  supabaseAdmin: any,
+  userId: string,
+  opts: { now?: Date } = {},
+): Promise<{ started: boolean; alreadyActive: boolean; reason?: string; expiresAt?: string }> {
+  const now = opts.now ?? new Date();
+  const { data: prof } = await supabaseAdmin
+    .from("profiles")
+    .select("trial_status, trial_expires_at, subscription_tier")
+    .eq("id", userId)
+    .maybeSingle();
+  const status = (prof as any)?.trial_status as string | null;
+  if (status === "active") {
+    return { started: false, alreadyActive: true, expiresAt: (prof as any)?.trial_expires_at ?? undefined };
+  }
+  if (status) return { started: false, alreadyActive: false, reason: "trial_already_used" };
+
+  const plan = normalizeTier((prof as any)?.subscription_tier);
+  const expiresAt = new Date(now.getTime() + TRIAL_DAYS * DAY).toISOString();
+  const patch: Record<string, unknown> = {
+    trial_started_at: now.toISOString(),
+    trial_expires_at: expiresAt,
+    trial_tier: TRIAL_CAPABILITY_TIER,
+    trial_status: "active",
+    trial_warned_at: null,
+    trial_choice: null,
+    trial_value_summary_at: null,
+    trial_choice_asked_at: null,
+  };
+  if (plan === "base") patch["subscription_tier"] = TRIAL_CAPABILITY_TIER;
+
+  const { error } = await supabaseAdmin.from("profiles").update(patch as never).eq("id", userId);
+  if (error) return { started: false, alreadyActive: false, reason: error.message };
+
+  await audit(supabaseAdmin, "trial_started", userId, `Período experimental de ${TRIAL_DAYS} dias (escolha de canal).`, {
+    tier_before: plan, trial_days: TRIAL_DAYS, expires_at: expiresAt,
+  });
+  await recordSubscriptionEvent(supabaseAdmin, {
+    userId, event: "trial_started", fromTier: plan, toTier: TRIAL_CAPABILITY_TIER, source: "channel_choice",
+  });
+  return { started: true, alreadyActive: false, expiresAt };
+}
