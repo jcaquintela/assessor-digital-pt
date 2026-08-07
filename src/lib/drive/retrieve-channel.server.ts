@@ -126,7 +126,7 @@ async function confirmBeforeSending(
         body: question,
         options: [
           { id: encodeInteractiveId(encodeDocCommand(hit.id)), label: "Sim, envia" },
-          { id: encodeInteractiveId(DOC_CANCEL_COMMAND), label: "Agora não" },
+          { id: encodeInteractiveId(DOC_CANCEL_COMMAND), label: "Não enviar" },
         ],
       });
       sent = r.ok;

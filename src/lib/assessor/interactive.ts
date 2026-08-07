@@ -3,7 +3,8 @@
 // Sempre que o Afonso faz uma pergunta de resposta fechada, deixa de fazer
 // sentido pedir "Sim"/"Não" escritos: enviamos botões tocáveis. A decisão
 // passa a vir de um id determinístico, não de texto livre — acaba de vez a
-// ambiguidade entre "Sim", "Ainda não", "ok", etc.
+// ambiguidade entre "Sim", "Não", "ok", etc. Cada rótulo diz exactamente o
+// que acontece se for tocado — nunca um "talvez" disfarçado.
 //
 // Regras (WhatsApp Cloud API):
 //  - até 3 opções  -> Interactive Reply Buttons (type: "button")
@@ -126,6 +127,9 @@ function option(label: string, canonicalText: string, description?: string): Int
 const QUESTION_RE = /\?\s*$/;
 const CHOICE_QUESTION_RE = /\b(qual|quais|a qual|escolhe|escolher|referes|refere-te|dos?\s+dois|delas?|deles?)\b/i;
 const SAME_ONE_RE = /\b[ée]\s+a\s+mesma\b/i;
+// "Guardo o ficheiro (…), ou descarto?" não é um sim/não: cada botão diz o
+// que acontece ao ficheiro, para ninguém ficar na dúvida sobre o que recusou.
+const KEEP_DISCARD_RE = /\bguardo\b[^?]*\bdescarto\b/i;
 
 function enumeratedOptions(reply: string): string[] {
   return reply
@@ -166,6 +170,13 @@ export function deriveInteractivePrompt(
 
   // 2) Confirmação de um rascunho por confirmar (a pergunta fecha a mensagem).
   if (ctx.hasPendingConfirmation && QUESTION_RE.test(body)) {
+    if (KEEP_DISCARD_RE.test(body)) {
+      return {
+        kind: "buttons",
+        body,
+        options: [option("Guardar", "sim"), option("Descartar", "não")],
+      };
+    }
     if (SAME_ONE_RE.test(body)) {
       return {
         kind: "buttons",
@@ -176,7 +187,7 @@ export function deriveInteractivePrompt(
     return {
       kind: "buttons",
       body,
-      options: [option("Sim", "sim"), option("Ainda não", "não")],
+      options: [option("Sim", "sim"), option("Não", "não")],
     };
   }
 
