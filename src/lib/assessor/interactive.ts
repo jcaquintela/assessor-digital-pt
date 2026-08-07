@@ -130,6 +130,8 @@ const SAME_ONE_RE = /\b[ée]\s+a\s+mesma\b/i;
 // "Guardo o ficheiro (…), ou descarto?" não é um sim/não: cada botão diz o
 // que acontece ao ficheiro, para ninguém ficar na dúvida sobre o que recusou.
 const KEEP_DISCARD_RE = /\bguardo\b[^?]*\bdescarto\b/i;
+// Oferta de guião numa placa de particular: os botões dizem o guião que sai.
+const SCRIPT_OFFER_RE = /prepare um gui[ãa]o/i;
 
 function enumeratedOptions(reply: string): string[] {
   return reply
@@ -148,6 +150,19 @@ export function deriveInteractivePrompt(
 ): InteractivePrompt | null {
   const body = String(reply ?? "").trim();
   if (!body || !body.includes("?")) return null;
+
+  // 0) Guião de abordagem: escolha objetiva, nunca um sim/não ambíguo.
+  if (SCRIPT_OFFER_RE.test(body)) {
+    return {
+      kind: "buttons",
+      body,
+      options: [
+        option("Chamada", "chamada"),
+        option("Mensagem", "mensagem"),
+        option("Sem guião", "não quero guião"),
+      ],
+    };
+  }
 
   // 1) Desambiguação entre vários registos parecidos: as opções já vêm
   //    enumeradas com "- " e a pergunta é de escolha.
