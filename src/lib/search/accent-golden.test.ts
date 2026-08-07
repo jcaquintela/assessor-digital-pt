@@ -355,3 +355,74 @@ describe("golden — ordenação de correspondências parciais", () => {
     expect(r.data.results[0].id).toBe("i2");
   });
 });
+
+// Estabilidade: com muitos empates, a lista não pode dançar entre execuções.
+// A ordenação é estável (JS `sort`), por isso empates mantêm a ordem de entrada.
+describe("golden — ordenação estável com empates", () => {
+  const empatadas = () => ({
+    people: [
+      { id: "p1", user_id: "u1", name: "Sérgio Canelas" },
+      { id: "p2", user_id: "u1", name: "Sérgio Canelas" },
+      { id: "p3", user_id: "u1", name: "Sérgio Canelas" },
+      { id: "p4", user_id: "u1", name: "Sérgio Canelas" },
+      { id: "p5", user_id: "u1", name: "Sérgio Canelas" },
+    ],
+  });
+
+  it("Pessoas: dez execuções da mesma pesquisa devolvem a mesma ordem", async () => {
+    const corridas: string[][] = [];
+    for (let i = 0; i < 10; i++) {
+      const r: any = await dispatchToolCall(
+        ctx(pgFake(empatadas())) as any, "search_people", JSON.stringify({ query: "sergio can" }),
+      );
+      corridas.push(r.data.results.map((p: any) => p.id));
+    }
+    expect(corridas.every((c) => c.join() === corridas[0].join())).toBe(true);
+    expect(corridas[0]).toHaveLength(5);
+  });
+
+  it("Pessoas: empate mantém a ordem de entrada (sem baralhar)", async () => {
+    const r: any = await dispatchToolCall(
+      ctx(pgFake(empatadas())) as any, "search_people", JSON.stringify({ query: "sergio can" }),
+    );
+    expect(r.data.results.map((p: any) => p.id)).toEqual(["p1", "p2", "p3", "p4", "p5"]);
+  });
+
+  it("Imóveis: empates repetidos não mudam de ordem entre execuções", async () => {
+    const seed = () => ({
+      properties: [
+        { id: "i1", user_id: "u1", title: "T2 Rua da Estação", location: "Matosinhos", city: "Matosinhos" },
+        { id: "i2", user_id: "u1", title: "T2 Rua da Estação", location: "Matosinhos", city: "Matosinhos" },
+        { id: "i3", user_id: "u1", title: "T2 Rua da Estação", location: "Matosinhos", city: "Matosinhos" },
+        { id: "i4", user_id: "u1", title: "T2 Rua da Estação", location: "Matosinhos", city: "Matosinhos" },
+      ],
+    });
+    const corridas: string[][] = [];
+    for (let i = 0; i < 10; i++) {
+      const r: any = await dispatchToolCall(
+        ctx(pgFake(seed())) as any, "search_properties", JSON.stringify({ query: "matos estacao" }),
+      );
+      corridas.push(r.data.results.map((p: any) => p.id));
+    }
+    expect(corridas.every((c) => c.join() === corridas[0].join())).toBe(true);
+    expect(corridas[0]).toEqual(["i1", "i2", "i3", "i4"]);
+  });
+
+  it("Drive: mesma pesquisa, mesma ordem em execuções repetidas", async () => {
+    const seed = () => ({
+      uploaded_files: [
+        { id: "f1", user_id: "u1", original_file_name: "Caderneta Predial — São Brás.pdf", deleted_at: null },
+        { id: "f2", user_id: "u1", original_file_name: "Caderneta Predial — São Brás.pdf", deleted_at: null },
+        { id: "f3", user_id: "u1", original_file_name: "Caderneta Predial — São Brás.pdf", deleted_at: null },
+      ],
+    });
+    const corridas: string[][] = [];
+    for (let i = 0; i < 10; i++) {
+      const r: any = await dispatchToolCall(
+        ctx(pgFake(seed())) as any, "search_files", JSON.stringify({ query: "cad sao bras" }),
+      );
+      corridas.push(r.data.results.map((f: any) => f.id));
+    }
+    expect(corridas.every((c) => c.join() === corridas[0].join())).toBe(true);
+  });
+});
