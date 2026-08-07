@@ -2,6 +2,9 @@
 // Determinístico. Cada item traz razões legíveis para o Assessor verbalizar.
 import { isDealClosed } from "@/lib/deals/stages";
 
+/** De onde veio o item — o consultor tem de perceber o que está a olhar. */
+export type PriorityOrigin = "calendario" | "compromisso" | "tarefa" | "negocio";
+
 export interface PriorityItem {
   subject_type: "follow_up" | "opportunity" | "property";
   subject_id: string;
@@ -13,6 +16,12 @@ export interface PriorityItem {
   /** Negócio associado (quando existe) — mostrado como "Negócio: X". */
   deal_id: string | null;
   deal_label: string | null;
+  /** Origem do item (evento sincronizado, compromisso do Afonso, tarefa, negócio). */
+  origin: PriorityOrigin;
+  /** Texto curto da origem, pronto a mostrar. */
+  origin_label: string;
+  /** Estado atual quando já não está em aberto (cancelado, arquivado, concluído). */
+  state_label: string | null;
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -28,6 +37,25 @@ const norm = (v: unknown) =>
 const DONE_STATUSES = new Set(["concluido", "concluida", "done", "cancelado", "cancelada", "arquivado"]);
 const EVENT_TYPES = new Set(["evento", "event", "visita", "reuniao"]);
 const HIGH_PRIORITIES = new Set(["alta", "high", "urgente"]);
+
+const PROVIDER_LABEL: Record<string, string> = {
+  google_calendar: "Google Calendar",
+  microsoft_outlook: "Microsoft Outlook",
+};
+
+/** Como se diz ao consultor o estado atual de um seguimento fechado. */
+export function followUpStateLabel(row: {
+  status?: unknown;
+  outcome?: unknown;
+  archived_at?: unknown;
+}): string | null {
+  const s = norm(row.status);
+  if (s === "cancelado" || s === "cancelada") return "Cancelado";
+  if (row.archived_at || s === "arquivado") return "Arquivado";
+  if (s === "concluido" || s === "concluida" || s === "done") return "Concluído";
+  if (row.outcome) return "Já com resultado registado";
+  return null;
+}
 
 function startOfDayLisbon(now = new Date()): Date {
   const p = new Intl.DateTimeFormat("en-CA", {
@@ -57,9 +85,10 @@ export async function computePriorities(
   const [{ data: follows }, { data: opps }] = await Promise.all([
     supabase
       .from("follow_ups")
-      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, outcome, created_at, notes")
+      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, outcome, created_at, notes, archived_at")
       .eq("user_id", userId)
       .is("outcome", null)
+      .is("archived_at", null)
       // Só o que está em atraso ou é para hoje. Compromissos futuros
       // (ex.: amanhã à noite) não são prioridades de hoje.
       .lte("due_date", endOfDayLisbonIso(now))
@@ -75,6 +104,22 @@ export async function computePriorities(
 
   const dealIds = new Set<string>();
   for (const f of ((follows as any[]) ?? [])) if (f.opportunity_id) dealIds.add(f.opportunity_id);
+
+  // Origem real: um evento sincronizado com o calendário externo não é a mesma
+  // coisa que um compromisso criado aqui — o consultor precisa de distinguir.
+  const followIds = ((follows as any[]) ?? []).map((f) => f.id);
+  const calendarProviderByFollowUp = new Map<string, string>();
+  if (followIds.length) {
+    const { data: links } = await supabase
+      .from("calendar_event_links")
+      .select("follow_up_id, provider, deleted")
+      .eq("user_id", userId)
+      .in("follow_up_id", followIds);
+    for (const l of ((links as any[]) ?? [])) {
+      if (l.deleted) continue;
+      calendarProviderByFollowUp.set(l.follow_up_id, String(l.provider ?? ""));
+    }
+  }
   for (const o of ((opps as any[]) ?? [])) dealIds.add(o.id);
   const dealById = new Map<string, string>();
   if (dealIds.size) {
@@ -152,6 +197,13 @@ export async function computePriorities(
     const eventAction = hhmm
       ? `Preparar o compromisso das ${hhmm}: ${f.title}`
       : `Preparar o compromisso: ${f.title}`;
+    const provider = calendarProviderByFollowUp.get(f.id);
+    const origin: PriorityOrigin = provider ? "calendario" : isEvent ? "compromisso" : "tarefa";
+    const originLabel = provider
+      ? `Evento do ${PROVIDER_LABEL[provider] ?? "calendário ligado"}`
+      : isEvent
+        ? "Compromisso no Afonso"
+        : "Tarefa de seguimento";
     items.push({
       subject_type: "follow_up",
       subject_id: f.id,
@@ -162,6 +214,9 @@ export async function computePriorities(
       entity_label: f.person_id ? nameById.get(f.person_id) ?? null : null,
       deal_id: f.opportunity_id ?? null,
       deal_label: f.opportunity_id ? dealById.get(f.opportunity_id) ?? null : null,
+      origin,
+      origin_label: originLabel,
+      state_label: followUpStateLabel(f),
     });
   }
 
@@ -193,6 +248,9 @@ export async function computePriorities(
       entity_label: nome,
       deal_id: o.id,
       deal_label: dealById.get(o.id) ?? "Negócio",
+      origin: "negocio",
+      origin_label: "Negócio em curso",
+      state_label: null,
     });
   }
 
@@ -202,6 +260,73 @@ export async function computePriorities(
 
 // Persiste snapshot (usado por /hoje para permitir dismiss/complete).
 export async function persistPrioritiesSnapshot(
+  supabase: any,
+  userId: string,
+  items: PriorityItem[],
+): Promise<void> {
+  return persistPrioritiesSnapshotImpl(supabase, userId, items);
+}
+
+export type SettledPriority = {
+  subject_id: string;
+  action: string;
+  state_label: string;
+  origin_label: string;
+  due_at: string | null;
+};
+
+/**
+ * Itens que estavam no último briefing mas entretanto foram cancelados,
+ * arquivados ou concluídos. Em vez de desaparecerem em silêncio (e voltarem a
+ * aparecer noutro sítio), mostramos o estado atual.
+ */
+export async function findSettledPriorities(
+  supabase: any,
+  userId: string,
+): Promise<SettledPriority[]> {
+  const { data: snap } = await supabase
+    .from("daily_priorities")
+    .select("subject_id, subject_type, action, due_at")
+    .eq("user_id", userId)
+    .eq("subject_type", "follow_up")
+    .is("dismissed_at", null)
+    .is("completed_at", null)
+    .order("calculated_at", { ascending: false })
+    .limit(20);
+  const rows = ((snap as any[]) ?? []);
+  const ids = [...new Set(rows.map((r) => r.subject_id).filter(Boolean))];
+  if (!ids.length) return [];
+
+  const { data: follows } = await supabase
+    .from("follow_ups")
+    .select("id, status, outcome, archived_at, type")
+    .eq("user_id", userId)
+    .in("id", ids);
+
+  const byId = new Map<string, any>();
+  for (const f of ((follows as any[]) ?? [])) byId.set(f.id, f);
+
+  const out: SettledPriority[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    if (seen.has(r.subject_id)) continue;
+    const f = byId.get(r.subject_id);
+    // Já não existe: foi mesmo removido.
+    const state = f ? followUpStateLabel(f) : "Removido";
+    if (!state) continue;
+    seen.add(r.subject_id);
+    out.push({
+      subject_id: r.subject_id,
+      action: r.action,
+      state_label: state,
+      origin_label: f && EVENT_TYPES.has(norm(f.type)) ? "Compromisso" : "Tarefa de seguimento",
+      due_at: r.due_at ?? null,
+    });
+  }
+  return out.slice(0, 5);
+}
+
+async function persistPrioritiesSnapshotImpl(
   supabase: any,
   userId: string,
   items: PriorityItem[],

@@ -1,17 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { computePriorities, findAwaitingOutcome, persistPrioritiesSnapshot } from "./priorities.server";
+import {
+  computePriorities,
+  findAwaitingOutcome,
+  findSettledPriorities,
+  persistPrioritiesSnapshot,
+} from "./priorities.server";
 import { isSupremeEnabled } from "./feature-flag.server";
 
 export const getHojeSupreme = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const enabled = await isSupremeEnabled(context.supabase, context.userId);
-    if (!enabled) return { enabled: false, priorities: [], awaitingOutcome: [] };
+    if (!enabled) return { enabled: false, priorities: [], awaitingOutcome: [], settled: [] };
     const priorities = await computePriorities(context.supabase, context.userId, { limit: 5 });
+    // Antes de gravar o novo snapshot: o que estava no briefing anterior e já
+    // foi cancelado/arquivado passa a ser mostrado com o estado atual.
+    const settled = await findSettledPriorities(context.supabase, context.userId);
     await persistPrioritiesSnapshot(context.supabase, context.userId, priorities);
     const awaiting = await findAwaitingOutcome(context.supabase, context.userId);
-    return { enabled: true, priorities, awaitingOutcome: awaiting };
+    return { enabled: true, priorities, awaitingOutcome: awaiting, settled };
   });
 
 export const dismissPriority = createServerFn({ method: "POST" })

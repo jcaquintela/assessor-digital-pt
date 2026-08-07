@@ -72,6 +72,17 @@ type Priority = {
   entity_label: string | null;
   deal_id?: string | null;
   deal_label?: string | null;
+  origin?: "calendario" | "compromisso" | "tarefa" | "negocio";
+  origin_label?: string | null;
+  state_label?: string | null;
+};
+
+type Settled = {
+  subject_id: string;
+  action: string;
+  state_label: string;
+  origin_label: string;
+  due_at: string | null;
 };
 
 type Awaiting = {
@@ -241,6 +252,9 @@ function HojePage() {
   const priorities: Priority[] = supreme.data?.priorities?.length
     ? (supreme.data.priorities as Priority[])
     : localPriorities;
+
+  // Itens do briefing anterior que entretanto foram cancelados/arquivados.
+  const settled: Settled[] = ((supreme.data as any)?.settled ?? []) as Settled[];
 
   const localAwaiting: Awaiting[] = useMemo(
     () => atrasados
@@ -491,7 +505,20 @@ function HojePage() {
                       p.due_at ? formatData(p.due_at) : null,
                     ].filter(Boolean).join(" · ")}
                     extra={
-                      p.deal_id && p.deal_label ? (
+                      <>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          {/* Origem exata: o consultor tem de saber se isto veio
+                              do calendário ligado ou se é um seguimento do Afonso. */}
+                          <span className="c-badge inline-flex max-w-full truncate text-xs">
+                            {p.origin_label ?? (p.subject_type === "opportunity" ? "Negócio em curso" : "Seguimento")}
+                          </span>
+                          {p.state_label ? (
+                            <span className="c-badge inline-flex max-w-full truncate text-xs text-muted-foreground">
+                              Estado: {p.state_label}
+                            </span>
+                          ) : null}
+                        </div>
+                        {p.deal_id && p.deal_label ? (
                           <Link
                             to="/negocios/$id"
                             params={{ id: p.deal_id }}
@@ -500,7 +527,8 @@ function HojePage() {
                           >
                             Negócio: {p.deal_label}
                           </Link>
-                      ) : null
+                        ) : null}
+                      </>
                     }
                     actions={<>
                       <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
@@ -552,6 +580,24 @@ function HojePage() {
                     </>}
                   />
                 ))}
+                {settled.length > 0 && (
+                  <div className="mt-3 border-t pt-3">
+                    <p className="c-muted mb-2 text-xs">Já não se aplicam (estavam no briefing anterior):</p>
+                    <div className="space-y-1.5">
+                      {settled.map((s) => (
+                        <div key={s.subject_id} className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <span className="c-badge shrink-0">{s.state_label}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="line-through">{s.action}</span>
+                            <span className="block">
+                              {[s.origin_label, s.due_at ? formatData(s.due_at) : null].filter(Boolean).join(" · ")}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
