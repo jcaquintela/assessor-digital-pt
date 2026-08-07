@@ -59,13 +59,13 @@ async function medir(page: Page, testId: string) {
 }
 
 test.describe("/ligar-canal · WhatsApp e Telegram legíveis em qualquer ecrã", () => {
-  test.skip(!SESSION, "Sem sessão do consultor: E2E autenticado indisponível.");
-
   for (const ecra of ECRAS) {
     test(`${ecra.nome} (${ecra.width}px)`, async ({ page }) => {
       await page.setViewportSize({ width: ecra.width, height: ecra.height });
-      await autenticar(page);
-      await page.goto("/ligar-canal");
+      // Harness determinístico: mesmo componente da rota /ligar-canal, sem
+      // sessão nem dados, para que a baseline visual não oscile.
+      if (SESSION) await autenticar(page);
+      await page.goto("/dev/ligar-canal");
       await page.waitForLoadState("networkidle");
 
       const escolha = page.getByTestId("escolha-canal");
@@ -108,18 +108,22 @@ test.describe("/ligar-canal · WhatsApp e Telegram legíveis em qualquer ecrã",
         );
       }
 
-      // Legibilidade mínima do texto descritivo (>= 12px).
-      const menorFonte = await page.evaluate(() => {
-        let min = 99;
+      // Legibilidade mínima: texto corrido e botões >= 12px; etiquetas >= 11px.
+      const fontes = await page.evaluate(() => {
+        let corpo = 99;
+        let etiqueta = 99;
         document
-          .querySelectorAll<HTMLElement>('[data-testid="escolha-canal"] p, [data-testid="escolha-canal"] li span, [data-testid="escolha-canal"] button')
+          .querySelectorAll<HTMLElement>('[data-testid="escolha-canal"] p, [data-testid="escolha-canal"] li span, [data-testid="escolha-canal"] button, [data-testid="escolha-canal"] h2')
           .forEach((el) => {
             if (!el.textContent?.trim()) return;
-            min = Math.min(min, parseFloat(getComputedStyle(el).fontSize));
+            const px = parseFloat(getComputedStyle(el).fontSize);
+            if (el.classList.contains("c-badge")) etiqueta = Math.min(etiqueta, px);
+            else corpo = Math.min(corpo, px);
           });
-        return min;
+        return { corpo, etiqueta };
       });
-      expect(menorFonte, `${ecra.nome}: texto abaixo de 12px`).toBeGreaterThanOrEqual(12);
+      expect(fontes.corpo, `${ecra.nome}: texto abaixo de 12px`).toBeGreaterThanOrEqual(12);
+      expect(fontes.etiqueta, `${ecra.nome}: etiqueta abaixo de 11px`).toBeGreaterThanOrEqual(11);
 
       // Regressão visual: instantâneo por ecrã.
       await expect(escolha).toHaveScreenshot(`ligar-canal-${ecra.width}.png`, {

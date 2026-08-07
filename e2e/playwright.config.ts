@@ -13,5 +13,10 @@ export default defineConfig({
     viewport: { width: 1280, height: 1800 },
     headless: true,
   },
+  // Baselines visuais: criadas automaticamente quando faltam, comparadas
+  // (e a falhar) sempre que já existem. Para reescrever de propósito:
+  // bunx playwright test -c e2e/playwright.config.ts --update-snapshots
+  updateSnapshots: "missing",
+  snapshotPathTemplate: "{testDir}/__screenshots__/{testFileName}/{arg}{ext}",
   reporter: [["list"]],
 });
