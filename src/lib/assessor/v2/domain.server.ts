@@ -1050,7 +1050,7 @@ async function execCreateProspectingLead(ctx: DomainContext, args: unknown): Pro
   const { data, error } = await ctx.supabase
     .from("prospecting_leads" as never)
     .insert(row as never)
-    .select("id, title, phone, location, status")
+    .select("id, title, phone, location, status, listing_type, property_type, typology")
     .single();
   if (error) return fail(error.message);
   await trackEvent(ctx.supabase, {

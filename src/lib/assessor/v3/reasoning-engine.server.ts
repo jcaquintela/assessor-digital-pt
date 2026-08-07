@@ -292,6 +292,14 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   // o pedido real ("bloco de agenda amanhã para chamadas à rede").
   let pendingForArchive: { original_content?: string | null; intent?: string | null } | null = null;
 
+  // Guião de abordagem a uma placa de particular: só responde a uma escolha
+  // explícita ("chamada"/"mensagem"), para não roubar o "sim" ao lembrete.
+  try {
+    const { resolveScriptPending } = await import("@/lib/prospecting/script-offer.server");
+    const scriptReply = await resolveScriptPending({ supabase, userId, channel }, trimmed);
+    if (scriptReply) return { reply: scriptReply };
+  } catch { /* noop */ }
+
   // Fast-path prospeção — se existe uma proposta pendente de placa e o
   // consultor confirma/cancela, resolvemos sem passar por THINK/DECIDE.
   // Garante que o "Feito" só sai depois da persistência real.
@@ -429,12 +437,26 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
               : "Tentei mas não consegui guardar a placa. Podes tentar outra vez?");
         // Rede de segurança: placa confirmada que não chegou a ser criada
         // fica em Diversos > Por tratar (antes desaparecia sem rasto).
-        const reply = await applySafetyNet(ctx, {
+        let reply = await applySafetyNet(ctx, {
           content: pending.original_content || trimmed,
           outcome: okOk ? "executed_ok" : (dupLead ? "duplicate" : "tool_failed"),
           reason: result.error ?? "not_created",
           reply: baseReply,
         });
+        // Placa de particular: além do lembrete, oferecemos preparar um
+        // guião. Continua a ser sempre rascunho para o consultor rever.
+        if (okOk) {
+          const { appendScriptOffer } = await import("@/lib/prospecting/script-offer.server");
+          reply = await appendScriptOffer(
+            { supabase, userId, channel },
+            {
+              reply,
+              leadId,
+              payload: (pending.structured_payload ?? {}) as Record<string, any>,
+              originalContent: pending.original_content || trimmed,
+            },
+          );
+        }
         try {
           await supabase.from("assessor_ai_logs").insert({
             user_id: userId, channel, model: "reasoning-engine-v3",
@@ -1181,6 +1203,18 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
             last_intent: "create_prospecting_lead",
           } as never, { onConflict: "user_id,channel,external_conversation_id" });
         } catch { /* noop */ }
+      }
+      {
+        const { appendScriptOffer } = await import("@/lib/prospecting/script-offer.server");
+        reply = await appendScriptOffer(
+          { supabase, userId, channel },
+          {
+            reply,
+            leadId,
+            payload: (((leadTool.data as any)?.lead ?? {}) as Record<string, any>),
+            originalContent: trimmed,
+          },
+        );
       }
     } else if (leadTool.ok && dup) {
       reply = "Já tens uma placa registada com esse número. É a mesma?";
