@@ -1,7 +1,7 @@
 {
   "name": "Afonso",
   "short_name": "Afonso",
-  "description": "Assessor pessoal digital para consultores imobiliários.",
+  "description": "O Afonso é o assessor pessoal digital dos consultores imobiliários.",
   "start_url": "/hoje",
   "scope": "/",
   "display": "standalone",

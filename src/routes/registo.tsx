@@ -19,9 +19,9 @@ export const Route = createFileRoute("/registo")({
   head: () => ({
     meta: [
       { title: "Criar conta — Afonso" },
-      { name: "description", content: "Cria a tua conta no plano Base, grátis, e liga o teu assessor pessoal em minutos." },
+      { name: "description", content: "Cria a tua conta no plano Base, grátis, e liga o Afonso em minutos." },
       { property: "og:title", content: "Criar conta — Afonso" },
-      { property: "og:description", content: "Cria a tua conta no plano Base, grátis, e liga o teu assessor pessoal em minutos." },
+      { property: "og:description", content: "Cria a tua conta no plano Base, grátis, e liga o Afonso em minutos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

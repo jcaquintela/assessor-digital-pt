@@ -19,9 +19,9 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Entrar — Afonso" },
-      { name: "description", content: "Iniciar sessão ou criar conta no seu assessor pessoal." },
+      { name: "description", content: "Entra ou cria conta no Afonso, o teu assessor pessoal digital." },
       { property: "og:title", content: "Entrar — Afonso" },
-      { property: "og:description", content: "Iniciar sessão ou criar conta no seu assessor pessoal." },
+      { property: "og:description", content: "Entra ou cria conta no Afonso, o teu assessor pessoal digital." },
     ],
   }),
   component: AuthPage,

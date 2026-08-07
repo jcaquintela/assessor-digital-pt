@@ -221,7 +221,7 @@ export async function stepPairing(
     const code = generateLinkCode();
     const sent = await sendWhatsAppText(
       phone,
-      `Pediste para ligar o Telegram à tua conta do Assessor. Código: ${code}\n\nEscreve-o no Telegram. Se não foste tu, ignora esta mensagem.`,
+      `Pediste para ligar o Telegram à tua conta do Afonso. Código: ${code}\n\nEscreve-o no Telegram. Se não foste tu, ignora esta mensagem.`,
       { kind: "auto" },
     );
     if (!sent?.ok) {
