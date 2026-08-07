@@ -627,3 +627,41 @@ html[data-keyboard="open"] .mobile-bottom-nav {
 
 /* Imóveis v2: avatar de imóvel em verde-sálvia (mesma cor do cartão Imóveis) */
 .consult-root .c-pavatar.sage { background: var(--sage-bg); color: var(--sage); }
+
+/* ---- Seguimentos: leitura rápida (urgência a cor, texto com contraste) ---- */
+.consult-root .c-seg {
+  background: var(--c-card); border: 1px solid var(--line); border-left: 3px solid var(--line);
+  border-radius: 14px; box-shadow: var(--c-shadow);
+  transition: border-color .12s, box-shadow .12s;
+}
+.consult-root .c-seg:hover { border-color: #D3CCB8; box-shadow: 0 2px 4px rgba(20,33,61,.05), 0 8px 22px rgba(20,33,61,.07); }
+.consult-root .c-seg.atrasado { border-left-color: var(--coral); background: linear-gradient(90deg, rgba(184,69,47,.055), transparent 42%), var(--c-card); }
+.consult-root .c-seg.atrasado:hover { border-color: #E0BDB3; }
+.consult-root .c-seg.hoje { border-left-color: var(--amber); }
+.consult-root .c-seg.feito { border-left-color: var(--sage); opacity: .92; }
+.consult-root .c-seg-title {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink);
+}
+.consult-root .c-seg-line { font-size: 13px; line-height: 1.45; color: var(--ink-soft); }
+.consult-root .c-seg-meta { font-size: 12px; font-weight: 500; color: #605C50; }
+.consult-root .c-seg-flag {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em; padding: 3px 9px; border-radius: 999px;
+  background: var(--coral-bg); color: #8E3221; border: 1px solid rgba(184,69,47,.28);
+}
+.consult-root .c-prio {
+  display: inline-flex; align-items: center; font-size: 11px; font-weight: 700;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
+}
+.consult-root .c-prio.alta { background: var(--coral-bg); color: #8E3221; border-color: rgba(184,69,47,.3); }
+.consult-root .c-prio.media { background: var(--amber-bg); color: #7A5310; border-color: rgba(166,116,26,.3); }
+.consult-root .c-prio.baixa { background: #EDEAE0; color: #4A4638; border-color: var(--line); }
+.consult-root .c-seg-tabs [data-state="inactive"] { color: var(--ink-soft); font-weight: 600; }
+.consult-root .c-seg-tabs [data-state="active"] { color: var(--ink); font-weight: 700; }
+.consult-root .c-tabcount {
+  margin-left: 6px; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; background: #E9E5D9; color: #4A4638;
+}
+.consult-root .c-tabcount.alerta { background: var(--coral); color: #fff; }
