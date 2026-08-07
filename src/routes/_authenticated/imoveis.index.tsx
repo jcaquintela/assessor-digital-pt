@@ -54,6 +54,7 @@ export const Route = createFileRoute("/_authenticated/imoveis/")({
 
 function ImoveisPage() {
   const fetchList = useServerFn(listProperties);
+  const { name: assessorName } = useAssessorName();
   const qc = useQueryClient();
   const arquivar = useServerFn(archiveProperty);
   const confirmacao = useDestructiveConfirm();
@@ -111,7 +112,7 @@ function ImoveisPage() {
       alvo: titulo,
       efeito: "arquivo",
       resumo: [
-        "O imóvel sai das listas, pesquisas e sugestões do Assessor.",
+        `O imóvel sai das listas, pesquisas e sugestões do ${assessorName}.`,
         "Negócios, visitas e documentos ligados mantêm-se guardados.",
         "Nada é enviado a proprietários ou compradores.",
       ],
