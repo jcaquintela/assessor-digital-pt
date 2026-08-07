@@ -264,6 +264,73 @@ export async function persistPrioritiesSnapshot(
   userId: string,
   items: PriorityItem[],
 ): Promise<void> {
+  return persistPrioritiesSnapshotImpl(supabase, userId, items);
+}
+
+export type SettledPriority = {
+  subject_id: string;
+  action: string;
+  state_label: string;
+  origin_label: string;
+  due_at: string | null;
+};
+
+/**
+ * Itens que estavam no último briefing mas entretanto foram cancelados,
+ * arquivados ou concluídos. Em vez de desaparecerem em silêncio (e voltarem a
+ * aparecer noutro sítio), mostramos o estado atual.
+ */
+export async function findSettledPriorities(
+  supabase: any,
+  userId: string,
+): Promise<SettledPriority[]> {
+  const { data: snap } = await supabase
+    .from("daily_priorities")
+    .select("subject_id, subject_type, action, due_at")
+    .eq("user_id", userId)
+    .eq("subject_type", "follow_up")
+    .is("dismissed_at", null)
+    .is("completed_at", null)
+    .order("calculated_at", { ascending: false })
+    .limit(20);
+  const rows = ((snap as any[]) ?? []);
+  const ids = [...new Set(rows.map((r) => r.subject_id).filter(Boolean))];
+  if (!ids.length) return [];
+
+  const { data: follows } = await supabase
+    .from("follow_ups")
+    .select("id, status, outcome, archived_at, type")
+    .eq("user_id", userId)
+    .in("id", ids);
+
+  const byId = new Map<string, any>();
+  for (const f of ((follows as any[]) ?? [])) byId.set(f.id, f);
+
+  const out: SettledPriority[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    if (seen.has(r.subject_id)) continue;
+    const f = byId.get(r.subject_id);
+    // Já não existe: foi mesmo removido.
+    const state = f ? followUpStateLabel(f) : "Removido";
+    if (!state) continue;
+    seen.add(r.subject_id);
+    out.push({
+      subject_id: r.subject_id,
+      action: r.action,
+      state_label: state,
+      origin_label: f && EVENT_TYPES.has(norm(f.type)) ? "Compromisso" : "Tarefa de seguimento",
+      due_at: r.due_at ?? null,
+    });
+  }
+  return out.slice(0, 5);
+}
+
+async function persistPrioritiesSnapshotImpl(
+  supabase: any,
+  userId: string,
+  items: PriorityItem[],
+): Promise<void> {
   try {
     // Limpa snapshot anterior (não concluído/dispensado).
     await supabase
