@@ -28,8 +28,8 @@ function LigarCanalPage() {
   const [choice, setChoice] = useState<"whatsapp" | "telegram" | null>(null);
 
   return (
-    <div className="consult-root min-h-screen px-4 py-10">
-      <main className="mx-auto w-full max-w-xl">
+    <div className="consult-root min-h-dvh px-4 py-10">
+      <main className={`mx-auto w-full ${choice === null ? "max-w-3xl" : "max-w-xl"}`}>
         <div className="mb-6 flex items-center gap-2">
           <BrandMark size={36} />
           <div>
@@ -60,51 +60,61 @@ function LigarCanalPage() {
 
 function ChannelChoice({ onChoose }: { onChoose: (c: "whatsapp" | "telegram") => void }) {
   return (
-    <div className="mt-6 space-y-4">
-      <section className="c-card border-2 border-[var(--accent,#0f766e)] p-5">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="c-section-title flex items-center gap-2">
-            <MessageCircle className="h-4 w-4" /> WhatsApp
+    <ul className="mt-6 grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+      <li className="c-card min-w-0 border-2 border-[var(--accent,#0f766e)] p-5">
+        <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+          <h2 className="c-section-title flex min-w-0 items-center gap-2">
+            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">WhatsApp</span>
           </h2>
-          <span className="c-badge ok">14 dias grátis</span>
+          <span className="c-badge ok shrink-0 whitespace-nowrap">14 dias grátis</span>
         </div>
-        <p className="text-[13px] leading-relaxed">
+        <p className="text-[13px] leading-relaxed break-words">
           Experimenta o plano Consultor durante 14 dias, sem pagamento e sem cartão.
           Falas comigo no WhatsApp que já usas o dia todo, envias áudios, fotos e
           documentos, e eu trato dos seguimentos e lembretes por iniciativa própria.
         </p>
         <ul className="c-muted mt-3 space-y-1 text-[13px]">
-          <li className="flex gap-2"><Check className="mt-[3px] h-3.5 w-3.5 shrink-0" /> Áudios, fotos e documentos no canal onde já trabalhas</li>
-          <li className="flex gap-2"><Check className="mt-[3px] h-3.5 w-3.5 shrink-0" /> Lembretes e seguimentos proativos</li>
-          <li className="flex gap-2"><Check className="mt-[3px] h-3.5 w-3.5 shrink-0" /> No fim dos 14 dias escolhes: continuar num plano pago ou ficar em Base</li>
+          <li className="flex min-w-0 gap-2"><Check className="mt-[3px] h-3.5 w-3.5 shrink-0" aria-hidden="true" /> <span className="min-w-0 break-words">Áudios, fotos e documentos no canal onde já trabalhas</span></li>
+          <li className="flex min-w-0 gap-2"><Check className="mt-[3px] h-3.5 w-3.5 shrink-0" aria-hidden="true" /> <span className="min-w-0 break-words">Lembretes e seguimentos proativos</span></li>
+          <li className="flex min-w-0 gap-2"><Check className="mt-[3px] h-3.5 w-3.5 shrink-0" aria-hidden="true" /> <span className="min-w-0 break-words">No fim dos 14 dias escolhes: continuar num plano pago ou ficar em Base</span></li>
         </ul>
-        <button className="c-cta mt-4" onClick={() => onChoose("whatsapp")}>
+        <button
+          type="button"
+          className="c-cta mt-4 min-h-11 w-full justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
+          onClick={() => onChoose("whatsapp")}
+        >
           Começar os 14 dias no WhatsApp
         </button>
-      </section>
+      </li>
 
-      <section className="c-card p-5">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="c-section-title flex items-center gap-2">
-            <Send className="h-4 w-4" /> Telegram
+      <li className="c-card min-w-0 p-5">
+        <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+          <h2 className="c-section-title flex min-w-0 items-center gap-2">
+            <Send className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">Telegram</span>
           </h2>
-          <span className="c-badge">Grátis para sempre</span>
+          <span className="c-badge shrink-0 whitespace-nowrap">Grátis para sempre</span>
         </div>
-        <p className="text-[13px] leading-relaxed">
+        <p className="text-[13px] leading-relaxed break-words">
           Plano Base, sem custos e sem prazo. Guardo pessoas, imóveis e seguimentos a
           partir do que me escreves — mas não tomo iniciativa nem uso WhatsApp.
         </p>
-        <button className="c-btn mt-4" onClick={() => onChoose("telegram")}>
+        <button
+          type="button"
+          className="c-btn mt-4 min-h-11 w-full justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
+          onClick={() => onChoose("telegram")}
+        >
           Ligar Telegram (grátis)
         </button>
-      </section>
-    </div>
+      </li>
+    </ul>
   );
 }
 
 function BackLink({ onBack }: { onBack: () => void }) {
   return (
-    <button className="c-btn-ghost mt-4" onClick={onBack}>
+    <button type="button" className="c-btn-ghost mt-4 min-h-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" onClick={onBack}>
       Ver as duas opções
     </button>
   );
