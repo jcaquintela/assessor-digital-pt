@@ -129,6 +129,7 @@ const CANAL_LABEL: Record<string, string> = {
 
 function DrivePage() {
   const search = Route.useSearch();
+  const { name: assessorName } = useAssessorName();
   const tab: Tab = (search.tab ?? "recentes") as Tab;
   const qParam = search.q ?? "";
   const navigate = Route.useNavigate();
@@ -620,7 +621,7 @@ function DrivePage() {
                     </div>
                     {catName && (
                       <div className="c-muted mt-1 text-[11px]">
-                        Categoria tua · sugestão do Assessor: {autoLabel}
+                        Categoria tua · sugestão do {assessorName}: {autoLabel}
                       </div>
                     )}
                     {links.length > 0 && (
