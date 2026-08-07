@@ -253,6 +253,9 @@ function HojePage() {
     ? (supreme.data.priorities as Priority[])
     : localPriorities;
 
+  // Itens do briefing anterior que entretanto foram cancelados/arquivados.
+  const settled: Settled[] = ((supreme.data as any)?.settled ?? []) as Settled[];
+
   const localAwaiting: Awaiting[] = useMemo(
     () => atrasados
       .filter((s) => s.tipo === "Evento")
