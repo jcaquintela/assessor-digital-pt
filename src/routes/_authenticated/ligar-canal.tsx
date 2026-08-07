@@ -12,10 +12,12 @@ import { startWhatsAppTrial } from "@/lib/subscription/trial.functions";
 export const Route = createFileRoute("/_authenticated/ligar-canal")({
   head: () => ({
     meta: [
-      { title: "Ligar o teu canal — Afonso" },
-      { name: "description", content: "Liga o Telegram à tua conta para começares a falar com o Afonso." },
-      { property: "og:title", content: "Ligar o teu canal — Afonso" },
-      { property: "og:description", content: "Liga o Telegram à tua conta para começares a falar com o Afonso." },
+      { title: "Escolhe o teu canal — Afonso" },
+      { name: "description", content: "WhatsApp com 14 dias grátis ou Telegram gratuito para sempre: escolhe por onde falas com o Afonso." },
+      { property: "og:title", content: "Escolhe o teu canal — Afonso" },
+      { property: "og:description", content: "WhatsApp com 14 dias grátis ou Telegram gratuito para sempre: escolhe por onde falas com o Afonso." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: LigarCanalPage,
