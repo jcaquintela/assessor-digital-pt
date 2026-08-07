@@ -3,7 +3,8 @@
 // Sempre que o Afonso faz uma pergunta de resposta fechada, deixa de fazer
 // sentido pedir "Sim"/"Não" escritos: enviamos botões tocáveis. A decisão
 // passa a vir de um id determinístico, não de texto livre — acaba de vez a
-// ambiguidade entre "Sim", "Ainda não", "ok", etc.
+// ambiguidade entre "Sim", "Não", "ok", etc. Cada rótulo diz exactamente o
+// que acontece se for tocado — nunca um "talvez" disfarçado.
 //
 // Regras (WhatsApp Cloud API):
 //  - até 3 opções  -> Interactive Reply Buttons (type: "button")
