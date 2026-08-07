@@ -300,7 +300,7 @@ function HojePage() {
       imovelId: null,
       imovelTitulo: null,
       negocioId: extra?.dealId ?? s.oportunidadeId ?? null,
-      negocioLabel: extra?.dealLabel ?? deal?.tipo ?? null,
+      negocioLabel: extra?.dealLabel ?? deal?.titulo?.trim() || deal?.tipo || null,
       notas: s.notas ?? null,
       estado: s.estado,
       tipo: s.tipo,
