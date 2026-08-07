@@ -129,7 +129,7 @@ function AdminLayout() {
               <nav className="flex-1">{renderNav(handleNavClick)}</nav>
               <div className="navfoot">
                 <div className="capitalize">{data.role.replace("_", " ")}</div>
-                <Link to="/" className="mt-2 block hover:underline">← Voltar à app</Link>
+                <Link to="/" onClick={handleNavClick} className="mt-2 block hover:underline">← Voltar à app</Link>
                 <button type="button" onClick={signOut} className="mt-2 flex items-center gap-1 hover:underline">
                   <LogOut className="h-3 w-3" /> Terminar sessão
                 </button>
