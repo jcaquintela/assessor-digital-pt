@@ -25,7 +25,7 @@ export type OutcomeTargetDecision =
 
 // Tratamentos ("Sr. Coelho", "Dona Ana") — sinal forte de nome próprio.
 const TITLED_NAME_RE =
-  /\b(?:sr\.?a?|senhora?|sra\.?|dona?|d\.|dr\.?a?|eng\.?[ºoa]?|prof\.?)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+){0,2})/g;
+  /\b(?:sr\.?a?|senhora?|sra\.?|dona?|d\.|dr\.?a?|eng\.?[ºoa]?|prof\.?)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+){0,2})/gi;
 
 // Nomes próprios soltos (maiúscula inicial), fora do início da frase.
 const CAPITALIZED_RE = /([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]{2,}(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]{2,}){0,2})/g;
@@ -47,12 +47,13 @@ export function extractExplicitNames(text: string | null | undefined): string[] 
 
   for (const m of raw.matchAll(TITLED_NAME_RE)) {
     const name = m[1]?.trim();
-    if (name) out.push(name);
+    // O tratamento pode vir em minúsculas ("sr. Coelho"), o nome não.
+    if (name && /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/.test(name)) out.push(name);
   }
 
   // Fora do primeiro token da frase, para não apanhar "Registei", "Ontem"...
   const withoutTitled = raw.replace(TITLED_NAME_RE, " ");
-  for (const sentence of withoutTitled.split(/[.!?\n]+/)) {
+  for (const sentence of withoutTitled.split(/[!?\n]+|\.(?=\s|$)/)) {
     const body = sentence.replace(/^\s*\S+\s*/, " "); // descarta a 1ª palavra
     for (const m of body.matchAll(CAPITALIZED_RE)) {
       const name = m[1]?.trim();
