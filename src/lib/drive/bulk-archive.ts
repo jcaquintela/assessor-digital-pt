@@ -25,8 +25,9 @@ const ARCHIVE_VERB =
 const PLURAL_ALL =
   /\b(todos|todas|tudo|os\s+meus|as\s+minhas|v[áa]rios|v[áa]rias)\b/i;
 
+// Nota: "á" não é word char em JS, por isso \b antes de "áudios" nunca casa.
 const KIND_PATTERNS: Array<{ kind: BulkKind; re: RegExp }> = [
-  { kind: "audio", re: /\b([áa]udios|gravaç[õo]es|voice\s*notes?|mensagens\s+de\s+voz)\b/i },
+  { kind: "audio", re: /(?:^|\W)([áa]udios|gravaç[õo]es|voice\s*notes?|mensagens\s+de\s+voz)(?:$|\W)/i },
   { kind: "image", re: /\b(fotos|fotografias|imagens|prints?|screenshots?)\b/i },
   { kind: "document", re: /\b(documentos|docs|pdfs?|ficheiros\s+pdf)\b/i },
   { kind: "any", re: /\b(ficheiros|anexos|uploads)\b/i },
