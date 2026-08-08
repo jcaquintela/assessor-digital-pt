@@ -203,3 +203,27 @@ function AssessorPage() {
     </AppShell>
   );
 }
+
+/** Copia a mensagem sugerida inteira, de uma vez, sem seleção manual. */
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      className="mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[12px] opacity-80 hover:opacity-100"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setDone(true);
+          toast.success("Mensagem copiada.");
+          setTimeout(() => setDone(false), 2000);
+        } catch {
+          toast.error("Não consegui copiar. Seleciona o texto e copia à mão.");
+        }
+      }}
+    >
+      {done ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      {done ? "Copiado" : "Copiar"}
+    </button>
+  );
+}
