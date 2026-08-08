@@ -156,16 +156,38 @@ function AssessorPage() {
               return (
                 <div key={m.id}>
                   {showDivider && <div className="c-daysep">{formatDia(m.created_at)}</div>}
-                  <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
-                    <div className={cn("c-bubble", isUser ? "user" : "bot")}>
-                      {/* Mesma normalização do que sai no canal: o que se vê é o que se copia. */}
-                      <span className="whitespace-pre-line">
-                        {isSuggestion ? normalizeSuggestedText(m.content) : m.content}
-                      </span>
-                      {isSuggestion && <CopyButton text={normalizeSuggestedText(m.content)} />}
-                      <span className={cn("c-when", isUser ? "text-right" : "text-left")}>{formatHora(m.created_at)}</span>
-                    </div>
-                  </div>
+                   <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+                     <div
+                       className={cn(
+                         "c-bubble",
+                         isUser ? "user" : "bot",
+                         isSuggestion && "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink,#333)]",
+                       )}
+                       {...(isSuggestion
+                         ? {
+                             tabIndex: 0,
+                             role: "group",
+                             "aria-label": "Mensagem sugerida. Ctrl ou Cmd + C para copiar.",
+                             onKeyDown: (e: React.KeyboardEvent) => {
+                               const isCopy = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c";
+                               const isShortcut = !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === "c";
+                               if (!isCopy && !isShortcut) return;
+                               // Se o consultor já selecionou texto à mão, não interferimos.
+                               if (isCopy && String(window.getSelection() ?? "").trim()) return;
+                               e.preventDefault();
+                               void copySuggested(normalizeSuggestedText(m.content));
+                             },
+                           }
+                         : {})}
+                     >
+                       {/* Mesma normalização do que sai no canal: o que se vê é o que se copia. */}
+                       <span className="whitespace-pre-line">
+                         {isSuggestion ? normalizeSuggestedText(m.content) : m.content}
+                       </span>
+                       {isSuggestion && <CopyButton text={normalizeSuggestedText(m.content)} />}
+                       <span className={cn("c-when", isUser ? "text-right" : "text-left")}>{formatHora(m.created_at)}</span>
+                     </div>
+                   </div>
                 </div>
               );
             })}
