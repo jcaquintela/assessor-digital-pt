@@ -271,7 +271,8 @@ async function deliverReply(
     replyTo: string | null;
   },
 ): Promise<AdapterSendResult> {
-  const { outcome, externalConversationId, userId, replyTo } = args;
+  let { outcome } = args;
+  const { externalConversationId, userId, replyTo } = args;
   const alreadyPersisted = outcome.messageType === "__ALREADY_PERSISTED__";
 
   // Texto sugerido para o consultor copiar/reenviar sai sempre numa mensagem
