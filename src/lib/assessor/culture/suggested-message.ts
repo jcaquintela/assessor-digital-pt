@@ -50,6 +50,27 @@ function stripWrappers(raw: string): string {
   return out.trim();
 }
 
+/**
+ * Normalização única do texto sugerido: o que é enviado no canal, o que fica
+ * guardado e o que o botão "Copiar" põe na área de transferência têm de ser
+ * exatamente a mesma string.
+ * - CRLF/CR -> \n
+ * - remove itálicos/asteriscos/aspas a envolver o texto
+ * - tira espaços no fim de cada linha (e NBSP -> espaço normal)
+ * - colapsa 3+ quebras em no máximo uma linha em branco
+ */
+export function normalizeSuggestedText(raw: string | null | undefined): string {
+  const base = String(raw ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ");
+  return stripWrappers(base)
+    .split("\n")
+    .map((l) => l.replace(/[ \t]+$/g, "").replace(/^[ \t]+/g, ""))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 // Frases que anunciam um rascunho ("sugiro algo simples:", "podes enviar:").
 const LEAD_IN_RE =
   /^(?<intro>[\s\S]*?(?:sugiro|proponho|deixo|escreve|envia|manda|podes\s+(?:enviar|mandar|copiar)|fica\s+assim|guião|rascunho|mensagem)[^\n:]*:)\s*(?<body>[\s\S]+)$/i;
@@ -65,7 +86,7 @@ export function splitSuggestedMessage(reply: string | null | undefined): SplitSu
   const marked = text.indexOf(SUGGESTION_MARKER);
   if (marked >= 0) {
     const intro = text.slice(0, marked).trim();
-    const suggestion = stripWrappers(text.slice(marked + SUGGESTION_MARKER.length));
+    const suggestion = normalizeSuggestedText(text.slice(marked + SUGGESTION_MARKER.length));
     if (!suggestion) return null;
     return { intro, suggestion };
   }
@@ -77,7 +98,7 @@ export function splitSuggestedMessage(reply: string | null | undefined): SplitSu
   // Só separamos quando o corpo vem visivelmente marcado como texto para
   // copiar (itálico/aspas) ou quando é claramente um bloco à parte.
   const looksQuoted = /^[_*"“«]/.test(rawBody) || rawBody.startsWith("\n");
-  const body = stripWrappers(rawBody);
+  const body = normalizeSuggestedText(rawBody);
   if (!body || body.length < 15) return null;
   if (!looksQuoted && !/\n/.test(rawBody)) return null;
   if (!intro) return null;
