@@ -98,6 +98,30 @@ function AssessorPage() {
 
   const canalLabel = channel ? CHANNEL_LABEL[channel] : "WhatsApp";
 
+  // Atalho global: Ctrl/Cmd + Shift + C copia o último texto sugerido,
+  // sem ser preciso ir com o rato ao botão.
+  const lastSuggestion = (() => {
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i]!;
+      if (m.role !== "user" && (m.message_type as string | null) === "suggested_message") {
+        return normalizeSuggestedText(m.content);
+      }
+    }
+    return "";
+  })();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || !e.shiftKey) return;
+      if (e.key.toLowerCase() !== "c") return;
+      if (!lastSuggestion) return;
+      e.preventDefault();
+      void copySuggested(lastSuggestion);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lastSuggestion]);
+
   const enviar = async () => {
     const text = draft.trim();
     if (!text || sending) return;
@@ -127,6 +151,11 @@ function AssessorPage() {
             <div className="c-muted text-[11.5px]">
               Assistente de IA · {canWrite ? `escreve aqui ou pelo ${canalLabel}` : `conversa via ${canalLabel}, só leitura`}
             </div>
+            {lastSuggestion && (
+              <div className="c-muted hidden text-[11px] md:block">
+                Atalho: {isMac() ? "⌘" : "Ctrl"} + Shift + C copia o último texto sugerido
+              </div>
+            )}
           </div>
         </div>
 
@@ -230,21 +259,34 @@ function AssessorPage() {
   );
 }
 
+function isMac() {
+  return typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent);
+}
+
+/** Copia o texto sugerido (botão e atalhos usam exatamente a mesma string). */
+export async function copySuggested(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success("Mensagem copiada.");
+    return true;
+  } catch {
+    toast.error("Não consegui copiar. Seleciona o texto e copia à mão.");
+    return false;
+  }
+}
+
 /** Copia a mensagem sugerida inteira, de uma vez, sem seleção manual. */
 function CopyButton({ text }: { text: string }) {
   const [done, setDone] = useState(false);
   return (
     <button
       type="button"
+      title={`${isMac() ? "⌘" : "Ctrl"} + Shift + C`}
       className="mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[12px] opacity-80 hover:opacity-100"
       onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
+        if (await copySuggested(text)) {
           setDone(true);
-          toast.success("Mensagem copiada.");
           setTimeout(() => setDone(false), 2000);
-        } catch {
-          toast.error("Não consegui copiar. Seleciona o texto e copia à mão.");
         }
       }}
     >
