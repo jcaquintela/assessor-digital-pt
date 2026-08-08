@@ -3,6 +3,11 @@
 
 import { OUTCOME_LABEL, type FollowUpOutcome } from "@/lib/assessor/interactive";
 import { isTerminalOutcome, statusForOutcome } from "@/lib/assessor/outcome-status";
+import {
+  decideOutcomeTarget,
+  type OutcomeCandidate,
+  type OutcomeTargetDecision,
+} from "@/lib/assessor/outcome-target";
 
 export async function applyFollowUpOutcome(
   supabase: any,
@@ -91,5 +96,38 @@ export function outcomeAck(outcome: FollowUpOutcome | string, title: string | nu
   if (outcome === "precisa_nova_acao") return `Fica marcado: ${what} precisa de seguimento. Queres que agende?`;
   return `Registei ${what} como sem efeito. Não volto a lembrar-te disso.`;
 }
+
+/** Seguimentos abertos recentes, com a pessoa ligada, para comparar com o nome dito. */
+async function listOpenCandidates(supabase: any, userId: string): Promise<OutcomeCandidate[]> {
+  const { data } = await supabase
+    .from("follow_ups")
+    .select("id, title, person_id, people:person_id(name)")
+    .eq("user_id", userId)
+    .is("outcome", null)
+    .is("archived_at", null)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  return (((data as any[]) ?? []).map((r) => ({
+    id: String(r.id),
+    title: String(r.title ?? ""),
+    personName: (r.people?.name ?? null) as string | null,
+  })));
+}
+
+/**
+ * Bug real (08/08): "O Sr. Coelho desistiu de tudo" fechou "Reunião de equipa",
+ * um check-in pendente de outro dia. Um nome próprio explícito manda sempre
+ * sobre o pendente; havendo dúvida, pergunta-se.
+ */
+export async function resolveOutcomeTargetFromText(
+  supabase: any,
+  userId: string,
+  text: string,
+): Promise<OutcomeTargetDecision> {
+  const pending = await resolveOutcomeTargetFollowUp(supabase, userId);
+  const candidates = await listOpenCandidates(supabase, userId);
+  return decideOutcomeTarget({ text, pending, candidates });
+}
+
 
 export { OUTCOME_LABEL };

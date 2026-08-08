@@ -112,14 +112,31 @@ async function routeInbound(
     // escrita ("já liguei", "fica sem efeito"), resolvemos o seguimento a
     // que o Assessor se referiu há pouco e fechamos na mesma.
     let outcomeCmd = parseOutcomeCommand(content);
+    let outcomeAsk: string | null = null;
     if (!outcomeCmd && inbound.messageType === "text") {
       const { detectOutcomeFromText } = await import("@/lib/assessor/outcome-intent");
       const detected = detectOutcomeFromText(content);
       if (detected) {
-        const { resolveOutcomeTargetFollowUp } = await import("@/lib/assessor/proactive/outcomes.server");
-        const target = await resolveOutcomeTargetFollowUp(supabaseAdmin, userId);
-        if (target) outcomeCmd = { followUpId: target.id, outcome: detected };
+        // Um nome próprio explícito na frase manda sobre qualquer pendente
+        // antigo; havendo dúvida real, pergunta-se em vez de agir.
+        const { resolveOutcomeTargetFromText } = await import("@/lib/assessor/proactive/outcomes.server");
+        const { askWhichTarget } = await import("@/lib/assessor/outcome-target");
+        const decision = await resolveOutcomeTargetFromText(supabaseAdmin, userId, content);
+        if (decision.kind === "apply") {
+          outcomeCmd = { followUpId: decision.target.id, outcome: detected };
+        } else if (decision.kind === "ask") {
+          outcomeAsk = askWhichTarget(decision.options);
+        }
       }
+    }
+    if (!outcomeCmd && outcomeAsk) {
+      const send = await adapter.sendText(inbound.externalConversationId, outcomeAsk);
+      await supabaseAdmin.from("assessor_messages").insert({
+        user_id: userId, role: "assistant", content: outcomeAsk,
+        message_type: "outcome_disambiguation", channel: adapter.channel,
+        status: send.ok ? "sent" : "failed",
+      } as never);
+      return;
     }
     if (outcomeCmd) {
       const { applyFollowUpOutcome, outcomeAck } = await import("@/lib/assessor/proactive/outcomes.server");
