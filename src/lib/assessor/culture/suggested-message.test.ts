@@ -172,3 +172,54 @@ describe("normalizeSuggestedText: parágrafos, listas e quebras mistas", () => {
     expect(s.suggestion).toBe("Boa tarde.\n\n- Caderneta\n- Certidão\n\nObrigado.");
   });
 });
+
+describe("normalizeSuggestedText: Unicode PT-PT", () => {
+  it("remove aspas tipográficas a envolver o texto todo", () => {
+    expect(normalizeSuggestedText("“Boa tarde, Sr. Coelho.”")).toBe("Boa tarde, Sr. Coelho.");
+    expect(normalizeSuggestedText("«Boa tarde — falamos hoje?»")).toBe("Boa tarde — falamos hoje?");
+    expect(normalizeSuggestedText("‘Boa tarde, tudo bem?’")).toBe("Boa tarde, tudo bem?");
+  });
+
+  it("remove camadas mistas de aspas curvas e itálico", () => {
+    expect(normalizeSuggestedText("“_Boa tarde, consegue enviar a caderneta?_”")).toBe(
+      "Boa tarde, consegue enviar a caderneta?",
+    );
+    expect(normalizeSuggestedText("«**Boa tarde, falamos amanhã?**»")).toBe("Boa tarde, falamos amanhã?");
+  });
+
+  it("preserva aspas e apóstrofos curvos no interior da frase", () => {
+    expect(normalizeSuggestedText("Boa tarde — o Sr. Coelho disse que está “tudo bem”.")).toBe(
+      "Boa tarde — o Sr. Coelho disse que está “tudo bem”.",
+    );
+    expect(normalizeSuggestedText("Falei com a D’Ávila e com o l’Escola.")).toBe(
+      "Falei com a D’Ávila e com o l’Escola.",
+    );
+  });
+
+  it("preserva travessões, meias-riscas e reticências", () => {
+    expect(normalizeSuggestedText("Traço – meia risca e — travessão…")).toBe("Traço – meia risca e — travessão…");
+  });
+
+  it("preserva acentuação, cedilha e o símbolo do euro", () => {
+    expect(normalizeSuggestedText("  Avaliação: 200.000 €. Atenção à cedilha e ao “ã”.  ")).toBe(
+      "Avaliação: 200.000 €. Atenção à cedilha e ao “ã”.",
+    );
+  });
+
+  it("normaliza espaços não separáveis à volta do euro sem perder o símbolo", () => {
+    expect(normalizeSuggestedText("Preço:\u00a0200\u00a0000\u00a0€ – negociável ")).toBe(
+      "Preço: 200 000 € – negociável",
+    );
+  });
+
+  it("aspas curvas por linha em listas multi-parágrafo", () => {
+    const raw = "“Boa tarde.”\r\n\r\n“- Caderneta”\r“- Certidão”\r\n\r\n“Obrigado.”";
+    expect(normalizeSuggestedText(raw)).toBe("Boa tarde.\n\n- Caderneta\n- Certidão\n\nObrigado.");
+  });
+
+  it("mantém-se idempotente com pontuação tipográfica", () => {
+    const once = normalizeSuggestedText("“Boa tarde — d’Ávila…”\r\n\r\n\r\n“Obrigado.”");
+    expect(normalizeSuggestedText(once)).toBe(once);
+    expect(once).toBe("Boa tarde — d’Ávila…\n\nObrigado.");
+  });
+});
