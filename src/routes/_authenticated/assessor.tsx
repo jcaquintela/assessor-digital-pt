@@ -264,7 +264,7 @@ function isMac() {
 }
 
 /** Copia o texto sugerido (botão e atalhos usam exatamente a mesma string). */
-export async function copySuggested(text: string) {
+async function copySuggested(text: string) {
   try {
     await navigator.clipboard.writeText(text);
     toast.success("Mensagem copiada.");
