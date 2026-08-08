@@ -148,12 +148,16 @@ function AssessorPage() {
               const prev = msgs[i - 1];
               const showDivider = !prev || new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
               const isUser = m.role === "user";
+              // Texto sugerido para reenviar chega como mensagem isolada:
+              // aqui o equivalente ao long-press do WhatsApp é o "Copiar".
+              const isSuggestion = !isUser && (m.message_type as string | null) === "suggested_message";
               return (
                 <div key={m.id}>
                   {showDivider && <div className="c-daysep">{formatDia(m.created_at)}</div>}
                   <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
                     <div className={cn("c-bubble", isUser ? "user" : "bot")}>
                       {m.content}
+                      {isSuggestion && <CopyButton text={m.content} />}
                       <span className={cn("c-when", isUser ? "text-right" : "text-left")}>{formatHora(m.created_at)}</span>
                     </div>
                   </div>
