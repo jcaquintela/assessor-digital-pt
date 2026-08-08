@@ -129,11 +129,5 @@ export async function resolveOutcomeTargetFromText(
   return decideOutcomeTarget({ text, pending, candidates });
 }
 
-function legacyOutcomeAck(outcome: FollowUpOutcome | string, title: string | null): string {
-  const what = title ? `"${title}"` : "o seguimento";
-  if (outcome === "concluido") return `Boa. Dei ${what} como concluído.`;
-  if (outcome === "precisa_nova_acao") return `Fica marcado: ${what} precisa de seguimento. Queres que agende?`;
-  return `Registei ${what} como sem efeito. Não volto a lembrar-te disso.`;
-}
 
 export { OUTCOME_LABEL };
