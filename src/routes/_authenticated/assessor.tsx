@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { CHANNEL_LABEL, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
 import { cn } from "@/lib/utils";
-import { MessageCircle, SendHorizonal, Loader2 } from "lucide-react";
+import { MessageCircle, SendHorizonal, Loader2, Copy, Check } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { sendDashboardMessage, DASHBOARD_CHAT_MIN_TIER } from "@/lib/assessor/dashboard-chat.functions";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
