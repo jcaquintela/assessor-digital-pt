@@ -116,3 +116,59 @@ describe("normalizeSuggestedText: o que se vê é o que se copia", () => {
     expect(normalizeSuggestedText(s.suggestion)).toBe(s.suggestion);
   });
 });
+
+describe("normalizeSuggestedText: parágrafos, listas e quebras mistas", () => {
+  it("mantém vários parágrafos separados por uma linha em branco", () => {
+    const raw = "Boa tarde, Sr. Coelho.\r\n\r\n\r\nJá tenho a avaliação do terreno.\n\n\nDiga-me quando podemos falar.";
+    expect(normalizeSuggestedText(raw)).toBe(
+      "Boa tarde, Sr. Coelho.\n\nJá tenho a avaliação do terreno.\n\nDiga-me quando podemos falar.",
+    );
+  });
+
+  it("preserva listas com travessão e mistura CRLF/CR/LF", () => {
+    const raw = "Boa tarde.\r\n\r\n- Caderneta predial\r- Certidão permanente\n- Planta\r\n\r\nObrigado.";
+    expect(normalizeSuggestedText(raw)).toBe(
+      "Boa tarde.\n\n- Caderneta predial\n- Certidão permanente\n- Planta\n\nObrigado.",
+    );
+  });
+
+  it("preserva listas numeradas mesmo com itálicos por linha", () => {
+    const raw = "_Boa tarde._\r\n\r\n_1. Avaliação_\n_2. Documentos_\r\n_3. Visita_\r\n\r\n\r\n_Obrigado._";
+    expect(normalizeSuggestedText(raw)).toBe(
+      "Boa tarde.\n\n1. Avaliação\n2. Documentos\n3. Visita\n\nObrigado.",
+    );
+  });
+
+  it("achata indentação de sublistas (o canal não a preserva)", () => {
+    expect(normalizeSuggestedText("- Documentos\n    - Caderneta\n\t- Certidão")).toBe(
+      "- Documentos\n- Caderneta\n- Certidão",
+    );
+  });
+
+  it("não colapsa listas com linhas em branco entre itens", () => {
+    expect(normalizeSuggestedText("• Um\n\n• Dois\n\n\n\n• Três")).toBe("• Um\n\n• Dois\n\n• Três");
+  });
+
+  it("mesmo conteúdo com CRLF, CR ou LF dá exatamente a mesma string", () => {
+    const base = "Boa tarde.\n\n- Um\n- Dois\n\nObrigado.";
+    const crlf = base.replace(/\n/g, "\r\n");
+    const cr = base.replace(/\n/g, "\r");
+    expect(normalizeSuggestedText(crlf)).toBe(normalizeSuggestedText(base));
+    expect(normalizeSuggestedText(cr)).toBe(normalizeSuggestedText(base));
+    expect(normalizeSuggestedText(base)).toBe(base);
+  });
+
+  it("bloco multi-parágrafo em aspas continua a sair limpo e idempotente", () => {
+    const raw = '"Boa tarde, Sr. Coelho.\r\n\r\n- Caderneta\r- Certidão\r\n\r\nObrigado."';
+    const out = normalizeSuggestedText(raw);
+    expect(out).toBe("Boa tarde, Sr. Coelho.\n\n- Caderneta\n- Certidão\n\nObrigado.");
+    expect(normalizeSuggestedText(out)).toBe(out);
+  });
+
+  it("a separação de sugestões multi-parágrafo devolve o mesmo texto normalizado", () => {
+    const suggestion = "Boa tarde.\r\n\r\n- Caderneta\r- Certidão\r\n\r\nObrigado.";
+    const s = splitSuggestedMessage(withSuggestion("Podes enviar:", suggestion))!;
+    expect(s.suggestion).toBe(normalizeSuggestedText(suggestion));
+    expect(s.suggestion).toBe("Boa tarde.\n\n- Caderneta\n- Certidão\n\nObrigado.");
+  });
+});
