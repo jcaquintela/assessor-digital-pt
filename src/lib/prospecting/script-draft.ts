@@ -10,6 +10,8 @@
 // Módulo puro (sem I/O), para poder ser testado e para não gastar IA numa
 // coisa que é sempre a mesma estrutura.
 
+import { withSuggestion } from "@/lib/assessor/culture/suggested-message";
+
 export type ScriptKind = "chamada" | "mensagem";
 
 export interface ScriptLeadInfo {
@@ -85,5 +87,6 @@ export function formatScriptReply(kind: ScriptKind, body: string): string {
   const intro = kind === "mensagem"
     ? "Rascunho de mensagem — lê e muda o que quiseres antes de enviares. Não envio nada por ti."
     : "Rascunho para a chamada — usa as ideias, as palavras são tuas.";
-  return `${intro}\n\n${body}`;
+  // O guião sai numa mensagem só dele, pronto a copiar de uma vez.
+  return withSuggestion(intro, body);
 }

@@ -271,8 +271,21 @@ async function deliverReply(
     replyTo: string | null;
   },
 ): Promise<AdapterSendResult> {
-  const { outcome, externalConversationId, userId, replyTo } = args;
+  let { outcome } = args;
+  const { externalConversationId, userId, replyTo } = args;
   const alreadyPersisted = outcome.messageType === "__ALREADY_PERSISTED__";
+
+  // Texto sugerido para o consultor copiar/reenviar sai sempre numa mensagem
+  // só dele: no WhatsApp, um long-press seleciona a mensagem inteira.
+  const { splitSuggestedMessage, stripSuggestionMarker } = await import(
+    "@/lib/assessor/culture/suggested-message"
+  );
+  const split = splitSuggestedMessage(outcome.reply);
+  if (split) {
+    outcome = { ...outcome, reply: split.intro } as EngineOutcome;
+  } else if (outcome.reply.includes("[[SUGESTAO]]")) {
+    outcome = { ...outcome, reply: stripSuggestionMarker(outcome.reply) } as EngineOutcome;
+  }
 
   // Idempotência de entrega: um reenvio do mesmo evento (retry do webhook,
   // worker duplicado) não pode voltar a mandar a mesma frase ao consultor.
@@ -340,6 +353,26 @@ async function deliverReply(
       channel: adapter.channel,
       sender_phone: externalConversationId,
       whatsapp_message_id: send.ok ? send.messageId : null,
+    });
+  }
+
+  // Segunda mensagem: só o texto sugerido, pronto a copiar de uma vez.
+  if (split?.suggestion) {
+    let s: AdapterSendResult;
+    try {
+      s = await adapter.sendText(externalConversationId, split.suggestion);
+    } catch (err) {
+      s = { ok: false, error: err instanceof Error ? err.message : String(err) } as AdapterSendResult;
+    }
+    await supabaseAdmin.from("assessor_messages").insert({
+      user_id: userId,
+      role: "assistant",
+      content: split.suggestion,
+      message_type: "suggested_message",
+      status: s.ok ? "sent" : "failed",
+      channel: adapter.channel,
+      sender_phone: externalConversationId,
+      whatsapp_message_id: s.ok ? s.messageId : null,
     });
   }
   return send;

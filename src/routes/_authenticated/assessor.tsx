@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { CHANNEL_LABEL, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
 import { cn } from "@/lib/utils";
-import { MessageCircle, SendHorizonal, Loader2 } from "lucide-react";
+import { MessageCircle, SendHorizonal, Loader2, Copy, Check } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { sendDashboardMessage, DASHBOARD_CHAT_MIN_TIER } from "@/lib/assessor/dashboard-chat.functions";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
@@ -15,6 +15,7 @@ import { tierAtLeast } from "@/lib/subscription/tiers";
 import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
+
   head: () => ({
     meta: [
       { title: "Conversa — Afonso" },
@@ -148,12 +149,16 @@ function AssessorPage() {
               const prev = msgs[i - 1];
               const showDivider = !prev || new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
               const isUser = m.role === "user";
+              // Texto sugerido para reenviar chega como mensagem isolada:
+              // aqui o equivalente ao long-press do WhatsApp é o "Copiar".
+              const isSuggestion = !isUser && (m.message_type as string | null) === "suggested_message";
               return (
                 <div key={m.id}>
                   {showDivider && <div className="c-daysep">{formatDia(m.created_at)}</div>}
                   <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
                     <div className={cn("c-bubble", isUser ? "user" : "bot")}>
                       {m.content}
+                      {isSuggestion && <CopyButton text={m.content} />}
                       <span className={cn("c-when", isUser ? "text-right" : "text-left")}>{formatHora(m.created_at)}</span>
                     </div>
                   </div>
@@ -196,5 +201,29 @@ function AssessorPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+/** Copia a mensagem sugerida inteira, de uma vez, sem seleção manual. */
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      className="mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[12px] opacity-80 hover:opacity-100"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setDone(true);
+          toast.success("Mensagem copiada.");
+          setTimeout(() => setDone(false), 2000);
+        } catch {
+          toast.error("Não consegui copiar. Seleciona o texto e copia à mão.");
+        }
+      }}
+    >
+      {done ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      {done ? "Copiado" : "Copiar"}
+    </button>
   );
 }
