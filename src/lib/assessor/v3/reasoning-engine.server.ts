@@ -675,10 +675,6 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
     // Feedback anunciado ("posso dar uma sugestão?") — aguarda o corpo.
     // Aqui já não é preciso repetir "sugestão"/"erro" nem falar do produto.
-    if (pending && pending.intent === "collecting_feedback") {
-      // (guardado abaixo pelo lote de arquivo, ver confirm_bulk_archive)
-    }
-
     // Arquivo em lote de ficheiros do Drive: só arquiva depois de o consultor
     // ver a lista e confirmar. Eliminar definitivo continua fora da conversa.
     if (pending && pending.intent === "confirm_bulk_archive") {
