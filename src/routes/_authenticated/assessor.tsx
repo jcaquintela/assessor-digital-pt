@@ -15,6 +15,7 @@ import { tierAtLeast } from "@/lib/subscription/tiers";
 import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
+
   head: () => ({
     meta: [
       { title: "Conversa — Afonso" },
