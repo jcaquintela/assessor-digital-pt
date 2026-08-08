@@ -157,8 +157,11 @@ function AssessorPage() {
                   {showDivider && <div className="c-daysep">{formatDia(m.created_at)}</div>}
                   <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
                     <div className={cn("c-bubble", isUser ? "user" : "bot")}>
-                      {m.content}
-                      {isSuggestion && <CopyButton text={m.content} />}
+                      {/* Mesma normalização do que sai no canal: o que se vê é o que se copia. */}
+                      <span className="whitespace-pre-line">
+                        {isSuggestion ? normalizeSuggestedText(m.content) : m.content}
+                      </span>
+                      {isSuggestion && <CopyButton text={normalizeSuggestedText(m.content)} />}
                       <span className={cn("c-when", isUser ? "text-right" : "text-left")}>{formatHora(m.created_at)}</span>
                     </div>
                   </div>
