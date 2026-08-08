@@ -26,20 +26,27 @@ export function withSuggestion(intro: string, suggestion: string): string {
 
 function stripWrappers(raw: string): string {
   let out = String(raw ?? "").trim();
-  // Itálico/negrito do WhatsApp ou Markdown à volta de todo o bloco.
+  // Itálicos/aspas por linha (o modelo às vezes envolve cada parágrafo).
+  out = out
+    .split("\n")
+    .map((l) =>
+      l
+        .trim()
+        .replace(/^_([^_]+)_$/, "$1")
+        .replace(/^\*([^*]+)\*$/, "$1")
+        .replace(/^["“”«]([\s\S]+)["“”»]$/, "$1"),
+    )
+    .join("\n")
+    .trim();
+  // Marcadores a envolver o bloco inteiro.
   for (let i = 0; i < 3; i++) {
     const next = out
-      .replace(/^[_*]{1,2}([\s\S]+)[_*]{1,2}$/m, "$1")
-      .replace(/^["“”«]([\s\S]+)["“”»]$/m, "$1")
+      .replace(/^[_*]{1,2}([\s\S]+)[_*]{1,2}$/, "$1")
+      .replace(/^["“”«]([\s\S]+)["“”»]$/, "$1")
       .trim();
     if (next === out) break;
     out = next;
   }
-  // Itálicos por linha (o modelo às vezes envolve cada parágrafo).
-  out = out
-    .split("\n")
-    .map((l) => l.trim().replace(/^_([^_]+)_$/, "$1").replace(/^\*([^*]+)\*$/, "$1"))
-    .join("\n");
   return out.trim();
 }
 
