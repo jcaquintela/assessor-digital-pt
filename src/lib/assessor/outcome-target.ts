@@ -25,7 +25,7 @@ export type OutcomeTargetDecision =
 
 // Tratamentos ("Sr. Coelho", "Dona Ana") — sinal forte de nome próprio.
 const TITLED_NAME_RE =
-  /\b(?:sr\.?a?|senhora?|sra\.?|dona?|d\.|dr\.?a?|eng\.?[ºoa]?|prof\.?)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+){0,2})/gi;
+  /(?:\b|^)(?:[Ss][Rr]\.?[AaªO]?|[Ss][Ee][Nn][Hh][Oo][Rr][Aa]?|[Dd][Oo]?[Nn][Aa]|[Dd]\.|[Dd][Rr]\.?[Aa]?|[Ee][Nn][Gg]\.?[ºoa]?|[Pp][Rr][Oo][Ff]\.?)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+){0,2})/g;
 
 // Nomes próprios soltos (maiúscula inicial), fora do início da frase.
 const CAPITALIZED_RE = /([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]{2,}(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]{2,}){0,2})/g;
