@@ -34,7 +34,7 @@ function stripWrappers(raw: string): string {
         .trim()
         .replace(/^_([^_]+)_$/, "$1")
         .replace(/^\*([^*]+)\*$/, "$1")
-        .replace(/^["“”«]([\s\S]+)["“”»]$/, "$1"),
+        .replace(/^["“”«‘]([\s\S]+)["“”»’]$/, "$1"),
     )
     .join("\n")
     .trim();
@@ -44,7 +44,7 @@ function stripWrappers(raw: string): string {
       // Marcador simétrico (backreference): **x** -> x, _x_ -> x, sem
       // deixar um asterisco órfão quando as pontas não coincidem.
       .replace(/^([_*]{1,2})([\s\S]+)\1$/, "$2")
-      .replace(/^["“”«]([\s\S]+)["“”»]$/, "$1")
+      .replace(/^["“”«‘]([\s\S]+)["“”»’]$/, "$1")
       .trim();
     if (next === out) break;
     out = next;
