@@ -3,6 +3,7 @@ import {
   splitSuggestedMessage,
   withSuggestion,
   stripSuggestionMarker,
+  normalizeSuggestedText,
 } from "./suggested-message";
 
 describe("mensagens sugeridas saem isoladas", () => {
