@@ -13,6 +13,7 @@ import { sendDashboardMessage, DASHBOARD_CHAT_MIN_TIER } from "@/lib/assessor/da
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { tierAtLeast } from "@/lib/subscription/tiers";
 import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
+import { normalizeSuggestedText } from "@/lib/assessor/culture/suggested-message";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
 
