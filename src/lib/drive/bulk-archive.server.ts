@@ -64,7 +64,13 @@ export async function proposeBulkArchive(
     channel: input.channel,
     intent: CONFIRM_BULK_ARCHIVE_INTENT,
     originalContent: input.originalContent.slice(0, 2000),
-    payload: { kind: input.req.kind, file_ids: files.map((f) => f.id) },
+    // Guardamos também os nomes: o painel volta a desenhar a lista numerada
+    // exactamente como o consultor a viu, sem ter de reler o Drive.
+    payload: {
+      kind: input.req.kind,
+      file_ids: files.map((f) => f.id),
+      file_names: files.map((f) => f.name),
+    },
     pendingQuestion: question,
     currentQuestion: question,
   });

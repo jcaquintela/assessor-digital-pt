@@ -14,6 +14,10 @@ import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { tierAtLeast } from "@/lib/subscription/tiers";
 import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
 import { normalizeSuggestedText } from "@/lib/assessor/culture/suggested-message";
+import {
+  BulkArchiveConfirmCard,
+  usePendingBulkArchive,
+} from "@/components/assessor/bulk-archive-confirm";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
 
@@ -76,6 +80,10 @@ function AssessorPage() {
   const send = useServerFn(sendDashboardMessage);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  // Confirmação de arquivo em lote: a lista numerada passa a cartão com
+  // botões, em vez de obrigar a escrever "sim".
+  const { pending: pendingBulk, reload: reloadBulk } = usePendingBulkArchive(msgs.length);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,6 +145,19 @@ function AssessorPage() {
     }
   };
 
+  const responderLote = async (answer: "sim" | "não") => {
+    if (bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      await send({ data: { text: answer } });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBulkBusy(false);
+      void reloadBulk();
+    }
+  };
+
   return (
     <AppShell fullBleed>
       <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] md:h-[calc(100vh-7rem)] md:overflow-hidden md:rounded-[16px] md:border md:border-[var(--line)] md:bg-white md:shadow-[var(--c-shadow)]">
@@ -179,6 +200,28 @@ function AssessorPage() {
               const prev = msgs[i - 1];
               const showDivider = !prev || new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
               const isUser = m.role === "user";
+              const isLast = i === msgs.length - 1;
+              // A pergunta do lote deixa de ser texto: vira cartão com a
+              // lista à vista e dois botões inequívocos.
+              const isBulkQuestion =
+                !isUser &&
+                isLast &&
+                !!pendingBulk &&
+                m.content.trim() === pendingBulk.question.trim();
+              if (isBulkQuestion && pendingBulk) {
+                return (
+                  <div key={m.id}>
+                    {showDivider && <div className="c-daysep">{formatDia(m.created_at)}</div>}
+                    <div className="flex justify-start">
+                      <BulkArchiveConfirmCard
+                        pending={pendingBulk}
+                        busy={bulkBusy || sending}
+                        onAnswer={(a) => void responderLote(a)}
+                      />
+                    </div>
+                  </div>
+                );
+              }
               // Texto sugerido para reenviar chega como mensagem isolada:
               // aqui o equivalente ao long-press do WhatsApp é o "Copiar".
               const isSuggestion = !isUser && (m.message_type as string | null) === "suggested_message";
