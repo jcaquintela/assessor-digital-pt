@@ -41,7 +41,9 @@ function stripWrappers(raw: string): string {
   // Marcadores a envolver o bloco inteiro.
   for (let i = 0; i < 3; i++) {
     const next = out
-      .replace(/^[_*]{1,2}([\s\S]+)[_*]{1,2}$/, "$1")
+      // Marcador simétrico (backreference): **x** -> x, _x_ -> x, sem
+      // deixar um asterisco órfão quando as pontas não coincidem.
+      .replace(/^([_*]{1,2})([\s\S]+)\1$/, "$2")
       .replace(/^["“”«]([\s\S]+)["“”»]$/, "$1")
       .trim();
     if (next === out) break;
