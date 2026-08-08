@@ -902,6 +902,24 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     // (a-1) "O que há de novo?" → novidades reais dos últimos 30 dias.
     // (a-0) Erro ou sugestão sobre o próprio produto → pede confirmação.
     const feedbackHit = !pending ? detectFeedbackTarget(trimmed) : null;
+
+    // (a-0c) "Apaga os áudios todos" → lista os N ficheiros e pede confirmação
+    // explícita para ARQUIVAR (reversível). Nunca elimina por conversa.
+    if (!pending) {
+      const { detectBulkArchiveRequest } = await import("@/lib/drive/bulk-archive");
+      const bulkReq = detectBulkArchiveRequest(trimmed);
+      if (bulkReq) {
+        const { proposeBulkArchive } = await import("@/lib/drive/bulk-archive.server");
+        const reply = await proposeBulkArchive(supabase, {
+          userId,
+          channel,
+          req: bulkReq,
+          originalContent: trimmed,
+        });
+        return { reply };
+      }
+    }
+
     if (feedbackHit) {
       const kind = feedbackHit.kind;
       const { createPendingAction } = await import("../memory.server");
