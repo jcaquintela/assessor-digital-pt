@@ -277,7 +277,7 @@ async function deliverReply(
 
   // Texto sugerido para o consultor copiar/reenviar sai sempre numa mensagem
   // só dele: no WhatsApp, um long-press seleciona a mensagem inteira.
-  const { splitSuggestedMessage, stripSuggestionMarker } = await import(
+  const { splitSuggestedMessage, stripSuggestionMarker, normalizeSuggestedText } = await import(
     "@/lib/assessor/culture/suggested-message"
   );
   const split = splitSuggestedMessage(outcome.reply);
