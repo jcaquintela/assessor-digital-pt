@@ -675,6 +675,39 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
     // Feedback anunciado ("posso dar uma sugestão?") — aguarda o corpo.
     // Aqui já não é preciso repetir "sugestão"/"erro" nem falar do produto.
+    // Arquivo em lote de ficheiros do Drive: só arquiva depois de o consultor
+    // ver a lista e confirmar. Eliminar definitivo continua fora da conversa.
+    if (pending && pending.intent === "confirm_bulk_archive") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const ids: string[] = Array.isArray(payload.file_ids) ? payload.file_ids.map(String) : [];
+      const kind = (payload.kind ?? "any") as any;
+      if (saIsConfirmation(trimmed)) {
+        const { archiveFilesBulk } = await import("@/lib/drive/bulk-archive.server");
+        const { bulkArchivedReply } = await import("@/lib/drive/bulk-archive");
+        let count = 0;
+        let okBulk = true;
+        try {
+          count = await archiveFilesBulk(supabase, userId, ids);
+        } catch {
+          okBulk = false;
+        }
+        await markPendingActionStatus(supabase, pending.id, okBulk ? "executed" : "failed", {
+          created_resource_type: "uploaded_file",
+          error_message: okBulk ? null : "bulk_archive_failed",
+        });
+        return {
+          reply: okBulk
+            ? bulkArchivedReply(kind, count)
+            : "Tentei arquivar os ficheiros e não consegui. Tenta outra vez daqui a pouco.",
+        };
+      }
+      if (saIsRejection(trimmed)) {
+        const { BULK_ARCHIVE_CANCELLED_REPLY } = await import("@/lib/drive/bulk-archive");
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        return { reply: BULK_ARCHIVE_CANCELLED_REPLY };
+      }
+    }
+
     if (pending && pending.intent === "collecting_feedback") {
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
       const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
@@ -869,6 +902,24 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     // (a-1) "O que há de novo?" → novidades reais dos últimos 30 dias.
     // (a-0) Erro ou sugestão sobre o próprio produto → pede confirmação.
     const feedbackHit = !pending ? detectFeedbackTarget(trimmed) : null;
+
+    // (a-0c) "Apaga os áudios todos" → lista os N ficheiros e pede confirmação
+    // explícita para ARQUIVAR (reversível). Nunca elimina por conversa.
+    if (!pending) {
+      const { detectBulkArchiveRequest } = await import("@/lib/drive/bulk-archive");
+      const bulkReq = detectBulkArchiveRequest(trimmed);
+      if (bulkReq) {
+        const { proposeBulkArchive } = await import("@/lib/drive/bulk-archive.server");
+        const reply = await proposeBulkArchive(supabase, {
+          userId,
+          channel,
+          req: bulkReq,
+          originalContent: trimmed,
+        });
+        return { reply };
+      }
+    }
+
     if (feedbackHit) {
       const kind = feedbackHit.kind;
       const { createPendingAction } = await import("../memory.server");
