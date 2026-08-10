@@ -15,6 +15,7 @@ import {
   TEMPLATE_PLAN_TRIAL_START,
   TEMPLATE_LANG,
 } from "@/lib/assessor/proactive/templates";
+import { TEMPLATE_INVITE } from "@/lib/whatsapp/invite-template";
 
 export const TEMPLATES_APPROVED_FLAG = "whatsapp.templates.approved";
 
@@ -26,6 +27,7 @@ const TRACKED_TEMPLATES = [
   TEMPLATE_CHECKIN_V2,
   TEMPLATE_PLAN_ACTIVATED,
   TEMPLATE_PLAN_TRIAL_START,
+  TEMPLATE_INVITE,
 ];
 
 export const CHECKIN_V2_APPROVED_FLAG = "whatsapp.template.checkin_v2.approved";
