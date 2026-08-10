@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   cancelPendingInvite,
+  getInviteTemplateVersion,
   listPendingInvites,
   prepareManualInvite,
   resendInvite,
@@ -17,10 +18,14 @@ export function PendingInvitesBlock() {
   const resendFn = useServerFn(resendInvite);
   const cancelFn = useServerFn(cancelPendingInvite);
   const manualFn = useServerFn(prepareManualInvite);
+  const versionFn = useServerFn(getInviteTemplateVersion);
   const [rows, setRows] = useState<PendingInviteRow[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [manual, setManual] = useState<
-    Record<string, { texto: string; original: string; url: string; waNumber: string | null }>
+    Record<
+      string,
+      { texto: string; original: string; url: string; waNumber: string | null; templateVersion: string | null }
+    >
   >({});
 
   const carregar = useCallback(() => {
@@ -30,6 +35,29 @@ export function PendingInvitesBlock() {
   }, [listFn]);
 
   useEffect(carregar, [carregar]);
+
+  // O template aprovado na Meta pode ter sido atualizado entretanto: nesse
+  // caso não reaproveitamos o rascunho antigo — descartamo-lo para o convite
+  // ser regerado com o texto novo quando o abrires outra vez.
+  useEffect(() => {
+    let vivo = true;
+    versionFn({})
+      .then(({ version }) => {
+        if (!vivo || !version) return;
+        setManual((m) => {
+          const desatualizados = Object.keys(m).filter((k) => m[k]!.templateVersion !== version);
+          if (!desatualizados.length) return m;
+          const next = { ...m };
+          for (const k of desatualizados) delete next[k];
+          toast.info("O template do convite foi atualizado. Prepara a mensagem outra vez para usar o texto novo.");
+          return next;
+        });
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [versionFn, rows]);
 
   const reenviar = async (id: string) => {
     setBusy(id);
@@ -63,7 +91,13 @@ export function PendingInvitesBlock() {
       const r = await manualFn({ data: { id } });
       setManual((m) => ({
         ...m,
-        [id]: { texto: r.texto, original: r.texto, url: r.url, waNumber: r.waNumber },
+        [id]: {
+          texto: r.texto,
+          original: r.texto,
+          url: r.url,
+          waNumber: r.waNumber,
+          templateVersion: r.templateVersion,
+        },
       }));
       toast.success("Mensagem pronta a rever. O link anterior por usar deixa de servir.");
     } catch (e) {
