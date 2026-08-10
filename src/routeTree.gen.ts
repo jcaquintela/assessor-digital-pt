@@ -49,6 +49,7 @@ import { Route as AdminAuditoriaSegurancaRouteImport } from './routes/admin/audi
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AdminAquisicaoRouteImport } from './routes/admin/aquisicao'
 import { Route as AdminAgendaDebugRouteImport } from './routes/admin/agenda-debug'
+import { Route as AuthenticatedSubscricaoRouteImport } from './routes/_authenticated/subscricao'
 import { Route as AuthenticatedSobreAIaRouteImport } from './routes/_authenticated/sobre-a-ia'
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
@@ -307,6 +308,11 @@ const AdminAgendaDebugRoute = AdminAgendaDebugRouteImport.update({
   id: '/agenda-debug',
   path: '/agenda-debug',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const AuthenticatedSubscricaoRoute = AuthenticatedSubscricaoRouteImport.update({
+  id: '/subscricao',
+  path: '/subscricao',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSobreAIaRoute = AuthenticatedSobreAIaRouteImport.update({
   id: '/sobre-a-ia',
@@ -664,6 +670,7 @@ export interface FileRoutesByFullPath {
   '/mais': typeof AuthenticatedMaisRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
+  '/subscricao': typeof AuthenticatedSubscricaoRoute
   '/admin/agenda-debug': typeof AdminAgendaDebugRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -763,6 +770,7 @@ export interface FileRoutesByTo {
   '/mais': typeof AuthenticatedMaisRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
+  '/subscricao': typeof AuthenticatedSubscricaoRoute
   '/admin/agenda-debug': typeof AdminAgendaDebugRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -865,6 +873,7 @@ export interface FileRoutesById {
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/_authenticated/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
+  '/_authenticated/subscricao': typeof AuthenticatedSubscricaoRoute
   '/admin/agenda-debug': typeof AdminAgendaDebugRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -967,6 +976,7 @@ export interface FileRouteTypes {
     | '/mais'
     | '/rotinas'
     | '/sobre-a-ia'
+    | '/subscricao'
     | '/admin/agenda-debug'
     | '/admin/aquisicao'
     | '/admin/auditoria'
@@ -1066,6 +1076,7 @@ export interface FileRouteTypes {
     | '/mais'
     | '/rotinas'
     | '/sobre-a-ia'
+    | '/subscricao'
     | '/admin/agenda-debug'
     | '/admin/aquisicao'
     | '/admin/auditoria'
@@ -1167,6 +1178,7 @@ export interface FileRouteTypes {
     | '/_authenticated/mais'
     | '/_authenticated/rotinas'
     | '/_authenticated/sobre-a-ia'
+    | '/_authenticated/subscricao'
     | '/admin/agenda-debug'
     | '/admin/aquisicao'
     | '/admin/auditoria'
@@ -1561,6 +1573,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/agenda-debug'
       preLoaderRoute: typeof AdminAgendaDebugRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/_authenticated/subscricao': {
+      id: '/_authenticated/subscricao'
+      path: '/subscricao'
+      fullPath: '/subscricao'
+      preLoaderRoute: typeof AuthenticatedSubscricaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sobre-a-ia': {
       id: '/_authenticated/sobre-a-ia'
@@ -2068,6 +2087,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
   AuthenticatedSobreAIaRoute: typeof AuthenticatedSobreAIaRoute
+  AuthenticatedSubscricaoRoute: typeof AuthenticatedSubscricaoRoute
   AuthenticatedBriefingDetalhesRoute: typeof AuthenticatedBriefingDetalhesRoute
   AuthenticatedGruposIdRoute: typeof AuthenticatedGruposIdRoute
   AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
@@ -2101,6 +2121,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
   AuthenticatedSobreAIaRoute: AuthenticatedSobreAIaRoute,
+  AuthenticatedSubscricaoRoute: AuthenticatedSubscricaoRoute,
   AuthenticatedBriefingDetalhesRoute: AuthenticatedBriefingDetalhesRoute,
   AuthenticatedGruposIdRoute: AuthenticatedGruposIdRoute,
   AuthenticatedImoveisIdRoute: AuthenticatedImoveisIdRoute,

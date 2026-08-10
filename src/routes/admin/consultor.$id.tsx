@@ -9,6 +9,7 @@ import { updateAccess, deactivateAccess, reactivateAccess } from "@/lib/admin/ac
 import { getMyAdminRole } from "@/lib/admin.functions";
 import { InviteLinkDialog } from "@/components/admin/invite-link-dialog";
 import { AdminMessagesPanel } from "@/components/admin/admin-messages";
+import { BillingPanel } from "@/components/admin/billing-panel";
 import { confirmTrialPaid } from "@/lib/subscription/trial.functions";
 import { tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { fmtScore100, fmtPct } from "@/lib/admin/metrics-format";
@@ -261,6 +262,8 @@ function ConsultorPage() {
       )}
 
       <AdminMessagesPanel consultorId={p.id} />
+
+      <BillingPanel consultorId={p.id} isSuper={isSuper} />
 
       <SectionTitle>Histórico administrativo desta conta</SectionTitle>
       {data.audit.length === 0 ? (
