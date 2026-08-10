@@ -99,3 +99,56 @@ describe("findAwaitingOutcome", () => {
   });
 });
 
+
+describe("briefing — eventos pessoais e datas", () => {
+  const agora = new Date("2026-08-10T07:02:00Z"); // 08:02 em Lisboa
+
+  it("golden: evento do calendário sem contexto comercial não entra no briefing", async () => {
+    const supabase = makeSupabase({
+      follow_ups: [{
+        id: "jogo-1", user_id: "u1", title: "Jogo do FC Porto", type: "evento",
+        due_date: "2026-08-10T19:00:00Z", due_time: "20:00", status: "agendado",
+        person_id: null, opportunity_id: null, related_property_id: null,
+        outcome: null, archived_at: null,
+      }],
+      opportunities: [],
+      calendar_event_links: [{ user_id: "u1", follow_up_id: "jogo-1", provider: "google_calendar", deleted: false }],
+      people: [],
+    });
+    await expect(computePriorities(supabase as any, "u1", { now: agora })).resolves.toEqual([]);
+  });
+
+  it("golden: evento de ontem à noite nunca aparece como compromisso de hoje", async () => {
+    const supabase = makeSupabase({
+      follow_ups: [{
+        id: "visita-1", user_id: "u1", title: "Visita ao T3", type: "visita",
+        due_date: "2026-08-09T21:00:00Z", due_time: "22:00", status: "agendado",
+        person_id: "p1", opportunity_id: null, related_property_id: null,
+        outcome: null, archived_at: null,
+      }],
+      opportunities: [],
+      calendar_event_links: [{ user_id: "u1", follow_up_id: "visita-1", provider: "google_calendar", deleted: false }],
+      people: [{ id: "p1", name: "Sr. Coelho" }],
+    });
+    const items = await computePriorities(supabase as any, "u1", { now: agora });
+    expect(items.some((i) => i.reasons.includes("compromisso de hoje"))).toBe(false);
+    expect(items).toEqual([]);
+  });
+
+  it("mantém o compromisso de hoje ligado a uma Pessoa", async () => {
+    const supabase = makeSupabase({
+      follow_ups: [{
+        id: "visita-2", user_id: "u1", title: "Visita ao T2", type: "visita",
+        due_date: "2026-08-10T09:00:00Z", due_time: "10:00", status: "agendado",
+        person_id: "p1", opportunity_id: null, related_property_id: null,
+        outcome: null, archived_at: null,
+      }],
+      opportunities: [],
+      calendar_event_links: [{ user_id: "u1", follow_up_id: "visita-2", provider: "google_calendar", deleted: false }],
+      people: [{ id: "p1", name: "Sr. Coelho" }],
+    });
+    const items = await computePriorities(supabase as any, "u1", { now: agora });
+    expect(items).toHaveLength(1);
+    expect(items[0].reasons).toContain("compromisso de hoje");
+  });
+});
