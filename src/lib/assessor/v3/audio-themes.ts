@@ -211,13 +211,17 @@ export function formatThemeLine(theme: AudioTheme, links: ThemeLinks): string {
   const parts: string[] = [];
   if (theme.person?.name) {
     const tag = links.person_id ? "contacto que já tinhas" : "novo contacto";
-    parts.push(`${theme.person.name} (${tag})`);
+    const tel = theme.person.phone ? `, ${theme.person.phone}` : "";
+    parts.push(`${theme.person.name} (${tag}${tel})`);
   }
   const intent = theme.opportunity?.intent;
   const prop = propertyLabel(theme.property);
-  if (intent && prop) parts.push(`quer ${intent} ${prop}`);
+  const price = theme.property?.price
+    ? ` por ${new Intl.NumberFormat("pt-PT").format(theme.property.price)} €`
+    : "";
+  if (intent && prop) parts.push(`quer ${intent} ${prop}${price}`);
   else if (intent) parts.push(`quer ${intent}`);
-  else if (prop) parts.push(prop);
+  else if (prop) parts.push(`${prop}${price}`);
 
   let line = parts.length ? parts.join(" ") : theme.title;
   if (links.lead_id) line += ` — ligado à placa "${links.lead_label}" que já tinhas registada`;
@@ -266,7 +270,7 @@ export function formatThemesProposal(themes: AudioTheme[], links: ThemeLinks[]):
   const amb = pendingAmbiguities(themes, links);
   const tail = amb.length
     ? formatAmbiguityQuestion(amb[0])
-    : "Confirmas? Podes corrigir qualquer ponto (ex.: \"o 1 é T2\") ou descartar um ponto (ex.: \"descarta o 2\").";
+    : "Confirmas? Ainda não gravei nada. Podes corrigir ponto a ponto antes de eu guardar — nome, telefone, tipologia, zona, valor ou data (ex.: \"o 1 é T2\", \"no 1 o valor são 250 mil\", \"o 2 é dia 14/09\") — ou descartar um ponto (ex.: \"descarta o 2\").";
   const confidential = themes.some((t) => t.confidential);
   const privacy = confidential
     ? "\n\nA nota confidencial fica só para ti — nunca sai em nada que eu prepare para outra pessoa."
