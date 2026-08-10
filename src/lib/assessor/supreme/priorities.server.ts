@@ -3,6 +3,7 @@
 import { isDealActive } from "@/lib/deals/stages";
 import { lisbonYmd, ymdDiffDays, endOfLisbonDayIso } from "@/lib/assessor/lisbon-day";
 import { hasCommercialOutcomeContext } from "@/lib/assessor/outcome-eligibility";
+import { belongsInDailyAgenda } from "@/lib/assessor/agenda-leisure";
 import { isFollowUpClosed, isFollowUpEvent, followUpStateLabel as canonicalStateLabel } from "@/lib/follow-ups/state";
 import { eventWindow, isEventOver } from "./event-window";
 
@@ -161,10 +162,11 @@ export async function computePriorities(
     const isEvent = isFollowUpEvent(f);
     const providerLink = calendarProviderByFollowUp.get(f.id);
 
-    // Eventos vindos do calendário externo só são prioridade de trabalho
-    // quando estão ligados a Pessoa, Negócio ou Imóvel. Um jogo de futebol
-    // ou um almoço pessoal não é a prioridade do dia do consultor.
-    if (providerLink && !hasCommercialOutcomeContext(f)) continue;
+    // Agenda do dia: regra larga. O compromisso do calendário externo aparece,
+    // excepto quando é claramente pessoal/lazer (almoço, aniversário, jogo).
+    // O filtro estrito (ligação a Pessoa/Imóvel/Negócio) fica reservado aos
+    // check-ins "Como correu X?" — ver findAwaitingOutcome.
+    if (providerLink && !belongsInDailyAgenda(f)) continue;
     // Um compromisso que já aconteceu não se prepara. Vale para qualquer
     // compromisso com hora: às 15:30 já não se prepara o das 10:00.
     if (isEvent && isEventOver(f, now)) continue;
