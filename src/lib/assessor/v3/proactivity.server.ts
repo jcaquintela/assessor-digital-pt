@@ -5,10 +5,7 @@
 import { sanitizeReply } from "../culture/sanitize";
 import { isDealClosed } from "@/lib/deals/stages";
 import { DAILY_BRIEFING_PREFIX } from "../supreme/briefing.server";
-
-const SETTLED_STATUSES = new Set([
-  "concluido", "concluida", "cancelado", "cancelada", "arquivado", "arquivada", "done",
-]);
+import { isFollowUpClosed, isFollowUpOpen } from "@/lib/follow-ups/state";
 
 /** O seguimento já foi tratado, desmarcado ou arquivado? */
 export async function isFollowUpSettled(supabase: any, followUpId: string): Promise<boolean> {
@@ -18,9 +15,9 @@ export async function isFollowUpSettled(supabase: any, followUpId: string): Prom
     .eq("id", followUpId)
     .maybeSingle();
   if (!data) return true;
-  const status = String((data as any).status ?? "")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-  return Boolean((data as any).archived_at) || Boolean((data as any).outcome) || SETTLED_STATUSES.has(status);
+  // Regra canónica de "fechado". Nota: um resultado que pede nova ação
+  // ("precisa_nova_acao", "adiado") NÃO fecha o seguimento.
+  return isFollowUpClosed(data as any);
 }
 
 export type NudgeKind =
@@ -218,14 +215,14 @@ export async function generateNudgesForUser(
   }
 
   // 2) Follow-ups vencidos > 2 dias e ainda abertos.
-  const { data: overdue } = await supabase
+  const { data: overdueRaw } = await supabase
     .from("follow_ups")
-    .select("id, title, due_date, status")
+    .select("id, title, due_date, type, due_time, status, outcome, archived_at")
     .eq("user_id", userId)
-    .in("status", ["pending", "in_progress", "aberto", "pendente"])
     .lt("due_date", daysAgo(2))
-    .limit(3);
-  for (const f of ((overdue as any[]) ?? [])) {
+    .limit(30);
+  const overdue = ((overdueRaw as any[]) ?? []).filter(isFollowUpOpen).slice(0, 3);
+  for (const f of overdue) {
     const dedupe = `followup_overdue:${f.id}:${todayKey()}`;
     drafts.push({
       kind: "followup_overdue",
@@ -450,16 +447,16 @@ export async function dispatchDueFollowUpReminders(
   const upper = new Date(now.getTime() + 60_000).toISOString();
   const lower = new Date(now.getTime() - windowMin * 60_000).toISOString();
 
-  const openStatuses = ["Pendente", "pending", "aberto", "in_progress", "Atrasado"];
   const { data: due } = await supabase
     .from("follow_ups")
-    .select("id, user_id, title, due_date, related_prospecting_lead_id, person_id, opportunity_id")
-    .in("status", openStatuses)
+    .select("id, user_id, title, due_date, due_time, type, status, outcome, archived_at, related_prospecting_lead_id, person_id, opportunity_id")
     .gte("due_date", lower)
     .lte("due_date", upper)
     .order("due_date", { ascending: true })
-    .limit(maxPerRun);
-  const rows = (due as any[]) ?? [];
+    .limit(maxPerRun * 3);
+  // Regra canónica de aberto/fechado (antes: lista de status à mão, que
+  // deixava passar "Concluído" em minúsculas e ignorava outcome/archived_at).
+  const rows = ((due as any[]) ?? []).filter(isFollowUpOpen).slice(0, maxPerRun);
   if (!rows.length) return { sent: 0, skipped: 0 };
 
   const userIds = Array.from(new Set(rows.map((r) => r.user_id)));

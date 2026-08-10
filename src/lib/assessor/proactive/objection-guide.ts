@@ -26,7 +26,8 @@ export interface GuideContext {
   lastInteraction?: string | null;
 }
 
-const CLOSED = new Set(["concluído", "concluido", "cancelado", "arquivado"]);
+// Estado aberto/fechado: regra canónica única.
+import { isFollowUpClosed } from "@/lib/follow-ups/state";
 
 function norm(v: unknown): string {
   return String(v ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -43,7 +44,7 @@ export function isAngariacaoMeeting(ev: GuideEvent): boolean {
 /** Está dentro da janela dos próximos 10 minutos (com tolerância)? */
 export function isGuideDue(ev: GuideEvent, nowMs: number): boolean {
   if (ev.objection_guide_sent_at) return false;
-  if (CLOSED.has(norm(ev.status))) return false;
+  if (isFollowUpClosed(ev as any)) return false;
   if (!isAngariacaoMeeting(ev)) return false;
   const start = eventStartMs(ev);
   if (!Number.isFinite(start)) return false;
