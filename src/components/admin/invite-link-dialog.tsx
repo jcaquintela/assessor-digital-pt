@@ -135,7 +135,13 @@ export function InviteLinkDialog({
               </p>
             )}
             {res.erroEnvio && (
-              <p className="mini mt-2" style={{ color: "var(--danger, #dc2626)" }}>Falhou: {res.erroEnvio}</p>
+              <>
+                <p className="mini mt-2" style={{ color: "var(--danger, #dc2626)" }}>Falhou: {res.erroEnvio}</p>
+                <p className="mini" style={{ color: "var(--muted)" }}>
+                  Ficou em “Convites por reenviar”: sai sozinho quando o template for aprovado, ou reenvia à mão a
+                  partir da lista de utilizadores.
+                </p>
+              </>
             )}
           </div>
         )}
