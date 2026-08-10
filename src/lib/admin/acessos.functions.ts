@@ -937,28 +937,66 @@ export type ManualInvite = {
   destino: string | null;
   /** Assinatura do template aprovado na Meta: muda quando o texto do template muda. */
   templateVersion: string | null;
+  /** Nome do template na Meta (ex.: afonso_convite_painel). */
+  templateName: string | null;
+  /** Estado do template na Meta (APPROVED, PENDING, …). */
+  templateStatus: string | null;
+  /** Idioma do template (ex.: pt_PT). */
+  templateLanguage: string | null;
+  /** Trecho do corpo do template para identificação rápida. */
+  templateBodyPreview: string | null;
+  /** Momento em que o rascunho foi gerado (ISO). */
+  preparedAt: string;
 };
 
-// Assinatura do template de convite tal como está aprovado na Meta. Serve
-// para detetar que o texto mudou e regerar o convite em vez de reaproveitar
-// um rascunho desatualizado.
-async function inviteTemplateVersion(): Promise<string | null> {
+type TemplateSnapshot = {
+  hash: string | null;
+  name: string | null;
+  status: string | null;
+  language: string | null;
+  bodyPreview: string | null;
+};
+
+// Assinatura do template de convite tal como está na Meta. Serve para detetar
+// que o texto mudou e regerar o convite em vez de reaproveitar um rascunho
+// desatualizado. Inclui metadados legíveis para mostrar ao admin qual versão
+// foi usada e quando o rascunho foi criado.
+async function inviteTemplateSnapshot(): Promise<TemplateSnapshot> {
   const { listMetaTemplates } = await import("@/lib/whatsapp/template-binding.server");
   const { TEMPLATE_INVITE } = await import("@/lib/whatsapp/invite-template");
   const t = (await listMetaTemplates()).find((x) => x.name === TEMPLATE_INVITE);
-  if (!t) return null;
+  if (!t) return { hash: null, name: null, status: null, language: null, bodyPreview: null };
   const raw = `${t.status}|${t.language}|${t.body}`;
   let h = 5381;
   for (let i = 0; i < raw.length; i++) h = ((h * 33) ^ raw.charCodeAt(i)) >>> 0;
-  return h.toString(36);
+  return {
+    hash: h.toString(36),
+    name: t.name,
+    status: t.status,
+    language: t.language,
+    bodyPreview: t.body.length > 100 ? t.body.slice(0, 100) + "…" : t.body,
+  };
 }
 
 export const getInviteTemplateVersion = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ version: string | null }> => {
-    await assertAdmin(context.supabase, context.userId);
-    return { version: await inviteTemplateVersion() };
-  });
+  .handler(
+    async ({ context }): Promise<{
+      version: string | null;
+      templateName: string | null;
+      templateStatus: string | null;
+      templateLanguage: string | null;
+    }> => {
+      await assertAdmin(context.supabase, context.userId);
+      const snap = await inviteTemplateSnapshot();
+      return {
+        version: snap.hash,
+        templateName: snap.name,
+        templateStatus: snap.status,
+        templateLanguage: snap.language,
+      };
+    },
+  );
 
 export const prepareManualInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -999,12 +1037,18 @@ export const prepareManualInvite = createServerFn({ method: "POST" })
       metadata: { canal: alvo.canal, id: data.id },
     });
 
+    const snap = await inviteTemplateSnapshot();
     return {
       texto: convite.texto,
       url: convite.url,
       waUrl: phone ? `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(convite.texto)}` : null,
       waNumber: phone ? phone.replace(/\D/g, "") : null,
       destino: phone ? maskPhone(phone) : null,
-      templateVersion: await inviteTemplateVersion(),
+      templateVersion: snap.hash,
+      templateName: snap.name,
+      templateStatus: snap.status,
+      templateLanguage: snap.language,
+      templateBodyPreview: snap.bodyPreview,
+      preparedAt: new Date().toISOString(),
     };
   });
