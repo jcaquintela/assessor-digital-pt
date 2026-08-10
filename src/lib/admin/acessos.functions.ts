@@ -392,6 +392,53 @@ export type IssuedInvite = {
   via?: "template" | "texto" | null;
 };
 
+// O botão "Gerar e enviar pelo Afonso" só pode existir quando há destino
+// válido: sem número (ou com número inválido) fica desativado, sem chamada
+// nenhuma à API da Meta.
+export type InviteSendability = {
+  podeEnviar: boolean;
+  destino: string | null;
+  motivo: string | null;
+};
+
+export const checkInviteSendability = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        target_user_id: z.string().uuid(),
+        canal: z.enum(["whatsapp", "telegram"]).default("whatsapp"),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }): Promise<InviteSendability> => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { resolveInviteTarget } = await import("@/lib/admin/invite-send.server");
+    const { maskPhone } = await import("@/lib/whatsapp/invite-template");
+    const alvo = await resolveInviteTarget(supabaseAdmin, data.target_user_id, data.canal);
+    if (!alvo.externalId) return { podeEnviar: false, destino: null, motivo: alvo.motivo ?? null };
+    return {
+      podeEnviar: true,
+      destino: data.canal === "whatsapp" ? maskPhone(alvo.externalId) : "Telegram",
+      motivo: null,
+    };
+  });
+
+type IssuedInviteLegacy = {
+  texto: string;
+  url: string;
+  codigo: string | null;
+  numeroAfonso: string | null;
+  waUrl: string | null;
+  enviado: boolean;
+  erroEnvio?: string;
+  /** Destino confirmado pela Meta/Telegram (número mascarado ou "Telegram"). */
+  destino?: string | null;
+  /** Como saiu: template aprovado (fora das 24h) ou texto (dentro da janela). */
+  via?: "template" | "texto" | null;
+};
+
 export const issueInviteLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
