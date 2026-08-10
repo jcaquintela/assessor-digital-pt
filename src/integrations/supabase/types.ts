@@ -2820,6 +2820,9 @@ export type Database = {
           account_kind: string
           assessor_name: string
           beta_expires_at: string | null
+          billing_environment: string
+          billing_source: string
+          billing_status: string
           created_at: string
           docs_retention_warned_at: string | null
           email: string | null
@@ -2836,6 +2839,9 @@ export type Database = {
           phone_verified_at: string | null
           primary_channel: string
           readonly_until: string | null
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
           subscription_tier: string
           telegram_retention_warned_at: string | null
           trial_choice: string | null
@@ -2854,6 +2860,9 @@ export type Database = {
           account_kind?: string
           assessor_name?: string
           beta_expires_at?: string | null
+          billing_environment?: string
+          billing_source?: string
+          billing_status?: string
           created_at?: string
           docs_retention_warned_at?: string | null
           email?: string | null
@@ -2870,6 +2879,9 @@ export type Database = {
           phone_verified_at?: string | null
           primary_channel?: string
           readonly_until?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_tier?: string
           telegram_retention_warned_at?: string | null
           trial_choice?: string | null
@@ -2888,6 +2900,9 @@ export type Database = {
           account_kind?: string
           assessor_name?: string
           beta_expires_at?: string | null
+          billing_environment?: string
+          billing_source?: string
+          billing_status?: string
           created_at?: string
           docs_retention_warned_at?: string | null
           email?: string | null
@@ -2904,6 +2919,9 @@ export type Database = {
           phone_verified_at?: string | null
           primary_channel?: string
           readonly_until?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_tier?: string
           telegram_retention_warned_at?: string | null
           trial_choice?: string | null
@@ -3605,6 +3623,50 @@ export type Database = {
           weekday?: number | null
         }
         Relationships: []
+      }
+      stripe_webhook_events: {
+        Row: {
+          created_at: string
+          detail: string | null
+          environment: string
+          event_id: string
+          event_type: string
+          id: string
+          outcome: string
+          processed_at: string
+          profile_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          environment?: string
+          event_id: string
+          event_type: string
+          id?: string
+          outcome?: string
+          processed_at?: string
+          profile_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          environment?: string
+          event_id?: string
+          event_type?: string
+          id?: string
+          outcome?: string
+          processed_at?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_webhook_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_events: {
         Row: {
