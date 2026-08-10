@@ -660,6 +660,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
 
     if (pending && pending.intent === "suggest_file_link") {
+      // (bloco de temas de áudio inserido acima)
       // (ver também confirm_keep_photo, logo abaixo)
       // Sugestão de ligação extra de um documento (Drive Inteligente).
       // Confirmar acrescenta a ligação; recusar não mexe em nada.
