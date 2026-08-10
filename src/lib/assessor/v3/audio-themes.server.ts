@@ -409,17 +409,29 @@ async function execTheme(
   if (theme.next_action) {
     const res = await TOOL_REGISTRY.create_follow_up(ctx, {
       title: theme.next_action.text,
-      type: theme.next_action.type === "visitar" ? "visita" : "tarefa",
+      type: theme.next_action.type === "ligar" ? "chamada"
+        : theme.next_action.type === "enviar" ? "mensagem"
+        : "tarefa",
       due_date: theme.next_action.date ?? theme.opportunity?.deadline ?? todayLisbonYmd(),
       due_time: theme.next_action.time ?? null,
       priority: theme.opportunity?.urgency === "alta" ? "alta" : "media",
       person_id: personId,
       property_id: propertyId,
-      opportunity_id: opportunityId,
     });
     if (res.ok) {
       const id = (res.data as any)?.follow_up?.id ?? null;
-      if (id) records.push({ table: "follow_ups", id: String(id) });
+      if (id) {
+        records.push({ table: "follow_ups", id: String(id) });
+        // O seguimento de um tema-lead pertence à oportunidade; um lembrete
+        // isolado fica sem negócio nenhum agarrado.
+        if (opportunityId) {
+          try {
+            await ctx.supabase.from("follow_ups")
+              .update({ opportunity_id: opportunityId } as never)
+              .eq("id", id).eq("user_id", ctx.userId);
+          } catch { /* noop */ }
+        }
+      }
       result.followUpTitle = theme.next_action.text;
     }
   }
