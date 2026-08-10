@@ -935,7 +935,30 @@ export type ManualInvite = {
   /** Só dígitos, para reconstruir o link wa.me depois de o admin editar o texto. */
   waNumber: string | null;
   destino: string | null;
+  /** Assinatura do template aprovado na Meta: muda quando o texto do template muda. */
+  templateVersion: string | null;
 };
+
+// Assinatura do template de convite tal como está aprovado na Meta. Serve
+// para detetar que o texto mudou e regerar o convite em vez de reaproveitar
+// um rascunho desatualizado.
+async function inviteTemplateVersion(): Promise<string | null> {
+  const { listMetaTemplates } = await import("@/lib/whatsapp/template-binding.server");
+  const { TEMPLATE_INVITE } = await import("@/lib/whatsapp/invite-template");
+  const t = (await listMetaTemplates()).find((x) => x.name === TEMPLATE_INVITE);
+  if (!t) return null;
+  const raw = `${t.status}|${t.language}|${t.body}`;
+  let h = 5381;
+  for (let i = 0; i < raw.length; i++) h = ((h * 33) ^ raw.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+export const getInviteTemplateVersion = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ version: string | null }> => {
+    await assertAdmin(context.supabase, context.userId);
+    return { version: await inviteTemplateVersion() };
+  });
 
 export const prepareManualInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -982,5 +1005,6 @@ export const prepareManualInvite = createServerFn({ method: "POST" })
       waUrl: phone ? `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(convite.texto)}` : null,
       waNumber: phone ? phone.replace(/\D/g, "") : null,
       destino: phone ? maskPhone(phone) : null,
+      templateVersion: await inviteTemplateVersion(),
     };
   });
