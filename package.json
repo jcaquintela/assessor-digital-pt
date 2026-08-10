@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "test:briefing": "vitest run src/lib/assessor/briefing-cases.golden.test.ts src/lib/assessor/briefing-simulator.test.ts src/lib/assessor/agenda-leisure.test.ts src/lib/assessor/outcome-eligibility.test.ts",
     "test:isolation": "vitest run src/lib/assessor/storage-isolation.test.ts",
     "test:e2e": "playwright test -c e2e/playwright.config.ts"
   },
