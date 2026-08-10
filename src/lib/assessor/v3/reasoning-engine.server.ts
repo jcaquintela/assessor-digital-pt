@@ -345,7 +345,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
         if (saIsRejection(trimmed)) {
           if (fileId) await discardAudioFile(supabase, fileId, userId);
           await markPendingActionStatus(supabase, mediaPending.id, "cancelled");
-          return { reply: "Certo, descartei o áudio. O que percebi dele fica guardado." };
+          // Descartar é descartar: sai o ficheiro E tudo o que dele saiu.
+          const { discardLastInput } = await import("./discard.server");
+          const { DISCARD_DONE_REPLY } = await import("../culture/discard");
+          await discardLastInput(supabase, userId, channel);
+          return { reply: DISCARD_DONE_REPLY };
         }
       }
 
@@ -353,14 +357,13 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       // mesmo, ou dizemos claramente que o ficheiro ficou guardado e como
       // removê-lo. Nunca "fica sem efeito" sem dizer que efeito.
       if (!mediaPending && isDiscardAudioRequest(trimmed)) {
-        const { discardAudioFile, findRecentlyKeptAudio } = await import("./audio-keep.server");
+        const { findRecentlyKeptAudio } = await import("./audio-keep.server");
+        const { discardLastInput } = await import("./discard.server");
+        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
         const kept = await findRecentlyKeptAudio(supabase, userId, channel, UNDO_KEEP_WINDOW_MS);
         if (kept) {
-          await discardAudioFile(supabase, kept.fileId, userId);
-          await markPendingActionStatus(supabase, kept.pendingId, "cancelled", {
-            error_message: "consultor desfez o guardar do áudio",
-          });
-          return { reply: UNDO_KEEP_DONE_REPLY };
+          await discardLastInput(supabase, userId, channel);
+          return { reply: DISCARD_DONE_REPLY };
         }
         const older = await findRecentlyKeptAudio(supabase, userId, channel, 7 * 24 * 60 * 60 * 1000);
         if (older) return { reply: UNDO_KEEP_TOO_LATE_REPLY };

@@ -105,7 +105,7 @@ async function resolvePersonId(ctx: DomainContext, name: string | null | undefin
 async function execItem(
   ctx: DomainContext,
   item: BreakdownItem,
-): Promise<"fact" | "follow_up" | "note" | null> {
+): Promise<{ kind: "fact" | "follow_up" | "note"; record: { table: string; id: string } | null } | null> {
   const personId = await resolvePersonId(ctx, item.person_name);
   const propertyId = item.property_hint
     ? await resolvePropertyFromText(ctx, item.property_hint)
@@ -121,7 +121,9 @@ async function execItem(
       person_id: personId,
       property_id: propertyId,
     });
-    return res.ok ? "follow_up" : null;
+    if (!res.ok) return null;
+    const id = (res.data as any)?.follow_up?.id ?? null;
+    return { kind: "follow_up", record: id ? { table: "follow_ups", id: String(id) } : null };
   }
 
   const res = await TOOL_REGISTRY.save_interaction(ctx, {
@@ -132,7 +134,11 @@ async function execItem(
     is_confidential: item.kind === "note" && item.confidential === true,
   });
   if (!res.ok) return null;
-  return item.kind === "fact" ? "fact" : "note";
+  const id = (res.data as any)?.interaction?.id ?? null;
+  return {
+    kind: item.kind === "fact" ? "fact" : "note",
+    record: id ? { table: "interactions", id: String(id) } : null,
+  };
 }
 
 /** Executa todos os itens da proposta depois de um "sim". */
@@ -142,14 +148,23 @@ export async function executeAudioBreakdown(
 ): Promise<string> {
   const breakdown = coerceBreakdown(pending.structured_payload ?? {});
   const created = { facts: 0, followUps: 0, notes: 0 };
+  const records: { table: string; id: string }[] = [];
   for (const item of breakdown.items) {
     try {
-      const kind = await execItem({ ...ctx, pendingActionId: pending.id } as DomainContext, item);
-      if (kind === "fact") created.facts += 1;
-      else if (kind === "follow_up") created.followUps += 1;
-      else if (kind === "note") created.notes += 1;
+      const out = await execItem({ ...ctx, pendingActionId: pending.id } as DomainContext, item);
+      if (!out) continue;
+      if (out.record) records.push(out.record);
+      if (out.kind === "fact") created.facts += 1;
+      else if (out.kind === "follow_up") created.followUps += 1;
+      else if (out.kind === "note") created.notes += 1;
     } catch { /* um item falhado não trava os restantes */ }
   }
+  // Deixa o rasto do que foi criado: um "descartar" a seguir tem de conseguir
+  // apagar exactamente estes registos.
+  try {
+    const { recordCreatedRecords } = await import("./discard.server");
+    await recordCreatedRecords(ctx.supabase, pending.id, records);
+  } catch { /* noop */ }
   const anything = created.facts + created.followUps + created.notes > 0;
   await markPendingActionStatus(ctx.supabase, pending.id, anything ? "executed" : "failed", {
     error_message: anything ? null : "audio_breakdown_no_items",
