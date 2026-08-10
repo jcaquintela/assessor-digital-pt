@@ -40,7 +40,7 @@ export function buildWriteConfirmation(c: WriteConfirmation): string {
 
 // Verbos/expressões que implicam comunicação a terceiros.
 const DELIVERY_RE =
-  /\b(enviei|enviado|enviámos|enviamos|mandei|partilhei|partilhado|comuniquei|avisei|reencaminhei|encaminhei|para\s+a\s+equipa|à\s+equipa|a\s+equipa\s+(?:já\s+)?(?:recebeu|vai\s+receber))\b/i;
+  /\b(enviei|enviado|enviámos|enviamos|mandei|partilhei|partilhado|comuniquei|avisei|reencaminhei|encaminhei)\b|\b(?:para\s+a|à|a)\s+equipa\b|\bequipa\s+(?:já\s+)?(?:recebeu|vai)\b/i;
 
 /** A frase promete comunicação a terceiros? */
 export function claimsDelivery(text: string | null | undefined): boolean {
