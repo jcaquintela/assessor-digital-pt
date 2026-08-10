@@ -34,6 +34,9 @@ import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { isDealActive } from "@/lib/deals/stages";
+import { useNow } from "@/hooks/use-now";
+import { buildAgendaView, tomorrowLabel, type DayEvent } from "@/lib/agenda/day-events";
+import { lisbonYmd } from "@/lib/assessor/lisbon-day";
 
 type HojeSearch = { filtro?: "imoveis-por-confirmar" };
 
@@ -114,7 +117,9 @@ function HojePage() {
   const { seguimentos, oportunidades, pessoas, imoveis, concluirSeguimento, reagendarSeguimento, arquivarSeguimento } = useStore();
   void oportunidades;
   const { name: assessorName } = useAssessorName();
-  const now = new Date();
+  // Relógio partilhado: reavalia de 5 em 5 minutos e ao voltar à página,
+  // para que um compromisso que termina saia dos widgets sem recarregar.
+  const now = useNow();
   const supremeQ = useServerFn(getHojeSupreme);
   const dismissFn = useServerFn(dismissPriority);
   const outcomeFn = useServerFn(saveFollowUpOutcome);
@@ -180,21 +185,36 @@ function HojePage() {
   const nomePessoa = (id?: string) => pessoas.find((p) => p.id === id)?.nome ?? "";
   const tituloImovel = (id?: string) => imoveis.find((i) => i.id === id)?.titulo ?? "";
 
-  // Fonte única dos compromissos de hoje: o resumo do servidor (o mesmo que alimenta o cartão
-  // "Compromissos hoje"). Só se cai no store local enquanto o resumo ainda não chegou.
-  const eventosHoje = useMemo(() => {
+  // Fonte única dos compromissos: o resumo do servidor (hoje + amanhã). Só se cai
+  // no store local enquanto o resumo ainda não chegou. Toda a seleção temporal
+  // vive em `@/lib/agenda/day-events` — nenhum widget filtra eventos por si.
+  const eventosBrutos: DayEvent[] = useMemo(() => {
     const doServidor = overview.data?.summary?.agenda.items;
     if (doServidor) {
       return doServidor.map((e) => ({
-        id: e.id, titulo: e.title, hora: e.time ?? undefined,
-        pessoaId: e.personId ?? undefined, imovelId: e.propertyId ?? undefined,
+        id: e.id,
+        title: e.title,
+        time: e.time ?? null,
+        date: (e as any).date ?? lisbonYmd(new Date()),
+        type: e.type ?? null,
+        personId: e.personId ?? null,
+        propertyId: e.propertyId ?? null,
       }));
     }
     return seguimentos
-      .filter((s) => isSameDay(new Date(s.data), now) && isOpenFollowUpStatus(s.estado))
-      .sort((a, b) => (a.hora ?? "99:99").localeCompare(b.hora ?? "99:99"))
-      .map((s) => ({ id: s.id, titulo: s.titulo, hora: s.hora, pessoaId: s.pessoaId, imovelId: (s as any).imovelId }));
-  }, [overview.data, seguimentos, now]);
+      .filter((s) => isOpenFollowUpStatus(s.estado))
+      .map((s) => ({
+        id: s.id,
+        title: s.titulo,
+        time: s.hora ?? null,
+        date: lisbonYmd(s.data),
+        personId: s.pessoaId ?? null,
+        propertyId: (s as any).imovelId ?? null,
+      }));
+  }, [overview.data, seguimentos]);
+
+  const agenda = useMemo(() => buildAgendaView(eventosBrutos, now), [eventosBrutos, now]);
+  const eventosHoje = agenda.upcoming;
   const atrasados = useMemo(
     () =>
       seguimentos.filter(
@@ -228,17 +248,17 @@ function HojePage() {
       });
     }
     for (const e of eventosHoje.slice(0, 2)) {
-      const janela = eventWindow({ due_date: now.toISOString(), due_time: e.hora ?? null });
+      const janela = eventWindow({ due_date: e.date, due_time: e.time });
       // Compromisso já terminado não se prepara.
       if (isWindowOver(janela.endIso, now)) continue;
       items.push({
         subject_type: "follow_up",
         subject_id: e.id,
-        action: `Preparar o compromisso${e.hora ? ` das ${e.hora}` : ""}: ${e.titulo}`,
+        action: `Preparar o compromisso${e.time ? ` das ${e.time}` : ""}: ${e.title}`,
         reasons: ["compromisso de hoje"],
         priority_score: 70,
         due_at: now.toISOString(),
-        entity_label: nomePessoa(e.pessoaId) || null,
+        entity_label: nomePessoa(e.personId ?? undefined) || null,
         deal_id: null,
         deal_label: null,
         event_start_at: janela.startIso,
@@ -369,7 +389,7 @@ function HojePage() {
     }
   };
 
-  const compromissosCount = resumo?.agenda.today ?? eventosHoje.length;
+  const compromissosCount = agenda.todayCount;
   const prioridadesCount = priorities.length;
 
   const awaitingImoveis = useMemo(
