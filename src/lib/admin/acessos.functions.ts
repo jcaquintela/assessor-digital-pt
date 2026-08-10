@@ -928,7 +928,14 @@ export const cancelPendingInvite = createServerFn({ method: "POST" })
 // Enquanto o template da Meta não está aprovado, o admin precisa de uma saída
 // à mão: gera-se o convite (link novo, o anterior por usar deixa de servir) e
 // devolve-se o texto pronto a copiar e um link wa.me para enviar do telemóvel.
-export type ManualInvite = { texto: string; url: string; waUrl: string | null; destino: string | null };
+export type ManualInvite = {
+  texto: string;
+  url: string;
+  waUrl: string | null;
+  /** Só dígitos, para reconstruir o link wa.me depois de o admin editar o texto. */
+  waNumber: string | null;
+  destino: string | null;
+};
 
 export const prepareManualInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -973,6 +980,7 @@ export const prepareManualInvite = createServerFn({ method: "POST" })
       texto: convite.texto,
       url: convite.url,
       waUrl: phone ? `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(convite.texto)}` : null,
+      waNumber: phone ? phone.replace(/\D/g, "") : null,
       destino: phone ? maskPhone(phone) : null,
     };
   });
