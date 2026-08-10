@@ -121,6 +121,7 @@ function NegocioPage() {
         <Link to="/negocio/faturacao" className="c-btn">
           <FileText className="h-4 w-4" /> Faturação
         </Link>
+        <PaymentPortalButton />
         <button type="button" className="c-btn" onClick={exportarCsv} disabled={aExportar}>
           <Download className="h-4 w-4" /> {aExportar ? "A gerar…" : "CSV"}
         </button>

@@ -421,6 +421,7 @@ function HojePage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <PaymentPortalButton variant="ghost" />
             <Link to="/assessor" className="c-cta">
               <MessageSquare className="h-4 w-4" /> Falar com {assessorName}
             </Link>
