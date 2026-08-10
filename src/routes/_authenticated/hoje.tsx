@@ -658,7 +658,14 @@ function HojePage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {eventosHoje.length === 0 && (
-                  <p className="c-muted text-sm">Não tens compromissos para hoje.</p>
+                  <div className="space-y-1">
+                    <p className="c-muted text-sm">{agenda.emptyLabel}</p>
+                    {tomorrowLabel(agenda.tomorrow) && (
+                      <p className="text-sm" style={{ color: "var(--ink)" }}>
+                        {tomorrowLabel(agenda.tomorrow)}
+                      </p>
+                    )}
+                  </div>
                 )}
                 {eventosHoje.map((e) => (
                   <button
@@ -668,12 +675,12 @@ function HojePage() {
                     className="c-card c-card-hover flex w-full items-start gap-3 p-3 text-left"
                   >
                     <div className="c-mono shrink-0 rounded-md px-2 py-1 text-xs font-semibold" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}>
-                      {e.hora ?? "—"}
+                      {e.time ?? "—"}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{e.titulo}</div>
+                      <div className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{e.title}</div>
                       <div className="c-muted text-xs">
-                        {[nomePessoa(e.pessoaId), tituloImovel(e.imovelId)].filter(Boolean).join(" · ") || "—"}
+                        {[nomePessoa(e.personId ?? undefined), tituloImovel(e.propertyId ?? undefined)].filter(Boolean).join(" · ") || "—"}
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "var(--muted)" }} />
