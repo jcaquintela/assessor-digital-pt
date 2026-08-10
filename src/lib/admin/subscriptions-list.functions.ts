@@ -37,13 +37,9 @@ export const getAdminSubscriptions = createServerFn({ method: "POST" })
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const hasLive = Boolean(process.env["STRIPE_LIVE_API_KEY"]);
-    const hasSandbox = Boolean(process.env["STRIPE_SANDBOX_API_KEY"]);
-    const environment: "sandbox" | "live" | "none" = hasLive
-      ? "live"
-      : hasSandbox
-        ? "sandbox"
-        : "none";
+    // Fonte única partilhada com Faturação, MRR e Negócio.
+    const { readPaymentsStatus } = await import("./payments-status.server");
+    const paymentsStatus = await readPaymentsStatus(supabaseAdmin);
 
     const { data, error } = await supabaseAdmin
       .from("profiles")
@@ -76,8 +72,8 @@ export const getAdminSubscriptions = createServerFn({ method: "POST" })
     );
 
     return {
-      connected: environment !== "none",
-      environment,
+      connected: paymentsStatus.connected,
+      environment: paymentsStatus.environment,
       rows,
       counts: {
         total: rows.length,
