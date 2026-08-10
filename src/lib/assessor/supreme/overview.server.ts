@@ -20,12 +20,16 @@ export interface AgendaItem {
   id: string;
   title: string;
   time: string | null;
+  /** Dia de calendário em Lisboa "YYYY-MM-DD" — o cliente decide o que é hoje/amanhã. */
+  date: string;
   type: string | null;
   personId: string | null;
   propertyId: string | null;
 }
 
 import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
+import { lisbonYmd } from "@/lib/assessor/lisbon-day";
+import { todayEvents, type DayEvent } from "@/lib/agenda/day-events";
 
 /**
  * Estado de um compromisso — delega na regra canónica
@@ -64,6 +68,8 @@ function todayRangeLisbon(now = new Date()): { start: string; end: string } {
 
 export async function computeOverview(supabase: any, userId: string): Promise<OverviewSummary> {
   const { start, end } = todayRangeLisbon();
+  // Hoje + amanhã: quando já não há nada hoje, o dashboard mostra o primeiro de amanhã.
+  const endTomorrow = new Date(new Date(end).getTime() + 864e5).toISOString();
 
   const [deals, props, people, misc, events, movements, interactions] = await Promise.all([
     supabase.from("opportunities").select("id, status, stage, value, archived_at").eq("user_id", userId),
@@ -71,7 +77,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     supabase.from("people").select("id").eq("user_id", userId),
     supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox"),
     supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, outcome, archived_at, person_id, related_property_id")
-      .eq("user_id", userId).gte("due_date", start).lte("due_date", end).order("due_time", { ascending: true }),
+      .eq("user_id", userId).gte("due_date", start).lte("due_date", endTomorrow).order("due_time", { ascending: true }),
     supabase.from("financial_movements").select("id, type, amount, status").eq("user_id", userId).eq("type", "commission"),
     supabase.from("interactions").select("person_id").eq("user_id", userId).gte("occurred_at", isoDaysAgo(7)),
   ]);
@@ -88,12 +94,18 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
       id: String(e.id),
       title: String(e.title ?? "Compromisso"),
       time: e.due_time ? String(e.due_time).slice(0, 5) : null,
+      date: lisbonYmd(e.due_date),
       type: e.type ? String(e.type) : null,
       personId: e.person_id ?? null,
       propertyId: e.related_property_id ?? e.property_id ?? null,
     }))
     .sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
-  const next = eventRows[0] ?? null;
+  // Seletor central: contagem do dia inteiro. Os campos `nextLabel/nextTime`
+  // ficam como o primeiro compromisso do dia (compatibilidade); quem mostra
+  // "o próximo" usa `nextEvent()` sobre `items` com o relógio do consultor.
+  const todayItems = todayEvents(eventRows as DayEvent[]);
+  const next = todayItems[0] ?? null;
+  const todayTotal = todayItems.length;
   const commissions = ((movements.data as any[]) ?? []);
   const open = commissions.filter((m) => {
     const s = String(m.status ?? "").toLowerCase();
@@ -112,7 +124,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     },
     misc: { pending: misc.count ?? 0 },
     agenda: {
-      today: eventRows.length,
+      today: todayTotal,
       nextLabel: next?.title ?? null,
       nextTime: next?.time ?? null,
       items: eventRows,
