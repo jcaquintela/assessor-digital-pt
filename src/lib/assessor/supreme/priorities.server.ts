@@ -34,6 +34,11 @@ function daysBetween(a: Date, b: Date): number {
   return Math.floor((a.getTime() - b.getTime()) / 864e5);
 }
 
+function eventWindowFields(row: { due_date?: unknown; due_time?: unknown }) {
+  const w = eventWindow(row);
+  return { event_start_at: w.startIso, event_end_at: w.endIso };
+}
+
 /** Dias de calendário (Lisboa) entre dois instantes/datas. */
 function calendarDaysBetween(a: string | Date, b: string | Date): number {
   return ymdDiffDays(lisbonYmd(a), lisbonYmd(b));
