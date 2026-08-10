@@ -3,6 +3,7 @@
 import { isDealActive } from "@/lib/deals/stages";
 import { lisbonYmd, ymdDiffDays, endOfLisbonDayIso } from "@/lib/assessor/lisbon-day";
 import { hasCommercialOutcomeContext } from "@/lib/assessor/outcome-eligibility";
+import { eventWindow, isEventOver } from "./event-window";
 
 /** De onde veio o item — o consultor tem de perceber o que está a olhar. */
 export type PriorityOrigin = "calendario" | "compromisso" | "tarefa" | "negocio";
@@ -24,6 +25,9 @@ export interface PriorityItem {
   origin_label: string;
   /** Estado atual quando já não está em aberto (cancelado, arquivado, concluído). */
   state_label: string | null;
+  /** Janela do compromisso (quando tem hora) — permite validar de novo na renderização. */
+  event_start_at?: string | null;
+  event_end_at?: string | null;
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -160,7 +164,9 @@ export async function computePriorities(
     // quando estão ligados a Pessoa, Negócio ou Imóvel. Um jogo de futebol
     // ou um almoço pessoal não é a prioridade do dia do consultor.
     if (providerLink && !hasCommercialOutcomeContext(f)) continue;
-    // Um compromisso que já aconteceu não se prepara — não volta como "hoje".
+    // Um compromisso que já aconteceu não se prepara. Vale para qualquer
+    // compromisso com hora: às 15:30 já não se prepara o das 10:00.
+    if (isEvent && isEventOver(f, now)) continue;
     if (providerLink && overdueDays > 0) continue;
 
     let score = isEvent ? 65 : 55;
@@ -223,6 +229,7 @@ export async function computePriorities(
       origin,
       origin_label: originLabel,
       state_label: followUpStateLabel(f),
+      ...(isEvent ? eventWindowFields(f) : { event_start_at: null, event_end_at: null }),
     });
   }
 
@@ -257,6 +264,8 @@ export async function computePriorities(
       origin: "negocio",
       origin_label: "Negócio em curso",
       state_label: null,
+      event_start_at: null,
+      event_end_at: null,
     });
   }
 
