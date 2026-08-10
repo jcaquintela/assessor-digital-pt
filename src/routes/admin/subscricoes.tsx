@@ -28,7 +28,7 @@ function SubscricoesPage() {
   const fn = useServerFn(getAdminSubscriptions);
   const { data, isPending } = useQuery({
     queryKey: ["admin", "subscriptions"],
-    queryFn: () => fn({ data: {} }),
+    queryFn: () => fn(),
     refetchInterval: 60_000,
   });
 
@@ -52,10 +52,10 @@ function SubscricoesPage() {
       ) : null}
 
       <Grid cols={4}>
-        <MetricCard label="Subscrições" value={String(data.counts.total)} source="profiles" />
-        <MetricCard label="Ativas" value={String(data.counts.active)} source="profiles" />
-        <MetricCard label="Sincronizadas" value={String(data.counts.stripe)} source="profiles" />
-        <MetricCard label="Geridas à mão" value={String(data.counts.manual)} source="profiles" />
+        <MetricCard label="Subscrições" value={String(data.counts.total)} sub="Contas com plano ou cliente associado" source="profiles" />
+        <MetricCard label="Ativas" value={String(data.counts.active)} sub="Ativas ou em período de teste" source="profiles" />
+        <MetricCard label="Sincronizadas" value={String(data.counts.stripe)} sub="Atualizadas pelos pagamentos" source="profiles" />
+        <MetricCard label="Geridas à mão" value={String(data.counts.manual)} sub="Definidas pelo admin" source="profiles" />
       </Grid>
 
       <SectionTitle>Lista</SectionTitle>
