@@ -47,6 +47,7 @@ import { Route as AdminAutonomasRouteImport } from './routes/admin/autonomas'
 import { Route as AdminAuditoriaSegurancaRouteImport } from './routes/admin/auditoria-seguranca'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AdminAquisicaoRouteImport } from './routes/admin/aquisicao'
+import { Route as AdminAgendaDebugRouteImport } from './routes/admin/agenda-debug'
 import { Route as AuthenticatedSobreAIaRouteImport } from './routes/_authenticated/sobre-a-ia'
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
@@ -293,6 +294,11 @@ const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
 const AdminAquisicaoRoute = AdminAquisicaoRouteImport.update({
   id: '/aquisicao',
   path: '/aquisicao',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAgendaDebugRoute = AdminAgendaDebugRouteImport.update({
+  id: '/agenda-debug',
+  path: '/agenda-debug',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AuthenticatedSobreAIaRoute = AuthenticatedSobreAIaRouteImport.update({
@@ -645,6 +651,7 @@ export interface FileRoutesByFullPath {
   '/mais': typeof AuthenticatedMaisRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
+  '/admin/agenda-debug': typeof AdminAgendaDebugRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
@@ -741,6 +748,7 @@ export interface FileRoutesByTo {
   '/mais': typeof AuthenticatedMaisRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
+  '/admin/agenda-debug': typeof AdminAgendaDebugRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
@@ -840,6 +848,7 @@ export interface FileRoutesById {
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/_authenticated/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
+  '/admin/agenda-debug': typeof AdminAgendaDebugRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/auditoria-seguranca': typeof AdminAuditoriaSegurancaRoute
@@ -939,6 +948,7 @@ export interface FileRouteTypes {
     | '/mais'
     | '/rotinas'
     | '/sobre-a-ia'
+    | '/admin/agenda-debug'
     | '/admin/aquisicao'
     | '/admin/auditoria'
     | '/admin/auditoria-seguranca'
@@ -1035,6 +1045,7 @@ export interface FileRouteTypes {
     | '/mais'
     | '/rotinas'
     | '/sobre-a-ia'
+    | '/admin/agenda-debug'
     | '/admin/aquisicao'
     | '/admin/auditoria'
     | '/admin/auditoria-seguranca'
@@ -1133,6 +1144,7 @@ export interface FileRouteTypes {
     | '/_authenticated/mais'
     | '/_authenticated/rotinas'
     | '/_authenticated/sobre-a-ia'
+    | '/admin/agenda-debug'
     | '/admin/aquisicao'
     | '/admin/auditoria'
     | '/admin/auditoria-seguranca'
@@ -1508,6 +1520,13 @@ declare module '@tanstack/react-router' {
       path: '/aquisicao'
       fullPath: '/admin/aquisicao'
       preLoaderRoute: typeof AdminAquisicaoRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/agenda-debug': {
+      id: '/admin/agenda-debug'
+      path: '/agenda-debug'
+      fullPath: '/admin/agenda-debug'
+      preLoaderRoute: typeof AdminAgendaDebugRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/_authenticated/sobre-a-ia': {
@@ -2070,6 +2089,7 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface AdminRouteRouteChildren {
+  AdminAgendaDebugRoute: typeof AdminAgendaDebugRoute
   AdminAquisicaoRoute: typeof AdminAquisicaoRoute
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminAuditoriaSegurancaRoute: typeof AdminAuditoriaSegurancaRoute
@@ -2101,6 +2121,7 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAgendaDebugRoute: AdminAgendaDebugRoute,
   AdminAquisicaoRoute: AdminAquisicaoRoute,
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminAuditoriaSegurancaRoute: AdminAuditoriaSegurancaRoute,
