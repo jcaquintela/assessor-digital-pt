@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAfonsoBusiness } from "@/lib/admin/afonso.functions";
 import { getIntegrationsOverview } from "@/lib/admin.functions";
+import { getPaymentsStatus } from "@/lib/admin/payments-status.functions";
+import { mrrCardText } from "@/lib/admin/payments-status";
 import { useSystemHealth } from "@/components/admin/health-strip";
 import { Badge, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { fmtPct } from "@/lib/admin/metrics-format";
@@ -22,6 +24,15 @@ function OverviewPage() {
     queryKey: ["admin", "integrations", "overview"],
     queryFn: () => integrationsFn(),
   });
+  const paymentsFn = useServerFn(getPaymentsStatus);
+  const payments = useQuery({
+    queryKey: ["admin", "payments", "status"],
+    queryFn: () => paymentsFn(),
+    refetchInterval: 60_000,
+  });
+  const mrr = payments.data
+    ? mrrCardText(payments.data)
+    : { value: "—", sub: "a ler…", stale: true };
 
   if (isPending || !data) return <p className="sub">A carregar…</p>;
 
@@ -42,7 +53,14 @@ function OverviewPage() {
 
       <SectionTitle first>Negócio</SectionTitle>
       <Grid cols={4}>
-        <MetricCard label="MRR" value="—" tone="muted" sub="Stripe ainda não ligado" source="nenhuma · planeado" stale />
+        <MetricCard
+          label="MRR"
+          value={mrr.value}
+          tone={mrr.stale ? "muted" : "default"}
+          sub={mrr.sub}
+          source="pagamentos · live"
+          stale={mrr.stale}
+        />
         <MetricCard label="Subscritores pagos" value={data.paidSubscribers} sub="pré-lançamento" source="subscription_tier · live" />
         <MetricCard
           label="Utilizadores ativos"
