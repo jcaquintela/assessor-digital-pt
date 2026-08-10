@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -23,18 +23,36 @@ export function UnreadSuggestionsAlert() {
   const { data } = useUnreadSuggestions();
   const unread = data?.unread ?? 0;
   const seen = useRef<number | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (seen.current !== null && unread > seen.current) {
-      toast(
-        unread - seen.current === 1
-          ? "Nova sugestão de um consultor"
-          : `${unread - seen.current} novas sugestões de consultores`,
-        { description: "Abre Qualidade → Sugestões dos consultores." },
-      );
+      const isNew = unread - seen.current === 1;
+      const from = data?.latestFrom ?? "um consultor";
+      const title = data?.latestTitle ?? "";
+      const description = title
+        ? `${from}: "${title}"`
+        : `A mais recente de ${from}.`;
+      if (isNew) {
+        toast("Nova sugestão de consultor", {
+          description,
+          action: {
+            label: "Abrir",
+            onClick: () => navigate({ to: "/admin/sugestoes" }),
+          },
+        });
+      } else {
+        toast(`${unread - seen.current} novas sugestões de consultores`, {
+          description: `A mais recente — ${description}`,
+          action: {
+            label: "Abrir",
+            onClick: () => navigate({ to: "/admin/sugestoes" }),
+          },
+        });
+      }
     }
     seen.current = unread;
-  }, [unread]);
+  }, [unread, data?.latestFrom, data?.latestTitle, navigate]);
 
   if (!unread) return null;
   return (
