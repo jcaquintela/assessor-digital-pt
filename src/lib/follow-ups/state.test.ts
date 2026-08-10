@@ -118,6 +118,9 @@ const ALLOWED_FILES = new Set([
   "src/lib/deals/stages.test.ts",
   "src/lib/deals/closed.test.ts",
   "src/integrations/supabase/types.ts",
+  // Lista de valores VÁLIDOS de outcome (validação de input), não uma regra
+  // paralela de aberto/fechado — o fecho é decidido por isTerminalOutcome.
+  "src/lib/assessor/supreme/outcomes.functions.ts",
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {
