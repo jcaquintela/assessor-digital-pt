@@ -99,6 +99,23 @@ async function routeInbound(
   userId: string,
   persistedUuid: string | null,
 ): Promise<void> {
+  // 7c. Resposta a uma pergunta da equipa (canal admin → consultor). Se
+  // existir uma pergunta pendente dentro da janela, o texto fica ligado a
+  // essa pergunta e NÃO entra no motor do Afonso.
+  if (inbound.messageType === "text" && (inbound.text ?? "").trim()) {
+    const { captureAdminReply } = await import("@/lib/admin/admin-messages.server");
+    const r = await captureAdminReply(supabaseAdmin, userId, inbound.text ?? "");
+    if (r.captured && r.ack) {
+      const send = await adapter.sendText(inbound.externalConversationId, r.ack);
+      await supabaseAdmin.from("assessor_messages").insert({
+        user_id: userId, role: "assistant", content: r.ack,
+        message_type: "admin_reply_ack", channel: adapter.channel,
+        status: send.ok ? "sent" : "failed",
+      } as never);
+      return;
+    }
+  }
+
   // 8. Rotear por tipo.
   if (inbound.messageType === "text" || inbound.messageType === "callback") {
     const content =
