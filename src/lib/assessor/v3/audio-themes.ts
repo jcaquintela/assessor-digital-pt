@@ -327,10 +327,18 @@ export interface ThemeEdit {
   index: number;
   remove?: boolean;
   title?: string;
+  personName?: string;
+  personPhone?: string;
   typology?: string;
   location?: string;
+  address?: string;
+  price?: number;
+  intent?: ThemeIntent;
+  urgency?: ThemeUrgency;
+  motivation?: string;
   date?: string;
   time?: string;
+  clearDate?: boolean;
 }
 
 function strip(s: string): string {
@@ -345,8 +353,10 @@ function addDays(ymd: string, days: number): string {
 }
 
 function readIndex(plain: string, count: number): number | null {
-  const m = plain.match(/(?:^|\b)(?:o|no|na|do|da|item|ponto|tema|numero|n[ºo])?\s*(\d{1,2})(?=\b|[.,:)])/);
-  if (m) {
+  // Percorre todos os números soltos: "no 2 o preço são 250 mil" tem dois
+  // números e só o primeiro dentro do intervalo é o ponto a corrigir.
+  const re = /(?:^|\b)(?:o|no|na|do|da|item|ponto|tema|numero|n[ºo])?\s*(\d{1,2})(?=\b|[.,:)])/g;
+  for (const m of plain.matchAll(re)) {
     const n = Number(m[1]);
     if (n >= 1 && n <= count) return n - 1;
   }
@@ -355,6 +365,52 @@ function readIndex(plain: string, count: number): number | null {
     if (plain.includes(w) && n <= count) return n - 1;
   }
   return null;
+}
+
+const PT_MONTHS: Record<string, number> = {
+  janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6,
+  julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+};
+
+/** Datas escritas à portuguesa: 12/09, 12-09-2026, "12 de setembro". */
+function readPtDate(plain: string, today: string): string | null {
+  const iso = plain.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  if (iso) return iso[1];
+  const slash = plain.match(/\b(\d{1,2})[/\-.](\d{1,2})(?:[/\-.](\d{2,4}))?\b/);
+  if (slash) {
+    const d = Number(slash[1]);
+    const m = Number(slash[2]);
+    if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+      let y = slash[3] ? Number(slash[3]) : Number(today.slice(0, 4));
+      if (y < 100) y += 2000;
+      return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+  const named = plain.match(/\b(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?\b/);
+  if (named) {
+    const m = PT_MONTHS[named[2]];
+    const d = Number(named[1]);
+    if (m && d >= 1 && d <= 31) {
+      const y = named[3] ? Number(named[3]) : Number(today.slice(0, 4));
+      return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+  return null;
+}
+
+/** Valores à portuguesa: "250 mil", "250.000", "1,2 milhões", "320000 euros". */
+function readPrice(plain: string): number | null {
+  const hasCue = /\b(preco|valor|pede|pedem|pedia|vale|custa|por|euros?|€|mil|milhoes|milhao)\b|€/.test(plain);
+  if (!hasCue) return null;
+  const m = plain.match(/(\d[\d.\s]*(?:,\d+)?)\s*(milhoes|milhao|mil|k|€|euros?)?/);
+  if (!m) return null;
+  const digits = m[1].replace(/\s/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", ".");
+  let n = Number(digits);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const unit = m[2];
+  if (unit === "mil" || unit === "k") n *= 1000;
+  else if (unit === "milhoes" || unit === "milhao") n *= 1_000_000;
+  return n >= 1000 ? Math.round(n) : null;
 }
 
 export function parseThemeEdit(message: string, count: number, today: string): ThemeEdit | null {
@@ -371,11 +427,38 @@ export function parseThemeEdit(message: string, count: number, today: string): T
   if (typ) edit.typology = `T${typ[1]}`;
   const loc = message.match(/\bem\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'’-]*(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'’-]*)*)/);
   if (loc) edit.location = loc[1].trim();
+
+  // Entidades: nome e telefone do contacto do tema.
+  const nameM = message.match(/(?:chama-se|o nome (?:e|é)|nao (?:e|é) .{1,40}?,?\s*(?:mas\s+)?(?:sim|e|é))\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'’.-]*(?:\s+(?:de|da|do|dos|das)?\s*[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'’.-]*)*)/);
+  if (nameM) edit.personName = nameM[1].replace(/\s+/g, " ").trim().slice(0, 120);
+  if (/\b(telefone|telemovel|contacto|numero|tlm|tlf)\b/.test(plain)) {
+    const tel = message.match(/(\+?\d[\d\s]{7,15}\d)/);
+    if (tel) {
+      const digits = tel[1].replace(/\s/g, "");
+      if (digits.replace(/\D/g, "").length >= 9) edit.personPhone = digits;
+    }
+  }
+
+  // Valores e intenção.
+  const price = readPrice(plain.replace(/(?:^|\b)(?:o|no|na|do|da|item|ponto|tema|numero|n[ºo])\s*\d{1,2}\b/, " "));
+  if (price) edit.price = price;
+  const intentM = plain.match(/\b(?:e|é|para|quer)\s+(vender|comprar|arrendar|avaliar)\b/);
+  if (intentM) edit.intent = intentM[1] as ThemeIntent;
+  if (/\bnao\s+(?:e|é)\s+urgente\b|\bsem\s+pressa\b/.test(plain)) edit.urgency = "baixa";
+  else if (/\b(e|é)\s+urgente\b|\bcom\s+pressa\b/.test(plain)) edit.urgency = "alta";
+  const motiv = plain.match(/\b(?:motivo|porque|porqu[eê]|razao)\s*(?:e|é|:)?\s+(.{3,120})$/);
+  if (motiv) edit.motivation = motiv[1].trim();
+
+  // Datas.
   if (/\bdepois de amanha\b/.test(plain)) edit.date = addDays(today, 2);
   else if (/\bamanha\b/.test(plain)) edit.date = addDays(today, 1);
   else if (/\bhoje\b/.test(plain)) edit.date = today;
-  const iso = plain.match(/\b(\d{4}-\d{2}-\d{2})\b/);
-  if (iso) edit.date = iso[1];
+  const explicit = readPtDate(plain, today);
+  if (explicit) edit.date = explicit;
+  if (/\b(sem data|tira a data|sem prazo|nao (?:e|é) para data)\b/.test(plain)) {
+    edit.clearDate = true;
+    delete edit.date;
+  }
   const time = plain.match(/\b(\d{1,2})(?:[:h](\d{2}))?\s*(?:h|horas)?\b/);
   if (time && /\b(?:as|às|as\s)\s*\d/.test(plain)) {
     edit.time = `${time[1].padStart(2, "0")}:${time[2] ?? "00"}`;
@@ -383,7 +466,10 @@ export function parseThemeEdit(message: string, count: number, today: string): T
   const quoted = message.match(/["“”'](.+?)["“”']/);
   if (quoted) edit.title = quoted[1].trim().slice(0, 200);
 
-  const touched = edit.typology || edit.location || edit.date || edit.time || edit.title;
+  const touched =
+    edit.typology || edit.location || edit.address || edit.date || edit.time || edit.title ||
+    edit.personName || edit.personPhone || edit.price || edit.intent || edit.urgency ||
+    edit.motivation || edit.clearDate;
   return touched ? edit : null;
 }
 
