@@ -72,7 +72,7 @@ function SubscricoesPage() {
                 <div className="text-xs text-muted-foreground">{r.email ?? "—"}</div>
               </Td>
               <Td>
-                {tierLabel(r.tier as never)}
+                {tierLabel(r.tier)}
                 {r.priceId ? (
                   <div className="text-xs text-muted-foreground">{r.priceId}</div>
                 ) : null}
