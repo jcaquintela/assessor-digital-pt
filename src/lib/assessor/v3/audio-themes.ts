@@ -487,25 +487,84 @@ export function applyThemeEdit(themes: AudioTheme[], links: ThemeLinks[], edit: 
     if (i !== edit.index) return t;
     const copy: AudioTheme = JSON.parse(JSON.stringify(t));
     if (edit.title) copy.title = edit.title;
+    if (edit.personName || edit.personPhone) {
+      const base = copy.person ?? { name: null, phone: null, role: null };
+      copy.person = {
+        ...base,
+        name: edit.personName ?? base.name,
+        phone: edit.personPhone ?? base.phone,
+      };
+    }
     if (edit.typology) copy.property = { ...(copy.property ?? { typology: null, location: null, address: null, features: null, price: null }), typology: edit.typology };
     if (edit.location) copy.property = { ...(copy.property ?? { typology: null, location: null, address: null, features: null, price: null }), location: edit.location };
+    if (edit.address) copy.property = { ...(copy.property ?? { typology: null, location: null, address: null, features: null, price: null }), address: edit.address };
+    if (edit.price) copy.property = { ...(copy.property ?? { typology: null, location: null, address: null, features: null, price: null }), price: edit.price };
+    if (edit.intent || edit.urgency || edit.motivation) {
+      const base = copy.opportunity ?? { intent: null, motivation: null, urgency: null, deadline: null };
+      copy.opportunity = {
+        ...base,
+        intent: edit.intent ?? base.intent,
+        urgency: edit.urgency ?? base.urgency,
+        motivation: edit.motivation ?? base.motivation,
+      };
+    }
+    if (edit.clearDate && copy.next_action) {
+      copy.next_action.date = null;
+      copy.next_action.time = null;
+    }
     if ((edit.date || edit.time) && copy.next_action) {
       if (edit.date) copy.next_action.date = edit.date;
       if (edit.time) copy.next_action.time = edit.time;
     }
+    if ((edit.date || edit.clearDate) && !copy.next_action && copy.opportunity) {
+      copy.opportunity.deadline = edit.clearDate ? null : (edit.date ?? null);
+    }
     return copy;
   });
-  // Uma correcção de imóvel invalida a ligação automática a um imóvel existente.
+  // Corrigir a entidade invalida a ligação que tinha sido adivinhada por
+  // deduplicação: o consultor está a dizer que não é aquele registo.
   const nextLinks = links.map((l, i) => {
-    if (i !== edit.index || (!edit.typology && !edit.location)) return l;
-    return { ...l, property_id: null, property_label: null };
+    if (i !== edit.index) return l;
+    let out = l;
+    if (edit.typology || edit.location || edit.address) {
+      out = { ...out, property_id: null, property_label: null, ambiguous_properties: [] };
+    }
+    if (edit.personName || edit.personPhone) {
+      out = { ...out, person_id: null, person_label: null, ambiguous_people: [] };
+    }
+    return out;
   });
   return { themes: next, links: nextLinks };
 }
 
+function eur(n: number): string {
+  return `${new Intl.NumberFormat("pt-PT").format(n)} €`;
+}
+
+/** O que mudou, em palavras, para o consultor perceber sem reler tudo. */
+export function describeThemeEditChanges(edit: ThemeEdit): string[] {
+  const bits: string[] = [];
+  if (edit.personName) bits.push(`contacto: ${edit.personName}`);
+  if (edit.personPhone) bits.push(`telefone: ${edit.personPhone}`);
+  if (edit.typology) bits.push(`tipologia: ${edit.typology}`);
+  if (edit.location) bits.push(`zona: ${edit.location}`);
+  if (edit.address) bits.push(`morada: ${edit.address}`);
+  if (edit.price) bits.push(`valor: ${eur(edit.price)}`);
+  if (edit.intent) bits.push(`intenção: ${edit.intent}`);
+  if (edit.urgency) bits.push(`urgência: ${edit.urgency}`);
+  if (edit.motivation) bits.push(`motivo: ${edit.motivation}`);
+  if (edit.clearDate) bits.push("sem data");
+  else if (edit.date) bits.push(`data: ${ptDate(edit.date, edit.time ?? null)}`);
+  else if (edit.time) bits.push(`hora: ${edit.time}`);
+  if (edit.title) bits.push(`título: ${edit.title}`);
+  return bits;
+}
+
 export function describeThemeEdit(edit: ThemeEdit, removed?: AudioTheme): string {
   if (edit.remove) return `Está bem, tirei o ponto ${edit.index + 1}${removed ? ` (${removed.title})` : ""}. Fica assim:`;
-  return `Corrigi o ponto ${edit.index + 1}. Fica assim:`;
+  const bits = describeThemeEditChanges(edit);
+  if (!bits.length) return `Corrigi o ponto ${edit.index + 1}. Fica assim:`;
+  return `Corrigi o ponto ${edit.index + 1} (${listPt(bits)}). Ainda não gravei nada. Fica assim:`;
 }
 
 /** O consultor escolheu um dos contactos ambíguos? */
