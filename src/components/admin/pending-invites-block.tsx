@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   cancelPendingInvite,
   listPendingInvites,
+  prepareManualInvite,
   resendInvite,
   type PendingInviteRow,
 } from "@/lib/admin/acessos.functions";
@@ -15,8 +16,10 @@ export function PendingInvitesBlock() {
   const listFn = useServerFn(listPendingInvites);
   const resendFn = useServerFn(resendInvite);
   const cancelFn = useServerFn(cancelPendingInvite);
+  const manualFn = useServerFn(prepareManualInvite);
   const [rows, setRows] = useState<PendingInviteRow[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [manual, setManual] = useState<Record<string, { texto: string; waUrl: string | null }>>({});
 
   const carregar = useCallback(() => {
     listFn({})
@@ -46,6 +49,29 @@ export function PendingInvitesBlock() {
       await cancelFn({ data: { id } });
       toast.success("Convite retirado da fila.");
       carregar();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Template ainda por aprovar? O admin copia o texto e envia à mão.
+  const prepararManual = async (id: string, abrirWhatsapp: boolean) => {
+    setBusy(id);
+    try {
+      const r = manual[id] ?? (await manualFn({ data: { id } }));
+      setManual((m) => ({ ...m, [id]: { texto: r.texto, waUrl: r.waUrl } }));
+      if (abrirWhatsapp) {
+        if (!r.waUrl) {
+          toast.error("Sem número de WhatsApp válido nesta conta.");
+          return;
+        }
+        window.open(r.waUrl, "_blank", "noopener,noreferrer");
+      } else {
+        await navigator.clipboard.writeText(r.texto);
+        toast.success("Mensagem copiada. O link anterior por usar deixa de servir.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível preparar a mensagem.");
     } finally {
       setBusy(null);
     }
@@ -85,7 +111,30 @@ export function PendingInvitesBlock() {
               <button type="button" className="admin-btn" disabled={busy === r.id} onClick={() => cancelar(r.id)}>
                 Retirar da fila
               </button>
+              <button
+                type="button"
+                className="admin-btn"
+                disabled={busy === r.id}
+                onClick={() => prepararManual(r.id, false)}
+              >
+                Copiar mensagem
+              </button>
+              {r.canal === "whatsapp" && (
+                <button
+                  type="button"
+                  className="admin-btn"
+                  disabled={busy === r.id}
+                  onClick={() => prepararManual(r.id, true)}
+                >
+                  Abrir no WhatsApp
+                </button>
+              )}
             </div>
+            {manual[r.id] && (
+              <pre className="mini mt-2 whitespace-pre-wrap rounded-md border p-2 dark:border-slate-800">
+                {manual[r.id]!.texto}
+              </pre>
+            )}
           </li>
         ))}
       </ul>
