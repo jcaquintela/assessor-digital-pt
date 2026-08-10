@@ -19,7 +19,9 @@ export function PendingInvitesBlock() {
   const manualFn = useServerFn(prepareManualInvite);
   const [rows, setRows] = useState<PendingInviteRow[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [manual, setManual] = useState<Record<string, { texto: string; waUrl: string | null }>>({});
+  const [manual, setManual] = useState<
+    Record<string, { texto: string; url: string; waNumber: string | null }>
+  >({});
 
   const carregar = useCallback(() => {
     listFn({})
@@ -54,27 +56,36 @@ export function PendingInvitesBlock() {
     }
   };
 
-  // Template ainda por aprovar? O admin copia o texto e envia à mão.
-  const prepararManual = async (id: string, abrirWhatsapp: boolean) => {
+  // Template ainda por aprovar? Preparamos o texto, o admin revê/edita e envia à mão.
+  const prepararManual = async (id: string) => {
     setBusy(id);
     try {
-      const r = manual[id] ?? (await manualFn({ data: { id } }));
-      setManual((m) => ({ ...m, [id]: { texto: r.texto, waUrl: r.waUrl } }));
-      if (abrirWhatsapp) {
-        if (!r.waUrl) {
-          toast.error("Sem número de WhatsApp válido nesta conta.");
-          return;
-        }
-        window.open(r.waUrl, "_blank", "noopener,noreferrer");
-      } else {
-        await navigator.clipboard.writeText(r.texto);
-        toast.success("Mensagem copiada. O link anterior por usar deixa de servir.");
-      }
+      const r = await manualFn({ data: { id } });
+      setManual((m) => ({ ...m, [id]: { texto: r.texto, url: r.url, waNumber: r.waNumber } }));
+      toast.success("Mensagem pronta a rever. O link anterior por usar deixa de servir.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível preparar a mensagem.");
     } finally {
       setBusy(null);
     }
+  };
+
+  const copiarTexto = async (id: string) => {
+    const texto = manual[id]?.texto.trim();
+    if (!texto) return toast.error("A mensagem está vazia.");
+    await navigator.clipboard.writeText(texto);
+    toast.success("Mensagem copiada.");
+  };
+
+  const abrirWhatsapp = (id: string) => {
+    const item = manual[id];
+    const texto = item?.texto.trim();
+    if (!texto) return toast.error("A mensagem está vazia.");
+    if (!item?.waNumber) return toast.error("Sem número de WhatsApp válido nesta conta.");
+    if (item.url && !texto.includes(item.url)) {
+      toast.warning("Atenção: o link de acesso já não está na mensagem.");
+    }
+    window.open(`https://wa.me/${item.waNumber}?text=${encodeURIComponent(texto)}`, "_blank", "noopener,noreferrer");
   };
 
   if (!rows || rows.length === 0) return null;
@@ -111,29 +122,36 @@ export function PendingInvitesBlock() {
               <button type="button" className="admin-btn" disabled={busy === r.id} onClick={() => cancelar(r.id)}>
                 Retirar da fila
               </button>
-              <button
-                type="button"
-                className="admin-btn"
-                disabled={busy === r.id}
-                onClick={() => prepararManual(r.id, false)}
-              >
-                Copiar mensagem
+              <button type="button" className="admin-btn" disabled={busy === r.id} onClick={() => prepararManual(r.id)}>
+                {manual[r.id] ? "Gerar nova mensagem" : "Preparar mensagem"}
               </button>
-              {r.canal === "whatsapp" && (
-                <button
-                  type="button"
-                  className="admin-btn"
-                  disabled={busy === r.id}
-                  onClick={() => prepararManual(r.id, true)}
-                >
-                  Abrir no WhatsApp
-                </button>
-              )}
             </div>
             {manual[r.id] && (
-              <pre className="mini mt-2 whitespace-pre-wrap rounded-md border p-2 dark:border-slate-800">
-                {manual[r.id]!.texto}
-              </pre>
+              <div className="mt-2">
+                <label className="mini" style={{ color: "var(--muted)" }} htmlFor={`msg-${r.id}`}>
+                  Revê ou ajusta antes de enviar
+                </label>
+                <textarea
+                  id={`msg-${r.id}`}
+                  className="mt-1 w-full rounded-md border p-2 text-sm dark:border-slate-800 dark:bg-transparent"
+                  rows={6}
+                  maxLength={4000}
+                  value={manual[r.id]!.texto}
+                  onChange={(e) =>
+                    setManual((m) => ({ ...m, [r.id]: { ...m[r.id]!, texto: e.target.value } }))
+                  }
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" className="admin-btn" onClick={() => copiarTexto(r.id)}>
+                    Copiar mensagem
+                  </button>
+                  {r.canal === "whatsapp" && (
+                    <button type="button" className="admin-btn" onClick={() => abrirWhatsapp(r.id)}>
+                      Abrir no WhatsApp
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </li>
         ))}
