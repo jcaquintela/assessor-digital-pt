@@ -50,22 +50,21 @@ async function moveExhaustedDocumentNudgeToMisc(
   property: { id: string; title: string },
   rows: any[],
 ): Promise<void> {
-  const marker = `document_nudge:${property.id}`;
+  const title = `Documentação em falta: ${property.title}`.slice(0, 120);
   const { data: existing } = await supabase
     .from("miscellaneous_items")
     .select("id")
     .eq("user_id", userId)
-    .eq("source_message_id", marker)
+    .eq("title", title)
     .limit(1);
   if (!((existing as any[]) ?? []).length) {
     await supabase.from("miscellaneous_items").insert({
       user_id: userId,
-      title: `Documentação em falta: ${property.title}`.slice(0, 120),
+      title,
       original_content: `Confirmar e pedir a documentação em falta do imóvel "${property.title}".`,
       summary: `O Afonso perguntou ${DOCUMENT_NUDGE_MAX_ATTEMPTS} vezes sem obter uma resposta conclusiva. Ficou à espera de ação manual.`,
       category: "Por tratar",
       source_channel: "proactive",
-      source_message_id: marker,
       status: "inbox",
       occurred_at: new Date().toISOString(),
       tags: ["documentação", "proatividade_esgotada"],
@@ -120,22 +119,21 @@ export async function resolveLatestDocumentNudgeAnswer(
     .eq("user_id", args.userId)
     .maybeSingle();
   const title = String((property as any)?.title ?? "este imóvel");
-  const marker = `document_nudge:${row.subject_id}`;
+  const miscTitle = `Pedir documentação: ${title}`.slice(0, 120);
   const { data: existing } = await supabase
     .from("miscellaneous_items")
     .select("id")
     .eq("user_id", args.userId)
-    .eq("source_message_id", marker)
+    .eq("title", miscTitle)
     .limit(1);
   if (!((existing as any[]) ?? []).length) {
     await supabase.from("miscellaneous_items").insert({
       user_id: args.userId,
-      title: `Pedir documentação: ${title}`.slice(0, 120),
+      title: miscTitle,
       original_content: `Pedir ao proprietário a documentação em falta do imóvel "${title}".`,
       summary: "O consultor confirmou que quer tratar deste pedido.",
       category: "Por tratar",
       source_channel: args.channel,
-      source_message_id: marker,
       status: "inbox",
       occurred_at: now,
       tags: ["documentação"],
