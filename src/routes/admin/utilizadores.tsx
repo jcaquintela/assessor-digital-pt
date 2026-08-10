@@ -5,6 +5,7 @@ import { useState } from "react";
 import { foldIncludes } from "@/lib/search/normalize";
 import { InvitePreview } from "@/components/admin/invite-preview";
 import { InviteLinkDialog } from "@/components/admin/invite-link-dialog";
+import { PendingInvitesBlock } from "@/components/admin/pending-invites-block";
 import { toast } from "sonner";
 import {
   listAccessUsers,
@@ -297,6 +298,8 @@ function AcessosPageInner() {
         Contas criadas aqui nascem já confirmadas. “Email por confirmar” só aparece em contas criadas pelo próprio
         (registo no site) — “Confirmar email” desbloqueia a entrada na hora, sem esperar por email.
       </p>
+
+      <PendingInvitesBlock />
 
       <SectionTitle>Contas a rever (possíveis duplicados)</SectionTitle>
       <table className="cards-sm">
