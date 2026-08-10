@@ -44,6 +44,7 @@ export const navGroups: NavGroup[] = [
       { to: "/admin/feedback", label: "Feedback dos consultores" },
       { to: "/admin/autonomas", label: "Ações autónomas" },
       { to: "/admin/goldens", label: "Goldens" },
+      { to: "/admin/simulador-briefing", label: "Simulador do briefing" },
     ],
   },
   {
