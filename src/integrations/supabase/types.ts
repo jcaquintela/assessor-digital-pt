@@ -2821,6 +2821,7 @@ export type Database = {
           assessor_name: string
           beta_expires_at: string | null
           billing_environment: string
+          billing_manual_lock: boolean
           billing_source: string
           billing_status: string
           created_at: string
@@ -2861,6 +2862,7 @@ export type Database = {
           assessor_name?: string
           beta_expires_at?: string | null
           billing_environment?: string
+          billing_manual_lock?: boolean
           billing_source?: string
           billing_status?: string
           created_at?: string
@@ -2901,6 +2903,7 @@ export type Database = {
           assessor_name?: string
           beta_expires_at?: string | null
           billing_environment?: string
+          billing_manual_lock?: boolean
           billing_source?: string
           billing_status?: string
           created_at?: string
