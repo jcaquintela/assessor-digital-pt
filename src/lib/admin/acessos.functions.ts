@@ -425,19 +425,6 @@ export const checkInviteSendability = createServerFn({ method: "GET" })
     };
   });
 
-type IssuedInviteLegacy = {
-  texto: string;
-  url: string;
-  codigo: string | null;
-  numeroAfonso: string | null;
-  waUrl: string | null;
-  enviado: boolean;
-  erroEnvio?: string;
-  /** Destino confirmado pela Meta/Telegram (número mascarado ou "Telegram"). */
-  destino?: string | null;
-  /** Como saiu: template aprovado (fora das 24h) ou texto (dentro da janela). */
-  via?: "template" | "texto" | null;
-};
 
 export const issueInviteLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
