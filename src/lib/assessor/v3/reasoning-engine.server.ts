@@ -6,6 +6,7 @@ import { think } from "./think.server";
 import { search } from "./search.server";
 import { decide } from "./decide.server";
 import { executeToolCalls, applyMemoryWrites } from "./act.server";
+import { isolateUnrelatedPending, stripInheritedMotive } from "../context-isolation";
 import { sanitizeReply, enforceHumanTone, enforceSingleQuestion, NATURAL_FALLBACKS } from "../culture/sanitize";
 import { computeQualitySignals, persistQualityScore } from "./quality.server";
 import { runShadow, shouldRunShadow } from "./shadow.server";
@@ -1100,7 +1101,12 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     "conversation_state" as const,
     "pending_action" as const,
   ]));
-  const searches = await search(ctx, observations, recommended);
+  const searchesRaw = await search(ctx, observations, recommended);
+  // Contaminação de contexto: um pendente sobre outra entidade não pode
+  // sequer chegar ao DECIDE, senão o "porquê" dele escorrega para o registo
+  // novo (caso real: "Contacta o Nuno Castilho" a herdar "pedir a caderneta").
+  const isolation = isolateUnrelatedPending(searchesRaw as any, trimmed);
+  const searches = isolation.searches as typeof searchesRaw;
 
   // Modo Sparring — treino de conversas. Nada vira registo enquanto estiver
   // activo: as tool_calls são descartadas antes do ACT.
@@ -1199,12 +1205,28 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   // ferramenta não houve acção — a resposta não pode afirmar conclusão.
   const actedWithoutTools =
     decideR.decision.action === "act" && decideR.decision.tool_calls.length === 0;
+  if (isolation.isolated) {
+    for (const tc of decideR.decision.tool_calls) {
+      const a = tc.arguments as Record<string, unknown>;
+      for (const field of ["title", "notes", "description", "summary", "message_preview"]) {
+        if (typeof a?.[field] === "string") {
+          a[field] = stripInheritedMotive(a[field] as string, {
+            message: trimmed,
+            pendingText: isolation.pendingText,
+          });
+        }
+      }
+    }
+  }
   const toolResults = shouldAct ? await executeToolCalls(ctx, decideR.decision.tool_calls) : [];
   const allOk = toolResults.every((r) => r.ok);
 
   await applyMemoryWrites(ctx, decideR.decision.memory_writes);
 
   let reply = sanitizeReply(decideR.decision.natural_reply);
+  if (isolation.isolated) {
+    reply = stripInheritedMotive(reply, { message: trimmed, pendingText: isolation.pendingText });
+  }
   if (autoPause && !reply.includes("continuar o treino")) {
     reply = `${reply}\n\n${SPARRING_CONTINUE_QUESTION}`.trim();
   }
