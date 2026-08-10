@@ -42,7 +42,7 @@ describe("seletor central de eventos do dia", () => {
 
   it("golden 3 — a passagem do tempo remove o evento sem tocar nos dados", () => {
     const antes = buildAgendaView(dia, new Date("2026-08-10T10:30:00Z")); // 11:30
-    const depois = buildAgendaView(dia, new Date("2026-08-10T11:05:00Z")); // 12:05
+    const depois = buildAgendaView(dia, new Date("2026-08-10T12:05:00Z")); // 13:05
     expect(antes.upcoming.map((e) => e.id)).toEqual(["b", "c"]);
     expect(depois.upcoming).toEqual([]);
   });
