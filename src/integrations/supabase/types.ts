@@ -2148,6 +2148,8 @@ export type Database = {
           status: string
           summary: string | null
           tags: string[]
+          team_archived_at: string | null
+          team_read_at: string | null
           title: string
           title_norm: string | null
           updated_at: string
@@ -2169,6 +2171,8 @@ export type Database = {
           status?: string
           summary?: string | null
           tags?: string[]
+          team_archived_at?: string | null
+          team_read_at?: string | null
           title: string
           title_norm?: string | null
           updated_at?: string
@@ -2190,6 +2194,8 @@ export type Database = {
           status?: string
           summary?: string | null
           tags?: string[]
+          team_archived_at?: string | null
+          team_read_at?: string | null
           title?: string
           title_norm?: string | null
           updated_at?: string
