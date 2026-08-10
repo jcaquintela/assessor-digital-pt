@@ -29,7 +29,7 @@ export interface AgendaItem {
 
 import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
 import { lisbonYmd } from "@/lib/assessor/lisbon-day";
-import { todayEventCount, nextEvent, type DayEvent } from "@/lib/agenda/day-events";
+import { todayEvents, type DayEvent } from "@/lib/agenda/day-events";
 
 /**
  * Estado de um compromisso — delega na regra canónica
