@@ -26,6 +26,7 @@ import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizador
 import { Route as AdminUtilizacaoRouteImport } from './routes/admin/utilizacao'
 import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
 import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
+import { Route as AdminSimuladorBriefingRouteImport } from './routes/admin/simulador-briefing'
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
 import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
 import { Route as AdminPlanosRouteImport } from './routes/admin/planos'
@@ -187,6 +188,11 @@ const AdminSuporteRoute = AdminSuporteRouteImport.update({
 const AdminSubscricoesRoute = AdminSubscricoesRouteImport.update({
   id: '/subscricoes',
   path: '/subscricoes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSimuladorBriefingRoute = AdminSimuladorBriefingRouteImport.update({
+  id: '/simulador-briefing',
+  path: '/simulador-briefing',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminSegurancaRoute = AdminSegurancaRouteImport.update({
@@ -659,6 +665,7 @@ export interface FileRoutesByFullPath {
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
+  '/admin/simulador-briefing': typeof AdminSimuladorBriefingRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
@@ -754,6 +761,7 @@ export interface FileRoutesByTo {
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
+  '/admin/simulador-briefing': typeof AdminSimuladorBriefingRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
@@ -852,6 +860,7 @@ export interface FileRoutesById {
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
+  '/admin/simulador-briefing': typeof AdminSimuladorBriefingRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
@@ -950,6 +959,7 @@ export interface FileRouteTypes {
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/seguranca'
+    | '/admin/simulador-briefing'
     | '/admin/subscricoes'
     | '/admin/suporte'
     | '/admin/utilizacao'
@@ -1045,6 +1055,7 @@ export interface FileRouteTypes {
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/seguranca'
+    | '/admin/simulador-briefing'
     | '/admin/subscricoes'
     | '/admin/suporte'
     | '/admin/utilizacao'
@@ -1142,6 +1153,7 @@ export interface FileRouteTypes {
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/seguranca'
+    | '/admin/simulador-briefing'
     | '/admin/subscricoes'
     | '/admin/suporte'
     | '/admin/utilizacao'
@@ -1349,6 +1361,13 @@ declare module '@tanstack/react-router' {
       path: '/subscricoes'
       fullPath: '/admin/subscricoes'
       preLoaderRoute: typeof AdminSubscricoesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/simulador-briefing': {
+      id: '/admin/simulador-briefing'
+      path: '/simulador-briefing'
+      fullPath: '/admin/simulador-briefing'
+      preLoaderRoute: typeof AdminSimuladorBriefingRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/seguranca': {
@@ -2071,6 +2090,7 @@ interface AdminRouteRouteChildren {
   AdminPlanosRoute: typeof AdminPlanosRoute
   AdminQualidadeRoute: typeof AdminQualidadeRoute
   AdminSegurancaRoute: typeof AdminSegurancaRoute
+  AdminSimuladorBriefingRoute: typeof AdminSimuladorBriefingRoute
   AdminSubscricoesRoute: typeof AdminSubscricoesRoute
   AdminSuporteRoute: typeof AdminSuporteRoute
   AdminUtilizacaoRoute: typeof AdminUtilizacaoRoute
@@ -2101,6 +2121,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminPlanosRoute: AdminPlanosRoute,
   AdminQualidadeRoute: AdminQualidadeRoute,
   AdminSegurancaRoute: AdminSegurancaRoute,
+  AdminSimuladorBriefingRoute: AdminSimuladorBriefingRoute,
   AdminSubscricoesRoute: AdminSubscricoesRoute,
   AdminSuporteRoute: AdminSuporteRoute,
   AdminUtilizacaoRoute: AdminUtilizacaoRoute,
