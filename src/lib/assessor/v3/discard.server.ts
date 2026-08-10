@@ -20,6 +20,7 @@ const DELETABLE = new Set([
   "miscellaneous_items",
   "people",
   "properties",
+  "opportunities",
   "reminders",
   "product_feedback",
 ]);
