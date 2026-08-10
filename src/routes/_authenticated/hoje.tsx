@@ -76,6 +76,9 @@ type Priority = {
   origin?: "calendario" | "compromisso" | "tarefa" | "negocio";
   origin_label?: string | null;
   state_label?: string | null;
+  /** Janela do compromisso: um cartão de preparação expira quando ela passa. */
+  event_start_at?: string | null;
+  event_end_at?: string | null;
 };
 
 type Settled = {
@@ -224,6 +227,9 @@ function HojePage() {
       });
     }
     for (const e of eventosHoje.slice(0, 2)) {
+      const janela = eventWindow({ due_date: now.toISOString(), due_time: e.hora ?? null });
+      // Compromisso já terminado não se prepara.
+      if (isWindowOver(janela.endIso, now)) continue;
       items.push({
         subject_type: "follow_up",
         subject_id: e.id,
@@ -234,6 +240,8 @@ function HojePage() {
         entity_label: nomePessoa(e.pessoaId) || null,
         deal_id: null,
         deal_label: null,
+        event_start_at: janela.startIso,
+        event_end_at: janela.endIso,
       });
     }
     for (const o of oportSemAcao.slice(0, 2)) {
@@ -254,9 +262,13 @@ function HojePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [atrasados, eventosHoje, oportSemAcao, pessoas]);
 
-  const priorities: Priority[] = supreme.data?.priorities?.length
-    ? (supreme.data.priorities as Priority[])
-    : localPriorities;
+  // Segunda validação, agora na renderização: um cartão gerado às 8h não pode
+  // continuar a sugerir preparar um compromisso que já terminou às 11h.
+  const priorities: Priority[] = (
+    supreme.data?.priorities?.length
+      ? (supreme.data.priorities as Priority[])
+      : localPriorities
+  ).filter((p) => !isWindowOver(p.event_end_at ?? null, now));
 
   // Itens do briefing anterior que entretanto foram cancelados/arquivados.
   const settled: Settled[] = ((supreme.data as any)?.settled ?? []) as Settled[];
