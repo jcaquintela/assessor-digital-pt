@@ -696,8 +696,35 @@ async function handleInboundMediaInner(
       // Se não houver mais do que um item, segue o caminho normal.
       let outcome: { reply: string } | null = null;
       try {
+        // Primeiro tenta separar em TEMAS (lead completa = pessoa + imóvel +
+        // oportunidade ligados). Só se não houver temas úteis é que se cai
+        // no separador antigo por factos/seguimentos/notas.
+        const { worthThemeSegmentation } = await import("@/lib/assessor/v3/audio-themes");
+        if (worthThemeSegmentation(t.text)) {
+          const { analyseAudioThemes, resolveThemeLinks, proposeAudioThemes } =
+            await import("@/lib/assessor/v3/audio-themes.server");
+          const themeCtx = {
+            supabase: supabaseAdmin,
+            userId,
+            channel: adapter.channel,
+            sourceMessageId: persistedUuid,
+          } as never;
+          const themes = await analyseAudioThemes(t.text);
+          const useful = themes.filter((th) => th.person || th.property || th.next_action || th.note);
+          if (useful.length >= 2 || useful.some((th) => th.person && (th.property || th.opportunity))) {
+            const links = await resolveThemeLinks(themeCtx, useful);
+            outcome = { reply: await proposeAudioThemes(themeCtx, t.text, useful, links, result.fileId ?? null) };
+          }
+        }
+      } catch (err) {
+        console.error(
+          `[channel-gateway/${adapter.channel}] audio-themes:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+      try {
         const { worthBreakingDown } = await import("@/lib/assessor/v3/audio-breakdown");
-        if (worthBreakingDown(t.text)) {
+        if (!outcome && worthBreakingDown(t.text)) {
           const { analyseAudioTranscript, proposeAudioBreakdown } =
             await import("@/lib/assessor/v3/audio-breakdown.server");
           const breakdown = await analyseAudioTranscript(t.text);

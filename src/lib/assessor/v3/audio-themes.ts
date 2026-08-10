@@ -1,0 +1,449 @@
+// Segmentação de um áudio em TEMAS — módulo puro (sem BD, sem rede).
+//
+// Um áudio informal raramente é um assunto só. "Falei com o Carlos da placa
+// de Canidelo, quer vender o T3 dele, vai emigrar. Ah, e marca lembrete para
+// ligar à Dra. Maria na quarta" são dois temas: uma lead (pessoa + imóvel +
+// oportunidade LIGADOS entre si) e uma tarefa isolada.
+//
+// Aqui só vivem os tipos, a coerção do JSON do modelo, o texto da proposta e
+// as correcções tema-a-tema. Quem escreve na base de dados é o
+// audio-themes.server.ts, e só depois do consultor confirmar.
+
+export type ThemeKind = "lead" | "deal_update" | "task" | "note" | "visit" | "follow_up";
+export type ThemeIntent = "vender" | "comprar" | "arrendar" | "avaliar";
+export type ThemeRole = "proprietario" | "comprador" | "referencia" | "outro";
+export type ThemeUrgency = "alta" | "media" | "baixa";
+
+export interface ThemePerson {
+  name: string | null;
+  phone: string | null;
+  role: ThemeRole | null;
+}
+
+export interface ThemeProperty {
+  typology: string | null;
+  location: string | null;
+  address: string | null;
+  features: string | null;
+  price: number | null;
+}
+
+export interface ThemeOpportunity {
+  intent: ThemeIntent | null;
+  motivation: string | null;
+  urgency: ThemeUrgency | null;
+  deadline: string | null;
+}
+
+export interface ThemeNextAction {
+  type: "ligar" | "visitar" | "enviar" | "outro";
+  text: string;
+  date: string | null;
+  time: string | null;
+}
+
+export interface AudioTheme {
+  kind: ThemeKind;
+  /** Frase curta que descreve o tema, em PT-PT. */
+  title: string;
+  person: ThemePerson | null;
+  property: ThemeProperty | null;
+  opportunity: ThemeOpportunity | null;
+  next_action: ThemeNextAction | null;
+  note: string | null;
+  confidential: boolean;
+  /** Confiança da extração (0-1). */
+  confidence: number;
+}
+
+/** Candidato de deduplicação encontrado na base de dados. */
+export interface ThemeCandidate {
+  id: string;
+  label: string;
+  score: number;
+}
+
+/** Resultado da deduplicação de um tema (calculado no servidor). */
+export interface ThemeLinks {
+  person_id: string | null;
+  person_label: string | null;
+  property_id: string | null;
+  property_label: string | null;
+  opportunity_id: string | null;
+  opportunity_label: string | null;
+  lead_id: string | null;
+  lead_label: string | null;
+  /** >1 candidato com confiança insuficiente: perguntar, nunca decidir. */
+  ambiguous_people: ThemeCandidate[];
+  ambiguous_properties: ThemeCandidate[];
+}
+
+export interface AudioThemesPayload {
+  themes: AudioTheme[];
+  links: ThemeLinks[];
+  audio_file_id?: string | null;
+  source_message_id?: string | null;
+  extracted_at?: string | null;
+}
+
+export const AMBIGUITY_THRESHOLD = 0.8;
+const MAX_THEMES = 6;
+
+export function emptyLinks(): ThemeLinks {
+  return {
+    person_id: null, person_label: null,
+    property_id: null, property_label: null,
+    opportunity_id: null, opportunity_label: null,
+    lead_id: null, lead_label: null,
+    ambiguous_people: [], ambiguous_properties: [],
+  };
+}
+
+function str(v: unknown, max = 200): string | null {
+  const t = String(v ?? "").replace(/\s+/g, " ").trim();
+  if (!t || t.toLowerCase() === "null") return null;
+  return t.slice(0, max);
+}
+
+function num(v: unknown): number | null {
+  const n = typeof v === "number" ? v : Number(String(v ?? "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+const KINDS = new Set<ThemeKind>(["lead", "deal_update", "task", "note", "visit", "follow_up"]);
+const INTENTS = new Set(["vender", "comprar", "arrendar", "avaliar"]);
+const ROLES = new Set(["proprietario", "comprador", "referencia", "outro"]);
+const URGENCIES = new Set(["alta", "media", "baixa"]);
+
+function coercePerson(raw: any): ThemePerson | null {
+  const name = str(raw?.name, 120);
+  const phone = str(raw?.phone, 32);
+  if (!name && !phone) return null;
+  const role = String(raw?.role ?? "").toLowerCase();
+  return { name, phone, role: ROLES.has(role) ? (role as ThemeRole) : null };
+}
+
+function coerceProperty(raw: any): ThemeProperty | null {
+  const p: ThemeProperty = {
+    typology: str(raw?.typology, 32),
+    location: str(raw?.location, 120),
+    address: str(raw?.address, 200),
+    features: str(raw?.features, 200),
+    price: num(raw?.price),
+  };
+  return p.typology || p.location || p.address || p.features || p.price ? p : null;
+}
+
+function coerceOpportunity(raw: any): ThemeOpportunity | null {
+  const intent = String(raw?.intent ?? "").toLowerCase();
+  const urgency = String(raw?.urgency ?? "").toLowerCase();
+  const o: ThemeOpportunity = {
+    intent: INTENTS.has(intent) ? (intent as ThemeIntent) : null,
+    motivation: str(raw?.motivation, 200),
+    urgency: URGENCIES.has(urgency) ? (urgency as ThemeUrgency) : null,
+    deadline: /^\d{4}-\d{2}-\d{2}$/.test(String(raw?.deadline ?? "")) ? String(raw.deadline) : null,
+  };
+  return o.intent || o.motivation || o.urgency || o.deadline ? o : null;
+}
+
+function coerceNextAction(raw: any): ThemeNextAction | null {
+  const text = str(raw?.text, 200);
+  if (!text) return null;
+  const type = String(raw?.type ?? "").toLowerCase();
+  return {
+    type: type === "ligar" || type === "visitar" || type === "enviar" ? type : "outro",
+    text,
+    date: /^\d{4}-\d{2}-\d{2}$/.test(String(raw?.date ?? "")) ? String(raw.date) : null,
+    time: /^\d{2}:\d{2}$/.test(String(raw?.time ?? "")) ? String(raw.time) : null,
+  };
+}
+
+export function coerceThemes(raw: any): AudioTheme[] {
+  const list = Array.isArray(raw?.themes) ? raw.themes : Array.isArray(raw) ? raw : [];
+  const out: AudioTheme[] = [];
+  for (const t of list.slice(0, MAX_THEMES)) {
+    const kind = String(t?.kind ?? "").toLowerCase() as ThemeKind;
+    const title = str(t?.title, 200);
+    if (!title) continue;
+    const conf = Number(t?.confidence);
+    out.push({
+      kind: KINDS.has(kind) ? kind : "note",
+      title,
+      person: coercePerson(t?.person),
+      property: coerceProperty(t?.property),
+      opportunity: coerceOpportunity(t?.opportunity),
+      next_action: coerceNextAction(t?.next_action),
+      note: str(t?.note, 400),
+      confidential: t?.confidential === true,
+      confidence: Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0.7,
+    });
+  }
+  return out;
+}
+
+/** Um tema com pessoa + imóvel + intenção é uma lead, mesmo que o modelo lhe chame outra coisa. */
+export function isLeadTheme(theme: AudioTheme): boolean {
+  return Boolean(theme.person?.name && (theme.property || theme.opportunity?.intent));
+}
+
+// ---- Texto da proposta -----------------------------------------------------
+
+const DIGITS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"];
+
+export function themeNumber(i: number): string {
+  return DIGITS[i] ?? `${i + 1}.`;
+}
+
+function ptDate(ymd: string | null, time?: string | null): string {
+  if (!ymd) return "";
+  const [y, m, d] = ymd.split("-");
+  return time ? `${d}/${m}/${y} às ${time}` : `${d}/${m}/${y}`;
+}
+
+function propertyLabel(p: ThemeProperty | null): string {
+  if (!p) return "";
+  const bits = [p.typology, p.location ? `em ${p.location}` : p.address].filter(Boolean);
+  return bits.join(" ");
+}
+
+/** Linha de um tema, já com o que foi reconhecido como existente. */
+export function formatThemeLine(theme: AudioTheme, links: ThemeLinks): string {
+  const parts: string[] = [];
+  if (theme.person?.name) {
+    const tag = links.person_id ? "contacto que já tinhas" : "novo contacto";
+    parts.push(`${theme.person.name} (${tag})`);
+  }
+  const intent = theme.opportunity?.intent;
+  const prop = propertyLabel(theme.property);
+  if (intent && prop) parts.push(`quer ${intent} ${prop}`);
+  else if (intent) parts.push(`quer ${intent}`);
+  else if (prop) parts.push(prop);
+
+  let line = parts.length ? parts.join(" ") : theme.title;
+  if (links.lead_id) line += ` — ligado à placa "${links.lead_label}" que já tinhas registada`;
+  else if (links.opportunity_id) line += ` — ligado ao negócio "${links.opportunity_label}" que já tinhas`;
+  else if (links.property_id) line += ` — ligado ao imóvel "${links.property_label}" que já tinhas`;
+
+  const urg = theme.opportunity?.urgency;
+  if (urg === "alta") {
+    line += theme.opportunity?.motivation ? ` Urgente (${theme.opportunity.motivation}).` : " Urgente.";
+  } else if (theme.opportunity?.motivation) {
+    line += ` Motivo: ${theme.opportunity.motivation}.`;
+  }
+
+  if (theme.next_action) {
+    const when = theme.next_action.date ? `, ${ptDate(theme.next_action.date, theme.next_action.time)}` : "";
+    line += `${line.endsWith(".") ? "" : "."} Seguimento: ${theme.next_action.text}${when}.`;
+  }
+  if (theme.note) line += ` ${theme.confidential ? "Nota confidencial" : "Nota"}: ${theme.note}`;
+  return line.replace(/\s+/g, " ").trim();
+}
+
+/** Perguntas de desambiguação por resolver, na ordem dos temas. */
+export function pendingAmbiguities(
+  themes: AudioTheme[],
+  links: ThemeLinks[],
+): { index: number; candidates: ThemeCandidate[]; name: string }[] {
+  const out: { index: number; candidates: ThemeCandidate[]; name: string }[] = [];
+  themes.forEach((t, i) => {
+    const l = links[i] ?? emptyLinks();
+    if (!l.person_id && l.ambiguous_people.length > 1) {
+      out.push({ index: i, candidates: l.ambiguous_people, name: t.person?.name ?? "" });
+    }
+  });
+  return out;
+}
+
+export function formatAmbiguityQuestion(a: { index: number; candidates: ThemeCandidate[]; name: string }): string {
+  const names = a.candidates.slice(0, 3).map((c) => c.label);
+  const list = names.length === 2 ? `${names[0]} ou ${names[1]}` : names.join(", ");
+  return `No ponto ${a.index + 1}, tenho mais do que um contacto parecido com "${a.name}": ${list}. Qual deles é?`;
+}
+
+export function formatThemesProposal(themes: AudioTheme[], links: ThemeLinks[]): string {
+  const lines = themes.map((t, i) => `${themeNumber(i)} ${formatThemeLine(t, links[i] ?? emptyLinks())}`);
+  const head = themes.length === 1 ? "Percebi 1 coisa:" : `Percebi ${themes.length} coisas:`;
+  const amb = pendingAmbiguities(themes, links);
+  const tail = amb.length
+    ? formatAmbiguityQuestion(amb[0])
+    : "Confirmas? Podes corrigir qualquer ponto (ex.: \"o 1 é T2\") ou descartar um ponto (ex.: \"descarta o 2\").";
+  const confidential = themes.some((t) => t.confidential);
+  const privacy = confidential
+    ? "\n\nA nota confidencial fica só para ti — nunca sai em nada que eu prepare para outra pessoa."
+    : "";
+  return `${head}\n\n${lines.join("\n")}${privacy}\n\n${tail}`;
+}
+
+export function formatThemesRevised(themes: AudioTheme[], links: ThemeLinks[], note: string): string {
+  const lines = themes.map((t, i) => `${themeNumber(i)} ${formatThemeLine(t, links[i] ?? emptyLinks())}`);
+  return `${note}\n\n${lines.join("\n")}\n\nAssim está certo? Guardo?`;
+}
+
+// ---- Recibo de escrita -----------------------------------------------------
+
+export interface ThemeWriteResult {
+  personName?: string | null;
+  personCreated?: boolean;
+  propertyTitle?: string | null;
+  propertyCreated?: boolean;
+  opportunityTitle?: string | null;
+  opportunityCreated?: boolean;
+  opportunityLinked?: boolean;
+  followUpTitle?: string | null;
+  noteSaved?: boolean;
+}
+
+/** Diz o quê + onde, sem prometer envios. */
+export function formatThemesDone(results: ThemeWriteResult[]): string {
+  const sentences: string[] = [];
+  for (const r of results) {
+    const bits: string[] = [];
+    if (r.personName) bits.push(`o contacto ${r.personName}${r.personCreated ? "" : " (já existia, liguei ao teu)"}`);
+    if (r.propertyTitle) bits.push(`o imóvel "${r.propertyTitle}"${r.propertyCreated ? "" : " (já existia)"}`);
+    if (r.opportunityTitle) {
+      bits.push(
+        r.opportunityCreated
+          ? `a oportunidade "${r.opportunityTitle}"`
+          : `a ligação à oportunidade "${r.opportunityTitle}" que já tinhas`,
+      );
+    }
+    if (bits.length) sentences.push(`Guardei ${listPt(bits)} em Negócios, no dashboard, ligados entre si.`);
+    if (r.followUpTitle) sentences.push(`Guardei o seguimento "${r.followUpTitle}" em Seguimentos, no dashboard.`);
+    if (r.noteSaved) sentences.push("Guardei a nota no histórico do contacto, no dashboard.");
+  }
+  if (!sentences.length) return "Não consegui guardar nada deste áudio. Queres tentar outra vez?";
+  sentences.push("Não enviei nada a ninguém.");
+  return sentences.join(" ");
+}
+
+function listPt(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
+}
+
+// ---- Correcções tema-a-tema ------------------------------------------------
+
+export interface ThemeEdit {
+  index: number;
+  remove?: boolean;
+  title?: string;
+  typology?: string;
+  location?: string;
+  date?: string;
+  time?: string;
+}
+
+function strip(s: string): string {
+  return String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function addDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+function readIndex(plain: string, count: number): number | null {
+  const m = plain.match(/(?:^|\b)(?:o|no|na|do|da|item|ponto|tema|numero|n[ºo])?\s*(\d{1,2})(?=\b|[.,:)])/);
+  if (m) {
+    const n = Number(m[1]);
+    if (n >= 1 && n <= count) return n - 1;
+  }
+  const words: Record<string, number> = { primeiro: 1, primeira: 1, segundo: 2, segunda: 2, terceiro: 3, terceira: 3, quarto: 4, quarta: 4 };
+  for (const [w, n] of Object.entries(words)) {
+    if (plain.includes(w) && n <= count) return n - 1;
+  }
+  return null;
+}
+
+export function parseThemeEdit(message: string, count: number, today: string): ThemeEdit | null {
+  const plain = strip(message).replace(/\s+/g, " ");
+  if (!plain || count === 0) return null;
+  const index = readIndex(plain, count);
+  if (index === null) return null;
+
+  if (/\b(descarta|apaga|elimina|tira|remove|esquece)\b/.test(plain)) {
+    return { index, remove: true };
+  }
+  const edit: ThemeEdit = { index };
+  const typ = plain.match(/\bt(\d)\b/);
+  if (typ) edit.typology = `T${typ[1]}`;
+  const loc = message.match(/\bem\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'’-]*(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'’-]*)*)/);
+  if (loc) edit.location = loc[1].trim();
+  if (/\bdepois de amanha\b/.test(plain)) edit.date = addDays(today, 2);
+  else if (/\bamanha\b/.test(plain)) edit.date = addDays(today, 1);
+  else if (/\bhoje\b/.test(plain)) edit.date = today;
+  const iso = plain.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  if (iso) edit.date = iso[1];
+  const time = plain.match(/\b(\d{1,2})(?:[:h](\d{2}))?\s*(?:h|horas)?\b/);
+  if (time && /\b(?:as|às|as\s)\s*\d/.test(plain)) {
+    edit.time = `${time[1].padStart(2, "0")}:${time[2] ?? "00"}`;
+  }
+  const quoted = message.match(/["“”'](.+?)["“”']/);
+  if (quoted) edit.title = quoted[1].trim().slice(0, 200);
+
+  const touched = edit.typology || edit.location || edit.date || edit.time || edit.title;
+  return touched ? edit : null;
+}
+
+export function applyThemeEdit(themes: AudioTheme[], links: ThemeLinks[], edit: ThemeEdit): {
+  themes: AudioTheme[];
+  links: ThemeLinks[];
+} {
+  if (edit.remove) {
+    return {
+      themes: themes.filter((_, i) => i !== edit.index),
+      links: links.filter((_, i) => i !== edit.index),
+    };
+  }
+  const next = themes.map((t, i) => {
+    if (i !== edit.index) return t;
+    const copy: AudioTheme = JSON.parse(JSON.stringify(t));
+    if (edit.title) copy.title = edit.title;
+    if (edit.typology) copy.property = { ...(copy.property ?? { typology: null, location: null, address: null, features: null, price: null }), typology: edit.typology };
+    if (edit.location) copy.property = { ...(copy.property ?? { typology: null, location: null, address: null, features: null, price: null }), location: edit.location };
+    if ((edit.date || edit.time) && copy.next_action) {
+      if (edit.date) copy.next_action.date = edit.date;
+      if (edit.time) copy.next_action.time = edit.time;
+    }
+    return copy;
+  });
+  // Uma correcção de imóvel invalida a ligação automática a um imóvel existente.
+  const nextLinks = links.map((l, i) => {
+    if (i !== edit.index || (!edit.typology && !edit.location)) return l;
+    return { ...l, property_id: null, property_label: null };
+  });
+  return { themes: next, links: nextLinks };
+}
+
+export function describeThemeEdit(edit: ThemeEdit, removed?: AudioTheme): string {
+  if (edit.remove) return `Está bem, tirei o ponto ${edit.index + 1}${removed ? ` (${removed.title})` : ""}. Fica assim:`;
+  return `Corrigi o ponto ${edit.index + 1}. Fica assim:`;
+}
+
+/** O consultor escolheu um dos contactos ambíguos? */
+export function matchAmbiguityAnswer(message: string, candidates: ThemeCandidate[]): ThemeCandidate | null {
+  const plain = strip(message);
+  if (!plain) return null;
+  const num = plain.match(/^(?:o\s+)?(\d)$/);
+  if (num) {
+    const c = candidates[Number(num[1]) - 1];
+    if (c) return c;
+  }
+  let best: ThemeCandidate | null = null;
+  for (const c of candidates) {
+    const label = strip(c.label);
+    if (!label) continue;
+    if (plain.includes(label) || label.includes(plain)) {
+      if (!best || label.length > strip(best.label).length) best = c;
+    }
+  }
+  return best;
+}
+
+/** Heurística barata: vale a pena tentar separar em temas? */
+export function worthThemeSegmentation(transcript: string): boolean {
+  const t = String(transcript ?? "").trim();
+  return t.length >= 60;
+}
