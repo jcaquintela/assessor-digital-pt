@@ -586,6 +586,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
     // Processador de Áudio Imobiliário — proposta única com vários itens.
     if (pending && pending.intent === "audio_breakdown") {
+      // (o caminho por temas está tratado logo abaixo, em "audio_themes")
       // A pergunta lateral do ficheiro só sai quando a proposta fecha, para
       // não competir com o "sim" que confirma os itens.
       const askAudioFile = async (reply: string): Promise<string> => {
