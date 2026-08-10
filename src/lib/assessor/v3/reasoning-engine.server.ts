@@ -252,6 +252,24 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     !!lastAssistantAt0 &&
     (Date.now() - lastAssistantAt0.getTime()) < 10 * 60_000;
 
+  // Respostas curtas às perguntas proativas de documentação têm memória
+  // própria. Sem isto, "sim"/"não" seguia para o motor geral e o mesmo
+  // nudge voltava no dia seguinte apesar de já ter sido respondido.
+  if (lastAssistantAskedQuestion && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
+    try {
+      const { resolveLatestDocumentNudgeAnswer } = await import("./proactivity.server");
+      const resolved = await resolveLatestDocumentNudgeAnswer(supabase, {
+        userId,
+        channel,
+        answer: saIsConfirmation(trimmed) ? "yes" : "no",
+        lastAssistantContent: lastAssistantContent0,
+      });
+      if (resolved.resolved && resolved.reply) return { reply: resolved.reply };
+    } catch (error) {
+      console.error("[v3] falha a registar resposta ao nudge documental", error);
+    }
+  }
+
   // ── Arranque leve (2 perguntas, nunca obrigatórias) ──────────────────
   let onboarding: OnboardingState = {
     stage: "not_started", offers: 0, lastOfferAt: null, goals: null,
