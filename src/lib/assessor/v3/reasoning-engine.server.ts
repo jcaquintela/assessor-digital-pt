@@ -39,6 +39,7 @@ import { applySafetyNet, buildArchiveContent, archiveToMiscellaneous } from "./s
 import { isRegisterOnly, isAnswerablePending } from "../pending-answerable";
 import { formatQueryResults, isQueryTool } from "./query-results";
 import { detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
+import { isDiscardCommand } from "../culture/discard";
 import {
   isDiscardAudioRequest,
   UNDO_KEEP_WINDOW_MS,
