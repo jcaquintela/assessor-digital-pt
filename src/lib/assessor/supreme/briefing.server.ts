@@ -4,6 +4,7 @@
 import type { NudgeDraft } from "../v3/proactivity.server";
 import { sanitizeReply } from "../culture/sanitize";
 import { hasCommercialOutcomeContext } from "../outcome-eligibility";
+import { belongsInDailyAgenda } from "../agenda-leisure";
 import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
 import { computePriorities } from "./priorities.server";
 
@@ -162,9 +163,10 @@ export async function generateSupremeNudges(
     .gte("due_date", in45)
     .lte("due_date", in75)
     .limit(20);
-  // Regra canónica: evento (não tarefa) e ainda aberto.
+  // Regra canónica: evento (não tarefa) e ainda aberto. Aviso de agenda →
+  // regra larga (sem lazer), não o filtro estrito dos check-ins.
   const upcoming = ((upcomingRaw as any[]) ?? [])
-    .filter((ev) => isFollowUpEvent(ev) && isFollowUpOpen(ev))
+    .filter((ev) => isFollowUpEvent(ev) && isFollowUpOpen(ev) && belongsInDailyAgenda(ev))
     .slice(0, 3);
   for (const ev of upcoming) {
     let personName: string | null = null;
