@@ -49,7 +49,11 @@ export function claimsDelivery(text: string | null | undefined): boolean {
   // terceiros") são o contrário de uma promessa de envio.
   const cleaned = t
     .replace(/n[ãa]o\s+enviei\s+nada\s+a\s+ningu[ée]m/gi, "")
-    .replace(/n[ãa]o\s+enviei\s+nada\s+a\s+clientes\s+nem\s+a\s+terceiros/gi, "");
+    .replace(/n[ãa]o\s+enviei\s+nada\s+a\s+clientes\s+nem\s+a\s+terceiros/gi, "")
+    // "a equipa do Afonso" é a equipa do produto (painel interno), não um
+    // terceiro do consultor — dizer que ela vê a sugestão não é uma promessa
+    // de envio a clientes ou proprietários.
+    .replace(/(?:para\s+|à\s+|a\s+)?equipa\s+do\s+afonso/gi, "");
   return DELIVERY_RE.test(cleaned);
 }
 
