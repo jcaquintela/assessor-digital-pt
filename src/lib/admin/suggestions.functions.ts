@@ -45,6 +45,7 @@ export const countUnreadTeamSuggestions = createServerFn({ method: "GET" })
       unread: unread.length,
       latestAt: unread[0]?.created_at ?? null,
       latestFrom: unread[0]?.consultant_name ?? unread[0]?.consultant_email ?? null,
+      latestTitle: unread[0]?.title ?? null,
     };
   });
 
