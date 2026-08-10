@@ -45,8 +45,11 @@ const DELIVERY_RE =
 /** A frase promete comunicação a terceiros? */
 export function claimsDelivery(text: string | null | undefined): boolean {
   const t = String(text ?? "");
-  // "Não enviei nada a ninguém" é a negação explícita, não uma promessa.
-  const cleaned = t.replace(/n[ãa]o\s+enviei\s+nada\s+a\s+ningu[ée]m/gi, "");
+  // Negações explícitas ("não enviei nada a ninguém", "…a clientes nem a
+  // terceiros") são o contrário de uma promessa de envio.
+  const cleaned = t
+    .replace(/n[ãa]o\s+enviei\s+nada\s+a\s+ningu[ée]m/gi, "")
+    .replace(/n[ãa]o\s+enviei\s+nada\s+a\s+clientes\s+nem\s+a\s+terceiros/gi, "");
   return DELIVERY_RE.test(cleaned);
 }
 
