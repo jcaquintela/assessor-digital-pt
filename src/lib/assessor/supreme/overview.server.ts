@@ -100,9 +100,12 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
       propertyId: e.related_property_id ?? e.property_id ?? null,
     }))
     .sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
-  // Seletor central: contagem do dia inteiro e "próximo" já filtrado pela hora.
-  const next = nextEvent(eventRows as DayEvent[]);
-  const todayTotal = todayEventCount(eventRows as DayEvent[]);
+  // Seletor central: contagem do dia inteiro. Os campos `nextLabel/nextTime`
+  // ficam como o primeiro compromisso do dia (compatibilidade); quem mostra
+  // "o próximo" usa `nextEvent()` sobre `items` com o relógio do consultor.
+  const todayItems = todayEvents(eventRows as DayEvent[]);
+  const next = todayItems[0] ?? null;
+  const todayTotal = todayItems.length;
   const commissions = ((movements.data as any[]) ?? []);
   const open = commissions.filter((m) => {
     const s = String(m.status ?? "").toLowerCase();
