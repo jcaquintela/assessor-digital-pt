@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { MobileFab } from "@/components/mobile-fab";
 import { useStore } from "@/lib/store";
 import { formatData, formatDataHora, formatEUR } from "@/lib/demo-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
