@@ -516,7 +516,20 @@ function HojePage() {
       )}
 
       {/* A-quater. Resumo geral — 6 rubricas, contagens simples, cada uma clicável. */}
-      {!filtroAtivo && resumo && <HojeSumGrid resumo={resumo} />}
+      {!filtroAtivo && resumo && (
+        <HojeSumGrid
+          resumo={{
+            ...resumo,
+            // Agenda vem sempre do seletor central, reavaliado com o relógio local.
+            agenda: {
+              today: agenda.todayCount,
+              nextLabel: agenda.next?.title ?? null,
+              nextTime: agenda.next?.time ?? null,
+              meta: agenda.cardMeta,
+            },
+          }}
+        />
+      )}
 
       <div className={filtroAtivo ? "space-y-6" : "grid gap-6 lg:grid-cols-2"}>
         {!filtroAtivo && (
