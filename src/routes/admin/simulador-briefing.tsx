@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageTitle } from "@/components/admin/ui";
 import { simulateBriefing, type SimulatedItem } from "@/lib/assessor/briefing-simulator";
+import { runAllBriefingCases } from "@/lib/assessor/briefing-cases";
 
 export const Route = createFileRoute("/admin/simulador-briefing")({
   head: () => ({
@@ -57,6 +58,8 @@ function SimuladorPage() {
         title="Simulador do briefing"
         sub="Testa título, data e ligações e vê se o compromisso entra ou sai do briefing. Nada é gravado — simulação pura."
       />
+
+      <GoldenCases />
 
       <div className="grid gap-6 md:grid-cols-2">
         <section className="admin-card rounded-xl border p-5">
@@ -185,5 +188,42 @@ function SimuladorPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+function GoldenCases() {
+  const outcomes = useMemo(() => runAllBriefingCases(), []);
+  const failed = outcomes.filter((o) => !o.passed);
+
+  return (
+    <section className="admin-card rounded-xl border p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-medium">Verificações automáticas ({outcomes.length} casos)</h3>
+        <span
+          className="rounded-full px-2 py-0.5 text-xs font-medium"
+          style={{
+            background: failed.length ? "rgba(220,80,60,.10)" : "rgba(34,139,94,.10)",
+            color: failed.length ? "var(--coral, #b4432f)" : "var(--sage, #1f7a55)",
+          }}
+        >
+          {failed.length ? `${failed.length} a falhar` : "Todas a passar"}
+        </span>
+      </div>
+      <p className="mb-3 text-xs opacity-70">
+        Os mesmos casos correm num comando: <code>bun run test:briefing</code>. Para cobrir uma regra
+        nova, acrescenta um caso à lista de casos golden do briefing.
+      </p>
+      <ul className="space-y-2 text-sm">
+        {outcomes.map((o) => (
+          <li key={o.case.name} className="flex gap-2">
+            <span aria-hidden>{o.passed ? "✓" : "✗"}</span>
+            <span>
+              <strong>{o.case.name}</strong> — {o.case.rule}
+              {!o.passed && <span className="block text-xs opacity-80">{o.failures.join(" | ")}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
