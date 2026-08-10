@@ -64,11 +64,12 @@ describe("vocabulário controlado nas confirmações", () => {
 });
 
 describe("feedback do produto", () => {
-  it("confirmação não promete envio à equipa", () => {
+  it("confirmação diz onde fica e não promete envio a terceiros", () => {
     const r = feedbackSavedReply("suggestion", { title: "juntar filtro por zona" });
     expect(claimsDelivery(r)).toBe(false);
     expect(r).toContain("Sugestões, no dashboard");
-    expect(r).toContain("Não enviei nada a ninguém");
+    expect(r).toContain("A equipa do Afonso vê-a no painel interno");
+    expect(r).toContain("não enviei nada a clientes nem a terceiros");
   });
 
   it("erro com anexo diz que o anexo entrou", () => {
