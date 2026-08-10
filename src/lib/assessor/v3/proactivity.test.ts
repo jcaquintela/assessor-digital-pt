@@ -67,7 +67,7 @@ describe("proactivity — regras", () => {
     const sup = makeFakeSupabase({
       assessor_nudges: [{ id: "n1", user_id: "u1", kind: "property_missing_docs", subject_id: "p1", status: "pending", outcome: null, outcome_at: null }],
       opportunities: [], follow_ups: [],
-      properties: [{ id: "p1", title: "Moradia", status: "active", created_at: "2025-01-01" }],
+      properties: [{ id: "p1", user_id: "u1", title: "Moradia", status: "active", created_at: "2025-01-01" }],
       uploaded_files: [], assessor_messages: [{ role: "user", created_at: new Date().toISOString() }],
     });
     expect(await generateNudgesForUser(sup as any, "u1")).toEqual([]);
@@ -77,7 +77,7 @@ describe("proactivity — regras", () => {
     const sup = makeFakeSupabase({
       assessor_nudges: [1, 2].map((n) => ({ id: `n${n}`, user_id: "u1", kind: "property_missing_docs", subject_id: "p1", status: "sent", outcome: null, outcome_at: null })),
       opportunities: [], follow_ups: [],
-      properties: [{ id: "p1", title: "Moradia", status: "active", created_at: "2025-01-01" }],
+      properties: [{ id: "p1", user_id: "u1", title: "Moradia", status: "active", created_at: "2025-01-01" }],
       uploaded_files: [], miscellaneous_items: [], assessor_messages: [{ role: "user", created_at: new Date().toISOString() }],
     });
     expect(await generateNudgesForUser(sup as any, "u1")).toEqual([]);
