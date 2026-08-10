@@ -10,6 +10,19 @@ import {
   type PendingInviteRow,
 } from "@/lib/admin/acessos.functions";
 
+function statusPt(status: string | null): string {
+  if (!status) return "—";
+  const map: Record<string, string> = {
+    APPROVED: "Aprovado",
+    PENDING: "Pendente",
+    REJECTED: "Rejeitado",
+    PAUSED: "Pausado",
+    DISABLED: "Desativado",
+    IN_APPEAL: "Em recurso",
+  };
+  return map[status] ?? status;
+}
+
 // Convites que não chegaram a sair (quase sempre: template da Meta ainda por
 // aprovar). Ficam aqui à vista, com reenvio à mão — e saem sozinhos assim que
 // o template for aprovado.
@@ -24,7 +37,18 @@ export function PendingInvitesBlock() {
   const [manual, setManual] = useState<
     Record<
       string,
-      { texto: string; original: string; url: string; waNumber: string | null; templateVersion: string | null }
+      {
+        texto: string;
+        original: string;
+        url: string;
+        waNumber: string | null;
+        templateVersion: string | null;
+        templateName: string | null;
+        templateStatus: string | null;
+        templateLanguage: string | null;
+        templateBodyPreview: string | null;
+        preparedAt: string;
+      }
     >
   >({});
 
@@ -97,6 +121,11 @@ export function PendingInvitesBlock() {
           url: r.url,
           waNumber: r.waNumber,
           templateVersion: r.templateVersion,
+          templateName: r.templateName,
+          templateStatus: r.templateStatus,
+          templateLanguage: r.templateLanguage,
+          templateBodyPreview: r.templateBodyPreview,
+          preparedAt: r.preparedAt,
         },
       }));
       toast.success("Mensagem pronta a rever. O link anterior por usar deixa de servir.");
@@ -174,6 +203,18 @@ export function PendingInvitesBlock() {
                 <label className="mini" style={{ color: "var(--muted)" }} htmlFor={`msg-${r.id}`}>
                   Revê ou ajusta antes de enviar
                 </label>
+                <div
+                  className="mt-1 mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs"
+                  style={{ color: "var(--muted)" }}
+                >
+                  <span>
+                    Template:{" "}
+                    {manual[r.id]!.templateName
+                      ? `${manual[r.id]!.templateName} · ${statusPt(manual[r.id]!.templateStatus)}${manual[r.id]!.templateLanguage ? ` · ${manual[r.id]!.templateLanguage}` : ""}`
+                      : "não encontrado na Meta"}
+                  </span>
+                  <span>Rascunho criado: {new Date(manual[r.id]!.preparedAt).toLocaleString("pt-PT")}</span>
+                </div>
                 <textarea
                   id={`msg-${r.id}`}
                   className="mt-1 w-full rounded-md border p-2 text-sm dark:border-slate-800 dark:bg-transparent"
