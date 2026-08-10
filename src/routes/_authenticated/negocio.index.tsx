@@ -8,6 +8,7 @@ import { formatEUR } from "@/lib/demo-data";
 import { Receipt, Wallet, FileText, ChevronRight, Pencil, Download } from "lucide-react";
 import { TierGate } from "@/components/tier-gate";
 import { EditMovementDialog } from "@/components/negocio/edit-movement-dialog";
+import { PaymentPortalButton } from "@/components/payment-portal-button";
 import { exportMovements } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 
