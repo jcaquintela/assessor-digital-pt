@@ -20,7 +20,7 @@ export function PendingInvitesBlock() {
   const [rows, setRows] = useState<PendingInviteRow[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [manual, setManual] = useState<
-    Record<string, { texto: string; url: string; waNumber: string | null }>
+    Record<string, { texto: string; original: string; url: string; waNumber: string | null }>
   >({});
 
   const carregar = useCallback(() => {
@@ -61,7 +61,10 @@ export function PendingInvitesBlock() {
     setBusy(id);
     try {
       const r = await manualFn({ data: { id } });
-      setManual((m) => ({ ...m, [id]: { texto: r.texto, url: r.url, waNumber: r.waNumber } }));
+      setManual((m) => ({
+        ...m,
+        [id]: { texto: r.texto, original: r.texto, url: r.url, waNumber: r.waNumber },
+      }));
       toast.success("Mensagem pronta a rever. O link anterior por usar deixa de servir.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível preparar a mensagem.");
@@ -86,6 +89,12 @@ export function PendingInvitesBlock() {
       toast.warning("Atenção: o link de acesso já não está na mensagem.");
     }
     window.open(`https://wa.me/${item.waNumber}?text=${encodeURIComponent(texto)}`, "_blank", "noopener,noreferrer");
+  };
+
+  // Editou de mais? Volta ao texto tal como o Afonso o gerou, sem gerar link novo.
+  const reporOriginal = (id: string) => {
+    setManual((m) => (m[id] ? { ...m, [id]: { ...m[id]!, texto: m[id]!.original } } : m));
+    toast.success("Texto original reposto.");
   };
 
   if (!rows || rows.length === 0) return null;
@@ -148,6 +157,11 @@ export function PendingInvitesBlock() {
                   {r.canal === "whatsapp" && (
                     <button type="button" className="admin-btn" onClick={() => abrirWhatsapp(r.id)}>
                       Abrir no WhatsApp
+                    </button>
+                  )}
+                  {manual[r.id]!.texto !== manual[r.id]!.original && (
+                    <button type="button" className="admin-btn" onClick={() => reporOriginal(r.id)}>
+                      Repor texto original
                     </button>
                   )}
                 </div>
