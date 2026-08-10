@@ -1,6 +1,8 @@
 // Motor de priorização — "o que devo fazer agora?".
 // Determinístico. Cada item traz razões legíveis para o Assessor verbalizar.
 import { isDealActive } from "@/lib/deals/stages";
+import { lisbonYmd, ymdDiffDays, endOfLisbonDayIso } from "@/lib/assessor/lisbon-day";
+import { hasCommercialOutcomeContext } from "@/lib/assessor/outcome-eligibility";
 
 /** De onde veio o item — o consultor tem de perceber o que está a olhar. */
 export type PriorityOrigin = "calendario" | "compromisso" | "tarefa" | "negocio";
@@ -26,6 +28,11 @@ export interface PriorityItem {
 
 function daysBetween(a: Date, b: Date): number {
   return Math.floor((a.getTime() - b.getTime()) / 864e5);
+}
+
+/** Dias de calendário (Lisboa) entre dois instantes/datas. */
+function calendarDaysBetween(a: string | Date, b: string | Date): number {
+  return ymdDiffDays(lisbonYmd(a), lisbonYmd(b));
 }
 
 // A BD tem valores em minúsculas ("evento", "pendente", "media") mas o
@@ -57,19 +64,9 @@ export function followUpStateLabel(row: {
   return null;
 }
 
-function startOfDayLisbon(now = new Date()): Date {
-  const p = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(now);
-  const m: Record<string, string> = {};
-  for (const x of p) m[x.type] = x.value;
-  return new Date(`${m.year}-${m.month}-${m.day}T00:00:00+00:00`);
-}
-
 // Fim do dia de hoje (Lisboa) em ISO — limite superior das prioridades.
 function endOfDayLisbonIso(now = new Date()): string {
-  const start = startOfDayLisbon(now);
-  return new Date(start.getTime() + 864e5 - 1).toISOString();
+  return endOfLisbonDayIso(now);
 }
 
 // Computa (em memória) as prioridades top-N para um utilizador.
@@ -85,7 +82,7 @@ export async function computePriorities(
   const [{ data: follows }, { data: opps }] = await Promise.all([
     supabase
       .from("follow_ups")
-      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, outcome, created_at, notes, archived_at")
+      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, related_property_id, outcome, created_at, notes, archived_at")
       .eq("user_id", userId)
       .is("outcome", null)
       .is("archived_at", null)
@@ -149,20 +146,29 @@ export async function computePriorities(
     }
   }
 
-  const today = startOfDayLisbon(now);
+  const todayYmd = lisbonYmd(now);
 
   // Follow-ups (tarefas e eventos)
   for (const f of ((follows as any[]) ?? [])) {
     if (DONE_STATUSES.has(norm(f.status))) continue;
-    const due = new Date(f.due_date);
-    const overdueDays = Math.max(0, daysBetween(today, due));
+    const dueYmd = lisbonYmd(f.due_date);
+    const overdueDays = Math.max(0, ymdDiffDays(todayYmd, dueYmd));
     const isEvent = EVENT_TYPES.has(norm(f.type));
+    const providerLink = calendarProviderByFollowUp.get(f.id);
+
+    // Eventos vindos do calendário externo só são prioridade de trabalho
+    // quando estão ligados a Pessoa, Negócio ou Imóvel. Um jogo de futebol
+    // ou um almoço pessoal não é a prioridade do dia do consultor.
+    if (providerLink && !hasCommercialOutcomeContext(f)) continue;
+    // Um compromisso que já aconteceu não se prepara — não volta como "hoje".
+    if (providerLink && overdueDays > 0) continue;
+
     let score = isEvent ? 65 : 55;
     const reasons: string[] = [];
     if (overdueDays > 0) {
       score += Math.min(30, overdueDays * 6);
       reasons.push(overdueDays === 1 ? "atrasado desde ontem" : `atrasado há ${overdueDays} dias`);
-    } else if (daysBetween(due, today) <= 0) {
+    } else if (ymdDiffDays(dueYmd, todayYmd) <= 0) {
       reasons.push(isEvent ? "compromisso de hoje" : "para hoje");
     } else {
       reasons.push(isEvent ? "compromisso próximo" : "próximo do prazo");
@@ -171,7 +177,7 @@ export async function computePriorities(
     if (HIGH_PRIORITIES.has(norm(f.priority))) { score += 10; reasons.push("prioridade alta"); }
 
     // Há quanto tempo isto está por tratar (fator real, não a data de entrega).
-    const pendingDays = f.created_at ? Math.max(0, daysBetween(today, startOfDayLisbon(new Date(f.created_at)))) : 0;
+    const pendingDays = f.created_at ? Math.max(0, calendarDaysBetween(now, f.created_at)) : 0;
     if (pendingDays >= 2) {
       score += Math.min(10, pendingDays);
       reasons.push(pendingDays === 1 ? "aberto desde ontem" : `pendente há ${pendingDays} dias`);
@@ -197,7 +203,7 @@ export async function computePriorities(
     const eventAction = hhmm
       ? `Preparar o compromisso das ${hhmm}: ${f.title}`
       : `Preparar o compromisso: ${f.title}`;
-    const provider = calendarProviderByFollowUp.get(f.id);
+    const provider = providerLink;
     const origin: PriorityOrigin = provider ? "calendario" : isEvent ? "compromisso" : "tarefa";
     const originLabel = provider
       ? `Evento do ${PROVIDER_LABEL[provider] ?? "calendário ligado"}`
