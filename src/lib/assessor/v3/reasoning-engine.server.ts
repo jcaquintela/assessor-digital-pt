@@ -341,7 +341,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           });
           return { reply: "Guardei o áudio no Drive Inteligente." };
         }
-        if (saIsRejection(trimmed)) {
+        if (saIsRejection(trimmed) || isDiscardCommand(trimmed)) {
           if (fileId) await discardAudioFile(supabase, fileId, userId);
           await markPendingActionStatus(supabase, mediaPending.id, "cancelled");
           // Descartar é descartar: sai o ficheiro E tudo o que dele saiu.
@@ -610,6 +610,14 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       if (saIsRejection(trimmed)) {
         await markPendingActionStatus(supabase, pending.id, "cancelled");
         return { reply: await askAudioFile("Está bem, não guardei nada do áudio.") };
+      }
+      // "Descartar": sai tudo — itens, transcrição e o próprio ficheiro.
+      if (isDiscardCommand(trimmed)) {
+        const { discardLastInput } = await import("./discard.server");
+        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        await discardLastInput(supabase, userId, channel);
+        return { reply: DISCARD_DONE_REPLY };
       }
       // Correção a um item específico antes do "sim" — a proposta mantém-se
       // aberta e é reescrita já corrigida.
