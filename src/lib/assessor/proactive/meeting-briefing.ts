@@ -22,7 +22,8 @@ export interface BriefingEvent {
   briefing_sent_at?: string | null;
 }
 
-const CLOSED = new Set(["concluído", "concluido", "cancelado", "arquivado"]);
+// Estado aberto/fechado: regra canónica única.
+import { isFollowUpClosed } from "@/lib/follow-ups/state";
 
 function norm(v: unknown): string {
   return String(v ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -54,7 +55,7 @@ export function eventStartMs(ev: Pick<BriefingEvent, "due_date" | "due_time">): 
 export function isBriefingDue(ev: BriefingEvent, nowMs: number): boolean {
   if (!ev.person_id) return false;
   if (ev.briefing_sent_at) return false;
-  if (CLOSED.has(norm(ev.status))) return false;
+  if (isFollowUpClosed(ev as any)) return false;
   const start = eventStartMs(ev);
   if (!Number.isFinite(start)) return false;
   const delta = start - nowMs;
