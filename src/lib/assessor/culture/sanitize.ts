@@ -4,6 +4,8 @@
 // antes de sair, e há fallbacks naturais quando o texto está vazio ou
 // contém termos proibidos.
 
+import { enforceNoDirectContact } from "./no-direct-contact";
+
 // Prefixos técnicos que o modelo por vezes injeta.
 const TECH_PREFIX_RE =
   /^\s*(proposta|intenç[ãa]o|resumo|registo\s+pendente|payload|a[cç][ãa]o(?:\s+estruturada)?|estado\s+pendente|registo\s+miscellaneous)\s*[:\-–—]\s*/i;
@@ -61,6 +63,8 @@ export function sanitizeReply(reply?: string | null): string {
   // Frases genéricas proibidas — devolve vazio para o caller usar fallback.
   if (/^\s*(podes\s+reformular(\s+o\s+pedido)?[?.!]?)\s*$/i.test(out)) return "";
   if (/^\s*neste\s+momento\s+s[óo]\s+consigo/i.test(out)) return "";
+  // O Afonso nunca contacta terceiros — a linguagem tem de reflectir isso.
+  out = enforceNoDirectContact(out);
   return out;
 }
 
