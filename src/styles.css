@@ -87,10 +87,27 @@ html[data-keyboard="open"] .mobile-bottom-nav {
     /* acima do conteúdo e da tab bar (40), abaixo dos overlays Radix (50) */
     z-index: 45;
   }
+  /* O contentor não intercepta toques: só o botão lá dentro é tocável, para
+     não roubar cliques aos cartões por baixo. */
+  .mobile-fab {
+    pointer-events: none;
+  }
+  .mobile-fab > * {
+    pointer-events: auto;
+  }
   html[data-keyboard="open"] .mobile-fab,
   body[data-scroll-locked] .mobile-fab {
     display: none;
   }
+}
+
+/* Notificações (sonner): em mobile ficam abaixo da status bar e nunca por
+   baixo da barra de pesquisa fixa. */
+[data-sonner-toaster][data-y-position="top"] {
+  top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+}
+[data-sonner-toaster][data-y-position="bottom"] {
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 12px) !important;
 }
 
 /* Alvos de toque: garante 44x44 mínimos em ecrãs estreitos sem mudar o visual.
