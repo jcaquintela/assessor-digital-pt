@@ -3,6 +3,7 @@
 import { isDealActive } from "@/lib/deals/stages";
 import { lisbonYmd, ymdDiffDays, endOfLisbonDayIso } from "@/lib/assessor/lisbon-day";
 import { hasCommercialOutcomeContext } from "@/lib/assessor/outcome-eligibility";
+import { isFollowUpClosed, isFollowUpEvent, followUpStateLabel as canonicalStateLabel } from "@/lib/follow-ups/state";
 import { eventWindow, isEventOver } from "./event-window";
 
 /** De onde veio o item — o consultor tem de perceber o que está a olhar. */
@@ -50,8 +51,6 @@ function calendarDaysBetween(a: string | Date, b: string | Date): number {
 const norm = (v: unknown) =>
   String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
-const DONE_STATUSES = new Set(["concluido", "concluida", "done", "cancelado", "cancelada", "arquivado"]);
-const EVENT_TYPES = new Set(["evento", "event", "visita", "reuniao"]);
 const HIGH_PRIORITIES = new Set(["alta", "high", "urgente"]);
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -59,18 +58,13 @@ const PROVIDER_LABEL: Record<string, string> = {
   microsoft_outlook: "Microsoft Outlook",
 };
 
-/** Como se diz ao consultor o estado atual de um seguimento fechado. */
+/** Como se diz ao consultor o estado atual — regra canónica. */
 export function followUpStateLabel(row: {
   status?: unknown;
   outcome?: unknown;
   archived_at?: unknown;
 }): string | null {
-  const s = norm(row.status);
-  if (s === "cancelado" || s === "cancelada") return "Cancelado";
-  if (row.archived_at || s === "arquivado") return "Arquivado";
-  if (s === "concluido" || s === "concluida" || s === "done") return "Concluído";
-  if (row.outcome) return "Já com resultado registado";
-  return null;
+  return canonicalStateLabel(row);
 }
 
 // Fim do dia de hoje (Lisboa) em ISO — limite superior das prioridades.
@@ -93,7 +87,9 @@ export async function computePriorities(
       .from("follow_ups")
       .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, related_property_id, outcome, created_at, notes, archived_at")
       .eq("user_id", userId)
-      .is("outcome", null)
+      // O filtro de "aberto/fechado" é aplicado em memória pela regra
+      // canónica: `precisa_nova_acao` e `adiado` continuam abertos e têm de
+      // voltar às Prioridades.
       .is("archived_at", null)
       // Só o que está em atraso ou é para hoje. Compromissos futuros
       // (ex.: amanhã à noite) não são prioridades de hoje.
@@ -159,10 +155,10 @@ export async function computePriorities(
 
   // Follow-ups (tarefas e eventos)
   for (const f of ((follows as any[]) ?? [])) {
-    if (DONE_STATUSES.has(norm(f.status))) continue;
+    if (isFollowUpClosed(f)) continue;
     const dueYmd = lisbonYmd(f.due_date);
     const overdueDays = Math.max(0, ymdDiffDays(todayYmd, dueYmd));
-    const isEvent = EVENT_TYPES.has(norm(f.type));
+    const isEvent = isFollowUpEvent(f);
     const providerLink = calendarProviderByFollowUp.get(f.id);
 
     // Eventos vindos do calendário externo só são prioridade de trabalho
@@ -339,7 +335,7 @@ export async function findSettledPriorities(
       subject_id: r.subject_id,
       action: r.action,
       state_label: state,
-      origin_label: f && EVENT_TYPES.has(norm(f.type)) ? "Compromisso" : "Tarefa de seguimento",
+      origin_label: f && isFollowUpEvent(f) ? "Compromisso" : "Tarefa de seguimento",
       due_at: r.due_at ?? null,
     });
   }

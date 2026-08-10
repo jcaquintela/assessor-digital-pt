@@ -4,6 +4,7 @@
 import type { NudgeDraft } from "../v3/proactivity.server";
 import { sanitizeReply } from "../culture/sanitize";
 import { hasCommercialOutcomeContext } from "../outcome-eligibility";
+import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
 import { computePriorities } from "./priorities.server";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
@@ -154,16 +155,18 @@ export async function generateSupremeNudges(
   // ------------ Pré-evento (compromisso a começar em 45–75 min) ------------
   const in45 = new Date(now.getTime() + 45 * 60000).toISOString();
   const in75 = new Date(now.getTime() + 75 * 60000).toISOString();
-  const { data: upcoming } = await supabase
+  const { data: upcomingRaw } = await supabase
     .from("follow_ups")
-    .select("id, title, due_date, person_id, related_property_id")
+    .select("id, title, type, due_date, due_time, status, outcome, archived_at, person_id, related_property_id")
     .eq("user_id", userId)
-    .eq("type", "Evento")
     .gte("due_date", in45)
     .lte("due_date", in75)
-    .neq("status", "Concluído")
-    .limit(3);
-  for (const ev of ((upcoming as any[]) ?? [])) {
+    .limit(20);
+  // Regra canónica: evento (não tarefa) e ainda aberto.
+  const upcoming = ((upcomingRaw as any[]) ?? [])
+    .filter((ev) => isFollowUpEvent(ev) && isFollowUpOpen(ev))
+    .slice(0, 3);
+  for (const ev of upcoming) {
     let personName: string | null = null;
     if (ev.person_id) {
       const { data: person } = await supabase.from("people").select("name").eq("id", ev.person_id).maybeSingle();
@@ -186,17 +189,18 @@ export async function generateSupremeNudges(
   // ------------ Outcome check (evento acabou há 30–90 min sem outcome) ------------
   const ago90 = new Date(now.getTime() - 90 * 60000).toISOString();
   const ago30 = new Date(now.getTime() - 30 * 60000).toISOString();
-  const { data: ended } = await supabase
+  const { data: endedRaw } = await supabase
     .from("follow_ups")
-    .select("id, title, person_id, related_property_id, opportunity_id, outcome")
+    .select("id, title, type, due_date, due_time, status, archived_at, person_id, related_property_id, opportunity_id, outcome")
     .eq("user_id", userId)
-    .eq("type", "Evento")
     .is("outcome", null)
-    .neq("status", "Concluído")
     .gte("due_date", ago90)
     .lte("due_date", ago30)
-    .limit(3);
-  for (const ev of ((ended as any[]) ?? [])) {
+    .limit(20);
+  const ended = ((endedRaw as any[]) ?? [])
+    .filter((ev) => isFollowUpEvent(ev) && isFollowUpOpen(ev))
+    .slice(0, 3);
+  for (const ev of ended) {
     if (!hasCommercialOutcomeContext(ev)) continue;
     let personName: string | null = null;
     if (ev.person_id) {

@@ -25,13 +25,14 @@ export interface AgendaItem {
   propertyId: string | null;
 }
 
-/** Estados que tiram um compromisso do dia. */
-const DONE_FOLLOW_UP = new Set([
-  "concluído", "concluido", "concluída", "concluida", "done", "completed", "cancelado", "cancelled", "arquivado",
-]);
+import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
 
+/**
+ * Estado de um compromisso — delega na regra canónica
+ * (`src/lib/follow-ups/state.ts`). Mantido por compatibilidade de chamadas.
+ */
 export function isOpenFollowUp(status: unknown): boolean {
-  return !DONE_FOLLOW_UP.has(String(status ?? "").trim().toLowerCase());
+  return isFollowUpOpen({ status });
 }
 
 export interface MentorTip {
@@ -69,7 +70,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     supabase.from("properties").select("id, status").eq("user_id", userId),
     supabase.from("people").select("id").eq("user_id", userId),
     supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox"),
-    supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, person_id, related_property_id")
+    supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, outcome, archived_at, person_id, related_property_id")
       .eq("user_id", userId).gte("due_date", start).lte("due_date", end).order("due_time", { ascending: true }),
     supabase.from("financial_movements").select("id, type, amount, status").eq("user_id", userId).eq("type", "commission"),
     supabase.from("interactions").select("person_id").eq("user_id", userId).gte("occurred_at", isoDaysAgo(7)),
@@ -80,7 +81,9 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     (p) => !CLOSED_PROPERTY.has(String(p.status ?? "").toLowerCase()),
   );
   const eventRows: AgendaItem[] = ((events.data as any[]) ?? [])
-    .filter((e) => isOpenFollowUp(e.status))
+    // Regra canónica: aberto/fechado + só compromissos de agenda contam como
+    // "Compromissos hoje". Tarefas do dia deixam de inflacionar esta contagem.
+    .filter((e) => isFollowUpOpen(e) && isFollowUpEvent(e))
     .map((e) => ({
       id: String(e.id),
       title: String(e.title ?? "Compromisso"),

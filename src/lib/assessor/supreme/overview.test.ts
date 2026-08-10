@@ -24,7 +24,7 @@ const iso = (h: number, m: number) =>
 const diasAtras = (n: number) => new Date(Date.now() - n * 864e5).toISOString();
 
 describe("resumo — agenda é fonte única dos compromissos", () => {
-  it("conta e lista os mesmos compromissos, incluindo os que não são do tipo 'evento'", async () => {
+  it("conta e lista só compromissos de agenda abertos (regra canónica)", async () => {
     const s = fakeSupabase({
       follow_ups: [
         { id: "a", title: "Ligar ao Sr. Nogueira", type: "chamada", status: "pendente", due_date: iso(18, 51), due_time: "19:51", person_id: "p1", property_id: null },
@@ -35,12 +35,12 @@ describe("resumo — agenda é fonte única dos compromissos", () => {
     });
 
     const r = await computeOverview(s, "u1");
-    expect(r.agenda.today).toBe(2);                       // o concluído não conta
+    // "chamada" é Tarefa (classificador único) e "Treino" está concluído:
+    // nenhum dos dois é compromisso de agenda de hoje.
+    expect(r.agenda.today).toBe(1);
     expect(r.agenda.items).toHaveLength(r.agenda.today);  // cartão e bloco batem certo
-    expect(r.agenda.items.map((i) => i.id)).toEqual(["b", "a"]); // ordenado por hora
-    expect(r.agenda.items.map((i) => i.title)).toContain("Ligar ao Sr. Nogueira");
+    expect(r.agenda.items.map((i) => i.id)).toEqual(["b"]);
     expect(r.agenda.nextTime).toBe("10:00");
-    expect(r.agenda.items[1]).toMatchObject({ time: "19:51", type: "chamada", personId: "p1" });
   });
 
   it("dia sem compromissos abertos: contagem zero e lista vazia", async () => {

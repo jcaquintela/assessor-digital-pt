@@ -36,8 +36,17 @@ export const DONE_FOLLOW_UP_STATUSES = new Set([
   "done", "completed", "closed", "archived", "cancelled", "canceled",
 ]);
 
+const stripAccents = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+/**
+ * Só olha para o `status`. Quando tiveres a linha completa usa a regra
+ * canónica `isFollowUpOpen` de `src/lib/follow-ups/state.ts`.
+ */
 export function isOpenFollowUpStatus(status?: string | null): boolean {
-  const s = String(status ?? "").trim().toLowerCase();
+  const s = stripAccents(String(status ?? "").trim().toLowerCase());
   if (!s) return true;
-  return !DONE_FOLLOW_UP_STATUSES.has(s);
+  for (const done of DONE_FOLLOW_UP_STATUSES) {
+    if (stripAccents(done.toLowerCase()) === s) return false;
+  }
+  return true;
 }
