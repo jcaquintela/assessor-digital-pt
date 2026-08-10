@@ -49,6 +49,7 @@ import { Route as AdminAuditoriaSegurancaRouteImport } from './routes/admin/audi
 import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AdminAquisicaoRouteImport } from './routes/admin/aquisicao'
 import { Route as AdminAgendaDebugRouteImport } from './routes/admin/agenda-debug'
+import { Route as AuthenticatedSubscricaoRouteImport } from './routes/_authenticated/subscricao'
 import { Route as AuthenticatedSobreAIaRouteImport } from './routes/_authenticated/sobre-a-ia'
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
@@ -92,6 +93,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedOportunidadesProspecaoIndexRouteImport } from './routes/_authenticated/oportunidades.prospecao.index'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksWhatsappTemplateStatusRouteImport } from './routes/api/public/hooks/whatsapp-template-status'
 import { Route as ApiPublicHooksWhatsappDisplayNameRouteImport } from './routes/api/public/hooks/whatsapp-display-name'
 import { Route as ApiPublicHooksTrialLifecycleRouteImport } from './routes/api/public/hooks/trial-lifecycle'
@@ -306,6 +308,11 @@ const AdminAgendaDebugRoute = AdminAgendaDebugRouteImport.update({
   id: '/agenda-debug',
   path: '/agenda-debug',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const AuthenticatedSubscricaoRoute = AuthenticatedSubscricaoRouteImport.update({
+  id: '/subscricao',
+  path: '/subscricao',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSobreAIaRoute = AuthenticatedSobreAIaRouteImport.update({
   id: '/sobre-a-ia',
@@ -542,6 +549,12 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksWhatsappTemplateStatusRoute =
   ApiPublicHooksWhatsappTemplateStatusRouteImport.update({
     id: '/api/public/hooks/whatsapp-template-status',
@@ -657,6 +670,7 @@ export interface FileRoutesByFullPath {
   '/mais': typeof AuthenticatedMaisRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
+  '/subscricao': typeof AuthenticatedSubscricaoRoute
   '/admin/agenda-debug': typeof AdminAgendaDebugRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -729,6 +743,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
   '/api/public/hooks/whatsapp-display-name': typeof ApiPublicHooksWhatsappDisplayNameRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
 }
@@ -755,6 +770,7 @@ export interface FileRoutesByTo {
   '/mais': typeof AuthenticatedMaisRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
+  '/subscricao': typeof AuthenticatedSubscricaoRoute
   '/admin/agenda-debug': typeof AdminAgendaDebugRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -827,6 +843,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
   '/api/public/hooks/whatsapp-display-name': typeof ApiPublicHooksWhatsappDisplayNameRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/oportunidades/prospecao': typeof AuthenticatedOportunidadesProspecaoIndexRoute
 }
@@ -856,6 +873,7 @@ export interface FileRoutesById {
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/_authenticated/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
+  '/_authenticated/subscricao': typeof AuthenticatedSubscricaoRoute
   '/admin/agenda-debug': typeof AdminAgendaDebugRoute
   '/admin/aquisicao': typeof AdminAquisicaoRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -928,6 +946,7 @@ export interface FileRoutesById {
   '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
   '/api/public/hooks/whatsapp-display-name': typeof ApiPublicHooksWhatsappDisplayNameRoute
   '/api/public/hooks/whatsapp-template-status': typeof ApiPublicHooksWhatsappTemplateStatusRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/oportunidades/prospecao/': typeof AuthenticatedOportunidadesProspecaoIndexRoute
 }
@@ -957,6 +976,7 @@ export interface FileRouteTypes {
     | '/mais'
     | '/rotinas'
     | '/sobre-a-ia'
+    | '/subscricao'
     | '/admin/agenda-debug'
     | '/admin/aquisicao'
     | '/admin/auditoria'
@@ -1029,6 +1049,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/trial-lifecycle'
     | '/api/public/hooks/whatsapp-display-name'
     | '/api/public/hooks/whatsapp-template-status'
+    | '/api/public/payments/webhook'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao/'
   fileRoutesByTo: FileRoutesByTo
@@ -1055,6 +1076,7 @@ export interface FileRouteTypes {
     | '/mais'
     | '/rotinas'
     | '/sobre-a-ia'
+    | '/subscricao'
     | '/admin/agenda-debug'
     | '/admin/aquisicao'
     | '/admin/auditoria'
@@ -1127,6 +1149,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/trial-lifecycle'
     | '/api/public/hooks/whatsapp-display-name'
     | '/api/public/hooks/whatsapp-template-status'
+    | '/api/public/payments/webhook'
     | '/api/public/telegram/webhook'
     | '/oportunidades/prospecao'
   id:
@@ -1155,6 +1178,7 @@ export interface FileRouteTypes {
     | '/_authenticated/mais'
     | '/_authenticated/rotinas'
     | '/_authenticated/sobre-a-ia'
+    | '/_authenticated/subscricao'
     | '/admin/agenda-debug'
     | '/admin/aquisicao'
     | '/admin/auditoria'
@@ -1227,6 +1251,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/trial-lifecycle'
     | '/api/public/hooks/whatsapp-display-name'
     | '/api/public/hooks/whatsapp-template-status'
+    | '/api/public/payments/webhook'
     | '/api/public/telegram/webhook'
     | '/_authenticated/oportunidades/prospecao/'
   fileRoutesById: FileRoutesById
@@ -1263,6 +1288,7 @@ export interface RootRouteChildren {
   ApiPublicHooksTrialLifecycleRoute: typeof ApiPublicHooksTrialLifecycleRoute
   ApiPublicHooksWhatsappDisplayNameRoute: typeof ApiPublicHooksWhatsappDisplayNameRoute
   ApiPublicHooksWhatsappTemplateStatusRoute: typeof ApiPublicHooksWhatsappTemplateStatusRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -1547,6 +1573,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/agenda-debug'
       preLoaderRoute: typeof AdminAgendaDebugRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/_authenticated/subscricao': {
+      id: '/_authenticated/subscricao'
+      path: '/subscricao'
+      fullPath: '/subscricao'
+      preLoaderRoute: typeof AuthenticatedSubscricaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sobre-a-ia': {
       id: '/_authenticated/sobre-a-ia'
@@ -1849,6 +1882,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/whatsapp-template-status': {
       id: '/api/public/hooks/whatsapp-template-status'
       path: '/api/public/hooks/whatsapp-template-status'
@@ -2047,6 +2087,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
   AuthenticatedSobreAIaRoute: typeof AuthenticatedSobreAIaRoute
+  AuthenticatedSubscricaoRoute: typeof AuthenticatedSubscricaoRoute
   AuthenticatedBriefingDetalhesRoute: typeof AuthenticatedBriefingDetalhesRoute
   AuthenticatedGruposIdRoute: typeof AuthenticatedGruposIdRoute
   AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
@@ -2080,6 +2121,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
   AuthenticatedSobreAIaRoute: AuthenticatedSobreAIaRoute,
+  AuthenticatedSubscricaoRoute: AuthenticatedSubscricaoRoute,
   AuthenticatedBriefingDetalhesRoute: AuthenticatedBriefingDetalhesRoute,
   AuthenticatedGruposIdRoute: AuthenticatedGruposIdRoute,
   AuthenticatedImoveisIdRoute: AuthenticatedImoveisIdRoute,
@@ -2213,6 +2255,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksWhatsappDisplayNameRoute,
   ApiPublicHooksWhatsappTemplateStatusRoute:
     ApiPublicHooksWhatsappTemplateStatusRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport

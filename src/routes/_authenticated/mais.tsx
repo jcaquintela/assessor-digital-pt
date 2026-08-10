@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { MODULE_NAME } from "@/lib/seo/module-names";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, CalendarDays, ChevronRight, FolderOpen, Inbox, MessagesSquare, Repeat, Settings, Sparkles, Users, Wallet, Briefcase } from "lucide-react";
+import { Building2, CalendarDays, ChevronRight, CreditCard, FolderOpen, Inbox, MessagesSquare, Repeat, Settings, Sparkles, Users, Wallet, Briefcase } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/mais")({
   head: () => ({
@@ -26,6 +26,7 @@ const items = [
   { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
   { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/negocio", label: "Faturação", icon: Wallet },
+  { to: "/subscricao", label: "Subscrição", icon: CreditCard },
   { to: "/definicoes", label: "Definições", icon: Settings },
   { to: "/sobre-a-ia", label: "Sobre a IA", icon: Sparkles },
 ] as const;
