@@ -386,6 +386,10 @@ export type IssuedInvite = {
   waUrl: string | null;
   enviado: boolean;
   erroEnvio?: string;
+  /** Destino confirmado pela Meta/Telegram (número mascarado ou "Telegram"). */
+  destino?: string | null;
+  /** Como saiu: template aprovado (fora das 24h) ou texto (dentro da janela). */
+  via?: "template" | "texto" | null;
 };
 
 export const issueInviteLink = createServerFn({ method: "POST" })
@@ -425,30 +429,31 @@ export const issueInviteLink = createServerFn({ method: "POST" })
 
     let enviado = false;
     let erroEnvio: string | undefined;
+    let destino: string | null = null;
+    let via: "template" | "texto" | null = null;
     if (data.enviar) {
-      const { data: link } = await supabaseAdmin
-        .from("channel_links")
-        .select("external_id")
-        .eq("user_id", data.target_user_id)
-        .eq("channel", data.canal)
-        .maybeSingle();
-      const externalId = (link as { external_id?: string } | null)?.external_id;
-      if (!externalId) {
-        erroEnvio = `Esta conta ainda não tem ${data.canal} ligado — copia a mensagem e envia à mão.`;
-      } else {
-        try {
-          const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
-          await sendReplyForChannel(data.canal as any, externalId, convite.texto);
-          enviado = true;
-        } catch (e) {
-          erroEnvio = e instanceof Error ? e.message : "Não foi possível enviar a mensagem.";
-        }
+      try {
+        const { sendInvite } = await import("@/lib/admin/invite-send.server");
+        const r = await sendInvite(supabaseAdmin, {
+          userId: data.target_user_id,
+          canal: data.canal,
+          nome,
+          texto: convite.texto,
+          url: convite.url,
+          triggeredBy: context.userId,
+        });
+        enviado = r.enviado;
+        destino = r.destino;
+        via = r.via;
+        if (!r.enviado) erroEnvio = r.erro ?? "Não foi possível enviar a mensagem.";
+      } catch (e) {
+        erroEnvio = e instanceof Error ? e.message : "Não foi possível enviar a mensagem.";
       }
     }
 
     await auditAccess(context.userId, "access.invite_link_issued", {
       target_user_id: data.target_user_id,
-      metadata: { canal: data.canal, enviado },
+      metadata: { canal: data.canal, enviado, destino, via, erro: erroEnvio ?? null },
     });
 
     const waUrl =
@@ -456,7 +461,7 @@ export const issueInviteLink = createServerFn({ method: "POST" })
         ? `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(convite.texto)}`
         : null;
 
-    return { ...convite, waUrl, enviado, ...(erroEnvio ? { erroEnvio } : {}) };
+    return { ...convite, waUrl, enviado, destino, via, ...(erroEnvio ? { erroEnvio } : {}) };
   });
 
 // Mesmo mecanismo usado para subir uma conta manualmente a Team/beta:
