@@ -9,7 +9,13 @@ export interface SumGridSummary {
   properties: { count: number; toAcquire: number };
   people: { count: number; contactedWeek: number };
   misc: { pending: number };
-  agenda: { today: number; nextLabel: string | null; nextTime: string | null };
+  agenda: {
+    today: number;
+    nextLabel: string | null;
+    nextTime: string | null;
+    /** Subtítulo já calculado pelo seletor central; se ausente, deriva-se aqui. */
+    meta?: string;
+  };
   billing: { forecast: number; open: number };
 }
 
@@ -52,9 +58,13 @@ export function buildSumCards(resumo: SumGridSummary): SumCardItem[] {
       key: "agenda", tone: "neutro", icon: CalendarDays, to: "/calendario",
       stat: String(resumo.agenda.today),
       label: `Compromisso${resumo.agenda.today === 1 ? "" : "s"} hoje`,
-      meta: resumo.agenda.nextLabel
-        ? `${resumo.agenda.nextTime ? `${resumo.agenda.nextTime} — ` : ""}${resumo.agenda.nextLabel}`
-        : "nada marcado",
+      meta:
+        resumo.agenda.meta ??
+        (resumo.agenda.nextLabel
+          ? `${resumo.agenda.nextTime ? `${resumo.agenda.nextTime} — ` : ""}${resumo.agenda.nextLabel}`
+          : resumo.agenda.today > 0
+            ? "Todos concluídos"
+            : "nada marcado"),
     },
     {
       key: "faturacao", tone: "neutro", icon: Euro, to: "/negocio",
