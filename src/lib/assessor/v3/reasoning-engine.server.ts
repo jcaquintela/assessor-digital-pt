@@ -68,8 +68,7 @@ import {
   FEEDBACK_NOT_PRODUCT_REPLY,
   FEEDBACK_CANCELLED_REPLY,
   FEEDBACK_FAILED_REPLY,
-  FEEDBACK_SAVED_REPLY,
-  FEEDBACK_SAVED_WITH_ATTACHMENT_REPLY,
+  feedbackSavedReply,
   type FeedbackKind,
 } from "./feedback";
 import { saveProductFeedback } from "./feedback.server";
@@ -812,7 +811,10 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       });
       if (!saved) return { reply: FEEDBACK_FAILED_REPLY };
       return {
-        reply: attachmentFileId ? FEEDBACK_SAVED_WITH_ATTACHMENT_REPLY : FEEDBACK_SAVED_REPLY,
+        reply: feedbackSavedReply(kind, {
+          title: body,
+          withAttachment: Boolean(attachmentFileId),
+        }),
       };
     }
 
