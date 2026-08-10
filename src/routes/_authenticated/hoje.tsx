@@ -15,6 +15,7 @@ import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { dismissPriority, getHojeSupreme } from "@/lib/assessor/supreme/priorities.functions";
+import { eventWindow, isWindowOver } from "@/lib/assessor/supreme/event-window";
 import { saveFollowUpOutcome } from "@/lib/assessor/supreme/outcomes.functions";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
