@@ -137,7 +137,12 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         <main className="mobile-nav-pad min-h-0 min-w-0 md:ml-64 md:pb-8">
           <div
             className="sticky top-0 z-30 backdrop-blur"
-            style={{ background: "color-mix(in srgb, var(--paper) 88%, transparent)", borderBottom: "1px solid var(--line)" }}
+            style={{
+              background: "color-mix(in srgb, var(--paper) 88%, transparent)",
+              borderBottom: "1px solid var(--line)",
+              // Não se sobrepõe à status bar do iOS (0px em ecrãs sem notch).
+              paddingTop: "env(safe-area-inset-top, 0px)",
+            }}
           >
             <div className="c-search mx-auto min-w-0 max-w-6xl px-4 py-3 md:px-8 md:py-4">
               <GlobalSearch size="lg" />

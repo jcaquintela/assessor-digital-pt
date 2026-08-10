@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { MobileFab } from "@/components/mobile-fab";
 import { useStore } from "@/lib/store";
 import { formatData, formatDataHora, formatEUR } from "@/lib/demo-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -422,7 +423,7 @@ function HojePage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <PaymentPortalButton variant="ghost" />
-            <Link to="/assessor" className="c-cta">
+            <Link to="/assessor" className="c-cta hidden md:inline-flex">
               <MessageSquare className="h-4 w-4" /> Falar com {assessorName}
             </Link>
           </div>
@@ -783,14 +784,16 @@ function HojePage() {
         </section>
       )}
 
-      {/* FAB mobile */}
-      <Link
-        to="/assessor"
-        className="fixed bottom-20 right-4 z-10 flex h-12 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-lg md:hidden"
-        style={{ background: "var(--brass)", color: "#241703" }}
-      >
-        <MessageSquare className="h-4 w-4" /> Falar com {assessorName}
-      </Link>
+      {/* FAB mobile — única instância visível em mobile (o CTA do cabeçalho é desktop). */}
+      <MobileFab>
+        <Link
+          to="/assessor"
+          className="flex h-12 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-lg"
+          style={{ background: "var(--brass)", color: "#241703" }}
+        >
+          <MessageSquare className="h-4 w-4" /> Falar com {assessorName}
+        </Link>
+      </MobileFab>
 
       <EventDrawer item={drawer} onClose={() => setDrawer(null)} />
 
