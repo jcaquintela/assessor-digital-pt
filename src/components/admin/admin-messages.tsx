@@ -118,7 +118,7 @@ export function AdminMessagesPanel({ consultorId }: { consultorId: string }) {
                   <td className="mini whitespace-nowrap">{fmt(m.enviadoEm)}</td>
                   <td className="mini">{m.pergunta}</td>
                   <td>
-                    <Badge tone={m.estado === "respondida" ? "ok" : m.estado === "pendente" ? "warn" : undefined}>
+                    <Badge tone={m.estado === "respondida" ? "ok" : m.estado === "pendente" ? "warn" : "bad"}>
                       {m.estado}
                     </Badge>
                   </td>
