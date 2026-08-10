@@ -6,6 +6,7 @@ import { think } from "./think.server";
 import { search } from "./search.server";
 import { decide } from "./decide.server";
 import { executeToolCalls, applyMemoryWrites } from "./act.server";
+import { isolateUnrelatedPending, stripInheritedMotive } from "../context-isolation";
 import { sanitizeReply, enforceHumanTone, enforceSingleQuestion, NATURAL_FALLBACKS } from "../culture/sanitize";
 import { computeQualitySignals, persistQualityScore } from "./quality.server";
 import { runShadow, shouldRunShadow } from "./shadow.server";
