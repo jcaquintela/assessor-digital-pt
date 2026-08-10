@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
+import { CreditCard, ExternalLink } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { PaymentTestModeBanner } from "@/components/payment-test-banner";
@@ -33,16 +34,21 @@ function SubscricaoPage() {
   const portalFn = useServerFn(createBillingPortal);
   const { data, isPending } = useQuery({ queryKey: ["my-billing"], queryFn: () => fetchBilling() });
   const [priceId, setPriceId] = useState<string | null>(null);
+  const [openingPortal, setOpeningPortal] = useState(false);
 
   const openPortal = async () => {
+    setOpeningPortal(true);
     try {
       const r = await portalFn({
         data: { returnUrl: `${window.location.origin}/subscricao`, environment: getStripeEnvironment() },
       });
       if ("error" in r) throw new Error(r.error);
-      window.open(r.url, "_blank");
+      const w = window.open(r.url, "_blank", "noopener");
+      if (!w) toast.error("O navegador bloqueou a janela. Permite janelas novas e tenta outra vez.");
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setOpeningPortal(false);
     }
   };
 
@@ -64,13 +70,40 @@ function SubscricaoPage() {
                 {BILLING_STATUS_LABEL[data.billingStatus] ?? data.billingStatus}
                 {data.billingSource === "manual" ? " · plano definido pela equipa" : ""}
               </div>
-              {data.hasCustomer && (
-                <button type="button" className="c-cta mt-4" onClick={openPortal}>
-                  Gerir subscrição e faturas
-                </button>
-              )}
             </>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <CreditCard className="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium">Cartão, dados de pagamento e faturas</div>
+              <p className="c-muted mt-1 text-[13px] leading-relaxed">
+                Abre a área segura de pagamentos para trocar de cartão, atualizar os dados de faturação,
+                descarregar faturas ou cancelar a subscrição. Não precisas de falar com ninguém — abre numa
+                janela nova e voltas aqui no fim.
+              </p>
+              {!isPending && data && !data.hasCustomer ? (
+                <p className="c-muted mt-3 text-[13px]">
+                  Ainda não há pagamentos associados a esta conta. Depois de subscreveres um plano aqui em
+                  baixo, este link fica disponível.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className="c-cta mt-3 inline-flex items-center gap-2"
+                  onClick={openPortal}
+                  disabled={isPending || openingPortal}
+                >
+                  {openingPortal ? "A abrir…" : "Gerir cartão e faturas"}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
