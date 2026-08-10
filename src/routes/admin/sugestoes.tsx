@@ -65,6 +65,7 @@ function SugestoesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "sugestoes"] });
       qc.invalidateQueries({ queryKey: ["admin", "sugestoes", "count"] });
+      qc.invalidateQueries({ queryKey: ["admin", "suggestions", "unread"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Não consegui atualizar."),
   });
