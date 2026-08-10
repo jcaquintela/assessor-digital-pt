@@ -14,6 +14,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { UploadedFilesList } from "@/components/uploaded-files-list";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import {
+  isTeamSuggestion,
+  teamStateLabel,
+  TEAM_SUGGESTION_NOTE,
+} from "@/lib/suggestions/team-suggestions";
 
 export const Route = createFileRoute("/_authenticated/diversos")({
   head: () => ({
@@ -39,6 +44,7 @@ type MiscItem = {
   status: "inbox" | "reviewed" | "classified" | "archived" | "deleted";
   tags: string[] | null;
   created_at: string;
+  team_read_at?: string | null;
 };
 
 const STATUS_LABEL: Record<MiscItem["status"], string> = {
@@ -69,7 +75,7 @@ function DiversosPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("miscellaneous_items")
-        .select("id, title, original_content, summary, category, source_channel, status, tags, related_person_id, related_property_id, created_at")
+        .select("id, title, original_content, summary, category, source_channel, status, tags, related_person_id, related_property_id, created_at, team_read_at")
         .neq("status", "deleted")
         .order("created_at", { ascending: false })
         .limit(200);
@@ -254,6 +260,11 @@ function DiversosPage() {
                     <span className="c-badge">
                       via {CANAL_LABEL[r.source_channel] ?? r.source_channel}
                     </span>
+                    {isTeamSuggestion(r) ? (
+                      <span className={"c-badge" + (r.team_read_at ? " ok" : "")}>
+                        {teamStateLabel(r.team_read_at)}
+                      </span>
+                    ) : null}
                     <span className="c-muted c-mono ml-auto text-[11px]">
                       {new Date(r.created_at).toLocaleDateString("pt-PT", {
                         day: "2-digit",
@@ -263,7 +274,11 @@ function DiversosPage() {
                   </div>
                   <p className="text-[12.5px]">
                     <span className="font-medium">Porque está aqui:</span>{" "}
-                    <span className="c-muted">{miscReason(r).label} — {miscReason(r).detail}</span>
+                    <span className="c-muted">
+                      {isTeamSuggestion(r)
+                        ? TEAM_SUGGESTION_NOTE
+                        : `${miscReason(r).label} — ${miscReason(r).detail}`}
+                    </span>
                   </p>
                   {r.original_content && r.original_content !== r.title ? (
                     <p className="c-soft whitespace-pre-wrap text-[13px] leading-relaxed">

@@ -112,7 +112,11 @@ export function feedbackConfirmQuestion(kind: FeedbackKind): string {
     : "Guardo isto como sugestão em Sugestões, no dashboard? Diz-me em poucas palavras a ideia — se tiveres uma imagem ou ficheiro que ajude, envia agora que junto ao registo.";
 }
 
-/** Confirmação: o quê + onde. Nunca "enviei", nunca "para a equipa". */
+/**
+ * Confirmação: o quê + onde. Nunca promete envio a terceiros (clientes,
+ * proprietários). Para sugestões, dizer que a equipa do Afonso as vê no
+ * painel passou a ser verdade — existe /admin/sugestoes.
+ */
 export function feedbackSavedReply(
   kind: FeedbackKind,
   opts: { title?: string | null; withAttachment?: boolean } = {},
@@ -122,6 +126,9 @@ export function feedbackSavedReply(
   const short = title.length > 80 ? `${title.slice(0, 79)}…` : title;
   const what = short ? `${object} "${short}"` : object;
   const extra = opts.withAttachment ? " Anexo incluído." : "";
+  if (kind === "suggestion") {
+    return `Guardei ${what} em ${feedbackDestination(kind)}.${extra} A equipa do Afonso vê-a no painel interno — não enviei nada a clientes nem a terceiros.`;
+  }
   return `Guardei ${what} em ${feedbackDestination(kind)}.${extra} Não enviei nada a ninguém.`;
 }
 

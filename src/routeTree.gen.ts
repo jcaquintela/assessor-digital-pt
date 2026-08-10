@@ -25,6 +25,7 @@ import { Route as AdminWhatsappNomeRouteImport } from './routes/admin/whatsapp-n
 import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizadores'
 import { Route as AdminUtilizacaoRouteImport } from './routes/admin/utilizacao'
 import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
+import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
 import { Route as AdminSimuladorBriefingRouteImport } from './routes/admin/simulador-briefing'
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
@@ -184,6 +185,11 @@ const AdminUtilizacaoRoute = AdminUtilizacaoRouteImport.update({
 const AdminSuporteRoute = AdminSuporteRouteImport.update({
   id: '/suporte',
   path: '/suporte',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSugestoesRoute = AdminSugestoesRouteImport.update({
+  id: '/sugestoes',
+  path: '/sugestoes',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminSubscricoesRoute = AdminSubscricoesRouteImport.update({
@@ -674,6 +680,7 @@ export interface FileRoutesByFullPath {
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/simulador-briefing': typeof AdminSimuladorBriefingRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
+  '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
@@ -771,6 +778,7 @@ export interface FileRoutesByTo {
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/simulador-briefing': typeof AdminSimuladorBriefingRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
+  '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
@@ -871,6 +879,7 @@ export interface FileRoutesById {
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/simulador-briefing': typeof AdminSimuladorBriefingRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
+  '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
@@ -971,6 +980,7 @@ export interface FileRouteTypes {
     | '/admin/seguranca'
     | '/admin/simulador-briefing'
     | '/admin/subscricoes'
+    | '/admin/sugestoes'
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
@@ -1068,6 +1078,7 @@ export interface FileRouteTypes {
     | '/admin/seguranca'
     | '/admin/simulador-briefing'
     | '/admin/subscricoes'
+    | '/admin/sugestoes'
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
@@ -1167,6 +1178,7 @@ export interface FileRouteTypes {
     | '/admin/seguranca'
     | '/admin/simulador-briefing'
     | '/admin/subscricoes'
+    | '/admin/sugestoes'
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
@@ -1366,6 +1378,13 @@ declare module '@tanstack/react-router' {
       path: '/suporte'
       fullPath: '/admin/suporte'
       preLoaderRoute: typeof AdminSuporteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/sugestoes': {
+      id: '/admin/sugestoes'
+      path: '/sugestoes'
+      fullPath: '/admin/sugestoes'
+      preLoaderRoute: typeof AdminSugestoesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/subscricoes': {
@@ -2112,6 +2131,7 @@ interface AdminRouteRouteChildren {
   AdminSegurancaRoute: typeof AdminSegurancaRoute
   AdminSimuladorBriefingRoute: typeof AdminSimuladorBriefingRoute
   AdminSubscricoesRoute: typeof AdminSubscricoesRoute
+  AdminSugestoesRoute: typeof AdminSugestoesRoute
   AdminSuporteRoute: typeof AdminSuporteRoute
   AdminUtilizacaoRoute: typeof AdminUtilizacaoRoute
   AdminUtilizadoresRoute: typeof AdminUtilizadoresRoute
@@ -2144,6 +2164,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSegurancaRoute: AdminSegurancaRoute,
   AdminSimuladorBriefingRoute: AdminSimuladorBriefingRoute,
   AdminSubscricoesRoute: AdminSubscricoesRoute,
+  AdminSugestoesRoute: AdminSugestoesRoute,
   AdminSuporteRoute: AdminSuporteRoute,
   AdminUtilizacaoRoute: AdminUtilizacaoRoute,
   AdminUtilizadoresRoute: AdminUtilizadoresRoute,
