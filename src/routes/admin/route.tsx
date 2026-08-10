@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, ShieldCheck, ChevronDown, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { HealthStrip } from "@/components/admin/health-strip";
+import { UnreadSuggestionsAlert, UnreadSuggestionsBadge } from "@/components/admin/unread-suggestions";
 import { navGroups } from "./nav";
 
 export const Route = createFileRoute("/admin")({
@@ -85,6 +86,7 @@ function AdminLayout() {
                   onClick={onNavClick}
                 >
                   {n.label}
+                  {n.to === "/admin/sugestoes" ? <UnreadSuggestionsBadge /> : null}
                 </Link>
               );
             })}
@@ -146,6 +148,7 @@ function AdminLayout() {
       <main ref={mainRef} tabIndex={-1} className="md:pl-56 focus:outline-none">
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-10 md:pb-16">
           <HealthStrip />
+          <UnreadSuggestionsAlert />
           <Outlet />
         </div>
       </main>
