@@ -23,6 +23,7 @@ import {
   type ExistingAccountMatch,
 } from "@/lib/admin/acessos.functions";
 import { getMyAdminRole } from "@/lib/admin.functions";
+import { countUnreadConsultantReplies } from "@/lib/admin/admin-messages.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { AccountMergeDialog, type MergeSource } from "@/components/admin/merge-dialog";
 import { startSupportSession } from "@/lib/admin/support-mode.functions";
