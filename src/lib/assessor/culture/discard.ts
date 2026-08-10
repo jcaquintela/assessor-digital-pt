@@ -13,21 +13,15 @@ function norm(s: string): string {
     .trim();
 }
 
-const DISCARD_RE = new RegExp(
-  [
-    "^(descarta|descartar|descartas|descartado|deita fora|deitar fora)\\b",
-    "\\b(descarta|descartar|descartado)\\b",
-    "\\b(apaga|apagar|elimina|eliminar|apaga isso|apaga tudo)\\b",
-    "\\b(esquece|esquecer|esquece isso|esquece tudo)\\b",
-    "\\b(cancela isso|cancela tudo|anula isso)\\b",
-    "\\b(nao guardes|nao guardar|nao registes|nao fica nada)\\b",
-  ].join("|"),
-);
+// Só comandos inequívocos e curtos. "Apaga o seguimento do Nuno" é outra
+// coisa (uma acção sobre um registo concreto) e não pode entrar aqui.
+const DISCARD_RE =
+  /^(?:por favor[,\s]+)?(?:descarta(?:r|s)?|descartado|deita(?:r)? fora|esquece(?:r)?|apaga(?:r)?|elimina(?:r)?|cancela(?:r)?|anula(?:r)?)(?:\s+(?:isso|isto|tudo|essa|esse|o audio|a mensagem|o ficheiro|isso tudo|tudo isso))?[.!]*$|^nao (?:guardes|guardar|registes|registar) nada[.!]*$/;
 
 /** O consultor está a mandar descartar o último input? */
 export function isDiscardCommand(raw: string | null | undefined): boolean {
-  const t = norm(raw ?? "");
-  if (!t || t.length > 140) return false;
+  const t = norm(raw ?? "").replace(/\s+/g, " ");
+  if (!t || t.length > 60) return false;
   return DISCARD_RE.test(t);
 }
 
