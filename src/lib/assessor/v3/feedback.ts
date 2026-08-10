@@ -99,21 +99,37 @@ export function isEmptyFeedbackBody(text: string): boolean {
 }
 
 export const FEEDBACK_BODY_RETRY =
-  "Diz-me só o que queres que fique registado para a equipa.";
+  "Diz-me só o que queres que fique guardado.";
+
+/** Onde o registo fica — destino verificável, nunca um destinatário. */
+export function feedbackDestination(kind: FeedbackKind): string {
+  return kind === "bug" ? "Erros, no dashboard" : "Sugestões, no dashboard";
+}
 
 export function feedbackConfirmQuestion(kind: FeedbackKind): string {
   return kind === "bug"
-    ? "Queres que registe isto como erro para a equipa? Diz-me em poucas palavras o que aconteceu — se tiveres um screenshot, envia-o agora que junto ao registo."
-    : "Queres que registe isto como sugestão para a equipa? Diz-me em poucas palavras a ideia — se tiveres uma imagem ou ficheiro que ajude, envia agora que junto ao registo.";
+    ? "Guardo isto como erro em Erros, no dashboard? Diz-me em poucas palavras o que aconteceu — se tiveres um screenshot, envia-o agora que junto ao registo."
+    : "Guardo isto como sugestão em Sugestões, no dashboard? Diz-me em poucas palavras a ideia — se tiveres uma imagem ou ficheiro que ajude, envia agora que junto ao registo.";
 }
 
-export const FEEDBACK_SAVED_REPLY = "Obrigado, registei. A equipa vai olhar para isto.";
-export const FEEDBACK_SAVED_WITH_ATTACHMENT_REPLY =
-  "Obrigado, registei com o anexo. A equipa vai olhar para isto.";
+/** Confirmação: o quê + onde. Nunca "enviei", nunca "para a equipa". */
+export function feedbackSavedReply(
+  kind: FeedbackKind,
+  opts: { title?: string | null; withAttachment?: boolean } = {},
+): string {
+  const object = kind === "bug" ? "o erro" : "a sugestão";
+  const title = String(opts.title ?? "").replace(/\s+/g, " ").trim();
+  const short = title.length > 80 ? `${title.slice(0, 79)}…` : title;
+  const what = short ? `${object} "${short}"` : object;
+  const extra = opts.withAttachment ? " Anexo incluído." : "";
+  return `Guardei ${what} em ${feedbackDestination(kind)}.${extra} Não enviei nada a ninguém.`;
+}
+
 export const FEEDBACK_ATTACHMENT_ADDED_REPLY =
-  "Guardei o anexo. Confirmas que registo isto para a equipa?";
-export const FEEDBACK_CANCELLED_REPLY = "Sem problema, não registei nada.";
-export const FEEDBACK_FAILED_REPLY = "Tentei registar isso para a equipa e não consegui. Podes repetir?";
+  "Guardei o anexo no rascunho. Confirmas que guardo o registo no dashboard?";
+export const FEEDBACK_CANCELLED_REPLY = "Sem problema, não guardei nada.";
+export const FEEDBACK_FAILED_REPLY =
+  "Tentei guardar isso no dashboard e não consegui. Podes repetir?";
 
 /** Pergunta de clarificação quando não é claro se falas de mim ou de uma pessoa. */
 export function feedbackClarifyQuestion(kind: FeedbackKind): string {
