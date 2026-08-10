@@ -151,6 +151,63 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_messages: {
+        Row: {
+          admin_id: string
+          consultor_id: string
+          created_at: string
+          enviado_em: string
+          estado: string
+          id: string
+          janela_expira_em: string
+          pergunta: string
+          respondido_em: string | null
+          resposta: string | null
+          resposta_lida_em: string | null
+        }
+        Insert: {
+          admin_id: string
+          consultor_id: string
+          created_at?: string
+          enviado_em?: string
+          estado?: string
+          id?: string
+          janela_expira_em?: string
+          pergunta: string
+          respondido_em?: string | null
+          resposta?: string | null
+          resposta_lida_em?: string | null
+        }
+        Update: {
+          admin_id?: string
+          consultor_id?: string
+          created_at?: string
+          enviado_em?: string
+          estado?: string
+          id?: string
+          janela_expira_em?: string
+          pergunta?: string
+          respondido_em?: string | null
+          resposta?: string | null
+          resposta_lida_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_messages_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_messages_consultor_id_fkey"
+            columns: ["consultor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_mfa_required: {
         Row: {
           required_at: string
