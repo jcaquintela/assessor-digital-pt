@@ -136,7 +136,10 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
       ) : (
         <main className="mobile-nav-pad min-h-0 min-w-0 md:ml-64 md:pb-8">
           <div
-            className="sticky top-0 z-30 backdrop-blur"
+            /* Acima da tab bar (40) e do botão flutuante (45) para que os
+               resultados da pesquisa nunca fiquem tapados; abaixo dos
+               overlays Radix (50). */
+            className="sticky top-0 z-[46] backdrop-blur"
             style={{
               background: "color-mix(in srgb, var(--paper) 88%, transparent)",
               borderBottom: "1px solid var(--line)",

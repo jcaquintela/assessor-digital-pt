@@ -43,7 +43,9 @@ export function SupportModeBanner() {
   return (
     <div
       role="status"
-      className="sticky top-0 z-[100] flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/40 bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950"
+      /* Em mobile fica no fluxo: dois elementos sticky em top-0 (este e a barra
+         de pesquisa da app) sobrepunham-se durante o scroll. */
+      className="relative z-[100] flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/40 bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950 md:sticky md:top-0"
     >
       <span>
         Modo suporte — estás a ver a app como <strong>{state.targetName}</strong>. Tudo o que fizeres
