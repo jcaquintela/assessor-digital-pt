@@ -1484,6 +1484,8 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   }
 
   const totalLatencyMs = Date.now() - started;
+  // Confirmação transparente: o quê + onde, sem prometer envios.
+  reply = enforceTransparentConfirmation(reply, toolResults as any, { executedOk });
   const inputTokens = thinkR.usage.inputTokens + decideR.usage.inputTokens;
   const outputTokens = thinkR.usage.outputTokens + decideR.usage.outputTokens;
   const success = allOk && !decideR.error && !thinkR.error;
