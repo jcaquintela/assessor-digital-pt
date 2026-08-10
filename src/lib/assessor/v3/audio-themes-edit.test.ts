@@ -14,7 +14,7 @@ describe("edição por tema antes de gravar", () => {
     const e = parseThemeEdit("no 1 o valor são 250 mil", 2, T)!;
     expect(e.price).toBe(250000);
     expect(applyThemeEdit(base, links(), e).themes[0].property?.price).toBe(250000);
-    expect(describeThemeEdit(e)).toContain("valor: 250 000 €");
+    expect(describeThemeEdit(e)).toMatch(/valor: 250.000 €/);
     expect(describeThemeEdit(e)).toContain("Ainda não gravei nada");
   });
   it("corrige o nome e desliga o contacto adivinhado", () => {
@@ -53,7 +53,7 @@ describe("edição por tema antes de gravar", () => {
     const e = parseThemeEdit("no 1 o valor são 250 mil", 2, T)!;
     const r = applyThemeEdit(base, links(), e);
     const txt = formatThemesRevised(r.themes, r.links, describeThemeEdit(e));
-    expect(txt).toContain("250 000 €");
+    expect(txt).toMatch(/250.000 €/);
     expect(txt).toContain("Guardo?");
   });
   it("não confunde conversa normal com edição", () => {
