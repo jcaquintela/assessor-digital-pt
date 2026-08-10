@@ -13,7 +13,7 @@ describe("feedback do produto", () => {
     expect(detectFeedbackIntent("marca visita amanhã às 10h")).toBeNull();
   });
   it("pergunta antes de gravar", () => {
-    expect(feedbackConfirmQuestion("bug")).toContain("registe isto como erro");
+    expect(feedbackConfirmQuestion("bug")).toContain("Guardo isto como erro em Erros, no dashboard");
   });
 });
 

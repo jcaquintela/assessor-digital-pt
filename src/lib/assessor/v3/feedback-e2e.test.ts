@@ -160,13 +160,13 @@ describe("E2E — sugestão anunciada num turno e escrita no seguinte", () => {
     expect(pendings[0].intent).toBe("collecting_feedback");
 
     const r2 = await turn(db, "sim, diz");
-    expect(r2).toMatch(/registad/i);
+    expect(r2).toMatch(/guardado/i);
 
     const r3 = await turn(db, "no Drive os ficheiros deviam ficar agrupados por imóvel automaticamente");
-    expect(r3).toMatch(/registe isto como sugest/i);
+    expect(r3).toMatch(/Guardo isto como sugest/i);
 
     const r4 = await turn(db, "sim");
-    expect(r4).toMatch(/registei/i);
+    expect(r4).toMatch(/Guardei a sugest/i);
     expect(saved).toHaveLength(1);
     expect(saved[0].kind).toBe("suggestion");
     expect(saved[0].body).toContain("Drive");

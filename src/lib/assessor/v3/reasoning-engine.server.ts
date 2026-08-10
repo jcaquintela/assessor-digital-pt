@@ -39,10 +39,11 @@ import { applySafetyNet, buildArchiveContent, archiveToMiscellaneous } from "./s
 import { isRegisterOnly, isAnswerablePending } from "../pending-answerable";
 import { formatQueryResults, isQueryTool } from "./query-results";
 import { detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
+import { isDiscardCommand } from "../culture/discard";
+import { enforceTransparentConfirmation } from "./write-receipt";
 import {
   isDiscardAudioRequest,
   UNDO_KEEP_WINDOW_MS,
-  UNDO_KEEP_DONE_REPLY,
   UNDO_KEEP_TOO_LATE_REPLY,
 } from "./audio-undo";
 import {
@@ -68,8 +69,7 @@ import {
   FEEDBACK_NOT_PRODUCT_REPLY,
   FEEDBACK_CANCELLED_REPLY,
   FEEDBACK_FAILED_REPLY,
-  FEEDBACK_SAVED_REPLY,
-  FEEDBACK_SAVED_WITH_ATTACHMENT_REPLY,
+  feedbackSavedReply,
   type FeedbackKind,
 } from "./feedback";
 import { saveProductFeedback } from "./feedback.server";
@@ -342,10 +342,14 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
           });
           return { reply: "Guardei o áudio no Drive Inteligente." };
         }
-        if (saIsRejection(trimmed)) {
+        if (saIsRejection(trimmed) || isDiscardCommand(trimmed)) {
           if (fileId) await discardAudioFile(supabase, fileId, userId);
           await markPendingActionStatus(supabase, mediaPending.id, "cancelled");
-          return { reply: "Certo, descartei o áudio. O que percebi dele fica guardado." };
+          // Descartar é descartar: sai o ficheiro E tudo o que dele saiu.
+          const { discardLastInput } = await import("./discard.server");
+          const { DISCARD_DONE_REPLY } = await import("../culture/discard");
+          await discardLastInput(supabase, userId, channel);
+          return { reply: DISCARD_DONE_REPLY };
         }
       }
 
@@ -353,14 +357,13 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       // mesmo, ou dizemos claramente que o ficheiro ficou guardado e como
       // removê-lo. Nunca "fica sem efeito" sem dizer que efeito.
       if (!mediaPending && isDiscardAudioRequest(trimmed)) {
-        const { discardAudioFile, findRecentlyKeptAudio } = await import("./audio-keep.server");
+        const { findRecentlyKeptAudio } = await import("./audio-keep.server");
+        const { discardLastInput } = await import("./discard.server");
+        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
         const kept = await findRecentlyKeptAudio(supabase, userId, channel, UNDO_KEEP_WINDOW_MS);
         if (kept) {
-          await discardAudioFile(supabase, kept.fileId, userId);
-          await markPendingActionStatus(supabase, kept.pendingId, "cancelled", {
-            error_message: "consultor desfez o guardar do áudio",
-          });
-          return { reply: UNDO_KEEP_DONE_REPLY };
+          await discardLastInput(supabase, userId, channel);
+          return { reply: DISCARD_DONE_REPLY };
         }
         const older = await findRecentlyKeptAudio(supabase, userId, channel, 7 * 24 * 60 * 60 * 1000);
         if (older) return { reply: UNDO_KEEP_TOO_LATE_REPLY };
@@ -609,6 +612,14 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
         await markPendingActionStatus(supabase, pending.id, "cancelled");
         return { reply: await askAudioFile("Está bem, não guardei nada do áudio.") };
       }
+      // "Descartar": sai tudo — itens, transcrição e o próprio ficheiro.
+      if (isDiscardCommand(trimmed)) {
+        const { discardLastInput } = await import("./discard.server");
+        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
+        await markPendingActionStatus(supabase, pending.id, "cancelled");
+        await discardLastInput(supabase, userId, channel);
+        return { reply: DISCARD_DONE_REPLY };
+      }
       // Correção a um item específico antes do "sim" — a proposta mantém-se
       // aberta e é reescrita já corrigida.
       {
@@ -801,7 +812,10 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       });
       if (!saved) return { reply: FEEDBACK_FAILED_REPLY };
       return {
-        reply: attachmentFileId ? FEEDBACK_SAVED_WITH_ATTACHMENT_REPLY : FEEDBACK_SAVED_REPLY,
+        reply: feedbackSavedReply(kind, {
+          title: body,
+          withAttachment: Boolean(attachmentFileId),
+        }),
       };
     }
 
@@ -1471,6 +1485,8 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   }
 
   const totalLatencyMs = Date.now() - started;
+  // Confirmação transparente: o quê + onde, sem prometer envios.
+  reply = enforceTransparentConfirmation(reply, toolResults as any, { executedOk });
   const inputTokens = thinkR.usage.inputTokens + decideR.usage.inputTokens;
   const outputTokens = thinkR.usage.outputTokens + decideR.usage.outputTokens;
   const success = allOk && !decideR.error && !thinkR.error;
