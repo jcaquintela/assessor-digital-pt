@@ -924,3 +924,55 @@ export const cancelPendingInvite = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+// Enquanto o template da Meta não está aprovado, o admin precisa de uma saída
+// à mão: gera-se o convite (link novo, o anterior por usar deixa de servir) e
+// devolve-se o texto pronto a copiar e um link wa.me para enviar do telemóvel.
+export type ManualInvite = { texto: string; url: string; waUrl: string | null; destino: string | null };
+
+export const prepareManualInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }): Promise<ManualInvite> => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("invite_send_attempts")
+      .select("user_id, canal")
+      .eq("id", data.id)
+      .maybeSingle();
+    const alvo = row as { user_id: string; canal: "whatsapp" | "telegram" } | null;
+    if (!alvo) throw new Error("Convite já não está na fila.");
+
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("name, phone")
+      .eq("id", alvo.user_id)
+      .maybeSingle();
+    const nome = (prof as { name?: string | null } | null)?.name ?? null;
+    const { normalizePhone } = await import("@/lib/whatsapp/phone");
+    const phone = alvo.canal === "whatsapp" ? normalizePhone((prof as { phone?: string | null } | null)?.phone ?? null) : null;
+
+    const { buildInviteMessage } = await import("@/lib/admin/invite-message.server");
+    const convite = await buildInviteMessage(supabaseAdmin, {
+      userId: alvo.user_id,
+      canal: alvo.canal,
+      nome,
+      phone,
+      reason: "Convite preparado para envio manual (template pendente).",
+      issuedBy: context.userId,
+    });
+
+    const { maskPhone } = await import("@/lib/whatsapp/invite-template");
+    await auditAccess(context.userId, "access.invite_manual_prepared", {
+      target_user_id: alvo.user_id,
+      metadata: { canal: alvo.canal, id: data.id },
+    });
+
+    return {
+      texto: convite.texto,
+      url: convite.url,
+      waUrl: phone ? `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(convite.texto)}` : null,
+      destino: phone ? maskPhone(phone) : null,
+    };
+  });
