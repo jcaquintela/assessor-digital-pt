@@ -48,21 +48,3 @@ export const countUnreadTeamSuggestions = createServerFn({ method: "GET" })
     };
   });
 
-const legacyUpdateTeamSuggestion = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
-    z
-      .object({
-        id: z.string().uuid(),
-        source: z.enum(["feedback", "diversos"]),
-        action: z.enum(["read", "unread", "archive"]),
-        internalNote: z.string().max(2000).optional(),
-      })
-      .parse(d),
-  )
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context, data }) => {
-    const { assertAdmin, applySuggestionAction } = await import("./suggestions-actions.server");
-    await assertAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    return applySuggestionAction(supabaseAdmin, context.userId, data);
-  });
