@@ -8,6 +8,7 @@ import { getConsultantDetail } from "@/lib/admin/consultor.functions";
 import { updateAccess, deactivateAccess, reactivateAccess } from "@/lib/admin/acessos.functions";
 import { getMyAdminRole } from "@/lib/admin.functions";
 import { InviteLinkDialog } from "@/components/admin/invite-link-dialog";
+import { AdminMessagesPanel } from "@/components/admin/admin-messages";
 import { confirmTrialPaid } from "@/lib/subscription/trial.functions";
 import { tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { fmtScore100, fmtPct } from "@/lib/admin/metrics-format";
@@ -258,6 +259,8 @@ function ConsultorPage() {
       {inviteOpen && (
         <InviteLinkDialog userId={p.id} nome={p.name || p.email || "conta"} onClose={() => setInviteOpen(false)} />
       )}
+
+      <AdminMessagesPanel consultorId={p.id} />
 
       <SectionTitle>Histórico administrativo desta conta</SectionTitle>
       {data.audit.length === 0 ? (

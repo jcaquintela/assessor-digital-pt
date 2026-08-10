@@ -23,6 +23,7 @@ import {
   type ExistingAccountMatch,
 } from "@/lib/admin/acessos.functions";
 import { getMyAdminRole } from "@/lib/admin.functions";
+import { countUnreadConsultantReplies } from "@/lib/admin/admin-messages.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { AccountMergeDialog, type MergeSource } from "@/components/admin/merge-dialog";
 import { startSupportSession } from "@/lib/admin/support-mode.functions";
@@ -146,6 +147,12 @@ function AcessosPageInner() {
   const { data: users, isPending } = useQuery({ queryKey: ["admin", "access-users"], queryFn: () => listFn() });
   const { data: promos } = useQuery({ queryKey: ["admin", "promo-codes"], queryFn: () => promosFn() });
   const { data: dups } = useQuery({ queryKey: ["admin", "duplicate-accounts"], queryFn: () => dupsFn() });
+  const repliesFn = useServerFn(countUnreadConsultantReplies);
+  const { data: respostas } = useQuery({
+    queryKey: ["admin", "respostas", "por-ler"],
+    queryFn: () => repliesFn(),
+    refetchInterval: 60_000,
+  });
 
   const [q, setQ] = useState("");
   const [sortCredits, setSortCredits] = useState(false);
@@ -193,6 +200,17 @@ function AcessosPageInner() {
         </button>
       </div>
 
+      {(respostas?.total ?? 0) > 0 ? (
+        <div className="admin-card mb-4 p-3">
+          <span className="mini">
+            {respostas!.total === 1
+              ? "1 resposta nova a uma pergunta da equipa, por ler."
+              : `${respostas!.total} respostas novas a perguntas da equipa, por ler.`}{" "}
+            Abre a ficha do consultor marcado para a ler.
+          </span>
+        </div>
+      ) : null}
+
       <table className="cards-sm">
         <thead>
           <tr>
@@ -221,6 +239,14 @@ function AcessosPageInner() {
                 <Link to="/admin/consultor/$id" params={{ id: u.id }} className="admin-link">
                   {u.name || u.email || "Ver ficha"}
                 </Link>
+                {(respostas?.porConsultor?.[u.id] ?? 0) > 0 ? (
+                  <>
+                    {" "}
+                    <Badge tone="warn">
+                      {respostas!.porConsultor[u.id]} resposta(s) por ler
+                    </Badge>
+                  </>
+                ) : null}
                 <br />
                 <span className="mini" style={{ color: "var(--muted)" }}>{u.email}</span>
               </td>
