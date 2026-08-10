@@ -38,6 +38,112 @@ export interface NudgeDraft {
   dedupe_key: string;
 }
 
+export const DOCUMENT_NUDGE_MAX_ATTEMPTS = 2;
+
+function isOpenNudgeStatus(status: unknown): boolean {
+  return status === "pending" || status === "sent" || status === "dispatching";
+}
+
+async function moveExhaustedDocumentNudgeToMisc(
+  supabase: any,
+  userId: string,
+  property: { id: string; title: string },
+  rows: any[],
+): Promise<void> {
+  const marker = `document_nudge:${property.id}`;
+  const { data: existing } = await supabase
+    .from("miscellaneous_items")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("source_message_id", marker)
+    .limit(1);
+  if (!((existing as any[]) ?? []).length) {
+    await supabase.from("miscellaneous_items").insert({
+      user_id: userId,
+      title: `Documentação em falta: ${property.title}`.slice(0, 120),
+      original_content: `Confirmar e pedir a documentação em falta do imóvel "${property.title}".`,
+      summary: `O Afonso perguntou ${DOCUMENT_NUDGE_MAX_ATTEMPTS} vezes sem obter uma resposta conclusiva. Ficou à espera de ação manual.`,
+      category: "Por tratar",
+      source_channel: "proactive",
+      source_message_id: marker,
+      status: "inbox",
+      occurred_at: new Date().toISOString(),
+      tags: ["documentação", "proatividade_esgotada"],
+    } as never);
+  }
+  const ids = rows.filter((row) => isOpenNudgeStatus(row.status)).map((row) => row.id);
+  if (ids.length) {
+    await supabase
+      .from("assessor_nudges")
+      .update({ status: "dismissed", outcome: "manual_follow_up", outcome_at: new Date().toISOString() } as never)
+      .in("id", ids);
+  }
+}
+
+export async function resolveLatestDocumentNudgeAnswer(
+  supabase: any,
+  args: { userId: string; channel: string; answer: "yes" | "no"; lastAssistantContent: string },
+): Promise<{ resolved: boolean; reply?: string }> {
+  const question = args.lastAssistantContent.trim();
+  if (!question) return { resolved: false };
+  const { data } = await supabase
+    .from("assessor_nudges")
+    .select("id, subject_id, suggested_reply, sent_at")
+    .eq("user_id", args.userId)
+    .eq("kind", "property_missing_docs")
+    .eq("status", "sent")
+    .is("outcome_at", null)
+    .order("sent_at", { ascending: false })
+    .limit(5);
+  const row = ((data as any[]) ?? []).find(
+    (candidate) => String(candidate.suggested_reply ?? "").trim() === question,
+  );
+  if (!row) return { resolved: false };
+
+  const now = new Date().toISOString();
+  await supabase
+    .from("assessor_nudges")
+    .update({ status: "resolved", outcome: args.answer, outcome_at: now } as never)
+    .eq("user_id", args.userId)
+    .eq("kind", "property_missing_docs")
+    .eq("subject_id", row.subject_id)
+    .is("outcome_at", null);
+
+  if (args.answer === "no") {
+    return { resolved: true, reply: "Certo, não volto a perguntar sobre este documento." };
+  }
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("title")
+    .eq("id", row.subject_id)
+    .eq("user_id", args.userId)
+    .maybeSingle();
+  const title = String((property as any)?.title ?? "este imóvel");
+  const marker = `document_nudge:${row.subject_id}`;
+  const { data: existing } = await supabase
+    .from("miscellaneous_items")
+    .select("id")
+    .eq("user_id", args.userId)
+    .eq("source_message_id", marker)
+    .limit(1);
+  if (!((existing as any[]) ?? []).length) {
+    await supabase.from("miscellaneous_items").insert({
+      user_id: args.userId,
+      title: `Pedir documentação: ${title}`.slice(0, 120),
+      original_content: `Pedir ao proprietário a documentação em falta do imóvel "${title}".`,
+      summary: "O consultor confirmou que quer tratar deste pedido.",
+      category: "Por tratar",
+      source_channel: args.channel,
+      source_message_id: marker,
+      status: "inbox",
+      occurred_at: now,
+      tags: ["documentação"],
+    } as never);
+  }
+  return { resolved: true, reply: `Certo — deixei o pedido da documentação de “${title}” em Diversos, por tratar.` };
+}
+
 function isWithinBusinessHours(now: Date): boolean {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Lisbon",
@@ -143,12 +249,27 @@ export async function generateNudgesForUser(
     .limit(20);
   const propIds = ((props as any[]) ?? []).map((p) => p.id);
   if (propIds.length) {
-    const { data: files } = await supabase
+    const [{ data: files }, { data: previousDocumentNudges }] = await Promise.all([
+      supabase
       .from("uploaded_files")
       .select("related_resource_id, document_type")
       .eq("user_id", userId)
       .eq("related_resource_type", "property")
-      .in("related_resource_id", propIds);
+      .in("related_resource_id", propIds),
+      supabase
+        .from("assessor_nudges")
+        .select("id, subject_id, status, outcome, outcome_at, sent_at, created_at")
+        .eq("user_id", userId)
+        .eq("kind", "property_missing_docs")
+        .in("subject_id", propIds)
+        .order("created_at", { ascending: false }),
+    ]);
+    const nudgesByProp = new Map<string, any[]>();
+    for (const nudge of ((previousDocumentNudges as any[]) ?? [])) {
+      const list = nudgesByProp.get(nudge.subject_id) ?? [];
+      list.push(nudge);
+      nudgesByProp.set(nudge.subject_id, list);
+    }
     const filesByProp = new Map<string, Set<string>>();
     for (const f of ((files as any[]) ?? [])) {
       const set = filesByProp.get(f.related_resource_id) ?? new Set<string>();
@@ -156,6 +277,14 @@ export async function generateNudgesForUser(
       filesByProp.set(f.related_resource_id, set);
     }
     for (const p of (props as any[]).slice(0, 2)) {
+      const history = nudgesByProp.get(p.id) ?? [];
+      if (history.some((row) => row.outcome_at || row.outcome)) continue;
+      if (history.some((row) => row.status === "pending" || row.status === "dispatching")) continue;
+      const attempts = history.filter((row) => row.status === "sent").length;
+      if (attempts >= DOCUMENT_NUDGE_MAX_ATTEMPTS) {
+        await moveExhaustedDocumentNudgeToMisc(supabase, userId, p, history);
+        continue;
+      }
       const set = filesByProp.get(p.id) ?? new Set<string>();
       const hasCaderneta = [...set].some((k) => k.includes("caderneta"));
       const hasCert = [...set].some((k) => k.includes("energ"));
@@ -259,7 +388,15 @@ export async function dispatchPendingNudges(
   const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
   const targets = new Map<string, { channel: "whatsapp" | "telegram"; externalId: string } | null>();
   for (const uid of userIds) targets.set(uid, await resolveOutboundTarget(supabase, uid));
+  const seenSubjects = new Set<string>();
   for (const row of rows) {
+    const subjectKey = `${row.user_id}:${row.subject_type ?? ""}:${row.subject_id ?? ""}:${String(row.dedupe_key ?? "").split(":")[0]}`;
+    if (row.subject_id && seenSubjects.has(subjectKey)) {
+      await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
+      skipped++;
+      continue;
+    }
+    if (row.subject_id) seenSubjects.add(subjectKey);
     const target = targets.get(row.user_id) ?? null;
     if (!target || !v3Set.has(row.user_id)) {
       await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);

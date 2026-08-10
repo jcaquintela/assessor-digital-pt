@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { generateNudgesForUser } from "./proactivity.server";
+import {
+  DOCUMENT_NUDGE_MAX_ATTEMPTS,
+  generateNudgesForUser,
+  resolveLatestDocumentNudgeAnswer,
+} from "./proactivity.server";
+import { makeFakeSupabase } from "@/lib/test-utils/fake-supabase";
 
 function fakeSupabase(fixtures: Record<string, any[]>) {
   const chain: any = {
@@ -56,5 +61,40 @@ describe("proactivity — regras", () => {
     const out = await generateNudgesForUser(sup as any, "u1");
     expect(out[0].dedupe_key).toMatch(/^followup_overdue:f1:/);
     expect(out[0].suggested_reply.toLowerCase()).not.toContain("payload");
+  });
+
+  it("não cria outro nudge documental enquanto existe um pendente", async () => {
+    const sup = makeFakeSupabase({
+      assessor_nudges: [{ id: "n1", user_id: "u1", kind: "property_missing_docs", subject_id: "p1", status: "pending", outcome: null, outcome_at: null }],
+      opportunities: [], follow_ups: [],
+      properties: [{ id: "p1", title: "Moradia", status: "active", created_at: "2025-01-01" }],
+      uploaded_files: [], assessor_messages: [{ role: "user", created_at: new Date().toISOString() }],
+    });
+    expect(await generateNudgesForUser(sup as any, "u1")).toEqual([]);
+  });
+
+  it(`ao fim de ${DOCUMENT_NUDGE_MAX_ATTEMPTS} perguntas passa para Diversos e deixa de insistir`, async () => {
+    const sup = makeFakeSupabase({
+      assessor_nudges: [1, 2].map((n) => ({ id: `n${n}`, user_id: "u1", kind: "property_missing_docs", subject_id: "p1", status: "sent", outcome: null, outcome_at: null })),
+      opportunities: [], follow_ups: [],
+      properties: [{ id: "p1", title: "Moradia", status: "active", created_at: "2025-01-01" }],
+      uploaded_files: [], miscellaneous_items: [], assessor_messages: [{ role: "user", created_at: new Date().toISOString() }],
+    });
+    expect(await generateNudgesForUser(sup as any, "u1")).toEqual([]);
+    expect(sup.state.miscellaneous_items).toHaveLength(1);
+    expect(sup.state.miscellaneous_items[0]).toMatchObject({ category: "Por tratar", status: "inbox" });
+    expect(sup.state.assessor_nudges.every((n) => n.status === "dismissed")).toBe(true);
+  });
+
+  it("regista um não e fecha todas as repetições do mesmo imóvel", async () => {
+    const question = 'Falta a caderneta no imóvel "Moradia". Peço ao proprietário?';
+    const sup = makeFakeSupabase({
+      assessor_nudges: [1, 2].map((n) => ({ id: `n${n}`, user_id: "u1", kind: "property_missing_docs", subject_id: "p1", status: "sent", suggested_reply: question, sent_at: `2026-08-0${n}T08:00:00Z`, outcome_at: null })),
+    });
+    const result = await resolveLatestDocumentNudgeAnswer(sup as any, {
+      userId: "u1", channel: "whatsapp", answer: "no", lastAssistantContent: question,
+    });
+    expect(result.resolved).toBe(true);
+    expect(sup.state.assessor_nudges.every((n) => n.status === "resolved" && n.outcome === "no")).toBe(true);
   });
 });
