@@ -2048,6 +2048,62 @@ export type Database = {
           },
         ]
       }
+      invite_send_attempts: {
+        Row: {
+          attempts: number
+          canal: string
+          created_at: string
+          destino: string | null
+          error_code: number | null
+          id: string
+          last_attempt_at: string
+          reason: string | null
+          requested_by: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          canal?: string
+          created_at?: string
+          destino?: string | null
+          error_code?: number | null
+          id?: string
+          last_attempt_at?: string
+          reason?: string | null
+          requested_by?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          canal?: string
+          created_at?: string
+          destino?: string | null
+          error_code?: number | null
+          id?: string
+          last_attempt_at?: string
+          reason?: string | null
+          requested_by?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_send_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landing_page_visits: {
         Row: {
           created_at: string

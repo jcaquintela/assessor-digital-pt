@@ -480,6 +480,17 @@ export const issueInviteLink = createServerFn({ method: "POST" })
         destino = r.destino;
         via = r.via;
         if (!r.enviado) erroEnvio = r.erro ?? "Não foi possível enviar a mensagem.";
+        // Falhou? Fica na fila de reenvio (o template pode ainda estar por
+        // aprovar) e sai sozinho quando der.
+        const { recordInviteAttempt } = await import("@/lib/admin/invite-retry.server");
+        await recordInviteAttempt(supabaseAdmin, {
+          userId: data.target_user_id,
+          canal: data.canal,
+          enviado: r.enviado,
+          destino: r.destino,
+          erro: r.erro ?? null,
+          requestedBy: context.userId,
+        });
       } catch (e) {
         erroEnvio = e instanceof Error ? e.message : "Não foi possível enviar a mensagem.";
       }
@@ -819,6 +830,97 @@ export const revokePromoCode = createServerFn({ method: "POST" })
       resource_id: (before as any)?.code ?? data.id,
       before: before ?? null,
       after: { ...(before ?? {}), active: false },
+    });
+    return { ok: true };
+  });
+
+// ── Convites por reenviar ──────────────────────────────────────────────────
+// Tudo o que falhou (tipicamente template ainda por aprovar) fica numa fila
+// visível no admin, com "Reenviar" à mão e reenvio automático quando o
+// template for aprovado.
+
+export type PendingInviteRow = {
+  id: string;
+  user_id: string;
+  nome: string | null;
+  email: string | null;
+  canal: "whatsapp" | "telegram";
+  status: string;
+  reason: string | null;
+  destino: string | null;
+  attempts: number;
+  last_attempt_at: string;
+};
+
+export const listPendingInvites = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<PendingInviteRow[]> => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("invite_send_attempts")
+      .select("id, user_id, canal, status, reason, destino, attempts, last_attempt_at")
+      .in("status", ["pendente", "esgotado"])
+      .order("last_attempt_at", { ascending: false })
+      .limit(100);
+    const rows = (data ?? []) as Array<Omit<PendingInviteRow, "nome" | "email">>;
+    if (!rows.length) return [];
+    const { data: profs } = await supabaseAdmin
+      .from("profiles")
+      .select("id, name, email")
+      .in("id", rows.map((r) => r.user_id));
+    const byId = new Map(
+      ((profs ?? []) as Array<{ id: string; name: string | null; email: string | null }>).map((p) => [p.id, p]),
+    );
+    return rows.map((r) => ({
+      ...r,
+      nome: byId.get(r.user_id)?.name ?? null,
+      email: byId.get(r.user_id)?.email ?? null,
+    }));
+  });
+
+export const resendInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("invite_send_attempts")
+      .select("user_id, canal")
+      .eq("id", data.id)
+      .maybeSingle();
+    const alvo = row as { user_id: string; canal: "whatsapp" | "telegram" } | null;
+    if (!alvo) throw new Error("Convite já não está na fila.");
+
+    const { retryInvite } = await import("@/lib/admin/invite-retry.server");
+    const r = await retryInvite(supabaseAdmin, {
+      userId: alvo.user_id,
+      canal: alvo.canal,
+      requestedBy: context.userId,
+    });
+    await auditAccess(context.userId, "access.invite_resent", {
+      target_user_id: alvo.user_id,
+      metadata: { canal: alvo.canal, enviado: r.enviado, erro: r.erro ?? null },
+    });
+    return r;
+  });
+
+export const cancelPendingInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("invite_send_attempts")
+      .select("user_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    await supabaseAdmin.from("invite_send_attempts").update({ status: "cancelado" }).eq("id", data.id);
+    await auditAccess(context.userId, "access.invite_cancelled", {
+      target_user_id: (row as { user_id?: string } | null)?.user_id ?? null,
+      metadata: { id: data.id },
     });
     return { ok: true };
   });
