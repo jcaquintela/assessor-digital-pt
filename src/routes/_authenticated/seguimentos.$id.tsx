@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
+import { classifyEvent } from "@/lib/assessor/event-class";
 import { assuntoDeSeguimento } from "@/lib/assessor/assunto";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
