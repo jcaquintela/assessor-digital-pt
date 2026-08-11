@@ -333,6 +333,19 @@ function SeguimentoView({ s }: { s: Seguimento }) {
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid gap-2">
+              <Label>Tipo de compromisso</Label>
+              <Select value={classe} onValueChange={setClasse}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="negocio">De negócio (pede resultado)</SelectItem>
+                  <SelectItem value="interno">Interno (não pede resultado)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Reuniões internas de equipa não contam como seguimentos em atraso nem perguntam "como correu".
+              </p>
+            </div>
           </CardContent>
         </Card>
 
