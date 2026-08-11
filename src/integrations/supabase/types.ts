@@ -1908,6 +1908,7 @@ export type Database = {
           created_by_assessor: boolean
           due_date: string
           due_time: string | null
+          event_class: string | null
           external_reference: string | null
           id: string
           next_action_created_id: string | null
@@ -1940,6 +1941,7 @@ export type Database = {
           created_by_assessor?: boolean
           due_date?: string
           due_time?: string | null
+          event_class?: string | null
           external_reference?: string | null
           id?: string
           next_action_created_id?: string | null
@@ -1972,6 +1974,7 @@ export type Database = {
           created_by_assessor?: boolean
           due_date?: string
           due_time?: string | null
+          event_class?: string | null
           external_reference?: string | null
           id?: string
           next_action_created_id?: string | null

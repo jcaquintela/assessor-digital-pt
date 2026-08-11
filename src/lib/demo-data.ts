@@ -86,6 +86,10 @@ export interface Seguimento {
   prioridade: SeguimentoPrioridade;
   notas?: string;  /** Arquivado (soft-delete reversível). Nada é apagado por conversa. */
   arquivadoEm?: string;
+  /** Imóvel associado (quando existe). */
+  imovelId?: string;
+  /** Classificação do compromisso: "negocio" ou "interno" (override manual). */
+  classeEvento?: string;
 }
 
 export interface Documento {

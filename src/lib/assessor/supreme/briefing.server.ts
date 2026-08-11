@@ -3,7 +3,7 @@
 
 import type { NudgeDraft } from "../v3/proactivity.server";
 import { sanitizeReply } from "../culture/sanitize";
-import { hasCommercialOutcomeContext } from "../outcome-eligibility";
+import { requiresOutcome } from "@/lib/follow-ups/pending";
 import { belongsInDailyAgenda } from "../agenda-leisure";
 import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
 import { computePriorities } from "./priorities.server";
@@ -203,7 +203,8 @@ export async function generateSupremeNudges(
     .filter((ev) => isFollowUpEvent(ev) && isFollowUpOpen(ev))
     .slice(0, 3);
   for (const ev of ended) {
-    if (!hasCommercialOutcomeContext(ev)) continue;
+    // Reunião interna nunca pede "Como correu?" — só compromissos de negócio.
+    if (!requiresOutcome(ev)) continue;
     let personName: string | null = null;
     if (ev.person_id) {
       const { data: person } = await supabase.from("people").select("name").eq("id", ev.person_id).maybeSingle();

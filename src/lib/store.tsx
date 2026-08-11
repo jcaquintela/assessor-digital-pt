@@ -100,6 +100,8 @@ const toSeguimento = (r: Row): Seguimento => ({
   prioridade: (r.priority ?? "Média") as Seguimento["prioridade"],
   notas: r.notes ?? undefined,
   arquivadoEm: r.archived_at ?? undefined,
+  imovelId: r.related_property_id ?? undefined,
+  classeEvento: r.event_class ?? undefined,
 });
 
 const toDespesa = (r: Row): Despesa => ({
@@ -298,6 +300,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (patch.estado !== undefined) p.status = patch.estado;
     if (patch.prioridade !== undefined) p.priority = patch.prioridade;
     if (patch.notas !== undefined) p.notes = patch.notas;
+    if (patch.classeEvento !== undefined) p.event_class = patch.classeEvento || null;
     const { error } = await supabase.from("follow_ups").update(p as never).eq("id", id);
     if (error) throw error;
     syncCalendars(id, "upsert");

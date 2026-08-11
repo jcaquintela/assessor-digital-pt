@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
+import { classifyEvent } from "@/lib/assessor/event-class";
 import { assuntoDeSeguimento } from "@/lib/assessor/assunto";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -70,6 +71,8 @@ function SeguimentoDetail() {
         estado: (r.status ?? "Pendente") as SeguimentoEstado,
         prioridade: (r.priority ?? "Média") as SeguimentoPrioridade,
         notas: r.notes ?? undefined,
+        imovelId: r.related_property_id ?? undefined,
+        classeEvento: r.event_class ?? undefined,
       };
     },
   });
@@ -106,6 +109,15 @@ function SeguimentoView({ s }: { s: Seguimento }) {
   const [pessoaId, setPessoaId] = useState(s?.pessoaId ?? "");
   const [oportunidadeId, setOportunidadeId] = useState(s?.oportunidadeId ?? "");
   const [notas, setNotas] = useState(s?.notas ?? "");
+  // Compromisso de negócio vs reunião interna. Só o de negócio pede resultado.
+  const [classe, setClasse] = useState<string>(
+    s?.classeEvento ?? classifyEvent({
+      title: s?.titulo ?? null,
+      person_id: s?.pessoaId ?? null,
+      related_property_id: s?.imovelId ?? null,
+      opportunity_id: s?.oportunidadeId ?? null,
+    }),
+  );
   const [busy, setBusy] = useState(false);
 
   const pessoa = pessoas.find((p) => p.id === s.pessoaId);
@@ -120,6 +132,12 @@ function SeguimentoView({ s }: { s: Seguimento }) {
     prioridade !== s.prioridade ||
     (pessoaId || "") !== (s.pessoaId || "") ||
     (oportunidadeId || "") !== (s.oportunidadeId || "") ||
+    classe !== (s.classeEvento ?? classifyEvent({
+      title: s.titulo ?? null,
+      person_id: s.pessoaId ?? null,
+      related_property_id: s.imovelId ?? null,
+      opportunity_id: s.oportunidadeId ?? null,
+    })) ||
     (notas || "") !== (s.notas || "");
 
   const guardar = async () => {
@@ -134,6 +152,7 @@ function SeguimentoView({ s }: { s: Seguimento }) {
         estado, prioridade,
         pessoaId: pessoaId || undefined,
         oportunidadeId: oportunidadeId || undefined,
+        classeEvento: classe,
         notas: notas.trim() || undefined,
       });
       toast.success("Alterações guardadas.");
@@ -315,6 +334,19 @@ function SeguimentoView({ s }: { s: Seguimento }) {
                   {PRIORIDADES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Tipo de compromisso</Label>
+              <Select value={classe} onValueChange={setClasse}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="negocio">De negócio (pede resultado)</SelectItem>
+                  <SelectItem value="interno">Interno (não pede resultado)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Reuniões internas de equipa não contam como seguimentos em atraso nem perguntam "como correu".
+              </p>
             </div>
           </CardContent>
         </Card>

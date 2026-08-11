@@ -39,6 +39,7 @@ import { isDealActive } from "@/lib/deals/stages";
 import { useNow } from "@/hooks/use-now";
 import { buildAgendaView, tomorrowLabel, type DayEvent } from "@/lib/agenda/day-events";
 import { lisbonYmd } from "@/lib/assessor/lisbon-day";
+import { fromSeguimento, isOverdueFollowUp, requiresOutcome } from "@/lib/follow-ups/pending";
 
 type HojeSearch = { filtro?: "imoveis-por-confirmar" };
 
@@ -57,10 +58,6 @@ export const Route = createFileRoute("/_authenticated/hoje")({
   },
   component: HojePage,
 });
-
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
 
 function greeting(now: Date) {
   const h = now.getHours();
@@ -218,10 +215,9 @@ function HojePage() {
   const agenda = useMemo(() => buildAgendaView(eventosBrutos, now), [eventosBrutos, now]);
   const eventosHoje = agenda.upcoming;
   const atrasados = useMemo(
-    () =>
-      seguimentos.filter(
-        (s) => isOpenFollowUpStatus(s.estado) && new Date(s.data) < now && !isSameDay(new Date(s.data), now),
-      ),
+    // Fonte única: banner, "Isto merece atenção" e "As minhas prioridades"
+    // leem daqui — nunca cada um com a sua própria regra.
+    () => seguimentos.filter((s) => isOverdueFollowUp(fromSeguimento(s as any), now)),
     [seguimentos, now],
   );
   const oportSemAcao = useMemo(
@@ -298,7 +294,8 @@ function HojePage() {
 
   const localAwaiting: Awaiting[] = useMemo(
     () => atrasados
-      .filter((s) => s.tipo === "Evento")
+      // Mesma regra do servidor: só compromissos de negócio pedem resultado.
+      .filter((s) => s.tipo === "Evento" && requiresOutcome(fromSeguimento(s as any)))
       .slice(0, 5)
       .map((s) => ({
         id: s.id,
