@@ -71,6 +71,8 @@ function SeguimentoDetail() {
         estado: (r.status ?? "Pendente") as SeguimentoEstado,
         prioridade: (r.priority ?? "Média") as SeguimentoPrioridade,
         notas: r.notes ?? undefined,
+        imovelId: r.related_property_id ?? undefined,
+        classeEvento: r.event_class ?? undefined,
       };
     },
   });
