@@ -391,20 +391,19 @@ export async function findAwaitingOutcome(
   userId: string,
   now = new Date(),
 ): Promise<AwaitingOutcomeItem[]> {
-  const { hasCommercialOutcomeContext } = await import("@/lib/assessor/outcome-eligibility");
   const { data } = await supabase
     .from("follow_ups")
-    .select("id, title, due_date, person_id, related_property_id, opportunity_id")
+    .select("id, title, due_date, due_time, type, person_id, related_property_id, opportunity_id, event_class")
     .eq("user_id", userId)
     .is("outcome", null)
     .not("status", "in", "(Concluído,Concluido,concluido,Arquivado,arquivado,Cancelado,cancelado)")
     .lt("due_date", now.toISOString())
     .order("due_date", { ascending: false })
     .limit(10);
-  // O calendário externo também cria follow_ups. Sem uma ligação explícita a
-  // Pessoa, Imóvel ou Negócio, são compromissos genéricos e não devem pedir
-  // uma avaliação qualitativa ao consultor.
-  const rows = ((data as any[]) ?? []).filter(hasCommercialOutcomeContext);
+  // O calendário externo também cria follow_ups. Sem ligação a Pessoa, Imóvel
+  // ou Negócio — ou quando o título é de reunião interna — são compromissos
+  // genéricos e não devem pedir uma avaliação qualitativa ao consultor.
+  const rows = ((data as any[]) ?? []).filter(requiresOutcome);
   if (!rows.length) return [];
   const pids = [...new Set(rows.map((r) => r.person_id).filter(Boolean))];
   const names = new Map<string, string>();
