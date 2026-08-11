@@ -218,10 +218,9 @@ function HojePage() {
   const agenda = useMemo(() => buildAgendaView(eventosBrutos, now), [eventosBrutos, now]);
   const eventosHoje = agenda.upcoming;
   const atrasados = useMemo(
-    () =>
-      seguimentos.filter(
-        (s) => isOpenFollowUpStatus(s.estado) && new Date(s.data) < now && !isSameDay(new Date(s.data), now),
-      ),
+    // Fonte única: banner, "Isto merece atenção" e "As minhas prioridades"
+    // leem daqui — nunca cada um com a sua própria regra.
+    () => seguimentos.filter((s) => isOverdueFollowUp(fromSeguimento(s as any), now)),
     [seguimentos, now],
   );
   const oportSemAcao = useMemo(
