@@ -5,6 +5,7 @@ import { lisbonYmd, ymdDiffDays, endOfLisbonDayIso } from "@/lib/assessor/lisbon
 import { hasCommercialOutcomeContext } from "@/lib/assessor/outcome-eligibility";
 import { belongsInDailyAgenda } from "@/lib/assessor/agenda-leisure";
 import { isFollowUpClosed, isFollowUpEvent, followUpStateLabel as canonicalStateLabel } from "@/lib/follow-ups/state";
+import { isInternalMeeting, requiresOutcome } from "@/lib/follow-ups/pending";
 import { eventWindow, isEventOver } from "./event-window";
 
 /** De onde veio o item — o consultor tem de perceber o que está a olhar. */
@@ -86,7 +87,7 @@ export async function computePriorities(
   const [{ data: follows }, { data: opps }] = await Promise.all([
     supabase
       .from("follow_ups")
-      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, related_property_id, outcome, created_at, notes, archived_at")
+      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, related_property_id, outcome, created_at, notes, archived_at, event_class")
       .eq("user_id", userId)
       // O filtro de "aberto/fechado" é aplicado em memória pela regra
       // canónica: `precisa_nova_acao` e `adiado` continuam abertos e têm de
@@ -167,6 +168,9 @@ export async function computePriorities(
     // O filtro estrito (ligação a Pessoa/Imóvel/Negócio) fica reservado aos
     // check-ins "Como correu X?" — ver findAwaitingOutcome.
     if (providerLink && !belongsInDailyAgenda(f)) continue;
+    // Reunião interna (equipa, 1:1, administrativo) não é seguimento: pode
+    // aparecer na agenda do dia, nunca como prioridade em atraso.
+    if (isInternalMeeting(f) && overdueDays > 0) continue;
     // Um compromisso que já aconteceu não se prepara. Vale para qualquer
     // compromisso com hora: às 15:30 já não se prepara o das 10:00.
     if (isEvent && isEventOver(f, now)) continue;
