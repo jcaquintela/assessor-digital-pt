@@ -298,7 +298,8 @@ function HojePage() {
 
   const localAwaiting: Awaiting[] = useMemo(
     () => atrasados
-      .filter((s) => s.tipo === "Evento")
+      // Mesma regra do servidor: só compromissos de negócio pedem resultado.
+      .filter((s) => s.tipo === "Evento" && requiresOutcome(fromSeguimento(s as any)))
       .slice(0, 5)
       .map((s) => ({
         id: s.id,
