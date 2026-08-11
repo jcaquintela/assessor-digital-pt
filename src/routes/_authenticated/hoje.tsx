@@ -39,6 +39,7 @@ import { isDealActive } from "@/lib/deals/stages";
 import { useNow } from "@/hooks/use-now";
 import { buildAgendaView, tomorrowLabel, type DayEvent } from "@/lib/agenda/day-events";
 import { lisbonYmd } from "@/lib/assessor/lisbon-day";
+import { fromSeguimento, isOverdueFollowUp, requiresOutcome } from "@/lib/follow-ups/pending";
 
 type HojeSearch = { filtro?: "imoveis-por-confirmar" };
 
