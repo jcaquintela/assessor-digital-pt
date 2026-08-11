@@ -59,10 +59,6 @@ export const Route = createFileRoute("/_authenticated/hoje")({
   component: HojePage,
 });
 
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
 function greeting(now: Date) {
   const h = now.getHours();
   if (h < 12) return "Bom dia";
