@@ -24,6 +24,7 @@ import { TOOL_REGISTRY } from "../v2/domain.server";
 import {
   findActivePendingAction,
   markPendingActionStatus,
+  createPendingAction,
 } from "../memory.server";
 import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from "../culture/short-answers";
 import {
