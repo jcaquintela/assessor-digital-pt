@@ -41,7 +41,10 @@ jobs:
           timeout_minutes: 8
           max_attempts: 3
           retry_wait_seconds: 20
-          command: bun run test:isolation
+          # Só repete quando o wrapper sinaliza falha transitória (exit 75:
+          # 5xx/429/rede). Falhas de isolamento saem com 1 e falham já.
+          retry_on_exit_code: 75
+          command: bash scripts/ci/run-isolation.sh
         env:
           CI: "true"
           TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
