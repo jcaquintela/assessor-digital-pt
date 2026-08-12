@@ -52,15 +52,27 @@ describe("nome do convite é sempre o do destinatário", () => {
     expect(JSON.stringify(p)).not.toContain(admin.split(" ")[0]);
   });
 
-  it("mensagem de texto (dentro das 24h) também saúda o convidado", async () => {
+  it("mensagem de texto (dentro das 24h) usa voz do Afonso em primeira pessoa", async () => {
     const { formatInviteMessage } = await import("@/lib/admin/invite-message.server");
     const texto = formatInviteMessage({
       nome: "Teste Beta",
       url: "https://app.meuafonso.com/entrar?token=tok123",
-      codigo: null,
+      codigo: "LIGAR-1234",
       numeroAfonso: "+351912345678",
     });
     expect(texto).toContain("Olá Teste, bem-vindo ao Afonso.");
+    expect(texto).toContain("Guarda o meu número, é por aqui que vamos falar");
+    expect(texto).toContain("Manda-me este código de acesso");
+    expect(texto).toContain("Depois disso é só falares comigo como agora.");
     expect(texto).not.toContain("Julio");
+    expect(texto).not.toContain("do Afonso");
+    expect(texto).not.toContain("falas comigo");
   });
 });
+
+describe("voz do template aprovada em primeira pessoa", () => {
+  it("nunca usa terceira pessoa para falar do Afonso", () => {
+    const p: any = inviteTemplatePayload("Teste Beta", "https://app.meuafonso.com/entrar?token=tok123", "+351912345678", "LIGAR-1234");
+    expect(p.template.name).toBe("afonso_convite_painel_v2");
+    expect(p.template.components[0].parameters[0].text).toBe("Teste");
+  });
