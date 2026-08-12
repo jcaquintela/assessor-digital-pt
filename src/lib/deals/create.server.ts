@@ -17,6 +17,8 @@ export interface CreateDealCoreInput {
   value?: number | null;
   notes?: string | null;
   source?: "dashboard" | "assessor" | "imovel";
+  /** Contacto de prospeção (placa, referência) que deu origem a este negócio. */
+  sourceLeadId?: string | null;
   /** Movimentos financeiros a ligar explicitamente a este negócio. */
   linkMovementIds?: string[] | null;
 }
@@ -101,6 +103,7 @@ export async function createDealCore(
 ): Promise<CreateDealCoreResult> {
   const personId = (input.personId ?? "") || null;
   const propertyId = (input.propertyId ?? "") || null;
+  const sourceLeadId = (input.sourceLeadId ?? "") || null;
 
   // Nomes só para compor o título quando falta — nunca para validar.
   let personName: string | null = null;
@@ -122,6 +125,16 @@ export async function createDealCore(
 
   const existing = await findExistingDeal(supabase, userId, { personId, propertyId, kind: min.kind });
   if (existing) {
+    // Não perder a origem: se o negócio já existia sem lead de origem e agora
+    // sabemos qual foi, preenchemos — nunca sobrepomos uma origem já registada.
+    if (sourceLeadId) {
+      try {
+        await supabase
+          .from("opportunities")
+          .update({ source_lead_id: sourceLeadId } as never)
+          .eq("id", existing.id).eq("user_id", userId).is("source_lead_id", null);
+      } catch { /* a origem nunca pode fazer falhar a criação */ }
+    }
     const linked = await linkMovementsToDeal(supabase, userId, existing.id, {
       propertyId, ids: input.linkMovementIds ?? null,
     });
@@ -138,6 +151,7 @@ export async function createDealCore(
     status: legacyStatusForStage(stage),
     person_id: personId,
     property_id: propertyId,
+    source_lead_id: sourceLeadId,
     value: input.value ?? 0,
     notes: input.notes || null,
     stage_changed_at: new Date().toISOString(),
