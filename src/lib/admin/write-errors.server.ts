@@ -133,3 +133,35 @@ export async function fetchWriteErrors(
     hours,
   };
 }
+
+/**
+ * Tendência das falhas de modelo com recurso (fallback). Não há perda de dados,
+ * mas é o melhor sinal de saúde do motor: se sobe, algo está a demorar demais.
+ */
+export async function fetchModelFallbackTrend(
+  supabaseAdmin: any,
+): Promise<{ d7: number; d30: number; prev7: number; lastAt: string | null; avgLatencyMs: number | null }> {
+  const from30 = since(24 * 30);
+  const { data } = await supabaseAdmin
+    .from("assessor_ai_logs")
+    .select("created_at, latency_ms, tool_name, fallback_used")
+    .eq("success", false)
+    .eq("fallback_used", true)
+    .gte("created_at", from30)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  const rows = ((data ?? []) as any[]).filter((r) => !r.tool_name);
+  const c7 = since(24 * 7);
+  const c14 = since(24 * 14);
+  const in7 = rows.filter((r) => r.created_at >= c7);
+  const prev7 = rows.filter((r) => r.created_at < c7 && r.created_at >= c14).length;
+  const lat = rows.map((r) => Number(r.latency_ms)).filter((n) => Number.isFinite(n) && n > 0);
+  return {
+    d7: in7.length,
+    d30: rows.length,
+    prev7,
+    lastAt: rows[0]?.created_at ?? null,
+    avgLatencyMs: lat.length ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length) : null,
+  };
+}
