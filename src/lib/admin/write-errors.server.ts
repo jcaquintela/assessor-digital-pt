@@ -14,6 +14,10 @@ export type WriteErrorItem = {
   user_id: string | null;
   consultant: string | null;
   arguments: string | null;
+  /** Só falhas de ferramenta com argumentos guardados podem ser reexecutadas. */
+  retryable: boolean;
+  /** id cru da linha em assessor_tool_calls, para a reexecução. */
+  raw_id: string | null;
   result: string | null;
 };
 
@@ -58,6 +62,8 @@ export async function fetchWriteErrors(
       latency_ms: r.latency_ms ?? null,
       user_id: r.user_id ?? null,
       consultant: null,
+      retryable: !!r.arguments && !!r.tool_name,
+      raw_id: r.id,
       arguments: r.arguments ? JSON.stringify(r.arguments, null, 2) : null,
       result: r.result ? JSON.stringify(r.result, null, 2) : null,
     })),
@@ -72,6 +78,8 @@ export async function fetchWriteErrors(
       latency_ms: r.latency_ms ?? null,
       user_id: r.user_id ?? null,
       consultant: null,
+      retryable: false,
+      raw_id: null,
       arguments: null,
       result: null,
     })),
