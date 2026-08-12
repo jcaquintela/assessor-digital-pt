@@ -21,12 +21,17 @@ describe("convite pelo Afonso — template e destino", () => {
     expect(maskPhone("351912345678")).toBe("+351 9XX XXX 678");
   });
 
-  it("monta o payload do template aprovado com nome e token no botão", () => {
+  it("monta o payload do template aprovado com nome, link, número e código", () => {
     const token = tokenFromUrl("https://app.meuafonso.com/entrar?token=abc123&x=1");
     expect(token).toBe("abc123");
-    const p: any = inviteTemplatePayload("Júlio Quintela", token!);
+    const p: any = inviteTemplatePayload("Júlio Quintela", "https://app.meuafonso.com/entrar?token=abc123", "+351912345678", "ABCD-1234");
     expect(p.template.name).toBe(TEMPLATE_INVITE);
-    expect(p.template.components[0].parameters[0].text).toBe("Júlio");
+    expect(p.template.components[0].parameters.map((x: any) => x.text)).toEqual([
+      "Júlio",
+      "https://app.meuafonso.com/entrar?token=abc123",
+      "+351912345678",
+      "ABCD-1234",
+    ]);
     expect(p.template.components[1]).toMatchObject({ type: "button", sub_type: "url", index: "0" });
     expect(p.template.components[1].parameters[0].text).toBe("abc123");
   });
@@ -42,7 +47,7 @@ describe("nome do convite é sempre o do destinatário", () => {
   it("usa o nome do convidado, não o do admin que envia", () => {
     const admin = "Julio Quintela";
     const convidado = "Teste Beta";
-    const p: any = inviteTemplatePayload(convidado, "tok123");
+    const p: any = inviteTemplatePayload(convidado, "https://app.meuafonso.com/entrar?token=tok123", "+351912345678", "ABCD-1234");
     expect(p.template.components[0].parameters[0].text).toBe("Teste");
     expect(JSON.stringify(p)).not.toContain(admin.split(" ")[0]);
   });

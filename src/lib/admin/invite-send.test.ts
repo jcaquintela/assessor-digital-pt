@@ -30,7 +30,7 @@ function db(rows: { link?: string | null; phone?: string | null }) {
   } as any;
 }
 
-const base = { userId: "u1", canal: "whatsapp" as const, nome: "Júlio", texto: "Olá", url: "https://app.meuafonso.com/entrar?token=tok1" };
+const base = { userId: "u1", canal: "whatsapp" as const, nome: "Júlio", texto: "Olá", url: "https://app.meuafonso.com/entrar?token=tok1", numeroAfonso: "+351912345678", codigo: "ABCD-1234" };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -44,7 +44,7 @@ describe("golden — envio do convite pelo Afonso", () => {
     const r = await sendInvite(db({ phone: "+351 912 345 678" }), base);
     expect(r).toMatchObject({ enviado: true, via: "template", destino: "+351 9XX XXX 678" });
     const [, payload, opts] = sendPayload.mock.calls[0];
-    expect((payload as any).template.name).toBe("afonso_convite_painel");
+    expect((payload as any).template.name).toBe("afonso_convite_painel_v2");
     expect(opts.meta).toMatchObject({ purpose: "invite_access", outsideWindow: true });
   });
 
