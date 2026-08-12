@@ -18,7 +18,30 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
+      - name: Wait for backend to be healthy
+        env:
+          TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -u
+          delay=2
+          for i in $(seq 1 8); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "apikey: $TEST_SUPABASE_PUBLISHABLE_KEY" \
+              "$TEST_SUPABASE_URL/auth/v1/health" || echo 000)
+            echo "tentativa $i: HTTP $code"
+            if [ "$code" = "200" ]; then echo "backend pronto"; exit 0; fi
+            sleep $delay
+            delay=$(( delay * 2 > 20 ? 20 : delay * 2 ))
+          done
+          echo "backend não respondeu 200 — os testes vão fazer retry na mesma"
       - name: Run assessor-files cross-tenant isolation test
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 8
+          max_attempts: 3
+          retry_wait_seconds: 20
+          command: bun run test:isolation
         env:
           CI: "true"
           TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
@@ -32,4 +55,3 @@ jobs:
           TEST_USER_A_PASSWORD: ${{ secrets.TEST_USER_A_PASSWORD }}
           TEST_USER_B_EMAIL: ${{ secrets.TEST_USER_B_EMAIL }}
           TEST_USER_B_PASSWORD: ${{ secrets.TEST_USER_B_PASSWORD }}
-        run: bun run test:isolation
