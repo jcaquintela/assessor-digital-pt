@@ -8,9 +8,9 @@
 //
 // Ordem das regras (a primeira que decide, manda):
 //   1. Reclassificação manual do consultor (`event_class` na BD).
-//   2. Título claramente interno ("equipa", "operações", "1:1", ...).
-//   3. Ligação explícita a Pessoa / Imóvel / Negócio → negócio.
-//   4. Sem qualquer ligação → interno por omissão.
+//   2. Sem ligação a Pessoa / Imóvel / Negócio → interno, sem excepções.
+//   3. Título claramente interno ("equipa", "operações", "1:1", ...).
+//   4. Só um compromisso ligado ao negócio pode ser classificado como negócio.
 
 import { hasCommercialOutcomeContext, type OutcomeCandidateContext } from "./outcome-eligibility";
 
@@ -61,8 +61,9 @@ function manualOverride(value: unknown): EventClass | null {
 export function classifyEvent(item: EventClassCandidate): EventClass {
   const override = manualOverride(item.event_class);
   if (override) return override;
+  if (!hasCommercialOutcomeContext(item)) return "interno";
   if (isInternalTitle(item.title)) return "interno";
-  return hasCommercialOutcomeContext(item) ? "negocio" : "interno";
+  return "negocio";
 }
 
 /**

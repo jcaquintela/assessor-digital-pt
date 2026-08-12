@@ -26,6 +26,19 @@ describe("Golden — reuniões internas não geram seguimento", () => {
     expect(isOverdueFollowUp(ev, NOW)).toBe(false);
   });
 
+  it("1b. 'Hub Zome Porto Boavista' sem ligação comercial é interno por omissão", () => {
+    const ev = evento({ title: "Hub Zome Porto Boavista" });
+    expect(classifyEvent(ev)).toBe("interno");
+    expect(requiresOutcome(ev)).toBe(false);
+    expect(isOverdueFollowUp(ev, NOW)).toBe(false);
+  });
+
+  it("1c. qualquer título desconhecido sem pessoa, imóvel ou negócio é interno", () => {
+    const ev = evento({ title: "Encontro XPTO" });
+    expect(classifyEvent(ev)).toBe("interno");
+    expect(needsOutcomeFollowUp(ev)).toBe(false);
+  });
+
   it("2. 'Visita — Rua das Flores' com lead associado gera seguimento normalmente", () => {
     const ev = evento({ title: "Visita — Rua das Flores", person_id: "lead-1" });
     expect(classifyEvent(ev)).toBe("negocio");
