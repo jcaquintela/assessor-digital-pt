@@ -2,6 +2,7 @@
 
 import { callGateway, V2_MODEL_DEFAULT, type GatewayUsage } from "../v2/gateway.server";
 import { THINK_SYSTEM_PROMPT } from "./prompts";
+import { budgetHistoryPreview } from "./context-budget";
 import type { Hypothesis, MemoryValue, Observation, SearchName, ThinkOutput } from "./types";
 
 export interface ThinkResult {
@@ -67,7 +68,7 @@ export async function think(input: {
   const userPayload = {
     message: input.content,
     observations: input.observations,
-    recent_context: input.historyPreview ?? null,
+    recent_context: budgetHistoryPreview(input.historyPreview) || null,
   };
 
   const call = await callGateway({

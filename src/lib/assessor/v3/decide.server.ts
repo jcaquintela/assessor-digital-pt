@@ -3,6 +3,7 @@
 import { callGateway, V2_MODEL_DEFAULT, type GatewayUsage } from "../v2/gateway.server";
 import { DECIDE_SYSTEM_PROMPT } from "./prompts";
 import { SPARRING_PROMPT_BLOCK } from "./sparring";
+import { budgetDynamicContext } from "./context-budget";
 import type { Decision, DecisionToolCall, MemoryWrite, Observation, Hypothesis, SearchResults } from "./types";
 
 export interface DecideResult {
@@ -61,6 +62,12 @@ export async function decide(input: {
   consultantGoals?: string | null;
 }): Promise<DecideResult> {
   const started = Date.now();
+  // Orçamento de contexto: o prompt de sistema do DECIDE já ocupa ~5.3k
+  // tokens, por isso a carga dinâmica tem de ficar curta. Ver context-budget.ts.
+  const budgeted = budgetDynamicContext({
+    historyPreview: input.historyPreview,
+    searches: (input.searches ?? {}) as Record<string, unknown>,
+  });
   const userPayload = {
     now_lisbon_ymd: input.nowLisbonYmd,
     now_lisbon_human: input.nowLisbonHuman,
@@ -70,8 +77,8 @@ export async function decide(input: {
     consultant_goals: input.consultantGoals ?? null,
     observations: input.observations,
     hypotheses: input.hypotheses,
-    searches: input.searches,
-    recent_context: input.historyPreview ?? null,
+    searches: budgeted.searches as SearchResults,
+    recent_context: budgeted.historyPreview || null,
   };
 
   const call = await callGateway({
