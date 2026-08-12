@@ -109,6 +109,9 @@ export interface DomainContext {
   // gravam-no em `follow_ups.source_pending_action_id` (índice único parcial)
   // e reutilizam o registo existente em vez de criar duplicados.
   pendingActionId?: string | null;
+  // Salta a pergunta "isto actualiza o compromisso que já tinhas?" — usado
+  // quando o consultor já respondeu que é um compromisso diferente.
+  skipDuplicateCheck?: boolean;
 }
 
 export interface DomainResult<T = unknown> {
