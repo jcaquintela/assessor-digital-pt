@@ -3516,6 +3516,7 @@ export type Database = {
           created_at: string
           external_message_id: string | null
           failed_at: string | null
+          follow_up_id: string | null
           id: string
           idempotency_key: string | null
           last_error: string | null
@@ -3535,6 +3536,7 @@ export type Database = {
           created_at?: string
           external_message_id?: string | null
           failed_at?: string | null
+          follow_up_id?: string | null
           id?: string
           idempotency_key?: string | null
           last_error?: string | null
@@ -3554,6 +3556,7 @@ export type Database = {
           created_at?: string
           external_message_id?: string | null
           failed_at?: string | null
+          follow_up_id?: string | null
           id?: string
           idempotency_key?: string | null
           last_error?: string | null
@@ -3568,7 +3571,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reminders_follow_up_id_fkey"
+            columns: ["follow_up_id"]
+            isOneToOne: false
+            referencedRelation: "follow_ups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       routines: {
         Row: {
