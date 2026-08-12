@@ -228,7 +228,11 @@ d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
   });
 
   it("B cannot generate a signed URL for A's exact path", async () => {
-    const res = await b.client.storage.from(BUCKET).createSignedUrl(aPath, 60);
+    const res = await withRetry("B signed URL", async () => {
+      const r = await b.client.storage.from(BUCKET).createSignedUrl(aPath, 60);
+      if (isTransient(r.error?.message)) throw new Error(r.error!.message);
+      return r;
+    });
     // eslint-disable-next-line no-console
     console.log("[isolation] B signed URL for A path:", { error: res.error?.message, hasUrl: Boolean(res.data?.signedUrl) });
     expect(res.data?.signedUrl).toBeFalsy();
@@ -236,7 +240,11 @@ d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
   });
 
   it("B cannot download A's file via storage.download", async () => {
-    const res = await b.client.storage.from(BUCKET).download(aPath);
+    const res = await withRetry("B download", async () => {
+      const r = await b.client.storage.from(BUCKET).download(aPath);
+      if (isTransient(r.error?.message)) throw new Error(r.error!.message);
+      return r;
+    });
     // eslint-disable-next-line no-console
     console.log("[isolation] B download A path:", { error: res.error?.message, hasBlob: Boolean(res.data) });
     expect(res.data).toBeFalsy();
@@ -251,7 +259,11 @@ d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
     expect(removed).toBe(false);
 
     // Confirm from A's side that the file still exists.
-    const check = await a.client.storage.from(BUCKET).createSignedUrl(aPath, 60);
+    const check = await withRetry("A signed URL (verificação)", async () => {
+      const r = await a.client.storage.from(BUCKET).createSignedUrl(aPath, 60);
+      if (isTransient(r.error?.message)) throw new Error(r.error!.message);
+      return r;
+    });
     expect(check.error).toBeFalsy();
     expect(check.data?.signedUrl).toBeTruthy();
   });
@@ -259,11 +271,15 @@ d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
   it("B cannot see A's rows in uploaded_files via RLS", async () => {
     // Not all uploads land in uploaded_files (only the pipeline writes there),
     // but the query itself must be scoped to B — never return A's rows.
-    const res = await b.client
-      .from("uploaded_files")
-      .select("id, user_id, storage_path")
-      .eq("user_id", a.userId)
-      .limit(10);
+    const res = await withRetry("B query uploaded_files", async () => {
+      const r = await b.client
+        .from("uploaded_files")
+        .select("id, user_id, storage_path")
+        .eq("user_id", a.userId)
+        .limit(10);
+      if (isTransient(r.error?.message)) throw new Error(r.error!.message);
+      return r;
+    });
     // eslint-disable-next-line no-console
     console.log("[isolation] B query uploaded_files where user_id=A:", { error: res.error?.message, count: res.data?.length ?? 0 });
     expect(res.error).toBeFalsy();
