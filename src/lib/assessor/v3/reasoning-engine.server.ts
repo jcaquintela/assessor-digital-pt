@@ -1700,10 +1700,19 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       total_tokens: inputTokens + outputTokens,
       latency_ms: totalLatencyMs,
       success,
-      error: (decideR.error ?? thinkR.error) ?? null,
+      // Sem isto, uma ferramenta que falha (ex.: `reschedule_reminder` →
+      // `reminder_not_found`) deixava `error` e `tool_name` vazios e a
+      // falha real ficava invisível no diagnóstico.
+      tool_name: toolResults.find((r) => !r.ok)?.name
+        ?? toolResults[0]?.name ?? null,
+      tool_success: toolResults.length ? toolResults.every((r) => r.ok) : null,
+      error: (decideR.error ?? thinkR.error)
+        ?? (toolResults.some((r) => !r.ok)
+          ? toolResults.filter((r) => !r.ok).map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ")
+          : null),
       domain: "assessor",
       route: "v3",
-      fallback_used: !success,
+      fallback_used: !success || toolResults.some((r) => !r.ok),
     } as never);
   } catch { /* noop */ }
 
