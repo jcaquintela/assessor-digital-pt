@@ -542,6 +542,27 @@ export async function resolvePropertyFromText(ctx: DomainContext, text: string):
   return matches.size === 1 ? [...matches][0]! : null;
 }
 
+/**
+ * Procura na BD um compromisso aberto do mesmo assunto no mesmo dia (ou no
+ * dia seguinte) com hora diferente. Ver `event-subject.ts`.
+ */
+async function findRescheduleCandidateInDb(
+  ctx: DomainContext,
+  incoming: { title: string; date: string; time: string },
+): Promise<RescheduleCandidate | null> {
+  const from = lisbonLocalToUtcIso(addDaysYmd(incoming.date, -1), "00:00");
+  const to = lisbonLocalToUtcIso(addDaysYmd(incoming.date, 2), "00:00");
+  const { data } = await ctx.supabase
+    .from("follow_ups")
+    .select("id, title, due_date, due_time")
+    .eq("user_id", ctx.userId)
+    .in("status", ["pendente", "agendado"])
+    .gte("due_date", from)
+    .lt("due_date", to)
+    .limit(50);
+  return findRescheduleCandidate(((data as any[]) ?? []) as ExistingEventLite[], incoming);
+}
+
 async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
   // Última linha de defesa: a string "null" nunca pode chegar à BD.
