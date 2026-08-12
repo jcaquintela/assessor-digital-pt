@@ -15,6 +15,7 @@ import {
   persistTrustScore, type TrustSignals,
 } from "./trust.server";
 import { captureCorrection, looksLikeCorrection } from "./corrections.server";
+import { suppressRejectedQuestion } from "./rejected-question";
 import { reflect, type ReflectionTrigger } from "./reflection.server";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
 import { blockedChannelReason } from "../channel-guard";
@@ -1523,6 +1524,9 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       reply === NATURAL_FALLBACKS.aiDown ||
       NOT_UNDERSTOOD_RE.test(reply);
     if (soundsLikeFailure) reply = NATURAL_FALLBACKS.done;
+  }
+  if (isCorrection) {
+    reply = suppressRejectedQuestion(reply, lastAssistantReply);
   }
   if (!reply) {
     // Sem execução e sem resposta: a origem manda no texto. Se a IA esteve

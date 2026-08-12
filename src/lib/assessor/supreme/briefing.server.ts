@@ -193,7 +193,7 @@ export async function generateSupremeNudges(
   const ago30 = new Date(now.getTime() - 30 * 60000).toISOString();
   const { data: endedRaw } = await supabase
     .from("follow_ups")
-    .select("id, title, type, due_date, due_time, status, archived_at, person_id, related_property_id, opportunity_id, outcome")
+    .select("id, title, type, due_date, due_time, status, archived_at, person_id, related_property_id, opportunity_id, related_prospecting_lead_id, event_class, outcome")
     .eq("user_id", userId)
     .is("outcome", null)
     .gte("due_date", ago90)

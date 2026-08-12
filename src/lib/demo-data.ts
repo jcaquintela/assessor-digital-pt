@@ -88,6 +88,8 @@ export interface Seguimento {
   arquivadoEm?: string;
   /** Imóvel associado (quando existe). */
   imovelId?: string;
+  /** Lead de prospeção associado (quando existe). */
+  leadProspecaoId?: string;
   /** Classificação do compromisso: "negocio" ou "interno" (override manual). */
   classeEvento?: string;
 }

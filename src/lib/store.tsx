@@ -101,6 +101,7 @@ const toSeguimento = (r: Row): Seguimento => ({
   notas: r.notes ?? undefined,
   arquivadoEm: r.archived_at ?? undefined,
   imovelId: r.related_property_id ?? undefined,
+  leadProspecaoId: r.related_prospecting_lead_id ?? undefined,
   classeEvento: r.event_class ?? undefined,
 });
 

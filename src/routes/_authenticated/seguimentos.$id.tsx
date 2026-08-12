@@ -72,6 +72,7 @@ function SeguimentoDetail() {
         prioridade: (r.priority ?? "Média") as SeguimentoPrioridade,
         notas: r.notes ?? undefined,
         imovelId: r.related_property_id ?? undefined,
+        leadProspecaoId: r.related_prospecting_lead_id ?? undefined,
         classeEvento: r.event_class ?? undefined,
       };
     },
@@ -116,6 +117,7 @@ function SeguimentoView({ s }: { s: Seguimento }) {
       person_id: s?.pessoaId ?? null,
       related_property_id: s?.imovelId ?? null,
       opportunity_id: s?.oportunidadeId ?? null,
+      related_prospecting_lead_id: s?.leadProspecaoId ?? null,
     }),
   );
   const [busy, setBusy] = useState(false);
@@ -137,6 +139,7 @@ function SeguimentoView({ s }: { s: Seguimento }) {
       person_id: s.pessoaId ?? null,
       related_property_id: s.imovelId ?? null,
       opportunity_id: s.oportunidadeId ?? null,
+      related_prospecting_lead_id: s.leadProspecaoId ?? null,
     })) ||
     (notas || "") !== (s.notas || "");
 

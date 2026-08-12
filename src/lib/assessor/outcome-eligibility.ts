@@ -7,8 +7,14 @@ export interface OutcomeCandidateContext {
   person_id?: string | null;
   related_property_id?: string | null;
   opportunity_id?: string | null;
+  related_prospecting_lead_id?: string | null;
 }
 
 export function hasCommercialOutcomeContext(item: OutcomeCandidateContext): boolean {
-  return Boolean(item.person_id || item.related_property_id || item.opportunity_id);
+  return Boolean(
+    item.person_id ||
+    item.related_property_id ||
+    item.opportunity_id ||
+    item.related_prospecting_lead_id,
+  );
 }
