@@ -152,7 +152,8 @@ export async function createDealCore(
     person_id: personId,
     property_id: propertyId,
     source_lead_id: sourceLeadId,
-    value: input.value ?? 0,
+    // Sem estimativa fica `null` — nunca 0, para não poluir o "€ em jogo".
+    value: input.value ?? null,
     notes: input.notes || null,
     stage_changed_at: new Date().toISOString(),
   } as never).select("id").single();

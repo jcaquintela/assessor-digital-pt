@@ -113,7 +113,7 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
   });
 
   return {
-    deals: { count: dealRows.length, value: dealRows.reduce((s, d) => s + Number(d.value ?? 0), 0) },
+    deals: { count: dealRows.length, value: dealRows.reduce((s, d) => s + (d.value == null ? 0 : Number(d.value)), 0) },
     properties: {
       count: propRows.length,
       toAcquire: propRows.filter((p) => String(p.status ?? "") === "por_angariar").length,

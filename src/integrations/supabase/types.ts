@@ -4415,6 +4415,7 @@ export type Database = {
         | "cpcv"
         | "escritura"
         | "concluido"
+        | "perdido"
       person_role:
         | "owner"
         | "potential_owner"
@@ -4594,6 +4595,7 @@ export const Constants = {
         "cpcv",
         "escritura",
         "concluido",
+        "perdido",
       ],
       person_role: [
         "owner",
