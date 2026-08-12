@@ -34,6 +34,7 @@ function makeFakeSupabase() {
         ilike() { return chain; },
         gte() { return chain; },
         lte() { return chain; },
+        lt() { return chain; },
         order() { return chain; },
         limit() { return chain; },
         insert(row: any) { state.op = "insert"; state.payload = row; return chain; },
