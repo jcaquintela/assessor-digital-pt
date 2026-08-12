@@ -117,6 +117,8 @@ export async function retryInvite(
     nome,
     texto: convite.texto,
     url: convite.url,
+    numeroAfonso: convite.numeroAfonso,
+    codigo: convite.codigo,
     triggeredBy: input.requestedBy ?? null,
   });
 
