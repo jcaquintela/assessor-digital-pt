@@ -36,16 +36,16 @@ export function formatInviteMessage(opts: {
     `(válido ${LOGIN_TOKEN_TTL_MIN} minutos e só funciona uma vez)`,
   ];
   if (opts.numeroAfonso) {
-    linhas.push("", `2) Guarda o número do Afonso: ${opts.numeroAfonso}`);
+    linhas.push("", `2) Guarda o meu número, é por aqui que vamos falar: ${opts.numeroAfonso}`);
   }
   if (opts.codigo) {
     linhas.push(
       "",
-      `${opts.numeroAfonso ? "3" : "2"}) Manda-lhe este código de acesso na primeira mensagem: ${opts.codigo}`,
+      `${opts.numeroAfonso ? "3" : "2"}) Manda-me este código de acesso na primeira mensagem: ${opts.codigo}`,
       `(válido ${WHATSAPP_CODE_TTL_MIN} minutos)`,
     );
   }
-  linhas.push("", "Depois disso é só falares com ele como falas comigo.");
+  linhas.push("", "Depois disso é só falares comigo como agora.");
   return linhas.join("\n");
 }
 
