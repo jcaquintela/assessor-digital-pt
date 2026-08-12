@@ -21,17 +21,12 @@ describe("convite pelo Afonso — template e destino", () => {
     expect(maskPhone("351912345678")).toBe("+351 9XX XXX 678");
   });
 
-  it("monta o payload do template aprovado com nome, link, número e código", () => {
+  it("monta o payload do template com o nome no corpo e o token no botão", () => {
     const token = tokenFromUrl("https://app.meuafonso.com/entrar?token=abc123&x=1");
     expect(token).toBe("abc123");
     const p: any = inviteTemplatePayload("Júlio Quintela", "https://app.meuafonso.com/entrar?token=abc123", "+351912345678", "ABCD-1234");
     expect(p.template.name).toBe(TEMPLATE_INVITE);
-    expect(p.template.components[0].parameters.map((x: any) => x.text)).toEqual([
-      "Júlio",
-      "https://app.meuafonso.com/entrar?token=abc123",
-      "+351912345678",
-      "ABCD-1234",
-    ]);
+    expect(p.template.components[0].parameters.map((x: any) => x.text)).toEqual(["Júlio"]);
     expect(p.template.components[1]).toMatchObject({ type: "button", sub_type: "url", index: "0" });
     expect(p.template.components[1].parameters[0].text).toBe("abc123");
   });
@@ -73,7 +68,7 @@ describe("nome do convite é sempre o do destinatário", () => {
 describe("voz do template aprovada em primeira pessoa", () => {
   it("nunca usa terceira pessoa para falar do Afonso", () => {
     const p: any = inviteTemplatePayload("Teste Beta", "https://app.meuafonso.com/entrar?token=tok123", "+351912345678", "LIGAR-1234");
-    expect(p.template.name).toBe("afonso_convite_painel_v2");
+    expect(p.template.name).toBe("afonso_convite_painel_v3");
     expect(p.template.components[0].parameters[0].text).toBe("Teste");
   });
 });
