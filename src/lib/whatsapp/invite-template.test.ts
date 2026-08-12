@@ -76,3 +76,4 @@ describe("voz do template aprovada em primeira pessoa", () => {
     expect(p.template.name).toBe("afonso_convite_painel_v2");
     expect(p.template.components[0].parameters[0].text).toBe("Teste");
   });
+});
