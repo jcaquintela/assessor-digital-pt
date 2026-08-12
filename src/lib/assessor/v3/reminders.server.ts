@@ -158,6 +158,8 @@ export interface RescheduleResult {
   ok: boolean;
   reminder?: ReminderRow;
   candidates?: Array<{ reminder_id: string; title: string; scheduled_for: string }>;
+  /** Reagendámos a tarefa/compromisso directamente (não havia aviso). */
+  follow_up_ids?: string[];
   error?: string;
 }
 
