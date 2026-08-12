@@ -30,3 +30,15 @@ export const countWriteErrors = createServerFn({ method: "GET" })
       latestAt: latest?.created_at ?? null,
     };
   });
+
+/** Reexecuta uma escrita falhada com os mesmos argumentos (só falhas de ferramenta). */
+export const retryWriteError = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context, data }) => {
+    const { assertAdmin } = await import("./suggestions-actions.server");
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { retryFailedWrite } = await import("./write-errors-retry.server");
+    return retryFailedWrite(supabaseAdmin, context.userId, data.id);
+  });

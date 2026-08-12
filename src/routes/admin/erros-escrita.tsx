@@ -1,12 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { StackTable, Td, Tr } from "@/components/admin/stack-table";
-import { listWriteErrors } from "@/lib/admin/write-errors.functions";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { listWriteErrors, retryWriteError } from "@/lib/admin/write-errors.functions";
 import type { WriteErrorItem } from "@/lib/admin/write-errors.server";
 
 export const Route = createFileRoute("/admin/erros-escrita")({
@@ -39,9 +50,29 @@ function fmt(d: string) {
 
 function ErrosEscritaPage() {
   const fn = useServerFn(listWriteErrors);
+  const retryFn = useServerFn(retryWriteError);
+  const qc = useQueryClient();
   const [hours, setHours] = useState<number>(24 * 7);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<WriteErrorItem | null>(null);
+  const [lastRetry, setLastRetry] = useState<Record<string, string>>({});
+
+  const retry = useMutation({
+    mutationFn: (id: string) => retryFn({ data: { id } }),
+    onSuccess: (res, id) => {
+      setLastRetry((m) => ({
+        ...m,
+        [id]: res.ok
+          ? `Repetido com sucesso em ${res.latencyMs} ms — o problema não é persistente.`
+          : `Falhou de novo: ${res.error} — problema persistente.`,
+      }));
+      if (res.ok) toast.success("A escrita passou desta vez.");
+      else toast.error(`Falhou de novo: ${res.error}`);
+      qc.invalidateQueries({ queryKey: ["admin", "write-errors"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não consegui repetir a escrita."),
+  });
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["admin", "write-errors", hours],
@@ -142,14 +173,51 @@ function ErrosEscritaPage() {
               </Td>
               <Td>{i.consultant ?? "—"}</Td>
               <Td>
-                <Button size="sm" variant="outline" onClick={() => setOpen(open === i.id ? null : i.id)}>
-                  {open === i.id ? "Fechar" : "Detalhes"}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setOpen(open === i.id ? null : i.id)}>
+                    {open === i.id ? "Fechar" : "Detalhes"}
+                  </Button>
+                  {i.retryable ? (
+                    <Button
+                      size="sm"
+                      onClick={() => setConfirm(i)}
+                      disabled={retry.isPending}
+                    >
+                      Repetir
+                    </Button>
+                  ) : null}
+                </div>
+                {i.raw_id && lastRetry[i.raw_id] ? (
+                  <div className="mini mt-1 max-w-64 whitespace-normal">{lastRetry[i.raw_id]}</div>
+                ) : null}
               </Td>
             </Tr>
           ))}
         </StackTable>
       )}
+      <AlertDialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Repetir esta escrita?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vou correr outra vez <strong>{confirm?.tool_name}</strong> com os mesmos argumentos, em
+              nome de {confirm?.consultant ?? "o consultor"}. Se resultar, o registo é criado a sério
+              na conta dele — usa isto para confirmar se o erro é persistente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirm?.raw_id) retry.mutate(confirm.raw_id);
+                setConfirm(null);
+              }}
+            >
+              Repetir agora
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
