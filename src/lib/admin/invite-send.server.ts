@@ -30,6 +30,8 @@ export interface InviteSendInput {
   nome: string | null;
   texto: string;
   url: string;
+  numeroAfonso: string | null;
+  codigo: string | null;
   triggeredBy?: string | null;
 }
 
@@ -123,17 +125,21 @@ export async function sendInvite(
     };
   }
 
-  const r = await sendWhatsAppPayload(alvo.externalId, inviteTemplatePayload(input.nome, token), {
-    kind: "auto",
-    triggeredBy: input.triggeredBy ?? null,
-    meta: {
-      purpose: "invite_access",
-      templateName: TEMPLATE_INVITE,
-      templateCategory: "utility",
-      templateLanguage: TEMPLATE_INVITE_LANG,
-      outsideWindow: true,
+  const r = await sendWhatsAppPayload(
+    alvo.externalId,
+    inviteTemplatePayload(input.nome, input.url, input.numeroAfonso, input.codigo),
+    {
+      kind: "auto",
+      triggeredBy: input.triggeredBy ?? null,
+      meta: {
+        purpose: "invite_access",
+        templateName: TEMPLATE_INVITE,
+        templateCategory: "utility",
+        templateLanguage: TEMPLATE_INVITE_LANG,
+        outsideWindow: true,
+      },
     },
-  });
+  );
   return r.ok
     ? { enviado: true, destino, via: "template" }
     : { enviado: false, destino, via: null, erro: readableSendError((r as any).telemetry) };
