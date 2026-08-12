@@ -9,6 +9,7 @@ import { LogOut, ShieldCheck, ChevronDown, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { HealthStrip } from "@/components/admin/health-strip";
 import { UnreadSuggestionsAlert, UnreadSuggestionsBadge } from "@/components/admin/unread-suggestions";
+import { WriteErrorsAlert, WriteErrorsBadge } from "@/components/admin/write-errors-alert";
 import { navGroups } from "./nav";
 
 export const Route = createFileRoute("/admin")({
@@ -87,6 +88,7 @@ function AdminLayout() {
                 >
                   {n.label}
                   {n.to === "/admin/sugestoes" ? <UnreadSuggestionsBadge /> : null}
+                  {n.to === "/admin/erros-escrita" ? <WriteErrorsBadge /> : null}
                 </Link>
               );
             })}
@@ -149,6 +151,7 @@ function AdminLayout() {
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-10 md:pb-16">
           <HealthStrip />
           <UnreadSuggestionsAlert />
+          <WriteErrorsAlert />
           <Outlet />
         </div>
       </main>

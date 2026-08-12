@@ -38,6 +38,7 @@ import { Route as AdminGoldensRouteImport } from './routes/admin/goldens'
 import { Route as AdminFuncionalidadesRouteImport } from './routes/admin/funcionalidades'
 import { Route as AdminFeedbackRouteImport } from './routes/admin/feedback'
 import { Route as AdminFaturacaoRouteImport } from './routes/admin/faturacao'
+import { Route as AdminErrosEscritaRouteImport } from './routes/admin/erros-escrita'
 import { Route as AdminEntradasRouteImport } from './routes/admin/entradas'
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
 import { Route as AdminCustosRouteImport } from './routes/admin/custos'
@@ -252,6 +253,11 @@ const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
 const AdminFaturacaoRoute = AdminFaturacaoRouteImport.update({
   id: '/faturacao',
   path: '/faturacao',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminErrosEscritaRoute = AdminErrosEscritaRouteImport.update({
+  id: '/erros-escrita',
+  path: '/erros-escrita',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminEntradasRoute = AdminEntradasRouteImport.update({
@@ -682,6 +688,7 @@ export interface FileRoutesByFullPath {
   '/admin/custos': typeof AdminCustosRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/entradas': typeof AdminEntradasRoute
+  '/admin/erros-escrita': typeof AdminErrosEscritaRoute
   '/admin/faturacao': typeof AdminFaturacaoRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
@@ -782,6 +789,7 @@ export interface FileRoutesByTo {
   '/admin/custos': typeof AdminCustosRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/entradas': typeof AdminEntradasRoute
+  '/admin/erros-escrita': typeof AdminErrosEscritaRoute
   '/admin/faturacao': typeof AdminFaturacaoRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
@@ -885,6 +893,7 @@ export interface FileRoutesById {
   '/admin/custos': typeof AdminCustosRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
   '/admin/entradas': typeof AdminEntradasRoute
+  '/admin/erros-escrita': typeof AdminErrosEscritaRoute
   '/admin/faturacao': typeof AdminFaturacaoRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/funcionalidades': typeof AdminFuncionalidadesRoute
@@ -988,6 +997,7 @@ export interface FileRouteTypes {
     | '/admin/custos'
     | '/admin/definicoes'
     | '/admin/entradas'
+    | '/admin/erros-escrita'
     | '/admin/faturacao'
     | '/admin/feedback'
     | '/admin/funcionalidades'
@@ -1088,6 +1098,7 @@ export interface FileRouteTypes {
     | '/admin/custos'
     | '/admin/definicoes'
     | '/admin/entradas'
+    | '/admin/erros-escrita'
     | '/admin/faturacao'
     | '/admin/feedback'
     | '/admin/funcionalidades'
@@ -1190,6 +1201,7 @@ export interface FileRouteTypes {
     | '/admin/custos'
     | '/admin/definicoes'
     | '/admin/entradas'
+    | '/admin/erros-escrita'
     | '/admin/faturacao'
     | '/admin/feedback'
     | '/admin/funcionalidades'
@@ -1495,6 +1507,13 @@ declare module '@tanstack/react-router' {
       path: '/faturacao'
       fullPath: '/admin/faturacao'
       preLoaderRoute: typeof AdminFaturacaoRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/erros-escrita': {
+      id: '/admin/erros-escrita'
+      path: '/erros-escrita'
+      fullPath: '/admin/erros-escrita'
+      preLoaderRoute: typeof AdminErrosEscritaRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/entradas': {
@@ -2161,6 +2180,7 @@ interface AdminRouteRouteChildren {
   AdminCustosRoute: typeof AdminCustosRoute
   AdminDefinicoesRoute: typeof AdminDefinicoesRoute
   AdminEntradasRoute: typeof AdminEntradasRoute
+  AdminErrosEscritaRoute: typeof AdminErrosEscritaRoute
   AdminFaturacaoRoute: typeof AdminFaturacaoRoute
   AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminFuncionalidadesRoute: typeof AdminFuncionalidadesRoute
@@ -2194,6 +2214,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminCustosRoute: AdminCustosRoute,
   AdminDefinicoesRoute: AdminDefinicoesRoute,
   AdminEntradasRoute: AdminEntradasRoute,
+  AdminErrosEscritaRoute: AdminErrosEscritaRoute,
   AdminFaturacaoRoute: AdminFaturacaoRoute,
   AdminFeedbackRoute: AdminFeedbackRoute,
   AdminFuncionalidadesRoute: AdminFuncionalidadesRoute,
