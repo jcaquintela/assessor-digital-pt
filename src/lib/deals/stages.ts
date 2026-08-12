@@ -10,6 +10,7 @@ export const DEAL_STAGES = [
   "cpcv",
   "escritura",
   "concluido",
+  "perdido",
 ] as const;
 
 export type DealStage = (typeof DEAL_STAGES)[number];
@@ -23,6 +24,7 @@ export const STAGE_LABEL: Record<DealStage, string> = {
   cpcv: "CPCV",
   escritura: "Escritura",
   concluido: "Concluído",
+  perdido: "Perdido",
 };
 
 // Agrupamento do quadro ATIVO: 4 colunas legíveis num relance.
@@ -65,7 +67,8 @@ const CLOSED_DEAL_STATUS = new Set([
 
 export function isDealClosed(row: { stage?: unknown; status?: unknown } | null | undefined): boolean {
   if (!row) return false;
-  if (normalizeStage(row.stage) === "concluido") return true;
+  const s = normalizeStage(row.stage);
+  if (s === "concluido" || s === "perdido") return true;
   if (row.stage != null && String(row.stage).trim() !== "") return false;
   return CLOSED_DEAL_STATUS.has(String(row.status ?? "").trim().toLowerCase());
 }
@@ -87,7 +90,33 @@ export function isDealActive(row: {
 
 /** Estado legado a gravar quando a fase muda — mantém `status` em sintonia. */
 export function legacyStatusForStage(stage: DealStage): string {
-  return stage === "concluido" ? "Concluída" : "Em curso";
+  if (stage === "concluido") return "Concluída";
+  if (stage === "perdido") return "Perdida";
+  return "Em curso";
+}
+
+// ---- Negócio parado ---------------------------------------------------
+// Regra combinada com o consultor: mais de 10 dias na mesma fase = parado.
+// Mede-se pela última mudança de fase (`stage_changed_at`), não pela última
+// atividade — um negócio pode ter notas e continuar encalhado na mesma fase.
+export const STALLED_DAYS = 10;
+
+export function daysInStage(stageChangedAt: string | null | undefined, now: Date = new Date()): number | null {
+  if (!stageChangedAt) return null;
+  const d = new Date(stageChangedAt);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.max(0, daysBetween(d, now));
+}
+
+/** `true` se o negócio está em curso e passou mais de 10 dias na mesma fase. */
+export function isDealStalled(
+  row: { stage?: unknown; status?: unknown; stageChangedAt?: string | null; archivedAt?: string | null },
+  now: Date = new Date(),
+): boolean {
+  if (row.archivedAt) return false;
+  if (isDealClosed(row)) return false;
+  const dias = daysInStage(row.stageChangedAt, now);
+  return dias !== null && dias > STALLED_DAYS;
 }
 
 export const DEAL_KINDS = [
@@ -155,7 +184,7 @@ export function dealAlert(input: {
 }): DealAlert {
   const now = input.now ?? new Date();
   const stage = normalizeStage(input.stage);
-  if (stage === "concluido") return null;
+  if (stage === "concluido" || stage === "perdido") return null;
 
   if (input.deadline) {
     const d = new Date(input.deadline);

@@ -38,7 +38,8 @@ export function buildSumCards(resumo: SumGridSummary): SumCardItem[] {
     {
       key: "negocios", tone: "negocios", icon: Briefcase, to: "/negocios",
       stat: String(resumo.deals.count), label: "Negócios em curso",
-      meta: `${formatEUR(resumo.deals.value)} em jogo`,
+      // Sem valores estimados não se mostra "0 € em jogo" — seria enganador.
+      meta: resumo.deals.value > 0 ? `${formatEUR(resumo.deals.value)} em jogo` : "sem valor estimado",
     },
     {
       key: "imoveis", tone: "imoveis", icon: Home, to: "/imoveis",

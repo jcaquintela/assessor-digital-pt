@@ -12,15 +12,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, AlertTriangle, Camera, ChevronRight, Archive } from "lucide-react";
+import { Plus, AlertTriangle, Camera, ChevronRight, Archive, Signpost, Clock, XCircle, Euro } from "lucide-react";
 import { formatData, formatEUR } from "@/lib/demo-data";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
   createDeal, listDeals, listOrphanMovements, linkMovementToDeal, createDealFromMovement,
+  setDealStage, updateDeal,
   type DealListItem,
 } from "@/lib/deals/deals.functions";
-import { DEAL_KINDS, KIND_LABEL, STAGE_GROUPS, STAGE_LABEL, groupOfStage } from "@/lib/deals/stages";
+import {
+  DEAL_KINDS, KIND_LABEL, STAGE_GROUPS, STAGE_LABEL, groupOfStage,
+  daysInStage, isDealStalled, STALLED_DAYS, type DealStage,
+} from "@/lib/deals/stages";
+
+/** Colunas do quadro: os grupos em curso + Perdido, sempre no fim. */
+const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
+  ...STAGE_GROUPS.map((g) => ({ key: g.key, label: g.label, stages: g.stages as DealStage[] })),
+  { key: "perdido", label: "Perdido", stages: ["perdido"] as DealStage[] },
+];
 
 export const Route = createFileRoute("/_authenticated/negocios/")({
   head: () => ({
@@ -53,7 +63,7 @@ function NegociosPage() {
         kind: form.kind,
         personId: form.personId || null,
         propertyId: form.propertyId || null,
-        value: Number(form.value) || 0,
+        value: form.value.trim() ? Number(form.value) : null,
         notes: form.notes || null,
       },
     }),
@@ -74,9 +84,51 @@ function NegociosPage() {
   );
   // Concluído sai do quadro ativo e não conta como "em curso".
   const concluidos = useMemo(() => visiveis.filter((d) => d.stage === "concluido"), [visiveis]);
-  const ativos = useMemo(() => visiveis.filter((d) => d.stage !== "concluido"), [visiveis]);
+  const ativos = useMemo(
+    () => visiveis.filter((d) => d.stage !== "concluido" && d.stage !== "perdido"),
+    [visiveis],
+  );
   const emRisco = ativos.filter((d) => d.alert?.level === "risco");
   const precisamAtencao = ativos.filter((d) => !!d.alert).length;
+
+  const moverFn = useServerFn(setDealStage);
+  const atualizarFn = useServerFn(updateDeal);
+  const [aArrastar, setAArrastar] = useState<string | null>(null);
+  const [colunaAlvo, setColunaAlvo] = useState<string | null>(null);
+
+  const mover = useMutation({
+    mutationFn: (v: { id: string; stage: DealStage; note?: string | null }) =>
+      moverFn({ data: { id: v.id, stage: v.stage, note: v.note ?? null } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["deals"] });
+      qc.invalidateQueries({ queryKey: ["opportunities"] });
+      qc.invalidateQueries({ queryKey: ["hoje"] });
+      toast.success("Fase atualizada.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const definirValor = useMutation({
+    mutationFn: (v: { id: string; value: number }) => atualizarFn({ data: { id: v.id, value: v.value } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["deals"] });
+      qc.invalidateQueries({ queryKey: ["hoje"] });
+      toast.success("Valor estimado guardado.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function largarNaColuna(colunaKey: string) {
+    const id = aArrastar;
+    setAArrastar(null);
+    setColunaAlvo(null);
+    if (!id) return;
+    const deal = all.find((d) => d.id === id);
+    const coluna = BOARD_COLUMNS.find((c) => c.key === colunaKey);
+    if (!deal || !coluna) return;
+    if (coluna.stages.includes(deal.stage as DealStage)) return;
+    mover.mutate({ id, stage: coluna.stages[0] as DealStage });
+  }
 
   return (
     <AppShell>
@@ -191,23 +243,51 @@ function NegociosPage() {
 
       {/* Mobile: fases empilhadas (lista agrupada) — sem scroll horizontal.
           Desktop: quadro em colunas. */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {STAGE_GROUPS.map((g) => {
-          const items = ativos.filter((d) => groupOfStage(d.stage) === g.key);
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        {BOARD_COLUMNS.map((g) => {
+          const items =
+            g.key === "perdido"
+              ? visiveis.filter((d) => d.stage === "perdido")
+              : ativos.filter((d) => groupOfStage(d.stage) === g.key);
           return (
-            <section key={g.key} className={cn("min-w-0", items.length === 0 && "hidden md:block")}>
+            <section
+              key={g.key}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (colunaAlvo !== g.key) setColunaAlvo(g.key);
+              }}
+              onDragLeave={() => setColunaAlvo((c) => (c === g.key ? null : c))}
+              onDrop={() => largarNaColuna(g.key)}
+              className={cn(
+                "min-w-0 rounded-lg border border-transparent p-1 transition-colors",
+                items.length === 0 && "hidden md:block",
+                colunaAlvo === g.key && "border-primary/50 bg-primary/5",
+              )}
+            >
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <h2 className="text-sm font-semibold">{g.label}</h2>
                 <span className="text-xs text-muted-foreground">{items.length}</span>
               </div>
               <div className="space-y-2">
                 {items.length === 0 && <p className="text-xs text-muted-foreground">—</p>}
-                {items.map((d) => <DealCard key={d.id} deal={d} />)}
+                {items.map((d) => (
+                  <DealCard
+                    key={d.id}
+                    deal={d}
+                    onDragStart={() => setAArrastar(d.id)}
+                    onDragEnd={() => { setAArrastar(null); setColunaAlvo(null); }}
+                    onPerdido={(motivo) => mover.mutate({ id: d.id, stage: "perdido", note: motivo || null })}
+                    onValor={(valor) => definirValor.mutate({ id: d.id, value: valor })}
+                  />
+                ))}
               </div>
             </section>
           );
         })}
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Arrasta um cartão para outra coluna para mudar de fase. Fica tudo registado no histórico do negócio.
+      </p>
 
       {concluidos.length > 0 && (
         <section className="mt-6">
@@ -224,11 +304,45 @@ function NegociosPage() {
   );
 }
 
-function DealCard({ deal }: { deal: DealListItem }) {
+function DealCard({
+  deal,
+  onDragStart,
+  onDragEnd,
+  onPerdido,
+  onValor,
+}: {
+  deal: DealListItem;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onPerdido?: (motivo: string) => void;
+  onValor?: (valor: number) => void;
+}) {
+  const [perder, setPerder] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [valorAberto, setValorAberto] = useState(false);
+  const [valor, setValor] = useState("");
+
+  const dias = daysInStage(deal.stageChangedAt);
+  const parado = isDealStalled({
+    stage: deal.stage,
+    stageChangedAt: deal.stageChangedAt,
+    archivedAt: deal.archivedAt,
+  });
+  const podeAgir = deal.stage !== "concluido" && deal.stage !== "perdido";
+
   return (
-    <Link to="/negocios/$id" params={{ id: deal.id }} className="block">
-      <Card className="transition-colors hover:border-primary/40">
-        <CardContent className="space-y-2 p-3">
+    <Card
+      draggable={!!onDragStart && podeAgir}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "transition-colors hover:border-primary/40",
+        podeAgir && onDragStart && "cursor-grab active:cursor-grabbing",
+        parado && "border-amber-500/60 bg-amber-500/5",
+      )}
+    >
+      <CardContent className="space-y-2 p-3">
+        <Link to="/negocios/$id" params={{ id: deal.id }} className="block space-y-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{deal.title}</div>
@@ -238,12 +352,32 @@ function DealCard({ deal }: { deal: DealListItem }) {
             </div>
             <Badge variant="outline" className="shrink-0">{STAGE_LABEL[deal.stage]}</Badge>
           </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-medium">{formatEUR(deal.value)}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className="font-medium">
+              {deal.valueEstimate != null && deal.valueEstimate > 0
+                ? formatEUR(deal.valueEstimate)
+                : <span className="text-muted-foreground">Sem valor estimado</span>}
+            </span>
+            {dias !== null && (
+              <span className={cn("inline-flex items-center gap-1", parado ? "font-medium text-amber-600" : "text-muted-foreground")}>
+                <Clock className="h-3 w-3" />
+                {dias === 0 ? "hoje nesta fase" : `${dias} dia${dias === 1 ? "" : "s"} nesta fase`}
+              </span>
+            )}
+            {deal.sourceLeadId && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                <Signpost className="h-3 w-3" /> via prospeção
+              </span>
+            )}
             {deal.commission.previsto > 0 && (
               <span className="text-muted-foreground">Com. {formatEUR(deal.commission.previsto)}</span>
             )}
           </div>
+          {parado && (
+            <div className="text-xs font-medium text-amber-600">
+              Parado há mais de {STALLED_DAYS} dias — talvez mereça um empurrão.
+            </div>
+          )}
           {deal.nextAction && (
             <div className="text-xs text-muted-foreground">
               Próx.: <strong className="text-foreground">{deal.nextAction.title}</strong>
@@ -255,12 +389,63 @@ function DealCard({ deal }: { deal: DealListItem }) {
               {deal.alert.label}
             </div>
           )}
-          {!deal.personName && deal.stage !== "concluido" && (
+          {!deal.personName && podeAgir && (
             <div className="text-xs text-amber-600">Sem pessoa associada</div>
           )}
-        </CardContent>
-      </Card>
-    </Link>
+        </Link>
+
+        {podeAgir && (onPerdido || onValor) && (
+          <div className="flex flex-wrap gap-1 border-t pt-2">
+            {onValor && (
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                onClick={() => { setValor(deal.valueEstimate ? String(deal.valueEstimate) : ""); setValorAberto(true); }}>
+                <Euro className="mr-1 h-3 w-3" /> Valor estimado
+              </Button>
+            )}
+            {onPerdido && (
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground"
+                onClick={() => setPerder(true)}>
+                <XCircle className="mr-1 h-3 w-3" /> Marcar como perdido
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={perder} onOpenChange={setPerder}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Marcar como perdido</DialogTitle></DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor={`m-${deal.id}`}>Motivo (opcional)</Label>
+            <Input id={`m-${deal.id}`} value={motivo} placeholder="Ex: foi com outra agência"
+              onChange={(e) => setMotivo(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPerder(false)}>Cancelar</Button>
+            <Button onClick={() => { onPerdido?.(motivo.trim()); setPerder(false); setMotivo(""); }}>
+              Marcar como perdido
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={valorAberto} onOpenChange={setValorAberto}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Valor estimado</DialogTitle></DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor={`v-${deal.id}`}>Quanto vale este negócio (€)?</Label>
+            <Input id={`v-${deal.id}`} type="number" value={valor} onChange={(e) => setValor(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setValorAberto(false)}>Cancelar</Button>
+            <Button disabled={!valor.trim() || Number.isNaN(Number(valor))}
+              onClick={() => { onValor?.(Number(valor)); setValorAberto(false); }}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }
 

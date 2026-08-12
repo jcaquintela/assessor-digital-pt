@@ -87,6 +87,10 @@ export const listDeals = createServerFn({ method: "GET" })
         stage: normalizeStage(o.stage),
         kind: normalizeKind(o.deal_kind ?? o.type),
         value: Number(o.value ?? 0),
+        /** `null` quando o consultor ainda não estimou — não soma para "em jogo". */
+        valueEstimate: o.value == null ? null : Number(o.value),
+        stageChangedAt: (o.stage_changed_at ?? o.updated_at ?? o.created_at ?? null) as string | null,
+        sourceLeadId: o.source_lead_id ?? null,
         archivedAt: o.archived_at ?? null,
         personId: o.person_id ?? null,
         personName,
@@ -222,7 +226,7 @@ export const createDeal = createServerFn({ method: "POST" })
       stage: data.stage ?? null,
       personId: data.personId ?? null,
       propertyId: data.propertyId ?? null,
-      value: data.value ?? 0,
+      value: data.value ?? null,
       notes: data.notes ?? null,
       source: "dashboard",
     });
@@ -291,7 +295,7 @@ export const createDealFromMovement = createServerFn({ method: "POST" })
       kind: data.kind ?? "venda",
       personId: data.personId ?? null,
       propertyId: data.propertyId ?? null,
-      value: data.value ?? 0,
+      value: data.value ?? null,
       source: "dashboard",
       linkMovementIds: [data.movementId],
     });
