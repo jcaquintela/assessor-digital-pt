@@ -47,6 +47,11 @@ import {
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
+import {
+  findRescheduleCandidate,
+  type ExistingEventLite,
+  type RescheduleCandidate,
+} from "../event-subject";
 import { CANCELLED_STATUS, CANCELLED_OUTCOME, matchByHint } from "../v3/cancel-agenda";
 import { pushEventToProviders } from "@/lib/calendar/sync.server";
 import { stopFollowUpTriggers } from "@/lib/calendar/stop-triggers.server";
