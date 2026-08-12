@@ -412,7 +412,9 @@ export const checkInviteSendability = createServerFn({ method: "GET" })
       .parse(d),
   )
   .handler(async ({ data, context }): Promise<InviteSendability> => {
-    await assertAdmin(context.supabase, context.userId);
+    // Mesmo nível de exigência do envio (assertSuperAdmin): senão o botão
+    // aparecia activo a um support_admin e só rebentava depois do clique.
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { resolveInviteTarget } = await import("@/lib/admin/invite-send.server");
     const { maskPhone } = await import("@/lib/whatsapp/invite-template");
