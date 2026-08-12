@@ -1,20 +1,37 @@
-// Convite de acesso enviado pelo Afonso (WhatsApp).
+// Convite de acesso enviado pelo próprio Afonso (WhatsApp).
 //
 // Um convite vai para quem ainda nunca falou connosco: não há janela de 24h
 // aberta, por isso a Meta só deixa passar template aprovado. Texto livre é
 // rejeitado com o código 131047.
 //
-// Template submetido à Meta (pt_PT, categoria UTILITY):
-//   Corpo:  "Olá {{1}}, bem-vindo ao Afonso. Toca no botão para finalizares
-//            o registo no painel. Depois é só falares comigo por aqui."
-//   Botão:  URL dinâmico "https://app.meuafonso.com/entrar?token={{1}}"
+// Template submetido à Meta (pt_PT, categoria UTILITY) — voz em primeira
+// pessoa, porque quem envia é o próprio número do Afonso:
+//   Nome:   afonso_convite_painel_v2
+//   Corpo:  "Olá {{1}}, bem-vindo ao Afonso.
 //
-// Nota: versões com o código de acesso no corpo foram rejeitadas pela Meta
-// com INCORRECT_CATEGORY (tanto em UTILITY como em MARKETING). O código
-// deixou de ir no template — quem recebe o convite responde ao próprio
-// número do Afonso e o canal fica ligado pelo telefone.
+//            1) Finaliza o registo no painel:
+//            {{2}}
+//            (válido 15 minutos e só funciona uma vez)
+//
+//            2) Guarda o meu número, é por aqui que vamos falar:
+//            {{3}}
+//
+//            3) Manda-me este código de acesso na primeira mensagem:
+//            {{4}}
+//            (válido 15 minutos)
+//
+//            Depois disso é só falares comigo como agora."
+//   Botão:  URL dinâmica "https://app.meuafonso.com/entrar?token={{1}}"
+//
+// NOTA: a versão anterior (afonso_convite_painel) usava voz de terceira
+// pessoa porque era pensada para um humano enviar à mão. Como o Afonso
+// dispara o convite pela WhatsApp Business API, foi criado um novo template
+// (v2) com voz consistente em primeira pessoa. A Meta trata qualquer alteração
+// ao corpo de um template aprovado como nova submissão — não é possível
+// editar o template antigo; este novo template tem de ser aprovado
+// independentemente.
 
-export const TEMPLATE_INVITE = "afonso_convite_painel";
+export const TEMPLATE_INVITE = "afonso_convite_painel_v2";
 export const TEMPLATE_INVITE_LANG = "pt_PT";
 
 /** Só enviamos para números plausíveis em E.164 (indicativo + 8 a 14 dígitos). */
@@ -44,16 +61,30 @@ export function tokenFromUrl(url: string): string | null {
   return m ? decodeURIComponent(m[1]!) : null;
 }
 
-export function inviteTemplatePayload(nome: string | null, token: string): Record<string, unknown> {
+export function inviteTemplatePayload(
+  nome: string | null,
+  url: string,
+  numeroAfonso: string | null,
+  codigo: string | null,
+): Record<string, unknown> {
   const primeiro = (nome ?? "").trim().split(/\s+/)[0] || "Olá";
+  const token = tokenFromUrl(url);
   return {
     type: "template",
     template: {
       name: TEMPLATE_INVITE,
       language: { code: TEMPLATE_INVITE_LANG },
       components: [
-        { type: "body", parameters: [{ type: "text", text: primeiro }] },
-        { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: token }] },
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: primeiro },
+            { type: "text", text: url },
+            { type: "text", text: numeroAfonso ?? "—" },
+            { type: "text", text: codigo ?? "—" },
+          ],
+        },
+        { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: token ?? "" }] },
       ],
     },
   };

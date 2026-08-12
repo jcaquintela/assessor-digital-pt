@@ -507,6 +507,8 @@ export const issueInviteLink = createServerFn({ method: "POST" })
           nome,
           texto: convite.texto,
           url: convite.url,
+          numeroAfonso: convite.numeroAfonso,
+          codigo: convite.codigo,
           triggeredBy: context.userId,
         });
         enviado = r.enviado;
