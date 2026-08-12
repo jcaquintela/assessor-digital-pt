@@ -24,6 +24,7 @@ import { TOOL_REGISTRY } from "../v2/domain.server";
 import {
   findActivePendingAction,
   markPendingActionStatus,
+  createPendingAction,
 } from "../memory.server";
 import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from "../culture/short-answers";
 import {
@@ -396,6 +397,68 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
 
     pendingForArchive = pending ?? null;
+    // Compromisso duplicado vs. reagendamento — a resposta decide.
+    if (pending && pending.intent === "confirm_event_reschedule") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const cand = payload.candidate ?? null;
+      const incoming = payload.incoming ?? null;
+      if (cand?.id && incoming?.date && incoming?.time) {
+        if (saIsConfirmation(trimmed)) {
+          const { lisbonLocalToUtcIso, rescheduleReminder } = await import("./reminders.server");
+          const dueIso = lisbonLocalToUtcIso(String(incoming.date), String(incoming.time));
+          const { error: updErr } = await supabase
+            .from("follow_ups")
+            .update({
+              due_date: dueIso,
+              due_time: String(incoming.time),
+              status: "agendado",
+            } as never)
+            .eq("id", cand.id)
+            .eq("user_id", userId);
+          if (updErr) {
+            await markPendingActionStatus(supabase, pending.id, "failed", {
+              error_message: `reschedule_update:${updErr.message}`,
+            });
+            return { reply: "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?" };
+          }
+          try {
+            await rescheduleReminder(supabase, {
+              userId, channel,
+              related_resource_type: "follow_up",
+              related_resource_id: String(cand.id),
+              new_date: String(incoming.date),
+              new_time: String(incoming.time),
+              timezone: "Europe/Lisbon",
+            });
+          } catch { /* noop */ }
+          try {
+            const { pushEventToProviders } = await import("@/lib/calendar/sync.server");
+            await pushEventToProviders({ userId, followUpId: String(cand.id), action: "upsert" });
+          } catch { /* noop */ }
+          await markPendingActionStatus(supabase, pending.id, "executed", {
+            created_resource_type: "follow_up",
+            created_resource_id: String(cand.id),
+          });
+          return {
+            reply: `Actualizei "${cand.title}" para as ${incoming.time}. Fica só um compromisso.`,
+          };
+        }
+        if (saIsRejection(trimmed)) {
+          const exec = TOOL_REGISTRY.create_event;
+          const result = await exec({ ...ctx, skipDuplicateCheck: true }, incoming);
+          await markPendingActionStatus(supabase, pending.id, result.ok ? "executed" : "failed", {
+            created_resource_type: result.ok ? "follow_up" : null,
+            created_resource_id: result.ok ? ((result.data as any)?.event?.id ?? null) : null,
+            error_message: result.ok ? null : (result.error ?? "not_created"),
+          });
+          return {
+            reply: result.ok
+              ? `Certo — fica como compromisso separado, às ${incoming.time}.`
+              : "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?",
+          };
+        }
+      }
+    }
     if (pending && pending.intent === "create_prospecting_lead") {
       if (saIsConfirmation(trimmed)) {
         const exec = TOOL_REGISTRY.create_prospecting_lead;
@@ -1379,6 +1442,30 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
   // Override natural para prospeção executada dentro do DECIDE (turno único).
   const leadTool = toolResults.find((t) => t.name === "create_prospecting_lead");
+
+  // Compromisso provavelmente já existente com outra hora: perguntar sempre,
+  // nunca duplicar em silêncio (caso real da consulta às 09:00 → 10:30).
+  const rescheduleAsk = toolResults.find(
+    (t) => t.name === "create_event" && t.ok
+      && (t.data as any)?.needsRescheduleConfirmation === true,
+  );
+  if (rescheduleAsk) {
+    const d = rescheduleAsk.data as any;
+    const { rescheduleQuestion } = await import("../event-subject");
+    const question = rescheduleQuestion(d.candidate, d.incoming);
+    try {
+      await createPendingAction(supabase, {
+        userId, channel,
+        intent: "confirm_event_reschedule",
+        originalContent: trimmed,
+        payload: { candidate: d.candidate, incoming: d.incoming },
+        currentQuestion: question,
+        pendingQuestion: question,
+        sourceMessageId: sourceMessageId ?? null,
+      });
+    } catch { /* noop */ }
+    reply = question;
+  }
   if (leadTool) {
     const dup = (leadTool.data as any)?.duplicate === true;
     const leadId = (leadTool.data as any)?.lead?.id ?? (leadTool.data as any)?.existing?.id ?? null;
@@ -1508,7 +1595,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   if (queryReply || cancelTool) {
     if (queryReply) reply = queryReply;
   } else {
-    reply = enforceHumanTone(reply, { actionExecutedOk: (shouldAct && allOk) || prospectingActed });
+    reply = enforceHumanTone(reply, {
+      // Uma pergunta de desambiguação não é uma acção executada: se dissermos
+      // que sim, o tom humano transforma a pergunta em "Feito.".
+      actionExecutedOk: ((shouldAct && allOk) || prospectingActed) && !rescheduleAsk,
+    });
     if (decideR.decision.action === "ask") {
       reply = enforceSingleQuestion(reply);
     }
@@ -1516,7 +1607,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   // Ordem correcta: o outcome real (execução) manda sobre a frase gerada.
   // Quando a ferramenta correu bem, a resposta NUNCA pode ser linguagem de
   // incompreensão — nem por fallback, nem porque o passo de redacção falhou.
-  const executedOk = (shouldAct && allOk) || prospectingActed;
+  const executedOk = ((shouldAct && allOk) || prospectingActed) && !rescheduleAsk;
   if (executedOk) {
     const soundsLikeFailure =
       !reply ||
@@ -1525,7 +1616,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       NOT_UNDERSTOOD_RE.test(reply);
     if (soundsLikeFailure) reply = NATURAL_FALLBACKS.done;
   }
-  if (isCorrection) {
+  if (isCorrection && !rescheduleAsk) {
     reply = suppressRejectedQuestion(reply, lastAssistantReply);
   }
   if (!reply) {
@@ -1616,10 +1707,19 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       total_tokens: inputTokens + outputTokens,
       latency_ms: totalLatencyMs,
       success,
-      error: (decideR.error ?? thinkR.error) ?? null,
+      // Sem isto, uma ferramenta que falha (ex.: `reschedule_reminder` →
+      // `reminder_not_found`) deixava `error` e `tool_name` vazios e a
+      // falha real ficava invisível no diagnóstico.
+      tool_name: toolResults.find((r) => !r.ok)?.name
+        ?? toolResults[0]?.name ?? null,
+      tool_success: toolResults.length ? toolResults.every((r) => r.ok) : null,
+      error: (decideR.error ?? thinkR.error)
+        ?? (toolResults.some((r) => !r.ok)
+          ? toolResults.filter((r) => !r.ok).map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ")
+          : null),
       domain: "assessor",
       route: "v3",
-      fallback_used: !success,
+      fallback_used: !success || toolResults.some((r) => !r.ok),
     } as never);
   } catch { /* noop */ }
 

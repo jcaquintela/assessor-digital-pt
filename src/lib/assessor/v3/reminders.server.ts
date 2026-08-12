@@ -158,6 +158,8 @@ export interface RescheduleResult {
   ok: boolean;
   reminder?: ReminderRow;
   candidates?: Array<{ reminder_id: string; title: string; scheduled_for: string }>;
+  /** Reagendámos a tarefa/compromisso directamente (não havia aviso). */
+  follow_up_ids?: string[];
   error?: string;
 }
 
@@ -176,6 +178,8 @@ export async function rescheduleReminder(
 
   // 1) Localizar o alvo.
   let target: ReminderRow | null = null;
+  // Tarefas/compromissos que correspondem ao pedido mas podem não ter aviso.
+  let fallbackFollowUpIds: string[] = [];
 
   if (input.reminder_id) {
     const { data } = await supabase
@@ -212,6 +216,7 @@ export async function rescheduleReminder(
       .order("due_date", { ascending: true })
       .limit(5);
     const followUpIds = ((fus as any[]) ?? []).map((r) => r.id);
+    fallbackFollowUpIds = followUpIds;
     if (followUpIds.length) {
       const { data: rems } = await supabase
         .from("reminders")
@@ -239,7 +244,33 @@ export async function rescheduleReminder(
     }
   }
 
-  if (!target) return { ok: false, error: "reminder_not_found" };
+  // Sem aviso associado, mas COM tarefa/compromisso identificado: o pedido
+  // ("Por volta das 14:00") é para mudar a hora da própria tarefa. Antes
+  // devolvíamos `reminder_not_found` e o consultor via "não consegui
+  // guardar" — perda de escrita real (bug 11/08, 23:56).
+  if (!target) {
+    const fallbackIds = fallbackFollowUpIds.length
+      ? fallbackFollowUpIds
+      : (input.related_resource_type === "follow_up" && input.related_resource_id
+        ? [input.related_resource_id]
+        : []);
+    if (fallbackIds.length) {
+      const { data: moved, error: moveErr } = await supabase
+        .from("follow_ups")
+        .update({
+          due_date: newScheduled,
+          due_time: input.new_time,
+          timezone: tz,
+        } as never)
+        .in("id", fallbackIds)
+        .eq("user_id", input.userId)
+        .select("id");
+      if (moveErr) return { ok: false, error: moveErr.message };
+      const ids = ((moved as any[]) ?? []).map((r) => String(r.id));
+      if (ids.length) return { ok: true, follow_up_ids: ids };
+    }
+    return { ok: false, error: "reminder_not_found" };
+  }
 
   // 2) UPDATE atómico. Reset de estado + retry.
   const { data: updated, error } = await supabase

@@ -47,6 +47,11 @@ import {
   ZOD_BY_TOOL,
 } from "./tools";
 import { lisbonParts, addDaysYmd } from "../agenda";
+import {
+  findRescheduleCandidate,
+  type ExistingEventLite,
+  type RescheduleCandidate,
+} from "../event-subject";
 import { CANCELLED_STATUS, CANCELLED_OUTCOME, matchByHint } from "../v3/cancel-agenda";
 import { pushEventToProviders } from "@/lib/calendar/sync.server";
 import { stopFollowUpTriggers } from "@/lib/calendar/stop-triggers.server";
@@ -109,6 +114,9 @@ export interface DomainContext {
   // gravam-no em `follow_ups.source_pending_action_id` (índice único parcial)
   // e reutilizam o registo existente em vez de criar duplicados.
   pendingActionId?: string | null;
+  // Salta a pergunta "isto actualiza o compromisso que já tinhas?" — usado
+  // quando o consultor já respondeu que é um compromisso diferente.
+  skipDuplicateCheck?: boolean;
 }
 
 export interface DomainResult<T = unknown> {
@@ -539,6 +547,27 @@ export async function resolvePropertyFromText(ctx: DomainContext, text: string):
   return matches.size === 1 ? [...matches][0]! : null;
 }
 
+/**
+ * Procura na BD um compromisso aberto do mesmo assunto no mesmo dia (ou no
+ * dia seguinte) com hora diferente. Ver `event-subject.ts`.
+ */
+async function findRescheduleCandidateInDb(
+  ctx: DomainContext,
+  incoming: { title: string; date: string; time: string },
+): Promise<RescheduleCandidate | null> {
+  const from = lisbonLocalToUtcIso(addDaysYmd(incoming.date, -1), "00:00");
+  const to = lisbonLocalToUtcIso(addDaysYmd(incoming.date, 2), "00:00");
+  const { data } = await ctx.supabase
+    .from("follow_ups")
+    .select("id, title, due_date, due_time")
+    .eq("user_id", ctx.userId)
+    .in("status", ["pendente", "agendado"])
+    .gte("due_date", from)
+    .lt("due_date", to)
+    .limit(50);
+  return findRescheduleCandidate(((data as any[]) ?? []) as ExistingEventLite[], incoming);
+}
+
 async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
   // Última linha de defesa: a string "null" nunca pode chegar à BD.
@@ -612,6 +641,21 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
       rescheduled: !sameSlot,
       typeCorrected,
     });
+  }
+  // Mesmo assunto, título diferente ("Consulta endocrinologista" vs "consulta
+  // com a endocrinologista"): pode ser a MESMA consulta com hora nova. Nunca
+  // assumimos — devolvemos a dúvida para o motor perguntar.
+  if (!ctx.skipDuplicateCheck) {
+    const candidate = await findRescheduleCandidateInDb(ctx, {
+      title: v.title, date: v.date, time: v.start_time,
+    });
+    if (candidate) {
+      return ok({
+        needsRescheduleConfirmation: true,
+        candidate,
+        incoming: { ...v, date: v.date, time: v.start_time },
+      });
+    }
   }
   const { data, error } = await ctx.supabase
     .from("follow_ups")
