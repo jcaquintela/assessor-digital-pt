@@ -42,6 +42,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { to: "/admin/qualidade", label: "Qualidade" },
       { to: "/admin/erros-escrita", label: "Erros de escrita" },
+      { to: "/admin/rastreabilidade-origem", label: "Rastreabilidade de origem" },
       { to: "/admin/sugestoes", label: "Sugestões dos consultores" },
       { to: "/admin/feedback", label: "Feedback dos consultores" },
       { to: "/admin/autonomas", label: "Ações autónomas" },
