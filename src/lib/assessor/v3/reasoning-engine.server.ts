@@ -1379,6 +1379,27 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
 
   // Override natural para prospeção executada dentro do DECIDE (turno único).
   const leadTool = toolResults.find((t) => t.name === "create_prospecting_lead");
+
+  // Compromisso provavelmente já existente com outra hora: perguntar sempre,
+  // nunca duplicar em silêncio (caso real da consulta às 09:00 → 10:30).
+  const rescheduleAsk = toolResults.find(
+    (t) => t.name === "create_event" && t.ok
+      && (t.data as any)?.needsRescheduleConfirmation === true,
+  );
+  if (rescheduleAsk) {
+    const d = rescheduleAsk.data as any;
+    const { rescheduleQuestion } = await import("../event-subject");
+    try {
+      await createPendingAction(supabase, {
+        userId, channel,
+        intent: "confirm_event_reschedule",
+        originalContent: trimmed,
+        payload: { candidate: d.candidate, incoming: d.incoming },
+        sourceMessageId: sourceMessageId ?? null,
+      });
+    } catch { /* noop */ }
+    reply = rescheduleQuestion(d.candidate, d.incoming);
+  }
   if (leadTool) {
     const dup = (leadTool.data as any)?.duplicate === true;
     const leadId = (leadTool.data as any)?.lead?.id ?? (leadTool.data as any)?.existing?.id ?? null;
