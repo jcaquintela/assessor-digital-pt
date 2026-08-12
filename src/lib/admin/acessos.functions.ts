@@ -399,6 +399,10 @@ export type InviteSendability = {
   podeEnviar: boolean;
   destino: string | null;
   motivo: string | null;
+  /** Nome do destinatário (perfil de destino, nunca o do admin que clica). */
+  nomeDestino?: string | null;
+  /** Verdadeiro quando o admin está a convidar a própria conta. */
+  ehPropriaConta?: boolean;
 };
 
 export const checkInviteSendability = createServerFn({ method: "GET" })
@@ -419,11 +423,22 @@ export const checkInviteSendability = createServerFn({ method: "GET" })
     const { resolveInviteTarget } = await import("@/lib/admin/invite-send.server");
     const { maskPhone } = await import("@/lib/whatsapp/invite-template");
     const alvo = await resolveInviteTarget(supabaseAdmin, data.target_user_id, data.canal);
-    if (!alvo.externalId) return { podeEnviar: false, destino: null, motivo: alvo.motivo ?? null };
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("name")
+      .eq("id", data.target_user_id)
+      .maybeSingle();
+    const nomeDestino = (prof as { name?: string | null } | null)?.name ?? null;
+    const ehPropriaConta = data.target_user_id === context.userId;
+    if (!alvo.externalId) {
+      return { podeEnviar: false, destino: null, motivo: alvo.motivo ?? null, nomeDestino, ehPropriaConta };
+    }
     return {
       podeEnviar: true,
       destino: data.canal === "whatsapp" ? maskPhone(alvo.externalId) : "Telegram",
       motivo: null,
+      nomeDestino,
+      ehPropriaConta,
     };
   });
 
