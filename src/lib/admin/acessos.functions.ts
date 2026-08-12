@@ -412,7 +412,9 @@ export const checkInviteSendability = createServerFn({ method: "GET" })
       .parse(d),
   )
   .handler(async ({ data, context }): Promise<InviteSendability> => {
-    await assertAdmin(context.supabase, context.userId);
+    // Mesmo nível de exigência do envio (assertSuperAdmin): senão o botão
+    // aparecia activo a um support_admin e só rebentava depois do clique.
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { resolveInviteTarget } = await import("@/lib/admin/invite-send.server");
     const { maskPhone } = await import("@/lib/whatsapp/invite-template");
@@ -466,6 +468,22 @@ export const issueInviteLink = createServerFn({ method: "POST" })
     let destino: string | null = null;
     let via: "template" | "texto" | null = null;
     if (data.enviar) {
+      // Toda a tentativa fica registada — inclusive quando o envio rebenta
+      // com excepção. Sem isto, uma falha inesperada não deixava rasto
+      // nenhum em invite_send_attempts e o convite não voltava a sair.
+      const registar = async (ok: boolean, dest: string | null, err: string | null) => {
+        try {
+          const { recordInviteAttempt } = await import("@/lib/admin/invite-retry.server");
+          await recordInviteAttempt(supabaseAdmin, {
+            userId: data.target_user_id,
+            canal: data.canal,
+            enviado: ok,
+            destino: dest,
+            erro: err,
+            requestedBy: context.userId,
+          });
+        } catch { /* o registo nunca pode mascarar o resultado do envio */ }
+      };
       try {
         const { sendInvite } = await import("@/lib/admin/invite-send.server");
         const r = await sendInvite(supabaseAdmin, {
@@ -482,17 +500,10 @@ export const issueInviteLink = createServerFn({ method: "POST" })
         if (!r.enviado) erroEnvio = r.erro ?? "Não foi possível enviar a mensagem.";
         // Falhou? Fica na fila de reenvio (o template pode ainda estar por
         // aprovar) e sai sozinho quando der.
-        const { recordInviteAttempt } = await import("@/lib/admin/invite-retry.server");
-        await recordInviteAttempt(supabaseAdmin, {
-          userId: data.target_user_id,
-          canal: data.canal,
-          enviado: r.enviado,
-          destino: r.destino,
-          erro: r.erro ?? null,
-          requestedBy: context.userId,
-        });
+        await registar(r.enviado, r.destino, r.erro ?? null);
       } catch (e) {
         erroEnvio = e instanceof Error ? e.message : "Não foi possível enviar a mensagem.";
+        await registar(false, destino, erroEnvio);
       }
     }
 
