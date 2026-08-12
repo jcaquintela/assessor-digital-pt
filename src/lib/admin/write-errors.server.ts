@@ -13,8 +13,8 @@ export type WriteErrorItem = {
   latency_ms: number | null;
   user_id: string | null;
   consultant: string | null;
-  arguments: unknown;
-  result: unknown;
+  arguments: string | null;
+  result: string | null;
 };
 
 function since(hours: number) {
@@ -58,8 +58,8 @@ export async function fetchWriteErrors(
       latency_ms: r.latency_ms ?? null,
       user_id: r.user_id ?? null,
       consultant: null,
-      arguments: r.arguments ?? null,
-      result: r.result ?? null,
+      arguments: r.arguments ? JSON.stringify(r.arguments, null, 2) : null,
+      result: r.result ? JSON.stringify(r.result, null, 2) : null,
     })),
     ...((logs.data ?? []) as any[]).map((r) => ({
       id: `engine:${r.id}`,

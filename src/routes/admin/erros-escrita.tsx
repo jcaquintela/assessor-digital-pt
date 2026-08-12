@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { StackTable, Td, Tr } from "@/components/admin/stack-table";
 import { listWriteErrors } from "@/lib/admin/write-errors.functions";
+import type { WriteErrorItem } from "@/lib/admin/write-errors.server";
 
 export const Route = createFileRoute("/admin/erros-escrita")({
   component: ErrosEscritaPage,
@@ -48,7 +49,7 @@ function ErrosEscritaPage() {
     refetchInterval: 60_000,
   });
 
-  const items = data?.items ?? [];
+  const items: WriteErrorItem[] = data?.items ?? [];
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (!t) return items;
@@ -135,17 +136,7 @@ function ErrosEscritaPage() {
                 {i.intent ? <div className="text-[11px] opacity-70">{i.intent}</div> : null}
                 {open === i.id ? (
                   <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2 text-[11px]">
-{JSON.stringify(
-  {
-    canal: i.channel,
-    latencia_ms: i.latency_ms,
-    user_id: i.user_id,
-    argumentos: i.arguments,
-    resultado: i.result,
-  },
-  null,
-  2,
-)}
+{`canal: ${i.channel ?? "—"}\nlatência: ${i.latency_ms ?? "—"} ms\nuser_id: ${i.user_id ?? "—"}\n\nargumentos:\n${i.arguments ?? "—"}\n\nresultado:\n${i.result ?? "—"}`}
                   </pre>
                 ) : null}
               </Td>
