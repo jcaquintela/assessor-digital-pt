@@ -616,6 +616,21 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
       typeCorrected,
     });
   }
+  // Mesmo assunto, título diferente ("Consulta endocrinologista" vs "consulta
+  // com a endocrinologista"): pode ser a MESMA consulta com hora nova. Nunca
+  // assumimos — devolvemos a dúvida para o motor perguntar.
+  if (!ctx.skipDuplicateCheck) {
+    const candidate = await findRescheduleCandidateInDb(ctx, {
+      title: v.title, date: v.date, time: v.start_time,
+    });
+    if (candidate) {
+      return ok({
+        needsRescheduleConfirmation: true,
+        candidate,
+        incoming: { ...v, date: v.date, time: v.start_time },
+      });
+    }
+  }
   const { data, error } = await ctx.supabase
     .from("follow_ups")
     .insert({
