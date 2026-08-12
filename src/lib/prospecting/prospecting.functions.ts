@@ -469,7 +469,25 @@ export const convertProspectingLead = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("user_id", context.userId);
 
-    return { person_id: personId, property_id: propertyId };
+    // Negócio de angariação com a origem gravada no próprio negócio.
+    // A atribuição placa → contacto → angariação deixa de depender de haver
+    // uma tarefa intermédia a ligar as duas pontas.
+    let opportunityId: string | null = null;
+    try {
+      const { createDealCore } = await import("@/lib/deals/create.server");
+      const deal = await createDealCore(context.supabase, context.userId, {
+        title: data.property_title ?? l.title ?? "Angariação",
+        kind: "angariacao",
+        personId,
+        propertyId,
+        value: data.asking_price ?? l.asking_price ?? 0,
+        source: "dashboard",
+        sourceLeadId: data.id,
+      });
+      opportunityId = deal.id;
+    } catch { /* a conversão do contacto nunca pode falhar por causa do negócio */ }
+
+    return { person_id: personId, property_id: propertyId, opportunity_id: opportunityId };
   });
 // Métrica derivada: % de leads registadas com contacto confirmado dentro de 48h.
 // Só contam confirmações explícitas do consultor — lembretes enviados não contam.
