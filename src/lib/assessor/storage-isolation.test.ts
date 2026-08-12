@@ -56,6 +56,74 @@ const d = hasEnv ? describe : describe.skip;
 
 const BUCKET = "assessor-files";
 
+// ---------------------------------------------------------------------------
+// Resiliência contra instabilidade transitória do serviço remoto (5xx / rede).
+// O CI falhava com "Unexpected HTTP response: 503" quando o Auth/Storage
+// remoto respondia 503 durante o arranque. Isto não é falha de isolamento.
+// ---------------------------------------------------------------------------
+
+const RETRIES = 3;
+const BASE_DELAY_MS = 1000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function isTransient(message: string | undefined | null): boolean {
+  if (!message) return false;
+  return /\b(50[0-4]|429)\b|unexpected http response|fetch failed|network|timeout|ECONNRESET|EAI_AGAIN|socket hang up/i.test(
+    message,
+  );
+}
+
+/** Repete `fn` com backoff exponencial apenas em erros transitórios (5xx/429/rede). */
+async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt === RETRIES || !isTransient(msg)) throw err;
+      // eslint-disable-next-line no-console
+      console.warn(`[isolation] ${label} falhou (tentativa ${attempt}/${RETRIES}): ${msg} — a repetir…`);
+      await sleep(BASE_DELAY_MS * 2 ** (attempt - 1));
+    }
+  }
+  throw lastErr;
+}
+
+/** fetch com retry em 5xx/429. */
+async function fetchWithRetry(label: string, input: string, init: RequestInit): Promise<Response> {
+  return withRetry(label, async () => {
+    const res = await fetch(input, init);
+    if (res.status >= 500 || res.status === 429) {
+      throw new Error(`Unexpected HTTP response: ${res.status} (${label})`);
+    }
+    return res;
+  });
+}
+
+/** Espera que o projeto remoto responda antes de correr os testes. */
+async function waitForService() {
+  const deadline = Date.now() + 90_000;
+  let lastStatus = "sem resposta";
+  let delay = 1000;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${url}/auth/v1/health`, { headers: { apikey: anon! } });
+      if (res.ok) return;
+      lastStatus = `HTTP ${res.status}`;
+    } catch (err) {
+      lastStatus = err instanceof Error ? err.message : String(err);
+    }
+    // eslint-disable-next-line no-console
+    console.warn(`[isolation] serviço ainda não pronto (${lastStatus}) — nova tentativa em ${delay}ms`);
+    await sleep(delay);
+    delay = Math.min(delay * 2, 10_000);
+  }
+  throw new Error(`serviço remoto indisponível após 90s (último estado: ${lastStatus})`);
+}
+
 function newClient(): SupabaseClient {
   return createClient(url!, anon!, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -74,7 +142,7 @@ function adminHeaders() {
 async function provisionUser(tag: string) {
   const email = `ci-isolation-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.assessor.local`;
   const password = `Ci!${crypto.randomUUID()}`;
-  const res = await fetch(`${url}/auth/v1/admin/users`, {
+  const res = await fetchWithRetry(`provisionar conta ${tag}`, `${url}/auth/v1/admin/users`, {
     method: "POST",
     headers: adminHeaders(),
     body: JSON.stringify({ email, password, email_confirm: true }),
@@ -94,12 +162,14 @@ async function deleteUser(userId: string) {
 }
 
 async function signIn(email: string, password: string) {
-  const client = newClient();
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
-  if (error || !data.session) {
-    throw new Error(`sign-in failed for ${email}: ${error?.message ?? "sem sessão devolvida"}`);
-  }
-  return { client, userId: data.user!.id };
+  return withRetry(`sign-in ${email}`, async () => {
+    const client = newClient();
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (error || !data.session) {
+      throw new Error(`sign-in failed for ${email}: ${error?.message ?? "sem sessão devolvida"}`);
+    }
+    return { client, userId: data.user!.id };
+  });
 }
 
 d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
@@ -109,6 +179,7 @@ d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
   let provisioned = false;
 
   beforeAll(async () => {
+    await waitForService();
     if (canProvision) {
       const [ca, cb] = await Promise.all([provisionUser("a"), provisionUser("b")]);
       provisioned = true;
@@ -122,11 +193,13 @@ d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
 
     aPath = `${a.userId}/isolation-test/${crypto.randomUUID()}.txt`;
     const body = new TextEncoder().encode("secret-from-A");
-    const up = await a.client.storage
-      .from(BUCKET)
-      .upload(aPath, body, { contentType: "text/plain", upsert: false });
-    if (up.error) throw new Error(`A upload failed: ${up.error.message}`);
-  }, 30_000);
+    await withRetry("upload de A", async () => {
+      const up = await a.client.storage
+        .from(BUCKET)
+        .upload(aPath, body, { contentType: "text/plain", upsert: true });
+      if (up.error) throw new Error(`A upload failed: ${up.error.message}`);
+    });
+  }, 180_000);
 
   afterAll(async () => {
     try {
