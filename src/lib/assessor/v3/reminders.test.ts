@@ -205,6 +205,24 @@ describe("reminders — reagendamento", () => {
     expect(r.error).toBe("reminder_not_found");
   });
 
+  it("3b. tarefa sem lembrete é reagendada na própria tarefa (bug 11/08 23:56)", async () => {
+    // A causa real do "não consegui guardar": as tarefas tinham sido criadas
+    // sem lembrete e `reschedule_reminder` devolvia reminder_not_found.
+    const sb = makeFakeSupabase({
+      profiles: [{ id: USER, phone: "912345678", whatsapp_link_status: "linked" }],
+      follow_ups: [
+        { id: "fu9", user_id: USER, title: "Comprar envelopes", title_norm: "comprar envelopes", status: "pendente", due_date: "2026-08-12T08:00:00Z", due_time: "09:00" },
+      ],
+    });
+    const r = await rescheduleReminder(sb as any, {
+      userId: USER, channel: "whatsapp",
+      subject_hint: "envelopes",
+      new_date: "2099-01-01", new_time: "14:00",
+    });
+    expect(r.ok).toBe(true);
+    expect(r.follow_up_ids).toEqual(["fu9"]);
+  });
+
   it("4. dois reminders semelhantes → devolve candidates e não altera BD", async () => {
     const scheduled = new Date(Date.now() + 60 * 60_000).toISOString();
     const sb = makeFakeSupabase({
