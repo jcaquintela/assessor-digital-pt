@@ -101,7 +101,14 @@ export function InviteLinkDialog({
           <p className="mini mt-2" style={{ color: "var(--muted)" }}>{envio.motivo}</p>
         )}
         {envio?.podeEnviar && envio.destino && (
-          <p className="mini mt-2" style={{ color: "var(--muted)" }}>Envio pelo Afonso para {envio.destino}.</p>
+          <p className="mini mt-2" style={{ color: "var(--muted)" }}>
+            Envio pelo Afonso para {envio.nomeDestino || nome} · {envio.destino}.
+          </p>
+        )}
+        {envio?.ehPropriaConta && (
+          <p className="mini mt-2" style={{ color: "var(--danger, #dc2626)" }}>
+            Atenção: este convite é para a tua própria conta — a mensagem vai sair com o teu nome e para o teu número.
+          </p>
         )}
 
         {res && (
