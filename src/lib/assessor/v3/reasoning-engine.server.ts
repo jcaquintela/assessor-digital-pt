@@ -397,6 +397,68 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     }
 
     pendingForArchive = pending ?? null;
+    // Compromisso duplicado vs. reagendamento — a resposta decide.
+    if (pending && pending.intent === "confirm_event_reschedule") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const cand = payload.candidate ?? null;
+      const incoming = payload.incoming ?? null;
+      if (cand?.id && incoming?.date && incoming?.time) {
+        if (saIsConfirmation(trimmed)) {
+          const { lisbonLocalToUtcIso, rescheduleReminder } = await import("./reminders.server");
+          const dueIso = lisbonLocalToUtcIso(String(incoming.date), String(incoming.time));
+          const { error: updErr } = await supabase
+            .from("follow_ups")
+            .update({
+              due_date: dueIso,
+              due_time: String(incoming.time),
+              status: "agendado",
+            } as never)
+            .eq("id", cand.id)
+            .eq("user_id", userId);
+          if (updErr) {
+            await markPendingActionStatus(supabase, pending.id, "failed", {
+              error_message: `reschedule_update:${updErr.message}`,
+            });
+            return { reply: "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?" };
+          }
+          try {
+            await rescheduleReminder(supabase, {
+              userId, channel,
+              related_resource_type: "follow_up",
+              related_resource_id: String(cand.id),
+              new_date: String(incoming.date),
+              new_time: String(incoming.time),
+              timezone: "Europe/Lisbon",
+            });
+          } catch { /* noop */ }
+          try {
+            const { pushEventToProviders } = await import("@/lib/calendar/sync.server");
+            await pushEventToProviders({ userId, followUpId: String(cand.id), action: "upsert" });
+          } catch { /* noop */ }
+          await markPendingActionStatus(supabase, pending.id, "executed", {
+            created_resource_type: "follow_up",
+            created_resource_id: String(cand.id),
+          });
+          return {
+            reply: `Actualizei "${cand.title}" para as ${incoming.time}. Fica só um compromisso.`,
+          };
+        }
+        if (saIsRejection(trimmed)) {
+          const exec = TOOL_REGISTRY.create_event;
+          const result = await exec({ ...ctx, skipDuplicateCheck: true }, incoming);
+          await markPendingActionStatus(supabase, pending.id, result.ok ? "executed" : "failed", {
+            created_resource_type: result.ok ? "follow_up" : null,
+            created_resource_id: result.ok ? ((result.data as any)?.event?.id ?? null) : null,
+            error_message: result.ok ? null : (result.error ?? "not_created"),
+          });
+          return {
+            reply: result.ok
+              ? `Certo — fica como compromisso separado, às ${incoming.time}.`
+              : "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?",
+          };
+        }
+      }
+    }
     if (pending && pending.intent === "create_prospecting_lead") {
       if (saIsConfirmation(trimmed)) {
         const exec = TOOL_REGISTRY.create_prospecting_lead;
