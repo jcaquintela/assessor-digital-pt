@@ -87,7 +87,7 @@ export async function computePriorities(
   const [{ data: follows }, { data: opps }] = await Promise.all([
     supabase
       .from("follow_ups")
-      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, related_property_id, outcome, created_at, notes, archived_at, event_class")
+      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, related_property_id, related_prospecting_lead_id, outcome, created_at, notes, archived_at, event_class")
       .eq("user_id", userId)
       // O filtro de "aberto/fechado" é aplicado em memória pela regra
       // canónica: `precisa_nova_acao` e `adiado` continuam abertos e têm de
@@ -393,7 +393,7 @@ export async function findAwaitingOutcome(
 ): Promise<AwaitingOutcomeItem[]> {
   const { data } = await supabase
     .from("follow_ups")
-    .select("id, title, due_date, due_time, type, person_id, related_property_id, opportunity_id, event_class")
+    .select("id, title, due_date, due_time, type, person_id, related_property_id, opportunity_id, related_prospecting_lead_id, event_class")
     .eq("user_id", userId)
     .is("outcome", null)
     .not("status", "in", "(Concluído,Concluido,concluido,Arquivado,arquivado,Cancelado,cancelado)")

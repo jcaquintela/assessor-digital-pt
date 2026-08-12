@@ -39,6 +39,12 @@ describe("Golden — reuniões internas não geram seguimento", () => {
     expect(needsOutcomeFollowUp(ev)).toBe(false);
   });
 
+  it("1d. um compromisso ligado a lead de prospeção tem contexto comercial", () => {
+    const ev = evento({ title: "Ligar para a placa", related_prospecting_lead_id: "lead-1" });
+    expect(classifyEvent(ev)).toBe("negocio");
+    expect(needsOutcomeFollowUp(ev)).toBe(true);
+  });
+
   it("2. 'Visita — Rua das Flores' com lead associado gera seguimento normalmente", () => {
     const ev = evento({ title: "Visita — Rua das Flores", person_id: "lead-1" });
     expect(classifyEvent(ev)).toBe("negocio");

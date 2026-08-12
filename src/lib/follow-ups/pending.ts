@@ -18,6 +18,7 @@ export interface PendingFollowUp extends FollowUpStateRow {
   person_id?: string | null;
   related_property_id?: string | null;
   opportunity_id?: string | null;
+  related_prospecting_lead_id?: string | null;
   event_class?: string | null;
 }
 
@@ -28,6 +29,7 @@ export function followUpEventClass(row: PendingFollowUp): EventClass {
     person_id: row.person_id ?? null,
     related_property_id: row.related_property_id ?? null,
     opportunity_id: row.opportunity_id ?? null,
+    related_prospecting_lead_id: row.related_prospecting_lead_id ?? null,
     event_class: row.event_class ?? null,
   });
 }
@@ -48,6 +50,7 @@ export function requiresOutcome(row: PendingFollowUp): boolean {
     person_id: row.person_id ?? null,
     related_property_id: row.related_property_id ?? null,
     opportunity_id: row.opportunity_id ?? null,
+    related_prospecting_lead_id: row.related_prospecting_lead_id ?? null,
     event_class: row.event_class ?? null,
   });
 }
@@ -84,6 +87,7 @@ export interface SeguimentoLike {
   pessoaId?: string;
   imovelId?: string;
   oportunidadeId?: string;
+  leadProspecaoId?: string;
   classeEvento?: string;
   arquivadoEm?: string;
 }
@@ -99,6 +103,7 @@ export function fromSeguimento(s: SeguimentoLike): PendingFollowUp & { id: strin
     person_id: s.pessoaId ?? null,
     related_property_id: s.imovelId ?? null,
     opportunity_id: s.oportunidadeId ?? null,
+    related_prospecting_lead_id: s.leadProspecaoId ?? null,
     event_class: s.classeEvento ?? null,
     archived_at: s.arquivadoEm ?? null,
   };
