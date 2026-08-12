@@ -57,6 +57,7 @@ function ErrosEscritaPage() {
   const [open, setOpen] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<WriteErrorItem | null>(null);
   const [lastRetry, setLastRetry] = useState<Record<string, string>>({});
+  const [categoria, setCategoria] = useState<"escrita" | "modelo">("escrita");
 
   const retry = useMutation({
     mutationFn: (id: string) => retryFn({ data: { id } }),
@@ -80,7 +81,8 @@ function ErrosEscritaPage() {
     refetchInterval: 60_000,
   });
 
-  const items: WriteErrorItem[] = data?.items ?? [];
+  const todos: WriteErrorItem[] = data?.items ?? [];
+  const items = useMemo(() => todos.filter((i) => i.kind === categoria), [todos, categoria]);
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (!t) return items;
@@ -101,18 +103,23 @@ function ErrosEscritaPage() {
     <div>
       <PageTitle
         title="Erros de escrita"
-        sub="Tudo o que o Afonso tentou gravar e falhou — com ferramenta, erro e argumentos, para investigares sem abrir a base de dados."
+        sub="Falhas reais de gravação, separadas das falhas de modelo em que o caminho de recurso respondeu na mesma — para não confundires alarme com ruído."
       />
 
       <Grid cols={3}>
         <MetricCard
-          label="Falhas nas últimas 24h"
+          label="Falhas de escrita (24h)"
           value={data?.last24h ?? "—"}
           tone={(data?.last24h ?? 0) > 0 ? "coral" : "default"}
-          sub="ferramentas + motor"
+          sub="tentativas reais de gravar que falharam"
           source="assessor_tool_calls · live"
         />
-        <MetricCard label="Falhas no período" value={items.length} sub="máx. 200 registos" source="telemetria · live" />
+        <MetricCard
+          label="Falhas de escrita no período"
+          value={data?.writeCount ?? "—"}
+          sub="máx. 200 registos"
+          source="telemetria · live"
+        />
         <MetricCard
           label="Ferramenta mais falhada"
           value={topTool ? topTool[0] : "—"}
@@ -122,8 +129,63 @@ function ErrosEscritaPage() {
         />
       </Grid>
 
+      <SectionTitle>Falhas de modelo (com recurso)</SectionTitle>
+      <p className="sub mb-3">
+        A primeira chamada ao modelo falhou ou demorou demais e a resposta saiu pelo caminho de recurso. O consultor
+        foi respondido e nenhum dado se perdeu — conta como saúde do motor, não como erro de escrita.
+      </p>
+      <Grid cols={3}>
+        <MetricCard
+          label="Últimas 24h"
+          value={data?.modelLast24h ?? "—"}
+          sub="sem perda de dados"
+          source="assessor_ai_logs · live"
+        />
+        <MetricCard
+          label="Últimos 7 dias"
+          value={data?.modelTrend?.d7 ?? "—"}
+          sub={
+            data?.modelTrend
+              ? `7 dias anteriores: ${data.modelTrend.prev7}${
+                  data.modelTrend.d7 > data.modelTrend.prev7
+                    ? " — a subir"
+                    : data.modelTrend.d7 < data.modelTrend.prev7
+                      ? " — a descer"
+                      : " — estável"
+                }`
+              : "—"
+          }
+          source="tendência · 14 dias"
+        />
+        <MetricCard
+          label="Últimos 30 dias"
+          value={data?.modelTrend?.d30 ?? "—"}
+          sub={
+            data?.modelTrend?.avgLatencyMs
+              ? `latência média ${(data.modelTrend.avgLatencyMs / 1000).toFixed(1)}s`
+              : "sem ocorrências"
+          }
+          source="assessor_ai_logs · 30 dias"
+        />
+      </Grid>
+
       <SectionTitle>Ocorrências</SectionTitle>
       <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="mr-2 flex gap-1 rounded-md border p-1">
+          {([
+            { key: "escrita", label: `Falhas de escrita (${todos.filter((i) => i.kind === "escrita").length})` },
+            { key: "modelo", label: `Falhas de modelo (${todos.filter((i) => i.kind === "modelo").length})` },
+          ] as const).map((c) => (
+            <Button
+              key={c.key}
+              size="sm"
+              variant={categoria === c.key ? "default" : "ghost"}
+              onClick={() => setCategoria(c.key)}
+            >
+              {c.label}
+            </Button>
+          ))}
+        </div>
         {RANGES.map((r) => (
           <Button
             key={r.hours}
@@ -148,8 +210,16 @@ function ErrosEscritaPage() {
       {isLoading ? (
         <p className="sub">A carregar…</p>
       ) : filtered.length === 0 ? (
-        <Empty note="Se um consultor reportar “não consegui guardar”, aparece aqui em segundos.">
-          Sem erros de escrita no período escolhido.
+        <Empty
+          note={
+            categoria === "escrita"
+              ? "Se um consultor reportar “não consegui guardar”, aparece aqui em segundos."
+              : "Quando a primeira chamada ao modelo falhar, a ocorrência fica registada aqui."
+          }
+        >
+          {categoria === "escrita"
+            ? "Sem falhas de escrita no período escolhido."
+            : "Sem falhas de modelo no período escolhido."}
         </Empty>
       ) : (
         <StackTable headers={["Quando", "Origem", "Ferramenta", "Erro", "Consultor", ""]}>
@@ -157,13 +227,15 @@ function ErrosEscritaPage() {
             <Tr key={i.id}>
               <Td className="mini">{fmt(i.created_at)}</Td>
               <Td>
-                <Badge tone={i.source === "tool" ? "bad" : "warn"}>
-                  {i.source === "tool" ? "Ferramenta" : "Motor"}
+                <Badge tone={i.kind === "escrita" ? "bad" : "warn"}>
+                  {i.kind === "escrita" ? (i.source === "tool" ? "Ferramenta" : "Motor") : "Recurso"}
                 </Badge>
               </Td>
               <Td>{i.tool_name ?? "—"}</Td>
               <Td className="mini">
-                <span className="break-words">{i.error ?? "sem mensagem"}</span>
+                <span className="break-words">
+                  {i.error ?? (i.kind === "modelo" ? "1.ª chamada falhou — respondeu pelo recurso" : "sem mensagem")}
+                </span>
                 {i.intent ? <div className="text-[11px] opacity-70">{i.intent}</div> : null}
                 {open === i.id ? (
                   <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2 text-[11px]">
