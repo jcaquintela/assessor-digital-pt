@@ -1592,7 +1592,11 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   if (queryReply || cancelTool) {
     if (queryReply) reply = queryReply;
   } else {
-    reply = enforceHumanTone(reply, { actionExecutedOk: (shouldAct && allOk) || prospectingActed });
+    reply = enforceHumanTone(reply, {
+      // Uma pergunta de desambiguação não é uma acção executada: se dissermos
+      // que sim, o tom humano transforma a pergunta em "Feito.".
+      actionExecutedOk: ((shouldAct && allOk) || prospectingActed) && !rescheduleAsk,
+    });
     if (decideR.decision.action === "ask") {
       reply = enforceSingleQuestion(reply);
     }
@@ -1600,7 +1604,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   // Ordem correcta: o outcome real (execução) manda sobre a frase gerada.
   // Quando a ferramenta correu bem, a resposta NUNCA pode ser linguagem de
   // incompreensão — nem por fallback, nem porque o passo de redacção falhou.
-  const executedOk = (shouldAct && allOk) || prospectingActed;
+  const executedOk = ((shouldAct && allOk) || prospectingActed) && !rescheduleAsk;
   if (executedOk) {
     const soundsLikeFailure =
       !reply ||
@@ -1609,7 +1613,7 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
       NOT_UNDERSTOOD_RE.test(reply);
     if (soundsLikeFailure) reply = NATURAL_FALLBACKS.done;
   }
-  if (isCorrection) {
+  if (isCorrection && !rescheduleAsk) {
     reply = suppressRejectedQuestion(reply, lastAssistantReply);
   }
   if (!reply) {
