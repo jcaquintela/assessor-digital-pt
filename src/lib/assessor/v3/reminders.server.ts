@@ -178,6 +178,8 @@ export async function rescheduleReminder(
 
   // 1) Localizar o alvo.
   let target: ReminderRow | null = null;
+  // Tarefas/compromissos que correspondem ao pedido mas podem não ter aviso.
+  let fallbackFollowUpIds: string[] = [];
 
   if (input.reminder_id) {
     const { data } = await supabase
