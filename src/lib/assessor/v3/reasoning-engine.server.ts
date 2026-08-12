@@ -1452,16 +1452,19 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   if (rescheduleAsk) {
     const d = rescheduleAsk.data as any;
     const { rescheduleQuestion } = await import("../event-subject");
+    const question = rescheduleQuestion(d.candidate, d.incoming);
     try {
       await createPendingAction(supabase, {
         userId, channel,
         intent: "confirm_event_reschedule",
         originalContent: trimmed,
         payload: { candidate: d.candidate, incoming: d.incoming },
+        currentQuestion: question,
+        pendingQuestion: question,
         sourceMessageId: sourceMessageId ?? null,
       });
     } catch { /* noop */ }
-    reply = rescheduleQuestion(d.candidate, d.incoming);
+    reply = question;
   }
   if (leadTool) {
     const dup = (leadTool.data as any)?.duplicate === true;
