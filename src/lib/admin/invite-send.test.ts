@@ -44,7 +44,7 @@ describe("golden — envio do convite pelo Afonso", () => {
     const r = await sendInvite(db({ phone: "+351 912 345 678" }), base);
     expect(r).toMatchObject({ enviado: true, via: "template", destino: "+351 9XX XXX 678" });
     const [, payload, opts] = sendPayload.mock.calls[0];
-    expect((payload as any).template.name).toBe("afonso_convite_painel_v2");
+    expect((payload as any).template.name).toBe("afonso_convite_painel_v3");
     expect(opts.meta).toMatchObject({ purpose: "invite_access", outsideWindow: true });
   });
 
