@@ -2298,6 +2298,7 @@ export type Database = {
           person_id: string | null
           probability: string
           property_id: string | null
+          source_lead_id: string | null
           stage: Database["public"]["Enums"]["deal_stage"]
           stage_changed_at: string
           status: string
@@ -2320,6 +2321,7 @@ export type Database = {
           person_id?: string | null
           probability?: string
           property_id?: string | null
+          source_lead_id?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"]
           stage_changed_at?: string
           status?: string
@@ -2342,6 +2344,7 @@ export type Database = {
           person_id?: string | null
           probability?: string
           property_id?: string | null
+          source_lead_id?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"]
           stage_changed_at?: string
           status?: string
@@ -2365,6 +2368,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_source_lead_id_fkey"
+            columns: ["source_lead_id"]
+            isOneToOne: false
+            referencedRelation: "prospecting_leads"
             referencedColumns: ["id"]
           },
         ]
