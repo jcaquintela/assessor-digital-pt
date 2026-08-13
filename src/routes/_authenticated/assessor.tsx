@@ -18,6 +18,11 @@ import {
   BulkArchiveConfirmCard,
   usePendingBulkArchive,
 } from "@/components/assessor/bulk-archive-confirm";
+import {
+  PendingConfirmationBanner,
+  ReplyQuoteChip,
+  usePendingConfirmation,
+} from "@/components/assessor/pending-confirmation";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
 
@@ -84,6 +89,9 @@ function AssessorPage() {
   // botões, em vez de obrigar a escrever "sim".
   const { pending: pendingBulk, reload: reloadBulk } = usePendingBulkArchive(msgs.length);
   const [bulkBusy, setBulkBusy] = useState(false);
+  // Pergunta em aberto: o consultor vê que há algo à espera dele, qual é a
+  // pergunta exacta e até quando pode responder (24h).
+  const { pending: pendingConfirm, reload: reloadConfirm } = usePendingConfirmation(msgs.length);
 
   useEffect(() => {
     let cancelled = false;
@@ -142,6 +150,7 @@ function AssessorPage() {
       toast.error((e as Error).message);
     } finally {
       setSending(false);
+      void reloadConfirm();
     }
   };
 
@@ -155,6 +164,7 @@ function AssessorPage() {
     } finally {
       setBulkBusy(false);
       void reloadBulk();
+      void reloadConfirm();
     }
   };
 
@@ -183,6 +193,9 @@ function AssessorPage() {
         {/* Histórico */}
         <div ref={scrollRef} className="min-h-0 overflow-y-auto px-3 py-4 md:px-6" style={{ WebkitOverflowScrolling: "touch" }}>
           {loading && <p className="c-muted text-center text-sm">A carregar…</p>}
+          {!loading && pendingConfirm && !pendingBulk && (
+            <PendingConfirmationBanner pending={pendingConfirm} channel={pendingConfirm.channel} />
+          )}
           {!loading && msgs.length === 0 && (
             <div className="c-empty mx-auto mt-8 max-w-md">
               <MessageCircle className="mx-auto mb-2 h-5 w-5" />
@@ -269,6 +282,8 @@ function AssessorPage() {
         {/* Rodapé fixo */}
         <div className="c-chatbar" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}>
           {canWrite ? (
+            <>
+            {pendingConfirm && !pendingBulk && <ReplyQuoteChip question={pendingConfirm.question} />}
             <form
               className="mx-auto flex w-full max-w-3xl items-end gap-2"
               onSubmit={(e) => { e.preventDefault(); void enviar(); }}
@@ -293,6 +308,7 @@ function AssessorPage() {
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
               </button>
             </form>
+            </>
           ) : (
             <>Continua a conversa no {canalLabel}</>
           )}
