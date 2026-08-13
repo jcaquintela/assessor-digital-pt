@@ -386,6 +386,28 @@ export async function runReasoningEngine(
   // Escolha de qual (ou quais) compromisso desmarcar. "As duas" desmarca as
   // duas — e a confirmação lista cada uma com o respectivo resultado.
   try {
+    // Resposta à pergunta de recorrência ("queres que continue a repetir?").
+    // Sem isto, a pergunta era feita e a resposta caía no vazio.
+    const recPending = await findActivePendingAction(supabase, userId, channel, "recurrence");
+    if (recPending && recPending.intent === "confirm_recurrence_continue") {
+      const payload = (recPending.structured_payload ?? {}) as Record<string, any>;
+      const routineId = payload.routine_id ? String(payload.routine_id) : null;
+      const routineTitle = String(payload.routine_title ?? "");
+      const { readRecurrenceAnswer, recurrenceKeptReply, recurrenceStoppedReply } =
+        await import("./recurrence-answer");
+      const answer = readRecurrenceAnswer(trimmed);
+      if (answer === "stop" && routineId) {
+        const res = await TOOL_REGISTRY.set_routine_active!(ctx, { routine_id: routineId, active: false });
+        await markPendingActionStatus(supabase, recPending.id, res.ok ? "executed" : "failed", {
+          error_message: res.ok ? null : (res.error ?? "not_updated"),
+        });
+        if (res.ok) return { reply: recurrenceStoppedReply(routineTitle) };
+      } else if (answer === "continue") {
+        await markPendingActionStatus(supabase, recPending.id, "executed");
+        return { reply: recurrenceKeptReply(routineTitle) };
+      }
+    }
+
     const choicePending = await findActivePendingAction(supabase, userId, channel, "cancel");
     if (choicePending && choicePending.intent === "choosing_cancel_target") {
       const payload = (choicePending.structured_payload ?? {}) as Record<string, any>;
