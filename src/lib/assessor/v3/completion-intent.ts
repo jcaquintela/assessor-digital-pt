@@ -17,9 +17,15 @@ export const COMPLETED_OUTCOME = "concluido";
 
 // "está tratado", "já tratei", "já fiz", "está feito", "já foi resolvido",
 // "já está concluído", "isso já está despachado".
+// Testadas sempre sobre texto normalizado (sem acentos): \b não fecha
+// palavra depois de "á", e "está tratado" escapava à deteção.
 const DONE_RE =
-  /\b(?:j[áa]\s+)?(?:est[áa]|estao|est[ãa]o|foi|fica(?:ram)?|ficou|fiz|tratei|resolvi|conclu[íi]|despachei)?\s*(tratad[oa]s?|feit[oa]s?|resolvid[oa]s?|conclu[íi]d[oa]s?|despachad[oa]s?|fechad[oa]s?)\b/i;
-const DONE_STRICT_RE = /\b(j[áa]|est[áa]|est[ãa]o|foi|fiz|tratei|resolvi|conclu[íi]|despachei|fica|ficou)\b/i;
+  /\b(tratad[oa]s?|feit[oa]s?|resolvid[oa]s?|concluid[oa]s?|despachad[oa]s?|fechad[oa]s?)\b/;
+const DONE_STRICT_RE = /\b(ja|esta|estao|foi|fiz|tratei|resolvi|conclui|despachei|fica|ficou)\b/;
+// "já fiz a avaliação", "já liguei ao Nuno": verbo na primeira pessoa depois
+// de "já" — cumprido, não é um plano.
+const DONE_VERB_RE =
+  /\bja\s+(fiz|tratei|liguei|resolvi|conclui|despachei|acabei|terminei|falei|enviei|entreguei|visitei|marquei)\b/;
 // "cancelada"/"desmarcada" NÃO é conclusão: isso é o caminho do cancelamento.
 const CANCEL_RE = /\b(cancel\w*|desmarc\w*|anul\w*|adia\w*|remarc\w*)\b/i;
 
@@ -43,7 +49,7 @@ export interface CompletionInstruction {
 function hintFrom(part: string): string {
   const words = normalizeForMatch(part)
     .split(" ")
-    .filter((w) => w.length >= 3 && !HINT_STOP.has(w) && !DONE_RE.test(w) && !DONE_STRICT_RE.test(w));
+    .filter((w) => w.length >= 3 && !HINT_STOP.has(w) && !DONE_RE.test(w) && !DONE_STRICT_RE.test(w) && !/^(fiz|liguei|acabei|terminei|falei|enviei|entreguei|visitei|marquei|tratei|resolvi|conclui|despachei)$/.test(w));
   return words.slice(0, 6).join(" ");
 }
 
@@ -63,11 +69,17 @@ export function detectCompletionInstructions(
     .filter(Boolean);
   const out: CompletionInstruction[] = [];
   for (const part of parts) {
-    if (!DONE_RE.test(part) || !DONE_STRICT_RE.test(part)) continue;
-    if (CANCEL_RE.test(part)) continue;
+    const norm = normalizeForMatch(part);
+    const done = (DONE_RE.test(norm) && DONE_STRICT_RE.test(norm)) || DONE_VERB_RE.test(norm);
+    if (!done) continue;
+    if (CANCEL_RE.test(norm)) continue;
     if (/\?\s*$/.test(part)) continue;
     const subjectHint = hintFrom(part);
-    if (subjectHint.split(" ").filter(Boolean).length < 2) continue;
+    // Conservador: sem assunto nomeado não se fecha nada. Duas palavras, ou
+    // uma só quando é uma palavra longa e inequívoca ("avaliação").
+    const hintWords = subjectHint.split(" ").filter(Boolean);
+    if (!hintWords.length) continue;
+    if (hintWords.length < 2 && hintWords[0]!.length < 6) continue;
     out.push({ part, subjectHint });
   }
   return out.slice(0, 3);

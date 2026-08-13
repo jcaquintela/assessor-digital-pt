@@ -44,6 +44,13 @@ import { detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
 import { isDiscardCommand } from "../culture/discard";
 import { enforceTransparentConfirmation } from "./write-receipt";
 import {
+  detectCompletionInstructions,
+  formatCompletionReply,
+  recurrenceQuestion,
+  remainingRequest,
+  remainderNeedsWork,
+} from "./completion-intent";
+import {
   isDiscardAudioRequest,
   UNDO_KEEP_WINDOW_MS,
   UNDO_KEEP_TOO_LATE_REPLY,
@@ -216,7 +223,10 @@ function toHistoryPreview(rows: Array<{ role: string; content: string }>): strin
     .join("\n");
 }
 
-export async function runReasoningEngine(input: EngineInput): Promise<EngineOutcome> {
+export async function runReasoningEngine(
+  input: EngineInput,
+  opts?: { skipCompletionPass?: boolean },
+): Promise<EngineOutcome> {
   const started = Date.now();
   const { supabase, userId, channel, content, sourceMessageId } = input;
   if (!userId) return { reply: NATURAL_FALLBACKS.unassociated };
@@ -227,6 +237,40 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
   if (!trimmed) return { reply: NATURAL_FALLBACKS.didNotUnderstand };
 
   const ctx: DomainContext = { supabase, userId, channel, sourceMessageId: sourceMessageId ?? null };
+
+  // ── Instruções de conclusão ("o estudo de mercado já está tratado") ──
+  //
+  // Cada instrução de uma mensagem composta vive por si: uma ambiguidade
+  // noutra parte (que compromisso desmarcar) nunca pode deixar esta por
+  // processar — foi assim que um estudo de mercado dado como feito voltou a
+  // aparecer nos briefings dias depois.
+  if (!opts?.skipCompletionPass) {
+    const done = detectCompletionInstructions(trimmed);
+    if (done.length) {
+      const lines: string[] = [];
+      const handled: typeof done = [];
+      for (const instruction of done) {
+        try {
+          const res = await TOOL_REGISTRY.complete_follow_up!(ctx, {
+            subject_hint: instruction.subjectHint,
+          });
+          const d = (res.data ?? {}) as any;
+          if (!res.ok || d?.ambiguous) continue; // ambíguo segue o caminho normal
+          handled.push(instruction);
+          lines.push(formatCompletionReply(d.items ?? [], instruction.subjectHint));
+          if (d?.recurring?.title) lines.push(recurrenceQuestion(d.recurring.title));
+        } catch { /* noop */ }
+      }
+      if (handled.length) {
+        const rest = remainingRequest(trimmed, handled);
+        if (remainderNeedsWork(rest)) {
+          const out = await runReasoningEngine({ ...input, content: rest }, { skipCompletionPass: true });
+          return { ...out, reply: [lines.join(" "), out.reply].filter(Boolean).join(" ").trim() };
+        }
+        return { reply: lines.join(" ") };
+      }
+    }
+  }
 
   const [{ data: prof }, { data: recentRows }] = await Promise.all([
     supabase.from("profiles").select("name, assessor_name").eq("id", userId).maybeSingle(),
