@@ -135,6 +135,25 @@ function firstLine(text: string): string {
   return line;
 }
 
+// Padrões técnicos que nunca podem ser lidos pelo consultor:
+// "search_people:invalid_args", "reminder_not_found", "act sem ferramenta",
+// "create_event: Error xyz".
+const TECH_PAIR_RE = /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\s*:\s*[^\n;]+/gi;
+const TECH_CODE_RE = /\b[a-z][a-z0-9]*(?:_[a-z0-9]+){1,}\b/gi;
+
+export function stripTechnicalCodes(value: string): string {
+  let out = String(value ?? "")
+    .replace(TECH_PAIR_RE, " ")
+    .replace(TECH_CODE_RE, " ")
+    .replace(/\bact sem ferramenta\b/gi, " ");
+  out = out
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([.,;:])/g, "$1")
+    .replace(/(^|\n)\s*[:;-]\s*/g, "$1")
+    .trim();
+  return out;
+}
+
 export function humanizeMiscTitle(value: unknown, fallback = "Nota sem título"): string {
   const humanized = humanizeMiscText(value).trim();
   const line = firstLine(humanized) || fallback;
@@ -148,14 +167,14 @@ export function sanitizeMiscFields<T extends {
   summary?: unknown;
 }>(fields: T): T & { title: string; original_content: string | null; summary: string | null } {
   const original = humanizeMiscText(fields.original_content).trim();
-  const summary = humanizeMiscText(fields.summary).trim();
+  const summary = stripTechnicalCodes(humanizeMiscText(fields.summary)).trim();
   const title = humanizeMiscTitle(
     fields.title ?? (original || summary),
     "Nota sem título",
   );
   return {
     ...fields,
-    title,
+    title: stripTechnicalCodes(title) || title,
     original_content: original || null,
     summary: summary || null,
   };

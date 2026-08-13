@@ -122,3 +122,27 @@ describe("safety net — escrita e resposta", () => {
     expect(reply).toBe("Tentei mas não consegui.");
   });
 });
+
+describe("nada de texto técnico em Diversos", () => {
+  it("motivo técnico vira texto PT e fica só na etiqueta interna", async () => {
+    const inserts: any[] = [];
+    const ctx = {
+      supabase: { from: () => ({ insert: (row: any) => { inserts.push(row); return Promise.resolve({ error: null }); } }) },
+      userId: "u1", channel: "web", sourceMessageId: null,
+    } as any;
+    for (const raw of ["no_tool", "reschedule_reminder:reminder_not_found", "search_people:invalid_args:Invalid input"]) {
+      await applySafetyNet(ctx, {
+        content: "Marca visita ao apartamento do Rui na quinta às 15h",
+        outcome: "tool_failed",
+        reason: raw,
+        reply: "Tentei mas não consegui.",
+      });
+    }
+    expect(inserts).toHaveLength(3);
+    for (const row of inserts) {
+      expect(row.summary).not.toMatch(/_|:/);
+      expect(row.tags.some((t: string) => t.startsWith("tec:"))).toBe(true);
+    }
+    expect(inserts[0].summary).toContain("falta-me essa capacidade");
+  });
+});

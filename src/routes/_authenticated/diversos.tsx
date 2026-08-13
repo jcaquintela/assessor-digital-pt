@@ -9,6 +9,7 @@ import { humanizeMiscText, humanizeMiscTitle } from "@/lib/assessor/misc-text";
 import { miscReason } from "@/lib/assessor/misc-reason";
 import { MiscActions } from "@/components/diversos/misc-actions";
 import { MiscLinkedBadges } from "@/components/diversos/linked-badge";
+import { ExpandableText } from "@/components/diversos/expandable-text";
 import { Archive, Trash2, CheckCircle2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -281,9 +282,10 @@ function DiversosPage() {
                     </span>
                   </p>
                   {r.original_content && r.original_content !== r.title ? (
-                    <p className="c-soft whitespace-pre-wrap text-[13px] leading-relaxed">
-                      {r.original_content}
-                    </p>
+                    <ExpandableText
+                      text={r.original_content}
+                      className="c-soft whitespace-pre-wrap text-[13px] leading-relaxed"
+                    />
                   ) : null}
                   <MiscActions item={r} className="mt-1" />
                   <MiscLinkedBadges
