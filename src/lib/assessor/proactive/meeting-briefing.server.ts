@@ -114,7 +114,9 @@ export async function sendMeetingBriefing(
 }> {
   const nowMs = (opts.now ?? new Date()).getTime();
   if (!opts.force && !isBriefingDue(event, nowMs)) return { sent: false, reason: "not_due" };
-  if (!isBriefingEligible(event)) return { sent: false, reason: "not_business_event" };
+  if (!opts.force && !isBriefingEligible(event)) {
+    return { sent: false, reason: "not_business_event" };
+  }
 
   let brief: any = null;
   if (event.person_id) {
