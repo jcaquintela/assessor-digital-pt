@@ -12,10 +12,51 @@ import {
   BRIEFING_LEAD_MINUTES,
   briefingTemplateParams,
   formatMeetingBriefing,
-  hasBriefContent,
+  hasAnyBriefingContent,
+  isBriefingEligible,
   isBriefingDue,
   type BriefingEvent,
+  type EventBriefContext,
 } from "./meeting-briefing";
+
+/** Imóvel e negócio ligados ao próprio compromisso (não à pessoa). */
+async function loadEventContext(
+  supabase: any,
+  event: BriefingEvent & { user_id: string },
+): Promise<EventBriefContext> {
+  const ctx: EventBriefContext = {};
+  if (event.related_property_id) {
+    const { data } = await supabase
+      .from("properties")
+      .select("title, address, typology, asking_price")
+      .eq("id", event.related_property_id)
+      .eq("user_id", event.user_id)
+      .maybeSingle();
+    if (data) {
+      ctx.property = {
+        title: (data as any).title ?? null,
+        address: (data as any).address ?? null,
+        typology: (data as any).typology ?? null,
+        price: (data as any).asking_price ?? null,
+      };
+    }
+  }
+  if (event.opportunity_id) {
+    const { data } = await supabase
+      .from("opportunities")
+      .select("title, type, stage")
+      .eq("id", event.opportunity_id)
+      .eq("user_id", event.user_id)
+      .maybeSingle();
+    if (data) {
+      ctx.deal = {
+        label: (data as any).title ?? (data as any).type ?? "negócio",
+        stage: (data as any).stage ?? null,
+      };
+    }
+  }
+  return ctx;
+}
 
 export interface BriefingRunResult {
   sent: number;
@@ -33,9 +74,12 @@ async function loadDueEvents(
   const to = new Date(nowMs + 26 * 3600_000).toISOString();
   let q = supabase
     .from("follow_ups")
-    .select("id, user_id, title, type, due_date, due_time, status, person_id, briefing_sent_at")
+    .select(
+      "id, user_id, title, type, due_date, due_time, status, person_id, related_property_id, " +
+      "opportunity_id, related_prospecting_lead_id, event_class, created_at, briefing_sent_at",
+    )
     .is("briefing_sent_at", null)
-    .not("person_id", "is", null)
+    .neq("event_class", "interno")
     .gte("due_date", from)
     .lte("due_date", to)
     .order("due_date", { ascending: true })
