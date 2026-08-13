@@ -30,6 +30,8 @@ import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from
 import {
   detectAgendaQuery,
   detectMiscQuery,
+  detectDayStateQuery,
+  composeDayStateReply,
   formatAgendaReply,
   BARE_CONFIRMATION_REPLY,
   ACKNOWLEDGED_REPLY,
@@ -1413,6 +1415,33 @@ async function runReasoningEngineInner(
 
     // (a) Consulta de agenda → chama search_agenda directamente.
     const agendaPeriod = detectAgendaQuery(trimmed);
+
+    // (a1) "Como está o meu dia?" / "Como estou hoje?" → estado do dia com
+    // dados reais (agenda + prioridades), a qualquer hora. Leitura pura:
+    // nunca pede confirmação nem cai em Diversos.
+    if (!agendaPeriod && detectDayStateQuery(trimmed)) {
+      const t0 = Date.now();
+      const r = await TOOL_REGISTRY.search_agenda(ctx, { period: "today" });
+      const items: AgendaItem[] = ((r.data as any)?.items as AgendaItem[]) ?? [];
+      let priorities: Array<{ action: string; entity_label: string | null }> = [];
+      try {
+        const { computePriorities } = await import("../supreme/priorities.server");
+        priorities = (await computePriorities(supabase, userId, { limit: 3 })) as never;
+      } catch { /* agenda sozinha já responde */ }
+      const reply = composeDayStateReply(items, priorities);
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "day_state_fast_path", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
+          domain: "assessor", route: "v3-deterministic", fallback_used: false,
+          tool_name: "search_agenda", tool_success: !!r.ok,
+        } as never);
+      } catch { /* noop */ }
+      return { reply };
+    }
+
     if (agendaPeriod) {
       const t0 = Date.now();
       const r = await TOOL_REGISTRY.search_agenda(ctx, { period: agendaPeriod });
