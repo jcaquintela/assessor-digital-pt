@@ -6,7 +6,7 @@
 // Cada família de pedidos passa a ter a sua ranhura: uma resposta só resolve
 // (ou cancela) o pedido da ranhura a que pertence.
 
-export type PendingSlot = "main" | "documents" | "media" | "script";
+export type PendingSlot = "main" | "documents" | "media" | "script" | "cancel";
 
 const DOCUMENT_INTENTS = new Set(["choosing_document", "confirming_document_send"]);
 // "Guardo o ficheiro ou descarto?" é sempre uma pergunta lateral: não pode
@@ -15,12 +15,16 @@ const MEDIA_INTENTS = new Set(["confirm_keep_audio"]);
 // "Queres que prepare um guião?" é uma oferta lateral à placa: não pode
 // competir com o "queres que te lembre de ligar?" feito na mesma mensagem.
 const SCRIPT_INTENTS = new Set(["offer_prospecting_script"]);
+// "Qual delas queres desmarcar?" tem ranhura própria: a escolha ("as duas")
+// não pode ser roubada por outro rascunho em aberto, nem roubar-lhe o "sim".
+const CANCEL_INTENTS = new Set(["choosing_cancel_target"]);
 
 export function pendingSlot(intent: string | null | undefined): PendingSlot {
   if (intent && DOCUMENT_INTENTS.has(intent)) return "documents";
   if (intent && MEDIA_INTENTS.has(intent)) return "media";
   if (intent && SCRIPT_INTENTS.has(intent)) return "script";
+  if (intent && CANCEL_INTENTS.has(intent)) return "cancel";
   return "main";
 }
 
-export const PENDING_SLOTS: PendingSlot[] = ["main", "documents", "media", "script"];
+export const PENDING_SLOTS: PendingSlot[] = ["main", "documents", "media", "script", "cancel"];
