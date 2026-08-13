@@ -22,6 +22,10 @@ export const COMPLETED_OUTCOME = "concluido";
 const DONE_RE =
   /\b(tratad[oa]s?|feit[oa]s?|resolvid[oa]s?|concluid[oa]s?|despachad[oa]s?|fechad[oa]s?)\b/;
 const DONE_STRICT_RE = /\b(ja|esta|estao|foi|fiz|tratei|resolvi|conclui|despachei|fica|ficou)\b/;
+// "já fiz a avaliação", "já liguei ao Nuno": verbo na primeira pessoa depois
+// de "já" — cumprido, não é um plano.
+const DONE_VERB_RE =
+  /\bja\s+(fiz|tratei|liguei|resolvi|conclui|despachei|acabei|terminei|falei|enviei|entreguei|visitei|marquei)\b/;
 // "cancelada"/"desmarcada" NÃO é conclusão: isso é o caminho do cancelamento.
 const CANCEL_RE = /\b(cancel\w*|desmarc\w*|anul\w*|adia\w*|remarc\w*)\b/i;
 
@@ -45,7 +49,7 @@ export interface CompletionInstruction {
 function hintFrom(part: string): string {
   const words = normalizeForMatch(part)
     .split(" ")
-    .filter((w) => w.length >= 3 && !HINT_STOP.has(w) && !DONE_RE.test(w) && !DONE_STRICT_RE.test(w));
+    .filter((w) => w.length >= 3 && !HINT_STOP.has(w) && !DONE_RE.test(w) && !DONE_STRICT_RE.test(w) && !/^(fiz|liguei|acabei|terminei|falei|enviei|entreguei|visitei|marquei|tratei|resolvi|conclui|despachei)$/.test(w));
   return words.slice(0, 6).join(" ");
 }
 
@@ -66,7 +70,8 @@ export function detectCompletionInstructions(
   const out: CompletionInstruction[] = [];
   for (const part of parts) {
     const norm = normalizeForMatch(part);
-    if (!DONE_RE.test(norm) || !DONE_STRICT_RE.test(norm)) continue;
+    const done = (DONE_RE.test(norm) && DONE_STRICT_RE.test(norm)) || DONE_VERB_RE.test(norm);
+    if (!done) continue;
     if (CANCEL_RE.test(norm)) continue;
     if (/\?\s*$/.test(part)) continue;
     const subjectHint = hintFrom(part);
