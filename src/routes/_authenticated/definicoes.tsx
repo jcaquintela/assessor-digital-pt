@@ -450,6 +450,7 @@ function SupremeSection() {
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
         Ações sensíveis pedem sempre confirmação, seja qual for o nível. Plano atual: {tierLabel(tier)}.
       </p>
+      <RetentionHint />
       {clamped ? (
         <p className="mt-2 text-[12px]" style={{ color: "var(--amber)" }}>
           A tua preferência guardada é mais alta do que o plano atual permite. Está a operar em <strong>{level}</strong> —
