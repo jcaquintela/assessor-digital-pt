@@ -64,6 +64,24 @@ function norm(s: string | null | undefined): string {
  * Resposta em citação directa (reply à mensagem original): sinal forte de
  * que o "sim" pertence àquela pergunta, independentemente do tempo passado.
  */
+
+/**
+ * O assessor voltou a perguntar sobre o mesmo assunto por outras palavras?
+ * Nesse caso o rascunho tem de passar a guardar a NOVA formulação: é ela a
+ * "pergunta relevante mais recente" e é dela que contam as 24 horas.
+ */
+export function shouldRefreshPendingQuestion(
+  pending: AnswerablePending | null | undefined,
+  reply: string | null | undefined,
+): boolean {
+  const text = norm(reply);
+  if (!pending || !text.includes("?")) return false;
+  if (pending.status !== "pending_confirmation") return false;
+  const current = norm(pending.current_question);
+  if (current && text.includes(current)) return false;
+  return true;
+}
+
 export function quotedMatchesPending(
   pending: AnswerablePending | null | undefined,
   quotedText: string | null | undefined,
