@@ -17,7 +17,6 @@ describe("leitura do Drive Inteligente", () => {
   });
 
   it("lista grande mostra os recentes e oferece sempre ver tudo", () => {
-*** noop
     const rows = Array.from({ length: 12 }, (_, i) => ({
       original_file_name: `doc-${i}.pdf`,
       document_type: "caderneta",
