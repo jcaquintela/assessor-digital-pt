@@ -41,6 +41,7 @@ import {
   SearchActiveRemindersArgs,
   CancelReminderArgs,
   CancelFollowUpArgs,
+  CompleteFollowUpArgs,
   SendReminderNowArgs,
   ListUncategorizedPropertiesArgs,
   SetPropertyCategoryArgs,
@@ -1431,6 +1432,67 @@ async function execCancelFollowUp(ctx: DomainContext, args: unknown): Promise<Do
 }
 
 async function execSendReminderNow(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  return execSendReminderNowInner(ctx, args);
+}
+
+/**
+ * "O estudo de mercado já está tratado." Fecha mesmo o seguimento (estado
+ * Concluído + resultado concluído), pára os avisos ligados e diz se o
+ * assunto tem uma rotina activa a repetir — fechar hoje não decide o futuro.
+ */
+async function execCompleteFollowUp(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(CompleteFollowUpArgs, args); if (!p.ok) return fail(p.error);
+  const a = p.value;
+
+  let ids = a.follow_up_ids ?? [];
+  if (!ids.length) {
+    if (!a.subject_hint) return fail("indicar_o_que_concluir");
+    const open = await listOpenFollowUps(ctx, null);
+    const targets = matchByHint(open, a.subject_hint);
+    if (!targets.length) return ok({ completed: 0, items: [], subject_hint: a.subject_hint });
+    if (targets.length > 1) {
+      return ok({ ambiguous: true, candidates: targets.slice(0, 5), completed: 0, items: [] });
+    }
+    ids = targets.map((t) => t.id);
+  }
+
+  const { data } = await ctx.supabase
+    .from("follow_ups")
+    .update({
+      status: COMPLETED_STATUS,
+      outcome: COMPLETED_OUTCOME,
+      outcome_recorded_at: new Date().toISOString(),
+      ...(a.notes ? { outcome_notes: a.notes } : {}),
+    } as never)
+    .eq("user_id", ctx.userId)
+    .in("id", ids)
+    .select("id, title, due_time");
+  const items = Array.isArray(data) ? (data as any[]) : [];
+  // Concluído é concluído: nenhum aviso interno nem evento externo pode
+  // voltar a disparar por causa deste seguimento.
+  if (items.length) {
+    await stopFollowUpTriggers(ctx.supabase, ctx.userId, items.map((i) => i.id));
+  }
+
+  // Recorrência genuína: não desligamos nada por nossa conta — devolvemos a
+  // rotina para o motor perguntar ao consultor.
+  let recurring: { id: string; title: string } | null = null;
+  try {
+    const { data: routines } = await ctx.supabase
+      .from("routines")
+      .select("id, title, active")
+      .eq("user_id", ctx.userId)
+      .eq("active", true)
+      .limit(50);
+    const hint = a.subject_hint ?? items[0]?.title ?? "";
+    const hit = hint ? matchByHint((routines as any[]) ?? [], hint)[0] : null;
+    if (hit) recurring = { id: String(hit.id), title: String(hit.title ?? "") };
+  } catch { /* noop */ }
+
+  return ok({ completed: items.length, items, recurring });
+}
+
+async function execSendReminderNowInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(SendReminderNowArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
   let reminderId = v.reminder_id ?? null;
@@ -1641,6 +1703,7 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   search_active_reminders: execSearchActiveReminders,
   cancel_reminder: execCancelReminder,
   cancel_follow_up: execCancelFollowUp,
+  complete_follow_up: execCompleteFollowUp,
   send_reminder_now: execSendReminderNow,
 };
 
