@@ -82,6 +82,34 @@ export async function findActivePendingAction(
   return row;
 }
 
+/**
+ * Última confirmação que caducou (ou foi dada como obsoleta) neste canal.
+ * Serve para responder de frente a um "sim" fora de janela em vez de fingir
+ * que nunca houve pergunta nenhuma.
+ */
+export async function findRecentExpiredConfirmation(
+  supabase: any,
+  userId: string,
+  channel: string,
+  maxAgeMs: number = 7 * 24 * 60 * 60 * 1000,
+): Promise<PendingActionRow | null> {
+  const { data } = await supabase
+    .from("pending_actions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("channel", channel)
+    .eq("status", "expired")
+    .order("updated_at", { ascending: false })
+    .limit(5);
+  const rows = ((data as PendingActionRow[] | null) ?? []).filter((r) => {
+    const q = String(r.current_question ?? r.pending_question ?? "").trim();
+    if (!q) return false;
+    const at = new Date(r.updated_at ?? r.created_at).getTime();
+    return Number.isFinite(at) && Date.now() - at <= maxAgeMs;
+  });
+  return rows[0] ?? null;
+}
+
 export async function findLastExecutedAction(
   supabase: any,
   userId: string,
