@@ -76,7 +76,7 @@ const DAY_STATE_RE = new RegExp(
     // "como estou hoje", "como é que estou hoje"
     "\\bcomo\\s+(?:é\\s+que\\s+)?(?:estou|ando)\\s+hoje\\b",
     // "resumo do dia", "ponto de situação do dia/de hoje"
-    "\\b(?:resumo|ponto\\s+(?:de\\s+)?situa[çc][ãa]o|balan[çc]o)\\s+(?:d[oa]\\s+)?(?:meu\\s+)?(?:dia|hoje)\\b",
+    "\\b(?:resumo|ponto\\s+(?:de\\s+)?situa[çc][ãa]o|balan[çc]o)\\s+(?:d[eoa]\\s+)?(?:meu\\s+)?(?:dia|hoje)\\b",
     // "o meu dia de hoje?" / "e o meu dia?"
     "\\b(?:e\\s+)?(?:o\\s+)?meu\\s+dia\\s*\\??\\s*$",
   ].join("|"),
