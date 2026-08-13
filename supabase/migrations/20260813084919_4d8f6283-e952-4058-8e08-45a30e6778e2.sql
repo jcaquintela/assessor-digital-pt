@@ -1,0 +1,4 @@
+update public.follow_ups set status = 'Concluído', outcome = 'concluido', outcome_recorded_at = now() where id in ('b2d16bbe-7090-4bb5-ac0e-0101ab540302','6fcc9134-45d5-4d03-bda0-44e70e29d6d1');
+
+insert into public.product_updates (released_on, title, description, category, is_published)
+values (current_date, 'O Afonso já fecha o que dizes que está tratado', 'Quando dizes "o estudo de mercado já está tratado" ou "já liguei ao Nuno", o assunto fica mesmo marcado como concluído e o lembrete deixa de voltar. Se houver uma rotina a repetir esse assunto, o Afonso pergunta-te se queres que continue.', 'melhoria', true);
