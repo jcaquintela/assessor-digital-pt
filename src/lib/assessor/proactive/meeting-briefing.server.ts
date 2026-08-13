@@ -63,6 +63,35 @@ export interface BriefingRunResult {
   skipped: Array<{ id: string; reason: string }>;
 }
 
+/**
+ * Reserva atómica do envio: marca `briefing_sent_at` ANTES de enviar, e só
+ * quando ainda estava vazio. Se outra corrida (ou uma reexecução do runner,
+ * ou uma alteração do evento em cima da hora) já reservou, esta devolve
+ * false e ninguém envia duas vezes.
+ */
+async function claimBriefing(
+  supabase: any,
+  eventId: string,
+  nowMs: number,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("follow_ups")
+    .update({ briefing_sent_at: new Date(nowMs).toISOString() } as never)
+    .eq("id", eventId)
+    .is("briefing_sent_at", null)
+    .select("id");
+  if (error) return false;
+  return Array.isArray(data) ? data.length > 0 : Boolean(data);
+}
+
+/** Devolve a reserva quando o envio falha, para tentar de novo na corrida seguinte. */
+async function releaseBriefingClaim(supabase: any, eventId: string) {
+  await supabase
+    .from("follow_ups")
+    .update({ briefing_sent_at: null } as never)
+    .eq("id", eventId);
+}
+
 async function loadDueEvents(
   supabase: any,
   nowMs: number,
@@ -118,6 +147,18 @@ export async function sendMeetingBriefing(
     return { sent: false, reason: "not_business_event" };
   }
 
+  // Idempotência: reserva antes de qualquer envio. Testes do admin
+  // (`markSent: false`) e disparos forçados não reservam.
+  const claims = opts.markSent !== false && !opts.force;
+  if (claims) {
+    const claimed = await claimBriefing(supabase, event.id, nowMs);
+    if (!claimed) return { sent: false, reason: "already_sent" };
+  }
+  const abort = async (reason: string, extra: Record<string, unknown> = {}) => {
+    if (claims) await releaseBriefingClaim(supabase, event.id);
+    return { sent: false as const, reason, ...extra };
+  };
+
   let brief: any = null;
   if (event.person_id) {
     const { buildPersonBrief } = await import("@/lib/assessor/v3/person-brief.server");
@@ -134,11 +175,11 @@ export async function sendMeetingBriefing(
   }
 
   const eventCtx = await loadEventContext(supabase, event);
-  if (!hasAnyBriefingContent(brief, eventCtx)) return { sent: false, reason: "nothing_to_say" };
+  if (!hasAnyBriefingContent(brief, eventCtx)) return abort("nothing_to_say");
 
   const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
   const target = await resolveOutboundTarget(supabase, event.user_id);
-  if (!target) return { sent: false, reason: "no_channel" };
+  if (!target) return abort("no_channel");
 
   const text = formatMeetingBriefing(event, brief, nowMs, eventCtx);
 
@@ -150,7 +191,7 @@ export async function sendMeetingBriefing(
       // o que estiver escolhido no admin; sem escolha activa, silêncio.
       const { resolveUsableBinding } = await import("@/lib/whatsapp/template-binding.server");
       const binding = await resolveUsableBinding(supabase, "meeting_briefing");
-      if (!binding) return { sent: false, reason: "no_approved_template" };
+      if (!binding) return abort("no_approved_template");
 
       const { data: prof } = await supabase
         .from("profiles").select("name").eq("id", event.user_id).maybeSingle();
@@ -187,7 +228,7 @@ export async function sendMeetingBriefing(
         hoursSinceLastInbound: silentHours,
         outsideWindow: !within,
       };
-      if (!sentTpl.ok) return { sent: false, reason: "send_failed", ...common };
+      if (!sentTpl.ok) return await abort("send_failed", common);
       if (opts.markSent !== false) await markBriefingSent(supabase, event, target.channel, text, nowMs);
       return { sent: true, via: "template", ...common };
     }
@@ -195,13 +236,13 @@ export async function sendMeetingBriefing(
 
   const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
   const r = await sendReplyForChannel(target.channel, target.externalId, text);
-  if (!r.ok) return { sent: false, reason: "send_failed" };
+  if (!r.ok) return abort("send_failed");
 
   if (opts.markSent !== false) await markBriefingSent(supabase, event, target.channel, text, nowMs);
   return { sent: true, via: "text" };
 }
 
-/** Marca já — mesmo que a corrida se repita no mesmo intervalo. */
+/** Confirma a marca (a reserva já a pôs) e regista a mensagem enviada. */
 async function markBriefingSent(
   supabase: any,
   event: BriefingEvent & { user_id: string },
