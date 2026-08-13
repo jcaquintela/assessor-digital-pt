@@ -249,6 +249,7 @@ async function routeInbound(
         content: engineContent,
         receivedAt: inbound.receivedAt,
         sourceMessageId: persistedUuid,
+        quotedText: await resolveQuotedText(supabaseAdmin, inbound),
       });
       await deliverReply(adapter, supabaseAdmin, {
         userId,
