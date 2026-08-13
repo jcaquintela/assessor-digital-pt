@@ -74,3 +74,17 @@ export function detectReadRequest(raw: string): ReadRequest {
 
 export const READ_FAILED_REPLY =
   "Não consegui consultar isso agora. Queres que tente outra vez?";
+
+// Frase elíptica curta ("E documentos?", "documentos?") — só conta como
+// pedido de leitura quando o que se falou antes já era sobre o Drive.
+const ELLIPTIC_DOCS_RE =
+  /^(?:e|entao|então)?\s*(?:os |as |o |a )?(documentos?|ficheiros?|drive|cadernetas?)\s*\??$/;
+
+const DRIVE_CONTEXT_RE = /(drive|ficheiro|documento|caderneta|[áa]udio|foto)/i;
+
+/** "E documentos?" depois de se ter falado do Drive → leitura do Drive. */
+export function detectEllipticDriveRead(raw: string, recentContext: string): boolean {
+  const text = norm(raw ?? "");
+  if (!text || !ELLIPTIC_DOCS_RE.test(text)) return false;
+  return DRIVE_CONTEXT_RE.test(recentContext ?? "");
+}
