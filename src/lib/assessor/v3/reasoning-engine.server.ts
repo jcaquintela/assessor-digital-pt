@@ -223,7 +223,51 @@ function toHistoryPreview(rows: Array<{ role: string; content: string }>): strin
     .join("\n");
 }
 
+/**
+ * Reformular a MESMA pergunta não pode encurtar a janela de confirmação.
+ *
+ * Caso real (13/08): às 21:45 o Afonso pergunta se apaga os 9 áudios; às
+ * 21:50, depois de "E documentos?", repete a pergunta por outras palavras. O
+ * rascunho continuou a guardar o texto antigo, por isso a última pergunta do
+ * assessor "não era" a do pendente e a janela caiu dos 24h para 3 minutos —
+ * o "Sim" aos 23 minutos apanhou "já caducou".
+ *
+ * Solução: existe UM único relógio (o rascunho em pending_actions) e ele é
+ * re-sincronizado sempre que o Afonso volta a perguntar. A pergunta relevante
+ * mais recente passa a ser, de facto, a que conta para as 24h.
+ */
+async function syncPendingQuestion(
+  supabase: any,
+  userId: string,
+  channel: string,
+  reply: string,
+): Promise<void> {
+  const text = String(reply ?? "").trim();
+  if (!text.includes("?")) return;
+  const pending = await findActivePendingAction(supabase, userId, channel);
+  if (!pending || pending.status !== "pending_confirmation") return;
+  const current = String(pending.current_question ?? "").trim();
+  if (current && text.includes(current)) return; // já é a mesma pergunta
+  await supabase
+    .from("pending_actions")
+    .update({ current_question: text.slice(0, 2000), updated_at: new Date().toISOString() } as never)
+    .eq("id", pending.id);
+}
+
 export async function runReasoningEngine(
+  input: EngineInput,
+  opts?: { skipCompletionPass?: boolean },
+): Promise<EngineOutcome> {
+  const out = await runReasoningEngineInner(input, opts);
+  try {
+    if (input.userId) {
+      await syncPendingQuestion(input.supabase, input.userId, input.channel, out.reply);
+    }
+  } catch { /* noop */ }
+  return out;
+}
+
+async function runReasoningEngineInner(
   input: EngineInput,
   opts?: { skipCompletionPass?: boolean },
 ): Promise<EngineOutcome> {
