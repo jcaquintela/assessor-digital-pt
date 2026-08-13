@@ -79,7 +79,7 @@ async function loadDueEvents(
       "opportunity_id, related_prospecting_lead_id, event_class, created_at, briefing_sent_at",
     )
     .is("briefing_sent_at", null)
-    .neq("event_class", "interno")
+    .or("event_class.is.null,event_class.neq.interno")
     .gte("due_date", from)
     .lte("due_date", to)
     .order("due_date", { ascending: true })
