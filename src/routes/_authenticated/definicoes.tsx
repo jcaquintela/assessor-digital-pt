@@ -1,9 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, Check, AlertTriangle, CreditCard } from "lucide-react";
+import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, Check, AlertTriangle, CreditCard, Info } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "@/lib/assessor/assessor-name";
@@ -51,6 +51,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="c-section-title mb-4">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function RetentionHint() {
+  return (
+    <p className="c-muted mt-3 flex items-start gap-2 text-[12px] leading-relaxed">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span>
+        Os teus dados são guardados durante 21 dias (conversas) e 7 dias (documentos).{" "}
+        <Link to="/sobre-a-ia" className="underline underline-offset-2 hover:text-[var(--brass-dark)]">
+          Ver política de retenção
+        </Link>
+        .
+      </span>
+    </p>
   );
 }
 
@@ -435,6 +450,7 @@ function SupremeSection() {
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
         Ações sensíveis pedem sempre confirmação, seja qual for o nível. Plano atual: {tierLabel(tier)}.
       </p>
+      <RetentionHint />
       {clamped ? (
         <p className="mt-2 text-[12px]" style={{ color: "var(--amber)" }}>
           A tua preferência guardada é mais alta do que o plano atual permite. Está a operar em <strong>{level}</strong> —
@@ -562,6 +578,7 @@ function NotificacoesSection() {
           {prefs.confirm_document_send ? "Ligado" : "Desligado"}
         </button>
       </div>
+      <RetentionHint />
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
         No WhatsApp, se já passaram mais de 24 horas desde a tua última mensagem, a Meta só deixa
         passar mensagens com template aprovado — nesse caso o envio fica em espera até à aprovação.
