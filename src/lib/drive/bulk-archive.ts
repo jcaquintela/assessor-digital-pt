@@ -13,6 +13,9 @@ export const BULK_ARCHIVE_PREVIEW = 10;
 
 export type BulkKind = "audio" | "image" | "document" | "any";
 
+/** Arquivar (reversível) ou apagar (vai para eliminados). */
+export type BulkMode = "archive" | "delete";
+
 export type BulkArchiveRequest = {
   kind: BulkKind;
   /** Palavra-chave opcional para filtrar pelo nome do ficheiro. */
@@ -21,6 +24,14 @@ export type BulkArchiveRequest = {
 
 const ARCHIVE_VERB =
   /\b(apaga|apagar|apaga-me|elimina|eliminar|remove|remover|arquiva|arquivar|limpa|limpar|deita\s+fora|tira|tirar)\b/i;
+
+// Verbos que o consultor usa quando quer mesmo apagar, não arrumar.
+const DELETE_VERB = /\b(apaga|apagar|apaga-me|elimina|eliminar|remove|remover|deita\s+fora)\b/i;
+
+/** "apaga os áudios" → delete; "arquiva as fotos" → archive. */
+export function bulkActionMode(text: string): BulkMode {
+  return DELETE_VERB.test(String(text ?? "")) ? "delete" : "archive";
+}
 
 const PLURAL_ALL =
   /\b(todos|todas|tudo|os\s+meus|as\s+minhas|v[áa]rios|v[áa]rias)\b/i;
@@ -38,6 +49,44 @@ const TERM_RE = /\b(?:de|do|da|com|sobre|chamados?)\s+(?:nome\s+)?["“']?([\p{L
 const TERM_STOPWORDS = new Set([
   "teste", "testes", "hoje", "ontem", "sempre", "drive", "voz", "todos", "todas",
 ]);
+
+// Singular com nome à mistura: "apaga o ficheiro caderneta Gaia".
+const SINGLE_PATTERNS: Array<{ kind: BulkKind; re: RegExp }> = [
+  { kind: "audio", re: /(?:^|\W)(?:o\s+)?([áa]udio|gravaç[ãa]o)\s+(.{2,60})$/i },
+  { kind: "image", re: /\b(?:a\s+)?(foto|fotografia|imagem)\s+(.{2,60})$/i },
+  { kind: "document", re: /\b(?:o\s+)?(documento|pdf)\s+(.{2,60})$/i },
+  { kind: "any", re: /\b(?:o\s+)?(ficheiro|anexo)\s+(.{2,60})$/i },
+];
+
+function cleanTerm(raw: string): string | null {
+  const t = raw
+    .replace(/^(?:chamad[oa]|de\s+nome|com\s+o\s+nome|do|da|de)\s+/i, "")
+    .replace(/["“”']/g, "")
+    .replace(/[.?!]+$/, "")
+    .trim()
+    .toLowerCase();
+  if (t.length < 3 || TERM_STOPWORDS.has(t)) return null;
+  return t;
+}
+
+/**
+ * Pedido sobre ficheiros do Drive, em lote ou sobre um ficheiro identificado
+ * pelo nome, já com o modo (arquivar vs. apagar).
+ */
+export function detectDriveFileRequest(
+  text: string,
+): (BulkArchiveRequest & { mode: BulkMode }) | null {
+  const t = String(text ?? "").trim();
+  const bulk = detectBulkArchiveRequest(t);
+  if (bulk) return { ...bulk, mode: bulkActionMode(t) };
+  if (!t || t.length > 200 || !ARCHIVE_VERB.test(t)) return null;
+  for (const p of SINGLE_PATTERNS) {
+    const m = p.re.exec(t);
+    const term = m?.[2] ? cleanTerm(m[2]) : null;
+    if (term) return { kind: p.kind, term, mode: bulkActionMode(t) };
+  }
+  return null;
+}
 
 /**
  * Reconhece "apaga os áudios todos", "arquiva todas as fotos de teste".
@@ -111,3 +160,35 @@ export function bulkArchivedReply(kind: BulkKind, count: number): string {
 }
 
 export const BULK_ARCHIVE_CANCELLED_REPLY = "Certo, não arquivei nada.";
+
+/** Pergunta de confirmação para apagar — diz sempre que não se desfaz. */
+export function buildBulkDeleteQuestion(kind: BulkKind, names: string[]): string {
+  const n = names.length;
+  const shown = names.slice(0, BULK_ARCHIVE_PREVIEW).map((name, i) => `${i + 1}. ${name}`);
+  const rest = n - shown.length;
+  const lista = rest > 0 ? [...shown, `… e mais ${rest}`].join("\n") : shown.join("\n");
+  return (
+    `Encontrei ${n} ${kindLabel(kind, n)} no Drive Inteligente:\n${lista}\n\n` +
+    `Queres mesmo apagar ${n === 1 ? "este" : `estes ${n}`}? Isto não pode ser desfeito.`
+  );
+}
+
+export function buildFileActionQuestion(kind: BulkKind, names: string[], mode: BulkMode): string {
+  return mode === "delete"
+    ? buildBulkDeleteQuestion(kind, names)
+    : buildBulkArchiveQuestion(kind, names);
+}
+
+export function bulkDeletedReply(kind: BulkKind, count: number): string {
+  return `Apaguei ${count} ${kindLabel(kind, count)} do Drive Inteligente.`;
+}
+
+export function fileActionDoneReply(kind: BulkKind, count: number, mode: BulkMode): string {
+  return mode === "delete" ? bulkDeletedReply(kind, count) : bulkArchivedReply(kind, count);
+}
+
+export const BULK_DELETE_CANCELLED_REPLY = "Certo, não apaguei nada.";
+
+export function fileActionCancelledReply(mode: BulkMode): string {
+  return mode === "delete" ? BULK_DELETE_CANCELLED_REPLY : BULK_ARCHIVE_CANCELLED_REPLY;
+}

@@ -9,7 +9,8 @@ import {
   CONFIRM_BULK_ARCHIVE_INTENT,
   type BulkArchiveRequest,
   type BulkKind,
-  buildBulkArchiveQuestion,
+  type BulkMode,
+  buildFileActionQuestion,
   noMatchesReply,
   tooManyReply,
 } from "./bulk-archive";
@@ -52,13 +53,20 @@ export async function findBulkCandidates(
  */
 export async function proposeBulkArchive(
   supabase: any,
-  input: { userId: string; channel: string; req: BulkArchiveRequest; originalContent: string },
+  input: {
+    userId: string;
+    channel: string;
+    req: BulkArchiveRequest;
+    originalContent: string;
+    mode?: BulkMode;
+  },
 ): Promise<string> {
+  const mode: BulkMode = input.mode ?? "archive";
   const files = await findBulkCandidates(supabase, input.userId, input.req);
   if (files.length === 0) return noMatchesReply(input.req);
   if (files.length > BULK_ARCHIVE_MAX) return tooManyReply(input.req.kind, files.length);
 
-  const question = buildBulkArchiveQuestion(input.req.kind, files.map((f) => f.name));
+  const question = buildFileActionQuestion(input.req.kind, files.map((f) => f.name), mode);
   await createPendingAction(supabase, {
     userId: input.userId,
     channel: input.channel,
@@ -68,6 +76,7 @@ export async function proposeBulkArchive(
     // exactamente como o consultor a viu, sem ter de reler o Drive.
     payload: {
       kind: input.req.kind,
+      mode,
       file_ids: files.map((f) => f.id),
       file_names: files.map((f) => f.name),
     },
@@ -92,6 +101,28 @@ export async function archiveFilesBulk(
     .in("id", ids)
     .eq("user_id", userId)
     .is("archived_at", null)
+    .is("deleted_at", null);
+  if (error) throw new Error(error.message);
+  return ids.length;
+}
+
+/**
+ * Apaga os ficheiros confirmados: saem do Drive Inteligente e passam a
+ * eliminados. Só corre depois de o consultor confirmar a lista que viu.
+ */
+export async function deleteFilesBulk(
+  supabase: any,
+  userId: string,
+  fileIds: string[],
+): Promise<number> {
+  const ids = fileIds.filter(Boolean);
+  if (ids.length === 0) return 0;
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("uploaded_files")
+    .update({ deleted_at: now, processing_status: "deleted" } as never)
+    .in("id", ids)
+    .eq("user_id", userId)
     .is("deleted_at", null);
   if (error) throw new Error(error.message);
   return ids.length;
