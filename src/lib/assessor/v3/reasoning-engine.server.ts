@@ -321,6 +321,46 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     if (scriptReply) return { reply: scriptReply };
   } catch { /* noop */ }
 
+  // Escolha de qual (ou quais) compromisso desmarcar. "As duas" desmarca as
+  // duas — e a confirmação lista cada uma com o respectivo resultado.
+  try {
+    const choicePending = await findActivePendingAction(supabase, userId, channel, "cancel");
+    if (choicePending && choicePending.intent === "choosing_cancel_target") {
+      const payload = (choicePending.structured_payload ?? {}) as Record<string, any>;
+      const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+      const { pickCancelChoice, formatMultiCancelReply } = await import("./cancel-choice");
+      const chosen = pickCancelChoice(candidates as any[], trimmed);
+      if (chosen.length) {
+        const exec = TOOL_REGISTRY.cancel_follow_up;
+        const result = await exec(ctx, { follow_up_ids: chosen.map((c) => c.id) });
+        const cancelledIds = new Set(
+          (((result.data as any)?.items ?? []) as any[]).map((i) => String(i.id)),
+        );
+        const outcomes = chosen.map((item) => ({
+          item,
+          ok: !!result.ok && cancelledIds.has(String(item.id)),
+        }));
+        await markPendingActionStatus(
+          supabase,
+          choicePending.id,
+          outcomes.some((o) => o.ok) ? "executed" : "failed",
+          { error_message: result.ok ? null : (result.error ?? "not_cancelled") },
+        );
+        const { ensureAllPartsAnswered } = await import("./composite-request");
+        return {
+          reply: ensureAllPartsAnswered(
+            formatMultiCancelReply(outcomes),
+            String(choicePending.original_content ?? ""),
+          ),
+        };
+      }
+      if (saIsRejection(trimmed) || isDiscardCommand(trimmed)) {
+        await markPendingActionStatus(supabase, choicePending.id, "cancelled");
+        return { reply: "Certo — não desmarquei nada." };
+      }
+    }
+  } catch { /* noop */ }
+
   // Fast-path prospeção — se existe uma proposta pendente de placa e o
   // consultor confirma/cancela, resolvemos sem passar por THINK/DECIDE.
   // Garante que o "Feito" só sai depois da persistência real.
