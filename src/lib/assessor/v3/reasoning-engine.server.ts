@@ -1342,10 +1342,32 @@ export async function runReasoningEngine(
       return { reply };
     }
 
-    // (b) Confirmação curta sem contexto pendente → pede referência.
     // (a2) Consulta ao Drive Inteligente ("Lista os documentos da Drive",
     // "E documentos?" logo a seguir a falar de ficheiros) → lê e responde já,
     // sem depender da IA. Leitura não precisa de confirmação.
+    const driveRead = detectReadRequest(trimmed);
+    const ellipticDrive = detectEllipticDriveRead(trimmed, lastAssistantContent0 ?? "");
+    if (!pending && ((driveRead.pure && driveRead.tool === "search_files") || ellipticDrive)) {
+      const t0 = Date.now();
+      const args = ellipticDrive ? { query: "" } : driveRead.arguments;
+      const r = await TOOL_REGISTRY.search_files(ctx, args);
+      const reply = r.ok
+        ? (formatQueryResults([{ name: "search_files", ok: true, data: r.data } as any]) ?? READ_FAILED_REPLY)
+        : READ_FAILED_REPLY;
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "drive_query_fast_path", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
+          domain: "assessor", route: "v3-deterministic", fallback_used: false,
+          tool_name: "search_files", tool_success: !!r.ok,
+        } as never);
+      } catch { /* noop */ }
+      return { reply };
+    }
+
+    // (b) Confirmação curta sem contexto pendente → pede referência.
     if (
       saIsConfirmation(trimmed) &&
       !hasValidPendingContext(pending) &&
