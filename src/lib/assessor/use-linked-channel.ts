@@ -46,6 +46,7 @@ export function useLinkedChannel(): LinkedChannelInfo {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) { if (!cancelled) setInfo((s) => ({ ...s, loading: false })); return; }
       const [{ data }, { data: prof }] = await Promise.all([
@@ -97,6 +98,10 @@ export function useLinkedChannel(): LinkedChannelInfo {
         channels,
         primary,
       });
+      } catch {
+        // Falha de rede ou sessão: nunca deixar a secção presa em "A carregar…".
+        if (!cancelled) setInfo((s) => ({ ...s, loading: false }));
+      }
     })();
     return () => { cancelled = true; };
   }, []);
