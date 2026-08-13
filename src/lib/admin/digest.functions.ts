@@ -42,6 +42,7 @@ export type TodayDigest = {
   lockHour: number;
   sendHour: number;
   recipients: { userId: string; name: string | null; email: string }[];
+  emailHealth: { ok: boolean; note: string | null };
 };
 
 /** Rascunho de hoje + novidades acumuladas + quem receberia o email. */
@@ -54,6 +55,7 @@ export const getTodayDigest = createServerFn({ method: "GET" })
     const date = d.lisbonDate();
     const { digest, updates, autoBody } = await d.ensureDraft(supabaseAdmin, date);
     const recipients = await d.resolveBetaRecipients(supabaseAdmin);
+    const emailHealth = await d.checkEmailHealth(supabaseAdmin);
     return {
       digest: (digest ?? null) as DigestRow | null,
       updates,
@@ -63,6 +65,7 @@ export const getTodayDigest = createServerFn({ method: "GET" })
       lockHour: d.DIGEST_LOCK_HOUR,
       sendHour: d.DIGEST_HOUR,
       recipients,
+      emailHealth,
     };
   });
 
@@ -169,6 +172,22 @@ export const sendDigestTestToMe = createServerFn({ method: "POST" })
   });
 
 /** Histórico dos últimos resumos diários. */
+export const retryDigestForDate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).parse(raw))
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const d = await import("./digest.server");
+    const res = await d.sendDigestForDate(supabaseAdmin, data.date, { force: true, actorId: context.userId });
+    await auditAccess(context.userId, "digest.retry", {
+      resource_type: "daily_digest",
+      before: null,
+      after: { date: data.date, ...res },
+    });
+    return res;
+  });
+
 export const listDigests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<DigestRow[]> => {
