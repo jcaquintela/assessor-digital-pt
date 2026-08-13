@@ -114,26 +114,31 @@ export async function sendMeetingBriefing(
 }> {
   const nowMs = (opts.now ?? new Date()).getTime();
   if (!opts.force && !isBriefingDue(event, nowMs)) return { sent: false, reason: "not_due" };
-  if (!event.person_id) return { sent: false, reason: "no_person" };
+  if (!isBriefingEligible(event)) return { sent: false, reason: "not_business_event" };
 
-  const { buildPersonBrief } = await import("@/lib/assessor/v3/person-brief.server");
-  const { data: person } = await supabase
-    .from("people")
-    .select("name")
-    .eq("id", event.person_id)
-    .maybeSingle();
-  const personName = String((person as any)?.name ?? "").trim();
-  if (!personName) return { sent: false, reason: "no_person" };
+  let brief: any = null;
+  if (event.person_id) {
+    const { buildPersonBrief } = await import("@/lib/assessor/v3/person-brief.server");
+    const { data: person } = await supabase
+      .from("people")
+      .select("name")
+      .eq("id", event.person_id)
+      .maybeSingle();
+    const personName = String((person as any)?.name ?? "").trim();
+    if (personName) {
+      const lookup = await buildPersonBrief({ supabase, userId: event.user_id } as any, personName);
+      if (lookup.kind === "ok") brief = lookup.brief;
+    }
+  }
 
-  const lookup = await buildPersonBrief({ supabase, userId: event.user_id } as any, personName);
-  if (lookup.kind !== "ok") return { sent: false, reason: "no_brief" };
-  if (!hasBriefContent(lookup.brief)) return { sent: false, reason: "nothing_to_say" };
+  const eventCtx = await loadEventContext(supabase, event);
+  if (!hasAnyBriefingContent(brief, eventCtx)) return { sent: false, reason: "nothing_to_say" };
 
   const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
   const target = await resolveOutboundTarget(supabase, event.user_id);
   if (!target) return { sent: false, reason: "no_channel" };
 
-  const text = formatMeetingBriefing(event, lookup.brief, nowMs);
+  const text = formatMeetingBriefing(event, brief, nowMs, eventCtx);
 
   if (target.channel === "whatsapp") {
     const { isWithin24hWindow } = await import("./push.server");
@@ -148,7 +153,7 @@ export async function sendMeetingBriefing(
       const { data: prof } = await supabase
         .from("profiles").select("name").eq("id", event.user_id).maybeSingle();
       const firstName = String((prof as any)?.name ?? "").split(" ")[0] ?? "";
-      const params = briefingTemplateParams(event, lookup.brief, firstName)
+      const params = briefingTemplateParams(event, brief, firstName, eventCtx)
         .slice(0, Math.max(0, binding.param_count));
 
       const { meetingBriefingTemplatePayload } = await import("./templates");
