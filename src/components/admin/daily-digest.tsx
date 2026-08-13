@@ -6,11 +6,13 @@ import { SectionTitle, Badge, Empty, Source } from "@/components/admin/ui";
 import {
   getTodayDigest,
   listDigests,
+  retryDigestForDate,
   saveTodayDigest,
   sendDigestTestToMe,
   sendTodayDigestNow,
   unapproveTodayDigest,
 } from "@/lib/admin/digest.functions";
+import { digestFailure } from "@/lib/admin/digest-note";
 
 const STATUS_LABEL: Record<string, { text: string; tone: "ok" | "warn" | "bad" }> = {
   rascunho: { text: "Rascunho", tone: "warn" },
@@ -32,6 +34,7 @@ export function DailyDigest({ isSuper }: { isSuper: boolean }) {
   const sendNowFn = useServerFn(sendTodayDigestNow);
   const testFn = useServerFn(sendDigestTestToMe);
   const historyFn = useServerFn(listDigests);
+  const retryFn = useServerFn(retryDigestForDate);
 
   const { data, isLoading } = useQuery({ queryKey: ["admin", "digest-today"], queryFn: () => todayFn() });
   const { data: history } = useQuery({ queryKey: ["admin", "digest-history"], queryFn: () => historyFn() });
@@ -57,6 +60,8 @@ export function DailyDigest({ isSuper }: { isSuper: boolean }) {
   const sent = status === "enviado";
   const pastLock = (data?.hour ?? 0) >= (data?.lockHour ?? 18);
   const empty = body.trim().length === 0;
+  const health = data?.emailHealth ?? { ok: true, note: null };
+  const healthFailure = health.ok ? null : digestFailure(health.note ?? "provider de email não ligado");
 
   const refresh = () => {
     setDirty(false);
@@ -98,6 +103,13 @@ export function DailyDigest({ isSuper }: { isSuper: boolean }) {
           <p className="mini mb-3 rounded-lg px-3 py-2" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}>
             Hoje ainda não há nenhuma novidade visível para o consultor. Sem texto aprovado, às {data?.sendHour ?? 19}h
             não sai email.
+          </p>
+        ) : null}
+
+        {healthFailure ? (
+          <p className="mini mb-3 rounded-lg px-3 py-2" style={{ background: "var(--coral-bg)", color: "var(--coral)" }}>
+            Envio de email indisponível: {healthFailure.label}. {healthFailure.hint} Podes aprovar na mesma, mas o email
+            só sai quando isto estiver resolvido.
           </p>
         ) : null}
 
@@ -251,13 +263,38 @@ export function DailyDigest({ isSuper }: { isSuper: boolean }) {
             <tbody>
               {(history ?? []).map((h) => {
                 const m = STATUS_LABEL[h.status] ?? { text: h.status, tone: "warn" as const };
+                const f = h.status === "falhou" ? digestFailure(h.note) : null;
                 return (
                   <tr key={h.id}>
                     <td className="mini whitespace-nowrap">{day(h.digest_date)}</td>
                     <td className="mini">{h.subject}</td>
                     <td className="mini">{h.sent_at ? h.recipients_count : "—"}</td>
                     <td><Badge tone={m.tone}>{m.text}</Badge></td>
-                    <td className="mini">{h.note ?? "—"}</td>
+                    <td className="mini">
+                      {f ? (
+                        <>
+                          <div><strong>{f.label}</strong></div>
+                          <div style={{ color: "var(--muted)" }}>{f.hint}</div>
+                        </>
+                      ) : (
+                        (h.note ?? "—")
+                      )}
+                      {isSuper && h.status !== "enviado" && h.body?.trim() ? (
+                        <button
+                          type="button"
+                          className="admin-btn tap-44 mt-2"
+                          disabled={busy}
+                          onClick={() =>
+                            run(async () => {
+                              const res: any = await retryFn({ data: { date: h.digest_date } });
+                              if (!res?.ok) throw new Error(res?.error ?? res?.skipped ?? "não foi possível enviar");
+                            }, "Resumo reenviado.")
+                          }
+                        >
+                          Tentar novamente
+                        </button>
+                      ) : null}
+                    </td>
                   </tr>
                 );
               })}
