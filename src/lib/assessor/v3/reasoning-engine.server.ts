@@ -530,12 +530,16 @@ export async function runReasoningEngine(
 
     // Sem rascunho vivo, mas o consultor respondeu "sim"/"não": se houve uma
     // confirmação a caducar há pouco, assumimos que era essa e reperguntamos.
-    if (!pending && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
+    if (!pending && !lastAssistantAskedQuestion && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
       const { findRecentExpiredConfirmation } = await import("../memory.server");
       const stale = await findRecentExpiredConfirmation(supabase, userId, channel);
       if (stale) {
         const { expiredConfirmationReply, isDestructiveConfirmation } =
           await import("../expired-confirmation");
+        // Fecha o assunto: o aviso é dado uma vez, não a cada "sim" solto.
+        await markPendingActionStatus(supabase, stale.id, "cancelled", {
+          error_message: "confirmação caducada — avisado o consultor",
+        });
         return {
           reply: expiredConfirmationReply(stale.current_question ?? stale.pending_question, {
             destructive: isDestructiveConfirmation(
