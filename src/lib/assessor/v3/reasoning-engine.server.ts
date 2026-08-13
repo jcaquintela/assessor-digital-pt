@@ -1343,6 +1343,9 @@ export async function runReasoningEngine(
     }
 
     // (b) Confirmação curta sem contexto pendente → pede referência.
+    // (a2) Consulta ao Drive Inteligente ("Lista os documentos da Drive",
+    // "E documentos?" logo a seguir a falar de ficheiros) → lê e responde já,
+    // sem depender da IA. Leitura não precisa de confirmação.
     if (
       saIsConfirmation(trimmed) &&
       !hasValidPendingContext(pending) &&
