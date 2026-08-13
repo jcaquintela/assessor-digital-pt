@@ -10,14 +10,13 @@ import { normalizeForMatch, matchByHint, type CancellableItem } from "./cancel-a
 
 export type CancelCandidate = CancellableItem;
 
+// normalizeForMatch já tira acentos e pontuação.
 const ALL_RE =
-  /^\s*(sim[,.\s]+)?(as?\s+)?(duas|dois|tr[êe]s|ambas?|ambos|todas?|todos|tudo)(\s+(as\s+)?(duas|coisas|op[çc][õo]es|marca[çc][õo]es))?\s*[.!]?\s*$/i;
+  /^(sim\s+)?(as?\s+)?(duas|dois|tres|ambas|ambos|todas|todos|tudo)(\s+(as\s+)?(duas|coisas|opcoes|marcacoes))?$/;
 
 /** "As duas", "ambos", "todas", "sim, as duas" — o consultor quer o conjunto. */
 export function isAllChoice(text: string | null | undefined): boolean {
-  return ALL_RE.test(String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
-    ? String(text ?? "").trim()
-    : "");
+  return ALL_RE.test(normalizeForMatch(String(text ?? "")));
 }
 
 const ORDINALS: Array<{ re: RegExp; index: number }> = [
