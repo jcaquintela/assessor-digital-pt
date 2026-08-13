@@ -245,13 +245,12 @@ async function syncPendingQuestion(
   const text = String(reply ?? "").trim();
   if (!text.includes("?")) return;
   const pending = await findActivePendingAction(supabase, userId, channel);
-  if (!pending || pending.status !== "pending_confirmation") return;
-  const current = String(pending.current_question ?? "").trim();
-  if (current && text.includes(current)) return; // já é a mesma pergunta
+  const { shouldRefreshPendingQuestion } = await import("../pending-answerable");
+  if (!shouldRefreshPendingQuestion(pending, text)) return;
   await supabase
     .from("pending_actions")
     .update({ current_question: text.slice(0, 2000), updated_at: new Date().toISOString() } as never)
-    .eq("id", pending.id);
+    .eq("id", pending!.id);
 }
 
 export async function runReasoningEngine(
