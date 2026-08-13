@@ -182,6 +182,42 @@ export type DigestSendResult = {
   error?: string;
 };
 
+/** Aprovações tardias: aprovado depois das 19h e ainda por sair (janela de 24h). */
+export async function findPendingApproved(
+  supabaseAdmin: any,
+  now: Date = new Date(),
+): Promise<{ id: string; digest_date: string }[]> {
+  const since = new Date(now.getTime() - 24 * 3600_000).toISOString();
+  const { data } = await supabaseAdmin
+    .from("daily_digests")
+    .select("id, digest_date, approved_at")
+    .eq("status", "aprovado")
+    .is("sent_at", null)
+    .gte("approved_at", since)
+    .order("digest_date", { ascending: true })
+    .limit(5);
+  return ((data ?? []) as any[]).map((d) => ({ id: d.id as string, digest_date: d.digest_date as string }));
+}
+
+/** Saúde do envio: serviço ligado + última falha conhecida, para avisar antes de aprovar. */
+export async function checkEmailHealth(
+  supabaseAdmin: any,
+): Promise<{ ok: boolean; note: string | null }> {
+  const provider = await getEmailProvider();
+  if (provider.name === "null") return { ok: false, note: "provider de email não ligado" };
+  const since = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const { data } = await supabaseAdmin
+    .from("daily_digests")
+    .select("note, status, digest_date")
+    .eq("status", "falhou")
+    .gte("digest_date", since)
+    .order("digest_date", { ascending: false })
+    .limit(1);
+  const last = ((data ?? []) as any[])[0];
+  if (last?.note) return { ok: false, note: String(last.note) };
+  return { ok: true, note: null };
+}
+
 /** Envio real do resumo de um dia. Só envia o que estiver aprovado. */
 export async function sendDigestForDate(
   supabaseAdmin: any,
