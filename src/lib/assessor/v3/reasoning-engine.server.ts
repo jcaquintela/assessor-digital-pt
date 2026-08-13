@@ -40,7 +40,7 @@ import {
 import { applySafetyNet, buildArchiveContent, archiveToMiscellaneous } from "./safety-net.server";
 import { isRegisterOnly, isAnswerablePending } from "../pending-answerable";
 import { formatQueryResults, isQueryTool } from "./query-results";
-import { detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
+import { detectEllipticDriveRead, detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
 import { isDiscardCommand } from "../culture/discard";
 import { enforceTransparentConfirmation } from "./write-receipt";
 import {
