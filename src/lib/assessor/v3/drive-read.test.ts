@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { detectReadRequest } from "./read-intent";
+import { detectEllipticDriveRead, detectReadRequest } from "./read-intent";
+import {
+  detectDriveFileRequest,
+  buildFileActionQuestion,
+  fileActionDoneReply,
+  fileActionCancelledReply,
+} from "@/lib/drive/bulk-archive";
 import { formatQueryResults } from "./query-results";
 import { isDiscardAudioRequest, UNDO_KEEP_DONE_REPLY, UNDO_KEEP_TOO_LATE_REPLY } from "./audio-undo";
 
@@ -11,6 +17,7 @@ describe("leitura do Drive Inteligente", () => {
   });
 
   it("lista grande mostra os recentes e oferece sempre ver tudo", () => {
+*** noop
     const rows = Array.from({ length: 12 }, (_, i) => ({
       original_file_name: `doc-${i}.pdf`,
       document_type: "caderneta",
