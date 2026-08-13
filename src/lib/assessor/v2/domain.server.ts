@@ -13,6 +13,7 @@ import { sanitizeMiscFields } from "../misc-text";
 
 import { z } from "zod";
 import { isAgendaEvent } from "@/lib/agenda-kind";
+import { initialEventClass } from "../event-class";
 import {
   compareTokenMatches, filterByRelevance, foldLike, foldText, searchTokens, weightedTokenMatchScore,
 } from "@/lib/search/normalize";
