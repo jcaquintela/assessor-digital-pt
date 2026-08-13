@@ -249,6 +249,7 @@ export async function runReasoningEngine(
     if (done.length) {
       const lines: string[] = [];
       const handled: typeof done = [];
+      let recurringAsk: { id: string; title: string } | null = null;
       for (const instruction of done) {
         try {
           const res = await TOOL_REGISTRY.complete_follow_up!(ctx, {
@@ -258,10 +259,27 @@ export async function runReasoningEngine(
           if (!res.ok || d?.ambiguous) continue; // ambíguo segue o caminho normal
           handled.push(instruction);
           lines.push(formatCompletionReply(d.items ?? [], instruction.subjectHint));
-          if (d?.recurring?.title) lines.push(recurrenceQuestion(d.recurring.title));
+          if (d?.recurring?.title && !recurringAsk) {
+            recurringAsk = { id: String(d.recurring.id), title: String(d.recurring.title) };
+            lines.push(recurrenceQuestion(d.recurring.title));
+          }
         } catch { /* noop */ }
       }
       if (handled.length) {
+        // A pergunta fica em memória na sua ranhura: o "sim"/"não" que vier a
+        // seguir decide mesmo a recorrência, em vez de se perder.
+        if (recurringAsk) {
+          try {
+            await createPendingAction(supabase, {
+              userId, channel,
+              intent: "confirm_recurrence_continue",
+              originalContent: trimmed,
+              payload: { routine_id: recurringAsk.id, routine_title: recurringAsk.title },
+              pendingQuestion: recurrenceQuestion(recurringAsk.title),
+              currentQuestion: recurrenceQuestion(recurringAsk.title),
+            });
+          } catch { /* noop */ }
+        }
         const rest = remainingRequest(trimmed, handled);
         if (remainderNeedsWork(rest)) {
           const out = await runReasoningEngine({ ...input, content: rest }, { skipCompletionPass: true });
@@ -368,6 +386,28 @@ export async function runReasoningEngine(
   // Escolha de qual (ou quais) compromisso desmarcar. "As duas" desmarca as
   // duas — e a confirmação lista cada uma com o respectivo resultado.
   try {
+    // Resposta à pergunta de recorrência ("queres que continue a repetir?").
+    // Sem isto, a pergunta era feita e a resposta caía no vazio.
+    const recPending = await findActivePendingAction(supabase, userId, channel, "recurrence");
+    if (recPending && recPending.intent === "confirm_recurrence_continue") {
+      const payload = (recPending.structured_payload ?? {}) as Record<string, any>;
+      const routineId = payload.routine_id ? String(payload.routine_id) : null;
+      const routineTitle = String(payload.routine_title ?? "");
+      const { readRecurrenceAnswer, recurrenceKeptReply, recurrenceStoppedReply } =
+        await import("./recurrence-answer");
+      const answer = readRecurrenceAnswer(trimmed);
+      if (answer === "stop" && routineId) {
+        const res = await TOOL_REGISTRY.set_routine_active!(ctx, { routine_id: routineId, active: false });
+        await markPendingActionStatus(supabase, recPending.id, res.ok ? "executed" : "failed", {
+          error_message: res.ok ? null : (res.error ?? "not_updated"),
+        });
+        if (res.ok) return { reply: recurrenceStoppedReply(routineTitle) };
+      } else if (answer === "continue") {
+        await markPendingActionStatus(supabase, recPending.id, "executed");
+        return { reply: recurrenceKeptReply(routineTitle) };
+      }
+    }
+
     const choicePending = await findActivePendingAction(supabase, userId, channel, "cancel");
     if (choicePending && choicePending.intent === "choosing_cancel_target") {
       const payload = (choicePending.structured_payload ?? {}) as Record<string, any>;
@@ -1612,6 +1652,29 @@ export async function runReasoningEngine(
     } else if (!d?.ambiguous) {
       const { ensureAllPartsAnswered } = await import("./composite-request");
       reply = ensureAllPartsAnswered(reply, trimmed);
+    }
+  }
+
+  // Conclusão feita pelo caminho do modelo: se o assunto se repete, a
+  // pergunta de recorrência é feita na mesma e fica em memória à espera de
+  // resposta — desligar a repetição nunca é decisão nossa.
+  const completeTool = toolResults.find((t) => t.name === "complete_follow_up" && t.ok);
+  if (completeTool) {
+    const d = (completeTool.data ?? {}) as any;
+    const rec = d?.recurring;
+    if (!d?.ambiguous && rec?.id && rec?.title) {
+      const question = recurrenceQuestion(String(rec.title));
+      if (!reply.includes(question)) reply = [reply, question].filter(Boolean).join(" ").trim();
+      try {
+        await createPendingAction(supabase, {
+          userId, channel,
+          intent: "confirm_recurrence_continue",
+          originalContent: trimmed,
+          payload: { routine_id: String(rec.id), routine_title: String(rec.title) },
+          pendingQuestion: question,
+          currentQuestion: question,
+        });
+      } catch { /* noop */ }
     }
   }
 

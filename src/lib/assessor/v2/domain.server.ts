@@ -26,6 +26,7 @@ import {
   CreateEventArgs,
   CreateFollowUpArgs,
   CreateRoutineArgs,
+  SetRoutineActiveArgs,
   SaveInteractionArgs,
   SaveMiscellaneousArgs,
   CreateFinancialMovementArgs,
@@ -1493,6 +1494,25 @@ async function execCompleteFollowUp(ctx: DomainContext, args: unknown): Promise<
   return ok({ completed: items.length, items, recurring });
 }
 
+/**
+ * Liga/desliga uma rotina — só a pedido explícito do consultor (resposta à
+ * pergunta de recorrência). O Afonso nunca decide isto por si.
+ */
+async function execSetRoutineActive(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(SetRoutineActiveArgs, args); if (!p.ok) return fail(p.error);
+  const { routine_id, active } = p.value;
+  const { data, error } = await ctx.supabase
+    .from("routines")
+    .update({ active } as never)
+    .eq("user_id", ctx.userId)
+    .eq("id", routine_id)
+    .select("id, title, active");
+  if (error) return fail(String((error as any)?.message ?? "erro_ao_gravar"));
+  const row = (Array.isArray(data) ? (data as any[])[0] : null) ?? null;
+  if (!row) return fail("rotina_nao_encontrada");
+  return ok({ routine: row });
+}
+
 async function execSendReminderNowInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(SendReminderNowArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
@@ -1705,6 +1725,7 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   cancel_reminder: execCancelReminder,
   cancel_follow_up: execCancelFollowUp,
   complete_follow_up: execCompleteFollowUp,
+  set_routine_active: execSetRoutineActive,
   send_reminder_now: execSendReminderNow,
 };
 

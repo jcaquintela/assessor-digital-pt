@@ -213,6 +213,14 @@ export const CreateRoutineArgs = z.object({
 });
 export type CreateRoutineArgs = z.infer<typeof CreateRoutineArgs>;
 
+// Ligar/desligar uma rotina existente. Usado quando o consultor responde à
+// pergunta "isto repete-se — queres que continue a repetir?".
+export const SetRoutineActiveArgs = z.object({
+  routine_id: z.string().uuid(),
+  active: z.boolean(),
+});
+export type SetRoutineActiveArgs = z.infer<typeof SetRoutineActiveArgs>;
+
 export const SaveMiscellaneousArgs = z.object({
   title: z.string().min(1),
   summary: z.string().optional().nullable(),
@@ -1060,6 +1068,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   create_follow_up: CreateFollowUpArgs,
   save_interaction: SaveInteractionArgs,
   create_routine: CreateRoutineArgs,
+  set_routine_active: SetRoutineActiveArgs,
   save_miscellaneous: SaveMiscellaneousArgs,
   create_financial_movement: CreateFinancialMovementArgs,
   create_deal: CreateDealArgs,
