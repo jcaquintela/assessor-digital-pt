@@ -6,6 +6,8 @@
 
 import { boldWa } from "../culture/whatsapp-format";
 import { formatPersonBrief, type PersonBrief } from "../v3/person-brief";
+import { classifyEvent } from "../event-class";
+import { STAGE_LABEL, type DealStage } from "@/lib/deals/stages";
 
 export const BRIEFING_LEAD_MINUTES = 15;
 /** Tolerância para trás: cobre corridas atrasadas sem mandar tarde demais. */
@@ -19,7 +21,24 @@ export interface BriefingEvent {
   type?: string | null;
   status?: string | null;
   person_id: string | null;
+  related_property_id?: string | null;
+  opportunity_id?: string | null;
+  related_prospecting_lead_id?: string | null;
+  /** Reclassificação/classificação gravada na criação. */
+  event_class?: string | null;
+  created_at?: string | null;
   briefing_sent_at?: string | null;
+}
+
+/** Contexto do próprio compromisso (imóvel e negócio ligados ao evento). */
+export interface EventBriefContext {
+  property?: {
+    title?: string | null;
+    address?: string | null;
+    typology?: string | null;
+    price?: number | null;
+  } | null;
+  deal?: { label?: string | null; stage?: string | null } | null;
 }
 
 // Estado aberto/fechado: regra canónica única.
