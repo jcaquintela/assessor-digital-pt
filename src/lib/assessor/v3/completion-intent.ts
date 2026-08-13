@@ -17,9 +17,11 @@ export const COMPLETED_OUTCOME = "concluido";
 
 // "está tratado", "já tratei", "já fiz", "está feito", "já foi resolvido",
 // "já está concluído", "isso já está despachado".
+// Testadas sempre sobre texto normalizado (sem acentos): \b não fecha
+// palavra depois de "á", e "está tratado" escapava à deteção.
 const DONE_RE =
-  /\b(?:j[áa]\s+)?(?:est[áa]|estao|est[ãa]o|foi|fica(?:ram)?|ficou|fiz|tratei|resolvi|conclu[íi]|despachei)?\s*(tratad[oa]s?|feit[oa]s?|resolvid[oa]s?|conclu[íi]d[oa]s?|despachad[oa]s?|fechad[oa]s?)\b/i;
-const DONE_STRICT_RE = /\b(j[áa]|est[áa]|est[ãa]o|foi|fiz|tratei|resolvi|conclu[íi]|despachei|fica|ficou)\b/i;
+  /\b(tratad[oa]s?|feit[oa]s?|resolvid[oa]s?|concluid[oa]s?|despachad[oa]s?|fechad[oa]s?)\b/;
+const DONE_STRICT_RE = /\b(ja|esta|estao|foi|fiz|tratei|resolvi|conclui|despachei|fica|ficou)\b/;
 // "cancelada"/"desmarcada" NÃO é conclusão: isso é o caminho do cancelamento.
 const CANCEL_RE = /\b(cancel\w*|desmarc\w*|anul\w*|adia\w*|remarc\w*)\b/i;
 
@@ -63,8 +65,9 @@ export function detectCompletionInstructions(
     .filter(Boolean);
   const out: CompletionInstruction[] = [];
   for (const part of parts) {
-    if (!DONE_RE.test(part) || !DONE_STRICT_RE.test(part)) continue;
-    if (CANCEL_RE.test(part)) continue;
+    const norm = normalizeForMatch(part);
+    if (!DONE_RE.test(norm) || !DONE_STRICT_RE.test(norm)) continue;
+    if (CANCEL_RE.test(norm)) continue;
     if (/\?\s*$/.test(part)) continue;
     const subjectHint = hintFrom(part);
     if (subjectHint.split(" ").filter(Boolean).length < 2) continue;
