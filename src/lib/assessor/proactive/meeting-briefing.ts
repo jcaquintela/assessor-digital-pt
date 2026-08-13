@@ -70,15 +70,77 @@ export function eventStartMs(ev: Pick<BriefingEvent, "due_date" | "due_time">): 
   return guess.getTime() + offsetMin * 60000;
 }
 
+/**
+ * Só compromissos de negócio (com pessoa, imóvel, negócio ou lead ligados)
+ * geram cartela. Reuniões internas e eventos sem qualquer ligação ficam de
+ * fora — não há contexto relevante a mostrar.
+ */
+export function isBriefingEligible(ev: BriefingEvent): boolean {
+  return classifyEvent(ev as any) === "negocio";
+}
+
+/**
+ * Compromisso criado (ou alterado) já em cima da hora não recebe cartela:
+ * um briefing tardio não ajuda ninguém.
+ */
+export function wasCreatedTooLate(ev: BriefingEvent): boolean {
+  const created = ev.created_at ? new Date(ev.created_at).getTime() : NaN;
+  if (!Number.isFinite(created)) return false;
+  const start = eventStartMs(ev);
+  if (!Number.isFinite(start)) return false;
+  return start - created < BRIEFING_LEAD_MINUTES * 60_000;
+}
+
 /** Está dentro da janela dos próximos 15 minutos (com tolerância)? */
 export function isBriefingDue(ev: BriefingEvent, nowMs: number): boolean {
-  if (!ev.person_id) return false;
+  if (!isBriefingEligible(ev)) return false;
   if (ev.briefing_sent_at) return false;
   if (isFollowUpClosed(ev as any)) return false;
+  if (wasCreatedTooLate(ev)) return false;
   const start = eventStartMs(ev);
   if (!Number.isFinite(start)) return false;
   const delta = start - nowMs;
   return delta <= BRIEFING_LEAD_MINUTES * 60_000 && delta >= -BRIEFING_GRACE_MINUTES * 60_000;
+}
+
+function moneyEur(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  return new Intl.NumberFormat("pt-PT", {
+    style: "currency", currency: "EUR", maximumFractionDigits: 0,
+  }).format(n);
+}
+
+/** Linhas do contexto do compromisso: imóvel e estado do negócio. */
+export function formatEventContext(ctx: EventBriefContext | null | undefined): string {
+  if (!ctx) return "";
+  const lines: string[] = [];
+  const p = ctx.property;
+  if (p) {
+    const bits = [p.typology, p.title || p.address, moneyEur(p.price)]
+      .map((b) => String(b ?? "").trim())
+      .filter(Boolean);
+    // Não repetir tipologia quando já vem no título ("T2 Conselhas").
+    const uniq = bits.filter((b, i) => bits.findIndex((o) => o.toLowerCase() === b.toLowerCase()) === i);
+    if (uniq.length) lines.push(`Imóvel: ${uniq.join(", ")}`);
+  }
+  const d = ctx.deal;
+  if (d) {
+    const stage = d.stage ? (STAGE_LABEL[d.stage as DealStage] ?? d.stage) : "";
+    const label = String(d.label ?? "").trim();
+    const text = [label, stage ? `em ${stage}` : ""].filter(Boolean).join(" — ");
+    if (text) lines.push(`Negócio: ${text}`);
+  }
+  return lines.join("\n");
+}
+
+/** Há mesmo alguma coisa para mostrar (pessoa ou contexto do evento)? */
+export function hasAnyBriefingContent(
+  brief: PersonBrief | null | undefined,
+  ctx?: EventBriefContext | null,
+): boolean {
+  if (brief && hasBriefContent(brief)) return true;
+  return Boolean(formatEventContext(ctx));
 }
 
 export function hasBriefContent(b: PersonBrief): boolean {
