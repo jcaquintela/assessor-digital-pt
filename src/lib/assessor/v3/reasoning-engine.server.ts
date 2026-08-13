@@ -1655,6 +1655,29 @@ export async function runReasoningEngine(
     }
   }
 
+  // Conclusão feita pelo caminho do modelo: se o assunto se repete, a
+  // pergunta de recorrência é feita na mesma e fica em memória à espera de
+  // resposta — desligar a repetição nunca é decisão nossa.
+  const completeTool = toolResults.find((t) => t.name === "complete_follow_up" && t.ok);
+  if (completeTool) {
+    const d = (completeTool.data ?? {}) as any;
+    const rec = d?.recurring;
+    if (!d?.ambiguous && rec?.id && rec?.title) {
+      const question = recurrenceQuestion(String(rec.title));
+      if (!reply.includes(question)) reply = [reply, question].filter(Boolean).join(" ").trim();
+      try {
+        await createPendingAction(supabase, {
+          userId, channel,
+          intent: "confirm_recurrence_continue",
+          originalContent: trimmed,
+          payload: { routine_id: String(rec.id), routine_title: String(rec.title) },
+          pendingQuestion: question,
+          currentQuestion: question,
+        });
+      } catch { /* noop */ }
+    }
+  }
+
   // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
   // Financeiro: duplicado do mesmo dia — pergunta antes de assumir novo registo.
   // Dinheiro registado sem negócio: é aqui que o ciclo se fechava sozinho no
