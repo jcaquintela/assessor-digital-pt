@@ -1725,6 +1725,7 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   cancel_reminder: execCancelReminder,
   cancel_follow_up: execCancelFollowUp,
   complete_follow_up: execCompleteFollowUp,
+  set_routine_active: execSetRoutineActive,
   send_reminder_now: execSendReminderNow,
 };
 
