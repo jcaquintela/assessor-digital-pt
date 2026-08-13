@@ -58,6 +58,80 @@ export function detectMiscQuery(text: string): boolean {
   return MISC_QUESTION_RE.test(t) || /\?\s*$/.test(t);
 }
 
+// ---------------------------------------------------------------------------
+// "Como está o meu dia?" — consulta de estado do dia.
+//
+// Caso real (08/08 e 11/08): "Bom dia Afonso. Como estou hoje?" e "Como está
+// o meu dia" não batiam nenhum padrão de agenda ("dia" não é palavra de
+// agenda, "como está" não é "o que tenho"), iam ao motor de raciocínio, este
+// respondia de cor sem chamar nenhuma ferramenta e a rede de segurança
+// arquivava a pergunta em Diversos. É leitura pura: responde-se com dados
+// reais a qualquer hora, sem confirmação e sem passar por Diversos.
+
+const DAY_STATE_RE = new RegExp(
+  [
+    // "como está o meu dia", "como vai o dia de hoje", "como está hoje"
+    "\\bcomo\\s+(?:est[áa]|vai|corre|est[ãa]o)\\s+(?:o\\s+)?(?:meu\\s+)?dia\\b",
+    "\\bcomo\\s+(?:est[áa]|vai|corre)\\s+(?:o\\s+dia\\s+de\\s+)?hoje\\b",
+    // "como estou hoje", "como é que estou hoje"
+    "\\bcomo\\s+(?:é\\s+que\\s+)?(?:estou|ando)\\s+hoje\\b",
+    // "resumo do dia", "ponto de situação do dia/de hoje"
+    "\\b(?:resumo|ponto\\s+(?:de\\s+)?situa[çc][ãa]o|balan[çc]o)\\s+(?:d[eoa]\\s+)?(?:meu\\s+)?(?:dia|hoje)\\b",
+    // "o meu dia de hoje?" / "e o meu dia?"
+    "\\b(?:e\\s+)?(?:o\\s+)?meu\\s+dia\\s*\\??\\s*$",
+  ].join("|"),
+  "i",
+);
+
+// Correcções do consultor ("Não me estás a perguntar sobre as reuniões
+// passadas") não são consultas: têm de continuar a seguir o fluxo normal.
+const NEGATION_RE = /\bn[ãa]o\b/i;
+
+/** É uma pergunta de leitura sobre o estado do dia de hoje? */
+export function detectDayStateQuery(text: string): boolean {
+  const t = (text ?? "").trim();
+  if (!t || t.length > 160) return false;
+  if (NEGATION_RE.test(t)) return false;
+  if (MISC_MODULE_RE.test(t)) return false;
+  if (CREATE_INTENT_RE.test(t) || EXPLICIT_TIME_RE.test(t)) return false;
+  return DAY_STATE_RE.test(t);
+}
+
+export interface DayStatePriority {
+  action: string;
+  entity_label?: string | null;
+  reasons?: string[];
+}
+
+/**
+ * Estado do dia em texto: compromissos reais + prioridades reais. Sem
+ * perguntas de confirmação — é uma leitura.
+ */
+export function composeDayStateReply(
+  items: AgendaItem[],
+  priorities: DayStatePriority[],
+  opts: { firstName?: string } = {},
+): string {
+  const blocks: string[] = [];
+  if (items.length) {
+    blocks.push(formatAgendaReply("today", items));
+  } else {
+    blocks.push("Hoje não tens compromissos na agenda.");
+  }
+  if (priorities.length) {
+    const top = priorities.slice(0, 3).map((p) => {
+      const label = p.entity_label ? ` (${p.entity_label})` : "";
+      return `• ${p.action}${label}`;
+    });
+    blocks.push(`A tratar:\n${top.join("\n")}`);
+  } else if (!items.length) {
+    blocks.push("Também não tens nada por tratar. Queres aproveitar para uma ronda de prospeção?");
+  }
+  const hello = opts.firstName ? `${opts.firstName}, ` : "";
+  const head = hello ? `${hello.charAt(0).toUpperCase()}${hello.slice(1)}` : "";
+  return `${head}${head ? "aqui vai o teu dia" : "O teu dia"}:\n${blocks.join("\n\n")}`;
+}
+
 export function detectAgendaQuery(text: string): AgendaPeriod | null {
   const t = (text ?? "").trim();
   if (!t) return null;
