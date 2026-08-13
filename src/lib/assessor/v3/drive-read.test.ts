@@ -35,6 +35,46 @@ describe("leitura do Drive Inteligente", () => {
     expect(out).toContain("Tens 1 ficheiro no Drive Inteligente:");
     expect(out).not.toContain("lista toda");
   });
+
+  it("golden 1 — 'Lista os documentos da Drive' vai à ferramenta, não a Diversos", () => {
+    const r = detectReadRequest("Lista os documentos da Drive.");
+    expect(r.pure).toBe(true);
+    expect(r.tool).toBe("search_files");
+  });
+
+  it("golden 4 — 'E documentos?' só é leitura quando o contexto é do Drive", () => {
+    expect(detectEllipticDriveRead("E documentos?", "Tens 3 áudios no Drive Inteligente")).toBe(true);
+    expect(detectEllipticDriveRead("E documentos?", "Marquei a visita para amanhã")).toBe(false);
+  });
+});
+
+describe("apagar ficheiros do Drive por conversa", () => {
+  it("golden 2 — 'Apaga os áudios todos' pede confirmação com a contagem real", () => {
+    expect(detectDriveFileRequest("Apaga os áudios todos")).toEqual({
+      kind: "audio", term: null, mode: "delete",
+    });
+    const q = buildFileActionQuestion("audio", ["a.ogg", "b.ogg", "c.ogg"], "delete");
+    expect(q).toContain("Encontrei 3 áudios");
+    expect(q).toContain("Queres mesmo apagar estes 3?");
+    expect(q).toContain("não pode ser desfeito");
+    expect(q).not.toMatch(/apaguei/i);
+  });
+
+  it("golden 3 — depois do sim, a confirmação diz o que foi apagado", () => {
+    expect(fileActionDoneReply("audio", 6, "delete")).toBe("Apaguei 6 áudios do Drive Inteligente.");
+    expect(fileActionCancelledReply("delete")).toBe("Certo, não apaguei nada.");
+  });
+
+  it("arquivar mantém o texto reversível de sempre", () => {
+    expect(detectDriveFileRequest("arquiva as fotos")?.mode).toBe("archive");
+    expect(fileActionDoneReply("image", 2, "archive")).toMatch(/Arquivei 2 fotos/);
+  });
+
+  it("apanha um ficheiro identificado pelo nome", () => {
+    expect(detectDriveFileRequest("apaga o ficheiro caderneta gaia")).toEqual({
+      kind: "any", term: "caderneta gaia", mode: "delete",
+    });
+  });
 });
 
 describe("descarta depois de já ter guardado", () => {
