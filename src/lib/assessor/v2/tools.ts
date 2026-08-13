@@ -339,6 +339,13 @@ export const CancelFollowUpArgs = z.object({
 });
 export type CancelFollowUpArgs = z.infer<typeof CancelFollowUpArgs>;
 
+export const CompleteFollowUpArgs = z.object({
+  follow_up_ids: z.array(z.string().uuid()).max(50).optional().nullable(),
+  subject_hint: z.string().min(2).max(160).optional().nullable(),
+  notes: z.string().max(300).optional().nullable(),
+});
+export type CompleteFollowUpArgs = z.infer<typeof CompleteFollowUpArgs>;
+
 export const SendReminderNowArgs = z.object({
   reminder_id: z.string().uuid().optional().nullable(),
   subject_hint: z.string().min(2).max(120).optional().nullable(),
@@ -1067,6 +1074,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   search_active_reminders: SearchActiveRemindersArgs,
   cancel_reminder: CancelReminderArgs,
   cancel_follow_up: CancelFollowUpArgs,
+  complete_follow_up: CompleteFollowUpArgs,
   send_reminder_now: SendReminderNowArgs,
   list_property_categories: ListPropertyCategoriesArgs,
   list_uncategorized_properties: ListUncategorizedPropertiesArgs,
