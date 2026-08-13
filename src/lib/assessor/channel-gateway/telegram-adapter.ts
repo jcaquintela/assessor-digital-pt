@@ -121,6 +121,11 @@ export const telegramAdapter: ChannelAdapter = {
     const chatId = String(msg.chat.id);
     const replyTo = msg?.message_id ? String(msg.message_id) : null;
     const { kind, raw } = detectMessageType(msg);
+    // Resposta em citação (reply): o texto citado liga o "sim" à pergunta.
+    const quotedText: string | null =
+      typeof msg?.reply_to_message?.text === "string"
+        ? msg.reply_to_message.text
+        : (typeof msg?.reply_to_message?.caption === "string" ? msg.reply_to_message.caption : null);
 
     let text: string | null = null;
     let media: NormalizedInbound["media"] = null;
@@ -143,7 +148,7 @@ export const telegramAdapter: ChannelAdapter = {
           sender: msg?.from
             ? { firstName: msg.from.first_name ?? null, lastName: msg.from.last_name ?? null, username: msg.from.username ?? null }
             : null,
-          metadata: { rawType: raw },
+          metadata: { rawType: raw, quotedText },
           receivedAt: new Date(),
         }];
       }
@@ -165,7 +170,7 @@ export const telegramAdapter: ChannelAdapter = {
       sender: msg?.from
         ? { firstName: msg.from.first_name ?? null, lastName: msg.from.last_name ?? null, username: msg.from.username ?? null }
         : null,
-      metadata: { rawType: raw, caption },
+      metadata: { rawType: raw, caption, quotedText },
       receivedAt: new Date(),
     }];
   },
