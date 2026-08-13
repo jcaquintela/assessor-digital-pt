@@ -54,6 +54,7 @@ import {
   type RescheduleCandidate,
 } from "../event-subject";
 import { CANCELLED_STATUS, CANCELLED_OUTCOME, matchByHint } from "../v3/cancel-agenda";
+import { COMPLETED_STATUS, COMPLETED_OUTCOME } from "../v3/completion-intent";
 import { pushEventToProviders } from "@/lib/calendar/sync.server";
 import { stopFollowUpTriggers } from "@/lib/calendar/stop-triggers.server";
 import {
