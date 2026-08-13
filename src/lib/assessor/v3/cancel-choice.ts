@@ -12,7 +12,7 @@ export type CancelCandidate = CancellableItem;
 
 // normalizeForMatch já tira acentos e pontuação.
 const ALL_RE =
-  /^(sim\s+)?(as?\s+)?(duas|dois|tres|ambas|ambos|todas|todos|tudo)(\s+(as\s+)?(duas|coisas|opcoes|marcacoes))?$/;
+  /^(sim\s+)?(as|os|a|o)?\s*(duas|dois|tres|ambas|ambos|todas|todos|tudo)(\s+(as\s+)?(duas|coisas|opcoes|marcacoes))?$/;
 
 /** "As duas", "ambos", "todas", "sim, as duas" — o consultor quer o conjunto. */
 export function isAllChoice(text: string | null | undefined): boolean {
@@ -61,7 +61,9 @@ export interface CancelOutcome {
 }
 
 function label(item: CancelCandidate): string {
-  const t = item.due_time ? `${String(item.due_time).slice(0, 5).replace(":", "h")}` : "";
+  const t = item.due_time
+    ? String(item.due_time).slice(0, 5).replace(":", "h").replace(/h00$/, "h")
+    : "";
   const title = displayTitle(item.title);
   return t ? `${title} (${t})` : title;
 }
