@@ -161,15 +161,20 @@ export function timePt(ms: number): string {
 /** Texto final da cartela. Cabeçalho = motivo do compromisso + pessoa. */
 export function formatMeetingBriefing(
   ev: BriefingEvent,
-  brief: PersonBrief,
+  brief: PersonBrief | null,
   nowMs: number,
+  ctx?: EventBriefContext | null,
 ): string {
   const start = eventStartMs(ev);
   const minutes = Math.max(1, Math.round((start - nowMs) / 60_000));
   const head =
-    `Daqui a ${minutes} min: ${boldWa(String(ev.title).trim())}, com ${boldWa(brief.name)}` +
+    `Daqui a ${minutes} min: ${boldWa(String(ev.title).trim())}` +
+    (brief ? `, com ${boldWa(brief.name)}` : "") +
     (Number.isFinite(start) ? ` (${timePt(start)}).` : ".");
-  return `${head}\n\n${formatPersonBrief(brief)}`;
+  const body = [brief ? formatPersonBrief(brief) : "", formatEventContext(ctx)]
+    .filter((s) => s.trim())
+    .join("\n");
+  return `${head}\n\n${body}`.trimEnd();
 }
 /** Uma linha só, sem quebras nem marcações — exigência da Meta nos params. */
 export function flattenForTemplate(text: string): string {
@@ -188,14 +193,18 @@ export function flattenForTemplate(text: string): string {
  */
 export function briefingTemplateParams(
   ev: BriefingEvent,
-  brief: PersonBrief,
+  brief: PersonBrief | null,
   consultantFirstName: string,
+  ctx?: EventBriefContext | null,
 ): string[] {
-  const meeting = `${String(ev.title).trim()}, com ${brief.name}`;
+  const meeting = `${String(ev.title).trim()}${brief ? `, com ${brief.name}` : ""}`;
+  const summary = [brief ? formatPersonBrief(brief).replace(/^.*?\n/, "") : "", formatEventContext(ctx)]
+    .filter((s) => s.trim())
+    .join("\n");
   return [
     flattenForTemplate(consultantFirstName) || "Olá",
     flattenForTemplate(meeting),
-    flattenForTemplate(formatPersonBrief(brief).replace(/^.*?\n/, "")) ||
-      flattenForTemplate(formatPersonBrief(brief)),
+    flattenForTemplate(summary) ||
+      flattenForTemplate(brief ? formatPersonBrief(brief) : String(ev.title ?? "")),
   ];
 }
