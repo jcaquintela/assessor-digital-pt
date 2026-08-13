@@ -249,6 +249,7 @@ async function routeInbound(
         content: engineContent,
         receivedAt: inbound.receivedAt,
         sourceMessageId: persistedUuid,
+        quotedText: await resolveQuotedText(supabaseAdmin, inbound),
       });
       await deliverReply(adapter, supabaseAdmin, {
         userId,
@@ -1258,4 +1259,31 @@ async function handlePromoRedeemImpl(
     adapter, supabaseAdmin, inbound, userId, promoConfirmQuestion(check.tier), ["Sim", "Não"],
   );
   return true;
+}
+
+/**
+ * Texto da mensagem citada quando o consultor responde em reply directo.
+ * No Telegram vem no próprio update; no WhatsApp só chega o id da mensagem
+ * citada, que resolvemos no histórico. Best-effort: nunca bloqueia o turno.
+ */
+async function resolveQuotedText(
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+): Promise<string | null> {
+  try {
+    const meta = (inbound.metadata ?? {}) as Record<string, unknown>;
+    const direct = typeof meta.quotedText === "string" ? meta.quotedText.trim() : "";
+    if (direct) return direct;
+    const quotedId = typeof meta.quotedMessageId === "string" ? meta.quotedMessageId : null;
+    if (!quotedId) return null;
+    const { data } = await supabaseAdmin
+      .from("assessor_messages")
+      .select("content")
+      .eq("whatsapp_message_id", quotedId)
+      .maybeSingle();
+    const content = String((data as any)?.content ?? "").trim();
+    return content || null;
+  } catch {
+    return null;
+  }
 }

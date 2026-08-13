@@ -166,7 +166,13 @@ export const whatsappAdapter: ChannelAdapter = {
             media,
             callback,
             sender: null,
-            metadata: { rawType: type, caption: cap },
+            metadata: {
+              rawType: type,
+              caption: cap,
+              // Resposta em citação: guardamos o id da mensagem citada para
+              // ligar o "sim" à pergunta certa, mesmo horas depois.
+              quotedMessageId: msg?.context?.id ? String(msg.context.id) : null,
+            },
             receivedAt: new Date(),
           });
         }

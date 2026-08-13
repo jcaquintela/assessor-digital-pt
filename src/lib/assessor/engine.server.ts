@@ -71,6 +71,9 @@ export interface EngineInput {
   // ID da mensagem externa que originou este turno (ex.: WhatsApp wamid).
   // Persistido em `follow_ups.source_message_id` para auditoria.
   sourceMessageId?: string | null;
+  // Texto da mensagem citada quando o consultor responde em reply directo.
+  // Liga um "sim" à pergunta certa mesmo fora da janela normal.
+  quotedText?: string | null;
 }
 
 export interface EngineOutcome {
@@ -462,7 +465,7 @@ async function processAssessorMessageInner(input: EngineInput): Promise<EngineOu
     const lastAssistantContent = ((recent as any)?.data ?? [])
       .find((r: any) => r?.role === "assessor" || r?.role === "assistant")?.content ?? null;
     const { isAnswerablePending } = await import("./pending-answerable");
-    if (pending && !isAnswerablePending(pending, { lastAssistantContent })) {
+    if (pending && !isAnswerablePending(pending, { lastAssistantContent, quotedText: input.quotedText ?? null })) {
       await markPendingActionStatus(supabase, pending.id, "expired", {
         error_message: "stale: pergunta já não estava em aberto",
       });

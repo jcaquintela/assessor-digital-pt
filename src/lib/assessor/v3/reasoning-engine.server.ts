@@ -498,11 +498,57 @@ export async function runReasoningEngine(
 
     // Um pendente antigo, cuja pergunta já não é a que está em aberto, não
     // pode ser resolvido por uma resposta destinada a outro assunto.
-    if (pending && !isAnswerablePending(pending, { lastAssistantContent: lastAssistantContent0 })) {
+    if (
+      pending &&
+      !isAnswerablePending(pending, {
+        lastAssistantContent: lastAssistantContent0,
+        quotedText: input.quotedText ?? null,
+      })
+    ) {
       await markPendingActionStatus(supabase, pending.id, "expired", {
         error_message: "stale: pergunta já não estava em aberto",
       });
+      // Uma resposta objetiva nunca cai no vazio: dizemos que caducou e
+      // reperguntamos, em vez de responder "a que te referes?".
+      if (saIsConfirmation(trimmed) || saIsRejection(trimmed)) {
+        const { expiredConfirmationReply, isDestructiveConfirmation } =
+          await import("../expired-confirmation");
+        const reply = expiredConfirmationReply(
+          pending.current_question ?? pending.pending_question,
+          {
+            destructive: isDestructiveConfirmation(
+              pending.intent,
+              pending.structured_payload as Record<string, unknown>,
+            ),
+          },
+        );
+        pending = null;
+        return { reply };
+      }
       pending = null;
+    }
+
+    // Sem rascunho vivo, mas o consultor respondeu "sim"/"não": se houve uma
+    // confirmação a caducar há pouco, assumimos que era essa e reperguntamos.
+    if (!pending && !lastAssistantAskedQuestion && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
+      const { findRecentExpiredConfirmation } = await import("../memory.server");
+      const stale = await findRecentExpiredConfirmation(supabase, userId, channel);
+      if (stale) {
+        const { expiredConfirmationReply, isDestructiveConfirmation } =
+          await import("../expired-confirmation");
+        // Fecha o assunto: o aviso é dado uma vez, não a cada "sim" solto.
+        await markPendingActionStatus(supabase, stale.id, "cancelled", {
+          error_message: "confirmação caducada — avisado o consultor",
+        });
+        return {
+          reply: expiredConfirmationReply(stale.current_question ?? stale.pending_question, {
+            destructive: isDestructiveConfirmation(
+              stale.intent,
+              stale.structured_payload as Record<string, unknown>,
+            ),
+          }),
+        };
+      }
     }
 
     // "Só registar" / "sem lembrete": recusa explícita de agendar. Fecha já o
