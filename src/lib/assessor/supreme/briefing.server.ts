@@ -7,6 +7,7 @@ import { requiresOutcome } from "@/lib/follow-ups/pending";
 import { belongsInDailyAgenda } from "../agenda-leisure";
 import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
 import { computePriorities } from "./priorities.server";
+import { composeEmptyDayBriefing } from "../proactive/empty-day";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
 
@@ -39,8 +40,9 @@ export async function morningBriefingAlreadySent(supabase: any, userId: string):
 /** Texto do briefing a partir das prioridades actuais (nunca de cache). */
 export function composeBriefingText(
   priorities: Array<{ action: string; entity_label: string | null; reasons: string[] }>,
+  opts: { firstName?: string; now?: Date } = {},
 ): string {
-  if (!priorities.length) return "Bom dia. Hoje não tens compromissos nem seguimentos urgentes.";
+  if (!priorities.length) return composeEmptyDayBriefing(opts.firstName ?? "", opts.now ?? new Date());
   const top = priorities[0]!;
   const rest = priorities.length - 1;
   return `Bom dia. Prioridade de hoje: ${top.action}${top.entity_label ? ` (${top.entity_label})` : ""}. ${top.reasons[0] ?? ""}.${rest > 0 ? ` Tens mais ${rest} para tratar.` : ""}`;
@@ -57,8 +59,9 @@ export async function resolveBriefingAtDispatch(
 ): Promise<{ send: false } | { send: true; text: string }> {
   if (await morningBriefingAlreadySent(supabase, userId)) return { send: false };
   const priorities = await computePriorities(supabase, userId, { limit: 3 });
-  if (!priorities.length) return { send: false };
-  return { send: true, text: sanitizeReply(composeBriefingText(priorities)) };
+  const { data: prof } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
+  const firstName = ((prof as any)?.name ?? "").split(" ")[0] ?? "";
+  return { send: true, text: sanitizeReply(composeBriefingText(priorities, { firstName })) };
 }
 
 function nowLisbonParts(now: Date) {
