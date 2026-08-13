@@ -134,8 +134,9 @@ function SobreAPage() {
               </div>
               <p className="c-muted text-xs leading-relaxed">
                 Extraio dados como nomes, telefones, moradas, tipologias,
-                preços, datas ou intenções. Estes campos aparecem como
-                rascunhos — só se transformam em registos quando confirmas.
+                preços, datas ou intenções. Quando esses campos criam ou
+                alteram registos das categorias listadas abaixo, ficam como
+                rascunho até confirmares.
               </p>
             </div>
           </div>
@@ -160,12 +161,10 @@ function SobreAPage() {
           </ul>
 
           <p className="c-muted mt-4 text-xs leading-relaxed">
-            Criar pessoas, imóveis, alterar preços ou proprietários, juntar
-            registos, cancelar compromissos, apagar ou enviar seja o que for
-            para um cliente exige sempre a tua confirmação — em qualquer nível
-            de autonomia. Nos outros casos, a escrita pode acontecer
-            automaticamente conforme o nível que escolheste. Podes sempre
-            editar, reverter ou rejeitar o que ficou registado.
+            Nem tudo o que interpreto fica em rascunho: as categorias que
+            pedem sempre confirmação e as que podem ser escritas sozinhas
+            estão listadas em “Quando atuo sozinho”, logo a seguir. Podes
+            sempre editar, reverter ou arquivar o que ficou registado.
           </p>
         </Section>
 
@@ -187,27 +186,42 @@ function SobreAPage() {
             <div className="rounded-[10px] border p-3" style={{ borderColor: "var(--line)" }}>
               <div className="mb-1 text-sm font-medium">Equilibrado e Proativo</div>
               <p className="c-muted text-xs leading-relaxed">
-                Atuo autonomamente dentro dos limites que definires — por
-                exemplo, guardar notas, contexto e seguimentos de rotina — e
-                informo-te sempre do que fiz. Podes reverter qualquer ação.
+                Escrevo sozinho apenas nas categorias da lista “Posso fazer sem
+                perguntar”, e digo-te sempre o que fiz. Podes reverter
+                qualquer ação.
               </p>
             </div>
             <div
               className="rounded-[10px] border p-3"
               style={{ borderColor: "var(--brass)", background: "rgba(184,134,59,.06)" }}
             >
-              <div className="mb-1 text-sm font-medium">Nunca sozinho, em nenhum nível</div>
+              <div className="mb-1 text-sm font-medium">Peço sempre confirmação (em qualquer nível)</div>
               <p className="c-muted text-xs leading-relaxed">
-                Criar pessoas ou imóveis; alterar preços ou proprietários;
-                juntar registos duplicados; cancelar compromissos; apagar ou
-                arquivar registos; ações financeiras; e qualquer mensagem
-                dirigida a um cliente. Estas peço-te sempre confirmação.
+                Criar uma pessoa; criar um imóvel; alterar preço; alterar
+                proprietário; juntar registos duplicados; cancelar um
+                compromisso; apagar ou arquivar um registo; qualquer movimento
+                financeiro; e qualquer mensagem ou ficheiro destinado a um
+                cliente ou a terceiros. Sem o teu “sim”, não acontece.
+              </p>
+            </div>
+            <div className="rounded-[10px] border p-3" style={{ borderColor: "var(--line)" }}>
+              <div className="mb-1 text-sm font-medium">Posso fazer sem perguntar (nos níveis Equilibrado e Proativo)</div>
+              <p className="c-muted text-xs leading-relaxed">
+                Guardar notas e contexto numa pessoa, imóvel ou negócio já
+                existente; criar e atualizar seguimentos e lembretes teus;
+                marcar um seguimento como concluído quando mo dizes;
+                arquivar ficheiros no Drive e organizá-los por contexto;
+                registar a transcrição e o resumo do que me envias; e
+                enviar-te a ti (nunca a terceiros) um documento que me pediste.
+                Estas ações são todas reversíveis e ficam sempre visíveis no
+                dashboard.
               </p>
             </div>
           </div>
 
           <p className="c-muted mt-4 text-xs leading-relaxed">
-            Podes ainda afinar, ação a ação, o que exige confirmação, e o teu
+            Podes ainda afinar, ação a ação, o que exige confirmação — incluindo
+            pedir que te pergunte antes de te enviar um documento — e o teu
             plano define o nível máximo de autonomia disponível.
           </p>
         </Section>
