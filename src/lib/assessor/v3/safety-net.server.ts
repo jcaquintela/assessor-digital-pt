@@ -1,5 +1,6 @@
 import { sanitizeMiscFields } from "../misc-text";
 import { cleanTitle } from "../titles";
+import { classifyTechnicalReason, humanReason } from "../misc-reason";
 // Rede de segurança "nada se perde" — motor v3.
 //
 // Regra de produto: uma mensagem profissional do consultor NUNCA pode
@@ -70,17 +71,21 @@ export async function archiveToMiscellaneous(
     const text = String(content ?? "").trim();
     if (!text) return false;
     const title = deriveArchiveTitle(text);
+    // O motivo técnico (nome de ferramenta, código de erro) fica só numa
+    // etiqueta interna; o consultor lê exclusivamente o texto em PT.
+    const key = classifyTechnicalReason(reason);
+    const technical = String(reason ?? "").trim().slice(0, 180);
     const { error } = await ctx.supabase.from("miscellaneous_items").insert(sanitizeMiscFields({
       user_id: ctx.userId,
       title,
       original_content: text,
-      summary: `Ficou por tratar: ${reason}`,
+      summary: humanReason(key),
       category: "Por tratar",
       source_channel: ctx.channel,
       source_message_id: ctx.sourceMessageId ?? null,
       occurred_at: new Date().toISOString(),
       status: "inbox",
-      tags: ["falha_assessor"],
+      tags: technical ? ["falha_assessor", `tec:${technical}`] : ["falha_assessor"],
     }) as never);
     return !error;
   } catch {
