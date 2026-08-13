@@ -13,6 +13,11 @@
 
 export const PENDING_ANSWER_WINDOW_MS = 3 * 60_000;
 
+// Uma pergunta de confirmação explícita ("queres que apague os 6 áudios?")
+// fica de pé o dia todo: o consultor pode responder uma hora depois, entre
+// visitas. O limite duro continua a ser o TTL do rascunho na base de dados.
+export const CONFIRM_ANSWER_WINDOW_MS = 24 * 60 * 60_000;
+
 // "Só registar", "guarda só", "sem lembrete", "não é preciso agendar", …
 const REGISTER_ONLY_RE = new RegExp(
   [
@@ -39,6 +44,7 @@ export interface AnswerablePending {
   pending_question?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  status?: string | null;
 }
 
 function ts(value: string | null | undefined): number | null {
@@ -54,6 +60,23 @@ function norm(s: string | null | undefined): string {
     .trim();
 }
 
+/**
+ * Resposta em citação directa (reply à mensagem original): sinal forte de
+ * que o "sim" pertence àquela pergunta, independentemente do tempo passado.
+ */
+export function quotedMatchesPending(
+  pending: AnswerablePending | null | undefined,
+  quotedText: string | null | undefined,
+): boolean {
+  const quoted = norm(quotedText);
+  if (!pending || quoted.length < 8) return false;
+  const question = norm(pending.current_question ?? pending.pending_question);
+  if (!question) return false;
+  const a = question.slice(0, 120);
+  const b = quoted.slice(0, 120);
+  return quoted.includes(a) || question.includes(b);
+}
+
 // Um pendente só é respondível por um "sim/não/hora" solto se:
 //  • foi criado/actualizado há pouco (janela curta), OU
 //  • a pergunta dele ainda é a última coisa que o assessor perguntou.
@@ -62,18 +85,26 @@ export function isAnswerablePending(
   opts: {
     now?: Date;
     lastAssistantContent?: string | null;
+    quotedText?: string | null;
     windowMs?: number;
   } = {},
 ): boolean {
   if (!pending) return false;
+  // Citação directa manda sobre o relógio.
+  if (quotedMatchesPending(pending, opts.quotedText)) return true;
   const now = (opts.now ?? new Date()).getTime();
-  const windowMs = opts.windowMs ?? PENDING_ANSWER_WINDOW_MS;
+  const question = norm(pending.current_question ?? pending.pending_question);
+  const lastAssistant = norm(opts.lastAssistantContent);
+  // Outra pergunta em aberto, diferente desta, tomou o lugar: não alargamos.
+  const supersededByOtherQuestion =
+    !!lastAssistant && /\?$/.test(lastAssistant) && !!question && !lastAssistant.includes(question);
+  const extended =
+    pending.status === "pending_confirmation" && !!question && !supersededByOtherQuestion;
+  const windowMs =
+    opts.windowMs ?? (extended ? CONFIRM_ANSWER_WINDOW_MS : PENDING_ANSWER_WINDOW_MS);
   const at = ts(pending.updated_at) ?? ts(pending.created_at);
   if (at === null) return true; // sem data fiável, não bloqueamos
   if (now - at <= windowMs) return true;
-
-  const question = norm(pending.current_question ?? pending.pending_question);
-  const lastAssistant = norm(opts.lastAssistantContent);
   if (question && lastAssistant && lastAssistant.includes(question)) return true;
   return false;
 }
