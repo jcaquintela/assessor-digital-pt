@@ -73,3 +73,19 @@ export function classifyEvent(item: EventClassCandidate): EventClass {
 export function needsOutcomeFollowUp(item: EventClassCandidate): boolean {
   return classifyEvent(item) === "negocio";
 }
+
+/**
+ * Classificação a gravar no momento em que o compromisso NASCE (via conversa).
+ *
+ * Antes, `event_class` ficava sempre a null e a heurística só corria na
+ * leitura — uma "Reunião de equipa" criada pelo Afonso nascia igual a uma
+ * visita e dependia de cada superfície voltar a classificar. Agora, quando
+ * o compromisso é claramente interno (sem pessoa/imóvel/negócio/lead, ou
+ * título de reunião interna), gravamos 'interno' à cabeça.
+ *
+ * Devolve null quando é de negócio: não congelamos essa decisão, para o
+ * contexto poder mudar depois (ex.: ligar uma pessoa ao compromisso).
+ */
+export function initialEventClass(item: EventClassCandidate): "interno" | null {
+  return classifyEvent(item) === "interno" ? "interno" : null;
+}
