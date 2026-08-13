@@ -44,6 +44,13 @@ import { detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
 import { isDiscardCommand } from "../culture/discard";
 import { enforceTransparentConfirmation } from "./write-receipt";
 import {
+  detectCompletionInstructions,
+  formatCompletionReply,
+  recurrenceQuestion,
+  remainingRequest,
+  remainderNeedsWork,
+} from "./completion-intent";
+import {
   isDiscardAudioRequest,
   UNDO_KEEP_WINDOW_MS,
   UNDO_KEEP_TOO_LATE_REPLY,
