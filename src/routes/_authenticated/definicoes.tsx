@@ -54,6 +54,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function RetentionHint() {
+  return (
+    <p className="c-muted mt-3 flex items-start gap-2 text-[12px] leading-relaxed">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span>
+        Os teus dados são guardados durante 21 dias (conversas) e 7 dias (documentos).{" "}
+        <Link to="/sobre-a-ia" className="underline underline-offset-2 hover:text-[var(--brass-dark)]">
+          Ver política de retenção
+        </Link>
+        .
+      </span>
+    </p>
+  );
+}
+
 function DefinicoesPage() {
   return (
     <AppShell>
