@@ -160,3 +160,35 @@ export function bulkArchivedReply(kind: BulkKind, count: number): string {
 }
 
 export const BULK_ARCHIVE_CANCELLED_REPLY = "Certo, não arquivei nada.";
+
+/** Pergunta de confirmação para apagar — diz sempre que não se desfaz. */
+export function buildBulkDeleteQuestion(kind: BulkKind, names: string[]): string {
+  const n = names.length;
+  const shown = names.slice(0, BULK_ARCHIVE_PREVIEW).map((name, i) => `${i + 1}. ${name}`);
+  const rest = n - shown.length;
+  const lista = rest > 0 ? [...shown, `… e mais ${rest}`].join("\n") : shown.join("\n");
+  return (
+    `Encontrei ${n} ${kindLabel(kind, n)} no Drive Inteligente:\n${lista}\n\n` +
+    `Queres mesmo apagar ${n === 1 ? "este" : `estes ${n}`}? Isto não pode ser desfeito.`
+  );
+}
+
+export function buildFileActionQuestion(kind: BulkKind, names: string[], mode: BulkMode): string {
+  return mode === "delete"
+    ? buildBulkDeleteQuestion(kind, names)
+    : buildBulkArchiveQuestion(kind, names);
+}
+
+export function bulkDeletedReply(kind: BulkKind, count: number): string {
+  return `Apaguei ${count} ${kindLabel(kind, count)} do Drive Inteligente.`;
+}
+
+export function fileActionDoneReply(kind: BulkKind, count: number, mode: BulkMode): string {
+  return mode === "delete" ? bulkDeletedReply(kind, count) : bulkArchivedReply(kind, count);
+}
+
+export const BULK_DELETE_CANCELLED_REPLY = "Certo, não apaguei nada.";
+
+export function fileActionCancelledReply(mode: BulkMode): string {
+  return mode === "delete" ? BULK_DELETE_CANCELLED_REPLY : BULK_ARCHIVE_CANCELLED_REPLY;
+}
