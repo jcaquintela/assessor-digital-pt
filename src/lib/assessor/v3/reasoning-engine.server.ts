@@ -1507,6 +1507,28 @@ export async function runReasoningEngine(input: EngineInput): Promise<EngineOutc
     reply = d?.ambiguous
       ? ambiguousCancelReply(d.candidates ?? [])
       : formatCancelReply(d.items ?? [], d.period_label ?? null);
+    // A pergunta de desambiguação guarda os candidatos na sua ranhura: a
+    // resposta ("as duas", "a primeira") passa a ser resolvida de forma
+    // determinística, sem depender do modelo escolher os ids certos.
+    if (d?.ambiguous && Array.isArray(d.candidates) && d.candidates.length > 1) {
+      try {
+        await createPendingAction(supabase, {
+          userId, channel,
+          intent: "choosing_cancel_target",
+          originalContent: trimmed,
+          payload: {
+            candidates: d.candidates.map((c: any) => ({
+              id: c.id, title: c.title ?? null, due_time: c.due_time ?? null,
+            })),
+          },
+          pendingQuestion: reply,
+          currentQuestion: reply,
+        });
+      } catch { /* noop */ }
+    } else if (!d?.ambiguous) {
+      const { ensureAllPartsAnswered } = await import("./composite-request");
+      reply = ensureAllPartsAnswered(reply, trimmed);
+    }
   }
 
   // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
