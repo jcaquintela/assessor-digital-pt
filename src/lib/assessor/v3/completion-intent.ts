@@ -75,7 +75,11 @@ export function detectCompletionInstructions(
     if (CANCEL_RE.test(norm)) continue;
     if (/\?\s*$/.test(part)) continue;
     const subjectHint = hintFrom(part);
-    if (subjectHint.split(" ").filter(Boolean).length < 2) continue;
+    // Conservador: sem assunto nomeado não se fecha nada. Duas palavras, ou
+    // uma só quando é uma palavra longa e inequívoca ("avaliação").
+    const hintWords = subjectHint.split(" ").filter(Boolean);
+    if (!hintWords.length) continue;
+    if (hintWords.length < 2 && hintWords[0]!.length < 6) continue;
     out.push({ part, subjectHint });
   }
   return out.slice(0, 3);
