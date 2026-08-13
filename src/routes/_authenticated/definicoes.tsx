@@ -578,6 +578,7 @@ function NotificacoesSection() {
           {prefs.confirm_document_send ? "Ligado" : "Desligado"}
         </button>
       </div>
+      <RetentionHint />
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
         No WhatsApp, se já passaram mais de 24 horas desde a tua última mensagem, a Meta só deixa
         passar mensagens com template aprovado — nesse caso o envio fica em espera até à aprovação.
