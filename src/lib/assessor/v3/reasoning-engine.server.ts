@@ -1538,7 +1538,8 @@ export async function runReasoningEngine(
   }
   if (actedWithoutTools && !readReq.pure) {
     archiveOutcome = "not_understood";
-    archiveReason = "act sem ferramenta";
+    // Motivo interno: sem capacidade. O texto visível vem do formatter PT.
+    archiveReason = "no_tool";
     if (!reply || CLAIMS_COMPLETION_RE.test(reply)) {
       reply = "Não cheguei a mexer em nada. Diz-me exactamente o que queres que faça?";
     }
