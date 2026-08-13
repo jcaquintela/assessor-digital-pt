@@ -679,6 +679,13 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
       source_message_id: ctx.sourceMessageId ?? null,
       created_by_assessor: true,
       source_pending_action_id: ctx.pendingActionId ?? null,
+      // Reunião interna nasce já marcada como interna: nunca pede "Como
+      // correu?" nem entra nas superfícies de atenção do dashboard.
+      event_class: initialEventClass({
+        title: v.title,
+        person_id: v.person_id ?? null,
+        related_property_id: v.property_id ?? null,
+      }),
     } as never)
     .select("id, title, due_date, due_time")
     .single();
