@@ -249,6 +249,7 @@ export async function runReasoningEngine(
     if (done.length) {
       const lines: string[] = [];
       const handled: typeof done = [];
+      let recurringAsk: { id: string; title: string } | null = null;
       for (const instruction of done) {
         try {
           const res = await TOOL_REGISTRY.complete_follow_up!(ctx, {
@@ -258,10 +259,27 @@ export async function runReasoningEngine(
           if (!res.ok || d?.ambiguous) continue; // ambíguo segue o caminho normal
           handled.push(instruction);
           lines.push(formatCompletionReply(d.items ?? [], instruction.subjectHint));
-          if (d?.recurring?.title) lines.push(recurrenceQuestion(d.recurring.title));
+          if (d?.recurring?.title && !recurringAsk) {
+            recurringAsk = { id: String(d.recurring.id), title: String(d.recurring.title) };
+            lines.push(recurrenceQuestion(d.recurring.title));
+          }
         } catch { /* noop */ }
       }
       if (handled.length) {
+        // A pergunta fica em memória na sua ranhura: o "sim"/"não" que vier a
+        // seguir decide mesmo a recorrência, em vez de se perder.
+        if (recurringAsk) {
+          try {
+            await createPendingAction(supabase, {
+              userId, channel,
+              intent: "confirm_recurrence_continue",
+              originalContent: trimmed,
+              payload: { routine_id: recurringAsk.id, routine_title: recurringAsk.title },
+              pendingQuestion: recurrenceQuestion(recurringAsk.title),
+              currentQuestion: recurrenceQuestion(recurringAsk.title),
+            });
+          } catch { /* noop */ }
+        }
         const rest = remainingRequest(trimmed, handled);
         if (remainderNeedsWork(rest)) {
           const out = await runReasoningEngine({ ...input, content: rest }, { skipCompletionPass: true });
