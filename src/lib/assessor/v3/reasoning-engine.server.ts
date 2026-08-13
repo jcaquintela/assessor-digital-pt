@@ -983,30 +983,35 @@ export async function runReasoningEngine(
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
       const ids: string[] = Array.isArray(payload.file_ids) ? payload.file_ids.map(String) : [];
       const kind = (payload.kind ?? "any") as any;
+      const mode = payload.mode === "delete" ? "delete" : "archive";
       if (saIsConfirmation(trimmed)) {
-        const { archiveFilesBulk } = await import("@/lib/drive/bulk-archive.server");
-        const { bulkArchivedReply } = await import("@/lib/drive/bulk-archive");
+        const { archiveFilesBulk, deleteFilesBulk } = await import("@/lib/drive/bulk-archive.server");
+        const { fileActionDoneReply } = await import("@/lib/drive/bulk-archive");
         let count = 0;
         let okBulk = true;
         try {
-          count = await archiveFilesBulk(supabase, userId, ids);
+          count = mode === "delete"
+            ? await deleteFilesBulk(supabase, userId, ids)
+            : await archiveFilesBulk(supabase, userId, ids);
         } catch {
           okBulk = false;
         }
         await markPendingActionStatus(supabase, pending.id, okBulk ? "executed" : "failed", {
           created_resource_type: "uploaded_file",
-          error_message: okBulk ? null : "bulk_archive_failed",
+          error_message: okBulk ? null : `bulk_${mode}_failed`,
         });
         return {
           reply: okBulk
-            ? bulkArchivedReply(kind, count)
-            : "Tentei arquivar os ficheiros e não consegui. Tenta outra vez daqui a pouco.",
+            ? fileActionDoneReply(kind, count, mode)
+            : mode === "delete"
+              ? "Tentei apagar os ficheiros e não consegui. Tenta outra vez daqui a pouco."
+              : "Tentei arquivar os ficheiros e não consegui. Tenta outra vez daqui a pouco.",
         };
       }
       if (saIsRejection(trimmed)) {
-        const { BULK_ARCHIVE_CANCELLED_REPLY } = await import("@/lib/drive/bulk-archive");
+        const { fileActionCancelledReply } = await import("@/lib/drive/bulk-archive");
         await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: BULK_ARCHIVE_CANCELLED_REPLY };
+        return { reply: fileActionCancelledReply(mode) };
       }
     }
 
@@ -1211,14 +1216,15 @@ export async function runReasoningEngine(
     // (a-0c) "Apaga os áudios todos" → lista os N ficheiros e pede confirmação
     // explícita para ARQUIVAR (reversível). Nunca elimina por conversa.
     if (!pending) {
-      const { detectBulkArchiveRequest } = await import("@/lib/drive/bulk-archive");
-      const bulkReq = detectBulkArchiveRequest(trimmed);
+      const { detectDriveFileRequest } = await import("@/lib/drive/bulk-archive");
+      const bulkReq = detectDriveFileRequest(trimmed);
       if (bulkReq) {
         const { proposeBulkArchive } = await import("@/lib/drive/bulk-archive.server");
         const reply = await proposeBulkArchive(supabase, {
           userId,
           channel,
           req: bulkReq,
+          mode: bulkReq.mode,
           originalContent: trimmed,
         });
         return { reply };
