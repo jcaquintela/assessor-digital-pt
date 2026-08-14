@@ -124,6 +124,11 @@ export interface DomainContext {
   // Salta a pergunta "isto actualiza o compromisso que já tinhas?" — usado
   // quando o consultor já respondeu que é um compromisso diferente.
   skipDuplicateCheck?: boolean;
+  // O consultor já decidiu (nesta conversa) que o seguimento fica sem pessoa
+  // associada, ou já respondeu à pergunta de ligação.
+  skipPersonResolution?: boolean;
+  // Candidatos rejeitados nesta conversa — nunca voltam a ser propostos.
+  rejectedPersonIds?: string[];
 }
 
 export interface DomainResult<T = unknown> {
@@ -877,6 +882,33 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
   if (!v.property_id) {
     v.property_id = await resolvePropertyFromText(ctx, [v.title, (v as any).notes].filter(Boolean).join(" "));
   }
+  // Resolução obrigatória de pessoa ANTES de escrever: um seguimento falado
+  // "com o Manuel" nunca pode ficar com o nome preso em texto livre e
+  // `person_id: null` por omissão. Ou liga com certeza, ou pergunta.
+  let personDeliberatelyUnlinked = false;
+  if (!v.person_id && !ctx.skipPersonResolution) {
+    const { resolvePersonForWrite, recentlyRejectedPersonIds } =
+      await import("@/lib/people/resolve-person.server");
+    const text = [v.title, (v as any).notes].filter(Boolean).join(" ");
+    const excludeIds = ctx.rejectedPersonIds?.length
+      ? ctx.rejectedPersonIds
+      : await recentlyRejectedPersonIds(ctx);
+    const res = await resolvePersonForWrite(ctx, text, { excludeIds });
+    if (res.status === "linked" && res.personId) {
+      v.person_id = res.personId;
+    } else if (res.status !== "none") {
+      return ok({
+        needsPersonConfirmation: true,
+        mode: res.status,
+        personName: res.name,
+        suggestions: res.candidates,
+        candidateIds: res.candidates.map((c) => c.id),
+        incoming: { ...v },
+      });
+    }
+  } else if (!v.person_id && ctx.skipPersonResolution) {
+    personDeliberatelyUnlinked = true;
+  }
   const dueIsoDate = lisbonLocalToUtcIso(v.due_date, v.due_time ?? "09:00");
   // Idempotência: se já existe um follow_up para esta pending_action, devolve-o.
   if (ctx.pendingActionId) {
@@ -940,7 +972,9 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
       person_id: v.person_id ?? null,
       related_property_id: v.property_id ?? null,
       related_prospecting_lead_id: activeProspectingLead?.id ?? null,
-      notes: v.notes ?? null,
+      notes: personDeliberatelyUnlinked
+        ? (await import("@/lib/people/resolve-person.server")).withNoPersonNote(v.notes)
+        : (v.notes ?? null),
       timezone: "Europe/Lisbon",
       source_channel: ctx.channel,
       source_message_id: ctx.sourceMessageId ?? null,
