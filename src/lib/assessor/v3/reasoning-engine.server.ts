@@ -557,7 +557,7 @@ async function runReasoningEngineInner(
       // reperguntamos, em vez de responder "a que te referes?". Mas só quando
       // a pergunta era mesmo a última coisa dita pelo Afonso — se a conversa
       // já seguiu para outro assunto, um "ok" solto é conversa normal.
-      const { pendingIsLastQuestion } = await import("../pending-answerable");
+      const { pendingIsLastQuestion, quotedMatchesPending } = await import("../pending-answerable");
       const wasOnScreen =
         pendingIsLastQuestion(pending, lastAssistantContent0) ||
         quotedMatchesPending(pending, input.quotedText ?? null);
