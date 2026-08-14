@@ -8,6 +8,7 @@ import { belongsInDailyAgenda } from "../agenda-leisure";
 import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
 import { computePriorities } from "./priorities.server";
 import { composeEmptyDayBriefing } from "../proactive/empty-day";
+import { formatPreEventNudge, isPreEventDue } from "./pre-event";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
 
@@ -157,19 +158,25 @@ export async function generateSupremeNudges(
   }
 
   // ------------ Pré-evento (compromisso a começar em 45–75 min) ------------
-  const in45 = new Date(now.getTime() + 45 * 60000).toISOString();
-  const in75 = new Date(now.getTime() + 75 * 60000).toISOString();
+  // Janela larga na query (o `due_date` pode ser só a data; a hora vive em
+  // `due_time`); o filtro fino usa a hora real de início.
+  const winFrom = new Date(now.getTime() - 26 * 3600_000).toISOString();
+  const winTo = new Date(now.getTime() + 26 * 3600_000).toISOString();
   const { data: upcomingRaw } = await supabase
     .from("follow_ups")
-    .select("id, title, type, due_date, due_time, status, outcome, archived_at, person_id, related_property_id")
+    .select(
+      "id, title, type, due_date, due_time, status, outcome, archived_at, person_id, " +
+      "related_property_id, opportunity_id, related_prospecting_lead_id, event_class",
+    )
     .eq("user_id", userId)
-    .gte("due_date", in45)
-    .lte("due_date", in75)
-    .limit(20);
+    .gte("due_date", winFrom)
+    .lte("due_date", winTo)
+    .limit(100);
   // Regra canónica: evento (não tarefa) e ainda aberto. Aviso de agenda →
   // regra larga (sem lazer), não o filtro estrito dos check-ins.
   const upcoming = ((upcomingRaw as any[]) ?? [])
     .filter((ev) => isFollowUpEvent(ev) && isFollowUpOpen(ev) && belongsInDailyAgenda(ev))
+    .filter((ev) => isPreEventDue(ev as any, now.getTime()))
     .slice(0, 3);
   for (const ev of upcoming) {
     let personName: string | null = null;
@@ -178,14 +185,12 @@ export async function generateSupremeNudges(
       personName = (person as any)?.name ?? null;
     }
     const dedupe = `supreme_pre_event:${ev.id}`;
-    const reply = personName
-      ? `Daqui a uma hora tens ${ev.title} com ${personName}. Queres que te prepare o contexto?`
-      : `Daqui a uma hora tens ${ev.title}. Queres que te prepare o contexto?`;
+    const reply = formatPreEventNudge(ev as any, personName, now.getTime());
     drafts.push({
       kind: "followup_overdue" as any,
       subject_type: "follow_up",
       subject_id: ev.id,
-      reason: `Compromisso a começar dentro de uma hora.`,
+      reason: "Compromisso a começar dentro de pouco tempo.",
       suggested_reply: sanitizeReply(reply),
       dedupe_key: dedupe,
     });
