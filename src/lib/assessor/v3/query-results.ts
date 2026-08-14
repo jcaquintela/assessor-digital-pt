@@ -7,6 +7,7 @@
 
 import type { ToolExecResult } from "./act.server";
 import { boldWa, italicWa } from "../culture/whatsapp-format";
+import { noExactMatchReply, unlinkedEventReply } from "@/lib/people/name-match";
 
 // Ferramentas que só lêem. Nunca escrevem na BD.
 export const QUERY_TOOLS = new Set([
@@ -150,6 +151,18 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
   const blocks: string[] = [];
   for (const r of reads) {
     const rows = rowsOf(r.data);
+    // "Manuel" não pode devolver "Manuela" como se fosse a mesma pessoa.
+    const d = r.data as any;
+    if (r.name === "search_people" && d?.no_exact_match) {
+      const q = String(d.query ?? "").trim();
+      const ev = d.unlinked_event;
+      if (ev?.title) {
+        blocks.push(unlinkedEventReply(q, String(ev.title), humanWhen(ev.due_date, ev.due_time)));
+      } else {
+        blocks.push(noExactMatchReply(q, (d.suggestions ?? []) as Array<{ name?: string | null }>));
+      }
+      continue;
+    }
     const head = HEADER[r.name] ?? {
       one: "Encontrei 1 registo:",
       many: (n: number) => `Encontrei ${n} registos:`,
