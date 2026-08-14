@@ -1120,6 +1120,8 @@ async function handleInboundMediaInner(
 function looksLikeCodeShape(text: string): boolean {
   const t = text.trim();
   if (/\s/.test(t) || t.length < 4 || t.length > 40) return false;
+  // Um número de telefone nunca é um código promocional.
+  if (looksLikePhoneAttempt(t)) return false;
   return /\d/.test(t) || /-/.test(t) || t === t.toUpperCase();
 }
 
@@ -1127,6 +1129,7 @@ function looksLikeCodeShape(text: string): boolean {
 // dizer "esse código não existe" em vez de deixar o motor responder.
 function looksLikeCodeStrongly(text: string): boolean {
   const t = text.trim();
+  if (looksLikePhoneAttempt(t)) return false;
   return /\d/.test(t) && (/-/.test(t) || t === t.toUpperCase());
 }
 
