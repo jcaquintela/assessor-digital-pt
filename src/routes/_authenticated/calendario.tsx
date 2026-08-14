@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-grid";
 import { EventCard, type AgendaCardEvent } from "@/components/calendario/event-card";
@@ -66,9 +66,9 @@ function shortDayLabel(key: string): string {
 }
 
 function CalendarioPage() {
-  const { seguimentos, atualizarSeguimento, arquivarSeguimento } = useStore();
+  const { seguimentos, atualizarSeguimento, arquivarSeguimento, addSeguimento } = useStore();
   const [editing, setEditing] = useState<null | {
-    id: string;
+    id: string | null;
     titulo: string;
     data: string;
     hora: string;
@@ -154,19 +154,38 @@ function CalendarioPage() {
     if (!editing) return;
     setSaving(true);
     try {
-      await atualizarSeguimento(editing.id, {
-        titulo: editing.titulo.trim(),
-        data: editing.data,
-        hora: editing.hora || undefined,
-        notas: editing.notas || undefined,
-      });
-      toast.success("Compromisso atualizado.");
+      if (editing.id) {
+        await atualizarSeguimento(editing.id, {
+          titulo: editing.titulo.trim(),
+          data: editing.data,
+          hora: editing.hora || undefined,
+          notas: editing.notas || undefined,
+        });
+        toast.success("Compromisso atualizado.");
+      } else {
+        await addSeguimento({
+          tipo: "Evento",
+          titulo: editing.titulo.trim(),
+          data: editing.data,
+          hora: editing.hora || undefined,
+          notas: editing.notas || undefined,
+          estado: "Pendente",
+          prioridade: "Média",
+        });
+        toast.success("Compromisso registado.");
+      }
       setEditing(null);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setSaving(false);
     }
+  };
+
+  // Criação rápida a partir de um dia da grelha — mesmo formulário do "registar".
+  const criarNoDia = (key: string) => {
+    setSelectedKey(key);
+    setEditing({ id: null, titulo: "", data: key, hora: "", notas: "" });
   };
 
   const abrirEdicao = (e: AgendaCardEvent) => {
@@ -278,6 +297,7 @@ function CalendarioPage() {
                 selectedKey={selectedKey}
                 markedKeys={new Set(contagens.keys())}
                 counts={contagens}
+                onQuickAdd={criarNoDia}
                 onSelect={(k) => {
                   setSelectedKey(k);
                   const d = new Date(`${k}T12:00:00`);
@@ -308,6 +328,14 @@ function CalendarioPage() {
                       className="c-section-title mb-2 block w-full text-left capitalize"
                     >
                       {shortDayLabel(g.key)}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Novo compromisso em ${g.key}`}
+                      onClick={() => criarNoDia(g.key)}
+                      className="mb-2 flex items-center gap-1 text-[12px] text-muted-foreground hover:text-primary"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Novo
                     </button>
                     {g.events.length === 0 && <div className="c-muted text-[12px]">—</div>}
                     <div className="space-y-1.5">
@@ -349,7 +377,12 @@ function CalendarioPage() {
 
             {(view === "hoje" || view === "mes" || view === "semana") && (
               <div className="space-y-2 border-t border-border pt-4">
-                <div className="c-section-title capitalize">{longDayLabel(diaKey)}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="c-section-title capitalize">{longDayLabel(diaKey)}</div>
+                  <Button size="sm" variant="secondary" onClick={() => criarNoDia(diaKey)}>
+                    <Plus className="mr-1 h-4 w-4" /> Novo compromisso
+                  </Button>
+                </div>
                 {doDia.length === 0 && <div className="c-empty">Sem compromissos neste dia.</div>}
                 {doDia.map((e) => {
                   const c = cartao(e.id);
@@ -383,7 +416,7 @@ function CalendarioPage() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar compromisso</DialogTitle>
+            <DialogTitle>{editing?.id ? "Editar compromisso" : "Novo compromisso"}</DialogTitle>
           </DialogHeader>
           {editing && (
             <div className="space-y-3">
