@@ -57,6 +57,7 @@ export const navGroups: NavGroup[] = [
       { to: "/admin/integracoes-flags", label: "Integrações & flags" },
       { to: "/admin/whatsapp-nome", label: "Nome do WhatsApp" },
       { to: "/admin/auditoria-seguranca", label: "Auditoria & segurança" },
+      { to: "/admin/definicoes", label: "Definições" },
     ],
   },
 ];
@@ -79,6 +80,5 @@ export const OFF_MENU_PAGES: Record<string, string> = {
   "/admin/seguranca": "redirect para /admin/auditoria-seguranca",
   "/admin/integracoes": "redirect para /admin/integracoes-flags",
   "/admin/funcionalidades": "redirect para /admin/integracoes-flags",
-  "/admin/definicoes": "página vazia (em preparação), escondida até ter conteúdo",
   "/admin/consultor/$id": "ficha de um consultor, aberta a partir de Utilizadores & planos",
 };

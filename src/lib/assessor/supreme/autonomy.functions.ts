@@ -20,7 +20,7 @@ export const getSupremePreferences = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const enabled = await isSupremeEnabled(context.supabase, context.userId);
-    const [{ data: prefs }, { data: rules }, tier] = await Promise.all([
+    const [{ data: prefs }, { data: rules }, tier, { data: globalLead }] = await Promise.all([
       context.supabase
         .from("consultant_preferences")
         .select("*")
@@ -31,6 +31,11 @@ export const getSupremePreferences = createServerFn({ method: "GET" })
         .select("action_type, requires_confirmation")
         .eq("user_id", context.userId),
       fetchEffectiveTier(context.supabase, context.userId),
+      context.supabase
+        .from("app_settings")
+        .select("value_int")
+        .eq("key", "reminder_lead_minutes")
+        .maybeSingle(),
     ]);
     const stored = (prefs as { autonomy_level?: string } | null)?.autonomy_level;
     const effectiveAutonomy = capAutonomy(stored, tier);
@@ -43,6 +48,7 @@ export const getSupremePreferences = createServerFn({ method: "GET" })
       autonomyAllowed: allowedAutonomyLevels(tier),
       effectiveAutonomy,
       autonomyClamped: isAutonomyLevel(stored) && stored !== effectiveAutonomy,
+      globalReminderLeadMinutes: Number((globalLead as any)?.value_int ?? 0) || 0,
     };
   });
 
@@ -58,6 +64,7 @@ export const updateSupremePreferences = createServerFn({ method: "POST" })
       evening_checkin_enabled?: boolean;
       evening_checkin_time?: string;
       confirm_document_send?: boolean;
+      reminder_lead_minutes?: number | null;
     };
     const patch: Record<string, unknown> = {};
     if (typeof o.morning_briefing_enabled === "boolean") patch.morning_briefing_enabled = o.morning_briefing_enabled;
@@ -71,6 +78,15 @@ export const updateSupremePreferences = createServerFn({ method: "POST" })
     if (isAutonomyLevel(o.autonomy_level)) patch.autonomy_level = o.autonomy_level;
     if (typeof o.max_daily_nudges === "number" && o.max_daily_nudges >= 0 && o.max_daily_nudges <= 20) {
       patch.max_daily_nudges = Math.floor(o.max_daily_nudges);
+    }
+    if (o.reminder_lead_minutes === null) {
+      patch.reminder_lead_minutes = null;
+    } else if (
+      typeof o.reminder_lead_minutes === "number" &&
+      o.reminder_lead_minutes >= 0 &&
+      o.reminder_lead_minutes <= 240
+    ) {
+      patch.reminder_lead_minutes = Math.floor(o.reminder_lead_minutes);
     }
     return patch;
   })
