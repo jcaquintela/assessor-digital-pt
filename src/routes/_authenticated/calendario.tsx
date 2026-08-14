@@ -316,42 +316,47 @@ function CalendarioPage() {
             )}
 
             {view === "semana" && (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {semana.map((g) => (
-                  <div
-                    key={g.key}
-                    className={cn(
-                      "rounded-lg border border-border p-2",
-                      g.key === todayKey && "border-primary/50",
-                      g.key === selectedKey && "bg-accent/40",
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setSelectedKey(g.key)}
-                      className="c-section-title mb-2 block w-full text-left capitalize"
+              <div className="space-y-4">
+                {semana.every((g) => g.events.length === 0) && (
+                  <EmptyWeek onAddEvent={() => criarNoDia(selectedKey)} />
+                )}
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {semana.map((g) => (
+                    <div
+                      key={g.key}
+                      className={cn(
+                        "rounded-lg border border-border p-2",
+                        g.key === todayKey && "border-primary/50",
+                        g.key === selectedKey && "bg-accent/40",
+                      )}
                     >
-                      {shortDayLabel(g.key)}
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Novo compromisso em ${g.key}`}
-                      onClick={() => criarNoDia(g.key)}
-                      className="mb-2 flex items-center gap-1 text-[12px] text-muted-foreground hover:text-primary"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Novo
-                    </button>
-                    {g.events.length === 0 && (
-                      <EmptyDay label="Sem compromissos neste dia." />
-                    )}
-                    <div className="space-y-1.5">
-                      {g.events.map((e) => {
-                        const c = cartao(e.id);
-                        return c ? <EventCard key={e.id} e={c} compact /> : null;
-                      })}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedKey(g.key)}
+                        className="c-section-title mb-2 block w-full text-left capitalize"
+                      >
+                        {shortDayLabel(g.key)}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Novo compromisso em ${g.key}`}
+                        onClick={() => criarNoDia(g.key)}
+                        className="mb-2 flex items-center gap-1 text-[12px] text-muted-foreground hover:text-primary"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Novo
+                      </button>
+                      {g.events.length === 0 && (
+                        <EmptyDay label="Sem compromissos neste dia." />
+                      )}
+                      <div className="space-y-1.5">
+                        {g.events.map((e) => {
+                          const c = cartao(e.id);
+                          return c ? <EventCard key={e.id} e={c} compact /> : null;
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
 
