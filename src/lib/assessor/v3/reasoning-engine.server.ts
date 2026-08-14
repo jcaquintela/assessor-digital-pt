@@ -612,6 +612,30 @@ async function runReasoningEngineInner(
     }
 
     pendingForArchive = pending ?? null;
+    // Candidato de pessoa rejeitado: o "não" fecha esse candidato para os
+    // turnos seguintes — nunca voltamos a propô-lo sem nova pesquisa.
+    if (pending && pending.intent === "confirm_event_person" && saIsRejection(trimmed)) {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const ids: string[] = [
+        ...(payload.candidate_ids ?? []),
+        ...((payload.suggestions ?? []) as any[]).map((s) => s?.id).filter(Boolean),
+      ].filter((x, i, arr) => typeof x === "string" && arr.indexOf(x) === i);
+      try {
+        await supabase
+          .from("pending_actions")
+          .update({ structured_payload: { ...payload, rejected_person_ids: ids } } as never)
+          .eq("id", pending.id)
+          .eq("user_id", userId);
+      } catch { /* noop */ }
+      await markPendingActionStatus(supabase, pending.id, "cancelled", {
+        error_message: "consultor rejeitou o contacto proposto",
+      });
+      return {
+        reply: `Certo, não é ${String(payload.personName ?? "essa pessoa")}${
+          ids.length ? " nem nenhum dos que te mostrei" : ""
+        }. Diz-me quem é, ou queres que crie um contacto novo?`,
+      };
+    }
     // Compromisso duplicado vs. reagendamento — a resposta decide.
     if (pending && pending.intent === "confirm_event_reschedule") {
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
