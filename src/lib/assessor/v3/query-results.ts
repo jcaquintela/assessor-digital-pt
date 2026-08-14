@@ -170,7 +170,8 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
       if (ev?.title) {
         blocks.push(unlinkedEventReply(q, String(ev.title), humanWhen(ev.due_date, ev.due_time)));
       } else {
-        blocks.push(noExactMatchReply(q, (d.suggestions ?? []) as Array<{ name?: string | null }>));
+        const near = (d.suggestions?.length ? d.suggestions : rows) as Array<{ name?: string | null }>;
+        blocks.push(noExactMatchReply(q, near));
       }
       continue;
     }
