@@ -136,9 +136,22 @@ const HEADER: Record<string, { one: string; many: (n: number) => string; empty: 
 };
 
 function rowsOf(data: unknown): Array<Record<string, unknown>> {
+  const d0 = data as Record<string, unknown> | null | undefined;
+  void d0;
   const d = data as Record<string, unknown> | null | undefined;
   const raw = (d?.results ?? d?.items ?? []) as unknown;
   return Array.isArray(raw) ? (raw as Array<Record<string, unknown>>) : [];
+}
+
+/** "amanhã às 09:00" em linguagem simples para a resposta. */
+function humanWhen(dueDate: unknown, dueTime: unknown): string {
+  const iso = s(dueDate);
+  if (!iso) return "";
+  const day = new Intl.DateTimeFormat("pt-PT", {
+    timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit",
+  }).format(new Date(iso));
+  const t = s(dueTime).slice(0, 5);
+  return t ? `${day} às ${t}` : day;
 }
 
 // Constrói a resposta com os dados de todas as leituras bem sucedidas.
