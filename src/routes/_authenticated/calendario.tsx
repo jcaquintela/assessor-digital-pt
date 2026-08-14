@@ -7,12 +7,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { formatData } from "@/lib/demo-data";
-import { Archive, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-grid";
+import { EventCard, type AgendaCardEvent } from "@/components/calendario/event-card";
+import {
+  addDaysKey,
+  countsByDay,
+  hasMoreAfter,
+  listGroups,
+  startOfWeekKey,
+  weekGroups,
+  type AgendaEvent,
+  type AgendaViewMode,
+} from "@/lib/agenda/views";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
@@ -26,48 +41,104 @@ export const Route = createFileRoute("/_authenticated/calendario")({
   component: CalendarioPage,
 });
 
+const VIEWS: { id: AgendaViewMode; label: string }[] = [
+  { id: "hoje", label: "Hoje" },
+  { id: "semana", label: "Semana" },
+  { id: "mes", label: "Mês" },
+  { id: "lista", label: "Lista" },
+];
+
+function longDayLabel(key: string): string {
+  return new Date(`${key}T12:00:00`).toLocaleDateString("pt-PT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function shortDayLabel(key: string): string {
+  return new Date(`${key}T12:00:00`).toLocaleDateString("pt-PT", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function CalendarioPage() {
   const { seguimentos, atualizarSeguimento, arquivarSeguimento } = useStore();
   const [editing, setEditing] = useState<null | {
-    id: string; titulo: string; data: string; hora: string; notas: string;
+    id: string;
+    titulo: string;
+    data: string;
+    hora: string;
+    notas: string;
   }>(null);
   const [saving, setSaving] = useState(false);
   const hoje = new Date();
+  const todayKey = dayKey(hoje);
+  const [view, setView] = useState<AgendaViewMode>("hoje");
   const [month, setMonth] = useState(() => new Date(hoje.getFullYear(), hoje.getMonth(), 1));
   const [selectedKey, setSelectedKey] = useState(() => dayKey(new Date()));
+  const [listDays, setListDays] = useState(30);
 
   // Compromissos = registos classificados como Evento (ver src/lib/agenda-kind.ts),
   // excluindo os já concluídos/cancelados.
   const eventos = useMemo(
-    () => seguimentos
-      .filter((s) => s.tipo === "Evento")
-      .filter((s) => {
-        const e = (s.estado ?? "").toLowerCase();
-        return e !== "concluído" && e !== "concluido" && e !== "cancelado";
-      })
-      .sort((a, b) => a.data.localeCompare(b.data)),
+    () =>
+      seguimentos
+        .filter((s) => s.tipo === "Evento")
+        .filter((s) => {
+          const e = (s.estado ?? "").toLowerCase();
+          return e !== "concluído" && e !== "concluido" && e !== "cancelado";
+        })
+        .sort((a, b) => a.data.localeCompare(b.data)),
     [seguimentos],
   );
 
   // Eventos agrupados por dia local, para o ponto indicador e a lista do dia.
-  const porDia = useMemo(() => {
-    const map = new Map<string, typeof eventos>();
-    for (const e of eventos) {
-      const k = dayKey(e.data);
-      const list = map.get(k) ?? [];
-      list.push(e);
-      map.set(k, list);
-    }
-    return map;
-  }, [eventos]);
+  // Fonte única: converte os seguimentos-evento para o formato do seletor
+  // central e deixa que views.ts faça todo o agrupamento por período.
+  const fonte = useMemo<AgendaEvent[]>(
+    () =>
+      eventos.map((e) => ({
+        id: e.id,
+        title: e.titulo,
+        date: dayKey(e.data),
+        time: e.hora ? e.hora.slice(0, 5) : null,
+        eventClass: e.classeEvento ?? null,
+      })),
+    [eventos],
+  );
+  const porId = useMemo(() => new Map(eventos.map((e) => [e.id, e])), [eventos]);
 
-  const doDia = porDia.get(selectedKey) ?? [];
-  const selectedLabel = new Date(`${selectedKey}T12:00:00`).toLocaleDateString("pt-PT", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-  });
+  const contagens = useMemo(() => countsByDay(fonte), [fonte]);
+  const semanaInicio = useMemo(() => startOfWeekKey(selectedKey), [selectedKey]);
+  const semana = useMemo(() => weekGroups(fonte, semanaInicio), [fonte, semanaInicio]);
+  const lista = useMemo(() => listGroups(fonte, todayKey, listDays), [fonte, todayKey, listDays]);
+  const haMais = hasMoreAfter(fonte, todayKey, listDays);
 
-  const mudarMes = (delta: number) =>
+  const cartao = (id: string): AgendaCardEvent | null => {
+    const e = porId.get(id);
+    return e
+      ? { id: e.id, titulo: e.titulo, data: e.data, hora: e.hora, classeEvento: e.classeEvento }
+      : null;
+  };
+
+  const diaKey = view === "hoje" ? todayKey : selectedKey;
+  const doDia = (contagens.get(diaKey) ? fonte.filter((e) => e.date === diaKey) : []).sort((a, b) =>
+    (a.time ?? "99:99").localeCompare(b.time ?? "99:99"),
+  );
+
+  const mudarMes = (delta: number) => {
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
+    setSelectedKey((k) => {
+      const d = new Date(`${k}T12:00:00`);
+      return dayKey(new Date(d.getFullYear(), d.getMonth() + delta, d.getDate()));
+    });
+  };
+
+  const mudarSemana = (delta: number) => setSelectedKey((k) => addDaysKey(k, delta * 7));
 
   const remover = async (id: string, titulo: string) => {
     if (!window.confirm(`Arquivar “${titulo}”? Sai da agenda, mas podes repor na ficha.`)) return;
@@ -98,6 +169,17 @@ function CalendarioPage() {
     }
   };
 
+  const abrirEdicao = (e: AgendaCardEvent) => {
+    const full = porId.get(e.id);
+    setEditing({
+      id: e.id,
+      titulo: e.titulo,
+      data: String(e.data).slice(0, 10),
+      hora: (e.hora ?? "").slice(0, 5),
+      notas: full?.notas ?? "",
+    });
+  };
+
   return (
     <AppShell>
       <PageHeader title="Calendário" subtitle="Vista interna dos compromissos." />
@@ -105,20 +187,77 @@ function CalendarioPage() {
         <div className="c-card p-2 sm:p-4">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarMes(-1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <div className="min-w-[9.5rem] text-center text-[15px] font-semibold sm:text-left">
-                {monthLabel(month)}
-              </div>
-              <Button variant="ghost" size="icon" aria-label="Mês seguinte" onClick={() => mudarMes(1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+              {view === "mes" && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Mês anterior"
+                    onClick={() => mudarMes(-1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="min-w-[9.5rem] text-center text-[15px] font-semibold sm:text-left">
+                    {monthLabel(month)}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Mês seguinte"
+                    onClick={() => mudarMes(1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              {view === "semana" && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Semana anterior"
+                    onClick={() => mudarSemana(-1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="min-w-[12rem] text-center text-[15px] font-semibold sm:text-left">
+                    {shortDayLabel(semanaInicio)} – {shortDayLabel(addDaysKey(semanaInicio, 6))}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Semana seguinte"
+                    onClick={() => mudarSemana(1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              {view === "hoje" && (
+                <div className="text-[15px] font-semibold capitalize">{longDayLabel(todayKey)}</div>
+              )}
+              {view === "lista" && (
+                <div className="text-[15px] font-semibold">Próximos compromissos</div>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <button type="button" className="c-pill tap-44 active">Mês</button>
-              <button type="button" className="c-pill tap-44 opacity-50" disabled>Semana</button>
-              <button type="button" className="c-pill tap-44 opacity-50" disabled>Lista</button>
+              {VIEWS.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  aria-pressed={view === v.id}
+                  className={cn("c-pill tap-44", view === v.id && "active")}
+                  onClick={() => {
+                    setView(v.id);
+                    if (v.id === "mes") {
+                      const d = new Date(`${selectedKey}T12:00:00`);
+                      setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                    }
+                  }}
+                >
+                  {v.label}
+                </button>
+              ))}
               <button
                 type="button"
                 className="c-pill tap-44"
@@ -133,65 +272,101 @@ function CalendarioPage() {
             </div>
           </div>
           <div className="space-y-4">
-            <MonthGrid
-              month={month}
-              selectedKey={selectedKey}
-              markedKeys={new Set(porDia.keys())}
-              onSelect={(k) => {
-                setSelectedKey(k);
-                const d = new Date(`${k}T12:00:00`);
-                if (d.getMonth() !== month.getMonth() || d.getFullYear() !== month.getFullYear()) {
-                  setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-                }
-              }}
-            />
+            {view === "mes" && (
+              <MonthGrid
+                month={month}
+                selectedKey={selectedKey}
+                markedKeys={new Set(contagens.keys())}
+                counts={contagens}
+                onSelect={(k) => {
+                  setSelectedKey(k);
+                  const d = new Date(`${k}T12:00:00`);
+                  if (
+                    d.getMonth() !== month.getMonth() ||
+                    d.getFullYear() !== month.getFullYear()
+                  ) {
+                    setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                  }
+                }}
+              />
+            )}
 
-            <div className="space-y-2 border-t border-border pt-4">
-              <div className="c-section-title capitalize">{selectedLabel}</div>
-              {doDia.length === 0 && (
-                <div className="c-empty">Sem compromissos neste dia.</div>
-              )}
-              {doDia.map((e) => (
-              <div key={e.id} className="c-card c-card-hover p-3.5">
-                <div className="flex items-center justify-between gap-3">
-                  <Link to="/seguimentos/$id" params={{ id: e.id }} className="min-w-0 flex-1">
-                    <div className="truncate text-[14px] font-semibold">{e.titulo}</div>
-                    <div className="c-muted c-mono mt-1 text-[11.5px]">
-                      {formatData(e.data)}{e.hora ? ` · ${e.hora.slice(0, 5)}` : ""}
-                    </div>
-                  </Link>
-                  <span className="c-badge shrink-0">
-                    <CalendarIcon className="h-3 w-3" /> {e.hora ? e.hora.slice(0, 5) : "—"}
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    className="c-badge tap-44"
-                    onClick={() => setEditing({
-                      id: e.id,
-                      titulo: e.titulo,
-                      data: String(e.data).slice(0, 10),
-                      hora: (e.hora ?? "").slice(0, 5),
-                      notas: e.notas ?? "",
-                    })}
+            {view === "semana" && (
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {semana.map((g) => (
+                  <div
+                    key={g.key}
+                    className={cn(
+                      "rounded-lg border border-border p-2",
+                      g.key === todayKey && "border-primary/50",
+                      g.key === selectedKey && "bg-accent/40",
+                    )}
                   >
-                    <Pencil className="h-3 w-3" /> Editar
-                  </button>
-                  <button type="button" className="c-badge tap-44 text-destructive" onClick={() => remover(e.id, e.titulo)}>
-                    <Archive className="h-3 w-3" /> Arquivar
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedKey(g.key)}
+                      className="c-section-title mb-2 block w-full text-left capitalize"
+                    >
+                      {shortDayLabel(g.key)}
+                    </button>
+                    {g.events.length === 0 && <div className="c-muted text-[12px]">—</div>}
+                    <div className="space-y-1.5">
+                      {g.events.map((e) => {
+                        const c = cartao(e.id);
+                        return c ? <EventCard key={e.id} e={c} compact /> : null;
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
-              ))}
-            </div>
+            )}
+
+            {view === "lista" && (
+              <div className="space-y-4">
+                {lista.length === 0 && <div className="c-empty">Sem compromissos futuros.</div>}
+                {lista.map((g) => (
+                  <div key={g.key} className="space-y-2">
+                    <div className="c-section-title capitalize">{longDayLabel(g.key)}</div>
+                    {g.events.map((e) => {
+                      const c = cartao(e.id);
+                      return c ? (
+                        <EventCard key={e.id} e={c} onEdit={abrirEdicao} onArchive={remover} />
+                      ) : null;
+                    })}
+                  </div>
+                ))}
+                {haMais && (
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setListDays((d) => d + 30)}
+                  >
+                    Carregar mais
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {(view === "hoje" || view === "mes" || view === "semana") && (
+              <div className="space-y-2 border-t border-border pt-4">
+                <div className="c-section-title capitalize">{longDayLabel(diaKey)}</div>
+                {doDia.length === 0 && <div className="c-empty">Sem compromissos neste dia.</div>}
+                {doDia.map((e) => {
+                  const c = cartao(e.id);
+                  return c ? (
+                    <EventCard key={e.id} e={c} onEdit={abrirEdicao} onArchive={remover} />
+                  ) : null;
+                })}
+              </div>
+            )}
           </div>
         </div>
         <div className="c-card h-fit p-4">
           <div className="c-section-title mb-2">Integrações</div>
           <div className="space-y-3 text-sm">
             <p className="c-muted text-[13px]">
-              Liga o Google Calendar ou o Outlook e os compromissos passam a andar nos dois sentidos.
+              Liga o Google Calendar ou o Outlook e os compromissos passam a andar nos dois
+              sentidos.
             </p>
             <Link to="/definicoes" className="c-btn w-full justify-start">
               Gerir ligações de calendário
@@ -200,34 +375,64 @@ function CalendarioPage() {
         </div>
       </div>
 
-      <Dialog open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null); }}>
+      <Dialog
+        open={!!editing}
+        onOpenChange={(o) => {
+          if (!o) setEditing(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Editar compromisso</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Editar compromisso</DialogTitle>
+          </DialogHeader>
           {editing && (
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="ev-titulo">Título</Label>
-                <Input id="ev-titulo" value={editing.titulo} onChange={(ev) => setEditing({ ...editing, titulo: ev.target.value })} />
+                <Input
+                  id="ev-titulo"
+                  value={editing.titulo}
+                  onChange={(ev) => setEditing({ ...editing, titulo: ev.target.value })}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="ev-data">Data</Label>
-                  <Input id="ev-data" type="date" value={editing.data} onChange={(ev) => setEditing({ ...editing, data: ev.target.value })} />
+                  <Input
+                    id="ev-data"
+                    type="date"
+                    value={editing.data}
+                    onChange={(ev) => setEditing({ ...editing, data: ev.target.value })}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="ev-hora">Hora</Label>
-                  <Input id="ev-hora" type="time" value={editing.hora} onChange={(ev) => setEditing({ ...editing, hora: ev.target.value })} />
+                  <Input
+                    id="ev-hora"
+                    type="time"
+                    value={editing.hora}
+                    onChange={(ev) => setEditing({ ...editing, hora: ev.target.value })}
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ev-notas">Notas</Label>
-                <Textarea id="ev-notas" rows={3} value={editing.notas} onChange={(ev) => setEditing({ ...editing, notas: ev.target.value })} />
+                <Textarea
+                  id="ev-notas"
+                  rows={3}
+                  value={editing.notas}
+                  onChange={(ev) => setEditing({ ...editing, notas: ev.target.value })}
+                />
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={guardar} disabled={saving || !editing?.titulo.trim()}>Guardar</Button>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={guardar} disabled={saving || !editing?.titulo.trim()}>
+              Guardar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
