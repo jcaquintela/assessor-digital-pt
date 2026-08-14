@@ -7,6 +7,7 @@ import type { AdapterSendResult, ChannelAdapter, NormalizedInbound } from "./typ
 import type { EngineOutcome } from "@/lib/assessor/engine.server";
 import { withConversationLock } from "./lock.server";
 import { deriveInteractivePrompt, parseOutcomeCommand } from "@/lib/assessor/interactive";
+import { looksLikePhoneAttempt } from "@/lib/people/phone-input";
 
 export async function runInboundPipeline(
   adapter: ChannelAdapter,
