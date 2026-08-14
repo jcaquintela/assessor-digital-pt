@@ -554,8 +554,14 @@ async function runReasoningEngineInner(
         error_message: "stale: pergunta já não estava em aberto",
       });
       // Uma resposta objetiva nunca cai no vazio: dizemos que caducou e
-      // reperguntamos, em vez de responder "a que te referes?".
-      if (saIsConfirmation(trimmed) || saIsRejection(trimmed)) {
+      // reperguntamos, em vez de responder "a que te referes?". Mas só quando
+      // a pergunta era mesmo a última coisa dita pelo Afonso — se a conversa
+      // já seguiu para outro assunto, um "ok" solto é conversa normal.
+      const { pendingIsLastQuestion } = await import("../pending-answerable");
+      const wasOnScreen =
+        pendingIsLastQuestion(pending, lastAssistantContent0) ||
+        quotedMatchesPending(pending, input.quotedText ?? null);
+      if (wasOnScreen && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
         const { expiredConfirmationReply, isDestructiveConfirmation } =
           await import("../expired-confirmation");
         const reply = expiredConfirmationReply(
