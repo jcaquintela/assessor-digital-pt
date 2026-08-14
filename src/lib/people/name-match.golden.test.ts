@@ -55,7 +55,9 @@ function fakeSb(opts: { people?: any[]; events?: any[]; captured?: { insert?: an
       order: () => chain, limit: () => chain,
       maybeSingle: async () => ({ data: null, error: null }),
       single: async () => {
-        if (state.op === "insert" && opts.captured) opts.captured.insert = state.payload;
+        if (state.op === "insert" && table === "follow_ups" && opts.captured && !opts.captured.insert) {
+          opts.captured.insert = state.payload;
+        }
         return { data: { id: "f1", ...state.payload }, error: null };
       },
       insert: (row: any) => { state.op = "insert"; state.payload = row; return chain; },
