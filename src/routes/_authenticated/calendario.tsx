@@ -7,15 +7,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-grid";
 import { EventCard, type AgendaCardEvent } from "@/components/calendario/event-card";
 import {
-  addDaysKey, countsByDay, hasMoreAfter, listGroups, startOfWeekKey, weekGroups,
-  type AgendaEvent, type AgendaViewMode,
+  addDaysKey,
+  countsByDay,
+  hasMoreAfter,
+  listGroups,
+  startOfWeekKey,
+  weekGroups,
+  type AgendaEvent,
+  type AgendaViewMode,
 } from "@/lib/agenda/views";
 import { cn } from "@/lib/utils";
 
@@ -40,20 +50,29 @@ const VIEWS: { id: AgendaViewMode; label: string }[] = [
 
 function longDayLabel(key: string): string {
   return new Date(`${key}T12:00:00`).toLocaleDateString("pt-PT", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   });
 }
 
 function shortDayLabel(key: string): string {
   return new Date(`${key}T12:00:00`).toLocaleDateString("pt-PT", {
-    weekday: "short", day: "numeric", month: "short",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
   });
 }
 
 function CalendarioPage() {
   const { seguimentos, atualizarSeguimento, arquivarSeguimento } = useStore();
   const [editing, setEditing] = useState<null | {
-    id: string; titulo: string; data: string; hora: string; notas: string;
+    id: string;
+    titulo: string;
+    data: string;
+    hora: string;
+    notas: string;
   }>(null);
   const [saving, setSaving] = useState(false);
   const hoje = new Date();
@@ -66,13 +85,14 @@ function CalendarioPage() {
   // Compromissos = registos classificados como Evento (ver src/lib/agenda-kind.ts),
   // excluindo os já concluídos/cancelados.
   const eventos = useMemo(
-    () => seguimentos
-      .filter((s) => s.tipo === "Evento")
-      .filter((s) => {
-        const e = (s.estado ?? "").toLowerCase();
-        return e !== "concluído" && e !== "concluido" && e !== "cancelado";
-      })
-      .sort((a, b) => a.data.localeCompare(b.data)),
+    () =>
+      seguimentos
+        .filter((s) => s.tipo === "Evento")
+        .filter((s) => {
+          const e = (s.estado ?? "").toLowerCase();
+          return e !== "concluído" && e !== "concluido" && e !== "cancelado";
+        })
+        .sort((a, b) => a.data.localeCompare(b.data)),
     [seguimentos],
   );
 
@@ -80,13 +100,14 @@ function CalendarioPage() {
   // Fonte única: converte os seguimentos-evento para o formato do seletor
   // central e deixa que views.ts faça todo o agrupamento por período.
   const fonte = useMemo<AgendaEvent[]>(
-    () => eventos.map((e) => ({
-      id: e.id,
-      title: e.titulo,
-      date: dayKey(e.data),
-      time: e.hora ? e.hora.slice(0, 5) : null,
-      eventClass: e.classeEvento ?? null,
-    })),
+    () =>
+      eventos.map((e) => ({
+        id: e.id,
+        title: e.titulo,
+        date: dayKey(e.data),
+        time: e.hora ? e.hora.slice(0, 5) : null,
+        eventClass: e.classeEvento ?? null,
+      })),
     [eventos],
   );
   const porId = useMemo(() => new Map(eventos.map((e) => [e.id, e])), [eventos]);
@@ -105,8 +126,9 @@ function CalendarioPage() {
   };
 
   const diaKey = view === "hoje" ? todayKey : selectedKey;
-  const doDia = (contagens.get(diaKey) ? fonte.filter((e) => e.date === diaKey) : [])
-    .sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
+  const doDia = (contagens.get(diaKey) ? fonte.filter((e) => e.date === diaKey) : []).sort((a, b) =>
+    (a.time ?? "99:99").localeCompare(b.time ?? "99:99"),
+  );
 
   const mudarMes = (delta: number) => {
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
@@ -167,26 +189,46 @@ function CalendarioPage() {
             <div className="flex items-center gap-1">
               {view === "mes" && (
                 <>
-                  <Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarMes(-1)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Mês anterior"
+                    onClick={() => mudarMes(-1)}
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <div className="min-w-[9.5rem] text-center text-[15px] font-semibold sm:text-left">
                     {monthLabel(month)}
                   </div>
-                  <Button variant="ghost" size="icon" aria-label="Mês seguinte" onClick={() => mudarMes(1)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Mês seguinte"
+                    onClick={() => mudarMes(1)}
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </>
               )}
               {view === "semana" && (
                 <>
-                  <Button variant="ghost" size="icon" aria-label="Semana anterior" onClick={() => mudarSemana(-1)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Semana anterior"
+                    onClick={() => mudarSemana(-1)}
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <div className="min-w-[12rem] text-center text-[15px] font-semibold sm:text-left">
                     {shortDayLabel(semanaInicio)} – {shortDayLabel(addDaysKey(semanaInicio, 6))}
                   </div>
-                  <Button variant="ghost" size="icon" aria-label="Semana seguinte" onClick={() => mudarSemana(1)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Semana seguinte"
+                    onClick={() => mudarSemana(1)}
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </>
@@ -239,7 +281,10 @@ function CalendarioPage() {
                 onSelect={(k) => {
                   setSelectedKey(k);
                   const d = new Date(`${k}T12:00:00`);
-                  if (d.getMonth() !== month.getMonth() || d.getFullYear() !== month.getFullYear()) {
+                  if (
+                    d.getMonth() !== month.getMonth() ||
+                    d.getFullYear() !== month.getFullYear()
+                  ) {
                     setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
                   }
                 }}
@@ -291,7 +336,11 @@ function CalendarioPage() {
                   </div>
                 ))}
                 {haMais && (
-                  <Button variant="ghost" className="w-full" onClick={() => setListDays((d) => d + 30)}>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setListDays((d) => d + 30)}
+                  >
                     Carregar mais
                   </Button>
                 )}
@@ -316,7 +365,8 @@ function CalendarioPage() {
           <div className="c-section-title mb-2">Integrações</div>
           <div className="space-y-3 text-sm">
             <p className="c-muted text-[13px]">
-              Liga o Google Calendar ou o Outlook e os compromissos passam a andar nos dois sentidos.
+              Liga o Google Calendar ou o Outlook e os compromissos passam a andar nos dois
+              sentidos.
             </p>
             <Link to="/definicoes" className="c-btn w-full justify-start">
               Gerir ligações de calendário
@@ -325,34 +375,64 @@ function CalendarioPage() {
         </div>
       </div>
 
-      <Dialog open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null); }}>
+      <Dialog
+        open={!!editing}
+        onOpenChange={(o) => {
+          if (!o) setEditing(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Editar compromisso</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Editar compromisso</DialogTitle>
+          </DialogHeader>
           {editing && (
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="ev-titulo">Título</Label>
-                <Input id="ev-titulo" value={editing.titulo} onChange={(ev) => setEditing({ ...editing, titulo: ev.target.value })} />
+                <Input
+                  id="ev-titulo"
+                  value={editing.titulo}
+                  onChange={(ev) => setEditing({ ...editing, titulo: ev.target.value })}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="ev-data">Data</Label>
-                  <Input id="ev-data" type="date" value={editing.data} onChange={(ev) => setEditing({ ...editing, data: ev.target.value })} />
+                  <Input
+                    id="ev-data"
+                    type="date"
+                    value={editing.data}
+                    onChange={(ev) => setEditing({ ...editing, data: ev.target.value })}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="ev-hora">Hora</Label>
-                  <Input id="ev-hora" type="time" value={editing.hora} onChange={(ev) => setEditing({ ...editing, hora: ev.target.value })} />
+                  <Input
+                    id="ev-hora"
+                    type="time"
+                    value={editing.hora}
+                    onChange={(ev) => setEditing({ ...editing, hora: ev.target.value })}
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ev-notas">Notas</Label>
-                <Textarea id="ev-notas" rows={3} value={editing.notas} onChange={(ev) => setEditing({ ...editing, notas: ev.target.value })} />
+                <Textarea
+                  id="ev-notas"
+                  rows={3}
+                  value={editing.notas}
+                  onChange={(ev) => setEditing({ ...editing, notas: ev.target.value })}
+                />
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={guardar} disabled={saving || !editing?.titulo.trim()}>Guardar</Button>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={guardar} disabled={saving || !editing?.titulo.trim()}>
+              Guardar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

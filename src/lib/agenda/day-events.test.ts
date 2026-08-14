@@ -1,13 +1,22 @@
 import { describe, it, expect } from "vitest";
 import {
-  buildAgendaView, nextEvent, todayEventCount, tomorrowLabel, upcomingEvents,
+  buildAgendaView,
+  nextEvent,
+  todayEventCount,
+  tomorrowLabel,
+  upcomingEvents,
   type DayEvent,
 } from "./day-events";
 
 const HOJE = "2026-08-10";
 const AMANHA = "2026-08-11";
-const ev = (id: string, time: string | null, title = `Evento ${id}`, date = HOJE, minutes?: number): DayEvent =>
-  ({ id, title, time, date, minutes: minutes ?? null });
+const ev = (
+  id: string,
+  time: string | null,
+  title = `Evento ${id}`,
+  date = HOJE,
+  minutes?: number,
+): DayEvent => ({ id, title, time, date, minutes: minutes ?? null });
 
 // 15:30 em Lisboa (Verão, UTC+1) = 14:30 UTC
 const AS_15_30 = new Date("2026-08-10T14:30:00Z");
@@ -25,7 +34,10 @@ describe("seletor central de eventos do dia", () => {
   });
 
   it("golden 1b — mostra o primeiro compromisso de amanhã quando existe", () => {
-    const v = buildAgendaView([...dia, ev("d", "09:30", "Visita ao T3", AMANHA), ev("e", "18:00", "Outro", AMANHA)], AS_15_30);
+    const v = buildAgendaView(
+      [...dia, ev("d", "09:30", "Visita ao T3", AMANHA), ev("e", "18:00", "Outro", AMANHA)],
+      AS_15_30,
+    );
     expect(tomorrowLabel(v.tomorrow)).toBe("Amanhã, 09:30 — Visita ao T3");
   });
 

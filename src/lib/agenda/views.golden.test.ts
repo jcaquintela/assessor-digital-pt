@@ -1,13 +1,24 @@
 import { describe, it, expect } from "vitest";
 import {
-  addDaysKey, countsByDay, dayGroups, hasMoreAfter, listGroups,
-  startOfWeekKey, weekGroups, weekKeys, type AgendaEvent,
+  addDaysKey,
+  countsByDay,
+  dayGroups,
+  hasMoreAfter,
+  listGroups,
+  startOfWeekKey,
+  weekGroups,
+  weekKeys,
+  type AgendaEvent,
 } from "./views";
 
 const HOJE = "2026-08-10"; // segunda-feira
 
-const ev = (id: string, date: string, time: string | null, titulo = `Evento ${id}`): AgendaEvent =>
-  ({ id, title: titulo, date, time });
+const ev = (
+  id: string,
+  date: string,
+  time: string | null,
+  titulo = `Evento ${id}`,
+): AgendaEvent => ({ id, title: titulo, date, time });
 
 const AGENDA: AgendaEvent[] = [
   ev("b", HOJE, "15:00"),

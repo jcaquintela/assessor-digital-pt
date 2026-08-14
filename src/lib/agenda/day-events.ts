@@ -65,13 +65,12 @@ export function nextEvent(events: readonly DayEvent[], now: Date = new Date()): 
 }
 
 /** Primeiro compromisso de amanhã, para quando já não há nada hoje. */
-export function firstTomorrowEvent(events: readonly DayEvent[], now: Date = new Date()): DayEvent | null {
+export function firstTomorrowEvent(
+  events: readonly DayEvent[],
+  now: Date = new Date(),
+): DayEvent | null {
   const today = lisbonYmd(now);
-  return (
-    events
-      .filter((e) => ymdDiffDays(e.date, today) === 1)
-      .sort(byTime)[0] ?? null
-  );
+  return events.filter((e) => ymdDiffDays(e.date, today) === 1).sort(byTime)[0] ?? null;
 }
 
 export interface AgendaView {
@@ -100,7 +99,8 @@ export function buildAgendaView(events: readonly DayEvent[], now: Date = new Dat
       ? "Todos concluídos"
       : "nada marcado";
 
-  const emptyLabel = todayCount > 0 ? "Sem mais compromissos hoje." : "Não tens compromissos para hoje.";
+  const emptyLabel =
+    todayCount > 0 ? "Sem mais compromissos hoje." : "Não tens compromissos para hoje.";
 
   return { todayCount, upcoming, next, tomorrow, cardMeta, emptyLabel };
 }

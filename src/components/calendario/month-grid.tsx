@@ -47,7 +47,9 @@ export function MonthGrid({
   return (
     <div className="select-none">
       <div className="grid grid-cols-7 border-b border-border pb-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {WEEKDAYS.map((w) => <div key={w}>{w}</div>)}
+        {WEEKDAYS.map((w) => (
+          <div key={w}>{w}</div>
+        ))}
       </div>
       <div className="grid grid-cols-7 gap-px bg-border/60 pt-px">
         {cells.map((c) => {
@@ -75,8 +77,8 @@ export function MonthGrid({
               >
                 {c.date.getDate()}
               </span>
-              {markedKeys.has(c.key) && (
-                counts?.get(c.key) ? (
+              {markedKeys.has(c.key) &&
+                (counts?.get(c.key) ? (
                   <span
                     aria-label={`${counts.get(c.key)} compromissos`}
                     className={cn(
@@ -89,10 +91,12 @@ export function MonthGrid({
                 ) : (
                   <span
                     aria-label="Tem compromissos"
-                    className={cn("h-2 w-2 rounded-full bg-primary sm:h-1.5 sm:w-1.5", c.outside && "opacity-50")}
+                    className={cn(
+                      "h-2 w-2 rounded-full bg-primary sm:h-1.5 sm:w-1.5",
+                      c.outside && "opacity-50",
+                    )}
                   />
-                )
-              )}
+                ))}
             </button>
           );
         })}
