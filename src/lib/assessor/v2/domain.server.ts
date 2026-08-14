@@ -224,7 +224,7 @@ async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<Doma
   if (relationship_type) q = q.eq("relationship_type", relationship_type);
   const { data, error } = await q;
   if (error) return fail(error.message);
-  if (data && data.length) return ok({ results: data });
+  if (data && data.length) return await withNameConfidence(ctx, query, data as Record<string, unknown>[]);
 
   // "sergio can" ou "canelas serg": a frase inteira não casa, mas cada pedaço
   // casa numa palavra do nome. Segunda tentativa por palavras, ordenada pelo
@@ -250,7 +250,52 @@ async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<Doma
     .sort((a, b) => compareTokenMatches({ hits: a.score, spread: a.spread }, { hits: b.score, spread: b.spread }))
     .slice(0, 8)
     .map((x) => x.row);
-  return ok({ results: scored });
+  return await withNameConfidence(ctx, query, scored);
+}
+
+/**
+ * "Manuel" não é "Manuela". Separamos o que casa numa palavra inteira do que
+ * é apenas parecido: só o primeiro grupo sai como resultado; o resto vai como
+ * sugestão explícita. Quando não há ninguém, ainda procuramos um compromisso
+ * agendado com esse nome que ficou sem contacto ligado — é isso que o
+ * consultor está mesmo a tentar encontrar.
+ */
+async function withNameConfidence(
+  ctx: DomainContext,
+  query: string,
+  rows: Record<string, unknown>[],
+): Promise<DomainResult> {
+  const { exact, suggestions } = classifyPeopleMatches(query, rows as Array<{ name?: string | null }>);
+  if (exact.length) return ok({ results: exact, query });
+  const unlinked = await findUnlinkedEventForName(ctx, query);
+  return ok({
+    results: [],
+    suggestions,
+    no_exact_match: true,
+    query,
+    unlinked_event: unlinked,
+  });
+}
+
+/** Compromisso aberto cujo título fala desta pessoa mas sem `person_id`. */
+export async function findUnlinkedEventForName(
+  ctx: DomainContext,
+  name: string,
+): Promise<{ id: string; title: string; due_date: string | null; due_time: string | null } | null> {
+  const term = foldLike(name);
+  if (term.length < 3) return null;
+  const { data } = await ctx.supabase
+    .from("follow_ups")
+    .select("id, title, due_date, due_time, person_id")
+    .eq("user_id", ctx.userId)
+    .in("status", ["pendente", "em_progresso", "agendado"])
+    .is("person_id", null)
+    .ilike("title", `%${term}%`)
+    .order("due_date", { ascending: true })
+    .limit(5);
+  const rows = ((data as any[]) ?? []).filter((r) => isConfidentNameMatch(String(r?.title ?? ""), name));
+  const hit = rows[0];
+  return hit ? { id: hit.id, title: hit.title, due_date: hit.due_date ?? null, due_time: hit.due_time ?? null } : null;
 }
 
 async function execCreatePerson(ctx: DomainContext, args: unknown): Promise<DomainResult> {
