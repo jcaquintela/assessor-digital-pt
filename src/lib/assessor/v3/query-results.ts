@@ -136,8 +136,6 @@ const HEADER: Record<string, { one: string; many: (n: number) => string; empty: 
 };
 
 function rowsOf(data: unknown): Array<Record<string, unknown>> {
-  const d0 = data as Record<string, unknown> | null | undefined;
-  void d0;
   const d = data as Record<string, unknown> | null | undefined;
   const raw = (d?.results ?? d?.items ?? []) as unknown;
   return Array.isArray(raw) ? (raw as Array<Record<string, unknown>>) : [];
