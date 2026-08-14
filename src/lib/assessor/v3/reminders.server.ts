@@ -417,6 +417,25 @@ export async function sendReminderNow(
   }
   if (!text) text = "Lembrete.";
 
+  // A cartela de briefing acabou de sair para este mesmo compromisso? Então
+  // o lembrete clássico cala-se — de fora pareciam duas mensagens repetidas.
+  if (row.related_resource_type === "follow_up" && row.related_resource_id) {
+    const { shouldSuppressReminder } = await import("@/lib/assessor/supreme/pre-event");
+    const { data: fuB } = await supabase
+      .from("follow_ups")
+      .select("briefing_sent_at")
+      .eq("id", row.related_resource_id)
+      .maybeSingle();
+    if (shouldSuppressReminder((fuB as any)?.briefing_sent_at ?? null, Date.now())) {
+      await supabase.from("reminders").update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        last_error: "suppressed_by_briefing",
+      } as never).eq("id", row.id);
+      return { ok: true, external_message_id: null };
+    }
+  }
+
   const { sendOutbound } = await import("@/lib/assessor/primary-channel.server");
   const r = await sendOutbound(supabase, input.userId, text);
   if (r.ok) {
