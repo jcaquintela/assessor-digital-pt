@@ -56,6 +56,9 @@ import {
   type RescheduleCandidate,
 } from "../event-subject";
 import { CANCELLED_STATUS, CANCELLED_OUTCOME, matchByHint } from "../v3/cancel-agenda";
+import {
+  classifyPeopleMatches, isConfidentNameMatch, personNameFromEventText,
+} from "@/lib/people/name-match";
 import { COMPLETED_STATUS, COMPLETED_OUTCOME } from "../v3/completion-intent";
 import { pushEventToProviders } from "@/lib/calendar/sync.server";
 import { stopFollowUpTriggers } from "@/lib/calendar/stop-triggers.server";
@@ -221,7 +224,7 @@ async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<Doma
   if (relationship_type) q = q.eq("relationship_type", relationship_type);
   const { data, error } = await q;
   if (error) return fail(error.message);
-  if (data && data.length) return ok({ results: data });
+  if (data && data.length) return await withNameConfidence(ctx, query, data as Record<string, unknown>[]);
 
   // "sergio can" ou "canelas serg": a frase inteira não casa, mas cada pedaço
   // casa numa palavra do nome. Segunda tentativa por palavras, ordenada pelo
@@ -247,7 +250,55 @@ async function execSearchPeople(ctx: DomainContext, args: unknown): Promise<Doma
     .sort((a, b) => compareTokenMatches({ hits: a.score, spread: a.spread }, { hits: b.score, spread: b.spread }))
     .slice(0, 8)
     .map((x) => x.row);
-  return ok({ results: scored });
+  return await withNameConfidence(ctx, query, scored);
+}
+
+/**
+ * "Manuel" não é "Manuela". Separamos o que casa numa palavra inteira do que
+ * é apenas parecido: só o primeiro grupo sai como resultado; o resto vai como
+ * sugestão explícita. Quando não há ninguém, ainda procuramos um compromisso
+ * agendado com esse nome que ficou sem contacto ligado — é isso que o
+ * consultor está mesmo a tentar encontrar.
+ */
+async function withNameConfidence(
+  ctx: DomainContext,
+  query: string,
+  rows: Record<string, unknown>[],
+): Promise<DomainResult> {
+  const { exact, suggestions } = classifyPeopleMatches(query, rows as Array<{ name?: string | null }>);
+  if (exact.length) return ok({ results: exact, query });
+  const unlinked = await findUnlinkedEventForName(ctx, query);
+  return ok({
+    // Os parecidos continuam disponíveis para o motor (pesquisa parcial
+    // "serg" é legítima), mas nunca são apresentados como se fossem a
+    // pessoa pedida — quem escreve a resposta usa `no_exact_match`.
+    results: rows,
+    suggestions,
+    no_exact_match: true,
+    query,
+    unlinked_event: unlinked,
+  });
+}
+
+/** Compromisso aberto cujo título fala desta pessoa mas sem `person_id`. */
+export async function findUnlinkedEventForName(
+  ctx: DomainContext,
+  name: string,
+): Promise<{ id: string; title: string; due_date: string | null; due_time: string | null } | null> {
+  const term = foldLike(name);
+  if (term.length < 3) return null;
+  const { data } = await ctx.supabase
+    .from("follow_ups")
+    .select("id, title, due_date, due_time, person_id")
+    .eq("user_id", ctx.userId)
+    .in("status", ["pendente", "em_progresso", "agendado"])
+    .is("person_id", null)
+    .ilike("title", `%${term}%`)
+    .order("due_date", { ascending: true })
+    .limit(5);
+  const rows = ((data as any[]) ?? []).filter((r) => isConfidentNameMatch(String(r?.title ?? ""), name));
+  const hit = rows[0];
+  return hit ? { id: hit.id, title: hit.title, due_date: hit.due_date ?? null, due_time: hit.due_time ?? null } : null;
 }
 
 async function execCreatePerson(ctx: DomainContext, args: unknown): Promise<DomainResult> {
@@ -555,6 +606,35 @@ export async function resolvePropertyFromText(ctx: DomainContext, text: string):
  * Procura na BD um compromisso aberto do mesmo assunto no mesmo dia (ou no
  * dia seguinte) com hora diferente. Ver `event-subject.ts`.
  */
+
+export interface ResolvedPerson {
+  personId: string | null;
+  name: string | null;
+  suggestions: Array<{ id: string; name: string }>;
+}
+
+/**
+ * Descobre de que pessoa se fala num compromisso quando o motor não devolveu
+ * o id. Só liga quando há uma correspondência de palavra inteira e única;
+ * caso contrário devolve o nome (e os parecidos) para o motor perguntar.
+ */
+export async function resolvePersonFromText(ctx: DomainContext, text: string): Promise<ResolvedPerson> {
+  const name = personNameFromEventText(text);
+  if (!name) return { personId: null, name: null, suggestions: [] };
+  const { data } = await ctx.supabase
+    .from("people")
+    .select("id, name")
+    .eq("user_id", ctx.userId)
+    .limit(500);
+  const rows = ((data as any[]) ?? []) as Array<{ id: string; name: string }>;
+  const { exact, suggestions } = classifyPeopleMatches(name, rows);
+  if (exact.length === 1) return { personId: exact[0]!.id, name, suggestions: [] };
+  if (exact.length > 1) {
+    return { personId: null, name, suggestions: exact.slice(0, 3).map((r) => ({ id: r.id, name: r.name })) };
+  }
+  return { personId: null, name, suggestions: suggestions.slice(0, 3).map((r) => ({ id: r.id, name: r.name })) };
+}
+
 async function findRescheduleCandidateInDb(
   ctx: DomainContext,
   incoming: { title: string; date: string; time: string },
@@ -580,6 +660,20 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   // motor devolva o id. Sem ligação, a visita não aparece na ficha do imóvel.
   if (!v.property_id) {
     v.property_id = await resolvePropertyFromText(ctx, [v.title, v.notes].filter(Boolean).join(" "));
+  }
+  // Um compromisso "com o Manuel" nunca pode ficar só como texto. Ou ligamos
+  // ao contacto certo, ou perguntamos — nunca inventamos nem deixamos solto.
+  if (!v.person_id) {
+    const resolved = await resolvePersonFromText(ctx, [v.title, v.notes].filter(Boolean).join(" "));
+    if (resolved.personId) v.person_id = resolved.personId;
+    else if (resolved.name) {
+      return ok({
+        needsPersonConfirmation: true,
+        personName: resolved.name,
+        suggestions: resolved.suggestions,
+        incoming: { ...v, date: v.date, time: v.start_time },
+      });
+    }
   }
   const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   // Idempotência: um pending_action só pode criar um recurso.

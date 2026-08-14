@@ -7,6 +7,7 @@
 
 import type { ToolExecResult } from "./act.server";
 import { boldWa, italicWa } from "../culture/whatsapp-format";
+import { noExactMatchReply, unlinkedEventReply } from "@/lib/people/name-match";
 
 // Ferramentas que só lêem. Nunca escrevem na BD.
 export const QUERY_TOOLS = new Set([
@@ -140,6 +141,17 @@ function rowsOf(data: unknown): Array<Record<string, unknown>> {
   return Array.isArray(raw) ? (raw as Array<Record<string, unknown>>) : [];
 }
 
+/** "amanhã às 09:00" em linguagem simples para a resposta. */
+function humanWhen(dueDate: unknown, dueTime: unknown): string {
+  const iso = s(dueDate);
+  if (!iso) return "";
+  const day = new Intl.DateTimeFormat("pt-PT", {
+    timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit",
+  }).format(new Date(iso));
+  const t = s(dueTime).slice(0, 5);
+  return t ? `${day} às ${t}` : day;
+}
+
 // Constrói a resposta com os dados de todas as leituras bem sucedidas.
 // Devolve null quando não houve nenhuma leitura com sucesso — nesse caso o
 // motor mantém a resposta que já tinha.
@@ -150,6 +162,19 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
   const blocks: string[] = [];
   for (const r of reads) {
     const rows = rowsOf(r.data);
+    // "Manuel" não pode devolver "Manuela" como se fosse a mesma pessoa.
+    const d = r.data as any;
+    if (r.name === "search_people" && d?.no_exact_match) {
+      const q = String(d.query ?? "").trim();
+      const ev = d.unlinked_event;
+      if (ev?.title) {
+        blocks.push(unlinkedEventReply(q, String(ev.title), humanWhen(ev.due_date, ev.due_time)));
+      } else {
+        const near = (d.suggestions?.length ? d.suggestions : rows) as Array<{ name?: string | null }>;
+        blocks.push(noExactMatchReply(q, near));
+      }
+      continue;
+    }
     const head = HEADER[r.name] ?? {
       one: "Encontrei 1 registo:",
       many: (n: number) => `Encontrei ${n} registos:`,
