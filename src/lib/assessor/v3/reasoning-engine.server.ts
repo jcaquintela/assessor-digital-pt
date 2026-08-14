@@ -1740,6 +1740,30 @@ async function runReasoningEngineInner(
     } catch { /* noop */ }
     reply = question;
   }
+
+  // Compromisso agendado por nome sem contacto na base: perguntar antes de
+  // gravar, para o evento nunca ficar "solto" com um nome só em texto.
+  const personAsk = toolResults.find(
+    (t) => t.name === "create_event" && t.ok
+      && (t.data as any)?.needsPersonConfirmation === true,
+  );
+  if (personAsk) {
+    const d = personAsk.data as any;
+    const { askLinkPersonQuestion } = await import("@/lib/people/name-match");
+    const question = askLinkPersonQuestion(String(d.personName ?? ""), d.suggestions ?? []);
+    try {
+      await createPendingAction(supabase, {
+        userId, channel,
+        intent: "confirm_event_person",
+        originalContent: trimmed,
+        payload: { personName: d.personName, suggestions: d.suggestions ?? [], incoming: d.incoming },
+        currentQuestion: question,
+        pendingQuestion: question,
+        sourceMessageId: sourceMessageId ?? null,
+      });
+    } catch { /* noop */ }
+    reply = question;
+  }
   if (leadTool) {
     const dup = (leadTool.data as any)?.duplicate === true;
     const leadId = (leadTool.data as any)?.lead?.id ?? (leadTool.data as any)?.existing?.id ?? null;
