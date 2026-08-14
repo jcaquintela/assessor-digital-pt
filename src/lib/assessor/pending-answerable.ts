@@ -137,8 +137,7 @@ export function isAnswerablePending(
   // pendente fica "esquecido" e só um reply/citação directa lhe pode responder.
   const stillOnScreen = !!question && !!lastAssistant && lastAssistant.includes(question);
   const extended =
-    pending.status === "pending_confirmation" && !!question &&
-    (stillOnScreen || (!lastAssistant && true));
+    pending.status === "pending_confirmation" && !!question && (stillOnScreen || !lastAssistant);
   const windowMs =
     opts.windowMs ?? (extended ? CONFIRM_ANSWER_WINDOW_MS : PENDING_ANSWER_WINDOW_MS);
   const at = ts(pending.updated_at) ?? ts(pending.created_at);
