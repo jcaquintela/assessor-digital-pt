@@ -340,7 +340,9 @@ function CalendarioPage() {
                     >
                       <Plus className="h-3.5 w-3.5" /> Novo
                     </button>
-                    {g.events.length === 0 && <div className="c-muted text-[12px]">—</div>}
+                    {g.events.length === 0 && (
+                      <EmptyDay label="Sem compromissos neste dia." />
+                    )}
                     <div className="space-y-1.5">
                       {g.events.map((e) => {
                         const c = cartao(e.id);
