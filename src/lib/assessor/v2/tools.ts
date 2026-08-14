@@ -186,6 +186,7 @@ export const CreateFollowUpArgs = z.object({
 });
 export type CreateFollowUpArgs = z.infer<typeof CreateFollowUpArgs>;
 
+
 export const SaveInteractionArgs = z.object({
   summary: z.string().min(1),
   person_id: z.string().uuid().optional().nullable(),
