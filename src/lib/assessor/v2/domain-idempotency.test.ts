@@ -73,6 +73,10 @@ const baseCtx = (sb: any, pendingActionId?: string | null): DomainContext => ({
   channel: "web",
   sourceMessageId: null,
   pendingActionId: pendingActionId ?? null,
+  // Estes testes simulam a execução DEPOIS de a pessoa já estar decidida
+  // (o consultor confirmou). A resolução obrigatória de pessoa é coberta em
+  // `src/lib/people/follow-up-person.golden.test.ts`.
+  skipPersonResolution: true,
 });
 
 const followUpArgs = {
