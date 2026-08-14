@@ -62,9 +62,11 @@ describe("texto dinâmico do aviso — todos os casos", () => {
     expect(formatPreEventNudge(interno, null, at("2026-08-14T06:30:00Z")))
       .toContain("Daqui a 2 horas");
   });
-  it("uma hora no singular", () => {
-    expect(formatPreEventNudge(interno, null, at("2026-08-14T06:35:00Z")))
-      .toContain("Daqui a 1 hora");
+  it("abaixo de 90 min nunca fala em horas (evita o antigo \"daqui a uma hora\")", () => {
+    for (const min of [46, 60, 75, 89]) {
+      const txt = formatPreEventNudge(interno, null, at("2026-08-14T08:00:00Z") - min * 60_000);
+      expect(txt).toBe(`Daqui a ${min} min tens Visita com Manuel. Queres que te prepare o contexto?`);
+    }
   });
   it("evento já passado nunca diz 0 nem negativos", () => {
     const txt = formatPreEventNudge(interno, null, at("2026-08-14T09:00:00Z"));
