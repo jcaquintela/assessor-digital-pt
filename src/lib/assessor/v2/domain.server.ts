@@ -269,7 +269,10 @@ async function withNameConfidence(
   if (exact.length) return ok({ results: exact, query });
   const unlinked = await findUnlinkedEventForName(ctx, query);
   return ok({
-    results: [],
+    // Os parecidos continuam disponíveis para o motor (pesquisa parcial
+    // "serg" é legítima), mas nunca são apresentados como se fossem a
+    // pessoa pedida — quem escreve a resposta usa `no_exact_match`.
+    results: rows,
     suggestions,
     no_exact_match: true,
     query,
