@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { isRegisterOnly, isAnswerablePending, PENDING_ANSWER_WINDOW_MS } from "./pending-answerable";
+import {
+  isRegisterOnly,
+  isAnswerablePending,
+  pendingIsLastQuestion,
+  PENDING_ANSWER_WINDOW_MS,
+} from "./pending-answerable";
 
 describe("isRegisterOnly", () => {
   for (const t of [
@@ -42,4 +47,47 @@ describe("isAnswerablePending", () => {
     ).toBe(false);
   });
   it("janela é de 3 minutos", () => expect(PENDING_ANSWER_WINDOW_MS).toBe(180000));
+});
+
+describe("golden: 'ok' solto não confirma pendente esquecido", () => {
+  const apagar = {
+    status: "pending_confirmation",
+    intent: "confirm_bulk_archive",
+    current_question: "Queres mesmo apagar estes 9 áudios?",
+    updated_at: "2026-08-12T10:00:00Z",
+  };
+  const now = new Date("2026-08-14T20:30:00Z");
+
+  it("conversa mudou de assunto: 'ok' não responde ao pendente antigo", () => {
+    expect(
+      isAnswerablePending(apagar, {
+        now,
+        lastAssistantContent: "Vou buscar as últimas novidades para te mostrar o que há de novo.",
+      }),
+    ).toBe(false);
+  });
+
+  it("citação directa da pergunta antiga continua a valer", () => {
+    expect(
+      isAnswerablePending(apagar, {
+        now,
+        lastAssistantContent: "Vou buscar as últimas novidades.",
+        quotedText: "Queres mesmo apagar estes 9 áudios?",
+      }),
+    ).toBe(true);
+  });
+
+  it("pergunta ainda no ecrã mantém a janela alargada de 24h", () => {
+    expect(
+      isAnswerablePending(
+        { ...apagar, updated_at: "2026-08-14T09:00:00Z" },
+        { now, lastAssistantContent: "Queres mesmo apagar estes 9 áudios?" },
+      ),
+    ).toBe(true);
+  });
+
+  it("pendingIsLastQuestion distingue os dois casos", () => {
+    expect(pendingIsLastQuestion(apagar, "Queres mesmo apagar estes 9 áudios?")).toBe(true);
+    expect(pendingIsLastQuestion(apagar, "Vou buscar as novidades.")).toBe(false);
+  });
 });
