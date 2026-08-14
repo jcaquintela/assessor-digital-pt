@@ -408,6 +408,7 @@ function SupremeSection() {
   const prefs = (data.preferences ?? {}) as {
     morning_briefing_enabled?: boolean; morning_time?: string;
     autonomy_level?: string; max_daily_nudges?: number;
+    reminder_lead_minutes?: number | null;
   };
   const level = (data as any).effectiveAutonomy ?? prefs.autonomy_level ?? "conservador";
   const allowed = new Set<string>(((data as any).autonomyAllowed as string[]) ?? ["conservador"]);
@@ -481,6 +482,34 @@ function SupremeSection() {
             className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
           />
           <p className="c-muted mt-2 text-[12px]">Só as sugestões urgentes e importantes te chegam ao telemóvel.</p>
+        </div>
+        <div>
+          <label htmlFor="reminder-lead" className="c-eyebrow">Antecedência dos lembretes</label>
+          <select
+            id="reminder-lead"
+            defaultValue={
+              prefs.reminder_lead_minutes === null || prefs.reminder_lead_minutes === undefined
+                ? "default"
+                : String(prefs.reminder_lead_minutes)
+            }
+            onChange={(e) => save.mutate({
+              reminder_lead_minutes: e.target.value === "default" ? null : Number(e.target.value),
+            })}
+            className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
+          >
+            <option value="default">
+              Como está definido na plataforma ({((data as any).globalReminderLeadMinutes ?? 0) === 0
+                ? "à hora"
+                : `${(data as any).globalReminderLeadMinutes} min antes`})
+            </option>
+            <option value="0">À hora do compromisso</option>
+            <option value="5">5 min antes</option>
+            <option value="10">10 min antes</option>
+            <option value="15">15 min antes</option>
+            <option value="30">30 min antes</option>
+            <option value="60">1 hora antes</option>
+          </select>
+          <p className="c-muted mt-2 text-[12px]">Aplica-se aos lembretes de tarefas e compromissos novos.</p>
         </div>
       </div>
     </Section>

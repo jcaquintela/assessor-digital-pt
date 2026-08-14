@@ -831,11 +831,13 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   // Regista também um `reminder` para o próprio evento (à hora de início),
   // para o consultor ser avisado se pediu confirmação.
   if ((data as any)?.id) {
+    const { reminderInstantFor } = await import("@/lib/assessor/reminders/lead-time.server");
+    const when = await reminderInstantFor(ctx.supabase, ctx.userId, dueIsoDate);
     await upsertReminder(ctx.supabase, {
       userId: ctx.userId,
       related_resource_type: "follow_up",
       related_resource_id: (data as any).id,
-      scheduled_for: dueIsoDate,
+      scheduled_for: when,
       message_preview: `Lembrete: ${v.title.trim()} (${v.start_time}).`,
     });
   }
@@ -963,11 +965,13 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
   }
   // Cria o lembrete canónico para o dispatcher.
   if ((data as any)?.id && v.due_time) {
+    const { reminderInstantFor } = await import("@/lib/assessor/reminders/lead-time.server");
+    const when = await reminderInstantFor(ctx.supabase, ctx.userId, dueIsoDate);
     await upsertReminder(ctx.supabase, {
       userId: ctx.userId,
       related_resource_type: "follow_up",
       related_resource_id: (data as any).id,
-      scheduled_for: dueIsoDate,
+      scheduled_for: when,
       message_preview: `Lembrete: ${v.title.trim()} (${v.due_time}).`,
     });
   }

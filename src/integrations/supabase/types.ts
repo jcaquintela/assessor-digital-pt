@@ -285,6 +285,24 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value_int: number | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value_int?: number | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value_int?: number | null
+        }
+        Relationships: []
+      }
       app_user_connection_aliases: {
         Row: {
           app_user_id: string
@@ -1228,6 +1246,7 @@ export type Database = {
           proactive_push_enabled: boolean
           quiet_hours_end: string
           quiet_hours_start: string
+          reminder_lead_minutes: number | null
           timezone: string
           updated_at: string
           user_id: string
@@ -1248,6 +1267,7 @@ export type Database = {
           proactive_push_enabled?: boolean
           quiet_hours_end?: string
           quiet_hours_start?: string
+          reminder_lead_minutes?: number | null
           timezone?: string
           updated_at?: string
           user_id: string
@@ -1268,6 +1288,7 @@ export type Database = {
           proactive_push_enabled?: boolean
           quiet_hours_end?: string
           quiet_hours_start?: string
+          reminder_lead_minutes?: number | null
           timezone?: string
           updated_at?: string
           user_id?: string
