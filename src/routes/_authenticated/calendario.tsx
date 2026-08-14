@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-grid";
 import { EventCard, type AgendaCardEvent } from "@/components/calendario/event-card";
+import { EmptyDay } from "@/components/calendario/empty-day";
 import {
   addDaysKey,
   countsByDay,
