@@ -885,8 +885,15 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
   // Resolução obrigatória de pessoa ANTES de escrever: um seguimento falado
   // "com o Manuel" nunca pode ficar com o nome preso em texto livre e
   // `person_id: null` por omissão. Ou liga com certeza, ou pergunta.
+  //
+  // Caso real (14/08): o motor v3 pesquisa pessoas e já propõe `person_id`.
+  // Aceitar essa proposta às cegas saltava o passo de confirmação ("Ana" →
+  // "Ana Silva" sem perguntar; "Manuela" com duas Manuelas na conta). Por
+  // isso o `person_id` vindo do modelo é sempre validado contra a resolução
+  // determinística: só passa quando esta é inequívoca (`linked`) ou quando
+  // não há nome nenhum na frase (o id veio do contexto da conversa).
   let personDeliberatelyUnlinked = false;
-  if (!v.person_id && !ctx.skipPersonResolution) {
+  if (!ctx.skipPersonResolution) {
     const { resolvePersonForWrite, recentlyRejectedPersonIds } =
       await import("@/lib/people/resolve-person.server");
     const text = [v.title, (v as any).notes].filter(Boolean).join(" ");
@@ -903,7 +910,8 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
         personName: res.name,
         suggestions: res.candidates,
         candidateIds: res.candidates.map((c) => c.id),
-        incoming: { ...v },
+        proposedPersonId: v.person_id ?? null,
+        incoming: { ...v, person_id: null },
       });
     }
   } else if (!v.person_id && ctx.skipPersonResolution) {
