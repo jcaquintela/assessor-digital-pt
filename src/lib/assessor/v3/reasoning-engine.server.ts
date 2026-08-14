@@ -554,8 +554,14 @@ async function runReasoningEngineInner(
         error_message: "stale: pergunta já não estava em aberto",
       });
       // Uma resposta objetiva nunca cai no vazio: dizemos que caducou e
-      // reperguntamos, em vez de responder "a que te referes?".
-      if (saIsConfirmation(trimmed) || saIsRejection(trimmed)) {
+      // reperguntamos, em vez de responder "a que te referes?". Mas só quando
+      // a pergunta era mesmo a última coisa dita pelo Afonso — se a conversa
+      // já seguiu para outro assunto, um "ok" solto é conversa normal.
+      const { pendingIsLastQuestion, quotedMatchesPending } = await import("../pending-answerable");
+      const wasOnScreen =
+        pendingIsLastQuestion(pending, lastAssistantContent0) ||
+        quotedMatchesPending(pending, input.quotedText ?? null);
+      if (wasOnScreen && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
         const { expiredConfirmationReply, isDestructiveConfirmation } =
           await import("../expired-confirmation");
         const reply = expiredConfirmationReply(
@@ -578,7 +584,15 @@ async function runReasoningEngineInner(
     if (!pending && !lastAssistantAskedQuestion && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
       const { findRecentExpiredConfirmation } = await import("../memory.server");
       const stale = await findRecentExpiredConfirmation(supabase, userId, channel);
-      if (stale) {
+      const { pendingIsLastQuestion: staleOnScreen, quotedMatchesPending: staleQuoted } =
+        await import("../pending-answerable");
+      // Só reabrimos o assunto se a pergunta caducada ainda era a última coisa
+      // dita, ou se o consultor citou mesmo essa mensagem.
+      const staleRelevant =
+        !!stale &&
+        (staleOnScreen(stale, lastAssistantContent0) ||
+          staleQuoted(stale, input.quotedText ?? null));
+      if (stale && staleRelevant) {
         const { expiredConfirmationReply, isDestructiveConfirmation } =
           await import("../expired-confirmation");
         // Fecha o assunto: o aviso é dado uma vez, não a cada "sim" solto.
