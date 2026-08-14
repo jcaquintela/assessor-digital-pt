@@ -1,0 +1,5 @@
+import { describe, it, vi } from "vitest";
+import { dispatchToolCall } from "@/lib/assessor/v2/domain.server";
+vi.mock("@/lib/calendar/sync.server", () => ({ pushEventToProviders: async () => {} }));
+function fakeSb(captured:any){const build=()=>{const state:any={};const chain:any={select:()=>chain,eq:()=>chain,ilike:()=>chain,or:()=>chain,in:()=>chain,is:()=>chain,gte:()=>chain,lt:()=>chain,lte:()=>chain,order:()=>chain,limit:()=>chain,maybeSingle:async()=>({data:null,error:null}),single:async()=>{if(state.op==="insert")captured.insert=state.payload;return{data:{id:"f1",...state.payload},error:null}},insert:(r:any)=>{state.op="insert";state.payload=r;return chain},update:()=>chain,upsert:()=>chain};chain.then=(res:any)=>res({data:[],error:null});return chain};return {from:()=>build()} as any}
+describe("d",()=>{it("x",async()=>{const c:any={};const r=await dispatchToolCall({supabase:fakeSb(c),userId:"u1",channel:"whatsapp"} as any,"create_event",JSON.stringify({title:"Visita com o Manuel",event_type:"visita",date:"2026-08-20",start_time:"09:00",person_id:"11111111-1111-4111-8111-111111111111"}));console.log(JSON.stringify(r),JSON.stringify(c));})});
