@@ -2,6 +2,7 @@
 // Só apresentação: recebe os eventos já filtrados e devolve o dia escolhido.
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { Plus } from "lucide-react";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -24,6 +25,7 @@ export function MonthGrid({
   markedKeys,
   counts,
   onSelect,
+  onQuickAdd,
 }: {
   month: Date;
   selectedKey: string;
@@ -31,6 +33,8 @@ export function MonthGrid({
   /** Nº de compromissos por dia — mostra contagem em vez do ponto. */
   counts?: Map<string, number>;
   onSelect: (key: string) => void;
+  /** Criação rápida a partir do dia (mesmo fluxo do "registar"). */
+  onQuickAdd?: (key: string) => void;
 }) {
   const todayKey = dayKey(new Date());
 
@@ -56,18 +60,19 @@ export function MonthGrid({
           const isToday = c.key === todayKey;
           const isSelected = c.key === selectedKey;
           return (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => onSelect(c.key)}
-              aria-current={isToday ? "date" : undefined}
-              aria-pressed={isSelected}
-              className={cn(
-                "flex h-14 min-w-0 flex-col items-center justify-start gap-1 bg-card p-1 text-sm transition-colors hover:bg-accent sm:h-20 sm:p-1.5",
-                c.outside && "text-muted-foreground/50",
-                isSelected && "bg-accent",
-              )}
-            >
+            <div key={c.key} className="group relative min-w-0">
+              <button
+                type="button"
+                onClick={() => onSelect(c.key)}
+                onDoubleClick={() => onQuickAdd?.(c.key)}
+                aria-current={isToday ? "date" : undefined}
+                aria-pressed={isSelected}
+                className={cn(
+                  "flex h-14 w-full min-w-0 flex-col items-center justify-start gap-1 bg-card p-1 text-sm transition-colors hover:bg-accent sm:h-20 sm:p-1.5",
+                  c.outside && "text-muted-foreground/50",
+                  isSelected && "bg-accent",
+                )}
+              >
               <span
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-full text-[15px] sm:h-7 sm:w-7 sm:text-sm",
@@ -97,7 +102,18 @@ export function MonthGrid({
                     )}
                   />
                 ))}
-            </button>
+              </button>
+              {onQuickAdd && (
+                <button
+                  type="button"
+                  aria-label={`Novo compromisso em ${c.key}`}
+                  onClick={() => onQuickAdd(c.key)}
+                  className="absolute right-0.5 top-0.5 hidden h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary focus-visible:flex group-hover:flex sm:h-5 sm:w-5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
