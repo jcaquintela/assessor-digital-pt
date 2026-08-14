@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-grid";
 import { EventCard, type AgendaCardEvent } from "@/components/calendario/event-card";
+import { EmptyDay } from "@/components/calendario/empty-day";
 import {
   addDaysKey,
   countsByDay,
@@ -339,7 +340,9 @@ function CalendarioPage() {
                     >
                       <Plus className="h-3.5 w-3.5" /> Novo
                     </button>
-                    {g.events.length === 0 && <div className="c-muted text-[12px]">—</div>}
+                    {g.events.length === 0 && (
+                      <EmptyDay label="Sem compromissos neste dia." />
+                    )}
                     <div className="space-y-1.5">
                       {g.events.map((e) => {
                         const c = cartao(e.id);
@@ -385,7 +388,9 @@ function CalendarioPage() {
                     <Plus className="mr-1 h-4 w-4" /> Novo compromisso
                   </Button>
                 </div>
-                {doDia.length === 0 && <div className="c-empty">Sem compromissos neste dia.</div>}
+                {doDia.length === 0 && (
+                  <EmptyDay label="Nenhum compromisso para este dia. Clica em + para adicionar." />
+                )}
                 {doDia.map((e) => {
                   const c = cartao(e.id);
                   return c ? (

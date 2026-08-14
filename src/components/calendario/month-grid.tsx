@@ -82,8 +82,8 @@ export function MonthGrid({
               >
                 {c.date.getDate()}
               </span>
-              {markedKeys.has(c.key) &&
-                (counts?.get(c.key) ? (
+              {markedKeys.has(c.key) ? (
+                counts?.get(c.key) ? (
                   <span
                     aria-label={`${counts.get(c.key)} compromissos`}
                     className={cn(
@@ -101,7 +101,17 @@ export function MonthGrid({
                       c.outside && "opacity-50",
                     )}
                   />
-                ))}
+                )
+              ) : (
+                !c.outside && (
+                  <span
+                    aria-label="Sem compromissos"
+                    className="rounded-full px-1.5 text-[10px] font-medium leading-4 text-muted-foreground/50"
+                  >
+                    0
+                  </span>
+                )
+              )}
               </button>
               {onQuickAdd && (
                 <button
