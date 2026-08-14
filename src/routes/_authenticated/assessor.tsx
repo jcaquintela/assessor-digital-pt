@@ -23,6 +23,10 @@ import {
   ReplyQuoteChip,
   usePendingConfirmation,
 } from "@/components/assessor/pending-confirmation";
+import {
+  PersonChoiceCard,
+  usePendingPersonChoice,
+} from "@/components/assessor/person-choice-card";
 
 export const Route = createFileRoute("/_authenticated/assessor")({
 
@@ -92,6 +96,10 @@ function AssessorPage() {
   // Pergunta em aberto: o consultor vê que há algo à espera dele, qual é a
   // pergunta exacta e até quando pode responder (24h).
   const { pending: pendingConfirm, reload: reloadConfirm } = usePendingConfirmation(msgs.length);
+  // Associação de contacto: candidatos com contexto e botões, em vez de
+  // obrigar a escrever o nome outra vez.
+  const { pending: pendingPerson, reload: reloadPerson } = usePendingPersonChoice(msgs.length);
+  const [personBusy, setPersonBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -168,6 +176,20 @@ function AssessorPage() {
     }
   };
 
+  const responderPessoa = async (text: string) => {
+    if (personBusy) return;
+    setPersonBusy(true);
+    try {
+      await send({ data: { text } });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setPersonBusy(false);
+      void reloadPerson();
+      void reloadConfirm();
+    }
+  };
+
   return (
     <AppShell fullBleed>
       <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] md:h-[calc(100vh-7rem)] md:overflow-hidden md:rounded-[16px] md:border md:border-[var(--line)] md:bg-white md:shadow-[var(--c-shadow)]">
@@ -193,7 +215,7 @@ function AssessorPage() {
         {/* Histórico */}
         <div ref={scrollRef} className="min-h-0 overflow-y-auto px-3 py-4 md:px-6" style={{ WebkitOverflowScrolling: "touch" }}>
           {loading && <p className="c-muted text-center text-sm">A carregar…</p>}
-          {!loading && pendingConfirm && !pendingBulk && (
+          {!loading && pendingConfirm && !pendingBulk && !pendingPerson && (
             <PendingConfirmationBanner pending={pendingConfirm} channel={pendingConfirm.channel} />
           )}
           {!loading && msgs.length === 0 && (
@@ -230,6 +252,27 @@ function AssessorPage() {
                         pending={pendingBulk}
                         busy={bulkBusy || sending}
                         onAnswer={(a) => void responderLote(a)}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+              // A pergunta "qual deles é?" vira cartão com os candidatos e o
+              // contexto que os distingue.
+              const isPersonQuestion =
+                !isUser &&
+                isLast &&
+                !!pendingPerson &&
+                m.content.trim() === pendingPerson.question.trim();
+              if (isPersonQuestion && pendingPerson) {
+                return (
+                  <div key={m.id}>
+                    {showDivider && <div className="c-daysep">{formatDia(m.created_at)}</div>}
+                    <div className="flex justify-start">
+                      <PersonChoiceCard
+                        pending={pendingPerson}
+                        busy={personBusy || sending}
+                        onAnswer={(t) => void responderPessoa(t)}
                       />
                     </div>
                   </div>
