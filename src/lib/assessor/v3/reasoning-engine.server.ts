@@ -612,6 +612,68 @@ async function runReasoningEngineInner(
     }
 
     pendingForArchive = pending ?? null;
+    // Escolha de contacto: o consultor escolheu (por botão no painel ou por
+    // texto no canal). A associação é determinística e é sempre confirmada
+    // por palavras — nunca fica implícita.
+    if (pending && pending.intent === "confirm_event_person") {
+      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
+      const candidates = ((payload.suggestions ?? []) as any[]).filter((c) => c?.id);
+      const toolName = String(payload.tool ?? "create_event");
+      const exec = (TOOL_REGISTRY as any)[toolName];
+      const incoming = payload.incoming ?? null;
+      const what = toolName === "create_event" ? "compromisso" : "seguimento";
+      const { matchPersonChoice, personLinkedFeedback } = await import("@/lib/people/person-choice");
+      let choice = matchPersonChoice(trimmed, candidates as any);
+      // "Sim" a uma proposta de candidato único vale como escolha dele.
+      if (
+        choice.kind === "unknown" &&
+        saIsConfirmation(trimmed) &&
+        candidates.length === 1 &&
+        (payload.mode === "confirm_exact" || payload.mode === "confirm_partial")
+      ) {
+        choice = { kind: "candidate", id: String(candidates[0].id), name: String(candidates[0].name) };
+      }
+      if (exec && incoming && (choice.kind === "candidate" || choice.kind === "skip" || choice.kind === "new")) {
+        let personId: string | null = null;
+        let personName = "";
+        if (choice.kind === "candidate") {
+          personId = choice.id;
+          personName = choice.name;
+        } else if (choice.kind === "new") {
+          const created = await TOOL_REGISTRY.create_person(ctx, {
+            name: String(payload.personName ?? "").trim() || "Contacto novo",
+          });
+          personId = (created.data as any)?.person?.id ?? (created.data as any)?.id ?? null;
+          personName = String(payload.personName ?? "").trim();
+          if (!created.ok || !personId) {
+            return { reply: "Tentei criar o contacto e não consegui. Podes dizer-me o nome outra vez?" };
+          }
+        }
+        const result = await exec(
+          { ...ctx, skipPersonResolution: true, skipDuplicateCheck: true },
+          { ...incoming, person_id: personId },
+        );
+        const createdId =
+          (result.data as any)?.event?.id ?? (result.data as any)?.follow_up?.id ?? (result.data as any)?.id ?? null;
+        await markPendingActionStatus(supabase, pending.id, result.ok ? "executed" : "failed", {
+          created_resource_type: result.ok ? "follow_up" : null,
+          created_resource_id: result.ok ? createdId : null,
+          error_message: result.ok ? null : (result.error ?? "not_created"),
+        });
+        if (!result.ok) {
+          return { reply: "Tentei guardar isso agora e não consegui. Queres que tente outra vez?" };
+        }
+        if (choice.kind === "skip") {
+          return { reply: `Certo — ficou registado sem contacto associado. Deixei essa nota no ${what}.` };
+        }
+        return {
+          reply:
+            choice.kind === "new"
+              ? `Criei o contacto ${personName} e ${personLinkedFeedback(personName, what).toLowerCase()}`
+              : personLinkedFeedback(personName, what),
+        };
+      }
+    }
     // Candidato de pessoa rejeitado: o "não" fecha esse candidato para os
     // turnos seguintes — nunca voltamos a propô-lo sem nova pesquisa.
     if (pending && pending.intent === "confirm_event_person" && saIsRejection(trimmed)) {
