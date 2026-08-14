@@ -22,11 +22,14 @@ export function MonthGrid({
   month,
   selectedKey,
   markedKeys,
+  counts,
   onSelect,
 }: {
   month: Date;
   selectedKey: string;
   markedKeys: Set<string>;
+  /** Nº de compromissos por dia — mostra contagem em vez do ponto. */
+  counts?: Map<string, number>;
   onSelect: (key: string) => void;
 }) {
   const todayKey = dayKey(new Date());
@@ -73,10 +76,22 @@ export function MonthGrid({
                 {c.date.getDate()}
               </span>
               {markedKeys.has(c.key) && (
-                <span
-                  aria-label="Tem compromissos"
-                  className={cn("h-2 w-2 rounded-full bg-primary sm:h-1.5 sm:w-1.5", c.outside && "opacity-50")}
-                />
+                counts?.get(c.key) ? (
+                  <span
+                    aria-label={`${counts.get(c.key)} compromissos`}
+                    className={cn(
+                      "rounded-full bg-primary/12 px-1.5 text-[10px] font-medium leading-4 text-primary",
+                      c.outside && "opacity-50",
+                    )}
+                  >
+                    {counts.get(c.key)}
+                  </span>
+                ) : (
+                  <span
+                    aria-label="Tem compromissos"
+                    className={cn("h-2 w-2 rounded-full bg-primary sm:h-1.5 sm:w-1.5", c.outside && "opacity-50")}
+                  />
+                )
               )}
             </button>
           );
