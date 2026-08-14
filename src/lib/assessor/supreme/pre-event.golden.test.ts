@@ -53,3 +53,28 @@ describe("pré-evento e cartela — horas coerentes", () => {
       .not.toContain("uma hora");
   });
 });
+
+describe("texto dinâmico do aviso — todos os casos", () => {
+  const interno: BriefingEvent = { ...ev, person_id: null, event_class: "interno" };
+  it("minutos até 89; a partir daí horas", () => {
+    expect(formatPreEventNudge(interno, null, at("2026-08-14T06:31:00Z")))
+      .toContain("Daqui a 89 min");
+    expect(formatPreEventNudge(interno, null, at("2026-08-14T06:30:00Z")))
+      .toContain("Daqui a 2 horas");
+  });
+  it("uma hora no singular", () => {
+    expect(formatPreEventNudge(interno, null, at("2026-08-14T06:35:00Z")))
+      .toContain("Daqui a 1 hora");
+  });
+  it("evento já passado nunca diz 0 nem negativos", () => {
+    const txt = formatPreEventNudge(interno, null, at("2026-08-14T09:00:00Z"));
+    expect(txt).toContain("Daqui a 1 min");
+    expect(txt).not.toMatch(/-\d/);
+  });
+  it("janela do aviso: 45–75 min, fora disso cala-se", () => {
+    expect(isPreEventDue(interno, at("2026-08-14T06:44:00Z"))).toBe(false); // 76 min
+    expect(isPreEventDue(interno, at("2026-08-14T06:45:00Z"))).toBe(true);  // 75 min
+    expect(isPreEventDue(interno, at("2026-08-14T07:15:00Z"))).toBe(true);  // 45 min
+    expect(isPreEventDue(interno, at("2026-08-14T07:16:00Z"))).toBe(false); // 44 min
+  });
+});
