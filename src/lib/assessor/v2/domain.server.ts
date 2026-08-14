@@ -629,6 +629,20 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   if (!v.property_id) {
     v.property_id = await resolvePropertyFromText(ctx, [v.title, v.notes].filter(Boolean).join(" "));
   }
+  // Um compromisso "com o Manuel" nunca pode ficar só como texto. Ou ligamos
+  // ao contacto certo, ou perguntamos — nunca inventamos nem deixamos solto.
+  if (!v.person_id) {
+    const resolved = await resolvePersonFromText(ctx, [v.title, v.notes].filter(Boolean).join(" "));
+    if (resolved.personId) v.person_id = resolved.personId;
+    else if (resolved.name) {
+      return ok({
+        needsPersonConfirmation: true,
+        personName: resolved.name,
+        suggestions: resolved.suggestions,
+        incoming: { ...v, date: v.date, time: v.start_time },
+      });
+    }
+  }
   const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   // Idempotência: um pending_action só pode criar um recurso.
   if (ctx.pendingActionId) {
