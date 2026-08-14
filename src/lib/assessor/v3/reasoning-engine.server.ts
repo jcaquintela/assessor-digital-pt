@@ -584,7 +584,15 @@ async function runReasoningEngineInner(
     if (!pending && !lastAssistantAskedQuestion && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
       const { findRecentExpiredConfirmation } = await import("../memory.server");
       const stale = await findRecentExpiredConfirmation(supabase, userId, channel);
-      if (stale) {
+      const { pendingIsLastQuestion: staleOnScreen, quotedMatchesPending: staleQuoted } =
+        await import("../pending-answerable");
+      // Só reabrimos o assunto se a pergunta caducada ainda era a última coisa
+      // dita, ou se o consultor citou mesmo essa mensagem.
+      const staleRelevant =
+        !!stale &&
+        (staleOnScreen(stale, lastAssistantContent0) ||
+          staleQuoted(stale, input.quotedText ?? null));
+      if (stale && staleRelevant) {
         const { expiredConfirmationReply, isDestructiveConfirmation } =
           await import("../expired-confirmation");
         // Fecha o assunto: o aviso é dado uma vez, não a cada "sim" solto.
