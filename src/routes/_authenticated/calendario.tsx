@@ -277,17 +277,19 @@ function CalendarioPage() {
                   {v.label}
                 </button>
               ))}
-              <button
-                type="button"
-                className="c-pill tap-44"
-                onClick={() => {
-                  const n = new Date();
-                  setMonth(new Date(n.getFullYear(), n.getMonth(), 1));
-                  setSelectedKey(dayKey(n));
-                }}
-              >
-                Hoje
-              </button>
+              {(view === "mes" || view === "semana") && (
+                <button
+                  type="button"
+                  className="c-pill tap-44"
+                  onClick={() => {
+                    const n = new Date();
+                    setMonth(new Date(n.getFullYear(), n.getMonth(), 1));
+                    setSelectedKey(dayKey(n));
+                  }}
+                >
+                  Ir para hoje
+                </button>
+              )}
             </div>
           </div>
           <div className="space-y-4">
