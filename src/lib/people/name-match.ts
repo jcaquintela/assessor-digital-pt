@@ -105,7 +105,9 @@ export function personNameFromEventText(text: string | null | undefined): string
   const t = String(text ?? "");
   if (!t.trim()) return null;
   const patterns = [
-    /\b(?:com|para|à|ao|a)\s+(?:o|a|os|as)?\s*(?:sr\.?|sra\.?|dona|dr\.?|dra\.?)?\s*(NAME)/,
+    // `(?:^|[\s,;:(])` em vez de `\b`: "à" não é caractere de palavra em JS,
+    // por isso "Ligar à Manuela" nunca chegava a ter nome extraído.
+    /(?:^|[\s,;:(])(?:com|para|à|ao|a)\s+(?:o|a|os|as)?\s*(?:sr\.?|sra\.?|dona|dr\.?|dra\.?)?\s*(NAME)/,
     /\b(?:lead|cliente|contacto|propriet[áa]ri[oa]|comprador[a]?)\s+(NAME)/,
   ].map((re) => new RegExp(re.source.replace("NAME", NAME_RE.source)));
   for (const re of patterns) {

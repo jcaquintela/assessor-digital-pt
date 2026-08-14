@@ -41,6 +41,17 @@ function fakeSb(opts: {
   return { from: (t: string) => build(t) } as any;
 }
 
+
+const UUID = {
+  p1: "11111111-1111-4111-8111-111111111111",
+  p2: "22222222-2222-4222-8222-222222222222",
+  p9: "99999999-9999-4999-8999-999999999999",
+  pa: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  pm1: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  pm2: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  pm3: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+};
+
 const ctx = (sb: any, extra: any = {}) => ({ supabase: sb, userId: "u1", channel: "whatsapp", ...extra }) as any;
 const call = (sb: any, args: any, extra: any = {}) =>
   dispatchToolCall(ctx(sb, extra), "create_follow_up", JSON.stringify({
@@ -48,33 +59,79 @@ const call = (sb: any, args: any, extra: any = {}) =>
   }));
 
 describe("resolução obrigatória de pessoa em create_follow_up", () => {
-  it("golden 1 — nome exacto único pede confirmação leve e não escreve", async () => {
+  // O motor v3 pesquisa pessoas e muitas vezes já propõe `person_id`. Cada
+  // golden de ambiguidade corre nas duas variantes: sem id (camada de domínio
+  // isolada) e com id proposto pelo modelo (caminho real de produção).
+  const modes: Array<[string, Record<string, any>]> = [
+    ["sem id proposto", {}],
+    ["com person_id proposto pelo modelo", { person_id: UUID.p1 }],
+  ];
+
+  for (const [variant, proposed] of modes) {
+    it(`golden 1 — nome exacto único pede confirmação leve e não escreve (${variant})`, async () => {
+      const captured: any = {};
+      const r: any = await call(fakeSb({ people: [{ id: UUID.p1, name: "Manuel" }], captured }), { ...proposed });
+      expect(r.ok).toBe(true);
+      expect(r.data.needsPersonConfirmation).toBe(true);
+      expect(r.data.mode).toBe("confirm_exact");
+      expect(r.data.incoming.person_id).toBeNull();
+      expect(captured.insert).toBeUndefined();
+    });
+
+    it(`golden 2 — resolve mesmo sem o THINK ter pesquisado pessoas (${variant})`, async () => {
+      const r: any = await call(fakeSb({ people: [{ id: UUID.p1, name: "Manuel Silva" }] }), { ...proposed });
+      expect(r.data.needsPersonConfirmation).toBe(true);
+    });
+
+    it(`golden 3 — dois Manueis pedem escolha com contexto (${variant})`, async () => {
+      const captured: any = {};
+      const r: any = await call(fakeSb({ captured, people: [
+        { id: UUID.p1, name: "Manuel", phone: "912 000 111", relationship_type: "comprador" },
+        { id: UUID.p2, name: "Manuel Silva", phone: "913 000 222", relationship_type: "proprietario" },
+      ] }), { ...proposed });
+      expect(r.data.mode).toBe("choose");
+      expect(r.data.suggestions).toHaveLength(2);
+      expect(captured.insert).toBeUndefined();
+    });
+
+    it(`golden 4 — correspondência parcial pergunta, nunca liga sozinha (${variant})`, async () => {
+      const captured: any = {};
+      const r: any = await call(
+        fakeSb({ people: [{ id: UUID.p9, name: "Manuel Silva" }], captured }),
+        proposed.person_id ? { person_id: UUID.p9 } : {},
+      );
+      expect(r.data.mode).toBe("confirm_partial");
+      expect(captured.insert).toBeUndefined();
+    });
+  }
+
+  // Casos reais observados no WhatsApp em 14/08 (motor v3 propôs o id certo
+  // e o seguimento foi escrito sem qualquer confirmação).
+  it("golden 9 — \"Ana\" com única Ana Silva pede confirm_partial mesmo com id proposto", async () => {
     const captured: any = {};
-    const r: any = await call(fakeSb({ people: [{ id: "p1", name: "Manuel" }], captured }), {});
-    expect(r.ok).toBe(true);
+    const r: any = await call(
+      fakeSb({ captured, people: [{ id: UUID.pa, name: "Ana Silva", phone: "+351912333444", relationship_type: "proprietario" }] }),
+      { title: "Marca visita com a Ana", person_id: UUID.pa },
+    );
     expect(r.data.needsPersonConfirmation).toBe(true);
-    expect(r.data.mode).toBe("confirm_exact");
+    expect(r.data.mode).toBe("confirm_partial");
+    expect(r.data.suggestions[0].id).toBe(UUID.pa);
+    expect(r.data.proposedPersonId).toBe(UUID.pa);
     expect(captured.insert).toBeUndefined();
   });
 
-  it("golden 2 — resolve mesmo sem o THINK ter pesquisado pessoas", async () => {
-    const r: any = await call(fakeSb({ people: [{ id: "p1", name: "Manuel Silva" }] }), {});
-    expect(r.data.needsPersonConfirmation).toBe(true);
-  });
-
-  it("golden 3 — dois Manueis pedem escolha com contexto", async () => {
-    const r: any = await call(fakeSb({ people: [
-      { id: "p1", name: "Manuel", phone: "912 000 111", relationship_type: "comprador" },
-      { id: "p2", name: "Manuel Silva", phone: "913 000 222", relationship_type: "proprietario" },
-    ] }), {});
-    expect(r.data.mode).toBe("choose");
-    expect(r.data.suggestions).toHaveLength(2);
-  });
-
-  it("golden 4 — correspondência parcial pergunta, nunca liga sozinha", async () => {
+  it("golden 10 — \"Manuela\" com Manuela e Maria Manuela pede choose mesmo com id proposto", async () => {
     const captured: any = {};
-    const r: any = await call(fakeSb({ people: [{ id: "p9", name: "Manuel Silva" }], captured }), {});
-    expect(r.data.mode).toBe("confirm_partial");
+    const r: any = await call(
+      fakeSb({ captured, people: [
+        { id: UUID.pm1, name: "Manuela", phone: "932456789" },
+        { id: UUID.pm2, name: "Maria Manuela", phone: "+351912333411" },
+        { id: UUID.pm3, name: "Manuel", phone: "932451222" },
+      ] }),
+      { title: "Ligar à Manuela", type: "chamada", person_id: UUID.pm1 },
+    );
+    expect(r.data.mode).toBe("choose");
+    expect((r.data.suggestions ?? []).map((s: any) => s.id).sort()).toEqual([UUID.pm1, UUID.pm2].sort());
     expect(captured.insert).toBeUndefined();
   });
 
@@ -98,12 +155,12 @@ describe("resolução obrigatória de pessoa em create_follow_up", () => {
 
   it("golden 7 — candidato rejeitado não volta a ser proposto", async () => {
     const r: any = await call(
-      fakeSb({ people: [{ id: "p1", name: "Manuel" }] }),
+      fakeSb({ people: [{ id: UUID.p1, name: "Manuel" }] }),
       {},
-      { rejectedPersonIds: ["p1"] },
+      { rejectedPersonIds: [UUID.p1] },
     );
     expect(r.data.mode).toBe("new");
-    expect((r.data.suggestions ?? []).map((s: any) => s.id)).not.toContain("p1");
+    expect((r.data.suggestions ?? []).map((s: any) => s.id)).not.toContain(UUID.p1);
   });
 
   it("golden 8 — pessoas de outra conta nunca são candidatas", async () => {
