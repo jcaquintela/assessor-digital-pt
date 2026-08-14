@@ -388,7 +388,9 @@ function CalendarioPage() {
                     <Plus className="mr-1 h-4 w-4" /> Novo compromisso
                   </Button>
                 </div>
-                {doDia.length === 0 && <div className="c-empty">Sem compromissos neste dia.</div>}
+                {doDia.length === 0 && (
+                  <EmptyDay label="Nenhum compromisso para este dia. Clica em + para adicionar." />
+                )}
                 {doDia.map((e) => {
                   const c = cartao(e.id);
                   return c ? (
