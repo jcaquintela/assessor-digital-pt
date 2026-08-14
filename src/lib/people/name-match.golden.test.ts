@@ -122,8 +122,11 @@ describe("golden 2 — busca distingue exacto de parecido", () => {
       JSON.stringify({ query: "Manuel" }),
     );
     expect(r.ok).toBe(true);
-    expect((r.data as any).results).toEqual([]);
     expect((r.data as any).no_exact_match).toBe(true);
+    expect((r.data as any).suggestions.map((x: any) => x.name)).toEqual(["Manuela", "Maria Manuela"]);
+    const texto = formatQueryResults([{ name: "search_people", ok: true, latencyMs: 1, data: r.data }]);
+    expect(texto).toContain('Não encontrei ninguém chamado exatamente "Manuel"');
+    expect(texto).not.toContain("Encontrei 2 contactos");
     const reply = noExactMatchReply("Manuel", (r.data as any).suggestions);
     expect(reply).toContain('Não encontrei ninguém chamado exatamente "Manuel"');
     expect(reply).toContain("Manuela");
