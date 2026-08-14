@@ -95,6 +95,25 @@ export function quotedMatchesPending(
   return quoted.includes(a) || question.includes(b);
 }
 
+/**
+ * A pergunta do pendente é mesmo a última coisa que o Afonso disse?
+ *
+ * Caso real (14/08): estava aberta há dias a pergunta "queres mesmo apagar
+ * estes 9 áudios?". A conversa mudou de assunto ("Tens novas funções?") e um
+ * "Ok" solto caiu nesse pendente. Um "sim/ok" solto só pode responder à
+ * pergunta imediatamente anterior; pendentes esquecidos só por citação.
+ */
+export function pendingIsLastQuestion(
+  pending: AnswerablePending | null | undefined,
+  lastAssistantContent: string | null | undefined,
+): boolean {
+  if (!pending) return false;
+  const question = norm(pending.current_question ?? pending.pending_question);
+  const lastAssistant = norm(lastAssistantContent);
+  if (!question || !lastAssistant) return false;
+  return lastAssistant.includes(question);
+}
+
 // Um pendente só é respondível por um "sim/não/hora" solto se:
 //  • foi criado/actualizado há pouco (janela curta), OU
 //  • a pergunta dele ainda é a última coisa que o assessor perguntou.
@@ -113,11 +132,13 @@ export function isAnswerablePending(
   const now = (opts.now ?? new Date()).getTime();
   const question = norm(pending.current_question ?? pending.pending_question);
   const lastAssistant = norm(opts.lastAssistantContent);
-  // Outra pergunta em aberto, diferente desta, tomou o lugar: não alargamos.
-  const supersededByOtherQuestion =
-    !!lastAssistant && /\?$/.test(lastAssistant) && !!question && !lastAssistant.includes(question);
+  // A janela longa (24h) só vale enquanto a pergunta continuar a ser a última
+  // coisa que o Afonso disse. Se a conversa seguiu para outro assunto, o
+  // pendente fica "esquecido" e só um reply/citação directa lhe pode responder.
+  const stillOnScreen = !!question && !!lastAssistant && lastAssistant.includes(question);
   const extended =
-    pending.status === "pending_confirmation" && !!question && !supersededByOtherQuestion;
+    pending.status === "pending_confirmation" && !!question &&
+    (stillOnScreen || (!lastAssistant && true));
   const windowMs =
     opts.windowMs ?? (extended ? CONFIRM_ANSWER_WINDOW_MS : PENDING_ANSWER_WINDOW_MS);
   const at = ts(pending.updated_at) ?? ts(pending.created_at);
