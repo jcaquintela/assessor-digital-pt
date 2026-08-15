@@ -191,12 +191,23 @@ function DrivePage() {
     queryKey: ["drive", "quota", previewTier ?? "real"],
     queryFn: () => fetchQuota({ data: { previewTier } }),
   });
+  useQuotaRevalidate();
 
   const quotaCheia =
     !!quotaQ.data &&
     quotaQ.data.limit !== null &&
     quotaQ.data.used >= quotaQ.data.limit;
   const [quotaBloqueio, setQuotaBloqueio] = useState(false);
+
+  // Upgrade feito: a quota deixou de estar cheia — fechar o bloqueio e avisar.
+  const quotaCheiaAnterior = useRef(quotaCheia);
+  useEffect(() => {
+    if (quotaCheiaAnterior.current && !quotaCheia) {
+      setQuotaBloqueio(false);
+      toast.success("Já podes voltar a carregar ficheiros — a tua quota foi atualizada.");
+    }
+    quotaCheiaAnterior.current = quotaCheia;
+  }, [quotaCheia]);
 
   const onPickFile = () => {
     if (quotaCheia) {
