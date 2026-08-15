@@ -20,28 +20,29 @@ function semJuizo(texto: string) {
 
 describe("mentor nível 2 — Crescimento vs. Produtividade", () => {
   it("0 leads novas e 6 seguimentos fechados: reconhece os dois sinais, sem juízo", () => {
-    const linha = mentorContextLine(facts({ leadsSemana: 0, seguimentosFechados: 6 }))!;
+    const linha = mentorContextLine(facts({ leadsSemana: 0, seguimentosFechados: 6 }), "imoveis-parados")!;
     expect(linha).toContain("baixo Crescimento");
     expect(linha).toContain("Produtividade está sólida");
     expect(linha).toContain("6 seguimentos fechados");
-    expect(linha.trimEnd().endsWith("?")).toBe(true);
+    expect(linha).toContain("entrada desta semana");
     semJuizo(linha);
   });
 
-  it("imóvel único no estado e sem negócio ligado: menciona ambos", () => {
+  it("a linha contextual não repete os factos do caso (isso já está no nível 1)", () => {
     const linha = mentorContextLine(
-      facts({ total: 1, unicoNoEstado: true, semNegocioLigado: true, diasSemContacto: 17, seguimentosFechados: 1 }),
+      facts({ total: 3, unicoNoEstado: false, semNegocioLigado: true, diasSemContacto: 16, seguimentosFechados: 1 }),
+      "imoveis-parados",
     )!;
-    expect(linha).toContain("é o único nesse estado".slice(2)); // "o único nesse estado"
-    expect(linha).toContain("sem nenhum negócio ligado");
-    expect(linha).toContain("17 dias sem contacto");
+    expect(linha).not.toContain("3 imóveis");
+    expect(linha).not.toContain("no mesmo estado");
+    expect(linha).not.toContain("16 dias");
     semJuizo(linha);
   });
 
-  it("vários no mesmo estado: dá a posição relativa em vez de 'único'", () => {
-    const linha = mentorContextLine(facts({ total: 4, unicoNoEstado: false }))!;
-    expect(linha).toContain("são 4 no mesmo estado".slice(2));
-    expect(linha).not.toContain("único");
+  it("a ligação muda com a sugestão", () => {
+    const f = facts({ leadsSemana: 0, seguimentosFechados: 3 });
+    expect(mentorContextLine(f, "negocios-parados")).toContain("Desbloquear um destes negócios");
+    expect(mentorContextLine(f, "pessoas-frias")).toContain("Reativar uma destas pessoas");
   });
 
   it("semana com os dois sinais bons: o mentor reforça em vez de ficar em silêncio", () => {
@@ -59,8 +60,11 @@ describe("mentor nível 2 — Crescimento vs. Produtividade", () => {
   });
 
   it("semana calma nos dois eixos continua sem culpar ninguém", () => {
-    const linha = mentorContextLine(facts({ leadsSemana: 0, seguimentosFechados: 0, negociosMovidos: 0 }))!;
-    expect(linha).toContain("semana calma");
+    const linha = mentorContextLine(
+      facts({ leadsSemana: 0, seguimentosFechados: 0, negociosMovidos: 0 }),
+      "imoveis-parados",
+    )!;
+    expect(linha).toContain("Produtividade também esteve parada");
     semJuizo(linha);
   });
 
@@ -96,8 +100,26 @@ describe("níveis por plano — sem gate de acesso", () => {
       const r = applyMentorLevel(tip, dados, tier)!;
       expect(r.text).toBe(tip.text);
       expect(r.context).toContain("Crescimento");
-      expect(r.context).toContain("o único nesse estado");
+      expect(r.context).toContain("Retomar estes contactos");
     }
+  });
+
+  // Golden do teste real: 3 imóveis parados há 16 dias, 0 leads, 3 seguimentos.
+  it("caso real: sem repetição de factos e com ligação explícita à sugestão", () => {
+    const real = facts({ total: 3, diasSemContacto: 16, leadsSemana: 0, seguimentosFechados: 3 });
+    const tipReal = {
+      ...tip,
+      text: 'Tens 3 imóveis "Por angariar" há mais de 10 dias sem nenhum movimento registado.',
+    };
+    const r = applyMentorLevel(tipReal, real, "consultor")!;
+    const ctx = r.context!;
+    expect(ctx).not.toContain("3 imóve");
+    expect(ctx).not.toContain("16 dias");
+    expect(ctx).not.toContain("10 dias");
+    expect(ctx).toContain("baixo Crescimento");
+    expect(ctx).toContain("Retomar estes contactos pode ser a tua entrada desta semana");
+    expect(ctx.trimEnd().endsWith("?")).toBe(false);
+    semJuizo(ctx);
   });
 
   it("sem padrão a corrigir: Base fica em silêncio, Consultor reforça a semana boa", () => {
