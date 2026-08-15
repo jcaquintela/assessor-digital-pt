@@ -30,6 +30,12 @@ import {
   syncCalendarNow,
 } from "@/lib/calendar/calendar.functions";
 import { GMAIL_CONNECTOR_ID } from "@/lib/email/gmail/provider";
+import { OUTLOOK_CONNECTOR_ID } from "@/lib/email/outlook/provider";
+import {
+  getOutlookMailStatus,
+  startOutlookMailConnect,
+  disconnectOutlookMail,
+} from "@/lib/email/outlook/outlook.functions";
 import {
   getGmailStatus,
   startGmailConnect,
