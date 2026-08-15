@@ -16,9 +16,11 @@ import {
   deleteDriveFiles,
   restoreDriveFiles,
   driveAttention,
+  driveQuotaSummary,
 } from "@/lib/drive/drive.functions";
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { usePreviewTier } from "@/lib/subscription/tier-preview";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
 import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
 import { ReorderPagesDialog } from "@/components/drive/reorder-pages-dialog";
@@ -181,6 +183,11 @@ function DrivePage() {
     queryKey: ["drive", "atencao"],
     queryFn: () => fetchAttention(),
   });
+  const fetchQuota = useServerFn(driveQuotaSummary);
+  const quotaQ = useQuery({
+    queryKey: ["drive", "quota"],
+    queryFn: () => fetchQuota(),
+  });
 
   const onPickFile = () => fileRef.current?.click();
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,6 +342,37 @@ function DrivePage() {
           </>
         }
       />
+
+      {quotaQ.data && quotaQ.data.limit !== null && (
+        <div className="mb-3 rounded-xl border border-border bg-card p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium">Ficheiros este mês</div>
+              <div className="text-xs text-muted-foreground">
+                Plano {quotaQ.data.label} · reset no dia 1
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-semibold">
+                {quotaQ.data.used} de {quotaQ.data.limit}
+              </div>
+              {quotaQ.data.hint && (
+                <div className="text-xs" style={{ color: "var(--amber)" }}>
+                  {quotaQ.data.hint}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-primary/20">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{
+                width: `${Math.min(100, (quotaQ.data.used / quotaQ.data.limit) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="mb-3 flex items-center gap-2">
         <div className="relative flex-1">
