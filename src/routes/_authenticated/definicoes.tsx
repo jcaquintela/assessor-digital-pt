@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, Check, AlertTriangle, CreditCard, Info } from "lucide-react";
+import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, Mail, Check, AlertTriangle, CreditCard, Info } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "@/lib/assessor/assessor-name";
