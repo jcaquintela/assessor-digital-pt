@@ -707,11 +707,17 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
   // Dois calendários ligados e sem escolha feita: perguntamos antes de gravar,
   // para nunca duplicar o compromisso em dois calendários externos.
+  // Se a leitura das ligações falhar, seguimos em frente: o compromisso tem
+  // sempre de ficar gravado cá; o espelhamento externo já é tolerante a falhas.
   {
-    const { activeCalendar } = await import("@/lib/providers/active.server");
-    const active = await activeCalendar(ctx.userId);
-    if (active.status === "needs_choice") {
-      return ok({ needsCalendarProviderChoice: true, options: active.options });
+    try {
+      const { activeCalendar } = await import("@/lib/providers/active.server");
+      const active = await activeCalendar(ctx.userId);
+      if (active.status === "needs_choice") {
+        return ok({ needsCalendarProviderChoice: true, options: active.options });
+      }
+    } catch {
+      /* noop */
     }
   }
   // Última linha de defesa: a string "null" nunca pode chegar à BD.
