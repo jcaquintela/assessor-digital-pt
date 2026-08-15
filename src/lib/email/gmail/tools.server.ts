@@ -9,6 +9,7 @@ import { GMAIL_CONNECTOR_ID } from "./provider";
 import { GmailAuthExpiredError, listRecentMessages, type GmailMessageHead } from "./gmail.server";
 import { summarizeEmailOnRequest } from "./summarize.server";
 import { foldText } from "@/lib/search/normalize";
+import { triageEmails, type KnownPerson } from "./triage";
 
 type Ctx = { userId: string };
 type Result = { ok: boolean; data?: unknown; error?: string };
@@ -17,6 +18,23 @@ async function connectionKey(userId: string): Promise<string | null> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { getConnectionKeyForUser } = await import("@/lib/calendar/connections.server");
   return getConnectionKeyForUser(supabaseAdmin, userId, GMAIL_CONNECTOR_ID);
+}
+
+/** Pessoas do consultor com email — base da prioridade "gente conhecida". */
+async function knownPeople(userId: string): Promise<KnownPerson[]> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("people")
+      .select("id, name, email_normalized")
+      .eq("user_id", userId)
+      .is("archived_at", null)
+      .not("email_normalized", "is", null)
+      .limit(2000);
+    return (data ?? []) as KnownPerson[];
+  } catch {
+    return [];
+  }
 }
 
 function buildQuery(args: { query?: string | null; only_unread?: boolean | null }): string {
@@ -40,7 +58,12 @@ function toRow(m: GmailMessageHead) {
 }
 
 export async function execSearchEmails(ctx: Ctx, args: unknown): Promise<Result> {
-  const a = (args ?? {}) as { query?: string | null; only_unread?: boolean | null; max?: number | null };
+  const a = (args ?? {}) as {
+    query?: string | null;
+    only_unread?: boolean | null;
+    max?: number | null;
+    include_all?: boolean | null;
+  };
   const key = await connectionKey(ctx.userId);
   if (!key) return { ok: true, data: { not_connected: true, items: [] } };
   try {
@@ -48,7 +71,21 @@ export async function execSearchEmails(ctx: Ctx, args: unknown): Promise<Result>
       max: Math.min(Math.max(Number(a.max) || 10, 1), 20),
       query: buildQuery(a) || undefined,
     });
-    return { ok: true, data: { items: items.map(toRow), total: items.length } };
+    const triaged = triageEmails(items.map(toRow), await knownPeople(ctx.userId));
+    const relevant = triaged.filter((r) => r.bucket !== "noise");
+    const noise = triaged.filter((r) => r.bucket === "noise");
+    // Pesquisa explícita ("emails do Nuno") ou "mostra todos" não filtra nada.
+    const showAll = Boolean(a.include_all) || Boolean((a.query ?? "").trim());
+    return {
+      ok: true,
+      data: {
+        items: showAll ? triaged : relevant,
+        total: showAll ? triaged.length : relevant.length,
+        hidden_noise: showAll ? 0 : noise.length,
+        noise_senders: showAll ? [] : noise.slice(0, 3).map((r) => r.person_name ?? r.from),
+        filtered: !showAll,
+      },
+    };
   } catch (err) {
     if (err instanceof GmailAuthExpiredError) {
       return { ok: true, data: { needs_reconnect: true, items: [] } };
