@@ -7,7 +7,7 @@
 //
 // Sem IA e sem escritas: só heurística sobre o remetente e o assunto.
 
-import { parseFromHeader } from "../sender";
+import { parseFromHeader } from "./sender";
 
 export type EmailRow = {
   id: string;
