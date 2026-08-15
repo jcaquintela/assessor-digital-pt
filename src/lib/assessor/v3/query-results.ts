@@ -17,6 +17,8 @@ export const QUERY_TOOLS = new Set([
   "search_active_reminders",
   "search_agenda",
   "search_files",
+  "search_emails",
+  "summarize_email",
 ]);
 
 export function isQueryTool(name: string): boolean {
@@ -99,6 +101,20 @@ function lineFor(tool: string, row: Record<string, unknown>): string {
       italicWa(s(row.document_type) || s(row.classification)),
     ]);
   }
+  if (tool === "search_emails") {
+    const when = s(row.sent_at)
+      ? new Intl.DateTimeFormat("pt-PT", {
+          timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+        }).format(new Date(s(row.sent_at)))
+      : "";
+    const who = s(row.from).replace(/<[^>]*>/g, "").replace(/"/g, "").trim() || s(row.from);
+    return joinParts([
+      boldWa(who || "Remetente"),
+      s(row.subject) || "(sem assunto)",
+      when,
+      row.is_read === false ? italicWa("por ler") : null,
+    ]);
+  }
   return joinParts([boldWa(s(row.title) || s(row.name))]);
 }
 
@@ -133,6 +149,11 @@ const HEADER: Record<string, { one: string; many: (n: number) => string; empty: 
     many: (n) => `Tens ${n} ficheiros no Drive Inteligente:`,
     empty: "Não tens ficheiros no Drive Inteligente.",
   },
+  search_emails: {
+    one: "Tens 1 email:",
+    many: (n) => `Tens ${n} emails:`,
+    empty: "Não encontrei emails com esses critérios.",
+  },
 };
 
 function rowsOf(data: unknown): Array<Record<string, unknown>> {
@@ -155,6 +176,12 @@ function humanWhen(dueDate: unknown, dueTime: unknown): string {
 // Constrói a resposta com os dados de todas as leituras bem sucedidas.
 // Devolve null quando não houve nenhuma leitura com sucesso — nesse caso o
 // motor mantém a resposta que já tinha.
+// Email só pode ser negado quando a conta não está mesmo ligada.
+export const EMAIL_NOT_CONNECTED_REPLY =
+  "Ainda não tens a tua conta de email ligada a mim. Liga-a em Definições > Email e depois digo-te logo o que chegou.";
+export const EMAIL_NEEDS_RECONNECT_REPLY =
+  "A autorização da tua conta de email expirou. Volta a ligá-la em Definições > Email e vou buscar os emails novos.";
+
 export function formatQueryResults(toolResults: ToolExecResult[]): string | null {
   const reads = toolResults.filter((t) => t.ok && isQueryTool(t.name));
   if (!reads.length) return null;
@@ -164,6 +191,22 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
     const rows = rowsOf(r.data);
     // "Manuel" não pode devolver "Manuela" como se fosse a mesma pessoa.
     const d = r.data as any;
+    if (r.name === "search_emails" || r.name === "summarize_email") {
+      if (d?.not_connected) { blocks.push(EMAIL_NOT_CONNECTED_REPLY); continue; }
+      if (d?.needs_reconnect) { blocks.push(EMAIL_NEEDS_RECONNECT_REPLY); continue; }
+      if (r.name === "summarize_email") {
+        if (d?.not_found) {
+          blocks.push("Não encontrei esse email na tua caixa de entrada.");
+        } else {
+          const subj = s(d?.subject);
+          blocks.push(
+            [subj ? boldWa(subj) : null, s(d?.summary) || "Não consegui resumir esse email."]
+              .filter(Boolean).join("\n"),
+          );
+        }
+        continue;
+      }
+    }
     if (r.name === "search_people" && d?.no_exact_match) {
       const q = String(d.query ?? "").trim();
       const ev = d.unlinked_event;

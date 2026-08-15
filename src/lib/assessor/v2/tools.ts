@@ -49,6 +49,20 @@ export const SearchFilesArgs = z.object({
 });
 export type SearchFilesArgs = z.infer<typeof SearchFilesArgs>;
 
+// Email (Gmail ligado por consultor). Só leitura.
+export const SearchEmailsArgs = z.object({
+  query: z.string().optional().nullable(),
+  only_unread: z.boolean().optional().nullable(),
+  max: z.number().int().optional().nullable(),
+});
+export type SearchEmailsArgs = z.infer<typeof SearchEmailsArgs>;
+
+export const SummarizeEmailArgs = z.object({
+  message_id: z.string().optional().nullable(),
+  subject_hint: z.string().optional().nullable(),
+});
+export type SummarizeEmailArgs = z.infer<typeof SummarizeEmailArgs>;
+
 export const CreatePropertyArgs = z.object({
   title: z.string().min(1),
   property_type: z.string().optional().nullable(),
@@ -587,6 +601,39 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
   {
     type: "function",
     function: {
+      name: "search_emails",
+      description:
+        "Lê a caixa de entrada do consultor (conta de email ligada) e devolve os emails recentes: remetente, assunto, excerto, data e se está por ler. Usa sempre que perguntarem por emails novos, por lidos/não lidos ou por mensagens de alguém.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: ["string", "null"], description: "Pesquisa no estilo Gmail (ex.: from:maria, subject:proposta)." },
+          only_unread: { type: ["boolean", "null"], description: "true para só emails por ler." },
+          max: { type: ["integer", "null"], description: "Máximo de emails (1-20)." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "summarize_email",
+      description:
+        "Resume um email concreto, só quando o consultor pede o resumo. Passa message_id quando o tens de search_emails, senão subject_hint com as palavras dele (assunto ou remetente).",
+      parameters: {
+        type: "object",
+        properties: {
+          message_id: { type: ["string", "null"] },
+          subject_hint: { type: ["string", "null"] },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_event",
       description:
         "Cria um evento (visita, reunião de angariação, chamada) na agenda do consultor. Data em YYYY-MM-DD e hora em HH:MM (Europe/Lisbon). Associa person_id e property_id quando já os tens (obtém-nos de search_people/search_properties). Se reminder_minutes for definido, será criado o lembrete.",
@@ -1063,6 +1110,8 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   create_person: CreatePersonArgs,
   search_properties: SearchPropertiesArgs,
   search_files: SearchFilesArgs,
+  search_emails: SearchEmailsArgs,
+  summarize_email: SummarizeEmailArgs,
   create_property: CreatePropertyArgs,
   search_agenda: SearchAgendaArgs,
   create_event: CreateEventArgs,
