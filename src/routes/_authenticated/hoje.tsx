@@ -191,7 +191,11 @@ function HojePage() {
   // aparece a seguir para o mesmo sinal (silêncio + retoma do assunto).
   const decisionFn = useServerFn(saveMentorDecision);
   const mentorDecision = useMutation({
-    mutationFn: (v: { tipKey: string; decision: "confirmar" | "editar" | "cancelar"; note?: string | null }) =>
+    mutationFn: (v: {
+      tipKey: string;
+      decision: "confirmar" | "editar" | "cancelar" | "tratado";
+      note?: string | null;
+    }) =>
       decisionFn({ data: v }),
     onSuccess: (_r, v) => {
       setAjusteAberto(false);
@@ -201,7 +205,9 @@ function HojePage() {
       toast.success(
         v.decision === "confirmar"
           ? "Anotado — não volto a insistir nos próximos dias."
-          : v.decision === "editar"
+          : v.decision === "tratado"
+            ? "Assunto dado como tratado — só volto se reaparecer."
+            : v.decision === "editar"
             ? "Guardei o teu ajuste para a próxima vez."
             : "Não te volto a trazer este sinal tão cedo.",
       );
