@@ -283,6 +283,8 @@ export async function applyDocumentExtraction(args: {
     }
 
     await args.supabase.from("uploaded_files").update(patch as never).eq("id", args.fileId);
+    // O tipo de documento lido pode mudar a categoria automática.
+    await refreshSystemCategory(args.supabase, args.fileId);
     return { text: r.visible_text, expiresOn: r.expires_on, reading: r };
   } catch (err) {
     console.error("[files] applyDocumentExtraction:", err instanceof Error ? err.message : err);
