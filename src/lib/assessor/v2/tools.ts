@@ -49,6 +49,20 @@ export const SearchFilesArgs = z.object({
 });
 export type SearchFilesArgs = z.infer<typeof SearchFilesArgs>;
 
+// Email (Gmail ligado por consultor). Só leitura.
+export const SearchEmailsArgs = z.object({
+  query: z.string().optional().nullable(),
+  only_unread: z.boolean().optional().nullable(),
+  max: z.number().int().optional().nullable(),
+});
+export type SearchEmailsArgs = z.infer<typeof SearchEmailsArgs>;
+
+export const SummarizeEmailArgs = z.object({
+  message_id: z.string().optional().nullable(),
+  subject_hint: z.string().optional().nullable(),
+});
+export type SummarizeEmailArgs = z.infer<typeof SummarizeEmailArgs>;
+
 export const CreatePropertyArgs = z.object({
   title: z.string().min(1),
   property_type: z.string().optional().nullable(),
