@@ -170,7 +170,7 @@ function TelegramFlow({ onBack, onDone }: { onBack: () => void; onDone: () => vo
             Está ligado{data.displayName ? ` (${data.displayName})` : ""}. Já podes falar comigo.
           </p>
           <div className="mt-3">
-            <button className="c-cta" onClick={onDone}>Entrar no painel</button>
+            <button className="c-cta" onClick={onDone}>Continuar</button>
           </div>
         </>
       ) : (
