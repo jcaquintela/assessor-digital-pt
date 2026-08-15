@@ -1676,6 +1676,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           id: string
+          provider: string
           provider_draft_id: string | null
           status: string
           subject: string | null
@@ -1689,6 +1690,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           id?: string
+          provider?: string
           provider_draft_id?: string | null
           status?: string
           subject?: string | null
@@ -1702,6 +1704,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           id?: string
+          provider?: string
           provider_draft_id?: string | null
           status?: string
           subject?: string | null
@@ -1728,6 +1731,7 @@ export type Database = {
           from_name: string | null
           id: string
           is_read: boolean
+          provider: string
           provider_message_id: string
           sent_at: string | null
           snippet: string | null
@@ -1743,6 +1747,7 @@ export type Database = {
           from_name?: string | null
           id?: string
           is_read?: boolean
+          provider?: string
           provider_message_id: string
           sent_at?: string | null
           snippet?: string | null
@@ -1758,6 +1763,7 @@ export type Database = {
           from_name?: string | null
           id?: string
           is_read?: boolean
+          provider?: string
           provider_message_id?: string
           sent_at?: string | null
           snippet?: string | null

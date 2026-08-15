@@ -4,6 +4,8 @@
 import { GMAIL_TEST_MODE_TOKEN_DAYS } from "./provider";
 
 export type GmailConnectionState = {
+  /** "gmail" (modo Teste, 7 dias) ou "outlook" (sem expiração imposta). */
+  provider?: string | null;
   connected_at?: string | null;
   expires_at?: string | null;
   reauth_warned_at?: string | null;
@@ -13,6 +15,9 @@ export type GmailConnectionState = {
 /** Data prevista de expiração: explícita, ou 7 dias depois de ligar. */
 export function expiryOf(conn: GmailConnectionState): Date | null {
   if (conn.expires_at) return new Date(conn.expires_at);
+  // Só a Google corta de 7 em 7 dias (modo Teste). No Outlook a autorização
+  // dura enquanto for usada — inferir expiração aqui daria falsos alarmes.
+  if (conn.provider && conn.provider !== "gmail") return null;
   if (conn.connected_at) {
     return new Date(
       new Date(conn.connected_at).getTime() + GMAIL_TEST_MODE_TOKEN_DAYS * 24 * 3600 * 1000,

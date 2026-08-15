@@ -1918,9 +1918,9 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   create_property: execCreateProperty,
   search_agenda: execSearchAgenda,
   search_emails: (ctx, args) =>
-    import("@/lib/email/gmail/tools.server").then((m) => m.execSearchEmails(ctx, args)),
+    import("@/lib/email/tools.server").then((m) => m.execSearchEmails(ctx, args)),
   summarize_email: (ctx, args) =>
-    import("@/lib/email/gmail/tools.server").then((m) => m.execSummarizeEmail(ctx, args)),
+    import("@/lib/email/tools.server").then((m) => m.execSummarizeEmail(ctx, args)),
   create_event: execCreateEvent,
   create_follow_up: execCreateFollowUp,
   save_interaction: execSaveInteraction,

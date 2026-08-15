@@ -38,6 +38,22 @@ export const startCalendarConnect = createServerFn({ method: "POST" })
     const { authorizeAppUserOAuth } = await import("@/integrations/lovable/appUserConnector");
 
     const existing = await getConnectionKeyForUser(supabaseAdmin, context.userId, provider);
+    // Outlook: email e calendário partilham a ligação Microsoft. Se o email já
+    // está ligado, pedimos também os scopes de Mail — senão o novo
+    // consentimento substituía os antigos e o email deixava de funcionar.
+    let scopes = CALENDAR_SCOPES[provider];
+    if (provider === "microsoft_outlook") {
+      const { data: mail } = await supabaseAdmin
+        .from("email_connections")
+        .select("id")
+        .eq("user_id", context.userId)
+        .eq("provider", "outlook")
+        .maybeSingle();
+      if (mail) {
+        const { microsoftScopes } = await import("@/lib/email/outlook/provider");
+        scopes = microsoftScopes({ mail: true, calendar: true });
+      }
+    }
     const start = (appUserId: string) =>
       authorizeAppUserOAuth({
         gatewayBaseUrl: GATEWAY_BASE_URL,
@@ -46,7 +62,7 @@ export const startCalendarConnect = createServerFn({ method: "POST" })
         clientAPIKey,
         returnUrl,
         connectionAPIKey: existing ?? undefined,
-        credentialsConfiguration: { scopes: CALENDAR_SCOPES[provider] },
+        credentialsConfiguration: { scopes },
       });
 
     const appUserId = await getAppUserIdForConnector(supabaseAdmin, context.userId, provider);
