@@ -232,7 +232,7 @@ async function routeInbound(
       // Rajada de mensagens seguidas: junta-as num só turno em vez de correr
       // um ciclo de raciocínio por mensagem (evita perguntas duplicadas).
       let engineContent = content;
-      if (inbound.messageType === "text") {
+      if (inbound.messageType === "text" && adapter.coalesceBursts !== false) {
         const { coalesceInboundText } = await import("./coalesce.server");
         const c = await coalesceInboundText(supabaseAdmin, {
           userId,
