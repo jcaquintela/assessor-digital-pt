@@ -206,6 +206,36 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
         }
         continue;
       }
+      // Inbox triada: pessoas conhecidas primeiro; newsletters só contadas.
+      const known = rows.filter((row) => row.bucket === "known_person");
+      const personal = rows.filter((row) => row.bucket !== "known_person" && row.bucket !== "noise");
+      const hidden = Number(d?.hidden_noise) || 0;
+      if (!rows.length) {
+        blocks.push(
+          hidden > 0
+            ? `Não tens emails de pessoas — só ${hidden} ${hidden === 1 ? "newsletter/notificação" : "newsletters e notificações"}. Queres ver na mesma?`
+            : (HEADER["search_emails"] as any).empty,
+        );
+        continue;
+      }
+      const shownEmails = [...known, ...personal, ...rows.filter((row) => row.bucket === "noise")].slice(0, MAX_ITEMS);
+      const namesKnown = known.map((row) => s(row.person_name) || s(row.from)).filter(Boolean);
+      const relevantCount = known.length + personal.length;
+      const headParts: string[] = [];
+      if (relevantCount > 0) {
+        headParts.push(
+          relevantCount === 1
+            ? `Tens 1 email de ${namesKnown[0] ? "pessoa conhecida" : "alguém"}${namesKnown.length ? ` (${namesKnown.join(", ")})` : ""}:`
+            : `Tens ${relevantCount} emails${namesKnown.length ? ` de pessoas conhecidas (${namesKnown.join(", ")})` : ""}:`,
+        );
+      }
+      const emailLines = shownEmails.map((row) => `- ${lineFor("search_emails", row)}`.trim());
+      const tail =
+        hidden > 0
+          ? `\n\nHá ainda ${hidden} ${hidden === 1 ? "email de newsletter/notificação" : "emails de newsletters e notificações"}. Queres ver os todos?`
+          : "";
+      blocks.push(`${headParts.join(" ")}\n${emailLines.join("\n")}${tail}`.trim());
+      continue;
     }
     if (r.name === "search_people" && d?.no_exact_match) {
       const q = String(d.query ?? "").trim();
