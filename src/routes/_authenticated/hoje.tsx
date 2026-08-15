@@ -227,6 +227,7 @@ function HojePage() {
   const undoMentor = useMutation({
     mutationFn: (v: { tipKey: string }) => undoDecisionFn({ data: v }),
     onSuccess: () => {
+      setTipOff(null);
       qc.invalidateQueries({ queryKey: ["hoje", "overview"] });
       toast.success("Desfeito — este sinal volta a ser considerado.");
     },
