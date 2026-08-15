@@ -1122,6 +1122,10 @@ function EmailSection() {
           stop={() => disconnectOutlookMail()}
         />
       </div>
+      <ActiveProviderPicker
+        modality="mail"
+        labels={MAIL_PROVIDER_LABEL as Record<MailProvider, string>}
+      />
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
         O Afonso lê o teu email e prepara rascunhos, mas nunca envia nada sozinho. O calendário
         continua em "Calendário" — aqui é só a caixa de correio.
