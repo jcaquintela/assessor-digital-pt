@@ -132,9 +132,11 @@ function HojePage() {
 
   // Resumo geral (contagens simples) + sugestão do mentor.
   const overviewQ = useServerFn(getHojeOverview);
+  // Simulação "ver como" (super admin): o servidor reconfirma o papel.
+  const previewTier = usePreviewTier();
   const overview = useQuery({
-    queryKey: ["hoje", "overview"],
-    queryFn: () => overviewQ(),
+    queryKey: ["hoje", "overview", previewTier ?? "real"],
+    queryFn: () => overviewQ({ data: { previewTier } }),
     retry: false,
   });
   const [tipOff, setTipOff] = useState<string | null>(null);
