@@ -1628,6 +1628,207 @@ export type Database = {
         }
         Relationships: []
       }
+      email_connections: {
+        Row: {
+          connected_at: string
+          created_at: string
+          email_address: string | null
+          expires_at: string | null
+          id: string
+          last_error: string | null
+          last_ok_at: string | null
+          provider: string
+          reauth_warned_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connected_at?: string
+          created_at?: string
+          email_address?: string | null
+          expires_at?: string | null
+          id?: string
+          last_error?: string | null
+          last_ok_at?: string | null
+          provider?: string
+          reauth_warned_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connected_at?: string
+          created_at?: string
+          email_address?: string | null
+          expires_at?: string | null
+          id?: string
+          last_error?: string | null
+          last_ok_at?: string | null
+          provider?: string
+          reauth_warned_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_drafts: {
+        Row: {
+          body: string
+          confirmed_at: string | null
+          created_at: string
+          id: string
+          provider_draft_id: string | null
+          status: string
+          subject: string | null
+          thread_id: string | null
+          to_emails: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          provider_draft_id?: string | null
+          status?: string
+          subject?: string | null
+          thread_id?: string | null
+          to_emails?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          provider_draft_id?: string | null
+          status?: string
+          subject?: string | null
+          thread_id?: string | null
+          to_emails?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_drafts_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "email_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_messages: {
+        Row: {
+          created_at: string
+          direction: string
+          from_email: string | null
+          from_name: string | null
+          id: string
+          is_read: boolean
+          provider_message_id: string
+          sent_at: string | null
+          snippet: string | null
+          thread_id: string
+          to_emails: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction?: string
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          is_read?: boolean
+          provider_message_id: string
+          sent_at?: string | null
+          snippet?: string | null
+          thread_id: string
+          to_emails?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          is_read?: boolean
+          provider_message_id?: string
+          sent_at?: string | null
+          snippet?: string | null
+          thread_id?: string
+          to_emails?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "email_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_threads: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          last_message_at: string | null
+          person_id: string | null
+          provider: string
+          provider_thread_id: string
+          subject: string | null
+          summarized_at: string | null
+          summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          person_id?: string | null
+          provider?: string
+          provider_thread_id: string
+          subject?: string | null
+          summarized_at?: string | null
+          summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          person_id?: string | null
+          provider?: string
+          provider_thread_id?: string
+          subject?: string | null
+          summarized_at?: string | null
+          summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entity_tags: {
         Row: {
           created_at: string
