@@ -31,6 +31,7 @@ import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
+import { usePreviewTier } from "@/lib/subscription/tier-preview";
 import { Lightbulb, ArrowRight } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -132,9 +133,11 @@ function HojePage() {
 
   // Resumo geral (contagens simples) + sugestão do mentor.
   const overviewQ = useServerFn(getHojeOverview);
+  // Simulação "ver como" (super admin): o servidor reconfirma o papel.
+  const previewTier = usePreviewTier();
   const overview = useQuery({
-    queryKey: ["hoje", "overview"],
-    queryFn: () => overviewQ(),
+    queryKey: ["hoje", "overview", previewTier ?? "real"],
+    queryFn: () => overviewQ({ data: { previewTier } }),
     retry: false,
   });
   const [tipOff, setTipOff] = useState<string | null>(null);

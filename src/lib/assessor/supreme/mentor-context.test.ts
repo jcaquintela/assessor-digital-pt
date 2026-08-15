@@ -105,4 +105,16 @@ describe("níveis por plano — sem gate de acesso", () => {
     expect(applyMentorLevel(null, boa, "base")).toBeNull();
     expect(applyMentorLevel(null, boa, "consultor")?.key).toBe("semana-equilibrada");
   });
+
+  // O teste que faltava: comparar a SAÍDA REAL lado a lado para os mesmos dados.
+  it("mesma entrada, saída visivelmente diferente entre base e consultor", () => {
+    const base = applyMentorLevel(tip, dados, "base")!;
+    const cons = applyMentorLevel(tip, dados, "consultor")!;
+    const render = (r: typeof base) => [r.text, r.context ?? ""].join(" ").trim();
+    expect(render(base)).not.toBe(render(cons));
+    expect(render(base)).not.toMatch(/Crescimento|Produtividade/);
+    expect(render(cons)).toMatch(/Crescimento/);
+    expect(render(cons)).toMatch(/Produtividade/);
+    expect(render(cons).length).toBeGreaterThan(render(base).length);
+  });
 });
