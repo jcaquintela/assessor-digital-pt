@@ -927,11 +927,14 @@ function CalendarioSectionInner() {
     needsReconnect: false,
   }));
   const algumLigado = rows.some((r) => r.connected);
+  // Um cartão por modalidade: com um provedor ligado só se vê esse. O outro
+  // aparece a pedido, em "Mudar de provedor" — nunca dois lado a lado.
+  const visiveis = algumLigado && !mudar ? rows.filter((r) => r.connected) : rows;
 
   return (
     <Section title="Calendário">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {rows.map((r) => (
+      <div className={`grid gap-3${visiveis.length > 1 ? " sm:grid-cols-2" : ""}`}>
+        {visiveis.map((r) => (
           <div key={r.provider} className="flex items-center justify-between rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
             <div className="flex items-center gap-3">
               <CalendarDays className="c-muted h-4 w-4" />
@@ -962,6 +965,16 @@ function CalendarioSectionInner() {
           </div>
         ))}
       </div>
+      {algumLigado && rows.some((r) => !r.connected) && (
+        <button className="c-btn mt-3" onClick={() => setMudar((v) => !v)}>
+          {mudar ? "Deixar como está" : "Mudar de provedor"}
+        </button>
+      )}
+      {mudar && (
+        <p className="c-muted mt-2 text-[12px]">
+          Liga o novo calendário e desliga o antigo — eu uso só um.
+        </p>
+      )}
       {algumLigado && (
         <div className="mt-3 flex items-center gap-3">
           <button className="c-btn" disabled={busy !== null} onClick={sincronizar}>Sincronizar agora</button>
