@@ -78,7 +78,7 @@ const PROSPECTING_HINT = "Vês esta e as outras em Prospeção, no dashboard.";
 function withProspectingHint(reply: string, tools: ToolOutcome[]): string {
   const created = tools.some((t) => t.ok && t.name === "create_prospecting_lead");
   if (!created) return reply;
-  if (/em Prospeção/i.test(reply)) return reply;
+  if (reply.includes(PROSPECTING_HINT)) return reply;
   const base = reply.trim();
   if (!base) return PROSPECTING_HINT;
   return `${base}${/[.!?…]$/.test(base) ? "" : "."} ${PROSPECTING_HINT}`;
