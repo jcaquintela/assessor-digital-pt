@@ -144,6 +144,7 @@ function HojePage() {
   const [factosAbertos, setFactosAbertos] = useState(false);
   const mentor = overview.data?.mentor ?? null;
   const resumo = overview.data?.summary ?? null;
+  const tierInfo = overview.data?.tierInfo ?? null;
 
   const docsPending = useQuery({
     queryKey: ["uploaded_files", "unclassified"],
