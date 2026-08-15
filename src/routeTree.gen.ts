@@ -73,6 +73,7 @@ import { Route as AuthenticatedNegociosIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedNegocioIndexRouteImport } from './routes/_authenticated/negocio.index'
 import { Route as AuthenticatedImoveisIndexRouteImport } from './routes/_authenticated/imoveis.index'
 import { Route as OauthOutlookReturnRouteImport } from './routes/oauth/outlook/return'
+import { Route as OauthOutlookMailReturnRouteImport } from './routes/oauth/outlook-mail/return'
 import { Route as OauthGoogleCalendarReturnRouteImport } from './routes/oauth/google-calendar/return'
 import { Route as OauthGmailReturnRouteImport } from './routes/oauth/gmail/return'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
@@ -442,6 +443,11 @@ const OauthOutlookReturnRoute = OauthOutlookReturnRouteImport.update({
   path: '/oauth/outlook/return',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthOutlookMailReturnRoute = OauthOutlookMailReturnRouteImport.update({
+  id: '/oauth/outlook-mail/return',
+  path: '/oauth/outlook-mail/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthGoogleCalendarReturnRoute =
   OauthGoogleCalendarReturnRouteImport.update({
     id: '/oauth/google-calendar/return',
@@ -750,6 +756,7 @@ export interface FileRoutesByFullPath {
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/gmail/return': typeof OauthGmailReturnRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
+  '/oauth/outlook-mail/return': typeof OauthOutlookMailReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
   '/imoveis/': typeof AuthenticatedImoveisIndexRoute
   '/negocio/': typeof AuthenticatedNegocioIndexRoute
@@ -854,6 +861,7 @@ export interface FileRoutesByTo {
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/gmail/return': typeof OauthGmailReturnRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
+  '/oauth/outlook-mail/return': typeof OauthOutlookMailReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
   '/imoveis': typeof AuthenticatedImoveisIndexRoute
   '/negocio': typeof AuthenticatedNegocioIndexRoute
@@ -961,6 +969,7 @@ export interface FileRoutesById {
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/oauth/gmail/return': typeof OauthGmailReturnRoute
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
+  '/oauth/outlook-mail/return': typeof OauthOutlookMailReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
   '/_authenticated/imoveis/': typeof AuthenticatedImoveisIndexRoute
   '/_authenticated/negocio/': typeof AuthenticatedNegocioIndexRoute
@@ -1068,6 +1077,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp-webhook'
     | '/oauth/gmail/return'
     | '/oauth/google-calendar/return'
+    | '/oauth/outlook-mail/return'
     | '/oauth/outlook/return'
     | '/imoveis/'
     | '/negocio/'
@@ -1172,6 +1182,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp-webhook'
     | '/oauth/gmail/return'
     | '/oauth/google-calendar/return'
+    | '/oauth/outlook-mail/return'
     | '/oauth/outlook/return'
     | '/imoveis'
     | '/negocio'
@@ -1278,6 +1289,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp-webhook'
     | '/oauth/gmail/return'
     | '/oauth/google-calendar/return'
+    | '/oauth/outlook-mail/return'
     | '/oauth/outlook/return'
     | '/_authenticated/imoveis/'
     | '/_authenticated/negocio/'
@@ -1326,6 +1338,7 @@ export interface RootRouteChildren {
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   OauthGmailReturnRoute: typeof OauthGmailReturnRoute
   OauthGoogleCalendarReturnRoute: typeof OauthGoogleCalendarReturnRoute
+  OauthOutlookMailReturnRoute: typeof OauthOutlookMailReturnRoute
   OauthOutlookReturnRoute: typeof OauthOutlookReturnRoute
   ApiPublicHooksBetaExpiryRoute: typeof ApiPublicHooksBetaExpiryRoute
   ApiPublicHooksCalendarPollRoute: typeof ApiPublicHooksCalendarPollRoute
@@ -1792,6 +1805,13 @@ declare module '@tanstack/react-router' {
       path: '/oauth/outlook/return'
       fullPath: '/oauth/outlook/return'
       preLoaderRoute: typeof OauthOutlookReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/outlook-mail/return': {
+      id: '/oauth/outlook-mail/return'
+      path: '/oauth/outlook-mail/return'
+      fullPath: '/oauth/outlook-mail/return'
+      preLoaderRoute: typeof OauthOutlookMailReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/oauth/google-calendar/return': {
@@ -2324,6 +2344,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   OauthGmailReturnRoute: OauthGmailReturnRoute,
   OauthGoogleCalendarReturnRoute: OauthGoogleCalendarReturnRoute,
+  OauthOutlookMailReturnRoute: OauthOutlookMailReturnRoute,
   OauthOutlookReturnRoute: OauthOutlookReturnRoute,
   ApiPublicHooksBetaExpiryRoute: ApiPublicHooksBetaExpiryRoute,
   ApiPublicHooksCalendarPollRoute: ApiPublicHooksCalendarPollRoute,
