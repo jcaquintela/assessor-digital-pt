@@ -1116,10 +1116,36 @@ function MailProviderCard(props: MailCardProps) {
 }
 
 function EmailSection() {
-  return (
-    <Section title="Email">
-      <div className="grid gap-3 sm:grid-cols-2">
+  const tier = useEffectiveTier();
+  const active = useQuery({ queryKey: ["active-providers"], queryFn: () => getActiveProviders() });
+  const [mudar, setMudar] = useState(false);
+
+  // Gate de plano: o mesmo `effective_tier()` usado no resto do produto.
+  // `past_due` não corta — quem já é Pro continua a ler o email.
+  if (tier.data && !canUseEmailModule(tier.data.tier)) {
+    return (
+      <Section title="Email">
+        <div className="rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Mail className="c-muted h-4 w-4" />
+            <div className="text-[13.5px] font-semibold">Email — plano Pro</div>
+          </div>
+          <p className="c-muted mt-2 text-[12px] leading-relaxed">
+            Com o plano Pro eu leio a tua caixa de correio, digo-te o que interessa de gente
+            conhecida e preparo respostas — sem nunca enviar nada sozinho.
+          </p>
+          <Link to="/subscricao" className="c-btn mt-3 inline-flex">Ver o plano Pro</Link>
+        </div>
+      </Section>
+    );
+  }
+
+  const cards: Array<{ id: MailProvider; card: React.ReactNode }> = [
+    {
+      id: "gmail",
+      card: (
         <MailProviderCard
+          key="gmail"
           label="Gmail"
           connectorId={GMAIL_CONNECTOR_ID}
           queryKey="gmail-status"
@@ -1129,7 +1155,13 @@ function EmailSection() {
           start={() => startGmailConnect()}
           stop={() => disconnectGmail()}
         />
+      ),
+    },
+    {
+      id: "outlook",
+      card: (
         <MailProviderCard
+          key="outlook"
           label="Outlook"
           connectorId={OUTLOOK_CONNECTOR_ID}
           queryKey="outlook-mail-status"
@@ -1140,7 +1172,29 @@ function EmailSection() {
           start={() => startOutlookMailConnect()}
           stop={() => disconnectOutlookMail()}
         />
+      ),
+    },
+  ];
+  const ligados = (active.data?.mail.options ?? []) as MailProvider[];
+  const visiveis = ligados.length > 0 && !mudar
+    ? cards.filter((c) => ligados.includes(c.id))
+    : cards;
+
+  return (
+    <Section title="Email">
+      <div className={`grid gap-3${visiveis.length > 1 ? " sm:grid-cols-2" : ""}`}>
+        {visiveis.map((c) => c.card)}
       </div>
+      {ligados.length > 0 && ligados.length < cards.length && (
+        <button className="c-btn mt-3" onClick={() => setMudar((v) => !v)}>
+          {mudar ? "Deixar como está" : "Mudar de provedor"}
+        </button>
+      )}
+      {mudar && (
+        <p className="c-muted mt-2 text-[12px]">
+          Liga a nova caixa e desliga a antiga — eu consulto só uma.
+        </p>
+      )}
       <ActiveProviderPicker
         modality="mail"
         labels={MAIL_PROVIDER_LABEL as Record<MailProvider, string>}
