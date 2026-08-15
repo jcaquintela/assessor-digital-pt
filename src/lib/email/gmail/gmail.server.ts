@@ -60,6 +60,14 @@ function header(headers: any[], name: string): string | null {
   return h?.value ?? null;
 }
 
+/** Endereço da conta ligada — usado para mostrar no cartão das Definições. */
+export async function fetchGmailProfile(
+  connectionKey: string,
+): Promise<{ emailAddress: string | null }> {
+  const data = await callGmail(connectionKey, "/users/me/profile");
+  return { emailAddress: data?.emailAddress ?? null };
+}
+
 export function toMessageHead(raw: any): GmailMessageHead {
   const headers = raw?.payload?.headers ?? [];
   const labels: string[] = raw?.labelIds ?? [];
