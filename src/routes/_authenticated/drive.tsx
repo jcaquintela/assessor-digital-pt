@@ -406,6 +406,7 @@ function DrivePage() {
           preview={quotaQ.data.preview}
           open={quotaBloqueio}
           onOpenChange={setQuotaBloqueio}
+          blockedFileName={ficheiroBloqueado}
         >
           {null}
         </QuotaUpgradeDialog>
