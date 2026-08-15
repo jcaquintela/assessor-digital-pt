@@ -18,7 +18,7 @@ export function parseFromHeader(raw: string | null | undefined): EmailAddress | 
   if (!s) return null;
   const angled = s.match(/^(.*?)<\s*([^>\s]+@[^>\s]+)\s*>$/);
   if (angled) {
-    const name = angled[1]!.replace(/^["']|["']$/g, "").trim();
+    const name = angled[1]!.replace(/["']/g, "").trim();
     return { email: normalizeEmail(angled[2]), name: name || null };
   }
   const bare = s.match(/[^\s<>,;]+@[^\s<>,;]+/);
