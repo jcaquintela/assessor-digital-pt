@@ -210,6 +210,18 @@ function HojePage() {
   });
 
   const [drawer, setDrawer] = useState<EventDrawerItem | null>(null);
+
+  // Seguimento a partir da sugestão do Mentor: tipo, notas e prazo já preenchidos.
+  const mentorFollowUpFn = useServerFn(createMentorFollowUp);
+  const mentorFollowUp = useMutation({
+    mutationFn: (v: { tipKey: string }) => mentorFollowUpFn({ data: v }),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ["follow_ups"] });
+      qc.invalidateQueries({ queryKey: ["supreme", "hoje"] });
+      toast.success(`Seguimento criado para ${r?.dueDate ?? "os próximos dias"}.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const [noteFor, setNoteFor] = useState<Awaiting | null>(null);
   const [noteText, setNoteText] = useState("");
 
