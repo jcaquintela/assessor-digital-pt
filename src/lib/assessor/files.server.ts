@@ -488,7 +488,7 @@ export async function processIncomingFile(
           fileId,
           classification,
           status: "processed",
-          reply: auto.reply,
+          reply: withUsageHint(auto.reply, usageHint),
           extractedText: extraText,
         };
       }
@@ -536,7 +536,7 @@ export async function processIncomingFile(
     fileId,
     classification,
     status: "processed",
-    reply,
+    reply: withUsageHint(reply, usageHint),
     extractedText: null,
   };
 }
