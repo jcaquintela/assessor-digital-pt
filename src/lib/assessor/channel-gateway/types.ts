@@ -67,6 +67,11 @@ export interface AdapterMediaBytes {
 export interface ChannelAdapter {
   channel: Channel;
 
+  // 0. Canais reactivos (o consultor escreve e espera resposta no mesmo
+  //    ecrã) não juntam rajadas: cada mensagem é um turno com resposta
+  //    própria. Omitido = true (comportamento de WhatsApp/Telegram).
+  coalesceBursts?: boolean;
+
   // 1. Payload cru -> N inbounds normalizados.
   parseUpdate(rawPayload: unknown): NormalizedInbound[];
 
