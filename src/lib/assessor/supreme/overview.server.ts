@@ -46,7 +46,14 @@ export interface MentorTip {
   key: string;
   /** Porque disparou: dias sem contacto e que atividade foi usada como referência. */
   reason: string;
+  /** Factos apurados desta volta — o nível 2 compõe a linha contextual a partir daqui. */
+  facts?: MentorFacts;
+  /** Linha contextual (nível 2). Preenchida em `overview.functions.ts` por tier. */
+  context?: string | null;
 }
+
+import type { MentorFacts } from "./mentor-context";
+import { emptyFacts } from "./mentor-context";
 
 import { isDealActive } from "@/lib/deals/stages";
 
@@ -137,7 +144,15 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
 // "Parado" mede-se pelo último CONTACTO REAL registado (interações e seguimentos
 // com resultado), nunca por edições de campos — editar uma ficha não reinicia o contador.
 // Se não houver padrão relevante, devolve null — nunca se inventa nada.
+/** Compatibilidade: quem só quer a sugestão continua a chamar isto. */
 export async function computeMentorTip(supabase: any, userId: string): Promise<MentorTip | null> {
+  return (await computeMentor(supabase, userId)).tip;
+}
+
+export async function computeMentor(
+  supabase: any,
+  userId: string,
+): Promise<{ tip: MentorTip | null; facts: MentorFacts }> {
   const now = Date.now();
   const days = (iso: string | null) => (iso ? Math.floor((now - new Date(iso).getTime()) / 864e5) : 0);
   /** Data mais recente de um conjunto, ou null. */
@@ -146,21 +161,35 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
     return ts.length ? new Date(Math.max(...ts)).toISOString() : null;
   };
 
-  const [props, deals, people, ints, done, links] = await Promise.all([
+  const [props, deals, people, ints, done, links, leads] = await Promise.all([
     supabase.from("properties").select("id, status, created_at").eq("user_id", userId),
     supabase.from("opportunities").select("id, status, stage, stage_changed_at, archived_at").eq("user_id", userId),
     supabase.from("people").select("id, name, created_at").eq("user_id", userId).limit(200),
     // Contactos reais registados (save_interaction e equivalentes).
-    supabase.from("interactions").select("person_id, opportunity_id, occurred_at").eq("user_id", userId),
+    // `interaction_type` e `source_channel` servem o eixo Produtividade (nível 2).
+    supabase.from("interactions")
+      .select("person_id, opportunity_id, occurred_at, interaction_type, source_channel")
+      .eq("user_id", userId),
     // Seguimentos com resultado registado contam como contacto real.
     supabase.from("follow_ups").select("person_id, opportunity_id, related_property_id, outcome_recorded_at")
       .eq("user_id", userId).not("outcome_recorded_at", "is", null),
     supabase.from("opportunity_properties").select("opportunity_id, property_id").eq("user_id", userId),
+    // Crescimento: entrada nova no funil nos últimos 7 dias.
+    supabase.from("prospecting_leads").select("id, created_at").eq("user_id", userId).gte("created_at", isoDaysAgo(7)),
   ]);
 
   const intRows = ((ints.data as any[]) ?? []);
   const doneRows = ((done.data as any[]) ?? []);
   const linkRows = ((links.data as any[]) ?? []);
+  const dealRowsAll = ((deals.data as any[]) ?? []);
+
+  // ---- Factos da semana (últimos 7 dias). Contagens factuais, nunca previsão.
+  const facts: MentorFacts = emptyFacts();
+  facts.leadsSemana = ((leads.data as any[]) ?? []).filter((l) => days(l.created_at ?? null) < 7).length;
+  facts.seguimentosFechados = doneRows.filter((r) => days(r.outcome_recorded_at ?? null) < 7).length;
+  facts.negociosMovidos = dealRowsAll.filter(
+    (d) => d.stage_changed_at && days(d.stage_changed_at) < 7,
+  ).length;
 
   // Último contacto real por negócio.
   const lastByDeal = new Map<string, string | null>();
@@ -191,10 +220,15 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
     const pior = parados
       .map((p) => {
         const contacto = lastByProperty.get(p.id) ?? null;
-        return { dias: days(contacto ?? p.created_at ?? null), temContacto: !!contacto };
+        return { id: p.id, dias: days(contacto ?? p.created_at ?? null), temContacto: !!contacto };
       })
       .sort((a, b) => b.dias - a.dias)[0];
-    return {
+    facts.eixo = "produtividade";
+    facts.total = parados.length;
+    facts.unicoNoEstado = parados.length === 1;
+    facts.diasSemContacto = pior.dias;
+    facts.semNegocioLigado = !linkRows.some((l) => l.property_id === pior.id);
+    const tip: MentorTip = {
       key: "imoveis-parados",
       text: `Tens ${parados.length} imóve${parados.length === 1 ? "l" : "is"} "Por angariar" há mais de 10 dias sem nenhum movimento registado. Vale a pena retomares o contacto antes que arrefeçam de vez.`,
       linkLabel: parados.length === 1 ? "Ver o imóvel →" : `Ver os ${parados.length} imóveis →`,
@@ -203,10 +237,11 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
         ? `limiar de 10 dias; o mais parado está há ${pior.dias} dias desde o último contacto real registado (interação ou seguimento com resultado, incluindo através de um negócio ligado ao imóvel).`
         : `limiar de 10 dias; o mais parado nunca teve contacto registado — contam-se ${pior.dias} dias desde que criaste a ficha. Editar campos não conta como contacto.`,
     };
+    return { tip, facts };
   }
 
   // 2. Negócios na mesma fase há 25+ dias e sem contacto real nesse período.
-  const presos = ((deals.data as any[]) ?? []).filter((d) => {
+  const presos = dealRowsAll.filter((d) => {
     if (!isDealActive(d)) return false;
     if (days(d.stage_changed_at) < 25) return false;
     const contacto = lastByDeal.get(d.id) ?? null;
@@ -219,7 +254,11 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
         return { fase: days(d.stage_changed_at), contacto: contacto ? days(contacto) : null };
       })
       .sort((a, b) => b.fase - a.fase)[0];
-    return {
+    facts.eixo = "produtividade";
+    facts.total = presos.length;
+    facts.unicoNoEstado = presos.length === 1;
+    facts.diasSemContacto = piorD.contacto ?? piorD.fase;
+    const tip: MentorTip = {
       key: "negocios-parados",
       text: `${presos.length === 1 ? "Há 1 negócio" : `Há ${presos.length} negócios`} na mesma fase há mais de três semanas. Ou avança, ou fecha — deixar parado só ocupa cabeça.`,
       linkLabel: "Ver negócios →",
@@ -230,6 +269,7 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
           : `com o último contacto real há ${piorD.contacto} dias`
       } (interações e seguimentos com resultado).`,
     };
+    return { tip, facts };
   }
 
   // 3. Pessoas sem contacto real há mais de 60 dias.
@@ -237,7 +277,13 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
   if (rows.length) {
     const frias = rows.filter((p) => days(lastByPerson.get(p.id) ?? p.created_at ?? null) >= 60);
     if (frias.length >= 3) {
-      return {
+      facts.eixo = "crescimento";
+      facts.total = frias.length;
+      facts.unicoNoEstado = false;
+      facts.diasSemContacto = Math.max(
+        ...frias.map((p) => days(lastByPerson.get(p.id) ?? p.created_at ?? null)),
+      );
+      const tip: MentorTip = {
         key: "pessoas-frias",
         text: `Tens ${frias.length} pessoas sem contacto registado há mais de dois meses — ${frias.slice(0, 2).map((p) => String(p.name).split(" ")[0]).join(" e ")} entre elas. Um contacto curto agora vale mais do que uma campanha daqui a meio ano.`,
         linkLabel: "Ver pessoas →",
@@ -246,8 +292,9 @@ export async function computeMentorTip(supabase: any, userId: string): Promise<M
           ...frias.map((p) => days(lastByPerson.get(p.id) ?? p.created_at ?? null)),
         )} dias sem interação nem seguimento com resultado registado.`,
       };
+      return { tip, facts };
     }
   }
 
-  return null;
+  return { tip: null, facts };
 }
