@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   emptyFacts,
+  applyMentorLevel,
   mentorContextLine,
   mentorReinforcement,
   sinalCrescimento,
@@ -70,5 +71,38 @@ describe("mentor nível 2 — Crescimento vs. Produtividade", () => {
     expect(sinalProdutividade(facts({ seguimentosFechados: 0 }))).toBe("baixo");
     expect(sinalProdutividade(facts({ seguimentosFechados: 1 }))).toBe("morno");
     expect(sinalProdutividade(facts({ seguimentosFechados: 2, negociosMovidos: 1 }))).toBe("bom");
+  });
+});
+
+describe("níveis por plano — sem gate de acesso", () => {
+  const tip = {
+    key: "imoveis-parados",
+    text: "Tens 1 imóvel \"Por angariar\" há mais de 10 dias.",
+    linkLabel: "Ver o imóvel →",
+    to: "/imoveis",
+    reason: "limiar de 10 dias.",
+  };
+  const dados = facts({ total: 1, unicoNoEstado: true, semNegocioLigado: true, leadsSemana: 0, seguimentosFechados: 6 });
+
+  it("Base vê sempre o nível 1, com os mesmos dados de um Consultor", () => {
+    const r = applyMentorLevel(tip, dados, "base")!;
+    expect(r.text).toBe(tip.text);       // o Mentor continua visível
+    expect(r.context).toBeNull();        // mas sem linha contextual
+    expect(r.facts).toBeUndefined();
+  });
+
+  it("Consultor e Pro veem nível 1 + linha contextual", () => {
+    for (const tier of ["consultor", "pro", "hub"]) {
+      const r = applyMentorLevel(tip, dados, tier)!;
+      expect(r.text).toBe(tip.text);
+      expect(r.context).toContain("Crescimento");
+      expect(r.context).toContain("o único nesse estado");
+    }
+  });
+
+  it("sem padrão a corrigir: Base fica em silêncio, Consultor reforça a semana boa", () => {
+    const boa = facts({ leadsSemana: 3, seguimentosFechados: 4 });
+    expect(applyMentorLevel(null, boa, "base")).toBeNull();
+    expect(applyMentorLevel(null, boa, "consultor")?.key).toBe("semana-equilibrada");
   });
 });
