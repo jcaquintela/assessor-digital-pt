@@ -29,6 +29,12 @@ import {
   disconnectCalendar,
   syncCalendarNow,
 } from "@/lib/calendar/calendar.functions";
+import { GMAIL_CONNECTOR_ID } from "@/lib/email/gmail/provider";
+import {
+  getGmailStatus,
+  startGmailConnect,
+  disconnectGmail,
+} from "@/lib/email/gmail/gmail.functions";
 import { decideContentAccess, listMyConsentRequests } from "@/lib/admin/consent.functions";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
