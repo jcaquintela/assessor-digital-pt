@@ -908,15 +908,27 @@ function CalendarioSection() {
   );
 }
 
-/* ---------------- Email (Gmail) ---------------- */
+/* ---------------- Email (Gmail + Outlook) ---------------- */
 
-function EmailSection() {
+type MailCardProps = {
+  label: string;
+  connectorId: string;
+  queryKey: string;
+  popupName: string;
+  note?: string;
+  expiredNote?: string;
+  load: () => Promise<{ connected: boolean; needsReconnect: boolean; emailAddress: string | null }>;
+  start: () => Promise<{ authorizationUrl: string }>;
+  stop: () => Promise<unknown>;
+};
+
+function MailProviderCard(props: MailCardProps) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
 
   const status = useQuery({
-    queryKey: ["gmail-status"],
-    queryFn: () => getGmailStatus(),
+    queryKey: [props.queryKey],
+    queryFn: () => props.load(),
   });
 
   const waitForPopup = (popup: Window) =>
@@ -931,7 +943,7 @@ function EmailSection() {
         if (
           event.origin !== window.location.origin ||
           event.source !== popup ||
-          event.data?.connectorId !== GMAIL_CONNECTOR_ID ||
+          event.data?.connectorId !== props.connectorId ||
           (type !== "appUserConnectorOAuthComplete" && type !== "appUserConnectorOAuthFailed")
         ) return;
         cleanup();
@@ -948,16 +960,16 @@ function EmailSection() {
     });
 
   const ligar = async () => {
-    const popup = window.open("", "afonso-gmail-oauth", "width=620,height=760");
+    const popup = window.open("", props.popupName, "width=620,height=760");
     if (!popup) { toast.error("Permite janelas pop-up para ligares o email."); return; }
     setBusy(true);
     try {
-      const { authorizationUrl } = await startGmailConnect();
+      const { authorizationUrl } = await props.start();
       const done = waitForPopup(popup);
       popup.location.href = authorizationUrl;
       await done;
-      await qc.invalidateQueries({ queryKey: ["gmail-status"] });
-      toast.success("Gmail ligado.");
+      await qc.invalidateQueries({ queryKey: [props.queryKey] });
+      toast.success(`${props.label} ligado.`);
     } catch (e) {
       popup.close();
       toast.error(e instanceof Error ? e.message : "Não consegui ligar o email.");
@@ -969,9 +981,9 @@ function EmailSection() {
   const desligar = async () => {
     setBusy(true);
     try {
-      await disconnectGmail();
-      await qc.invalidateQueries({ queryKey: ["gmail-status"] });
-      toast.success("Gmail desligado.");
+      await props.stop();
+      await qc.invalidateQueries({ queryKey: [props.queryKey] });
+      toast.success(`${props.label} desligado.`);
     } catch {
       toast.error("Não consegui desligar.");
     } finally {
@@ -982,23 +994,22 @@ function EmailSection() {
   const r = status.data ?? { connected: false, needsReconnect: false, emailAddress: null as string | null };
 
   return (
-    <Section title="Email">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex items-center justify-between rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
+    <div className="flex items-center justify-between rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
           <div className="flex items-center gap-3">
             <Mail className="c-muted h-4 w-4" />
             <div>
-              <div className="text-[13.5px] font-semibold">Gmail</div>
+              <div className="text-[13.5px] font-semibold">{props.label}</div>
               <span className={`c-badge mt-1 inline-flex${r.connected && !r.needsReconnect ? " ok" : ""}`}>
                 {r.needsReconnect ? "Autorização expirada" : r.connected ? "Ligado" : "Não ligado"}
               </span>
               {r.connected && r.emailAddress && (
                 <p className="c-muted mt-1 text-[12px]">{r.emailAddress}</p>
               )}
-              {r.needsReconnect && (
-                <p className="c-muted mt-1 text-[12px]">
-                  O Google corta o acesso de 7 em 7 dias enquanto estamos em testes. Volta a ligar e continuo daí.
-                </p>
+              {r.needsReconnect && props.expiredNote && (
+                <p className="c-muted mt-1 text-[12px]">{props.expiredNote}</p>
+              )}
+              {!r.connected && props.note && (
+                <p className="c-muted mt-1 text-[12px]">{props.note}</p>
               )}
             </div>
           </div>
@@ -1012,11 +1023,39 @@ function EmailSection() {
               <button className="c-btn" disabled={busy} onClick={desligar}>Desligar</button>
             )}
           </div>
-        </div>
+    </div>
+  );
+}
+
+function EmailSection() {
+  return (
+    <Section title="Email">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MailProviderCard
+          label="Gmail"
+          connectorId={GMAIL_CONNECTOR_ID}
+          queryKey="gmail-status"
+          popupName="afonso-gmail-oauth"
+          expiredNote="O Google corta o acesso de 7 em 7 dias enquanto estamos em testes. Volta a ligar e continuo daí."
+          load={() => getGmailStatus()}
+          start={() => startGmailConnect()}
+          stop={() => disconnectGmail()}
+        />
+        <MailProviderCard
+          label="Outlook"
+          connectorId={OUTLOOK_CONNECTOR_ID}
+          queryKey="outlook-mail-status"
+          popupName="afonso-outlook-mail-oauth"
+          note="É a mesma ligação do teu Outlook Calendar. Vais ver um novo ecrã de autorização — é normal, é só para acrescentar o email."
+          expiredNote="Perdi o acesso à tua caixa de correio. Volta a ligar e continuo daí."
+          load={() => getOutlookMailStatus()}
+          start={() => startOutlookMailConnect()}
+          stop={() => disconnectOutlookMail()}
+        />
       </div>
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
-        O Afonso lê o teu email e prepara rascunhos, mas nunca envia nada sozinho. Se já tens o
-        Google Calendar ligado, esta autorização é à parte e não mexe nele.
+        O Afonso lê o teu email e prepara rascunhos, mas nunca envia nada sozinho. O calendário
+        continua em "Calendário" — aqui é só a caixa de correio.
       </p>
     </Section>
   );
