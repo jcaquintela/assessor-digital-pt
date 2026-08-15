@@ -65,7 +65,21 @@ export function enforceTransparentConfirmation(
   opts: { executedOk: boolean },
 ): string {
   const receipt = describeWrites(tools);
-  if (claimsDelivery(reply)) return receipt ?? "Guardei o registo no dashboard. Não enviei nada a ninguém.";
-  if (opts.executedOk && isBareAck(reply) && receipt) return receipt;
-  return reply;
+  let out = reply;
+  if (claimsDelivery(reply)) out = receipt ?? "Guardei o registo no dashboard. Não enviei nada a ninguém.";
+  else if (opts.executedOk && isBareAck(reply) && receipt) out = receipt;
+  return withProspectingHint(out, tools);
+}
+
+// Nota leve: onde é que o consultor vê as placas. Não é aviso de limitação,
+// é orientação — vale para qualquer plano.
+const PROSPECTING_HINT = "Vês esta e as outras em Prospeção, no dashboard.";
+
+function withProspectingHint(reply: string, tools: ToolOutcome[]): string {
+  const created = tools.some((t) => t.ok && t.name === "create_prospecting_lead");
+  if (!created) return reply;
+  if (/em Prospeção/i.test(reply)) return reply;
+  const base = reply.trim();
+  if (!base) return PROSPECTING_HINT;
+  return `${base}${/[.!?…]$/.test(base) ? "" : "."} ${PROSPECTING_HINT}`;
 }
