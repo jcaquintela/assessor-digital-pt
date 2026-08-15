@@ -17,6 +17,8 @@ export const QUERY_TOOLS = new Set([
   "search_active_reminders",
   "search_agenda",
   "search_files",
+  "search_emails",
+  "summarize_email",
 ]);
 
 export function isQueryTool(name: string): boolean {
@@ -99,6 +101,20 @@ function lineFor(tool: string, row: Record<string, unknown>): string {
       italicWa(s(row.document_type) || s(row.classification)),
     ]);
   }
+  if (tool === "search_emails") {
+    const when = s(row.sent_at)
+      ? new Intl.DateTimeFormat("pt-PT", {
+          timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+        }).format(new Date(s(row.sent_at)))
+      : "";
+    const who = s(row.from).replace(/<[^>]*>/g, "").replace(/"/g, "").trim() || s(row.from);
+    return joinParts([
+      boldWa(who || "Remetente"),
+      s(row.subject) || "(sem assunto)",
+      when,
+      row.is_read === false ? italicWa("por ler") : null,
+    ]);
+  }
   return joinParts([boldWa(s(row.title) || s(row.name))]);
 }
 
@@ -132,6 +148,11 @@ const HEADER: Record<string, { one: string; many: (n: number) => string; empty: 
     one: "Tens 1 ficheiro no Drive Inteligente:",
     many: (n) => `Tens ${n} ficheiros no Drive Inteligente:`,
     empty: "Não tens ficheiros no Drive Inteligente.",
+  },
+  search_emails: {
+    one: "Tens 1 email:",
+    many: (n) => `Tens ${n} emails:`,
+    empty: "Não encontrei emails com esses critérios.",
   },
 };
 
