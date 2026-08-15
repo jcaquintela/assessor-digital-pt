@@ -423,7 +423,11 @@ function DrivePage() {
     openCategory: catParam,
   });
   const [expandido, setExpandido] = useState<string | null>(null);
-  const catAberta = catParam ? grupos.find((g) => g.key === catParam) ?? null : null;
+  // Pesquisar manda sobre a categoria aberta: os resultados são transversais.
+  const catAberta =
+    catParam && !qParam && !nifParam && !artigoParam
+      ? grupos.find((g) => g.key === catParam) ?? null
+      : null;
   const fecharCategoria = () => navigate({ search: (s: any) => ({ ...s, cat: undefined }) });
 
   const eliminar = (ids: string[], label: string) => {
