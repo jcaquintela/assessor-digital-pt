@@ -1,6 +1,6 @@
 import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -17,6 +17,9 @@ import {
   restoreDriveFiles,
   driveAttention,
   driveQuotaSummary,
+  backfillSystemCategories,
+  backfillChecksums,
+  markDuplicateFiles,
 } from "@/lib/drive/drive.functions";
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
@@ -432,6 +435,7 @@ function DrivePage() {
 
   // Arrumação a pedido: categoria automática, impressão digital do conteúdo
   // e sinalização de repetidos. Nunca apaga nada — só marca.
+  const qc = useQueryClient();
   const runCategorias = useServerFn(backfillSystemCategories);
   const runChecksums = useServerFn(backfillChecksums);
   const runDuplicados = useServerFn(markDuplicateFiles);
