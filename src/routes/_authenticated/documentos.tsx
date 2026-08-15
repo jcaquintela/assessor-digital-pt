@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { driveQuotaSummary } from "@/lib/drive/drive.functions";
 import { usePreviewTier } from "@/lib/subscription/tier-preview";
+import { useQuotaRevalidate } from "@/lib/drive/use-quota-revalidate";
 
 export const Route = createFileRoute("/_authenticated/documentos")({
   head: () => ({
@@ -32,6 +33,7 @@ function QuotaSummary() {
     queryKey: ["drive", "quota", "documentos", previewTier ?? "real"],
     queryFn: () => fetchQuota({ data: { previewTier } }),
   });
+  useQuotaRevalidate();
 
   if (!quotaQ.data || quotaQ.data.limit === null) return null;
 
