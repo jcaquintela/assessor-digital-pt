@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyDecisions, decisionEffect, type MentorDecision } from "./mentor-decisions";
+import { applyDecisions, decisionEffect, lastDecision, type MentorDecision } from "./mentor-decisions";
 
 const NOW = Date.parse("2026-08-15T12:00:00Z");
 const haDias = (n: number) => new Date(NOW - n * 864e5).toISOString();
@@ -40,6 +40,14 @@ describe("memória de decisões do Mentor", () => {
     expect(applyDecisions(tip, [{ ...dec, createdAt: haDias(100) }], NOW)).not.toBeNull();
   });
 
+  it("tratado cala 60 dias e depois reconhece que já tinha sido tratado", () => {
+    const dec = d({ decision: "tratado" });
+    expect(applyDecisions(tip, [{ ...dec, createdAt: haDias(30) }], NOW)).toBeNull();
+    const r = applyDecisions(tip, [{ ...dec, createdAt: haDias(70) }], NOW)!;
+    expect(r.text).toContain("Já tinhas dado este assunto como tratado");
+    expect(r.text).toContain(tip.text);
+  });
+
   it("a decisão só afeta o mesmo sinal", () => {
     const outra = d({ tipKey: "negocios-parados", decision: "cancelar", createdAt: haDias(1) });
     expect(applyDecisions(tip, [outra], NOW)).toEqual(tip);
@@ -52,5 +60,13 @@ describe("memória de decisões do Mentor", () => {
     ];
     expect(applyDecisions(tip, decisions, NOW)).toBeNull();
     expect(decisionEffect(decisions, tip.key, NOW).last?.decision).toBe("confirmar");
+  });
+
+  it("desfazer (remover a decisão mais recente) faz o sinal voltar a ser considerado", () => {
+    const decisions = [d({ decision: "tratado", createdAt: haDias(1) })];
+    expect(applyDecisions(tip, decisions, NOW)).toBeNull();
+    expect(lastDecision(decisions, tip.key)?.decision).toBe("tratado");
+    // Simula o desfazer: a decisão foi removida.
+    expect(applyDecisions(tip, [], NOW)).toEqual(tip);
   });
 });
