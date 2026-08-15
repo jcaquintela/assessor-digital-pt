@@ -199,6 +199,8 @@ function DrivePage() {
     quotaQ.data.limit !== null &&
     quotaQ.data.used >= quotaQ.data.limit;
   const [quotaBloqueio, setQuotaBloqueio] = useState(false);
+  // Nome do ficheiro que ficou por carregar, para o consultor saber qual foi.
+  const [ficheiroBloqueado, setFicheiroBloqueado] = useState<string | null>(null);
 
   // Upgrade feito: a quota deixou de estar cheia — fechar o bloqueio e avisar.
   const quotaCheiaAnterior = useRef(quotaCheia);
@@ -225,6 +227,10 @@ function DrivePage() {
     const f = e.target.files?.[0];
     if (!f) return;
     if (quotaCheia) {
+      setFicheiroBloqueado(f.name);
+      toast.error(
+        `“${f.name}” não foi carregado: atingiste o limite mensal de ${quotaQ.data!.limit} ficheiros do plano ${quotaQ.data!.label}.`,
+      );
       setQuotaBloqueio(true);
       if (fileRef.current) fileRef.current.value = "";
       return;
@@ -232,20 +238,24 @@ function DrivePage() {
     const fd = new FormData();
     fd.append("file", f);
     try {
-      toast.loading("A carregar…", { id: "up" });
+      toast.loading(`A carregar “${f.name}”…`, { id: "up" });
       await upload({ data: fd });
-      toast.success("Recebi o ficheiro. Vou organizá-lo.", { id: "up" });
+      toast.success(`Recebi “${f.name}”. Vou organizá-lo.`, { id: "up" });
       listQ.refetch();
       countsQ.refetch();
       quotaQ.refetch();
     } catch (err: any) {
       const msg = String(err?.message ?? "");
       if (msg.includes("monthly_files_exceeded") || /limite mensal/i.test(msg)) {
-        toast.error("Limite mensal de ficheiros atingido.", { id: "up" });
+        setFicheiroBloqueado(f.name);
+        toast.error(
+          `“${f.name}” não foi carregado: atingiste o limite mensal de ficheiros do teu plano.`,
+          { id: "up" },
+        );
         setQuotaBloqueio(true);
         quotaQ.refetch();
       } else {
-        toast.error(err?.message ?? "Falhou o upload.", { id: "up" });
+        toast.error(`“${f.name}” falhou: ${err?.message ?? "erro no upload."}`, { id: "up" });
       }
     } finally {
       if (fileRef.current) fileRef.current.value = "";
@@ -396,6 +406,7 @@ function DrivePage() {
           preview={quotaQ.data.preview}
           open={quotaBloqueio}
           onOpenChange={setQuotaBloqueio}
+          blockedFileName={ficheiroBloqueado}
         >
           {null}
         </QuotaUpgradeDialog>
