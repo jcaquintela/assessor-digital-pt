@@ -54,6 +54,7 @@ export const SearchEmailsArgs = z.object({
   query: z.string().optional().nullable(),
   only_unread: z.boolean().optional().nullable(),
   max: z.number().int().optional().nullable(),
+  include_all: z.boolean().optional().nullable(),
 });
 export type SearchEmailsArgs = z.infer<typeof SearchEmailsArgs>;
 
@@ -610,6 +611,11 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
           query: { type: ["string", "null"], description: "Pesquisa no estilo Gmail (ex.: from:maria, subject:proposta)." },
           only_unread: { type: ["boolean", "null"], description: "true para só emails por ler." },
           max: { type: ["integer", "null"], description: "Máximo de emails (1-20)." },
+          include_all: {
+            type: ["boolean", "null"],
+            description:
+              "true só quando ele pedir para ver tudo ('mostra todos', 'inclui newsletters'). Por defeito escondemos newsletters e notificações automáticas.",
+          },
         },
         required: [],
       },
