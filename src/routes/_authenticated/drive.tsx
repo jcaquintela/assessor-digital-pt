@@ -24,6 +24,8 @@ import { usePreviewTier } from "@/lib/subscription/tier-preview";
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
 import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
 import { ReorderPagesDialog } from "@/components/drive/reorder-pages-dialog";
+import { QuotaUpgradeDialog } from "@/components/drive/quota-upgrade-dialog";
+
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import { groupDriveFiles, type GroupBy } from "@/lib/drive/group-files";
 import {
@@ -379,10 +381,19 @@ function DrivePage() {
             />
           </div>
           {quotaQ.data.hint && (
-            <Button asChild size="sm" className="mt-3 w-full sm:w-auto">
-              <Link to="/subscricao">Fazer upgrade do plano</Link>
-            </Button>
+            <QuotaUpgradeDialog
+              used={quotaQ.data.used}
+              limit={quotaQ.data.limit}
+              label={quotaQ.data.label}
+              hint={quotaQ.data.hint}
+              preview={quotaQ.data.preview}
+            >
+              <Button size="sm" className="mt-3 w-full sm:w-auto">
+                Fazer upgrade do plano
+              </Button>
+            </QuotaUpgradeDialog>
           )}
+
         </div>
       )}
 

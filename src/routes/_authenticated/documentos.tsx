@@ -1,9 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Upload } from "lucide-react";
+import { QuotaUpgradeDialog } from "@/components/drive/quota-upgrade-dialog";
+
 import { formatData } from "@/lib/demo-data";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -73,10 +75,19 @@ function QuotaSummary() {
           </div>
         )}
         {quotaQ.data.hint && (
-          <Button asChild size="sm" className="mt-3 w-full sm:w-auto">
-            <Link to="/subscricao">Fazer upgrade do plano</Link>
-          </Button>
+          <QuotaUpgradeDialog
+            used={quotaQ.data.used}
+            limit={quotaQ.data.limit}
+            label={quotaQ.data.label}
+            hint={quotaQ.data.hint}
+            preview={quotaQ.data.preview}
+          >
+            <Button size="sm" className="mt-3 w-full sm:w-auto">
+              Fazer upgrade do plano
+            </Button>
+          </QuotaUpgradeDialog>
         )}
+
       </CardContent>
     </Card>
   );
