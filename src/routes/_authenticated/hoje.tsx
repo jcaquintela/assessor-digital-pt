@@ -148,6 +148,8 @@ function HojePage() {
   const [factosAbertos, setFactosAbertos] = useState(false);
   const [ajusteAberto, setAjusteAberto] = useState(false);
   const [ajusteTexto, setAjusteTexto] = useState("");
+  const [tratadoNota, setTratadoNota] = useState("");
+  const [tratadoAberto, setTratadoAberto] = useState(false);
   const mentor = overview.data?.mentor ?? null;
   const resumo = overview.data?.summary ?? null;
   const tierInfo = overview.data?.tierInfo ?? null;
