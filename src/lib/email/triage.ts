@@ -17,6 +17,8 @@ export type EmailRow = {
   snippet?: string | null;
   sent_at?: string | null;
   is_read?: boolean | null;
+  /** Sinal do próprio provedor (Focused/Other da Microsoft, pasta de lixo). */
+  low_priority_hint?: boolean | null;
 };
 
 export type EmailBucket = "known_person" | "personal" | "noise";
@@ -44,6 +46,7 @@ export function looksLikeNoise(row: Pick<EmailRow, "from" | "subject">): boolean
   const parsed = parseFromHeader(row.from);
   const email = parsed?.email ?? String(row.from ?? "").toLowerCase();
   const [local = "", domain = ""] = email.split("@");
+  if ((row as EmailRow).low_priority_hint === true) return true;
   if (NOREPLY_LOCAL.test(local)) return true;
   if (NOISE_DOMAIN.test(domain)) return true;
   if (NOISE_BRAND_DOMAIN.test(`${domain}.`)) return true;
