@@ -1,5 +1,5 @@
 import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -39,6 +39,13 @@ import {
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import { groupDriveFiles, type GroupBy } from "@/lib/drive/group-files";
 import { buildCategoryCards, shouldShowCards } from "@/lib/drive/category-cards";
+import {
+  resolveCategoryView,
+  nextSearchForCard,
+  closedSearch,
+  categoryShareUrl,
+  type DriveSearch,
+} from "@/lib/drive/category-url";
 import {
   FileText,
   Image as ImageIcon,
@@ -401,6 +408,8 @@ function DrivePage() {
   // Trocar de agrupamento não deve fazer perder a posição na página:
   // guardamos o scroll no clique e repomo-lo depois de renderizar a nova vista.
   const scrollKeep = useRef<number | null>(null);
+  // Scroll da grelha de cartões, reposto ao voltar (botão ou back do browser).
+  const scrollCartoes = useRef<number | null>(null);
   const mudarAgrupamento = (next: GroupBy) => {
     if (next === groupBy) return;
     scrollKeep.current = typeof window !== "undefined" ? window.scrollY : null;
