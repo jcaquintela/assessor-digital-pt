@@ -95,6 +95,7 @@ function DefinicoesPage() {
         <PerfilSection />
         <AssessorNameSection />
         <PlanoSection />
+        <TierPreviewSection />
         <SupremeSection />
         <NotificacoesSection />
         <CanalSection />
