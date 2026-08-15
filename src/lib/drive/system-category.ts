@@ -65,7 +65,8 @@ export function systemCategoryFor(file: {
 
   if (cls === "audio" || mime.startsWith("audio/")) return "notas_voz";
   if (cls === "prospecao" || /placa|vende-se|vendo|arrenda/.test(doc)) return "prospecao";
-  if (/cartao (de )?(visita|contacto)|business card/.test(doc)) return "contactos";
+  if (cls === "cartao_visita" || /cartao (de )?(visita|contacto)|business card/.test(doc))
+    return "contactos";
   if (doc) return "documentos";
   if (cls.startsWith("documento") || mime === "application/pdf" || mime.includes("wordprocessingml"))
     return "documentos";
