@@ -905,10 +905,123 @@ function CalendarioSection() {
 /* ---------------- Conta ---------------- */
 
 function ContaSection() {
-  return <ContaSectionInner />;
+/* ---------------- Email (Gmail) ---------------- */
+
+function EmailSection() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  const status = useQuery({
+    queryKey: ["gmail-status"],
+    queryFn: () => getGmailStatus(),
+  });
+
+  const waitForPopup = (popup: Window) =>
+    new Promise<void>((resolve, reject) => {
+      let poll: number | undefined;
+      const cleanup = () => {
+        window.removeEventListener("message", onMessage);
+        if (poll !== undefined) window.clearInterval(poll);
+      };
+      const onMessage = (event: MessageEvent) => {
+        const type = event.data?.type;
+        if (
+          event.origin !== window.location.origin ||
+          event.source !== popup ||
+          event.data?.connectorId !== GMAIL_CONNECTOR_ID ||
+          (type !== "appUserConnectorOAuthComplete" && type !== "appUserConnectorOAuthFailed")
+        ) return;
+        cleanup();
+        if (type === "appUserConnectorOAuthComplete") { resolve(); return; }
+        popup.close();
+        reject(new Error("A autorização não foi concluída."));
+      };
+      window.addEventListener("message", onMessage);
+      poll = window.setInterval(() => {
+        if (!popup.closed) return;
+        cleanup();
+        reject(new Error("A janela foi fechada antes de concluir."));
+      }, 500);
+    });
+
+  const ligar = async () => {
+    const popup = window.open("", "afonso-gmail-oauth", "width=620,height=760");
+    if (!popup) { toast.error("Permite janelas pop-up para ligares o email."); return; }
+    setBusy(true);
+    try {
+      const { authorizationUrl } = await startGmailConnect();
+      const done = waitForPopup(popup);
+      popup.location.href = authorizationUrl;
+      await done;
+      await qc.invalidateQueries({ queryKey: ["gmail-status"] });
+      toast.success("Gmail ligado.");
+    } catch (e) {
+      popup.close();
+      toast.error(e instanceof Error ? e.message : "Não consegui ligar o email.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const desligar = async () => {
+    setBusy(true);
+    try {
+      await disconnectGmail();
+      await qc.invalidateQueries({ queryKey: ["gmail-status"] });
+      toast.success("Gmail desligado.");
+    } catch {
+      toast.error("Não consegui desligar.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const r = status.data ?? { connected: false, needsReconnect: false, emailAddress: null as string | null };
+
+  return (
+    <Section title="Email">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex items-center justify-between rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Mail className="c-muted h-4 w-4" />
+            <div>
+              <div className="text-[13.5px] font-semibold">Gmail</div>
+              <span className={`c-badge mt-1 inline-flex${r.connected && !r.needsReconnect ? " ok" : ""}`}>
+                {r.needsReconnect ? "Autorização expirada" : r.connected ? "Ligado" : "Não ligado"}
+              </span>
+              {r.connected && r.emailAddress && (
+                <p className="c-muted mt-1 text-[12px]">{r.emailAddress}</p>
+              )}
+              {r.needsReconnect && (
+                <p className="c-muted mt-1 text-[12px]">
+                  O Google corta o acesso de 7 em 7 dias enquanto estamos em testes. Volta a ligar e continuo daí.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {(!r.connected || r.needsReconnect) && (
+              <button className="c-btn" disabled={busy} onClick={ligar}>
+                {busy ? "A ligar…" : r.needsReconnect ? "Voltar a ligar" : "Ligar"}
+              </button>
+            )}
+            {r.connected && (
+              <button className="c-btn" disabled={busy} onClick={desligar}>Desligar</button>
+            )}
+          </div>
+        </div>
+      </div>
+      <p className="c-muted mt-3 text-[12px] leading-relaxed">
+        O Afonso lê o teu email e prepara rascunhos, mas nunca envia nada sozinho. Se já tens o
+        Google Calendar ligado, esta autorização é à parte e não mexe nele.
+      </p>
+    </Section>
+  );
 }
 
-function ContaSectionInner() {
+/* ---------------- Conta ---------------- */
+
+function ContaSection() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
 
