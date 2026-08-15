@@ -48,6 +48,13 @@ describe("memória de decisões do Mentor", () => {
     expect(r.text).toContain(tip.text);
   });
 
+  it("tratado com nota lembra o motivo quando volta", () => {
+    const dec = d({ decision: "tratado", note: "resolvido por telefone com o condomínio" });
+    const r = applyDecisions(tip, [{ ...dec, createdAt: haDias(70) }], NOW)!;
+    expect(r.text).toContain("resolvido por telefone com o condomínio");
+    expect(r.text).toContain(tip.text);
+  });
+
   it("a decisão só afeta o mesmo sinal", () => {
     const outra = d({ tipKey: "negocios-parados", decision: "cancelar", createdAt: haDias(1) });
     expect(applyDecisions(tip, [outra], NOW)).toEqual(tip);
