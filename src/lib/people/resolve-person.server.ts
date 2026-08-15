@@ -7,7 +7,7 @@
 // inequívoco), ou pergunta. Silêncio nunca é resposta.
 
 import { foldText } from "@/lib/search/normalize";
-import { classifyPeopleMatches, nameMatchQuality, personNameFromEventText } from "./name-match";
+import { classifyPeopleMatches, describeCandidates, joinOr, nameMatchQuality, personLabel, personNameFromEventText } from "./name-match";
 import { classifyPhoneInput } from "./phone-input";
 
 export interface PersonCandidate {
@@ -149,8 +149,7 @@ export async function resolvePersonForWrite(
 }
 
 function label(c: PersonCandidate): string {
-  const extra = [c.relationship_type, c.phone].filter(Boolean).join(", ");
-  return extra ? `${c.name} (${extra})` : String(c.name ?? "");
+  return personLabel(c as any);
 }
 
 /** Pergunta em PT-PT para cada resultado da resolução. */
@@ -160,12 +159,12 @@ export function personResolutionQuestion(res: PersonResolution): string {
     case "confirm_exact":
       return `É o ${label(res.candidates[0]!)} que já tens na lista? Confirmas para eu ligar o compromisso a ele.`;
     case "choose":
-      return `Tenho mais do que um ${who}: ${res.candidates.map(label).join("; ")}. Qual deles é?`;
+      return `Tenho mais do que um ${who}: ${describeCandidates(res.candidates as any).join("; ")}. Qual deles é?`;
     case "confirm_partial":
       return `O ${who} é o ${label(res.candidates[0]!)}? Se não for, digo-me quem é ou crio um contacto novo.`;
     case "new":
       return res.candidates.length
-        ? `Ainda não tenho ninguém chamado exatamente "${who}". Crio um contacto novo ou é ${res.candidates.map((c) => c.name).join(" ou ")}?`
+        ? `Ainda não tenho ninguém chamado exatamente "${who}". Crio um contacto novo ou é ${joinOr(describeCandidates(res.candidates as any))}?`
         : `Ainda não tenho nenhum contacto "${who}". Crio um contacto novo com esse nome ou avanço sem associar?`;
     default:
       return "";

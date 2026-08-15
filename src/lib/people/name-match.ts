@@ -65,6 +65,64 @@ function namesList(rows: NamedRow[], max = 3): string {
   return `${list.slice(0, -1).join(", ")} ou ${list[list.length - 1]}`;
 }
 
+// ---------------------------------------------------------------------------
+// Desambiguação com contexto.
+//
+// Caso real (15/08): com dois contactos "Carla Martins" na lista, a pergunta
+// saía "…ou é Carla Martins ou Carla Martins?" — sem nada que os distinga.
+// Regra: quando dois candidatos têm o mesmo nome, a pergunta mostra sempre
+// algo que os separe (papel, telefone) e, em último caso, a ordem de registo.
+// ---------------------------------------------------------------------------
+
+export interface CandidateLike extends NamedRow {
+  phone?: string | null;
+  relationship_type?: string | null;
+}
+
+const RELATIONSHIP_PT: Record<string, string> = {
+  proprietario: "proprietário",
+  potencial_cliente: "potencial cliente",
+  comprador: "comprador",
+  investidor: "investidor",
+  colega: "colega",
+  parceiro: "parceiro",
+  outro: "outro",
+};
+
+function candidateDetails(c: CandidateLike): string[] {
+  const rel = String(c.relationship_type ?? "").trim();
+  const phone = String(c.phone ?? "").trim();
+  return [rel ? (RELATIONSHIP_PT[rel] ?? rel.replace(/_/g, " ")) : "", phone].filter(Boolean);
+}
+
+/** Nome + contexto distintivo ("Carla Martins (proprietária, 912 …)"). */
+export function personLabel(c: CandidateLike): string {
+  const name = String(c.name ?? "").trim();
+  const details = candidateDetails(c);
+  return details.length ? `${name} (${details.join(", ")})` : name;
+}
+
+/** Etiquetas garantidamente diferentes entre si (nunca duas iguais). */
+export function describeCandidates(rows: CandidateLike[], max = 4): string[] {
+  const labels = rows.slice(0, max).map(personLabel).filter(Boolean);
+  const counts = new Map<string, number>();
+  for (const l of labels) counts.set(l, (counts.get(l) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  return labels.map((l) => {
+    if ((counts.get(l) ?? 0) < 2) return l;
+    const n = (seen.get(l) ?? 0) + 1;
+    seen.set(l, n);
+    return `${l} (o ${n}.º que registaste)`;
+  });
+}
+
+/** "A, B ou C" a partir de etiquetas já distintas. */
+export function joinOr(parts: string[]): string {
+  const list = parts.filter(Boolean);
+  if (list.length <= 1) return list[0] ?? "";
+  return `${list.slice(0, -1).join(", ")} ou ${list[list.length - 1]}`;
+}
+
 /** Resposta quando não há ninguém com esse nome exacto. */
 export function noExactMatchReply(query: string, suggestions: NamedRow[]): string {
   const base = `Não encontrei ninguém chamado exatamente "${query.trim()}".`;
@@ -76,7 +134,12 @@ export function noExactMatchReply(query: string, suggestions: NamedRow[]): strin
 export function askLinkPersonQuestion(name: string, suggestions: NamedRow[]): string {
   const who = name.trim();
   if (suggestions.length) {
-    return `Ainda não tenho ninguém chamado exatamente "${who}". Crio um contacto novo "${who}" ou é ${namesList(suggestions)}?`;
+    const labels = describeCandidates(suggestions as CandidateLike[]);
+    const sameName = suggestions.some((s) => foldText(s.name) === foldText(who));
+    if (sameName) {
+      return `Tenho mais do que um contacto "${who}": ${labels.join("; ")}. Qual deles é? Se não for nenhum, crio um contacto novo.`;
+    }
+    return `Ainda não tenho ninguém chamado exatamente "${who}". Crio um contacto novo "${who}" ou é ${joinOr(labels)}?`;
   }
   return `Ainda não tenho nenhum contacto "${who}". Crio um contacto novo com esse nome ou é alguém que já tens com outro nome?`;
 }
@@ -92,9 +155,32 @@ const NOT_A_NAME = new Set([
   "visita", "reuniao", "reunião", "casa", "imovel", "imóvel", "amanha", "amanhã",
   "hoje", "isso", "isto", "ela", "equipa", "banco", "notario", "notário",
   "proprietario", "proprietário", "comprador", "vendedor", "lead", "contacto",
+  "sr", "sra", "dr", "dra", "eng", "enga", "prof", "dona", "arq",
 ]);
 
 const NAME_RE = /[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+)?/;
+
+// Tratamentos: "Sra Carla Martins", "Dr. João", "Eng. Costa". Nunca são nome
+// próprio — caso real (15/08): o Afonso perguntou se criava o contacto "Sra".
+const HONORIFIC_SRC =
+  "(?:[Ss]r|[Ss]ra|[Ss]r\\.?ª|[Dd]r|[Dd]ra|[Ee]ng|[Ee]ng[ºª]|[Ee]nga|[Pp]rof|[Aa]rq|[Dd]ona|[Dd]\\.)\\.?";
+const HONORIFIC_ONLY_RE = new RegExp(`^${HONORIFIC_SRC}$`);
+
+/** Remove tratamentos do início do nome ("Sra Carla Martins" → "Carla Martins"). */
+export function stripHonorific(name: string | null | undefined): string {
+  let out = String(name ?? "").trim();
+  for (let i = 0; i < 3; i++) {
+    const next = out.replace(new RegExp(`^${HONORIFIC_SRC}\\s+`), "").trim();
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
+/** `true` quando o texto é apenas um tratamento ("Sra", "Dr."). */
+export function isHonorificOnly(name: string | null | undefined): boolean {
+  return HONORIFIC_ONLY_RE.test(String(name ?? "").trim());
+}
 
 /**
  * Nome da pessoa mencionada num pedido de agendamento:
@@ -105,15 +191,19 @@ export function personNameFromEventText(text: string | null | undefined): string
   const t = String(text ?? "");
   if (!t.trim()) return null;
   const patterns = [
+    // Tratamento seguido de nome, mesmo sem preposição antes:
+    // "…possível angariação. Sra Carla Martins".
+    new RegExp(`(?:^|[\\s,;:(.])${HONORIFIC_SRC}\\s+(NAME)`.replace("NAME", NAME_RE.source)),
     // `(?:^|[\s,;:(])` em vez de `\b`: "à" não é caractere de palavra em JS,
     // por isso "Ligar à Manuela" nunca chegava a ter nome extraído.
-    /(?:^|[\s,;:(])(?:com|para|à|ao|a)\s+(?:o|a|os|as)?\s*(?:sr\.?|sra\.?|dona|dr\.?|dra\.?)?\s*(NAME)/,
+    new RegExp(`(?:^|[\\s,;:(])(?:com|para|à|ao|a)\\s+(?:o|a|os|as)?\\s*(?:${HONORIFIC_SRC}\\s+)?(NAME)`.replace("NAME", NAME_RE.source)),
     /\b(?:lead|cliente|contacto|propriet[áa]ri[oa]|comprador[a]?)\s+(NAME)/,
   ].map((re) => new RegExp(re.source.replace("NAME", NAME_RE.source)));
   for (const re of patterns) {
     const m = t.match(re);
-    const cand = m?.[1]?.trim();
+    const cand = stripHonorific(m?.[1]);
     if (!cand) continue;
+    if (isHonorificOnly(cand)) continue;
     const first = foldText(cand.split(/\s+/)[0]);
     if (NOT_A_NAME.has(first) || first.length < 3) continue;
     return cand;
