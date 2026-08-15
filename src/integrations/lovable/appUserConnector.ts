@@ -41,18 +41,27 @@ export async function authorizeAppUserOAuth(
   };
   if (params.connectionAPIKey) headers["X-Connection-Api-Key"] = params.connectionAPIKey;
 
-  const res = await fetch(`${params.gatewayBaseUrl}/api/v1/app-users/oauth2/authorize`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      connector_id: params.connectorId,
-      app_user_id: params.appUserId,
-      return_url: params.returnUrl,
-      credentials_configuration: params.credentialsConfiguration,
-    }),
+  const body = JSON.stringify({
+    connector_id: params.connectorId,
+    app_user_id: params.appUserId,
+    return_url: params.returnUrl,
+    credentials_configuration: params.credentialsConfiguration,
   });
 
-  const text = await res.text();
+  // O gateway devolve por vezes 502/503/504 transitórios (upstream reset).
+  // Repetimos até 3 vezes com espera curta antes de mostrar erro ao consultor.
+  let res!: Response;
+  let text = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(`${params.gatewayBaseUrl}/api/v1/app-users/oauth2/authorize`, {
+      method: "POST",
+      headers,
+      body,
+    });
+    text = await res.text();
+    if (res.ok || ![502, 503, 504].includes(res.status)) break;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+  }
   if (!res.ok) throw new Error(`App User OAuth start failed (${res.status}): ${text || res.statusText}`);
 
   let body: { authorization_url?: string; session_id?: string };
