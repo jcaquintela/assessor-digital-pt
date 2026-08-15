@@ -577,12 +577,62 @@ function HojePage() {
             <button
               type="button"
               className="text-[12.5px] font-semibold"
-              style={{ color: "var(--muted)" }}
-              onClick={() => setTipOff(mentor.key)}
+              style={{ color: "var(--sage)" }}
+              disabled={mentorDecision.isPending}
+              onClick={() => mentorDecision.mutate({ tipKey: mentor.key, decision: "confirmar" })}
             >
-              Ignorar
+              Confirmar
+            </button>
+            <button
+              type="button"
+              className="text-[12.5px] font-semibold"
+              style={{ color: "var(--muted)" }}
+              onClick={() => setAjusteAberto((v) => !v)}
+            >
+              Editar
+            </button>
+            <button
+              type="button"
+              className="text-[12.5px] font-semibold"
+              style={{ color: "var(--muted)" }}
+              disabled={mentorDecision.isPending}
+              onClick={() => mentorDecision.mutate({ tipKey: mentor.key, decision: "cancelar" })}
+            >
+              Cancelar
             </button>
           </div>
+          {ajusteAberto ? (
+            <div className="mt-2">
+              <textarea
+                className="w-full rounded-md border p-2 text-[12.5px]"
+                rows={2}
+                placeholder="O que devia ser diferente nesta sugestão?"
+                value={ajusteTexto}
+                onChange={(e) => setAjusteTexto(e.target.value)}
+              />
+              <div className="mt-1 flex items-center gap-3">
+                <button
+                  type="button"
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: "var(--sage)" }}
+                  disabled={mentorDecision.isPending}
+                  onClick={() =>
+                    mentorDecision.mutate({ tipKey: mentor.key, decision: "editar", note: ajusteTexto })
+                  }
+                >
+                  Guardar ajuste
+                </button>
+                <button
+                  type="button"
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: "var(--muted)" }}
+                  onClick={() => setAjusteAberto(false)}
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
       )}
 
