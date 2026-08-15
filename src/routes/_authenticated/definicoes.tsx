@@ -837,6 +837,7 @@ function ActiveProviderPicker(props: {
 function CalendarioSectionInner() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<CalendarProvider | null>(null);
+  const [mudar, setMudar] = useState(false);
 
   const status = useQuery({
     queryKey: ["calendar-status"],
