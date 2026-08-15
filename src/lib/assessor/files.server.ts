@@ -311,15 +311,26 @@ export async function processIncomingFile(
 
   const classification = classifyByMime(mimeType);
 
+  // Plano efetivo do consultor (aplica beta override). Serve as duas regras
+  // seguintes: espaço incluído e ficheiros por mês.
+  let effectiveTier: string | null = null;
+  {
+    const { data: rpcTier } = await supabase.rpc("effective_tier", { _user_id: userId });
+    if (typeof rpcTier === "string") effectiveTier = rpcTier;
+    if (!effectiveTier) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", userId)
+        .maybeSingle();
+      effectiveTier = (prof as any)?.subscription_tier ?? null;
+    }
+  }
+
   // Espaço incluído no plano Base (100 MB). Planos pagos não têm este limite.
   {
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("subscription_tier")
-      .eq("id", userId)
-      .maybeSingle();
     const { canStoreDocument } = await import("@/lib/retention/documents.server");
-    const room = await canStoreDocument(supabase, userId, size, (prof as any)?.subscription_tier);
+    const room = await canStoreDocument(supabase, userId, size, effectiveTier);
     if (!room.ok) {
       return failLog(supabase, {
         userId,
@@ -332,6 +343,27 @@ export async function processIncomingFile(
         reply: room.reply,
       });
     }
+  }
+
+  // Ficheiros por mês incluídos no plano. O gate é ANTES do upload: processar
+  // e só depois recusar gastaria custo real e daria pior experiência.
+  let usageHint: string | null = null;
+  {
+    const { canProcessAnotherFile } = await import("@/lib/drive/monthly-quota.server");
+    const room = await canProcessAnotherFile(supabase, userId, effectiveTier);
+    if (!room.ok) {
+      return failLog(supabase, {
+        userId,
+        channel,
+        sourceMessageId,
+        originalName,
+        mimeType,
+        size,
+        errorCode: "monthly_files_exceeded",
+        reply: room.reply,
+      });
+    }
+    usageHint = room.hint;
   }
 
   const ext = extensionFor(mimeType);
