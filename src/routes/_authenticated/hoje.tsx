@@ -31,6 +31,7 @@ import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
+import { usePreviewTier } from "@/lib/subscription/tier-preview";
 import { Lightbulb, ArrowRight } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
