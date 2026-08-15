@@ -578,6 +578,12 @@ export const uploadDriveFile = createServerFn({ method: "POST" })
       bytes,
     });
     if (!res.ok) throw new Error(res.reply ?? "Não foi possível guardar o ficheiro.");
+    if (res.errorCode === "duplicate_file") {
+      const err = new Error(res.reply) as Error & { code?: string; fileId?: string | null };
+      err.code = "duplicate_file";
+      err.fileId = res.fileId;
+      throw err;
+    }
     if (data.description && res.fileId) {
       await supabase
         .from("uploaded_files")
