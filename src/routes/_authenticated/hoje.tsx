@@ -516,12 +516,7 @@ function HojePage() {
               {mentor.context}
             </p>
           ) : null}
-          {mentor.reason ? (
-            <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--muted)" }}>
-              Porquê: {mentor.reason}
-            </p>
-          ) : null}
-          {mentor.facts ? (
+          {mentor.reason || mentor.facts ? (
             <div className="mt-3">
               <button
                 type="button"
@@ -532,7 +527,12 @@ function HojePage() {
               >
                 {factosAbertos ? "Esconder de onde vem" : "De onde vem isto?"}
               </button>
-              {factosAbertos ? (
+              {factosAbertos && mentor.reason ? (
+                <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--muted)" }}>
+                  Porquê: {mentor.reason}
+                </p>
+              ) : null}
+              {factosAbertos && mentor.facts ? (
                 <ul className="mt-2 space-y-1 text-[12.5px]" style={{ color: "var(--muted)" }}>
                   <li>Leads novas (7 dias): {mentor.facts.leadsSemana}</li>
                   <li>Seguimentos fechados (7 dias): {mentor.facts.seguimentosFechados}</li>

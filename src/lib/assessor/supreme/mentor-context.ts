@@ -95,47 +95,39 @@ function fraseSinais(f: MentorFacts): string {
   return `${ladoC.charAt(0).toUpperCase()}${ladoC.slice(1)}, ${ladoP}.`;
 }
 
-/** Contexto concreto do caso — posição relativa, ligação e recência. */
-function fraseCaso(f: MentorFacts): string | null {
-  const bocados: string[] = [];
-  if (f.unicoNoEstado) bocados.push("é o único nesse estado");
-  else if (f.total > 1) bocados.push(`são ${f.total} no mesmo estado`);
-  if (f.semNegocioLigado) bocados.push("sem nenhum negócio ligado");
-  if (f.diasSemContacto != null && f.diasSemContacto > 0) {
-    bocados.push(`${f.diasSemContacto} dias sem contacto registado em nenhum canal`);
-  }
-  if (!bocados.length) return null;
-  const texto = bocados.length === 1
-    ? bocados[0]
-    : `${bocados.slice(0, -1).join(", ")} e ${bocados[bocados.length - 1]}`;
-  return `${texto.charAt(0).toUpperCase()}${texto.slice(1)}.`;
-}
-
-/** Convite final — sempre pergunta ou proposta, nunca juízo. */
-function fraseConvite(f: MentorFacts): string {
+/**
+ * Ligação explícita entre a sugestão principal (nível 1) e o sinal da semana.
+ * Nunca repete os números já ditos no texto simples; diz para que serve agir.
+ */
+function fraseLigacao(f: MentorFacts, tipKey?: string): string {
   const c = sinalCrescimento(f);
   const p = sinalProdutividade(f);
-  if (c === "baixo" && p !== "baixo") {
-    return "Queres reservar um bocado esta semana só para entrada nova?";
+  const acao =
+    tipKey === "negocios-parados"
+      ? "Desbloquear um destes negócios"
+      : tipKey === "pessoas-frias"
+        ? "Reativar uma destas pessoas"
+        : tipKey === "imoveis-parados"
+          ? "Retomar estes contactos"
+          : "Agir sobre o que está aqui em cima";
+
+  if (c === "baixo") {
+    return `${acao} pode ser a tua entrada desta semana, sem precisares de começar do zero.`;
   }
-  if (p === "baixo" && c !== "baixo") {
-    return "Queres escolher um caso para desbloquear primeiro?";
+  if (p === "baixo") {
+    return `${acao} é a forma mais rápida de pôr a semana a mexer com o que já tens em mãos.`;
   }
-  if (c === "baixo" && p === "baixo") {
-    return "Foi uma semana calma — por onde preferes recomeçar?";
-  }
-  return "Queres manter este ritmo na próxima semana?";
+  return `${acao} mantém os dois lados a puxar ao mesmo tempo — é isso que costuma sustentar o mês.`;
 }
 
 /**
- * Linha contextual do nível 2. Devolve `null` quando não há nada de concreto
- * a acrescentar — melhor calar do que encher.
+ * Linha contextual do nível 2: **só a parte nova**. O texto simples já dá os
+ * factos do caso (quantos, há quantos dias); aqui entra apenas a leitura da
+ * semana (Crescimento/Produtividade) e a ligação à sugestão. Devolve `null`
+ * quando não há nada de concreto a acrescentar.
  */
-export function mentorContextLine(f: MentorFacts): string | null {
-  const caso = fraseCaso(f);
-  const sinais = fraseSinais(f);
-  const partes = [caso, sinais, fraseConvite(f)].filter(Boolean) as string[];
-  return partes.length ? partes.join(" ") : null;
+export function mentorContextLine(f: MentorFacts, tipKey?: string): string | null {
+  return `${fraseSinais(f)} ${fraseLigacao(f, tipKey)}`;
 }
 
 export interface MentorReinforcement {
@@ -192,7 +184,7 @@ export function applyMentorLevel(
   if (!tierAtLeast(tier, "consultor")) {
     return tip ? { ...tip, facts: undefined, context: null } : null;
   }
-  if (tip) return { ...tip, facts, context: mentorContextLine(facts) };
+  if (tip) return { ...tip, facts, context: mentorContextLine(facts, tip.key) };
   const reforco = mentorReinforcement(facts);
   return reforco ? { ...reforco, facts, context: null } : null;
 }
