@@ -32,11 +32,13 @@ export async function resolveSenderPerson(
   }
 
   // Sem correspondência de email: cai na resolução por nome (mesmas regras).
-  const nameText = [parsed?.name, email.subject].filter(Boolean).join(" ");
-  if (!nameText.trim()) {
+  // O extractor foi feito para frases faladas ("visita com a Ana"), por isso
+  // damos-lhe a mesma forma em vez de duplicar lógica de extração.
+  const senderName = String(parsed?.name ?? "").trim();
+  if (!senderName) {
     return { status: "none", personId: null, name: null, candidates: [], matchedBy: "none" };
   }
-  const byName = await resolvePersonForWrite(ctx, nameText, {
+  const byName = await resolvePersonForWrite(ctx, `Email com ${senderName}`, {
     excludeIds: opts?.excludeIds ?? [],
   });
   return { ...byName, matchedBy: byName.status === "none" ? "none" : "name" };
