@@ -494,6 +494,11 @@ function HojePage() {
             <Lightbulb className="h-4 w-4" /> O teu mentor sugere
           </div>
           <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ink)" }}>{mentor.text}</p>
+          {mentor.context ? (
+            <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--ink)" }}>
+              {mentor.context}
+            </p>
+          ) : null}
           {mentor.reason ? (
             <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--muted)" }}>
               Porquê: {mentor.reason}
