@@ -504,6 +504,30 @@ function HojePage() {
               Porquê: {mentor.reason}
             </p>
           ) : null}
+          {mentor.facts ? (
+            <div className="mt-3">
+              <button
+                type="button"
+                className="text-[12px] font-semibold"
+                style={{ color: "var(--muted)" }}
+                onClick={() => setFactosAbertos((v) => !v)}
+                aria-expanded={factosAbertos}
+              >
+                {factosAbertos ? "Esconder de onde vem" : "De onde vem isto?"}
+              </button>
+              {factosAbertos ? (
+                <ul className="mt-2 space-y-1 text-[12.5px]" style={{ color: "var(--muted)" }}>
+                  <li>Leads novas (7 dias): {mentor.facts.leadsSemana}</li>
+                  <li>Seguimentos fechados (7 dias): {mentor.facts.seguimentosFechados}</li>
+                  <li>Negócios movidos (7 dias): {mentor.facts.negociosMovidos}</li>
+                  <li>
+                    Dias sem contacto:{" "}
+                    {mentor.facts.diasSemContacto === null ? "sem registo" : mentor.facts.diasSemContacto}
+                  </li>
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
           <div className="mt-3 flex items-center gap-3">
             <Link to={mentor.to as never} className="text-[12.5px] font-semibold" style={{ color: "var(--sage)" }}>
               {mentor.linkLabel}
