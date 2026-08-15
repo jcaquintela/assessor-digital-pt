@@ -81,9 +81,10 @@ export const Route = createFileRoute("/_authenticated/drive")({
   }),
   validateSearch: (
     s: Record<string, unknown>,
-  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; cat?: string } => ({
+  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; cat?: string; exp?: string } => ({
     tab: (s.tab as Tab | undefined) ?? undefined,
     cat: (s.cat as string | undefined) ?? undefined,
+    exp: (s.exp as string | undefined) ?? undefined,
     q: (s.q as string | undefined) ?? undefined,
     nif: (s.nif as string | undefined) ?? undefined,
     artigo: (s.artigo as string | undefined) ?? undefined,
