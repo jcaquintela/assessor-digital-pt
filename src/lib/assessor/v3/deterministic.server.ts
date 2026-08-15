@@ -12,6 +12,7 @@
 // pending_actions) e formata a resposta.
 
 import { displayTitle } from "../titles";
+import { resolveDateTimeFromText } from "../date-resolver";
 
 export type AgendaPeriod = "today" | "tomorrow" | "week";
 
@@ -168,6 +169,7 @@ export function detectAgendaQuery(text: string): AgendaPeriod | null {
 // Formatação natural PT-PT para a resposta de agenda.
 export interface AgendaItem {
   title?: string;
+  due_date?: string | null;
   due_time?: string | null;
 }
 
@@ -193,6 +195,137 @@ export function formatAgendaReply(period: AgendaPeriod, items: AgendaItem[]): st
 // Formulação única para "sim/ok" sem contexto — mantida consistente para
 // que os testes e o consultor vejam sempre a mesma resposta.
 export const BARE_CONFIRMATION_REPLY = "Claro. A que te referes?";
+
+// ---------------------------------------------------------------------------
+// Consulta de agenda para um dia nomeado ("na terça-feira", "dia 20",
+// "depois de amanhã"). O fast path antigo só conhecia hoje/amanhã/semana e
+// respondia com a agenda de HOJE a perguntas sobre outros dias.
+
+const WEEKDAY_NAMES = [
+  "domingo", "segunda-feira", "terça-feira", "quarta-feira",
+  "quinta-feira", "sexta-feira", "sábado",
+];
+
+function weekdayOfYmd(ymd: string): number {
+  const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+/** "terça-feira, 18/08" */
+export function formatDayLabel(ymd: string): string {
+  const [, m, d] = ymd.split("-");
+  return `${WEEKDAY_NAMES[weekdayOfYmd(ymd)]}, ${d}/${m}`;
+}
+
+export interface AgendaDateQuery {
+  date: string; // YYYY-MM-DD
+  label: string;
+}
+
+/**
+ * Pergunta de agenda sobre um dia concreto que não é hoje/amanhã/semana.
+ * Devolve null quando não há intenção de agenda ou quando o dia é coberto
+ * pelo fast path existente.
+ */
+export function detectAgendaDateQuery(
+  text: string,
+  now: Date = new Date(),
+): AgendaDateQuery | null {
+  const t = (text ?? "").trim();
+  if (!t) return null;
+  if (MISC_MODULE_RE.test(t) && !AGENDA_WORD_RE.test(t)) return null;
+  if (CREATE_INTENT_RE.test(t)) return null;
+  const afterTomorrow = /depois\s+de\s+amanh[ãa]/i.test(t);
+  if (!afterTomorrow && (TODAY_RE.test(t) || TOMORROW_RE.test(t))) return null;
+
+  const hasIntent =
+    HAVE_Q_RE.test(t) || HAVE_ANY_RE.test(t) || (AGENDA_WORD_RE.test(t) && /\?\s*$/.test(t));
+  if (!hasIntent) return null;
+
+  const r = resolveDateTimeFromText(t, now);
+  if (!r.date || r.time) return null;
+  return { date: r.date, label: formatDayLabel(r.date) };
+}
+
+export function formatAgendaDateReply(label: string, items: AgendaItem[]): string {
+  if (!items.length) return `Não tens compromissos para ${label}.`;
+  const lines = items.slice(0, 10).map((it) => {
+    const t = it.due_time ? String(it.due_time).slice(0, 5) : "";
+    const hhmm = t ? t.replace(":", "h") : "";
+    const title = displayTitle(it.title);
+    return hhmm ? `• ${hhmm} — ${title}` : `• ${title}`;
+  });
+  return `Para ${label} tens:\n${lines.join("\n")}`;
+}
+
+// ---------------------------------------------------------------------------
+// Pesquisa de compromisso por nome ("Quando é a reunião de teste Outlook?",
+// "Que dia é a visita à Rua das Flores?").
+
+const EVENT_NAME_RE =
+  /\b(?:quando\s+(?:é|e|ser[áa])(?:\s+que)?|que\s+dia\s+(?:é|e|ser[áa])?|a\s+que\s+horas\s+(?:é|e|ser[áa])?)\s+(.+)$/i;
+
+const LEADING_ARTICLE_RE = /^(?:a|o|as|os|um|uma|essa|esse|aquela|aquele|minha|meu|nossa|nosso)\s+/i;
+
+function foldText(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+const STOP_TOKENS = new Set([
+  "a", "o", "as", "os", "de", "do", "da", "dos", "das", "em", "no", "na",
+  "com", "para", "e", "que", "um", "uma", "minha", "meu", "the",
+]);
+
+/** Assunto do evento procurado, ou null se a frase não é uma pergunta destas. */
+export function detectEventNameQuery(text: string): string | null {
+  const t = (text ?? "").trim();
+  if (!t) return null;
+  if (CREATE_INTENT_RE.test(t)) return null;
+  const m = t.match(EVENT_NAME_RE);
+  if (!m) return null;
+  let subject = m[1].replace(/[?!.\s]+$/g, "").trim();
+  subject = subject.replace(LEADING_ARTICLE_RE, "").trim();
+  if (TODAY_RE.test(subject) || TOMORROW_RE.test(subject)) return null;
+  const tokens = foldText(subject).split(" ").filter((w) => w.length > 2 && !STOP_TOKENS.has(w));
+  if (!tokens.length) return null;
+  return subject;
+}
+
+export interface EventRow extends AgendaItem {
+  id?: string;
+}
+
+/** Ordena os compromissos por semelhança de título com o assunto pedido. */
+export function rankEventsByTitle<T extends { title?: string | null }>(
+  subject: string,
+  rows: T[],
+): T[] {
+  const wanted = foldText(subject).split(" ").filter((w) => w.length > 2 && !STOP_TOKENS.has(w));
+  if (!wanted.length) return [];
+  const scored = rows.map((r) => {
+    const hay = foldText(String(r.title ?? ""));
+    const hits = wanted.filter((w) => hay.includes(w)).length;
+    return { r, score: hits / wanted.length };
+  });
+  return scored
+    .filter((s) => s.score >= 0.5)
+    .sort((a, b) => b.score - a.score)
+    .map((s) => s.r);
+}
+
+export function formatEventFoundReply(subject: string, items: AgendaItem[]): string {
+  if (!items.length) {
+    return `Não encontrei nenhum compromisso com "${subject}" na agenda. Queres que registe um?`;
+  }
+  const lines = items.slice(0, 3).map((it) => {
+    const day = it.due_date ? formatDayLabel(String(it.due_date).slice(0, 10)) : "sem data";
+    const t = it.due_time ? String(it.due_time).slice(0, 5).replace(":", "h") : "";
+    const when = t ? `${day} às ${t}` : day;
+    return `• ${displayTitle(it.title)} — ${when}`;
+  });
+  if (items.length === 1) return lines[0]!.replace(/^• /, "");
+  return `Encontrei estes:\n${lines.join("\n")}`;
+}
 
 // "Ok" logo a seguir a uma afirmação do Assessor ("Marcada a visita...") é
 // só reconhecimento — não é uma confirmação órfã. Bug real: gerava

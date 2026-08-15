@@ -565,6 +565,42 @@ async function execCreateEvent(ctx: DomainContext, args: unknown): Promise<Domai
   return execCreateEventInner(ctx, args);
 }
 
+/** Compromissos de um dia concreto (YYYY-MM-DD, calendário de Lisboa). */
+export async function searchAgendaOnDate(
+  ctx: DomainContext,
+  ymd: string,
+): Promise<Array<{ id: string; title: string | null; due_date: string | null; due_time: string | null }>> {
+  const fromIso = lisbonLocalToUtcIso(ymd, "00:00");
+  const toIso = lisbonLocalToUtcIso(addDaysYmd(ymd, 1), "00:00");
+  const { data } = await ctx.supabase
+    .from("follow_ups")
+    .select("id, title, due_date, due_time")
+    .eq("user_id", ctx.userId)
+    .in("status", ["pendente", "em_progresso", "agendado"])
+    .gte("due_date", fromIso)
+    .lt("due_date", toIso)
+    .order("due_time", { ascending: true, nullsFirst: true })
+    .limit(50);
+  return (data ?? []) as never;
+}
+
+/** Compromissos abertos (para pesquisa por nome/título). */
+export async function listOpenEvents(
+  ctx: DomainContext,
+): Promise<Array<{ id: string; title: string | null; due_date: string | null; due_time: string | null }>> {
+  const { ymd } = lisbonParts(new Date());
+  const fromIso = lisbonLocalToUtcIso(addDaysYmd(ymd, -7), "00:00");
+  const { data } = await ctx.supabase
+    .from("follow_ups")
+    .select("id, title, due_date, due_time")
+    .eq("user_id", ctx.userId)
+    .in("status", ["pendente", "em_progresso", "agendado"])
+    .gte("due_date", fromIso)
+    .order("due_date", { ascending: true })
+    .limit(200);
+  return (data ?? []) as never;
+}
+
 /** Normaliza texto para comparação difusa (sem acentos, minúsculas). */
 function normalizeForMatch(s: string): string {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();

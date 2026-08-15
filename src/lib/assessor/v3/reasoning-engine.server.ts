@@ -33,6 +33,11 @@ import {
   detectDayStateQuery,
   composeDayStateReply,
   formatAgendaReply,
+  detectAgendaDateQuery,
+  formatAgendaDateReply,
+  detectEventNameQuery,
+  rankEventsByTitle,
+  formatEventFoundReply,
   BARE_CONFIRMATION_REPLY,
   ACKNOWLEDGED_REPLY,
   isBareAcknowledgement,
@@ -1515,6 +1520,61 @@ async function runReasoningEngineInner(
 
     // (a) Consulta de agenda → chama search_agenda directamente.
     const agendaPeriod = detectAgendaQuery(trimmed);
+
+    // (a-1) "Quando é a reunião X?" → procura o compromisso pelo nome em vez
+    // de devolver a agenda de hoje.
+    const eventSubject = !pending ? detectEventNameQuery(trimmed) : null;
+    if (eventSubject) {
+      const t0 = Date.now();
+      let reply: string;
+      let okEv = true;
+      try {
+        const { listOpenEvents } = await import("../v2/domain.server");
+        const rows = await listOpenEvents(ctx);
+        reply = formatEventFoundReply(eventSubject, rankEventsByTitle(eventSubject, rows) as AgendaItem[]);
+      } catch {
+        okEv = false;
+        reply = READ_FAILED_REPLY;
+      }
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "event_lookup_fast_path", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: Date.now() - t0, success: okEv, error: okEv ? null : "event_lookup_failed",
+          domain: "assessor", route: "v3-deterministic", fallback_used: !okEv,
+          tool_name: "search_agenda", tool_success: okEv,
+        } as never);
+      } catch { /* noop */ }
+      return { reply };
+    }
+
+    // (a-2) "Que compromissos tenho na terça-feira?" → dia nomeado.
+    const agendaDate = detectAgendaDateQuery(trimmed);
+    if (agendaDate) {
+      const t0 = Date.now();
+      let reply: string;
+      let okDay = true;
+      try {
+        const { searchAgendaOnDate } = await import("../v2/domain.server");
+        const rows = await searchAgendaOnDate(ctx, agendaDate.date);
+        reply = formatAgendaDateReply(agendaDate.label, rows as AgendaItem[]);
+      } catch {
+        okDay = false;
+        reply = READ_FAILED_REPLY;
+      }
+      try {
+        await supabase.from("assessor_ai_logs").insert({
+          user_id: userId, channel, model: "reasoning-engine-v3",
+          intent: "agenda_date_fast_path", confidence: 1,
+          input_tokens: 0, output_tokens: 0, total_tokens: 0,
+          latency_ms: Date.now() - t0, success: okDay, error: okDay ? null : "agenda_date_failed",
+          domain: "assessor", route: "v3-deterministic", fallback_used: !okDay,
+          tool_name: "search_agenda", tool_success: okDay,
+        } as never);
+      } catch { /* noop */ }
+      return { reply };
+    }
 
     // (a1) "Como está o meu dia?" / "Como estou hoje?" → estado do dia com
     // dados reais (agenda + prioridades), a qualquer hora. Leitura pura:
