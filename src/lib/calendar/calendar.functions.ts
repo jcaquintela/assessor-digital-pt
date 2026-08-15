@@ -99,6 +99,11 @@ export const completeCalendarConnect = createServerFn({ method: "POST" })
       const { pullFromProvider } = await import("./sync.server");
       await pullFromProvider(supabaseAdmin, context.userId, connectorId);
     } catch { /* o cron apanha na próxima ronda */ }
+    // Se for o único calendário ligado, fica ativo automaticamente.
+    try {
+      const { ensureActiveAfterConnect } = await import("@/lib/providers/active.server");
+      await ensureActiveAfterConnect(context.userId, "calendar");
+    } catch { /* escolha fica para as Definições */ }
     return { ok: true, provider: connectorId };
   });
 
