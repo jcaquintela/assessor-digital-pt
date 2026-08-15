@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/hoje/global-search";
 import { AccountArchiveBanner } from "@/components/account-archive-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
+import { TierPreviewBanner } from "@/components/tier-preview";
 
 const desktopNav = [
   { to: "/hoje", label: "Hoje", icon: Home },
@@ -84,6 +85,8 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
   }, []);
 
   return (
+    <>
+    <TierPreviewBanner />
     <div
       className={cn(
         "consult-root text-foreground",
@@ -190,6 +193,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         </div>
       </nav>
     </div>
+    </>
   );
 }
 

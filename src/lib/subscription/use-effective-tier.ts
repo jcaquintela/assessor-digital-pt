@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect } from "react";
 import { getMyEffectiveTier } from "./tier.functions";
+import { usePreviewTier } from "./tier-preview";
 
 export const EFFECTIVE_TIER_QUERY_KEY = ["subscription", "effectiveTier"] as const;
 
@@ -12,6 +13,8 @@ export const EFFECTIVE_TIER_QUERY_KEY = ["subscription", "effectiveTier"] as con
 export function useEffectiveTier() {
   const fetchTier = useServerFn(getMyEffectiveTier);
   const qc = useQueryClient();
+  // Simulação "ver como" (só super admin, só nesta sessão de navegação).
+  const previewTier = usePreviewTier();
 
   const query = useQuery({
     queryKey: EFFECTIVE_TIER_QUERY_KEY,
@@ -36,5 +39,8 @@ export function useEffectiveTier() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [qc]);
 
+  if (previewTier) {
+    return { ...query, data: { tier: previewTier }, isPending: false } as typeof query;
+  }
   return query;
 }

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
+import { TierPreviewSection } from "@/components/tier-preview";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, Mail, Check, AlertTriangle, CreditCard, Info } from "lucide-react";
@@ -95,6 +96,7 @@ function DefinicoesPage() {
         <PerfilSection />
         <AssessorNameSection />
         <PlanoSection />
+        <TierPreviewSection />
         <SupremeSection />
         <NotificacoesSection />
         <CanalSection />
