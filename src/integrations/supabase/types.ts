@@ -1231,6 +1231,8 @@ export type Database = {
       }
       consultant_preferences: {
         Row: {
+          active_calendar_provider: string | null
+          active_mail_provider: string | null
           autonomy_level: string
           confirm_document_send: boolean
           created_at: string
@@ -1252,6 +1254,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active_calendar_provider?: string | null
+          active_mail_provider?: string | null
           autonomy_level?: string
           confirm_document_send?: boolean
           created_at?: string
@@ -1273,6 +1277,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active_calendar_provider?: string | null
+          active_mail_provider?: string | null
           autonomy_level?: string
           confirm_document_send?: boolean
           created_at?: string
