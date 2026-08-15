@@ -26,6 +26,11 @@ import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
 import { ReorderPagesDialog } from "@/components/drive/reorder-pages-dialog";
 import { QuotaUpgradeDialog } from "@/components/drive/quota-upgrade-dialog";
 import { useQuotaRevalidate } from "@/lib/drive/use-quota-revalidate";
+import {
+  pendingUploadCount,
+  queuePendingUpload,
+  takePendingUploads,
+} from "@/lib/drive/pending-uploads";
 
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import { groupDriveFiles, type GroupBy } from "@/lib/drive/group-files";
