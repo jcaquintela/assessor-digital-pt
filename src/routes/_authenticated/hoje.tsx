@@ -204,6 +204,8 @@ function HojePage() {
     onSuccess: (_r, v) => {
       setAjusteAberto(false);
       setAjusteTexto("");
+      setTratadoAberto(false);
+      setTratadoNota("");
       setTipOff(v.tipKey);
       qc.invalidateQueries({ queryKey: ["hoje", "overview"] });
       if (v.decision === "tratado") {
