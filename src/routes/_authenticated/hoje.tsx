@@ -632,7 +632,7 @@ function HojePage() {
               style={{ color: "var(--sage)" }}
               disabled={mentorDecision.isPending}
               title="Dou este assunto como resolvido — deixa de aparecer nas próximas semanas."
-              onClick={() => mentorDecision.mutate({ tipKey: mentor.key, decision: "tratado" })}
+              onClick={() => setTratadoAberto((v) => !v)}
             >
               Já tratei
             </button>
