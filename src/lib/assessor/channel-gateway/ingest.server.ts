@@ -851,6 +851,8 @@ async function handleInboundMediaInner(
                     : "imagem",
               })
               .eq("id", result.fileId);
+            const { refreshSystemCategory } = await import("@/lib/assessor/files.server");
+            await refreshSystemCategory(supabaseAdmin, result.fileId);
             const { refineFileName, applyDocumentExtraction } = await import(
               "@/lib/assessor/files.server"
             );
