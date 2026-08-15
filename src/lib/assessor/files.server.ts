@@ -330,6 +330,38 @@ export async function processIncomingFile(
 
   const classification = classifyByMime(mimeType);
 
+  // Reenvio do mesmo ficheiro: impressão digital do conteúdo antes de gastar
+  // espaço e IA. Nada é apagado — o segundo envio é sinalizado ao consultor.
+  const body0 = toUint8(input.bytes);
+  let checksum: string | null = null;
+  try {
+    const { sha256Hex } = await import("@/lib/drive/checksum");
+    checksum = await sha256Hex(body0);
+    const { data: same } = await supabase
+      .from("uploaded_files")
+      .select("id, original_file_name")
+      .eq("user_id", userId)
+      .eq("checksum", checksum)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const original = same as { id: string; original_file_name: string | null } | null;
+    if (original) {
+      return {
+        ok: true,
+        fileId: original.id,
+        classification,
+        status: "duplicate",
+        reply: `Este ficheiro já o tenho guardado como "${original.original_file_name ?? "ficheiro"}". Não voltei a guardá-lo.`,
+        extractedText: null,
+        errorCode: "duplicate_file",
+      };
+    }
+  } catch (err) {
+    console.error("[files] checksum:", err instanceof Error ? err.message : err);
+  }
+
   // Plano efetivo do consultor (aplica beta override). Serve as duas regras
   // seguintes: espaço incluído e ficheiros por mês.
   let effectiveTier: string | null = null;
@@ -390,7 +422,7 @@ export async function processIncomingFile(
   const storagePath = `${userId}/${new Date().getFullYear()}/${internalName}`;
 
   // 3. Upload para bucket privado
-  const body = toUint8(input.bytes);
+  const body = body0;
   const upload = await supabase.storage
     .from("assessor-files")
     .upload(storagePath, body, {
@@ -426,6 +458,8 @@ export async function processIncomingFile(
       storage_path: storagePath,
       processing_status: "processed",
       classification,
+      checksum,
+      system_category: systemCategoryFor({ classification, mime_type: mimeType }),
       extracted_metadata: {},
     })
     .select("id")
