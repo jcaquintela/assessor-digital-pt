@@ -15,6 +15,9 @@ import {
 export const startGmailConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    // Gate de plano no servidor: esconder na UI não chega.
+    const { requireEmailModule } = await import("@/lib/subscription/email-gate.server");
+    await requireEmailModule(context.userId);
     const clientAPIKey = process.env[GMAIL_CLIENT_KEY_ENV];
     if (!clientAPIKey) throw new Error(`${GMAIL_CLIENT_KEY_ENV} não está configurado.`);
 
