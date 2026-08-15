@@ -967,6 +967,7 @@ function CalendarioSectionInner() {
           </span>
         </div>
       )}
+      <ActiveProviderPicker modality="calendar" labels={CALENDAR_PROVIDER_LABEL} />
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
         Os compromissos que combinares na conversa entram no teu calendário sozinhos, e o que marcares
         directamente no calendário aparece aqui. Se editares dos dois lados ao mesmo tempo, fica a
