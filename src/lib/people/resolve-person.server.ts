@@ -86,12 +86,30 @@ export async function recentlyRejectedPersonIds(ctx: ResolveCtx): Promise<string
 export async function resolvePersonForWrite(
   ctx: ResolveCtx,
   text: string,
-  opts?: { excludeIds?: string[] },
+  opts?: { excludeIds?: string[]; senderEmail?: string | null },
 ): Promise<PersonResolution> {
   const empty = (status: PersonResolutionStatus, name: string | null = null): PersonResolution =>
     ({ status, personId: null, name, candidates: [] });
 
   const exclude = new Set(opts?.excludeIds ?? []);
+
+  // 0) Email do remetente é identificador único: liga sem perguntar.
+  //    Usado pelo módulo de Email — o endereço é sinal mais forte que o nome.
+  const senderEmail = String(opts?.senderEmail ?? "").trim().toLowerCase();
+  if (senderEmail) {
+    const { data } = await ctx.supabase
+      .from("people")
+      .select("id, name, phone, relationship_type")
+      .eq("user_id", ctx.userId)
+      .eq("email_normalized", senderEmail)
+      .limit(2);
+    const rows = (((data as any[]) ?? []) as PersonCandidate[]).filter(
+      (r) => r?.id && !exclude.has(String(r.id)),
+    );
+    if (rows.length === 1) {
+      return { status: "linked", personId: String(rows[0]!.id), name: rows[0]!.name ?? null, candidates: [] };
+    }
+  }
 
   // 1) Telefone E.164 inequívoco liga automaticamente.
   const e164 = phoneFromText(text);
