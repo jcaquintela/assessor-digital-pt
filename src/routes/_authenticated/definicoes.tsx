@@ -881,6 +881,7 @@ function CalendarioSectionInner() {
       popup.location.href = authorizationUrl;
       await done;
       await qc.invalidateQueries({ queryKey: ["calendar-status"] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       await qc.invalidateQueries({ queryKey: ["follow_ups"] });
       toast.success(`${CALENDAR_PROVIDER_LABEL[provider]} ligado.`);
     } catch (e) {
@@ -896,6 +897,7 @@ function CalendarioSectionInner() {
     try {
       await disconnectCalendar({ data: { provider } });
       await qc.invalidateQueries({ queryKey: ["calendar-status"] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       toast.success(`${CALENDAR_PROVIDER_LABEL[provider]} desligado.`);
     } catch {
       toast.error("Não consegui desligar.");
@@ -911,6 +913,7 @@ function CalendarioSectionInner() {
       const applied = r.reduce((n, x) => n + x.applied, 0);
       await qc.invalidateQueries({ queryKey: ["follow_ups"] });
       await qc.invalidateQueries({ queryKey: ["calendar-status"] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       toast.success(applied > 0 ? `${applied} alteração(ões) trazida(s) do calendário.` : "Já estava tudo em dia.");
     } catch {
       toast.error("Não consegui sincronizar agora.");
@@ -1038,6 +1041,7 @@ function MailProviderCard(props: MailCardProps) {
       popup.location.href = authorizationUrl;
       await done;
       await qc.invalidateQueries({ queryKey: [props.queryKey] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       toast.success(`${props.label} ligado.`);
     } catch (e) {
       popup.close();
@@ -1052,6 +1056,7 @@ function MailProviderCard(props: MailCardProps) {
     try {
       await props.stop();
       await qc.invalidateQueries({ queryKey: [props.queryKey] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       toast.success(`${props.label} desligado.`);
     } catch {
       toast.error("Não consegui desligar.");
