@@ -378,6 +378,11 @@ function DrivePage() {
               }}
             />
           </div>
+          {quotaQ.data.hint && (
+            <Button asChild size="sm" className="mt-3 w-full sm:w-auto">
+              <Link to="/subscricao">Fazer upgrade do plano</Link>
+            </Button>
+          )}
         </div>
       )}
 

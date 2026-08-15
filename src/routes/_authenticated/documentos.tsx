@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,6 +71,11 @@ function QuotaSummary() {
           <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
             {quotaQ.data.hint}
           </div>
+        )}
+        {quotaQ.data.hint && (
+          <Button asChild size="sm" className="mt-3 w-full sm:w-auto">
+            <Link to="/subscricao">Fazer upgrade do plano</Link>
+          </Button>
         )}
       </CardContent>
     </Card>
