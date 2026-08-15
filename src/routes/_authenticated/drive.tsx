@@ -133,6 +133,7 @@ const CANAL_LABEL: Record<string, string> = {
 function DrivePage() {
   const search = Route.useSearch();
   const { name: assessorName } = useAssessorName();
+  const previewTier = usePreviewTier();
   const tab: Tab = (search.tab ?? "recentes") as Tab;
   const qParam = search.q ?? "";
   const navigate = Route.useNavigate();
