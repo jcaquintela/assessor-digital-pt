@@ -32,6 +32,8 @@ import { AssuntoCard } from "@/components/assunto-card";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
 import { saveMentorDecision } from "@/lib/assessor/supreme/mentor-decisions.functions";
+import { createMentorFollowUp } from "@/lib/assessor/supreme/mentor-followup.functions";
+import { mentorFollowUpSuggestion } from "@/lib/assessor/supreme/mentor-followup";
 import { usePreviewTier } from "@/lib/subscription/tier-preview";
 import { Lightbulb, ArrowRight } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
@@ -208,6 +210,18 @@ function HojePage() {
   });
 
   const [drawer, setDrawer] = useState<EventDrawerItem | null>(null);
+
+  // Seguimento a partir da sugestão do Mentor: tipo, notas e prazo já preenchidos.
+  const mentorFollowUpFn = useServerFn(createMentorFollowUp);
+  const mentorFollowUp = useMutation({
+    mutationFn: (v: { tipKey: string }) => mentorFollowUpFn({ data: v }),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ["follow_ups"] });
+      qc.invalidateQueries({ queryKey: ["supreme", "hoje"] });
+      toast.success(`Seguimento criado para ${r?.dueDate ?? "os próximos dias"}.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const [noteFor, setNoteFor] = useState<Awaiting | null>(null);
   const [noteText, setNoteText] = useState("");
 
@@ -583,6 +597,18 @@ function HojePage() {
             >
               Confirmar
             </button>
+            {mentorFollowUpSuggestion(mentor.key) ? (
+              <button
+                type="button"
+                className="text-[12.5px] font-semibold"
+                style={{ color: "var(--sage)" }}
+                disabled={mentorFollowUp.isPending}
+                title={`${mentorFollowUpSuggestion(mentor.key)!.title} — daqui a ${mentorFollowUpSuggestion(mentor.key)!.dueInDays} dias`}
+                onClick={() => mentorFollowUp.mutate({ tipKey: mentor.key })}
+              >
+                {mentorFollowUp.isPending ? "A criar…" : "Criar seguimento"}
+              </button>
+            ) : null}
             <button
               type="button"
               className="text-[12.5px] font-semibold"
