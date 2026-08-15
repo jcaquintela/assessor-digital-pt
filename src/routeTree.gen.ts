@@ -105,6 +105,7 @@ import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/pu
 import { Route as ApiPublicHooksProactivePushRouteImport } from './routes/api/public/hooks/proactive-push'
 import { Route as ApiPublicHooksObjectionGuideRouteImport } from './routes/api/public/hooks/objection-guide'
 import { Route as ApiPublicHooksMeetingBriefingRouteImport } from './routes/api/public/hooks/meeting-briefing'
+import { Route as ApiPublicHooksGmailReauthRouteImport } from './routes/api/public/hooks/gmail-reauth'
 import { Route as ApiPublicHooksDailyDigestRouteImport } from './routes/api/public/hooks/daily-digest'
 import { Route as ApiPublicHooksCalendarPollRouteImport } from './routes/api/public/hooks/calendar-poll'
 import { Route as ApiPublicHooksBetaExpiryRouteImport } from './routes/api/public/hooks/beta-expiry'
@@ -622,6 +623,12 @@ const ApiPublicHooksMeetingBriefingRoute =
     path: '/api/public/hooks/meeting-briefing',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksGmailReauthRoute =
+  ApiPublicHooksGmailReauthRouteImport.update({
+    id: '/api/public/hooks/gmail-reauth',
+    path: '/api/public/hooks/gmail-reauth',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDailyDigestRoute =
   ApiPublicHooksDailyDigestRouteImport.update({
     id: '/api/public/hooks/daily-digest',
@@ -749,6 +756,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/daily-digest': typeof ApiPublicHooksDailyDigestRoute
+  '/api/public/hooks/gmail-reauth': typeof ApiPublicHooksGmailReauthRoute
   '/api/public/hooks/meeting-briefing': typeof ApiPublicHooksMeetingBriefingRoute
   '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
@@ -851,6 +859,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/daily-digest': typeof ApiPublicHooksDailyDigestRoute
+  '/api/public/hooks/gmail-reauth': typeof ApiPublicHooksGmailReauthRoute
   '/api/public/hooks/meeting-briefing': typeof ApiPublicHooksMeetingBriefingRoute
   '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
@@ -956,6 +965,7 @@ export interface FileRoutesById {
   '/api/public/hooks/beta-expiry': typeof ApiPublicHooksBetaExpiryRoute
   '/api/public/hooks/calendar-poll': typeof ApiPublicHooksCalendarPollRoute
   '/api/public/hooks/daily-digest': typeof ApiPublicHooksDailyDigestRoute
+  '/api/public/hooks/gmail-reauth': typeof ApiPublicHooksGmailReauthRoute
   '/api/public/hooks/meeting-briefing': typeof ApiPublicHooksMeetingBriefingRoute
   '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
@@ -1061,6 +1071,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/daily-digest'
+    | '/api/public/hooks/gmail-reauth'
     | '/api/public/hooks/meeting-briefing'
     | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
@@ -1163,6 +1174,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/daily-digest'
+    | '/api/public/hooks/gmail-reauth'
     | '/api/public/hooks/meeting-briefing'
     | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
@@ -1267,6 +1279,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/beta-expiry'
     | '/api/public/hooks/calendar-poll'
     | '/api/public/hooks/daily-digest'
+    | '/api/public/hooks/gmail-reauth'
     | '/api/public/hooks/meeting-briefing'
     | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
@@ -1304,6 +1317,7 @@ export interface RootRouteChildren {
   ApiPublicHooksBetaExpiryRoute: typeof ApiPublicHooksBetaExpiryRoute
   ApiPublicHooksCalendarPollRoute: typeof ApiPublicHooksCalendarPollRoute
   ApiPublicHooksDailyDigestRoute: typeof ApiPublicHooksDailyDigestRoute
+  ApiPublicHooksGmailReauthRoute: typeof ApiPublicHooksGmailReauthRoute
   ApiPublicHooksMeetingBriefingRoute: typeof ApiPublicHooksMeetingBriefingRoute
   ApiPublicHooksObjectionGuideRoute: typeof ApiPublicHooksObjectionGuideRoute
   ApiPublicHooksProactivePushRoute: typeof ApiPublicHooksProactivePushRoute
@@ -1991,6 +2005,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksMeetingBriefingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/gmail-reauth': {
+      id: '/api/public/hooks/gmail-reauth'
+      path: '/api/public/hooks/gmail-reauth'
+      fullPath: '/api/public/hooks/gmail-reauth'
+      preLoaderRoute: typeof ApiPublicHooksGmailReauthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/daily-digest': {
       id: '/api/public/hooks/daily-digest'
       path: '/api/public/hooks/daily-digest'
@@ -2286,6 +2307,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksBetaExpiryRoute: ApiPublicHooksBetaExpiryRoute,
   ApiPublicHooksCalendarPollRoute: ApiPublicHooksCalendarPollRoute,
   ApiPublicHooksDailyDigestRoute: ApiPublicHooksDailyDigestRoute,
+  ApiPublicHooksGmailReauthRoute: ApiPublicHooksGmailReauthRoute,
   ApiPublicHooksMeetingBriefingRoute: ApiPublicHooksMeetingBriefingRoute,
   ApiPublicHooksObjectionGuideRoute: ApiPublicHooksObjectionGuideRoute,
   ApiPublicHooksProactivePushRoute: ApiPublicHooksProactivePushRoute,
