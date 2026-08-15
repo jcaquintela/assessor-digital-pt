@@ -38,6 +38,7 @@ import {
 
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import { groupDriveFiles, type GroupBy } from "@/lib/drive/group-files";
+import { buildCategoryCards, shouldShowCards } from "@/lib/drive/category-cards";
 import {
   FileText,
   Image as ImageIcon,
@@ -56,6 +57,8 @@ import {
   ChevronDown,
   ChevronRight,
   ListOrdered,
+  FolderOpen,
+  ArrowLeft,
 } from "lucide-react";
 
 type Tab =
@@ -78,8 +81,9 @@ export const Route = createFileRoute("/_authenticated/drive")({
   }),
   validateSearch: (
     s: Record<string, unknown>,
-  ): { tab?: Tab; q?: string; nif?: string; artigo?: string } => ({
+  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; cat?: string } => ({
     tab: (s.tab as Tab | undefined) ?? undefined,
+    cat: (s.cat as string | undefined) ?? undefined,
     q: (s.q as string | undefined) ?? undefined,
     nif: (s.nif as string | undefined) ?? undefined,
     artigo: (s.artigo as string | undefined) ?? undefined,
@@ -152,6 +156,7 @@ function DrivePage() {
   const [q, setQ] = useState(qParam);
   const nifParam = search.nif ?? "";
   const artigoParam = search.artigo ?? "";
+  const catParam = search.cat ?? "";
   const [nif, setNif] = useState(nifParam);
   const [artigo, setArtigo] = useState(artigoParam);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -406,6 +411,20 @@ function DrivePage() {
     scrollKeep.current = null;
     window.scrollTo({ top: y });
   }, [groupBy]);
+
+  // Vista por omissão: cartões de categoria com contagem. Pesquisar continua
+  // a atravessar todas as categorias, por isso desliga os cartões.
+  const cards = useMemo(() => buildCategoryCards(grupos as any[]), [grupos]);
+  const vistaCartoes = shouldShowCards({
+    groupBy,
+    query: qParam,
+    nif: nifParam,
+    artigo: artigoParam,
+    openCategory: catParam,
+  });
+  const [expandido, setExpandido] = useState<string | null>(null);
+  const catAberta = catParam ? grupos.find((g) => g.key === catParam) ?? null : null;
+  const fecharCategoria = () => navigate({ search: (s: any) => ({ ...s, cat: undefined }) });
 
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
@@ -874,7 +893,84 @@ function DrivePage() {
             )}
           </div>
         )}
-        {grupos.map((g) => (
+        {vistaCartoes ? (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {cards.map((c) => {
+              const aberto = expandido === c.key;
+              return (
+                <div
+                  key={c.key}
+                  data-categoria={c.key}
+                  className={"c-card p-0" + (aberto ? " sm:col-span-2 lg:col-span-3" : "")}
+                >
+                  <button
+                    type="button"
+                    aria-expanded={c.inline ? aberto : undefined}
+                    className="flex w-full items-center gap-3 p-3.5 text-left"
+                    onClick={() =>
+                      c.inline
+                        ? setExpandido(aberto ? null : c.key)
+                        : navigate({ search: (s: any) => ({ ...s, cat: c.key }) })
+                    }
+                  >
+                    <span className="rounded-lg bg-muted p-2">
+                      <FolderOpen className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={
+                          "block truncate text-[14px] font-semibold" +
+                          (c.destaque ? " text-amber-600 dark:text-amber-400" : "")
+                        }
+                      >
+                        {c.label}
+                      </span>
+                      <span className="c-muted block text-[11.5px]">
+                        {c.count} {c.count === 1 ? "ficheiro" : "ficheiros"}
+                      </span>
+                    </span>
+                    {c.inline && aberto ? (
+                      <ChevronDown className="c-muted h-4 w-4 shrink-0" />
+                    ) : (
+                      <ChevronRight className="c-muted h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+                  {c.inline && aberto && (
+                    <div className="space-y-2 border-t border-border p-3">
+                      {c.files.map(renderFile)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : catAberta ? (
+          <section className="space-y-2" data-categoria-aberta={catAberta.key}>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="c-badge tap-44" onClick={fecharCategoria}>
+                <ArrowLeft className="h-3 w-3" /> Voltar às categorias
+              </button>
+              <span className="text-[13px] font-semibold">{catAberta.label}</span>
+              <span className="c-muted text-[12px]">{catAberta.files.length}</span>
+            </div>
+            {catAberta.files.slice(0, shown[catAberta.key] ?? PAGE).map(renderFile)}
+            {catAberta.files.length > (shown[catAberta.key] ?? PAGE) && (
+              <button
+                type="button"
+                className="c-pill tap-44 w-full"
+                onClick={() =>
+                  setShown((prev) => ({
+                    ...prev,
+                    [catAberta.key]: (prev[catAberta.key] ?? PAGE) + PAGE,
+                  }))
+                }
+              >
+                Mostrar mais ({catAberta.files.length - (shown[catAberta.key] ?? PAGE)} por ver)
+              </button>
+            )}
+          </section>
+        ) : (
+          grupos.map((g) => (
           <section key={g.key} className="space-y-2" data-grupo={g.key}>
             {g.label && (
               <button
@@ -908,7 +1004,8 @@ function DrivePage() {
               </button>
             )}
           </section>
-        ))}
+          ))
+        )}
       </div>
 
       <FixLinkDialog
