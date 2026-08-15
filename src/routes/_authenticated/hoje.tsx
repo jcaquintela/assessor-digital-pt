@@ -142,6 +142,8 @@ function HojePage() {
   });
   const [tipOff, setTipOff] = useState<string | null>(null);
   const [factosAbertos, setFactosAbertos] = useState(false);
+  const [ajusteAberto, setAjusteAberto] = useState(false);
+  const [ajusteTexto, setAjusteTexto] = useState("");
   const mentor = overview.data?.mentor ?? null;
   const resumo = overview.data?.summary ?? null;
   const tierInfo = overview.data?.tierInfo ?? null;
@@ -180,6 +182,28 @@ function HojePage() {
   const dismiss = useMutation({
     mutationFn: (v: { id: string }) => dismissFn({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["supreme", "hoje"] }),
+  });
+
+  // Decisões sobre as sugestões do Mentor: ficam guardadas e mudam o que
+  // aparece a seguir para o mesmo sinal (silêncio + retoma do assunto).
+  const decisionFn = useServerFn(saveMentorDecision);
+  const mentorDecision = useMutation({
+    mutationFn: (v: { tipKey: string; decision: "confirmar" | "editar" | "cancelar"; note?: string | null }) =>
+      decisionFn({ data: v }),
+    onSuccess: (_r, v) => {
+      setAjusteAberto(false);
+      setAjusteTexto("");
+      setTipOff(v.tipKey);
+      qc.invalidateQueries({ queryKey: ["hoje", "overview"] });
+      toast.success(
+        v.decision === "confirmar"
+          ? "Anotado — não volto a insistir nos próximos dias."
+          : v.decision === "editar"
+            ? "Guardei o teu ajuste para a próxima vez."
+            : "Não te volto a trazer este sinal tão cedo.",
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const [drawer, setDrawer] = useState<EventDrawerItem | null>(null);
