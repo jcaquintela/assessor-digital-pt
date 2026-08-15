@@ -1,6 +1,8 @@
 // Central pipeline para receção e classificação de ficheiros.
 // Independente do canal (WhatsApp, futuros). Import interno server-only.
 
+import { withUsageHint } from "@/lib/drive/monthly-quota";
+
 export const MAX_SIZES: Record<string, number> = {
   "image/jpeg": 10 * 1024 * 1024,
   "image/png": 10 * 1024 * 1024,
