@@ -365,7 +365,10 @@ export async function pullFromProvider(
   const { events, nextToken, nextDelta, error } = await fetchChanges(supabaseAdmin, userId, provider);
   if (error) {
     await saveSyncState(supabaseAdmin, userId, provider, { last_error: error });
-    return { applied: 0, skipped: 0, error };
+    // Mesmo com o delta a falhar, confirmamos os eventos ligados: uma remoção
+    // no calendário não pode ficar por detectar só porque o token caducou.
+    const applied = await verifyLinkedEvents(supabaseAdmin, userId, provider);
+    return { applied, skipped: 0, error };
   }
 
   let applied = 0;
