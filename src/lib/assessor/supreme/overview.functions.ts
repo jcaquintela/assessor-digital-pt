@@ -16,10 +16,14 @@ export const getHojeOverview = createServerFn({ method: "GET" })
         tip: null as MentorTip | null,
         facts: emptyFacts(),
       })),
-      context.supabase
-        .rpc("effective_tier", { _user_id: context.userId })
-        .then((r: any) => (typeof r?.data === "string" ? r.data : null))
-        .catch(() => null),
+      (async (): Promise<string | null> => {
+        try {
+          const { data } = await context.supabase.rpc("effective_tier", { _user_id: context.userId });
+          return typeof data === "string" ? data : null;
+        } catch {
+          return null;
+        }
+      })(),
     ]);
 
     let mentor: MentorTip | null = mentorResult.tip;
