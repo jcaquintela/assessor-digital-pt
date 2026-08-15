@@ -597,6 +597,18 @@ function HojePage() {
             >
               Confirmar
             </button>
+            {mentorFollowUpSuggestion(mentor.key) ? (
+              <button
+                type="button"
+                className="text-[12.5px] font-semibold"
+                style={{ color: "var(--sage)" }}
+                disabled={mentorFollowUp.isPending}
+                title={`${mentorFollowUpSuggestion(mentor.key)!.title} — daqui a ${mentorFollowUpSuggestion(mentor.key)!.dueInDays} dias`}
+                onClick={() => mentorFollowUp.mutate({ tipKey: mentor.key })}
+              >
+                {mentorFollowUp.isPending ? "A criar…" : "Criar seguimento"}
+              </button>
+            ) : null}
             <button
               type="button"
               className="text-[12.5px] font-semibold"
