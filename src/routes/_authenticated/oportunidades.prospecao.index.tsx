@@ -21,7 +21,9 @@ import {
 } from "@/lib/prospecting/prospecting.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { formatData } from "@/lib/demo-data";
-import { TierGate } from "@/components/tier-gate";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { tierAtLeast } from "@/lib/subscription/tiers";
+import { Lock } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/prospecao/")({
   head: () => ({
@@ -32,16 +34,16 @@ export const Route = createFileRoute("/_authenticated/oportunidades/prospecao/")
       { property: "og:description", content: "Placas na rua e leads para contactar." },
     ],
   }),
-  component: () => (
-    <TierGate min="consultor" title="Prospeção">
-      <ProspecaoPage />
-    </TierGate>
-  ),
+  component: ProspecaoPage,
 });
 
 const GROUPS: LeadStatus[] = ["to_contact", "contact_attempted", "contacted", "opportunity", "converted", "no_interest", "archived"];
 
 function ProspecaoPage() {
+  // Base vê a lista simples das placas que criou (por conversa ou aqui).
+  // O pipeline — estados, métricas, detalhe — continua Consultor+.
+  const { data: tierData } = useEffectiveTier();
+  const full = tierAtLeast(tierData?.tier, "consultor");
   const listFn = useServerFn(listProspectingLeads);
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["prospecting", "list"],
@@ -52,6 +54,7 @@ function ProspecaoPage() {
   const { data: stats } = useQuery({
     queryKey: ["prospecting", "stats"],
     queryFn: () => statsFn({ data: { days: 30 } }),
+    enabled: full,
   });
 
   const grouped = useMemo(() => {
@@ -70,7 +73,7 @@ function ProspecaoPage() {
         subtitle={`${leads.length} placa${leads.length === 1 ? "" : "s"} e leads`}
         action={<Button onClick={() => setOpen(true)}><Camera className="mr-1 h-4 w-4" /> Nova placa</Button>}
       />
-      {!!stats && stats.registados > 0 && (
+      {full && !!stats && stats.registados > 0 && (
         <Card className="mb-4">
           <CardContent className="flex flex-wrap items-baseline gap-x-6 gap-y-1 p-4">
             <div>
@@ -96,27 +99,49 @@ function ProspecaoPage() {
           </CardContent>
         </Card>
       )}
-      {GROUPS.map((s) => {
+      {full && GROUPS.map((s) => {
         const arr = grouped[s];
         if (!arr.length) return null;
         return (
           <section key={s} className="mb-6">
             <h2 className="mb-2 text-sm font-medium text-muted-foreground">{STATUS_LABEL[s]} · {arr.length}</h2>
             <div className="grid gap-3 md:grid-cols-2">
-              {arr.map((l) => <LeadCard key={l.id} lead={l} />)}
+              {arr.map((l) => <LeadCard key={l.id} lead={l} full />)}
             </div>
           </section>
         );
       })}
+      {!full && leads.length > 0 && (
+        <>
+          <section className="mb-6">
+            <h2 className="mb-2 text-sm font-medium text-muted-foreground">As tuas placas · {leads.length}</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              {leads.map((l: any) => <LeadCard key={l.id} lead={l} full={false} />)}
+            </div>
+          </section>
+          <Card className="border-dashed">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="flex items-start gap-3">
+                <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Desbloqueia o pipeline completo — estados, lembretes e guião de abordagem — com o plano Consultor.
+                </p>
+              </div>
+              <Button asChild size="sm">
+                <Link to="/subscricao">14 dias grátis</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </>
+      )}
       <NewLeadDialog open={open} onOpenChange={setOpen} />
     </AppShell>
   );
 }
 
-function LeadCard({ lead }: { lead: any }) {
-  return (
-    <Link to="/oportunidades/prospecao/$id" params={{ id: lead.id }} className="block">
-      <Card className="transition-colors hover:border-primary/40">
+function LeadCard({ lead, full = true }: { lead: any; full?: boolean }) {
+  const card = (
+      <Card className={full ? "transition-colors hover:border-primary/40" : ""}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -129,7 +154,7 @@ function LeadCard({ lead }: { lead: any }) {
                 {lead.location && <span>📍 {lead.location}</span>}
                 {lead.agency_name && <span>🏷 {lead.agency_name}</span>}
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {full && <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <Badge variant="outline">{STATUS_LABEL[lead.status as LeadStatus] ?? lead.status}</Badge>
                 {lead.listing_type && lead.listing_type !== "unknown" && (
                   <Badge variant="secondary">{LISTING_LABEL[lead.listing_type]}</Badge>
@@ -137,13 +162,18 @@ function LeadCard({ lead }: { lead: any }) {
                 {lead.next_follow_up_at && (
                   <span className="text-xs text-muted-foreground">Lembrete {formatData(lead.next_follow_up_at)}</span>
                 )}
-              </div>
+              </div>}
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            {full && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
           </div>
           <div className="mt-2 text-xs text-muted-foreground">Registado {formatData(lead.created_at)}</div>
         </CardContent>
       </Card>
+  );
+  if (!full) return card;
+  return (
+    <Link to="/oportunidades/prospecao/$id" params={{ id: lead.id }} className="block">
+      {card}
     </Link>
   );
 }
