@@ -41,7 +41,7 @@ export async function authorizeAppUserOAuth(
   };
   if (params.connectionAPIKey) headers["X-Connection-Api-Key"] = params.connectionAPIKey;
 
-  const body = JSON.stringify({
+  const requestBody = JSON.stringify({
     connector_id: params.connectorId,
     app_user_id: params.appUserId,
     return_url: params.returnUrl,
@@ -56,7 +56,7 @@ export async function authorizeAppUserOAuth(
     res = await fetch(`${params.gatewayBaseUrl}/api/v1/app-users/oauth2/authorize`, {
       method: "POST",
       headers,
-      body,
+      body: requestBody,
     });
     text = await res.text();
     if (res.ok || ![502, 503, 504].includes(res.status)) break;
