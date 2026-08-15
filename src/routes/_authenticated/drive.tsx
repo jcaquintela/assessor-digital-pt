@@ -186,8 +186,8 @@ function DrivePage() {
   });
   const fetchQuota = useServerFn(driveQuotaSummary);
   const quotaQ = useQuery({
-    queryKey: ["drive", "quota"],
-    queryFn: () => fetchQuota(),
+    queryKey: ["drive", "quota", previewTier ?? "real"],
+    queryFn: () => fetchQuota({ data: { previewTier } }),
   });
 
   const onPickFile = () => fileRef.current?.click();
