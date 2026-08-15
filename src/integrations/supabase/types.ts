@@ -2425,6 +2425,33 @@ export type Database = {
         }
         Relationships: []
       }
+      mentor_decisions: {
+        Row: {
+          created_at: string
+          decision: string
+          id: string
+          note: string | null
+          tip_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decision: string
+          id?: string
+          note?: string | null
+          tip_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decision?: string
+          id?: string
+          note?: string | null
+          tip_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       miscellaneous_items: {
         Row: {
           archived_at: string | null
