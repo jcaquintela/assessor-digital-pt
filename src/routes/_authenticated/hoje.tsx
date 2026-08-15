@@ -603,6 +603,16 @@ function HojePage() {
             >
               Confirmar
             </button>
+            <button
+              type="button"
+              className="text-[12.5px] font-semibold"
+              style={{ color: "var(--sage)" }}
+              disabled={mentorDecision.isPending}
+              title="Dou este assunto como resolvido — deixa de aparecer nas próximas semanas."
+              onClick={() => mentorDecision.mutate({ tipKey: mentor.key, decision: "tratado" })}
+            >
+              Já tratei
+            </button>
             {mentorFollowUpSuggestion(mentor.key) ? (
               <button
                 type="button"
