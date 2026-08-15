@@ -181,6 +181,7 @@ export const EMAIL_NOT_CONNECTED_REPLY =
   "Ainda não tens a tua conta de email ligada a mim. Liga-a em Definições > Email e depois digo-te logo o que chegou.";
 export const EMAIL_NEEDS_RECONNECT_REPLY =
   "A autorização da tua conta de email expirou. Volta a ligá-la em Definições > Email e vou buscar os emails novos.";
+export { MAIL_PROVIDER_CHOICE_REPLY } from "@/lib/providers/active";
 
 export function formatQueryResults(toolResults: ToolExecResult[]): string | null {
   const reads = toolResults.filter((t) => t.ok && isQueryTool(t.name));
@@ -194,6 +195,7 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
     if (r.name === "search_emails" || r.name === "summarize_email") {
       if (d?.not_connected) { blocks.push(EMAIL_NOT_CONNECTED_REPLY); continue; }
       if (d?.needs_reconnect) { blocks.push(EMAIL_NEEDS_RECONNECT_REPLY); continue; }
+      if (d?.needs_provider_choice) { blocks.push(MAIL_CHOICE_REPLY); continue; }
       if (r.name === "summarize_email") {
         if (d?.not_found) {
           blocks.push("Não encontrei esse email na tua caixa de entrada.");
