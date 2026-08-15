@@ -39,9 +39,13 @@ import {
 import {
   getGmailStatus,
   startGmailConnect,
-  startGmailConnect,
   disconnectGmail,
 } from "@/lib/email/gmail/gmail.functions";
+import {
+  getActiveProviders,
+  setActiveProviderFn,
+} from "@/lib/providers/active.functions";
+import { MAIL_PROVIDER_LABEL, type MailProvider } from "@/lib/email/providers";
 import { decideContentAccess, listMyConsentRequests } from "@/lib/admin/consent.functions";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
