@@ -2,6 +2,29 @@
 // Independente do canal (WhatsApp, futuros). Import interno server-only.
 
 import { withUsageHint } from "@/lib/drive/monthly-quota";
+import { systemCategoryFor } from "@/lib/drive/system-category";
+
+/**
+ * Recalcula a categoria de sistema depois de sabermos mais sobre o ficheiro
+ * (tipo de documento lido, reclassificação como placa). A categoria manual do
+ * consultor vive noutro campo e nunca é tocada aqui.
+ */
+export async function refreshSystemCategory(supabase: any, fileId: string): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from("uploaded_files")
+      .select("classification, document_type, mime_type")
+      .eq("id", fileId)
+      .maybeSingle();
+    if (!data) return;
+    await supabase
+      .from("uploaded_files")
+      .update({ system_category: systemCategoryFor(data as any) } as never)
+      .eq("id", fileId);
+  } catch (err) {
+    console.error("[files] refreshSystemCategory:", err instanceof Error ? err.message : err);
+  }
+}
 
 export const MAX_SIZES: Record<string, number> = {
   "image/jpeg": 10 * 1024 * 1024,
@@ -116,6 +139,7 @@ export function describeFromContent(classification: string, text: string | null 
 /**
  * Renomeia o ficheiro depois de haver conteúdo lido, mas só quando o nome
  * actual foi gerado por nós — um nome real enviado pelo canal nunca é tocado.
+ * O nome novo é um resumo de 3-5 palavras do assunto (IA), não a transcrição.
  */
 export async function refineFileName(
   supabase: any,
@@ -124,14 +148,30 @@ export async function refineFileName(
   text: string | null | undefined,
 ): Promise<void> {
   try {
-    const description = describeFromContent(classification, text);
-    if (!description) return;
     const { data } = await supabase
       .from("uploaded_files")
-      .select("original_file_name")
+      .select("original_file_name, user_id, channel")
       .eq("id", fileId)
       .maybeSingle();
-    if (!isAutoName((data as { original_file_name: string | null } | null)?.original_file_name)) return;
+    const row = data as { original_file_name: string | null; user_id?: string; channel?: string } | null;
+    if (!isAutoName(row?.original_file_name)) return;
+
+    // 1º: resumo curto por IA. 2º (se falhar): corte simples do conteúdo.
+    let description: string | null = null;
+    try {
+      const { summarizeForName } = await import("@/lib/ai/short-name.server");
+      const { composeShortName } = await import("@/lib/drive/short-name");
+      const res = await summarizeForName(String(text ?? ""), {
+        supabase,
+        userId: row?.user_id ?? null,
+        channel: row?.channel ?? null,
+      } as any);
+      if (res.ok) description = composeShortName(classification, res.summary);
+    } catch (err) {
+      console.error("[files] shortName:", err instanceof Error ? err.message : err);
+    }
+    if (!description) description = describeFromContent(classification, text);
+    if (!description) return;
     await supabase
       .from("uploaded_files")
       .update({ original_file_name: description } as never)
@@ -243,6 +283,8 @@ export async function applyDocumentExtraction(args: {
     }
 
     await args.supabase.from("uploaded_files").update(patch as never).eq("id", args.fileId);
+    // O tipo de documento lido pode mudar a categoria automática.
+    await refreshSystemCategory(args.supabase, args.fileId);
     return { text: r.visible_text, expiresOn: r.expires_on, reading: r };
   } catch (err) {
     console.error("[files] applyDocumentExtraction:", err instanceof Error ? err.message : err);
@@ -313,6 +355,38 @@ export async function processIncomingFile(
 
   const classification = classifyByMime(mimeType);
 
+  // Reenvio do mesmo ficheiro: impressão digital do conteúdo antes de gastar
+  // espaço e IA. Nada é apagado — o segundo envio é sinalizado ao consultor.
+  const body0 = toUint8(input.bytes);
+  let checksum: string | null = null;
+  try {
+    const { sha256Hex } = await import("@/lib/drive/checksum");
+    checksum = await sha256Hex(body0);
+    const { data: same } = await supabase
+      .from("uploaded_files")
+      .select("id, original_file_name")
+      .eq("user_id", userId)
+      .eq("checksum", checksum)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const original = same as { id: string; original_file_name: string | null } | null;
+    if (original) {
+      return {
+        ok: true,
+        fileId: original.id,
+        classification,
+        status: "duplicate",
+        reply: `Este ficheiro já o tenho guardado como "${original.original_file_name ?? "ficheiro"}". Não voltei a guardá-lo.`,
+        extractedText: null,
+        errorCode: "duplicate_file",
+      };
+    }
+  } catch (err) {
+    console.error("[files] checksum:", err instanceof Error ? err.message : err);
+  }
+
   // Plano efetivo do consultor (aplica beta override). Serve as duas regras
   // seguintes: espaço incluído e ficheiros por mês.
   let effectiveTier: string | null = null;
@@ -373,7 +447,7 @@ export async function processIncomingFile(
   const storagePath = `${userId}/${new Date().getFullYear()}/${internalName}`;
 
   // 3. Upload para bucket privado
-  const body = toUint8(input.bytes);
+  const body = body0;
   const upload = await supabase.storage
     .from("assessor-files")
     .upload(storagePath, body, {
@@ -409,6 +483,8 @@ export async function processIncomingFile(
       storage_path: storagePath,
       processing_status: "processed",
       classification,
+      checksum,
+      system_category: systemCategoryFor({ classification, mime_type: mimeType }),
       extracted_metadata: {},
     })
     .select("id")

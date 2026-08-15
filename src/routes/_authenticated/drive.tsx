@@ -1,6 +1,6 @@
 import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -17,6 +17,9 @@ import {
   restoreDriveFiles,
   driveAttention,
   driveQuotaSummary,
+  backfillSystemCategories,
+  backfillChecksums,
+  markDuplicateFiles,
 } from "@/lib/drive/drive.functions";
 import { getUploadedFileSignedUrl } from "@/lib/assessor/files.functions";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
@@ -25,6 +28,7 @@ import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
 import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
 import { ReorderPagesDialog } from "@/components/drive/reorder-pages-dialog";
 import { QuotaUpgradeDialog } from "@/components/drive/quota-upgrade-dialog";
+import { DriveFileMenu } from "@/components/drive/file-actions-menu";
 import { useQuotaRevalidate } from "@/lib/drive/use-quota-revalidate";
 import {
   pendingUploadCount,
@@ -429,6 +433,32 @@ function DrivePage() {
     restoreMany.mutate(ids);
   };
 
+  // Arrumação a pedido: categoria automática, impressão digital do conteúdo
+  // e sinalização de repetidos. Nunca apaga nada — só marca.
+  const qc = useQueryClient();
+  const runCategorias = useServerFn(backfillSystemCategories);
+  const runChecksums = useServerFn(backfillChecksums);
+  const runDuplicados = useServerFn(markDuplicateFiles);
+  const organizar = useMutation({
+    mutationFn: async () => {
+      await runCategorias({ data: undefined as never });
+      for (let i = 0; i < 8; i += 1) {
+        const r = await runChecksums({ data: { batch: 25 } });
+        if (!r.pending) break;
+      }
+      return await runDuplicados({ data: { apply: true } });
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["drive"] });
+      toast.success(
+        r.duplicateCount
+          ? `Drive arrumado. Encontrei ${r.duplicateCount} ficheiro(s) repetido(s) em ${r.groupCount} conjunto(s) — ficaram marcados como "Repetido", não apaguei nada.`
+          : "Drive arrumado. Não encontrei ficheiros repetidos.",
+      );
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não consegui arrumar o Drive."),
+  });
+
   return (
     <AppShell>
       {confirmacao.dialog}
@@ -446,6 +476,9 @@ function DrivePage() {
             />
             <Button onClick={onPickFile}>
               <Upload className="mr-1.5 h-4 w-4" /> Carregar
+            </Button>
+            <Button variant="outline" disabled={organizar.isPending} onClick={() => organizar.mutate()}>
+              {organizar.isPending ? "A organizar…" : "Organizar Drive"}
             </Button>
           </>
         }
@@ -775,6 +808,9 @@ function DrivePage() {
                           <AlertCircle className="h-3 w-3" /> Por tratar
                         </span>
                       )}
+                      {f.duplicate_of && (
+                        <span className="c-badge warn shrink-0">Repetido</span>
+                      )}
                       {catName && (
                         <span
                           className="c-badge shrink-0"
@@ -828,88 +864,28 @@ function DrivePage() {
                       >
                         <Eye className="h-3 w-3" /> Ver
                       </button>
-                      <button
-                        type="button"
-                        className="c-badge tap-44"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setFixTarget({ id: f.id, name: f.original_file_name ?? null });
-                        }}
-                      >
-                        <Link2 className="h-3 w-3" /> Ligações
-                      </button>
-                      {f.doc_group_id && (
-                        <button
-                          type="button"
-                          className="c-badge tap-44"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setOrderTarget(f.id);
-                          }}
-                        >
-                          <ListOrdered className="h-3 w-3" /> Ordenar páginas
-                          {f.doc_page_number ? ` (pág. ${f.doc_page_number})` : ""}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        aria-label={`Categoria de ${f.original_file_name ?? "ficheiro"}`}
-                        className="c-badge tap-44"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
+                      <DriveFileMenu
+                        label={f.original_file_name ?? "ficheiro"}
+                        naReciclagem={naReciclagem}
+                        temPaginas={!!f.doc_group_id}
+                        paginaLabel={f.doc_page_number ? ` (pág. ${f.doc_page_number})` : ""}
+                        temCategoria={!!catName}
+                        onLinks={() => setFixTarget({ id: f.id, name: f.original_file_name ?? null })}
+                        onPages={() => setOrderTarget(f.id)}
+                        onCategory={() =>
                           setCatTarget({
                             id: f.id,
                             name: f.original_file_name ?? null,
                             auto: autoLabel,
                             current: f.custom_category_id ?? null,
-                          });
-                        }}
-                      >
-                        <Tag className="h-3 w-3" /> {catName ? "Mudar categoria" : "Categoria"}
-                      </button>
-                      {!naReciclagem && (
-                        <button
-                          type="button"
-                          className="c-badge tap-44"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShareTarget({ id: f.id, name: f.original_file_name ?? null });
-                          }}
-                        >
-                          <MessageCircle className="h-3 w-3" /> Abrir no WhatsApp
-                        </button>
-                      )}
-                      {naReciclagem ? (
-                        <button
-                          type="button"
-                          className="c-badge tap-44"
-                          disabled={restoreMany.isPending}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            recuperar([f.id]);
-                          }}
-                        >
-                          <Undo2 className="h-3 w-3" /> Recuperar
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="c-badge tap-44 text-destructive"
-                          disabled={deleteMany.isPending}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`);
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" /> Eliminar
-                        </button>
-                      )}
+                          })
+                        }
+                        onShare={() => setShareTarget({ id: f.id, name: f.original_file_name ?? null })}
+                        onRestore={() => recuperar([f.id])}
+                        onDelete={() =>
+                          eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`)
+                        }
+                      />
                     </div>
                   </div>
                 </div>

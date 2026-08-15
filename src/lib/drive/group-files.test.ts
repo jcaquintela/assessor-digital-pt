@@ -54,3 +54,26 @@ describe("groupDriveFiles", () => {
     expect(groupDriveFiles([], {}, cats, "negocio")).toEqual([]);
   });
 });
+
+describe("categorias de sistema", () => {
+  it("agrupa por categoria automática quando não há categoria manual", () => {
+    const files = [
+      { id: "a", custom_category_id: null, system_category: "notas_voz" },
+      { id: "b", custom_category_id: null, system_category: "prospecao" },
+      { id: "c", custom_category_id: null, system_category: null },
+    ];
+    const groups = groupDriveFiles(files, {}, [], "categoria");
+    const labels = groups.map((g) => g.label);
+    expect(labels).toContain("Notas de voz");
+    expect(labels).toContain("Prospeção");
+    expect(labels).toContain("Por categorizar");
+    expect(groups.find((g) => g.label === "Notas de voz")?.files).toHaveLength(1);
+  });
+
+  it("categoria manual do consultor manda sobre a automática", () => {
+    const cats = [{ id: "c1", name: "Contratos", color: null }];
+    const files = [{ id: "a", custom_category_id: "c1", system_category: "notas_voz" }];
+    const groups = groupDriveFiles(files as any, {}, cats as any, "categoria");
+    expect(groups.map((g) => g.label)).toEqual(["Contratos"]);
+  });
+});

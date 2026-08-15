@@ -648,6 +648,13 @@ async function handleInboundMediaInner(
     deferAutoLink: inbound.messageType === "image",
   });
 
+  // Reenvio do mesmo ficheiro: avisamos e não voltamos a processar nem a
+  // gastar IA. O ficheiro original mantém-se intacto no Drive.
+  if (result.errorCode === "duplicate_file") {
+    await adapter.sendText(inbound.externalConversationId, result.reply);
+    return;
+  }
+
   // Anexo a um erro/sugestão por confirmar → junta ao rascunho e não segue
   // pelo fluxo normal de Drive/visão.
   if (result.ok && result.fileId) {
@@ -844,6 +851,8 @@ async function handleInboundMediaInner(
                     : "imagem",
               })
               .eq("id", result.fileId);
+            const { refreshSystemCategory } = await import("@/lib/assessor/files.server");
+            await refreshSystemCategory(supabaseAdmin, result.fileId);
             const { refineFileName, applyDocumentExtraction } = await import(
               "@/lib/assessor/files.server"
             );
