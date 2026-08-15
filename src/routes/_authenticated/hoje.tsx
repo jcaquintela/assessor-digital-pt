@@ -495,9 +495,21 @@ function HojePage() {
       {/* A-ter. Sugestão do mentor — conselho, não urgência. Só aparece se houver padrão real. */}
       {!filtroAtivo && mentor && tipOff !== mentor.key && (
         <section className="c-mentor mb-6">
-          <div className="c-mentor-tag mb-2">
-            <Lightbulb className="h-4 w-4" /> O teu mentor sugere
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="c-mentor-tag">
+              <Lightbulb className="h-4 w-4" /> O teu mentor sugere
+            </div>
+            {tierInfo?.effectiveTier ? (
+              <Badge variant="secondary" className="text-[11px] font-normal capitalize">
+                {tierInfo.effectiveTier}
+              </Badge>
+            ) : null}
           </div>
+          {tierInfo ? (
+            <p className="mb-2 text-[11.5px]" style={{ color: "var(--muted)" }}>
+              Fonte: {tierInfo.source === "preview" ? "simulação de super admin" : "subscrição real"}
+            </p>
+          ) : null}
           <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ink)" }}>{mentor.text}</p>
           {mentor.context ? (
             <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--ink)" }}>
