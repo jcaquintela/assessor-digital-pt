@@ -2,7 +2,16 @@
 // O corpo é lido on-demand e nunca é gravado: guardamos apenas o resumo.
 
 import { isSummaryRequest } from "./summary";
-import { fetchMessageBody } from "./gmail.server";
+import type { MailProvider } from "../providers";
+
+async function readBody(provider: MailProvider, key: string, id: string): Promise<string> {
+  if (provider === "outlook") {
+    const m = await import("../outlook/outlook.server");
+    return m.fetchMessageBody(key, id);
+  }
+  const g = await import("./gmail.server");
+  return g.fetchMessageBody(key, id);
+}
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-3.6-flash";
@@ -12,11 +21,12 @@ export async function summarizeEmailOnRequest(args: {
   messageId: string;
   subject?: string | null;
   requestText: string;
+  provider?: MailProvider;
 }): Promise<{ summary: string | null; skipped: "not_requested" | null }> {
   if (!isSummaryRequest(args.requestText)) {
     return { summary: null, skipped: "not_requested" };
   }
-  const body = await fetchMessageBody(args.connectionKey, args.messageId);
+  const body = await readBody(args.provider ?? "gmail", args.connectionKey, args.messageId);
   const key = process.env['LOVABLE_API_KEY'];
   if (!key) throw new Error("LOVABLE_API_KEY em falta");
   const res = await fetch(GATEWAY, {
