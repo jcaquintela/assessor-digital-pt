@@ -65,6 +65,64 @@ function namesList(rows: NamedRow[], max = 3): string {
   return `${list.slice(0, -1).join(", ")} ou ${list[list.length - 1]}`;
 }
 
+// ---------------------------------------------------------------------------
+// Desambiguação com contexto.
+//
+// Caso real (15/08): com dois contactos "Carla Martins" na lista, a pergunta
+// saía "…ou é Carla Martins ou Carla Martins?" — sem nada que os distinga.
+// Regra: quando dois candidatos têm o mesmo nome, a pergunta mostra sempre
+// algo que os separe (papel, telefone) e, em último caso, a ordem de registo.
+// ---------------------------------------------------------------------------
+
+export interface CandidateLike extends NamedRow {
+  phone?: string | null;
+  relationship_type?: string | null;
+}
+
+const RELATIONSHIP_PT: Record<string, string> = {
+  proprietario: "proprietário",
+  potencial_cliente: "potencial cliente",
+  comprador: "comprador",
+  investidor: "investidor",
+  colega: "colega",
+  parceiro: "parceiro",
+  outro: "outro",
+};
+
+function candidateDetails(c: CandidateLike): string[] {
+  const rel = String(c.relationship_type ?? "").trim();
+  const phone = String(c.phone ?? "").trim();
+  return [rel ? (RELATIONSHIP_PT[rel] ?? rel.replace(/_/g, " ")) : "", phone].filter(Boolean);
+}
+
+/** Nome + contexto distintivo ("Carla Martins (proprietária, 912 …)"). */
+export function personLabel(c: CandidateLike): string {
+  const name = String(c.name ?? "").trim();
+  const details = candidateDetails(c);
+  return details.length ? `${name} (${details.join(", ")})` : name;
+}
+
+/** Etiquetas garantidamente diferentes entre si (nunca duas iguais). */
+export function describeCandidates(rows: CandidateLike[], max = 4): string[] {
+  const labels = rows.slice(0, max).map(personLabel).filter(Boolean);
+  const counts = new Map<string, number>();
+  for (const l of labels) counts.set(l, (counts.get(l) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  return labels.map((l) => {
+    if ((counts.get(l) ?? 0) < 2) return l;
+    const n = (seen.get(l) ?? 0) + 1;
+    seen.set(l, n);
+    return `${l} (o ${n}.º que registaste)`;
+  });
+}
+
+/** "A, B ou C" a partir de etiquetas já distintas. */
+export function joinOr(parts: string[]): string {
+  const list = parts.filter(Boolean);
+  if (list.length <= 1) return list[0] ?? "";
+  return `${list.slice(0, -1).join(", ")} ou ${list[list.length - 1]}`;
+}
+
 /** Resposta quando não há ninguém com esse nome exacto. */
 export function noExactMatchReply(query: string, suggestions: NamedRow[]): string {
   const base = `Não encontrei ninguém chamado exatamente "${query.trim()}".`;
@@ -76,7 +134,12 @@ export function noExactMatchReply(query: string, suggestions: NamedRow[]): strin
 export function askLinkPersonQuestion(name: string, suggestions: NamedRow[]): string {
   const who = name.trim();
   if (suggestions.length) {
-    return `Ainda não tenho ninguém chamado exatamente "${who}". Crio um contacto novo "${who}" ou é ${namesList(suggestions)}?`;
+    const labels = describeCandidates(suggestions as CandidateLike[]);
+    const sameName = suggestions.some((s) => foldText(s.name) === foldText(who));
+    if (sameName) {
+      return `Tenho mais do que um contacto "${who}": ${labels.join("; ")}. Qual deles é? Se não for nenhum, crio um contacto novo.`;
+    }
+    return `Ainda não tenho ninguém chamado exatamente "${who}". Crio um contacto novo "${who}" ou é ${joinOr(labels)}?`;
   }
   return `Ainda não tenho nenhum contacto "${who}". Crio um contacto novo com esse nome ou é alguém que já tens com outro nome?`;
 }
