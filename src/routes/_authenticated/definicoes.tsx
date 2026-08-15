@@ -38,7 +38,7 @@ import {
 } from "@/lib/email/outlook/outlook.functions";
 import {
   getGmailStatus,
-*** placeholder
+  startGmailConnect,
   startGmailConnect,
   disconnectGmail,
 } from "@/lib/email/gmail/gmail.functions";
