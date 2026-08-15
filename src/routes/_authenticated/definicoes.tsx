@@ -902,9 +902,6 @@ function CalendarioSection() {
   );
 }
 
-/* ---------------- Conta ---------------- */
-
-function ContaSection() {
 /* ---------------- Email (Gmail) ---------------- */
 
 function EmailSection() {
