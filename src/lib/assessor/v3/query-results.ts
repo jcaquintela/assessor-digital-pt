@@ -176,6 +176,12 @@ function humanWhen(dueDate: unknown, dueTime: unknown): string {
 // Constrói a resposta com os dados de todas as leituras bem sucedidas.
 // Devolve null quando não houve nenhuma leitura com sucesso — nesse caso o
 // motor mantém a resposta que já tinha.
+// Email só pode ser negado quando a conta não está mesmo ligada.
+export const EMAIL_NOT_CONNECTED_REPLY =
+  "Ainda não tens a tua conta de email ligada a mim. Liga-a em Definições > Email e depois digo-te logo o que chegou.";
+export const EMAIL_NEEDS_RECONNECT_REPLY =
+  "A autorização da tua conta de email expirou. Volta a ligá-la em Definições > Email e vou buscar os emails novos.";
+
 export function formatQueryResults(toolResults: ToolExecResult[]): string | null {
   const reads = toolResults.filter((t) => t.ok && isQueryTool(t.name));
   if (!reads.length) return null;
@@ -185,6 +191,22 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
     const rows = rowsOf(r.data);
     // "Manuel" não pode devolver "Manuela" como se fosse a mesma pessoa.
     const d = r.data as any;
+    if (r.name === "search_emails" || r.name === "summarize_email") {
+      if (d?.not_connected) { blocks.push(EMAIL_NOT_CONNECTED_REPLY); continue; }
+      if (d?.needs_reconnect) { blocks.push(EMAIL_NEEDS_RECONNECT_REPLY); continue; }
+      if (r.name === "summarize_email") {
+        if (d?.not_found) {
+          blocks.push("Não encontrei esse email na tua caixa de entrada.");
+        } else {
+          const subj = s(d?.subject);
+          blocks.push(
+            [subj ? boldWa(subj) : null, s(d?.summary) || "Não consegui resumir esse email."]
+              .filter(Boolean).join("\n"),
+          );
+        }
+        continue;
+      }
+    }
     if (r.name === "search_people" && d?.no_exact_match) {
       const q = String(d.query ?? "").trim();
       const ev = d.unlinked_event;
