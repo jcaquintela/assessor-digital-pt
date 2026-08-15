@@ -12,7 +12,7 @@ import { parseFromHeader } from "./sender";
 export type EmailRow = {
   id: string;
   thread_id?: string | null;
-  from: string;
+  from: string | null;
   subject: string | null;
   snippet?: string | null;
   sent_at?: string | null;
