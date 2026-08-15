@@ -350,7 +350,13 @@ function DrivePage() {
             <div>
               <div className="text-sm font-medium">Ficheiros este mês</div>
               <div className="text-xs text-muted-foreground">
-                Plano {quotaQ.data.label} · reset no dia 1
+                Plano {quotaQ.data.label}
+                {quotaQ.data.preview && (
+                  <span className="ml-1.5 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    a simular
+                  </span>
+                )}
+                <span className="ml-1.5">· reset no dia 1</span>
               </div>
             </div>
             <div className="text-right">
@@ -358,7 +364,7 @@ function DrivePage() {
                 {quotaQ.data.used} de {quotaQ.data.limit}
               </div>
               {quotaQ.data.hint && (
-                <div className="text-xs" style={{ color: "var(--amber)" }}>
+                <div className="text-xs text-amber-600 dark:text-amber-400">
                   {quotaQ.data.hint}
                 </div>
               )}
