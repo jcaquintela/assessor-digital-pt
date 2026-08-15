@@ -9,7 +9,18 @@ import { CHANNEL_LABEL, useLinkedChannel } from "@/lib/assessor/use-linked-chann
 import { cn } from "@/lib/utils";
 import { MessageCircle, SendHorizonal, Loader2, Copy, Check } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { sendDashboardMessage, DASHBOARD_CHAT_MIN_TIER } from "@/lib/assessor/dashboard-chat.functions";
+import {
+  sendDashboardMessage,
+  DASHBOARD_CHAT_MIN_TIER,
+  DASHBOARD_CHAT_ERROR,
+} from "@/lib/assessor/dashboard-chat.functions";
+import {
+  makePending,
+  reconcilePending,
+  withTimeout,
+  TIMEOUT_MESSAGE,
+  type PendingMessage,
+} from "@/lib/assessor/dashboard-chat-ui";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { tierAtLeast } from "@/lib/subscription/tiers";
 import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
@@ -89,6 +100,8 @@ function AssessorPage() {
   const send = useServerFn(sendDashboardMessage);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  // A mensagem do consultor aparece já na conversa; o motor pode demorar.
+  const [pendingMsgs, setPendingMsgs] = useState<PendingMessage[]>([]);
   // Confirmação de arquivo em lote: a lista numerada passa a cartão com
   // botões, em vez de obrigar a escrever "sim".
   const { pending: pendingBulk, reload: reloadBulk } = usePendingBulkArchive(msgs.length);
@@ -105,7 +118,12 @@ function AssessorPage() {
     let cancelled = false;
     const reload = () => {
       loadMessages(200)
-        .then((rows) => { if (!cancelled) { setMsgs(rows); setLoading(false); } })
+        .then((rows) => {
+          if (cancelled) return;
+          setMsgs(rows);
+          setPendingMsgs((p) => reconcilePending(p, rows));
+          setLoading(false);
+        })
         .catch((e) => { if (!cancelled) { toast.error((e as Error).message); setLoading(false); } });
     };
     reload();
@@ -118,7 +136,7 @@ function AssessorPage() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [msgs.length]);
+  }, [msgs.length, pendingMsgs.length]);
 
   const canalLabel = channel ? CHANNEL_LABEL[channel] : "WhatsApp";
 
@@ -149,17 +167,41 @@ function AssessorPage() {
   const enviar = async () => {
     const text = draft.trim();
     if (!text || sending) return;
+    const pending = makePending(text);
     setSending(true);
     setDraft("");
+    setPendingMsgs((p) => [...p, pending]);
     try {
-      await send({ data: { text } });
+      const race = await withTimeout(send({ data: { text } }));
+      if (!race.ok) {
+        marcarFalha(pending.id);
+        toast.error(TIMEOUT_MESSAGE);
+      } else if (race.value && race.value.ok === false) {
+        marcarFalha(pending.id);
+        toast.error(race.value.error || DASHBOARD_CHAT_ERROR);
+      } else {
+        // O histórico real chega por Realtime; recarregamos para garantir.
+        const rows = await loadMessages(200).catch(() => null);
+        if (rows) {
+          setMsgs(rows);
+          setPendingMsgs((p) => reconcilePending(p, rows));
+        }
+      }
     } catch (e) {
-      setDraft(text);
-      toast.error((e as Error).message);
+      marcarFalha(pending.id);
+      toast.error((e as Error).message || DASHBOARD_CHAT_ERROR);
     } finally {
       setSending(false);
       void reloadConfirm();
     }
+  };
+
+  const marcarFalha = (id: string) =>
+    setPendingMsgs((p) => p.map((m) => (m.id === id ? { ...m, failed: true } : m)));
+
+  const reenviar = (m: PendingMessage) => {
+    setPendingMsgs((p) => p.filter((x) => x.id !== m.id));
+    setDraft(m.content);
   };
 
   const responderLote = async (answer: "sim" | "não") => {
@@ -319,6 +361,35 @@ function AssessorPage() {
                 </div>
               );
             })}
+            {/* Mensagens já enviadas, à espera do motor: visíveis desde o
+                primeiro segundo, mesmo que a resposta demore. */}
+            {pendingMsgs.map((p) => (
+              <div key={p.id} className="flex justify-end">
+                <div className={cn("c-bubble user", p.failed ? "opacity-70" : "opacity-60")}>
+                  <span className="whitespace-pre-line">{p.content}</span>
+                  <span className="c-when text-right">
+                    {p.failed ? "não enviada" : "a enviar…"}
+                  </span>
+                  {p.failed && (
+                    <button
+                      type="button"
+                      className="mt-1 block text-[12px] underline"
+                      onClick={() => reenviar(p)}
+                    >
+                      Tentar de novo
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {sending && (
+              <div className="flex justify-start">
+                <div className="c-bubble bot flex items-center gap-2 opacity-70">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span className="text-[13px]">{assessorName} está a pensar…</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
