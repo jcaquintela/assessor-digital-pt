@@ -155,6 +155,7 @@ const NOT_A_NAME = new Set([
   "visita", "reuniao", "reunião", "casa", "imovel", "imóvel", "amanha", "amanhã",
   "hoje", "isso", "isto", "ela", "equipa", "banco", "notario", "notário",
   "proprietario", "proprietário", "comprador", "vendedor", "lead", "contacto",
+  "sr", "sra", "dr", "dra", "eng", "enga", "prof", "dona", "arq",
 ]);
 
 const NAME_RE = /[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+)?/;
