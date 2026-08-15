@@ -62,7 +62,7 @@ describe("categorias de sistema", () => {
       { id: "b", custom_category_id: null, system_category: "prospecao" },
       { id: "c", custom_category_id: null, system_category: null },
     ];
-    const groups = groupFiles(files, "categoria", []);
+    const groups = groupDriveFiles(files, {}, [], "categoria");
     const labels = groups.map((g) => g.label);
     expect(labels).toContain("Notas de voz");
     expect(labels).toContain("Prospeção");
@@ -73,7 +73,7 @@ describe("categorias de sistema", () => {
   it("categoria manual do consultor manda sobre a automática", () => {
     const cats = [{ id: "c1", name: "Contratos", color: null }];
     const files = [{ id: "a", custom_category_id: "c1", system_category: "notas_voz" }];
-    const groups = groupFiles(files as any, "categoria", cats as any);
+    const groups = groupDriveFiles(files as any, {}, cats as any, "categoria");
     expect(groups.map((g) => g.label)).toEqual(["Contratos"]);
   });
 });
