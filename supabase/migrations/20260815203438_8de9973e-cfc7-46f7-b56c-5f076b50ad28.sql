@@ -1,0 +1,2 @@
+ALTER TABLE public.mentor_decisions DROP CONSTRAINT IF EXISTS mentor_decisions_decision_check;
+ALTER TABLE public.mentor_decisions ADD CONSTRAINT mentor_decisions_decision_check CHECK (decision IN ('confirmar','editar','cancelar','tratado'));
