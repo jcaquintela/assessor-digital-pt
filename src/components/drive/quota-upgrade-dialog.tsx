@@ -20,6 +20,8 @@ interface QuotaUpgradeDialogProps {
   children?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Ficheiro que ficou por carregar por causa do limite mensal. */
+  blockedFileName?: string | null;
 }
 
 export function QuotaUpgradeDialog({
@@ -31,6 +33,7 @@ export function QuotaUpgradeDialog({
   children,
   open,
   onOpenChange,
+  blockedFileName,
 }: QuotaUpgradeDialogProps) {
   const remaining = Math.max(0, limit - used);
   const pct = Math.min(100, (used / limit) * 100);
@@ -62,6 +65,17 @@ export function QuotaUpgradeDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {isFull && blockedFileName && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-50 p-3 dark:bg-amber-950/30">
+              <div className="text-sm font-medium">Ficheiro não carregado</div>
+              <div className="mt-0.5 truncate text-sm" title={blockedFileName}>
+                {blockedFileName}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Bloqueado por teres atingido o limite mensal de ficheiros do plano {label}.
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-medium">Ficheiros este mês</div>
