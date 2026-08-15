@@ -8,9 +8,18 @@ import { shouldWarnReauth, hoursUntilExpiry, reauthWarningMessage } from "./reau
 
 export async function warnExpiringGmailConnections(
   supabaseAdmin: any,
-  send: (userId: string, message: string) => Promise<void>,
+  send?: (userId: string, message: string) => Promise<void>,
   now = new Date(),
 ): Promise<{ warned: number }> {
+  const deliver = send ?? (async (userId: string, message: string) => {
+    const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
+    const target = await resolveOutboundTarget(supabaseAdmin, userId);
+    if (!target) throw new Error("sem canal");
+    const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+    const r = await sendReplyForChannel(target.channel, target.externalId, message);
+    if (!r.ok) throw new Error("envio falhou");
+  });
+
   const { data } = await supabaseAdmin
     .from("email_connections")
     .select("id, user_id, connected_at, expires_at, reauth_warned_at")
@@ -20,7 +29,7 @@ export async function warnExpiringGmailConnections(
   for (const conn of ((data as any[]) ?? [])) {
     if (!shouldWarnReauth(conn, now)) continue;
     try {
-      await send(String(conn.user_id), reauthWarningMessage(hoursUntilExpiry(conn, now)));
+      await deliver(String(conn.user_id), reauthWarningMessage(hoursUntilExpiry(conn, now)));
       await supabaseAdmin
         .from("email_connections")
         .update({ reauth_warned_at: now.toISOString() })
