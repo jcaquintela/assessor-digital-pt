@@ -776,6 +776,9 @@ function DrivePage() {
                           <AlertCircle className="h-3 w-3" /> Por tratar
                         </span>
                       )}
+                      {f.duplicate_of && (
+                        <span className="c-badge warn shrink-0">Repetido</span>
+                      )}
                       {catName && (
                         <span
                           className="c-badge shrink-0"
