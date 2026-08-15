@@ -1,5 +1,5 @@
 import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -81,9 +81,10 @@ export const Route = createFileRoute("/_authenticated/drive")({
   }),
   validateSearch: (
     s: Record<string, unknown>,
-  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; cat?: string } => ({
+  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; cat?: string; exp?: string } => ({
     tab: (s.tab as Tab | undefined) ?? undefined,
     cat: (s.cat as string | undefined) ?? undefined,
+    exp: (s.exp as string | undefined) ?? undefined,
     q: (s.q as string | undefined) ?? undefined,
     nif: (s.nif as string | undefined) ?? undefined,
     artigo: (s.artigo as string | undefined) ?? undefined,
@@ -422,13 +423,48 @@ function DrivePage() {
     artigo: artigoParam,
     openCategory: catParam,
   });
-  const [expandido, setExpandido] = useState<string | null>(null);
+  // Categoria expandida vive no URL: o link é partilhável e o histórico funciona.
+  const expandido = search.exp ?? null;
+  const router = useRouter();
+  const veioDeCartoes = useRef(false);
+  const abrirCategoria = (key: string, inline: boolean) => {
+    veioDeCartoes.current = true;
+    navigate({
+      search: (s: any) =>
+        inline
+          ? { ...s, exp: expandido === key ? undefined : key }
+          : { ...s, cat: key, exp: undefined },
+    });
+  };
+  const urlCategoria = (key: string, inline: boolean) => {
+    if (typeof window === "undefined") return "";
+    const p = new URLSearchParams();
+    if (search.tab) p.set("tab", search.tab);
+    p.set(inline ? "exp" : "cat", key);
+    return `${window.location.origin}${window.location.pathname}?${p.toString()}`;
+  };
+  const copiarLink = async (key: string, inline: boolean) => {
+    try {
+      await navigator.clipboard.writeText(urlCategoria(key, inline));
+      toast.success("Link da categoria copiado.");
+    } catch {
+      toast.error("Não consegui copiar o link.");
+    }
+  };
   // Pesquisar manda sobre a categoria aberta: os resultados são transversais.
   const catAberta =
     catParam && !qParam && !nifParam && !artigoParam
       ? grupos.find((g) => g.key === catParam) ?? null
       : null;
-  const fecharCategoria = () => navigate({ search: (s: any) => ({ ...s, cat: undefined }) });
+  const fecharCategoria = () => {
+    // Se a categoria foi aberta aqui, voltar atrás mantém o histórico limpo.
+    if (veioDeCartoes.current) {
+      veioDeCartoes.current = false;
+      router.history.back();
+      return;
+    }
+    navigate({ search: (s: any) => ({ ...s, cat: undefined, exp: undefined }) });
+  };
 
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
@@ -907,15 +943,12 @@ function DrivePage() {
                   data-categoria={c.key}
                   className={"c-card p-0" + (aberto ? " sm:col-span-2 lg:col-span-3" : "")}
                 >
+                  <div className="flex w-full items-center">
                   <button
                     type="button"
                     aria-expanded={c.inline ? aberto : undefined}
-                    className="flex w-full items-center gap-3 p-3.5 text-left"
-                    onClick={() =>
-                      c.inline
-                        ? setExpandido(aberto ? null : c.key)
-                        : navigate({ search: (s: any) => ({ ...s, cat: c.key }) })
-                    }
+                    className="flex min-w-0 flex-1 items-center gap-3 p-3.5 text-left"
+                    onClick={() => abrirCategoria(c.key, c.inline)}
                   >
                     <span className="rounded-lg bg-muted p-2">
                       <FolderOpen className="h-4 w-4" />
@@ -939,6 +972,16 @@ function DrivePage() {
                       <ChevronRight className="c-muted h-4 w-4 shrink-0" />
                     )}
                   </button>
+                  <button
+                    type="button"
+                    aria-label={`Copiar link de ${c.label}`}
+                    title="Copiar link desta categoria"
+                    className="c-badge tap-44 mr-2.5"
+                    onClick={() => copiarLink(c.key, c.inline)}
+                  >
+                    <Link2 className="h-3 w-3" />
+                  </button>
+                  </div>
                   {c.inline && aberto && (
                     <div className="space-y-2 border-t border-border p-3">
                       {c.files.map(renderFile)}
@@ -956,6 +999,13 @@ function DrivePage() {
               </button>
               <span className="text-[13px] font-semibold">{catAberta.label}</span>
               <span className="c-muted text-[12px]">{catAberta.files.length}</span>
+              <button
+                type="button"
+                className="c-badge tap-44"
+                onClick={() => copiarLink(catAberta.key, false)}
+              >
+                <Link2 className="h-3 w-3" /> Copiar link
+              </button>
             </div>
             {catAberta.files.slice(0, shown[catAberta.key] ?? PAGE).map(renderFile)}
             {catAberta.files.length > (shown[catAberta.key] ?? PAGE) && (
