@@ -430,6 +430,31 @@ function DrivePage() {
     restoreMany.mutate(ids);
   };
 
+  // Arrumação a pedido: categoria automática, impressão digital do conteúdo
+  // e sinalização de repetidos. Nunca apaga nada — só marca.
+  const runCategorias = useServerFn(backfillSystemCategories);
+  const runChecksums = useServerFn(backfillChecksums);
+  const runDuplicados = useServerFn(markDuplicateFiles);
+  const organizar = useMutation({
+    mutationFn: async () => {
+      await runCategorias({ data: undefined as never });
+      for (let i = 0; i < 8; i += 1) {
+        const r = await runChecksums({ data: { batch: 25 } });
+        if (!r.pending) break;
+      }
+      return await runDuplicados({ data: { apply: true } });
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["drive"] });
+      toast.success(
+        r.duplicateCount
+          ? `Drive arrumado. Encontrei ${r.duplicateCount} ficheiro(s) repetido(s) em ${r.groupCount} conjunto(s) — ficaram marcados como "Repetido", não apaguei nada.`
+          : "Drive arrumado. Não encontrei ficheiros repetidos.",
+      );
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não consegui arrumar o Drive."),
+  });
+
   return (
     <AppShell>
       {confirmacao.dialog}
