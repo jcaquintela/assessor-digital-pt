@@ -1903,6 +1903,15 @@ async function runReasoningEngineInner(
 
   // Compromisso agendado por nome sem contacto na base: perguntar antes de
   // gravar, para o evento nunca ficar "solto" com um nome só em texto.
+  const calendarChoiceAsk = toolResults.find(
+    (t) => t.name === "create_event" && t.ok
+      && (t.data as any)?.needsCalendarProviderChoice === true,
+  );
+  if (calendarChoiceAsk) {
+    const { CALENDAR_PROVIDER_CHOICE_REPLY } = await import("@/lib/providers/active");
+    reply = CALENDAR_PROVIDER_CHOICE_REPLY;
+  }
+
   const personAsk = toolResults.find(
     (t) => t.name === "create_event" && t.ok
       && (t.data as any)?.needsPersonConfirmation === true,
