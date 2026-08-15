@@ -905,6 +905,10 @@ function CalendarioSection() {
 /* ---------------- Conta ---------------- */
 
 function ContaSection() {
+  return <ContaSectionInner />;
+}
+
+function ContaSectionInner() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
 
