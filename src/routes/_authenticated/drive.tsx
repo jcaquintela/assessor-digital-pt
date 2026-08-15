@@ -192,10 +192,31 @@ function DrivePage() {
     queryFn: () => fetchQuota({ data: { previewTier } }),
   });
 
-  const onPickFile = () => fileRef.current?.click();
+  const quotaCheia =
+    !!quotaQ.data &&
+    quotaQ.data.limit !== null &&
+    quotaQ.data.used >= quotaQ.data.limit;
+  const [quotaBloqueio, setQuotaBloqueio] = useState(false);
+
+  const onPickFile = () => {
+    if (quotaCheia) {
+      const restantes = 0;
+      toast.error(
+        `Limite mensal atingido: ${quotaQ.data!.used} de ${quotaQ.data!.limit} ficheiros. ${restantes} restantes.`,
+      );
+      setQuotaBloqueio(true);
+      return;
+    }
+    fileRef.current?.click();
+  };
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
+    if (quotaCheia) {
+      setQuotaBloqueio(true);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
     const fd = new FormData();
     fd.append("file", f);
     try {
@@ -204,8 +225,16 @@ function DrivePage() {
       toast.success("Recebi o ficheiro. Vou organizá-lo.", { id: "up" });
       listQ.refetch();
       countsQ.refetch();
+      quotaQ.refetch();
     } catch (err: any) {
-      toast.error(err?.message ?? "Falhou o upload.", { id: "up" });
+      const msg = String(err?.message ?? "");
+      if (msg.includes("monthly_files_exceeded") || /limite mensal/i.test(msg)) {
+        toast.error("Limite mensal de ficheiros atingido.", { id: "up" });
+        setQuotaBloqueio(true);
+        quotaQ.refetch();
+      } else {
+        toast.error(err?.message ?? "Falhou o upload.", { id: "up" });
+      }
     } finally {
       if (fileRef.current) fileRef.current.value = "";
     }
@@ -345,6 +374,20 @@ function DrivePage() {
           </>
         }
       />
+
+      {quotaQ.data && quotaQ.data.limit !== null && (
+        <QuotaUpgradeDialog
+          used={quotaQ.data.used}
+          limit={quotaQ.data.limit}
+          label={quotaQ.data.label}
+          hint={quotaQ.data.hint}
+          preview={quotaQ.data.preview}
+          open={quotaBloqueio}
+          onOpenChange={setQuotaBloqueio}
+        >
+          {null}
+        </QuotaUpgradeDialog>
+      )}
 
       {quotaQ.data && quotaQ.data.limit !== null && (
         <div className="mb-3 rounded-xl border border-border bg-card p-3">
