@@ -999,6 +999,13 @@ function DrivePage() {
               </button>
               <span className="text-[13px] font-semibold">{catAberta.label}</span>
               <span className="c-muted text-[12px]">{catAberta.files.length}</span>
+              <button
+                type="button"
+                className="c-badge tap-44"
+                onClick={() => copiarLink(catAberta.key, false)}
+              >
+                <Link2 className="h-3 w-3" /> Copiar link
+              </button>
             </div>
             {catAberta.files.slice(0, shown[catAberta.key] ?? PAGE).map(renderFile)}
             {catAberta.files.length > (shown[catAberta.key] ?? PAGE) && (
