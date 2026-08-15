@@ -84,19 +84,20 @@ describe("golden 1 — agendar com nome que não existe", () => {
     expect(askLinkPersonQuestion("Carlos", [])).toContain("Crio um contacto novo");
   });
 
-  it("não mexe no fluxo de quem já está identificado", async () => {
+  it("valida o contacto proposto pelo modelo em vez de o aceitar às cegas", async () => {
     const captured: { insert?: any } = {};
     const r = await dispatchToolCall(
-      { supabase: fakeSb({ captured }), userId: "u1", channel: "whatsapp" } as any,
+      { supabase: fakeSb({ captured, people: [{ id: "11111111-1111-4111-8111-111111111111", name: "Manuel" }] }), userId: "u1", channel: "whatsapp" } as any,
       "create_event",
       JSON.stringify({ title: "Visita com o Manuel", event_type: "visita", date: "2026-08-20", start_time: "09:00", person_id: "11111111-1111-4111-8111-111111111111" }),
     );
     expect(r.ok).toBe(true);
-    expect((r.data as any).needsPersonConfirmation).toBeUndefined();
-    expect(captured.insert?.person_id).toBe("11111111-1111-4111-8111-111111111111");
+    expect((r.data as any).needsPersonConfirmation).toBe(true);
+    expect((r.data as any).mode).toBe("confirm_exact");
+    expect(captured.insert).toBeUndefined();
   });
 
-  it("liga sozinho quando há correspondência de palavra inteira", async () => {
+  it("correspondência de palavra inteira pergunta, nunca liga sozinha", async () => {
     const captured: { insert?: any } = {};
     const r = await dispatchToolCall(
       { supabase: fakeSb({ people: [{ id: "p9", name: "Manuel Silva" }], captured }), userId: "u1", channel: "whatsapp" } as any,
@@ -104,7 +105,8 @@ describe("golden 1 — agendar com nome que não existe", () => {
       JSON.stringify({ title: "Visita com o Manuel", event_type: "visita", date: "2026-08-20", start_time: "09:00" }),
     );
     expect(r.ok).toBe(true);
-    expect(captured.insert?.person_id).toBe("p9");
+    expect((r.data as any).mode).toBe("confirm_partial");
+    expect(captured.insert).toBeUndefined();
   });
 });
 
