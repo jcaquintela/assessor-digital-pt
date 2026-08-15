@@ -16,29 +16,29 @@ type Result = { ok: boolean; data?: unknown; error?: string };
 
 export class MailAuthExpired extends Error {}
 
-/** Provedor ligado por este consultor (Gmail tem precedência se houver dois). */
+/**
+ * Caixa de correio ativa deste consultor.
+ * Sem prioridade silenciosa: com Gmail e Outlook ligados e sem escolha feita
+ * devolvemos `needs_choice` para o Afonso perguntar antes de consultar.
+ */
 export async function activeMailProvider(
   userId: string,
-): Promise<{ provider: MailProvider; key: string } | null> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { getConnectionKeyForUser } = await import("@/lib/calendar/connections.server");
-  const { data } = await supabaseAdmin
-    .from("email_connections")
-    .select("provider")
-    .eq("user_id", userId);
-  const providers = (data ?? [])
-    .map((r: any) => String(r.provider))
-    .filter((p: string): p is MailProvider => p === "gmail" || p === "outlook")
-    .sort((a: MailProvider) => (a === "gmail" ? -1 : 1));
-  for (const provider of providers) {
-    const key = await getConnectionKeyForUser(
-      supabaseAdmin,
-      userId,
-      MAIL_CONNECTOR_ID[provider],
-    );
-    if (key) return { provider, key };
-  }
-  return null;
+): Promise<
+  | { provider: MailProvider; key: string }
+  | null
+  | { needsChoice: true; options: MailProvider[] }
+> {
+  const { activeMail } = await import("@/lib/providers/active.server");
+  const res = await activeMail(userId);
+  if (res.status === "none") return null;
+  if (res.status === "needs_choice") return { needsChoice: true, options: res.options };
+  return { provider: res.provider, key: res.key! };
+}
+
+function choiceData(conn: unknown): { needs_provider_choice: true; options: MailProvider[] } | null {
+  return conn && (conn as any).needsChoice
+    ? { needs_provider_choice: true, options: (conn as any).options as MailProvider[] }
+    : null;
 }
 
 async function listMessages(
@@ -109,8 +109,11 @@ export async function execSearchEmails(ctx: Ctx, args: unknown): Promise<Result>
   };
   const conn = await activeMailProvider(ctx.userId);
   if (!conn) return { ok: true, data: { not_connected: true, items: [] } };
+  const choice = choiceData(conn);
+  if (choice) return { ok: true, data: { ...choice, items: [] } };
+  const active = conn as { provider: MailProvider; key: string };
   try {
-    const items = await listMessages(conn.provider, conn.key, {
+    const items = await listMessages(active.provider, active.key, {
       max: Math.min(Math.max(Number(a.max) || 10, 1), 20),
       query: (a.query ?? "").trim() || undefined,
       onlyUnread: Boolean(a.only_unread),
@@ -123,7 +126,7 @@ export async function execSearchEmails(ctx: Ctx, args: unknown): Promise<Result>
     return {
       ok: true,
       data: {
-        provider: conn.provider,
+        provider: active.provider,
         items: showAll ? triaged : relevant,
         total: showAll ? triaged.length : relevant.length,
         hidden_noise: showAll ? 0 : noise.length,
@@ -143,12 +146,15 @@ export async function execSummarizeEmail(ctx: Ctx, args: unknown): Promise<Resul
   const a = (args ?? {}) as { message_id?: string | null; subject_hint?: string | null };
   const conn = await activeMailProvider(ctx.userId);
   if (!conn) return { ok: true, data: { not_connected: true } };
+  const choice = choiceData(conn);
+  if (choice) return { ok: true, data: choice };
+  const active = conn as { provider: MailProvider; key: string };
   try {
     let messageId = (a.message_id ?? "").trim();
     let subject: string | null = null;
     if (!messageId) {
       const hint = (a.subject_hint ?? "").trim();
-      const candidates = await listMessages(conn.provider, conn.key, {
+      const candidates = await listMessages(active.provider, active.key, {
         max: 15,
         query: hint || undefined,
       });
@@ -165,13 +171,13 @@ export async function execSummarizeEmail(ctx: Ctx, args: unknown): Promise<Resul
     }
     const { summarizeEmailOnRequest } = await import("./gmail/summarize.server");
     const { summary } = await summarizeEmailOnRequest({
-      provider: conn.provider,
-      connectionKey: conn.key,
+      provider: active.provider,
+      connectionKey: active.key,
       messageId,
       subject,
       requestText: "resume este email",
     });
-    return { ok: true, data: { provider: conn.provider, summary, subject, message_id: messageId } };
+    return { ok: true, data: { provider: active.provider, summary, subject, message_id: messageId } };
   } catch (err) {
     if (err instanceof MailAuthExpired) return { ok: true, data: { needs_reconnect: true } };
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
