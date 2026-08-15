@@ -32,6 +32,8 @@ import { AssuntoCard } from "@/components/assunto-card";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
 import { saveMentorDecision } from "@/lib/assessor/supreme/mentor-decisions.functions";
+import { createMentorFollowUp } from "@/lib/assessor/supreme/mentor-followup.functions";
+import { mentorFollowUpSuggestion } from "@/lib/assessor/supreme/mentor-followup";
 import { usePreviewTier } from "@/lib/subscription/tier-preview";
 import { Lightbulb, ArrowRight } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
