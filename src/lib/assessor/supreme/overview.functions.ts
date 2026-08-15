@@ -29,5 +29,5 @@ export const getHojeOverview = createServerFn({ method: "GET" })
     // decidido há pouco fica em silêncio e, quando volta, retoma o assunto.
     const decidido = applyDecisions(mentorResult.tip as MentorTip | null, decisions);
     const mentor = applyMentorLevel(decidido, mentorResult.facts, tier) as MentorTip | null;
-    return { summary, mentor, tierInfo: { effectiveTier: tier, source } };
+    return { summary, mentor, tierInfo: { effectiveTier: tier, source }, decisions };
   });

@@ -31,7 +31,8 @@ import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
-import { saveMentorDecision } from "@/lib/assessor/supreme/mentor-decisions.functions";
+import { saveMentorDecision, undoMentorDecision } from "@/lib/assessor/supreme/mentor-decisions.functions";
+import { type MentorDecisionKind } from "@/lib/assessor/supreme/mentor-decisions";
 import { createMentorFollowUp } from "@/lib/assessor/supreme/mentor-followup.functions";
 import { mentorFollowUpSuggestion } from "@/lib/assessor/supreme/mentor-followup";
 import { usePreviewTier } from "@/lib/subscription/tier-preview";
@@ -190,10 +191,11 @@ function HojePage() {
   // Decisões sobre as sugestões do Mentor: ficam guardadas e mudam o que
   // aparece a seguir para o mesmo sinal (silêncio + retoma do assunto).
   const decisionFn = useServerFn(saveMentorDecision);
+  const undoDecisionFn = useServerFn(undoMentorDecision);
   const mentorDecision = useMutation({
     mutationFn: (v: {
       tipKey: string;
-      decision: "confirmar" | "editar" | "cancelar" | "tratado";
+      decision: MentorDecisionKind;
       note?: string | null;
     }) =>
       decisionFn({ data: v }),
@@ -202,15 +204,31 @@ function HojePage() {
       setAjusteTexto("");
       setTipOff(v.tipKey);
       qc.invalidateQueries({ queryKey: ["hoje", "overview"] });
-      toast.success(
-        v.decision === "confirmar"
-          ? "Anotado — não volto a insistir nos próximos dias."
-          : v.decision === "tratado"
-            ? "Assunto dado como tratado — só volto se reaparecer."
+      if (v.decision === "tratado") {
+        toast.success("Assunto dado como tratado — só volto se reaparecer.", {
+          action: {
+            label: "Desfazer",
+            onClick: () => undoMentor.mutate({ tipKey: v.tipKey }),
+          },
+        });
+      } else {
+        toast.success(
+          v.decision === "confirmar"
+            ? "Anotado — não volto a insistir nos próximos dias."
             : v.decision === "editar"
             ? "Guardei o teu ajuste para a próxima vez."
             : "Não te volto a trazer este sinal tão cedo.",
-      );
+        );
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const undoMentor = useMutation({
+    mutationFn: (v: { tipKey: string }) => undoDecisionFn({ data: v }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hoje", "overview"] });
+      toast.success("Desfeito — este sinal volta a ser considerado.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
