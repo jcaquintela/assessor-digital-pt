@@ -58,6 +58,7 @@ import {
 import { CANCELLED_STATUS, CANCELLED_OUTCOME, matchByHint } from "../v3/cancel-agenda";
 import {
   classifyPeopleMatches, isConfidentNameMatch, personNameFromEventText,
+  stripHonorific, isHonorificOnly,
 } from "@/lib/people/name-match";
 import { COMPLETED_STATUS, COMPLETED_OUTCOME } from "../v3/completion-intent";
 import { pushEventToProviders } from "@/lib/calendar/sync.server";
@@ -309,11 +310,18 @@ export async function findUnlinkedEventForName(
 async function execCreatePerson(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreatePersonArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
+  // Bug real (15/08): "Visita com o Dr João" gravava name = "Dr. João".
+  // O tratamento nunca faz parte do nome guardado — só o nome próprio.
+  const cleanName = (() => {
+    const stripped = stripHonorific(v.name).trim();
+    if (!stripped || isHonorificOnly(stripped)) return v.name.trim();
+    return stripped;
+  })();
   const { data, error } = await ctx.supabase
     .from("people")
     .insert({
       user_id: ctx.userId,
-      name: v.name.trim(),
+      name: cleanName,
       phone: v.phone ?? null,
       email: v.email ?? null,
       relationship_type: v.relationship_type,
