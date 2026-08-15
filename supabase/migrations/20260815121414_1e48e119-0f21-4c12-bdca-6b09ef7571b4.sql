@@ -1,0 +1,1 @@
+update public.people set archived_at = now() where id = 'f886a3f8-c297-4d49-92dc-ba1ed3eea428' and archived_at is null;
