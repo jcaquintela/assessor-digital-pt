@@ -42,6 +42,12 @@ export function buildDashboardInbound(args: {
 export const dashboardAdapter: ChannelAdapter = {
   channel: DASHBOARD_CHANNEL,
 
+  // Canal reactivo: cada mensagem escrita no painel tem de ter resposta
+  // própria. Juntar rajadas aqui fazia com que três comandos seguidos
+  // ("/novo", "/starr", "/start") virassem um único texto colado — deixavam
+  // de ser comandos e recebiam uma resposta genérica só no fim.
+  coalesceBursts: false,
+
   // O inbound é construído no servidor a partir da sessão autenticada; não
   // há payload cru de terceiros para fazer parse.
   parseUpdate(): NormalizedInbound[] {
