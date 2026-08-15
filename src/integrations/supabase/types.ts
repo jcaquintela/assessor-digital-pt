@@ -4166,6 +4166,7 @@ export type Database = {
           doc_nif: string | null
           doc_page_number: number | null
           document_type: string | null
+          duplicate_of: string | null
           error_code: string | null
           error_message: string | null
           external_file_id: string | null
@@ -4189,6 +4190,7 @@ export type Database = {
           source_external_file_id: string | null
           source_message_id: string | null
           storage_path: string
+          system_category: string | null
           updated_at: string
           user_description: string | null
           user_id: string | null
@@ -4213,6 +4215,7 @@ export type Database = {
           doc_nif?: string | null
           doc_page_number?: number | null
           document_type?: string | null
+          duplicate_of?: string | null
           error_code?: string | null
           error_message?: string | null
           external_file_id?: string | null
@@ -4236,6 +4239,7 @@ export type Database = {
           source_external_file_id?: string | null
           source_message_id?: string | null
           storage_path: string
+          system_category?: string | null
           updated_at?: string
           user_description?: string | null
           user_id?: string | null
@@ -4260,6 +4264,7 @@ export type Database = {
           doc_nif?: string | null
           doc_page_number?: number | null
           document_type?: string | null
+          duplicate_of?: string | null
           error_code?: string | null
           error_message?: string | null
           external_file_id?: string | null
@@ -4283,6 +4288,7 @@ export type Database = {
           source_external_file_id?: string | null
           source_message_id?: string | null
           storage_path?: string
+          system_category?: string | null
           updated_at?: string
           user_description?: string | null
           user_id?: string | null
@@ -4293,6 +4299,13 @@ export type Database = {
             columns: ["custom_category_id"]
             isOneToOne: false
             referencedRelation: "file_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_files_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "uploaded_files"
             referencedColumns: ["id"]
           },
           {
