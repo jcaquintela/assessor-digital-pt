@@ -9,6 +9,8 @@ import { BrandMark } from "@/components/brand-mark";
 import { createTelegramLinkToken, getTelegramLink } from "@/lib/telegram/link.functions";
 import { getWhatsAppLink, startWhatsAppLink } from "@/lib/whatsapp/link.functions";
 import { startWhatsAppTrial } from "@/lib/subscription/trial.functions";
+import { CalendarStep, EmailStep } from "@/components/canais/onboarding-setup";
+import { nextOnboardingStep, type OnboardingStep } from "@/lib/onboarding/steps";
 
 export const Route = createFileRoute("/_authenticated/ligar-canal")({
   head: () => ({
@@ -27,6 +29,36 @@ export const Route = createFileRoute("/_authenticated/ligar-canal")({
 function LigarCanalPage() {
   const navigate = useNavigate();
   const [choice, setChoice] = useState<"whatsapp" | "telegram" | null>(null);
+  const [step, setStep] = useState<OnboardingStep>("canal");
+  const goto = (from: OnboardingStep) => {
+    const next = nextOnboardingStep(from);
+    if (next === "fim") { navigate({ to: "/", replace: true }); return; }
+    setStep(next);
+  };
+
+  if (step === "calendario") {
+    return (
+      <OnboardingShell
+        eyebrow="Passo 2 de 3"
+        title="Queres que veja a tua agenda?"
+        intro="Nada é obrigatório: podes saltar e ligar mais tarde nas Definições."
+      >
+        <CalendarStep onNext={() => goto("calendario")} />
+      </OnboardingShell>
+    );
+  }
+
+  if (step === "email") {
+    return (
+      <OnboardingShell
+        eyebrow="Passo 3 de 3"
+        title="E a tua caixa de correio?"
+        intro="Último passo — também podes deixar para depois."
+      >
+        <EmailStep onNext={() => goto("email")} />
+      </OnboardingShell>
+    );
+  }
 
   return (
     <div className="consult-root min-h-dvh px-4 py-10">
@@ -38,7 +70,7 @@ function LigarCanalPage() {
             <div className="text-xs text-muted-foreground">o teu assessor</div>
           </div>
         </div>
-        <p className="c-eyebrow">Último passo</p>
+        <p className="c-eyebrow">Passo 1 de 3</p>
         <h1 className="c-page-title mt-1">Escolhe por onde falamos</h1>
         <p className="c-muted mt-2 text-[14px] leading-relaxed">
           É a mesma conta e o mesmo histórico em qualquer canal — o que muda são as
@@ -46,11 +78,44 @@ function LigarCanalPage() {
         </p>
 
         {choice === null && <ChannelChoice onChoose={setChoice} />}
-        {choice === "whatsapp" && <WhatsAppFlow onBack={() => setChoice(null)} />}
+        {choice === "whatsapp" && (
+          <WhatsAppFlow onBack={() => setChoice(null)} onDone={() => goto("canal")} />
+        )}
         {choice === "telegram" && (
-          <TelegramFlow onBack={() => setChoice(null)} onDone={() => navigate({ to: "/", replace: true })} />
+          <TelegramFlow onBack={() => setChoice(null)} onDone={() => goto("canal")} />
         )}
 
+        <p className="c-muted mt-6 text-[13px]">
+          Preferes tratar disto depois?{" "}
+          <button type="button" className="underline" onClick={() => goto("canal")}>
+            Saltar este passo
+          </button>
+        </p>
+      </main>
+    </div>
+  );
+}
+
+function OnboardingShell(props: {
+  eyebrow: string;
+  title: string;
+  intro: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="consult-root min-h-dvh px-4 py-10">
+      <main className="mx-auto w-full max-w-xl">
+        <div className="mb-6 flex items-center gap-2">
+          <BrandMark size={36} />
+          <div>
+            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-xs text-muted-foreground">o teu assessor</div>
+          </div>
+        </div>
+        <p className="c-eyebrow">{props.eyebrow}</p>
+        <h1 className="c-page-title mt-1">{props.title}</h1>
+        <p className="c-muted mt-2 text-[14px] leading-relaxed">{props.intro}</p>
+        {props.children}
         <p className="c-muted mt-6 text-[13px]">
           Preferes ver primeiro o painel? <Link to="/hoje" className="underline">Continuar sem ligar</Link>
         </p>
@@ -105,7 +170,7 @@ function TelegramFlow({ onBack, onDone }: { onBack: () => void; onDone: () => vo
             Está ligado{data.displayName ? ` (${data.displayName})` : ""}. Já podes falar comigo.
           </p>
           <div className="mt-3">
-            <button className="c-cta" onClick={onDone}>Entrar no painel</button>
+            <button className="c-cta" onClick={onDone}>Continuar</button>
           </div>
         </>
       ) : (
@@ -129,9 +194,8 @@ function TelegramFlow({ onBack, onDone }: { onBack: () => void; onDone: () => vo
   );
 }
 
-function WhatsAppFlow({ onBack }: { onBack: () => void }) {
+function WhatsAppFlow({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const fetchStatus = useServerFn(getWhatsAppLink);
   const doStart = useServerFn(startWhatsAppLink);
   const doTrial = useServerFn(startWhatsAppTrial);
@@ -172,8 +236,8 @@ function WhatsAppFlow({ onBack }: { onBack: () => void }) {
       {linked ? (
         <>
           <p className="text-[13px]">Está ligado. O período experimental de 14 dias está a contar.</p>
-          <button className="c-cta mt-3" onClick={() => navigate({ to: "/", replace: true })}>
-            Entrar no painel
+          <button className="c-cta mt-3" onClick={onDone}>
+            Continuar
           </button>
         </>
       ) : (
