@@ -361,6 +361,35 @@ function AssessorPage() {
                 </div>
               );
             })}
+            {/* Mensagens já enviadas, à espera do motor: visíveis desde o
+                primeiro segundo, mesmo que a resposta demore. */}
+            {pendingMsgs.map((p) => (
+              <div key={p.id} className="flex justify-end">
+                <div className={cn("c-bubble user", p.failed ? "opacity-70" : "opacity-60")}>
+                  <span className="whitespace-pre-line">{p.content}</span>
+                  <span className="c-when text-right">
+                    {p.failed ? "não enviada" : "a enviar…"}
+                  </span>
+                  {p.failed && (
+                    <button
+                      type="button"
+                      className="mt-1 block text-[12px] underline"
+                      onClick={() => reenviar(p)}
+                    >
+                      Tentar de novo
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {sending && (
+              <div className="flex justify-start">
+                <div className="c-bubble bot flex items-center gap-2 opacity-70">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span className="text-[13px]">{assessorName} está a pensar…</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
