@@ -194,9 +194,8 @@ function TelegramFlow({ onBack, onDone }: { onBack: () => void; onDone: () => vo
   );
 }
 
-function WhatsAppFlow({ onBack }: { onBack: () => void }) {
+function WhatsAppFlow({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const fetchStatus = useServerFn(getWhatsAppLink);
   const doStart = useServerFn(startWhatsAppLink);
   const doTrial = useServerFn(startWhatsAppTrial);
@@ -237,8 +236,8 @@ function WhatsAppFlow({ onBack }: { onBack: () => void }) {
       {linked ? (
         <>
           <p className="text-[13px]">Está ligado. O período experimental de 14 dias está a contar.</p>
-          <button className="c-cta mt-3" onClick={() => navigate({ to: "/", replace: true })}>
-            Entrar no painel
+          <button className="c-cta mt-3" onClick={onDone}>
+            Continuar
           </button>
         </>
       ) : (
