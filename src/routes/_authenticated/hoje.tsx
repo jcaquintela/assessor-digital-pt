@@ -138,6 +138,7 @@ function HojePage() {
     retry: false,
   });
   const [tipOff, setTipOff] = useState<string | null>(null);
+  const [factosAbertos, setFactosAbertos] = useState(false);
   const mentor = overview.data?.mentor ?? null;
   const resumo = overview.data?.summary ?? null;
 
