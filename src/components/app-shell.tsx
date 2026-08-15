@@ -16,6 +16,7 @@ import {
   FolderOpen,
   Handshake,
   Sparkles,
+  MapPin,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ const desktopNav = [
   { to: "/pessoas", label: "Pessoas", icon: Users },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/negocios", label: "Negócios", icon: Handshake },
+  { to: "/oportunidades/prospecao", label: "Prospeção", icon: MapPin },
   { to: "/calendario", label: "Agenda", icon: CalendarDays },
   { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
   { to: "/negocio", label: "Faturação", icon: Wallet },
