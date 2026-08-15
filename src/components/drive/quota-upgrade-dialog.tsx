@@ -18,6 +18,8 @@ interface QuotaUpgradeDialogProps {
   hint: string | null;
   preview: boolean;
   children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function QuotaUpgradeDialog({
@@ -27,6 +29,8 @@ export function QuotaUpgradeDialog({
   hint,
   preview,
   children,
+  open,
+  onOpenChange,
 }: QuotaUpgradeDialogProps) {
   const remaining = Math.max(0, limit - used);
   const pct = Math.min(100, (used / limit) * 100);
@@ -34,7 +38,8 @@ export function QuotaUpgradeDialog({
   const isFull = used >= limit;
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {children !== null && (
       <DialogTrigger asChild>
         {children ?? (
           <Button size="sm" className="w-full sm:w-auto">
@@ -42,14 +47,17 @@ export function QuotaUpgradeDialog({
           </Button>
         )}
       </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
-            Resumo de consumo do Drive
+            {isFull ? "Limite mensal atingido" : "Resumo de consumo do Drive"}
           </DialogTitle>
           <DialogDescription>
-            Estás a usar {used} de {limit} ficheiros este mês ({roundedPct}%).
+            {isFull
+              ? `Já usaste os ${limit} ficheiros deste mês. O upload fica bloqueado até dia 1 ou até fazeres upgrade.`
+              : `Estás a usar ${used} de ${limit} ficheiros este mês (${roundedPct}%).`}
           </DialogDescription>
         </DialogHeader>
 
