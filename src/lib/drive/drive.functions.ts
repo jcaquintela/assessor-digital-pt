@@ -1,7 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { LinkableType } from "./link-match";
 import { foldLike } from "@/lib/search/normalize";
+import { filesThisMonth } from "./monthly-quota.server";
+import { monthlyFileQuota, usageHintText } from "./monthly-quota";
+import { tierLabel } from "@/lib/subscription/tiers";
+import { resolveTierForRequest } from "@/lib/subscription/preview-tier.server";
 
 type Tab =
   | "recentes"
@@ -314,6 +319,42 @@ export const driveCounts = createServerFn({ method: "GET" })
       por_tratar: porTratar.length,
       arquivados: arquivados.length,
       reciclagem: (files ?? []).filter((f: any) => !!f.deleted_at).length,
+    };
+  });
+
+// Resumo mensal de ficheiros para a página inicial do Drive.
+// Planos sem limite (Pro/Team) não mostram contagem.
+export const driveQuotaSummary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z
+      .object({ previewTier: z.string().optional().nullable() })
+      .parse(data)
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { tier, source } = await resolveTierForRequest(
+      supabase,
+      userId,
+      data.previewTier
+    );
+    const limit = monthlyFileQuota(tier);
+    if (limit === null) {
+      return {
+        used: 0,
+        limit: null,
+        label: tierLabel(tier),
+        hint: null,
+        preview: source === "preview",
+      };
+    }
+    const used = await filesThisMonth(supabase, userId);
+    return {
+      used,
+      limit,
+      label: tierLabel(tier),
+      hint: usageHintText(used, tier),
+      preview: source === "preview",
     };
   });
 
