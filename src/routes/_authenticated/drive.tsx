@@ -448,6 +448,9 @@ function DrivePage() {
             <Button onClick={onPickFile}>
               <Upload className="mr-1.5 h-4 w-4" /> Carregar
             </Button>
+            <Button variant="outline" disabled={organizar.isPending} onClick={() => organizar.mutate()}>
+              {organizar.isPending ? "A organizar…" : "Organizar Drive"}
+            </Button>
           </>
         }
       />
