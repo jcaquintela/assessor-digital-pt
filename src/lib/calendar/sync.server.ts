@@ -12,6 +12,7 @@
 import { callAsAppUser } from "@/integrations/lovable/appUserConnector";
 import { getConnectionKeyForUser } from "./connections.server";
 import { isCalendarAuthError } from "./auth-error";
+import { isExternalEventMissing } from "./missing-event";
 import {
   CALENDAR_PROVIDERS,
   GATEWAY_BASE_URL,
@@ -506,7 +507,67 @@ export async function pullFromProvider(
     delta_link: nextDelta ?? undefined,
     last_error: null,
   });
+  applied += await verifyLinkedEvents(supabaseAdmin, userId, provider);
   return { applied, skipped };
+}
+
+/**
+ * Confirma, evento a evento, que os compromissos ligados ainda existem no
+ * calendário externo. Cobre o caso em que o consultor apaga directamente no
+ * Outlook/Google e o delta não nos traz a remoção.
+ */
+async function verifyLinkedEvents(
+  supabaseAdmin: any, userId: string, provider: CalendarProvider,
+): Promise<number> {
+  const since = new Date(Date.now() - 86_400_000).toISOString();
+  const { data } = await supabaseAdmin
+    .from("calendar_event_links")
+    .select("id, external_event_id, follow_up_id, follow_ups!inner(id, due_date, status, archived_at)")
+    .eq("user_id", userId)
+    .eq("provider", provider)
+    .eq("deleted", false)
+    .gte("follow_ups.due_date", since)
+    .limit(50);
+  const links = (data ?? []) as any[];
+  let cancelled = 0;
+  const isGoogle = provider === "google_calendar";
+  for (const link of links) {
+    const fu = link.follow_ups;
+    if (!link.external_event_id || !link.follow_up_id) continue;
+    if (fu?.archived_at || String(fu?.status ?? "").toLowerCase() === "cancelado") continue;
+    const path = isGoogle
+      ? `/calendar/v3/calendars/primary/events/${encodeURIComponent(link.external_event_id)}`
+      : `/me/events/${encodeURIComponent(link.external_event_id)}`;
+    const r = await callProvider(supabaseAdmin, userId, provider, path);
+    if (!isExternalEventMissing(r.status, r.body, r.text)) continue;
+    await cancelLocalEvent(supabaseAdmin, userId, provider, link.follow_up_id, link.id, link.external_event_id);
+    cancelled++;
+  }
+  return cancelled;
+}
+
+/** Cancela no Afonso um compromisso que desapareceu do calendário externo. */
+async function cancelLocalEvent(
+  supabaseAdmin: any, userId: string, provider: CalendarProvider,
+  followUpId: string, linkId: string, externalEventId: string,
+) {
+  await supabaseAdmin.from("follow_ups")
+    .update({ status: "cancelado", archived_at: new Date().toISOString() })
+    .eq("id", followUpId).eq("user_id", userId);
+  await supabaseAdmin.from("reminders")
+    .update({ status: "cancelled" })
+    .eq("user_id", userId)
+    .eq("related_resource_type", "follow_up")
+    .eq("related_resource_id", followUpId)
+    .in("status", ["scheduled", "processing", "failed"]);
+  await supabaseAdmin.from("calendar_event_links")
+    .update({ deleted: true, last_origin: provider, last_synced_at: new Date().toISOString() })
+    .eq("id", linkId);
+  await logSync(supabaseAdmin, {
+    userId, provider, followUpId, externalEventId,
+    direction: "inbound", action: "delete", origin: provider,
+    detail: "apagado no calendário externo",
+  });
 }
 
 /** Corre o polling para um consultor, em todos os providers ligados. */
