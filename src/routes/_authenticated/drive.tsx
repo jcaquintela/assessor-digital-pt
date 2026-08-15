@@ -461,6 +461,7 @@ function DrivePage() {
           open={quotaBloqueio}
           onOpenChange={setQuotaBloqueio}
           blockedFileName={ficheiroBloqueado}
+          pendingCount={pendentes}
         >
           {null}
         </QuotaUpgradeDialog>
