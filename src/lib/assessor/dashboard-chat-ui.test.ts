@@ -58,7 +58,11 @@ describe("comandos de barra no painel", () => {
   });
 
   it("comandos colados deixavam de ser comandos — por isso o painel não junta rajadas", () => {
-    expect(resolveCommand("/novo\n/starr\n/start").kind).toBe("none");
+    // Colados, os três viram um só turno e perdem-se: só o primeiro conta.
+    expect(resolveCommand("/novo\n/starr\n/start")).toMatchObject({
+      kind: "unknown",
+      command: "novo",
+    });
     expect(dashboardAdapter.coalesceBursts).toBe(false);
     // WhatsApp mantém a junção de rajadas — pipeline intocado.
     expect(whatsappAdapter.coalesceBursts).not.toBe(false);
