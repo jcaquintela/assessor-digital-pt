@@ -1,5 +1,5 @@
 import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -39,6 +39,13 @@ import {
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import { groupDriveFiles, type GroupBy } from "@/lib/drive/group-files";
 import { buildCategoryCards, shouldShowCards } from "@/lib/drive/category-cards";
+import {
+  resolveCategoryView,
+  nextSearchForCard,
+  closedSearch,
+  categoryShareUrl,
+  type DriveSearch,
+} from "@/lib/drive/category-url";
 import {
   FileText,
   Image as ImageIcon,
@@ -401,6 +408,8 @@ function DrivePage() {
   // Trocar de agrupamento não deve fazer perder a posição na página:
   // guardamos o scroll no clique e repomo-lo depois de renderizar a nova vista.
   const scrollKeep = useRef<number | null>(null);
+  // Scroll da grelha de cartões, reposto ao voltar (botão ou back do browser).
+  const scrollCartoes = useRef<number | null>(null);
   const mudarAgrupamento = (next: GroupBy) => {
     if (next === groupBy) return;
     scrollKeep.current = typeof window !== "undefined" ? window.scrollY : null;
@@ -424,24 +433,22 @@ function DrivePage() {
     openCategory: catParam,
   });
   // Categoria expandida vive no URL: o link é partilhável e o histórico funciona.
-  const expandido = search.exp ?? null;
-  const router = useRouter();
-  const veioDeCartoes = useRef(false);
+  const vista = resolveCategoryView(search as DriveSearch);
+  const expandido = vista.mode === "expandido" ? vista.key : null;
   const abrirCategoria = (key: string, inline: boolean) => {
-    veioDeCartoes.current = true;
-    navigate({
-      search: (s: any) =>
-        inline
-          ? { ...s, exp: expandido === key ? undefined : key }
-          : { ...s, cat: key, exp: undefined },
-    });
+    // Guardar o scroll para o repor quando se voltar aos cartões.
+    scrollCartoes.current = typeof window !== "undefined" ? window.scrollY : null;
+    navigate({ search: (s: any) => nextSearchForCard(s as DriveSearch, key, inline) as any });
   };
   const urlCategoria = (key: string, inline: boolean) => {
     if (typeof window === "undefined") return "";
-    const p = new URLSearchParams();
-    if (search.tab) p.set("tab", search.tab);
-    p.set(inline ? "exp" : "cat", key);
-    return `${window.location.origin}${window.location.pathname}?${p.toString()}`;
+    return categoryShareUrl(
+      window.location.origin,
+      window.location.pathname,
+      search as DriveSearch,
+      key,
+      inline,
+    );
   };
   const copiarLink = async (key: string, inline: boolean) => {
     try {
@@ -456,15 +463,17 @@ function DrivePage() {
     catParam && !qParam && !nifParam && !artigoParam
       ? grupos.find((g) => g.key === catParam) ?? null
       : null;
-  const fecharCategoria = () => {
-    // Se a categoria foi aberta aqui, voltar atrás mantém o histórico limpo.
-    if (veioDeCartoes.current) {
-      veioDeCartoes.current = false;
-      router.history.back();
-      return;
-    }
-    navigate({ search: (s: any) => ({ ...s, cat: undefined, exp: undefined }) });
-  };
+  const fecharCategoria = () =>
+    navigate({ search: (s: any) => closedSearch(s as DriveSearch) as any });
+
+  // Voltar aos cartões repõe a posição onde estavas antes de abrir a categoria.
+  useLayoutEffect(() => {
+    if (vista.mode !== "cartoes") return;
+    const y = scrollCartoes.current;
+    if (y == null) return;
+    scrollCartoes.current = null;
+    window.scrollTo({ top: y });
+  }, [vista.mode, vista.key]);
 
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
