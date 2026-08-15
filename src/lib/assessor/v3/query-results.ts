@@ -183,6 +183,8 @@ export const EMAIL_NEEDS_RECONNECT_REPLY =
   "A autorização da tua conta de email expirou. Volta a ligá-la em Definições > Email e vou buscar os emails novos.";
 import { MAIL_PROVIDER_CHOICE_REPLY } from "@/lib/providers/active";
 export { MAIL_PROVIDER_CHOICE_REPLY };
+import { EMAIL_PLAN_REQUIRED_REPLY } from "@/lib/subscription/email-gate";
+export { EMAIL_PLAN_REQUIRED_REPLY };
 
 export function formatQueryResults(toolResults: ToolExecResult[]): string | null {
   const reads = toolResults.filter((t) => t.ok && isQueryTool(t.name));
@@ -194,6 +196,7 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
     // "Manuel" não pode devolver "Manuela" como se fosse a mesma pessoa.
     const d = r.data as any;
     if (r.name === "search_emails" || r.name === "summarize_email") {
+      if (d?.plan_required) { blocks.push(EMAIL_PLAN_REQUIRED_REPLY); continue; }
       if (d?.not_connected) { blocks.push(EMAIL_NOT_CONNECTED_REPLY); continue; }
       if (d?.needs_reconnect) { blocks.push(EMAIL_NEEDS_RECONNECT_REPLY); continue; }
       if (d?.needs_provider_choice) { blocks.push(MAIL_PROVIDER_CHOICE_REPLY); continue; }

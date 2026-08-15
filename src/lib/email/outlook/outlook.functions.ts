@@ -19,6 +19,9 @@ import {
 export const startOutlookMailConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    // Gate de plano no servidor: esconder na UI não chega.
+    const { requireEmailModule } = await import("@/lib/subscription/email-gate.server");
+    await requireEmailModule(context.userId);
     const clientAPIKey = process.env[OUTLOOK_CLIENT_KEY_ENV];
     if (!clientAPIKey) throw new Error(`${OUTLOOK_CLIENT_KEY_ENV} não está configurado.`);
 
@@ -76,6 +79,8 @@ export const completeOutlookMailConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ code: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
+    const { requireEmailModule } = await import("@/lib/subscription/email-gate.server");
+    await requireEmailModule(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { exchangeAppUserOAuthCode } = await import("@/integrations/lovable/appUserConnector");
     const { saveConnectionKeyForUser } = await import("@/lib/calendar/connections.server");
