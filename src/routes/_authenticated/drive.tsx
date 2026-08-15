@@ -376,6 +376,20 @@ function DrivePage() {
       />
 
       {quotaQ.data && quotaQ.data.limit !== null && (
+        <QuotaUpgradeDialog
+          used={quotaQ.data.used}
+          limit={quotaQ.data.limit}
+          label={quotaQ.data.label}
+          hint={quotaQ.data.hint}
+          preview={quotaQ.data.preview}
+          open={quotaBloqueio}
+          onOpenChange={setQuotaBloqueio}
+        >
+          {null}
+        </QuotaUpgradeDialog>
+      )}
+
+      {quotaQ.data && quotaQ.data.limit !== null && (
         <div className="mb-3 rounded-xl border border-border bg-card p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
