@@ -116,6 +116,7 @@ export function describeFromContent(classification: string, text: string | null 
 /**
  * Renomeia o ficheiro depois de haver conteúdo lido, mas só quando o nome
  * actual foi gerado por nós — um nome real enviado pelo canal nunca é tocado.
+ * O nome novo é um resumo de 3-5 palavras do assunto (IA), não a transcrição.
  */
 export async function refineFileName(
   supabase: any,
@@ -124,14 +125,30 @@ export async function refineFileName(
   text: string | null | undefined,
 ): Promise<void> {
   try {
-    const description = describeFromContent(classification, text);
-    if (!description) return;
     const { data } = await supabase
       .from("uploaded_files")
-      .select("original_file_name")
+      .select("original_file_name, user_id, channel")
       .eq("id", fileId)
       .maybeSingle();
-    if (!isAutoName((data as { original_file_name: string | null } | null)?.original_file_name)) return;
+    const row = data as { original_file_name: string | null; user_id?: string; channel?: string } | null;
+    if (!isAutoName(row?.original_file_name)) return;
+
+    // 1º: resumo curto por IA. 2º (se falhar): corte simples do conteúdo.
+    let description: string | null = null;
+    try {
+      const { summarizeForName } = await import("@/lib/ai/short-name.server");
+      const { composeShortName } = await import("@/lib/drive/short-name");
+      const res = await summarizeForName(String(text ?? ""), {
+        supabase,
+        userId: row?.user_id ?? null,
+        channel: row?.channel ?? null,
+      } as any);
+      if (res.ok) description = composeShortName(classification, res.summary);
+    } catch (err) {
+      console.error("[files] shortName:", err instanceof Error ? err.message : err);
+    }
+    if (!description) description = describeFromContent(classification, text);
+    if (!description) return;
     await supabase
       .from("uploaded_files")
       .update({ original_file_name: description } as never)
