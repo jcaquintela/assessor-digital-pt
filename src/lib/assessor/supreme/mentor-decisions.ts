@@ -80,7 +80,6 @@ export function decisionEffect(
 export interface TipLike {
   key: string;
   text: string;
-  [k: string]: unknown;
 }
 
 /**
