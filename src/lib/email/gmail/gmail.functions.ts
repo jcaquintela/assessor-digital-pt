@@ -94,6 +94,10 @@ export const completeGmailConnect = createServerFn({ method: "POST" })
       },
       { onConflict: "user_id,provider" },
     );
+    try {
+      const { ensureActiveAfterConnect } = await import("@/lib/providers/active.server");
+      await ensureActiveAfterConnect(context.userId, "mail");
+    } catch { /* escolha fica para as Definições */ }
     return { ok: true };
   });
 
