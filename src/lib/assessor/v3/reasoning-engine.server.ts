@@ -1909,14 +1909,30 @@ async function runReasoningEngineInner(
   );
   if (personAsk) {
     const d = personAsk.data as any;
-    const { askLinkPersonQuestion } = await import("@/lib/people/name-match");
-    const question = askLinkPersonQuestion(String(d.personName ?? ""), d.suggestions ?? []);
+    let question: string;
+    if (d.mode) {
+      const { personResolutionQuestion } = await import("@/lib/people/resolve-person.server");
+      question = personResolutionQuestion({
+        status: d.mode, personId: null, name: d.personName ?? null,
+        candidates: d.suggestions ?? [],
+      });
+    } else {
+      const { askLinkPersonQuestion } = await import("@/lib/people/name-match");
+      question = askLinkPersonQuestion(String(d.personName ?? ""), d.suggestions ?? []);
+    }
     try {
       await createPendingAction(supabase, {
         userId, channel,
         intent: "confirm_event_person",
         originalContent: trimmed,
-        payload: { personName: d.personName, suggestions: d.suggestions ?? [], incoming: d.incoming },
+        payload: {
+          personName: d.personName,
+          mode: d.mode ?? null,
+          suggestions: d.suggestions ?? [],
+          candidate_ids: d.candidateIds ?? [],
+          tool: "create_event",
+          incoming: d.incoming,
+        },
         currentQuestion: question,
         pendingQuestion: question,
         sourceMessageId: sourceMessageId ?? null,

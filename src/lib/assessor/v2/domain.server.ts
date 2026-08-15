@@ -714,15 +714,31 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   }
   // Um compromisso "com o Manuel" nunca pode ficar só como texto. Ou ligamos
   // ao contacto certo, ou perguntamos — nunca inventamos nem deixamos solto.
-  if (!v.person_id) {
-    const resolved = await resolvePersonFromText(ctx, [v.title, v.notes].filter(Boolean).join(" "));
-    if (resolved.personId) v.person_id = resolved.personId;
-    else if (resolved.name) {
+  //
+  // Caso real (15/08): "Marca visita com o Silva amanhã às 14:00" ligou logo à
+  // "Ana Silva" sem perguntar. O apelido isolado é correspondência parcial e
+  // tem de passar pelo mesmo guard do seguimento: só ligamos sem perguntar
+  // quando a resolução é inequívoca (telefone). Um `person_id` proposto pelo
+  // modelo também é sempre validado — nunca aceite às cegas.
+  if (!ctx.skipPersonResolution) {
+    const { resolvePersonForWrite, recentlyRejectedPersonIds } =
+      await import("@/lib/people/resolve-person.server");
+    const text = [v.title, v.notes].filter(Boolean).join(" ");
+    const excludeIds = ctx.rejectedPersonIds?.length
+      ? ctx.rejectedPersonIds
+      : await recentlyRejectedPersonIds(ctx);
+    const res = await resolvePersonForWrite(ctx, text, { excludeIds });
+    if (res.status === "linked" && res.personId) {
+      v.person_id = res.personId;
+    } else if (res.status !== "none") {
       return ok({
         needsPersonConfirmation: true,
-        personName: resolved.name,
-        suggestions: resolved.suggestions,
-        incoming: { ...v, date: v.date, time: v.start_time },
+        mode: res.status,
+        personName: res.name,
+        suggestions: res.candidates,
+        candidateIds: res.candidates.map((c) => c.id),
+        proposedPersonId: v.person_id ?? null,
+        incoming: { ...v, person_id: null, date: v.date, time: v.start_time },
       });
     }
   }
