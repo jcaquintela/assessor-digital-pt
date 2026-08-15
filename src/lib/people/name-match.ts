@@ -159,6 +159,28 @@ const NOT_A_NAME = new Set([
 
 const NAME_RE = /[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+)?/;
 
+// Tratamentos: "Sra Carla Martins", "Dr. João", "Eng. Costa". Nunca são nome
+// próprio — caso real (15/08): o Afonso perguntou se criava o contacto "Sra".
+const HONORIFIC_SRC =
+  "(?:[Ss]r|[Ss]ra|[Ss]r\\.?ª|[Dd]r|[Dd]ra|[Ee]ng|[Ee]ng[ºª]|[Ee]nga|[Pp]rof|[Aa]rq|[Dd]ona|[Dd]\\.)\\.?";
+const HONORIFIC_ONLY_RE = new RegExp(`^${HONORIFIC_SRC}$`);
+
+/** Remove tratamentos do início do nome ("Sra Carla Martins" → "Carla Martins"). */
+export function stripHonorific(name: string | null | undefined): string {
+  let out = String(name ?? "").trim();
+  for (let i = 0; i < 3; i++) {
+    const next = out.replace(new RegExp(`^${HONORIFIC_SRC}\\s+`), "").trim();
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
+/** `true` quando o texto é apenas um tratamento ("Sra", "Dr."). */
+export function isHonorificOnly(name: string | null | undefined): boolean {
+  return HONORIFIC_ONLY_RE.test(String(name ?? "").trim());
+}
+
 /**
  * Nome da pessoa mencionada num pedido de agendamento:
  * "visita com o Manuel", "reunião com a Diana Costa", "visita associada a um
@@ -168,15 +190,19 @@ export function personNameFromEventText(text: string | null | undefined): string
   const t = String(text ?? "");
   if (!t.trim()) return null;
   const patterns = [
+    // Tratamento seguido de nome, mesmo sem preposição antes:
+    // "…possível angariação. Sra Carla Martins".
+    new RegExp(`(?:^|[\\s,;:(.])${HONORIFIC_SRC}\\s+(NAME)`.replace("NAME", NAME_RE.source)),
     // `(?:^|[\s,;:(])` em vez de `\b`: "à" não é caractere de palavra em JS,
     // por isso "Ligar à Manuela" nunca chegava a ter nome extraído.
-    /(?:^|[\s,;:(])(?:com|para|à|ao|a)\s+(?:o|a|os|as)?\s*(?:sr\.?|sra\.?|dona|dr\.?|dra\.?)?\s*(NAME)/,
+    new RegExp(`(?:^|[\\s,;:(])(?:com|para|à|ao|a)\\s+(?:o|a|os|as)?\\s*(?:${HONORIFIC_SRC}\\s+)?(NAME)`.replace("NAME", NAME_RE.source)),
     /\b(?:lead|cliente|contacto|propriet[áa]ri[oa]|comprador[a]?)\s+(NAME)/,
   ].map((re) => new RegExp(re.source.replace("NAME", NAME_RE.source)));
   for (const re of patterns) {
     const m = t.match(re);
-    const cand = m?.[1]?.trim();
+    const cand = stripHonorific(m?.[1]);
     if (!cand) continue;
+    if (isHonorificOnly(cand)) continue;
     const first = foldText(cand.split(/\s+/)[0]);
     if (NOT_A_NAME.has(first) || first.length < 3) continue;
     return cand;
