@@ -141,9 +141,10 @@ function jsonInit(method: string, payload: unknown): RequestInit {
 }
 
 /**
- * Replica um compromisso do Afonso em todos os calendários ligados.
- * Chamado a seguir a criar/editar/eliminar. Nunca lança — falhar a
- * sincronização não pode quebrar a criação do evento.
+ * Escreve o compromisso do Afonso APENAS no calendário ativo do consultor.
+ * Nada de fan-out: com dois calendários ligados e sem escolha feita, não
+ * escrevemos em lado nenhum (o motor pede a escolha antes de agir).
+ * Nunca lança — falhar a sincronização não pode quebrar a criação do evento.
  */
 export async function pushEventToProviders(
   opts: { userId: string; followUpId: string; action: "upsert" | "delete" },
@@ -151,7 +152,6 @@ export async function pushEventToProviders(
   try {
     // Usa sempre o cliente de serviço: `app_user_connections` é server-only.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const providers = CALENDAR_PROVIDERS;
     const ev = opts.action === "delete" ? null : await fetchLocalEvent(supabaseAdmin, opts.userId, opts.followUpId);
     if (opts.action === "upsert") {
       if (!ev) return;
@@ -159,6 +159,23 @@ export async function pushEventToProviders(
       if (!isAgendaEvent(ev.type, ev.due_time)) return;
       if (ev.status === "cancelado") return;
     }
+    // Apagar tem de limpar o que já existe em qualquer provedor: um evento
+    // importado do Google não pode ficar órfão só porque o ativo é outro.
+    if (opts.action === "delete") {
+      for (const provider of CALENDAR_PROVIDERS) {
+        const key = await getConnectionKeyForUser(supabaseAdmin, opts.userId, provider);
+        if (!key) continue;
+        await pushOne(supabaseAdmin, opts.userId, provider, opts.followUpId, ev, opts.action);
+      }
+      return;
+    }
+    const { activeCalendar } = await import("@/lib/providers/active.server");
+    const active = await activeCalendar(opts.userId);
+    const providers: CalendarProvider[] = active.status === "ok" ? [active.provider] : [];
+    // Evento importado de outro provedor: mantemos a atualização no provedor
+    // de origem em vez de o duplicar no ativo (comportamento previsível).
+    const origin = await originProviderOf(supabaseAdmin, opts.userId, opts.followUpId);
+    if (origin && !providers.includes(origin)) providers.length = 0, providers.push(origin);
     for (const provider of providers) {
       const connectionAPIKey = await getConnectionKeyForUser(supabaseAdmin, opts.userId, provider);
       if (!connectionAPIKey) continue;
@@ -167,6 +184,21 @@ export async function pushEventToProviders(
   } catch (e) {
     console.error("[calendar-sync] push falhou", e);
   }
+}
+
+/** Provedor onde este compromisso já existe (importado ou criado antes). */
+async function originProviderOf(
+  supabaseAdmin: any, userId: string, followUpId: string,
+): Promise<CalendarProvider | null> {
+  const { data } = await supabaseAdmin
+    .from("calendar_event_links")
+    .select("provider, deleted")
+    .eq("user_id", userId)
+    .eq("follow_up_id", followUpId);
+  const row = ((data ?? []) as Array<{ provider: string; deleted: boolean | null }>)
+    .find((r) => !r.deleted);
+  const p = row?.provider;
+  return p === "google_calendar" || p === "microsoft_outlook" ? p : null;
 }
 
 async function pushOne(

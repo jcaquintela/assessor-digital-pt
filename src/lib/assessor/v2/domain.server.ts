@@ -705,6 +705,15 @@ async function findRescheduleCandidateInDb(
 
 async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateEventArgs, args); if (!p.ok) return fail(p.error);
+  // Dois calendários ligados e sem escolha feita: perguntamos antes de gravar,
+  // para nunca duplicar o compromisso em dois calendários externos.
+  {
+    const { activeCalendar } = await import("@/lib/providers/active.server");
+    const active = await activeCalendar(ctx.userId);
+    if (active.status === "needs_choice") {
+      return ok({ needsCalendarProviderChoice: true, options: active.options });
+    }
+  }
   // Última linha de defesa: a string "null" nunca pode chegar à BD.
   const v = { ...p.value, title: ensureTitle(p.value.title, "Compromisso") };
   // O imóvel é muitas vezes falado ("visita à Alameda da República") sem que o

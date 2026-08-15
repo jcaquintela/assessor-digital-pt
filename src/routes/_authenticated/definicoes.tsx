@@ -41,6 +41,11 @@ import {
   startGmailConnect,
   disconnectGmail,
 } from "@/lib/email/gmail/gmail.functions";
+import {
+  getActiveProviders,
+  setActiveProviderFn,
+} from "@/lib/providers/active.functions";
+import { MAIL_PROVIDER_LABEL, type MailProvider } from "@/lib/email/providers";
 import { decideContentAccess, listMyConsentRequests } from "@/lib/admin/consent.functions";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
@@ -773,6 +778,63 @@ function TelegramSection() {
 /* ---------------- Calendário ---------------- */
 
 function CalendarioSection() {
+  return <CalendarioSectionInner />;
+}
+
+/**
+ * Escolha explícita do provedor ativo por modalidade. Só aparece quando há
+ * mais do que um ligado — com um só, não há nada a decidir.
+ */
+function ActiveProviderPicker(props: {
+  modality: "calendar" | "mail";
+  labels: Record<string, string>;
+}) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["active-providers"], queryFn: () => getActiveProviders() });
+  const state = props.modality === "calendar" ? q.data?.calendar : q.data?.mail;
+  const [saving, setSaving] = useState(false);
+  if (!state || state.options.length < 2) return null;
+
+  const escolher = async (provider: string) => {
+    setSaving(true);
+    try {
+      await setActiveProviderFn({ data: { modality: props.modality, provider } });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
+      toast.success(`${props.labels[provider] ?? provider} passou a ser o principal.`);
+    } catch {
+      toast.error("Não consegui guardar a escolha.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
+      <div className="text-[13px] font-semibold">
+        {props.modality === "calendar" ? "Calendário principal" : "Caixa de correio principal"}
+      </div>
+      <p className="c-muted mt-1 text-[12px]">
+        {state.status === "needs_choice"
+          ? "Tens os dois ligados. Escolhe qual devo usar — não uso os dois ao mesmo tempo."
+          : "É este que eu uso. Podes trocar quando quiseres."}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {state.options.map((p) => (
+          <button
+            key={p}
+            className={`c-btn${state.provider === p ? " ok" : ""}`}
+            disabled={saving}
+            onClick={() => escolher(p)}
+          >
+            {state.provider === p ? "✓ " : ""}{props.labels[p] ?? p}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CalendarioSectionInner() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<CalendarProvider | null>(null);
 
@@ -819,6 +881,7 @@ function CalendarioSection() {
       popup.location.href = authorizationUrl;
       await done;
       await qc.invalidateQueries({ queryKey: ["calendar-status"] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       await qc.invalidateQueries({ queryKey: ["follow_ups"] });
       toast.success(`${CALENDAR_PROVIDER_LABEL[provider]} ligado.`);
     } catch (e) {
@@ -834,6 +897,7 @@ function CalendarioSection() {
     try {
       await disconnectCalendar({ data: { provider } });
       await qc.invalidateQueries({ queryKey: ["calendar-status"] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       toast.success(`${CALENDAR_PROVIDER_LABEL[provider]} desligado.`);
     } catch {
       toast.error("Não consegui desligar.");
@@ -849,6 +913,7 @@ function CalendarioSection() {
       const applied = r.reduce((n, x) => n + x.applied, 0);
       await qc.invalidateQueries({ queryKey: ["follow_ups"] });
       await qc.invalidateQueries({ queryKey: ["calendar-status"] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       toast.success(applied > 0 ? `${applied} alteração(ões) trazida(s) do calendário.` : "Já estava tudo em dia.");
     } catch {
       toast.error("Não consegui sincronizar agora.");
@@ -905,6 +970,7 @@ function CalendarioSection() {
           </span>
         </div>
       )}
+      <ActiveProviderPicker modality="calendar" labels={CALENDAR_PROVIDER_LABEL} />
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
         Os compromissos que combinares na conversa entram no teu calendário sozinhos, e o que marcares
         directamente no calendário aparece aqui. Se editares dos dois lados ao mesmo tempo, fica a
@@ -975,6 +1041,7 @@ function MailProviderCard(props: MailCardProps) {
       popup.location.href = authorizationUrl;
       await done;
       await qc.invalidateQueries({ queryKey: [props.queryKey] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       toast.success(`${props.label} ligado.`);
     } catch (e) {
       popup.close();
@@ -989,6 +1056,7 @@ function MailProviderCard(props: MailCardProps) {
     try {
       await props.stop();
       await qc.invalidateQueries({ queryKey: [props.queryKey] });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
       toast.success(`${props.label} desligado.`);
     } catch {
       toast.error("Não consegui desligar.");
@@ -1059,6 +1127,10 @@ function EmailSection() {
           stop={() => disconnectOutlookMail()}
         />
       </div>
+      <ActiveProviderPicker
+        modality="mail"
+        labels={MAIL_PROVIDER_LABEL as Record<MailProvider, string>}
+      />
       <p className="c-muted mt-3 text-[12px] leading-relaxed">
         O Afonso lê o teu email e prepara rascunhos, mas nunca envia nada sozinho. O calendário
         continua em "Calendário" — aqui é só a caixa de correio.
