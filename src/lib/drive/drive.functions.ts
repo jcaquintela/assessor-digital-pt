@@ -841,3 +841,150 @@ export const prepareFileShare = createServerFn({ method: "POST" })
       text: `Boa tarde, envio o documento "${nome}": ${signed.signedUrl}\n(link válido durante 24 horas)`,
     };
   });
+
+// ---- Organização automática do Drive ---------------------------------
+// Categoria de sistema (nunca sobrepõe a categoria manual, que vive noutro
+// campo) e impressão digital do conteúdo para reconhecer reenvios.
+
+export const backfillSystemCategories = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { systemCategoryFor } = await import("./system-category");
+    const { data, error } = await supabase
+      .from("uploaded_files")
+      .select("id, classification, document_type, mime_type, system_category")
+      .eq("user_id", userId)
+      .is("system_category", null)
+      .limit(500);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as any[];
+    let updated = 0;
+    for (const r of rows) {
+      const cat = systemCategoryFor(r);
+      const { error: upErr } = await (supabase.from("uploaded_files") as any)
+        .update({ system_category: cat })
+        .eq("id", r.id)
+        .eq("user_id", userId);
+      if (!upErr) updated += 1;
+    }
+    return { updated, remaining: Math.max(0, rows.length - updated) };
+  });
+
+/**
+ * Calcula o checksum dos ficheiros que ainda não o têm (por lotes, porque
+ * implica descarregar o conteúdo) e marca duplicados — sem apagar nada.
+ */
+export const backfillChecksums = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data?: { batch?: number }) => ({
+    batch: Math.min(Math.max(Number(data?.batch ?? 25), 1), 50),
+  }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { sha256Hex } = await import("./checksum");
+    const { data: rows, error } = await supabase
+      .from("uploaded_files")
+      .select("id, storage_path")
+      .eq("user_id", userId)
+      .is("checksum", null)
+      .not("storage_path", "is", null)
+      .neq("storage_path", "")
+      .order("created_at", { ascending: true })
+      .limit(data.batch);
+    if (error) throw new Error(error.message);
+
+    let hashed = 0;
+    let failed = 0;
+    for (const r of ((rows ?? []) as any[])) {
+      try {
+        const dl = await supabase.storage.from("assessor-files").download(r.storage_path);
+        if (dl.error || !dl.data) { failed += 1; continue; }
+        const checksum = await sha256Hex(new Uint8Array(await dl.data.arrayBuffer()));
+        await (supabase.from("uploaded_files") as any)
+          .update({ checksum })
+          .eq("id", r.id)
+          .eq("user_id", userId);
+        hashed += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    const { count: pending } = await (supabase.from("uploaded_files") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .is("checksum", null)
+      .not("storage_path", "is", null)
+      .neq("storage_path", "");
+
+    return { hashed, failed, pending: pending ?? 0 };
+  });
+
+/**
+ * Relatório de duplicados por conteúdo idêntico. Só marca (duplicate_of),
+ * nunca apaga: o segundo registo pode ter ligações e contexto diferentes.
+ */
+export const markDuplicateFiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data?: { apply?: boolean }) => ({ apply: data?.apply !== false }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: rows, error } = await supabase
+      .from("uploaded_files")
+      .select("id, checksum, original_file_name, size_bytes, created_at, channel, duplicate_of")
+      .eq("user_id", userId)
+      .not("checksum", "is", null)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true })
+      .limit(1000);
+    if (error) throw new Error(error.message);
+
+    const byHash = new Map<string, any[]>();
+    for (const r of ((rows ?? []) as any[])) {
+      const list = byHash.get(r.checksum);
+      if (list) list.push(r);
+      else byHash.set(r.checksum, [r]);
+    }
+
+    const groups: {
+      checksum: string;
+      original: { id: string; name: string | null; created_at: string };
+      duplicates: { id: string; name: string | null; created_at: string; channel: string | null }[];
+      sizeBytes: number;
+    }[] = [];
+    let marked = 0;
+
+    for (const [checksum, list] of byHash) {
+      if (list.length < 2) continue;
+      const [first, ...rest] = list;
+      groups.push({
+        checksum,
+        original: { id: first.id, name: first.original_file_name, created_at: first.created_at },
+        duplicates: rest.map((r) => ({
+          id: r.id,
+          name: r.original_file_name,
+          created_at: r.created_at,
+          channel: r.channel ?? null,
+        })),
+        sizeBytes: Number(first.size_bytes ?? 0),
+      });
+      if (!data.apply) continue;
+      for (const r of rest) {
+        if (r.duplicate_of === first.id) continue;
+        const { error: upErr } = await (supabase.from("uploaded_files") as any)
+          .update({ duplicate_of: first.id })
+          .eq("id", r.id)
+          .eq("user_id", userId);
+        if (!upErr) marked += 1;
+      }
+    }
+
+    return {
+      groups,
+      groupCount: groups.length,
+      duplicateCount: groups.reduce((n, g) => n + g.duplicates.length, 0),
+      marked,
+      wastedBytes: groups.reduce((n, g) => n + g.sizeBytes * g.duplicates.length, 0),
+    };
+  });
