@@ -698,6 +698,41 @@ function HojePage() {
               </div>
             </div>
           ) : null}
+          {tratadoAberto ? (
+            <div className="mt-2">
+              <textarea
+                className="w-full rounded-md border p-2 text-[12.5px]"
+                rows={2}
+                placeholder="Porque é que este assunto está tratado? (opcional — ajuda a afinar sugestões futuras)"
+                value={tratadoNota}
+                onChange={(e) => setTratadoNota(e.target.value)}
+              />
+              <div className="mt-1 flex items-center gap-3">
+                <button
+                  type="button"
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: "var(--sage)" }}
+                  disabled={mentorDecision.isPending}
+                  onClick={() =>
+                    mentorDecision.mutate({ tipKey: mentor.key, decision: "tratado", note: tratadoNota })
+                  }
+                >
+                  {mentorDecision.isPending ? "A guardar…" : "Guardar"}
+                </button>
+                <button
+                  type="button"
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: "var(--muted)" }}
+                  onClick={() => {
+                    setTratadoAberto(false);
+                    setTratadoNota("");
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
       )}
 
