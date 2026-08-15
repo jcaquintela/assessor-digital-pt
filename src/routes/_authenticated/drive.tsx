@@ -38,6 +38,7 @@ import {
 
 import { CategoriesBar, FileCategoryDialog, useFileCategories } from "@/components/drive/categories";
 import { groupDriveFiles, type GroupBy } from "@/lib/drive/group-files";
+import { buildCategoryCards, shouldShowCards } from "@/lib/drive/category-cards";
 import {
   FileText,
   Image as ImageIcon,
@@ -56,6 +57,8 @@ import {
   ChevronDown,
   ChevronRight,
   ListOrdered,
+  FolderOpen,
+  ArrowLeft,
 } from "lucide-react";
 
 type Tab =
@@ -78,8 +81,9 @@ export const Route = createFileRoute("/_authenticated/drive")({
   }),
   validateSearch: (
     s: Record<string, unknown>,
-  ): { tab?: Tab; q?: string; nif?: string; artigo?: string } => ({
+  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; cat?: string } => ({
     tab: (s.tab as Tab | undefined) ?? undefined,
+    cat: (s.cat as string | undefined) ?? undefined,
     q: (s.q as string | undefined) ?? undefined,
     nif: (s.nif as string | undefined) ?? undefined,
     artigo: (s.artigo as string | undefined) ?? undefined,
@@ -152,6 +156,7 @@ function DrivePage() {
   const [q, setQ] = useState(qParam);
   const nifParam = search.nif ?? "";
   const artigoParam = search.artigo ?? "";
+  const catParam = search.cat ?? "";
   const [nif, setNif] = useState(nifParam);
   const [artigo, setArtigo] = useState(artigoParam);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -407,6 +412,24 @@ function DrivePage() {
     window.scrollTo({ top: y });
   }, [groupBy]);
 
+  // Vista por omissão: cartões de categoria com contagem. Pesquisar continua
+  // a atravessar todas as categorias, por isso desliga os cartões.
+  const cards = useMemo(() => buildCategoryCards(grupos as any[]), [grupos]);
+  const vistaCartoes = shouldShowCards({
+    groupBy,
+    query: qParam,
+    nif: nifParam,
+    artigo: artigoParam,
+    openCategory: catParam,
+  });
+  const [expandido, setExpandido] = useState<string | null>(null);
+  // Pesquisar manda sobre a categoria aberta: os resultados são transversais.
+  const catAberta =
+    catParam && !qParam && !nifParam && !artigoParam
+      ? grupos.find((g) => g.key === catParam) ?? null
+      : null;
+  const fecharCategoria = () => navigate({ search: (s: any) => ({ ...s, cat: undefined }) });
+
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
     const ligacoes = ids.reduce(
@@ -458,6 +481,134 @@ function DrivePage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Não consegui arrumar o Drive."),
   });
+
+  // Cartão de um ficheiro. Reutilizado nas vistas de cartões, categoria aberta e lista.
+  const renderFile = (f: any) => {
+          const Icon = fileIcon(f.mime_type);
+          const links = (linksByFile[f.id] as any[]) ?? [];
+          const needsReview =
+            f.requires_review === true ||
+            ["pending_classification", "awaiting_confirmation", "failed"].includes(
+              f.processing_status,
+            );
+          const autoLabel = f.document_type ?? f.classification ?? "Ficheiro";
+          const cat = f.custom_category_id ? catById.get(f.custom_category_id) ?? null : null;
+          const catName = cat?.name ?? null;
+          return (
+            <Link key={f.id} to="/drive/$id" params={{ id: f.id }} className="c-card c-card-hover block p-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span
+                    className="mt-0.5 flex h-5 items-center"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  >
+                    <Checkbox
+                      checked={selectedSet.has(f.id)}
+                      onCheckedChange={(v) => toggleOne(f.id, v === true)}
+                      aria-label={`Selecionar ${f.original_file_name ?? "ficheiro"}`}
+                    />
+                  </span>
+                  <Icon className="c-muted mt-0.5 h-5 w-5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="truncate text-[14px] font-semibold">
+                        {f.original_file_name ?? "Ficheiro"}
+                      </div>
+                      {naReciclagem && (
+                        <span className="c-badge warn shrink-0">
+                          Recuperável durante {tempoRestante(f.deleted_at)}
+                        </span>
+                      )}
+                      {!naReciclagem && needsReview && (
+                        <span className="c-badge warn">
+                          <AlertCircle className="h-3 w-3" /> Por tratar
+                        </span>
+                      )}
+                      {f.duplicate_of && (
+                        <span className="c-badge warn shrink-0">Repetido</span>
+                      )}
+                      {catName && (
+                        <span
+                          className="c-badge shrink-0"
+                          style={
+                            cat?.color
+                              ? {
+                                  borderColor: cat.color,
+                                  color: cat.color,
+                                  backgroundColor: `color-mix(in srgb, ${cat.color} 12%, transparent)`,
+                                }
+                              : undefined
+                          }
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: cat?.color ?? "currentColor" }}
+                          />
+                          {catName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="c-muted mt-1 text-[11.5px]">
+                      {autoLabel} ·{" "}
+                      <span className="c-mono">{formatDate(f.created_at)}</span> ·{" "}
+                      <span className="c-mono">{formatSize(f.size_bytes ?? 0)}</span> · recebido via{" "}
+                      {CANAL_LABEL[f.channel] ?? f.channel}
+                    </div>
+                    {catName && (
+                      <div className="c-muted mt-1 text-[11px]">
+                        Categoria tua · sugestão do {assessorName}: {autoLabel}
+                      </div>
+                    )}
+                    {links.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className="c-muted text-[11px]">Ligado a</span>
+                        {links.slice(0, 4).map((l) => (
+                          <span key={l.entity_id + l.entity_type} className="c-badge">
+                            {l.entity_name ?? ENTITY_LABEL[l.entity_type] ?? l.entity_type}
+                          </span>
+                        ))}
+                        {links.length > 4 && (
+                          <span className="c-muted text-[11px]">+{links.length - 4}</span>
+                        )}
+                      </div>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="c-badge tap-44"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); abrirFicheiro(f.id); }}
+                      >
+                        <Eye className="h-3 w-3" /> Ver
+                      </button>
+                      <DriveFileMenu
+                        label={f.original_file_name ?? "ficheiro"}
+                        naReciclagem={naReciclagem}
+                        temPaginas={!!f.doc_group_id}
+                        paginaLabel={f.doc_page_number ? ` (pág. ${f.doc_page_number})` : ""}
+                        temCategoria={!!catName}
+                        onLinks={() => setFixTarget({ id: f.id, name: f.original_file_name ?? null })}
+                        onPages={() => setOrderTarget(f.id)}
+                        onCategory={() =>
+                          setCatTarget({
+                            id: f.id,
+                            name: f.original_file_name ?? null,
+                            auto: autoLabel,
+                            current: f.custom_category_id ?? null,
+                          })
+                        }
+                        onShare={() => setShareTarget({ id: f.id, name: f.original_file_name ?? null })}
+                        onRestore={() => recuperar([f.id])}
+                        onDelete={() =>
+                          eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          );
+  };
 
   return (
     <AppShell>
@@ -746,7 +897,84 @@ function DrivePage() {
             )}
           </div>
         )}
-        {grupos.map((g) => (
+        {vistaCartoes ? (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {cards.map((c) => {
+              const aberto = expandido === c.key;
+              return (
+                <div
+                  key={c.key}
+                  data-categoria={c.key}
+                  className={"c-card p-0" + (aberto ? " sm:col-span-2 lg:col-span-3" : "")}
+                >
+                  <button
+                    type="button"
+                    aria-expanded={c.inline ? aberto : undefined}
+                    className="flex w-full items-center gap-3 p-3.5 text-left"
+                    onClick={() =>
+                      c.inline
+                        ? setExpandido(aberto ? null : c.key)
+                        : navigate({ search: (s: any) => ({ ...s, cat: c.key }) })
+                    }
+                  >
+                    <span className="rounded-lg bg-muted p-2">
+                      <FolderOpen className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={
+                          "block truncate text-[14px] font-semibold" +
+                          (c.destaque ? " text-amber-600 dark:text-amber-400" : "")
+                        }
+                      >
+                        {c.label}
+                      </span>
+                      <span className="c-muted block text-[11.5px]">
+                        {c.count} {c.count === 1 ? "ficheiro" : "ficheiros"}
+                      </span>
+                    </span>
+                    {c.inline && aberto ? (
+                      <ChevronDown className="c-muted h-4 w-4 shrink-0" />
+                    ) : (
+                      <ChevronRight className="c-muted h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+                  {c.inline && aberto && (
+                    <div className="space-y-2 border-t border-border p-3">
+                      {c.files.map(renderFile)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : catAberta ? (
+          <section className="space-y-2" data-categoria-aberta={catAberta.key}>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="c-badge tap-44" onClick={fecharCategoria}>
+                <ArrowLeft className="h-3 w-3" /> Voltar às categorias
+              </button>
+              <span className="text-[13px] font-semibold">{catAberta.label}</span>
+              <span className="c-muted text-[12px]">{catAberta.files.length}</span>
+            </div>
+            {catAberta.files.slice(0, shown[catAberta.key] ?? PAGE).map(renderFile)}
+            {catAberta.files.length > (shown[catAberta.key] ?? PAGE) && (
+              <button
+                type="button"
+                className="c-pill tap-44 w-full"
+                onClick={() =>
+                  setShown((prev) => ({
+                    ...prev,
+                    [catAberta.key]: (prev[catAberta.key] ?? PAGE) + PAGE,
+                  }))
+                }
+              >
+                Mostrar mais ({catAberta.files.length - (shown[catAberta.key] ?? PAGE)} por ver)
+              </button>
+            )}
+          </section>
+        ) : (
+          grupos.map((g) => (
           <section key={g.key} className="space-y-2" data-grupo={g.key}>
             {g.label && (
               <button
@@ -767,132 +995,7 @@ function DrivePage() {
                 <span className="c-muted text-[12px] font-normal">{g.files.length}</span>
               </button>
             )}
-            {(collapsed[g.key] ? [] : g.files.slice(0, shown[g.key] ?? PAGE)).map((f: any) => {
-          const Icon = fileIcon(f.mime_type);
-          const links = (linksByFile[f.id] as any[]) ?? [];
-          const needsReview =
-            f.requires_review === true ||
-            ["pending_classification", "awaiting_confirmation", "failed"].includes(
-              f.processing_status,
-            );
-          const autoLabel = f.document_type ?? f.classification ?? "Ficheiro";
-          const cat = f.custom_category_id ? catById.get(f.custom_category_id) ?? null : null;
-          const catName = cat?.name ?? null;
-          return (
-            <Link key={f.id} to="/drive/$id" params={{ id: f.id }} className="c-card c-card-hover block p-3.5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span
-                    className="mt-0.5 flex h-5 items-center"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                  >
-                    <Checkbox
-                      checked={selectedSet.has(f.id)}
-                      onCheckedChange={(v) => toggleOne(f.id, v === true)}
-                      aria-label={`Selecionar ${f.original_file_name ?? "ficheiro"}`}
-                    />
-                  </span>
-                  <Icon className="c-muted mt-0.5 h-5 w-5 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="truncate text-[14px] font-semibold">
-                        {f.original_file_name ?? "Ficheiro"}
-                      </div>
-                      {naReciclagem && (
-                        <span className="c-badge warn shrink-0">
-                          Recuperável durante {tempoRestante(f.deleted_at)}
-                        </span>
-                      )}
-                      {!naReciclagem && needsReview && (
-                        <span className="c-badge warn">
-                          <AlertCircle className="h-3 w-3" /> Por tratar
-                        </span>
-                      )}
-                      {f.duplicate_of && (
-                        <span className="c-badge warn shrink-0">Repetido</span>
-                      )}
-                      {catName && (
-                        <span
-                          className="c-badge shrink-0"
-                          style={
-                            cat?.color
-                              ? {
-                                  borderColor: cat.color,
-                                  color: cat.color,
-                                  backgroundColor: `color-mix(in srgb, ${cat.color} 12%, transparent)`,
-                                }
-                              : undefined
-                          }
-                        >
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: cat?.color ?? "currentColor" }}
-                          />
-                          {catName}
-                        </span>
-                      )}
-                    </div>
-                    <div className="c-muted mt-1 text-[11.5px]">
-                      {autoLabel} ·{" "}
-                      <span className="c-mono">{formatDate(f.created_at)}</span> ·{" "}
-                      <span className="c-mono">{formatSize(f.size_bytes ?? 0)}</span> · recebido via{" "}
-                      {CANAL_LABEL[f.channel] ?? f.channel}
-                    </div>
-                    {catName && (
-                      <div className="c-muted mt-1 text-[11px]">
-                        Categoria tua · sugestão do {assessorName}: {autoLabel}
-                      </div>
-                    )}
-                    {links.length > 0 && (
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span className="c-muted text-[11px]">Ligado a</span>
-                        {links.slice(0, 4).map((l) => (
-                          <span key={l.entity_id + l.entity_type} className="c-badge">
-                            {l.entity_name ?? ENTITY_LABEL[l.entity_type] ?? l.entity_type}
-                          </span>
-                        ))}
-                        {links.length > 4 && (
-                          <span className="c-muted text-[11px]">+{links.length - 4}</span>
-                        )}
-                      </div>
-                    )}
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        className="c-badge tap-44"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); abrirFicheiro(f.id); }}
-                      >
-                        <Eye className="h-3 w-3" /> Ver
-                      </button>
-                      <DriveFileMenu
-                        label={f.original_file_name ?? "ficheiro"}
-                        naReciclagem={naReciclagem}
-                        temPaginas={!!f.doc_group_id}
-                        paginaLabel={f.doc_page_number ? ` (pág. ${f.doc_page_number})` : ""}
-                        temCategoria={!!catName}
-                        onLinks={() => setFixTarget({ id: f.id, name: f.original_file_name ?? null })}
-                        onPages={() => setOrderTarget(f.id)}
-                        onCategory={() =>
-                          setCatTarget({
-                            id: f.id,
-                            name: f.original_file_name ?? null,
-                            auto: autoLabel,
-                            current: f.custom_category_id ?? null,
-                          })
-                        }
-                        onShare={() => setShareTarget({ id: f.id, name: f.original_file_name ?? null })}
-                        onRestore={() => recuperar([f.id])}
-                        onDelete={() =>
-                          eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`)
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          );
-            })}
+            {(collapsed[g.key] ? [] : g.files.slice(0, shown[g.key] ?? PAGE)).map(renderFile)}
             {!collapsed[g.key] && g.files.length > (shown[g.key] ?? PAGE) && (
               <button
                 type="button"
@@ -905,7 +1008,8 @@ function DrivePage() {
               </button>
             )}
           </section>
-        ))}
+          ))
+        )}
       </div>
 
       <FixLinkDialog
