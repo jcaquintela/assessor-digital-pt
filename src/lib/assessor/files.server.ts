@@ -2,6 +2,29 @@
 // Independente do canal (WhatsApp, futuros). Import interno server-only.
 
 import { withUsageHint } from "@/lib/drive/monthly-quota";
+import { systemCategoryFor } from "@/lib/drive/system-category";
+
+/**
+ * Recalcula a categoria de sistema depois de sabermos mais sobre o ficheiro
+ * (tipo de documento lido, reclassificação como placa). A categoria manual do
+ * consultor vive noutro campo e nunca é tocada aqui.
+ */
+export async function refreshSystemCategory(supabase: any, fileId: string): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from("uploaded_files")
+      .select("classification, document_type, mime_type")
+      .eq("id", fileId)
+      .maybeSingle();
+    if (!data) return;
+    await supabase
+      .from("uploaded_files")
+      .update({ system_category: systemCategoryFor(data as any) } as never)
+      .eq("id", fileId);
+  } catch (err) {
+    console.error("[files] refreshSystemCategory:", err instanceof Error ? err.message : err);
+  }
+}
 
 export const MAX_SIZES: Record<string, number> = {
   "image/jpeg": 10 * 1024 * 1024,
