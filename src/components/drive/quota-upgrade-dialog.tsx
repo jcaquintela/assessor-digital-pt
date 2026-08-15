@@ -22,6 +22,8 @@ interface QuotaUpgradeDialogProps {
   onOpenChange?: (open: boolean) => void;
   /** Ficheiro que ficou por carregar por causa do limite mensal. */
   blockedFileName?: string | null;
+  /** Quantos ficheiros ficam à espera de serem retomados após o upgrade. */
+  pendingCount?: number;
 }
 
 export function QuotaUpgradeDialog({
@@ -34,6 +36,7 @@ export function QuotaUpgradeDialog({
   open,
   onOpenChange,
   blockedFileName,
+  pendingCount = 0,
 }: QuotaUpgradeDialogProps) {
   const remaining = Math.max(0, limit - used);
   const pct = Math.min(100, (used / limit) * 100);
@@ -74,6 +77,13 @@ export function QuotaUpgradeDialog({
               <div className="mt-1 text-xs text-muted-foreground">
                 Bloqueado por teres atingido o limite mensal de ficheiros do plano {label}.
               </div>
+              {pendingCount > 0 && (
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {pendingCount === 1
+                    ? "Fica à espera e retomo-o automaticamente assim que fizeres upgrade."
+                    : `${pendingCount} ficheiros ficam à espera e retomo-os automaticamente assim que fizeres upgrade.`}
+                </div>
+              )}
             </div>
           )}
           <div className="flex items-center justify-between gap-3">
