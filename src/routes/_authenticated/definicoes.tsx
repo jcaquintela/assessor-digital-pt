@@ -18,6 +18,7 @@ import {
 } from "@/lib/whatsapp/link.functions";
 import { getSupremePreferences, updateSupremePreferences } from "@/lib/assessor/supreme/autonomy.functions";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { canUseEmailModule } from "@/lib/subscription/email-gate";
 import {
   CALENDAR_PROVIDERS,
   CALENDAR_PROVIDER_LABEL,
