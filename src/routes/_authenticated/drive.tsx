@@ -424,24 +424,22 @@ function DrivePage() {
     openCategory: catParam,
   });
   // Categoria expandida vive no URL: o link é partilhável e o histórico funciona.
-  const expandido = search.exp ?? null;
-  const router = useRouter();
-  const veioDeCartoes = useRef(false);
+  const vista = resolveCategoryView(search as DriveSearch);
+  const expandido = vista.mode === "expandido" ? vista.key : null;
   const abrirCategoria = (key: string, inline: boolean) => {
-    veioDeCartoes.current = true;
-    navigate({
-      search: (s: any) =>
-        inline
-          ? { ...s, exp: expandido === key ? undefined : key }
-          : { ...s, cat: key, exp: undefined },
-    });
+    // Guardar o scroll para o repor quando se voltar aos cartões.
+    scrollCartoes.current = typeof window !== "undefined" ? window.scrollY : null;
+    navigate({ search: (s: any) => nextSearchForCard(s as DriveSearch, key, inline) as any });
   };
   const urlCategoria = (key: string, inline: boolean) => {
     if (typeof window === "undefined") return "";
-    const p = new URLSearchParams();
-    if (search.tab) p.set("tab", search.tab);
-    p.set(inline ? "exp" : "cat", key);
-    return `${window.location.origin}${window.location.pathname}?${p.toString()}`;
+    return categoryShareUrl(
+      window.location.origin,
+      window.location.pathname,
+      search as DriveSearch,
+      key,
+      inline,
+    );
   };
   const copiarLink = async (key: string, inline: boolean) => {
     try {
@@ -456,15 +454,8 @@ function DrivePage() {
     catParam && !qParam && !nifParam && !artigoParam
       ? grupos.find((g) => g.key === catParam) ?? null
       : null;
-  const fecharCategoria = () => {
-    // Se a categoria foi aberta aqui, voltar atrás mantém o histórico limpo.
-    if (veioDeCartoes.current) {
-      veioDeCartoes.current = false;
-      router.history.back();
-      return;
-    }
-    navigate({ search: (s: any) => ({ ...s, cat: undefined, exp: undefined }) });
-  };
+  const fecharCategoria = () =>
+    navigate({ search: (s: any) => closedSearch(s as DriveSearch) as any });
 
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
