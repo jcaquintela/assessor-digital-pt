@@ -6,6 +6,8 @@ export type GroupBy = "categoria" | "negocio" | "lista";
 export type DriveFileLike = {
   id: string;
   custom_category_id?: string | null;
+  /** Categoria automática atribuída pelo sistema (só usada sem categoria manual). */
+  system_category?: string | null;
 };
 
 export type DriveLinkLike = {
@@ -35,10 +37,18 @@ export function groupDriveFiles<F extends DriveFileLike>(
     const known = new Set(categories.map((c) => c.id));
     const semCategoria: F[] = [];
     const porCat = new Map<string, F[]>();
+    const porSistema = new Map<string, F[]>();
     for (const f of files) {
       const id = f.custom_category_id ?? null;
       if (!id || !known.has(id)) {
-        semCategoria.push(f);
+        const sys = f.system_category ?? null;
+        if (sys) {
+          const b = porSistema.get(sys);
+          if (b) b.push(f);
+          else porSistema.set(sys, [f]);
+        } else {
+          semCategoria.push(f);
+        }
         continue;
       }
       const bucket = porCat.get(id);
@@ -51,6 +61,11 @@ export function groupDriveFiles<F extends DriveFileLike>(
     for (const c of categories) {
       const fs = porCat.get(c.id);
       if (fs?.length) out.push({ key: `cat:${c.id}`, label: c.name, files: fs });
+    }
+    for (const key of SYSTEM_CATEGORY_ORDER) {
+      const fs = porSistema.get(key);
+      if (fs?.length)
+        out.push({ key: `sys:${key}`, label: SYSTEM_CATEGORY_LABEL[key], files: fs });
     }
     return out;
   }
