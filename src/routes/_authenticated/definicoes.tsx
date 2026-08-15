@@ -778,6 +778,63 @@ function TelegramSection() {
 /* ---------------- Calendário ---------------- */
 
 function CalendarioSection() {
+  return <CalendarioSectionInner />;
+}
+
+/**
+ * Escolha explícita do provedor ativo por modalidade. Só aparece quando há
+ * mais do que um ligado — com um só, não há nada a decidir.
+ */
+function ActiveProviderPicker(props: {
+  modality: "calendar" | "mail";
+  labels: Record<string, string>;
+}) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["active-providers"], queryFn: () => getActiveProviders() });
+  const state = props.modality === "calendar" ? q.data?.calendar : q.data?.mail;
+  const [saving, setSaving] = useState(false);
+  if (!state || state.options.length < 2) return null;
+
+  const escolher = async (provider: string) => {
+    setSaving(true);
+    try {
+      await setActiveProviderFn({ data: { modality: props.modality, provider } });
+      await qc.invalidateQueries({ queryKey: ["active-providers"] });
+      toast.success(`${props.labels[provider] ?? provider} passou a ser o principal.`);
+    } catch {
+      toast.error("Não consegui guardar a escolha.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
+      <div className="text-[13px] font-semibold">
+        {props.modality === "calendar" ? "Calendário principal" : "Caixa de correio principal"}
+      </div>
+      <p className="c-muted mt-1 text-[12px]">
+        {state.status === "needs_choice"
+          ? "Tens os dois ligados. Escolhe qual devo usar — não uso os dois ao mesmo tempo."
+          : "É este que eu uso. Podes trocar quando quiseres."}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {state.options.map((p) => (
+          <button
+            key={p}
+            className={`c-btn${state.provider === p ? " ok" : ""}`}
+            disabled={saving}
+            onClick={() => escolher(p)}
+          >
+            {state.provider === p ? "✓ " : ""}{props.labels[p] ?? p}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CalendarioSectionInner() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<CalendarProvider | null>(null);
 
