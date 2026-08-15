@@ -828,88 +828,28 @@ function DrivePage() {
                       >
                         <Eye className="h-3 w-3" /> Ver
                       </button>
-                      <button
-                        type="button"
-                        className="c-badge tap-44"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setFixTarget({ id: f.id, name: f.original_file_name ?? null });
-                        }}
-                      >
-                        <Link2 className="h-3 w-3" /> Ligações
-                      </button>
-                      {f.doc_group_id && (
-                        <button
-                          type="button"
-                          className="c-badge tap-44"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setOrderTarget(f.id);
-                          }}
-                        >
-                          <ListOrdered className="h-3 w-3" /> Ordenar páginas
-                          {f.doc_page_number ? ` (pág. ${f.doc_page_number})` : ""}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        aria-label={`Categoria de ${f.original_file_name ?? "ficheiro"}`}
-                        className="c-badge tap-44"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
+                      <DriveFileMenu
+                        label={f.original_file_name ?? "ficheiro"}
+                        naReciclagem={naReciclagem}
+                        temPaginas={!!f.doc_group_id}
+                        paginaLabel={f.doc_page_number ? ` (pág. ${f.doc_page_number})` : ""}
+                        temCategoria={!!catName}
+                        onLinks={() => setFixTarget({ id: f.id, name: f.original_file_name ?? null })}
+                        onPages={() => setOrderTarget(f.id)}
+                        onCategory={() =>
                           setCatTarget({
                             id: f.id,
                             name: f.original_file_name ?? null,
                             auto: autoLabel,
                             current: f.custom_category_id ?? null,
-                          });
-                        }}
-                      >
-                        <Tag className="h-3 w-3" /> {catName ? "Mudar categoria" : "Categoria"}
-                      </button>
-                      {!naReciclagem && (
-                        <button
-                          type="button"
-                          className="c-badge tap-44"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShareTarget({ id: f.id, name: f.original_file_name ?? null });
-                          }}
-                        >
-                          <MessageCircle className="h-3 w-3" /> Abrir no WhatsApp
-                        </button>
-                      )}
-                      {naReciclagem ? (
-                        <button
-                          type="button"
-                          className="c-badge tap-44"
-                          disabled={restoreMany.isPending}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            recuperar([f.id]);
-                          }}
-                        >
-                          <Undo2 className="h-3 w-3" /> Recuperar
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="c-badge tap-44 text-destructive"
-                          disabled={deleteMany.isPending}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`);
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" /> Eliminar
-                        </button>
-                      )}
+                          })
+                        }
+                        onShare={() => setShareTarget({ id: f.id, name: f.original_file_name ?? null })}
+                        onRestore={() => recuperar([f.id])}
+                        onDelete={() =>
+                          eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`)
+                        }
+                      />
                     </div>
                   </div>
                 </div>
