@@ -8,8 +8,10 @@
 //   editar    → a sugestão é útil mas não como está: cala-se 14 dias e passa a
 //               levar em conta o ajuste que escreveste.
 //   cancelar  → não é para ti: cala-se 90 dias nesse sinal.
+//   tratado   → o assunto já está resolvido: cala-se 60 dias e, se voltar, o
+//               texto reconhece que já tinhas tratado disto.
 
-export type MentorDecisionKind = "confirmar" | "editar" | "cancelar";
+export type MentorDecisionKind = "confirmar" | "editar" | "cancelar" | "tratado";
 
 export interface MentorDecision {
   tipKey: string;
@@ -22,6 +24,7 @@ export const SILENCE_DAYS: Record<MentorDecisionKind, number> = {
   confirmar: 7,
   editar: 14,
   cancelar: 90,
+  tratado: 60,
 };
 
 export interface DecisionEffect {
@@ -68,7 +71,9 @@ export function decisionEffect(
   const memoryLine =
     last.decision === "confirmar"
       ? "Da última vez disseste que ias tratar disto — continua por resolver."
-      : last.decision === "editar"
+      : last.decision === "tratado"
+        ? "Já tinhas dado este assunto como tratado — voltou a aparecer."
+        : last.decision === "editar"
         ? nota
           ? `Da última vez ajustaste esta sugestão: "${nota}".`
           : "Da última vez pediste para ajustar esta sugestão."

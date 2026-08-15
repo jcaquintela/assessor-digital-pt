@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { MentorDecisionKind } from "./mentor-decisions";
 
-const KINDS: MentorDecisionKind[] = ["confirmar", "editar", "cancelar"];
+const KINDS: MentorDecisionKind[] = ["confirmar", "editar", "cancelar", "tratado"];
 
 /** Guarda a decisão do consultor sobre uma sugestão do Mentor. */
 export const saveMentorDecision = createServerFn({ method: "POST" })
