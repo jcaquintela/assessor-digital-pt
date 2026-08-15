@@ -72,7 +72,9 @@ export function decisionEffect(
     last.decision === "confirmar"
       ? "Da última vez disseste que ias tratar disto — continua por resolver."
       : last.decision === "tratado"
-        ? "Já tinhas dado este assunto como tratado — voltou a aparecer."
+        ? nota
+          ? `Já tinhas dado este assunto como tratado (${nota}). Voltou a aparecer.`
+          : "Já tinhas dado este assunto como tratado — voltou a aparecer."
         : last.decision === "editar"
         ? nota
           ? `Da última vez ajustaste esta sugestão: "${nota}".`
