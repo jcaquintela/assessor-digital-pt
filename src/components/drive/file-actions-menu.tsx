@@ -1,5 +1,5 @@
 import {
-  Eye,
+
   Link2,
   ListOrdered,
   MessageCircle,
@@ -97,4 +97,4 @@ export function DriveFileMenu({
   );
 }
 
-export { Eye };
+
