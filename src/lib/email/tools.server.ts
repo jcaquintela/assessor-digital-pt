@@ -107,6 +107,10 @@ export async function execSearchEmails(ctx: Ctx, args: unknown): Promise<Result>
     max?: number | null;
     include_all?: boolean | null;
   };
+  const { hasEmailModule } = await import("@/lib/subscription/email-gate.server");
+  if (!(await hasEmailModule(ctx.userId))) {
+    return { ok: true, data: { plan_required: true, items: [] } };
+  }
   const conn = await activeMailProvider(ctx.userId);
   if (!conn) return { ok: true, data: { not_connected: true, items: [] } };
   const choice = choiceData(conn);
@@ -144,6 +148,8 @@ export async function execSearchEmails(ctx: Ctx, args: unknown): Promise<Result>
 
 export async function execSummarizeEmail(ctx: Ctx, args: unknown): Promise<Result> {
   const a = (args ?? {}) as { message_id?: string | null; subject_hint?: string | null };
+  const { hasEmailModule } = await import("@/lib/subscription/email-gate.server");
+  if (!(await hasEmailModule(ctx.userId))) return { ok: true, data: { plan_required: true } };
   const conn = await activeMailProvider(ctx.userId);
   if (!conn) return { ok: true, data: { not_connected: true } };
   const choice = choiceData(conn);
