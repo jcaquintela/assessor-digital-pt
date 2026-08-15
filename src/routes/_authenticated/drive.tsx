@@ -466,6 +466,15 @@ function DrivePage() {
   const fecharCategoria = () =>
     navigate({ search: (s: any) => closedSearch(s as DriveSearch) as any });
 
+  // Voltar aos cartões repõe a posição onde estavas antes de abrir a categoria.
+  useLayoutEffect(() => {
+    if (vista.mode !== "cartoes") return;
+    const y = scrollCartoes.current;
+    if (y == null) return;
+    scrollCartoes.current = null;
+    window.scrollTo({ top: y });
+  }, [vista.mode, vista.key]);
+
   const eliminar = (ids: string[], label: string) => {
     if (!ids.length || deleteMany.isPending) return;
     const ligacoes = ids.reduce(
