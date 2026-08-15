@@ -81,6 +81,7 @@ function DefinicoesPage() {
         <NotificacoesSection />
         <CanalSection />
         <CalendarioSection />
+        <EmailSection />
         <PrivacidadeSection />
         <ContaSection />
       </div>
