@@ -165,3 +165,34 @@ export function mentorReinforcement(f: MentorFacts): MentorReinforcement | null 
       "leitura dos últimos 7 dias: leads novas registadas (Crescimento) e seguimentos fechados mais negócios a mudar de fase (Produtividade).",
   };
 }
+
+import { tierAtLeast } from "@/lib/subscription/tiers";
+
+export interface LeveledTip {
+  key: string;
+  text: string;
+  linkLabel: string;
+  to: string;
+  reason: string;
+  facts?: MentorFacts;
+  context?: string | null;
+}
+
+/**
+ * Escolhe a profundidade da sugestão pelo plano. NÃO é um gate: Base continua
+ * a ver o Mentor, só com o texto simples de sempre.
+ *   base       → nível 1 (texto atual)
+ *   consultor+ → nível 2 (texto atual + linha contextual; reforço em semana boa)
+ */
+export function applyMentorLevel(
+  tip: LeveledTip | null,
+  facts: MentorFacts,
+  tier: string | null | undefined,
+): LeveledTip | null {
+  if (!tierAtLeast(tier, "consultor")) {
+    return tip ? { ...tip, facts: undefined, context: null } : null;
+  }
+  if (tip) return { ...tip, facts, context: mentorContextLine(facts) };
+  const reforco = mentorReinforcement(facts);
+  return reforco ? { ...reforco, facts, context: null } : null;
+}
