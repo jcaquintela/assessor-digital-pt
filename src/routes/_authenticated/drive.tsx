@@ -201,16 +201,8 @@ function DrivePage() {
   const [quotaBloqueio, setQuotaBloqueio] = useState(false);
   // Nome do ficheiro que ficou por carregar, para o consultor saber qual foi.
   const [ficheiroBloqueado, setFicheiroBloqueado] = useState<string | null>(null);
-
-  // Upgrade feito: a quota deixou de estar cheia — fechar o bloqueio e avisar.
-  const quotaCheiaAnterior = useRef(quotaCheia);
-  useEffect(() => {
-    if (quotaCheiaAnterior.current && !quotaCheia) {
-      setQuotaBloqueio(false);
-      toast.success("Já podes voltar a carregar ficheiros — a tua quota foi atualizada.");
-    }
-    quotaCheiaAnterior.current = quotaCheia;
-  }, [quotaCheia]);
+  const [pendentes, setPendentes] = useState(() => pendingUploadCount());
+  const aRetomar = useRef(false);
 
   const onPickFile = () => {
     if (quotaCheia) {
@@ -223,44 +215,101 @@ function DrivePage() {
     }
     fileRef.current?.click();
   };
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (quotaCheia) {
-      setFicheiroBloqueado(f.name);
-      toast.error(
-        `“${f.name}” não foi carregado: atingiste o limite mensal de ${quotaQ.data!.limit} ficheiros do plano ${quotaQ.data!.label}.`,
-      );
-      setQuotaBloqueio(true);
-      if (fileRef.current) fileRef.current.value = "";
-      return;
-    }
+
+  /** Guarda um ficheiro para retomar mais tarde e explica porquê. */
+  const bloquearFicheiro = (f: File, motivo: string) => {
+    queuePendingUpload(f);
+    setPendentes(pendingUploadCount());
+    setFicheiroBloqueado(f.name);
+    setQuotaBloqueio(true);
+    toast.error(motivo, { id: "up" });
+  };
+
+  /** Carrega um ficheiro. Devolve "ok", "quota" ou "erro". */
+  const carregarFicheiro = async (f: File, silencioso = false): Promise<"ok" | "quota" | "erro"> => {
     const fd = new FormData();
     fd.append("file", f);
     try {
       toast.loading(`A carregar “${f.name}”…`, { id: "up" });
       await upload({ data: fd });
       toast.success(`Recebi “${f.name}”. Vou organizá-lo.`, { id: "up" });
-      listQ.refetch();
-      countsQ.refetch();
-      quotaQ.refetch();
+      return "ok";
     } catch (err: any) {
       const msg = String(err?.message ?? "");
       if (msg.includes("monthly_files_exceeded") || /limite mensal/i.test(msg)) {
-        setFicheiroBloqueado(f.name);
-        toast.error(
-          `“${f.name}” não foi carregado: atingiste o limite mensal de ficheiros do teu plano.`,
-          { id: "up" },
+        bloquearFicheiro(
+          f,
+          `“${f.name}” ficou à espera: atingiste o limite mensal de ficheiros do teu plano.`,
         );
-        setQuotaBloqueio(true);
-        quotaQ.refetch();
-      } else {
+        return "quota";
+      }
+      if (!silencioso) {
         toast.error(`“${f.name}” falhou: ${err?.message ?? "erro no upload."}`, { id: "up" });
       }
-    } finally {
-      if (fileRef.current) fileRef.current.value = "";
+      return "erro";
     }
   };
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = "";
+    if (!f) return;
+    if (quotaCheia) {
+      bloquearFicheiro(
+        f,
+        `“${f.name}” ficou à espera: atingiste o limite mensal de ${quotaQ.data!.limit} ficheiros do plano ${quotaQ.data!.label}. Retomo-o assim que fizeres upgrade.`,
+      );
+      return;
+    }
+    await carregarFicheiro(f);
+    listQ.refetch();
+    countsQ.refetch();
+    quotaQ.refetch();
+  };
+
+  /** Retoma os ficheiros que ficaram à espera, um a um. */
+  const retomarPendentes = async () => {
+    if (aRetomar.current) return;
+    const fila = takePendingUploads();
+    setPendentes(0);
+    if (!fila.length) return;
+    aRetomar.current = true;
+    let feitos = 0;
+    try {
+      for (let i = 0; i < fila.length; i++) {
+        const r = await carregarFicheiro(fila[i]!, true);
+        if (r === "quota") {
+          // Voltou a encher: o atual já foi recolocado na fila; guardar o resto.
+          fila.slice(i + 1).forEach(queuePendingUpload);
+          setPendentes(pendingUploadCount());
+          break;
+        }
+        if (r === "ok") feitos++;
+      }
+    } finally {
+      aRetomar.current = false;
+      if (feitos > 0) {
+        toast.success(
+          feitos === 1
+            ? "Retomei o ficheiro que tinha ficado à espera."
+            : `Retomei ${feitos} ficheiros que tinham ficado à espera.`,
+          { id: "up" },
+        );
+      }
+      listQ.refetch();
+      countsQ.refetch();
+      quotaQ.refetch();
+    }
+  };
+
+  // Upgrade feito (ou regresso da subscrição): quota com espaço → retomar.
+  useEffect(() => {
+    if (quotaQ.isFetching || quotaCheia) return;
+    if (!pendingUploadCount()) return;
+    setQuotaBloqueio(false);
+    void retomarPendentes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quotaCheia, quotaQ.isFetching]);
 
   const files = listQ.data?.files ?? [];
   const linksByFile = listQ.data?.linksByFile ?? {};
