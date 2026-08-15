@@ -13,7 +13,7 @@ export const getHojeOverview = createServerFn({ method: "GET" })
     previewTier: typeof data?.previewTier === "string" ? data.previewTier : null,
   }))
   .handler(async ({ context, data }) => {
-    const [summary, mentorResult, tier] = await Promise.all([
+    const [summary, mentorResult, { tier, source }] = await Promise.all([
       computeOverview(context.supabase, context.userId),
       computeMentor(context.supabase, context.userId).catch(() => ({
         tip: null as MentorTip | null,
@@ -23,5 +23,5 @@ export const getHojeOverview = createServerFn({ method: "GET" })
     ]);
 
     const mentor = applyMentorLevel(mentorResult.tip, mentorResult.facts, tier) as MentorTip | null;
-    return { summary, mentor };
+    return { summary, mentor, tierInfo: { effectiveTier: tier, source } };
   });
