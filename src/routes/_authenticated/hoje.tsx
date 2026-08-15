@@ -31,6 +31,7 @@ import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
+import { saveMentorDecision } from "@/lib/assessor/supreme/mentor-decisions.functions";
 import { usePreviewTier } from "@/lib/subscription/tier-preview";
 import { Lightbulb, ArrowRight } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
@@ -142,6 +143,8 @@ function HojePage() {
   });
   const [tipOff, setTipOff] = useState<string | null>(null);
   const [factosAbertos, setFactosAbertos] = useState(false);
+  const [ajusteAberto, setAjusteAberto] = useState(false);
+  const [ajusteTexto, setAjusteTexto] = useState("");
   const mentor = overview.data?.mentor ?? null;
   const resumo = overview.data?.summary ?? null;
   const tierInfo = overview.data?.tierInfo ?? null;
@@ -180,6 +183,28 @@ function HojePage() {
   const dismiss = useMutation({
     mutationFn: (v: { id: string }) => dismissFn({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["supreme", "hoje"] }),
+  });
+
+  // Decisões sobre as sugestões do Mentor: ficam guardadas e mudam o que
+  // aparece a seguir para o mesmo sinal (silêncio + retoma do assunto).
+  const decisionFn = useServerFn(saveMentorDecision);
+  const mentorDecision = useMutation({
+    mutationFn: (v: { tipKey: string; decision: "confirmar" | "editar" | "cancelar"; note?: string | null }) =>
+      decisionFn({ data: v }),
+    onSuccess: (_r, v) => {
+      setAjusteAberto(false);
+      setAjusteTexto("");
+      setTipOff(v.tipKey);
+      qc.invalidateQueries({ queryKey: ["hoje", "overview"] });
+      toast.success(
+        v.decision === "confirmar"
+          ? "Anotado — não volto a insistir nos próximos dias."
+          : v.decision === "editar"
+            ? "Guardei o teu ajuste para a próxima vez."
+            : "Não te volto a trazer este sinal tão cedo.",
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const [drawer, setDrawer] = useState<EventDrawerItem | null>(null);
@@ -552,12 +577,62 @@ function HojePage() {
             <button
               type="button"
               className="text-[12.5px] font-semibold"
-              style={{ color: "var(--muted)" }}
-              onClick={() => setTipOff(mentor.key)}
+              style={{ color: "var(--sage)" }}
+              disabled={mentorDecision.isPending}
+              onClick={() => mentorDecision.mutate({ tipKey: mentor.key, decision: "confirmar" })}
             >
-              Ignorar
+              Confirmar
+            </button>
+            <button
+              type="button"
+              className="text-[12.5px] font-semibold"
+              style={{ color: "var(--muted)" }}
+              onClick={() => setAjusteAberto((v) => !v)}
+            >
+              Editar
+            </button>
+            <button
+              type="button"
+              className="text-[12.5px] font-semibold"
+              style={{ color: "var(--muted)" }}
+              disabled={mentorDecision.isPending}
+              onClick={() => mentorDecision.mutate({ tipKey: mentor.key, decision: "cancelar" })}
+            >
+              Cancelar
             </button>
           </div>
+          {ajusteAberto ? (
+            <div className="mt-2">
+              <textarea
+                className="w-full rounded-md border p-2 text-[12.5px]"
+                rows={2}
+                placeholder="O que devia ser diferente nesta sugestão?"
+                value={ajusteTexto}
+                onChange={(e) => setAjusteTexto(e.target.value)}
+              />
+              <div className="mt-1 flex items-center gap-3">
+                <button
+                  type="button"
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: "var(--sage)" }}
+                  disabled={mentorDecision.isPending}
+                  onClick={() =>
+                    mentorDecision.mutate({ tipKey: mentor.key, decision: "editar", note: ajusteTexto })
+                  }
+                >
+                  Guardar ajuste
+                </button>
+                <button
+                  type="button"
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: "var(--muted)" }}
+                  onClick={() => setAjusteAberto(false)}
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
       )}
 

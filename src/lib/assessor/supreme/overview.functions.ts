@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { computeMentor, computeOverview, type MentorTip } from "./overview.server";
 import { applyMentorLevel, emptyFacts } from "./mentor-context";
+import { applyDecisions } from "./mentor-decisions";
+import { loadMentorDecisions } from "./mentor-decisions.server";
 import { resolveTierForRequest } from "@/lib/subscription/preview-tier.server";
 
 // O Mentor NÃO tem gate de acesso: aparece em todos os planos. O que varia é a
@@ -13,15 +15,19 @@ export const getHojeOverview = createServerFn({ method: "GET" })
     previewTier: typeof data?.previewTier === "string" ? data.previewTier : null,
   }))
   .handler(async ({ context, data }) => {
-    const [summary, mentorResult, { tier, source }] = await Promise.all([
+    const [summary, mentorResult, { tier, source }, decisions] = await Promise.all([
       computeOverview(context.supabase, context.userId),
       computeMentor(context.supabase, context.userId).catch(() => ({
         tip: null as MentorTip | null,
         facts: emptyFacts(),
       })),
       resolveTierForRequest(context.supabase, context.userId, data.previewTier),
+      loadMentorDecisions(context.supabase, context.userId).catch(() => []),
     ]);
 
-    const mentor = applyMentorLevel(mentorResult.tip, mentorResult.facts, tier) as MentorTip | null;
+    // A memória das decisões (Confirmar / Editar / Cancelar) manda: um sinal
+    // decidido há pouco fica em silêncio e, quando volta, retoma o assunto.
+    const decidido = applyDecisions(mentorResult.tip as MentorTip | null, decisions);
+    const mentor = applyMentorLevel(decidido, mentorResult.facts, tier) as MentorTip | null;
     return { summary, mentor, tierInfo: { effectiveTier: tier, source } };
   });
