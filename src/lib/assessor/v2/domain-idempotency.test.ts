@@ -249,13 +249,15 @@ describe("stress — 'sim' em sequência rápida", () => {
   it("N dispatchs paralelos de event com pre-check a falhar → 1 linha, N sucessos", async () => {
     const sb = makeFakeSupabase();
     const N = 10;
-    let bypass = N;
+    // Pior race possível: enquanto ainda não existe linha, todos os pre-checks
+    // devolvem null. Depois do primeiro INSERT vencer, a lookup pós-23505 já vê
+    // a linha canónica (é isso que acontece em concorrência real).
     const origFrom = sb.from.bind(sb);
     sb.from = (table: string) => {
       const chain = origFrom(table);
       const orig = chain.maybeSingle.bind(chain);
       chain.maybeSingle = async () => {
-        if (bypass > 0) { bypass--; return { data: null, error: null }; }
+        if (table === "follow_ups" && sb._rows.length === 0) return { data: null, error: null };
         return orig();
       };
       return chain;
@@ -288,7 +290,9 @@ describe("stress — 'sim' em sequência rápida", () => {
       const chain = origFrom(table);
       const orig = chain.maybeSingle.bind(chain);
       chain.maybeSingle = async () => {
-        if (bypass > 0) { bypass--; return { data: null, error: null }; }
+        // Só o pre-check da tabela primária é forçado a falhar; consultas
+        // auxiliares do caminho de create_event não gastam o orçamento.
+        if (table === "follow_ups" && bypass > 0) { bypass--; return { data: null, error: null }; }
         return orig();
       };
       return chain;
