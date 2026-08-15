@@ -79,9 +79,13 @@ export async function setActiveProvider(
   provider: string | null,
 ): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const row = modality === "calendar"
-    ? { user_id: userId, active_calendar_provider: provider }
-    : { user_id: userId, active_mail_provider: provider };
+  const row: {
+    user_id: string;
+    active_calendar_provider?: string | null;
+    active_mail_provider?: string | null;
+  } = { user_id: userId };
+  if (modality === "calendar") row.active_calendar_provider = provider;
+  else row.active_mail_provider = provider;
   const { error } = await supabaseAdmin
     .from("consultant_preferences")
     .upsert(row, { onConflict: "user_id" });
