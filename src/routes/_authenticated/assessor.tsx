@@ -205,6 +205,9 @@ function AssessorPage() {
       } else if (race.value && race.value.ok === false) {
         marcarFalha(pending.id);
         toast.error(race.value.error || DASHBOARD_CHAT_ERROR);
+      } else if (race.value && "stillProcessing" in race.value && race.value.stillProcessing) {
+        // O servidor confirmou que recebeu; a resposta ainda vem a caminho.
+        setPendingMsgs((p) => p.map((m) => (m.id === pending.id ? setStatus(m, "processing") : m)));
       } else {
         setPendingMsgs((p) => p.map((m) => (m.id === pending.id ? setStatus(m, "sent") : m)));
         // O histórico real chega por Realtime; recarregamos para garantir.
