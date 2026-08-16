@@ -19,6 +19,10 @@ import {
   reconcilePending,
   withTimeout,
   TIMEOUT_MESSAGE,
+  STATUS_LABEL,
+  PROCESSING_AFTER_MS,
+  setStatus,
+  type MessageStatus,
   type PendingMessage,
 } from "@/lib/assessor/dashboard-chat-ui";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
@@ -171,6 +175,11 @@ function AssessorPage() {
     setSending(true);
     setDraft("");
     setPendingMsgs((p) => [...p, pending]);
+    // Passados alguns segundos deixa de ser "a enviar": está no motor.
+    const toProcessing = setTimeout(
+      () => setPendingMsgs((p) => p.map((m) => (m.id === pending.id && !m.failed ? setStatus(m, "processing") : m))),
+      PROCESSING_AFTER_MS,
+    );
     try {
       const race = await withTimeout(send({ data: { text } }));
       if (!race.ok) {
@@ -180,6 +189,7 @@ function AssessorPage() {
         marcarFalha(pending.id);
         toast.error(race.value.error || DASHBOARD_CHAT_ERROR);
       } else {
+        setPendingMsgs((p) => p.map((m) => (m.id === pending.id ? setStatus(m, "sent") : m)));
         // O histórico real chega por Realtime; recarregamos para garantir.
         const rows = await loadMessages(200).catch(() => null);
         if (rows) {
@@ -191,16 +201,19 @@ function AssessorPage() {
       marcarFalha(pending.id);
       toast.error((e as Error).message || DASHBOARD_CHAT_ERROR);
     } finally {
+      clearTimeout(toProcessing);
       setSending(false);
       void reloadConfirm();
     }
   };
 
   const marcarFalha = (id: string) =>
-    setPendingMsgs((p) => p.map((m) => (m.id === id ? { ...m, failed: true } : m)));
+    setPendingMsgs((p) => p.map((m) => (m.id === id ? setStatus(m, "failed") : m)));
 
   const reenviar = (m: PendingMessage) => {
-    setPendingMsgs((p) => p.filter((x) => x.id !== m.id));
+    // Fica visível como "reagendado" por instantes: nada desaparece sem aviso.
+    setPendingMsgs((p) => p.map((x) => (x.id === m.id ? setStatus(x, "requeued") : x)));
+    setTimeout(() => setPendingMsgs((p) => p.filter((x) => x.id !== m.id)), 1200);
     setDraft(m.content);
   };
 
@@ -355,7 +368,10 @@ function AssessorPage() {
                          {isSuggestion ? normalizeSuggestedText(m.content) : m.content}
                        </span>
                        {isSuggestion && <CopyButton text={normalizeSuggestedText(m.content)} />}
-                       <span className={cn("c-when", isUser ? "text-right" : "text-left")}>{formatHora(m.created_at)}</span>
+                       <span className={cn("c-when flex items-center gap-1.5", isUser ? "justify-end" : "justify-start")}>
+                         {formatHora(m.created_at)}
+                         {isUser && <StatusChip status="sent" />}
+                       </span>
                      </div>
                    </div>
                 </div>
@@ -367,8 +383,8 @@ function AssessorPage() {
               <div key={p.id} className="flex justify-end">
                 <div className={cn("c-bubble user", p.failed ? "opacity-70" : "opacity-60")}>
                   <span className="whitespace-pre-line">{p.content}</span>
-                  <span className="c-when text-right">
-                    {p.failed ? "não enviada" : "a enviar…"}
+                  <span className="c-when flex justify-end">
+                    <StatusChip status={p.status} />
                   </span>
                   {p.failed && (
                     <button
@@ -434,6 +450,29 @@ function AssessorPage() {
 
 function isMac() {
   return typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent);
+}
+
+/** Estado da mensagem, sempre à vista: enviado, a processar, falhou, reagendado. */
+function StatusChip({ status }: { status: MessageStatus }) {
+  const tone: Record<MessageStatus, string> = {
+    sending: "opacity-70",
+    processing: "opacity-90",
+    sent: "opacity-70",
+    failed: "text-[var(--danger,#b3261e)] opacity-100",
+    requeued: "opacity-90",
+  };
+  return (
+    <span
+      className={cn("inline-flex items-center gap-1 text-[11px]", tone[status])}
+      aria-live="polite"
+    >
+      {(status === "sending" || status === "processing") && (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      )}
+      {status === "sent" && <Check className="h-3 w-3" />}
+      {STATUS_LABEL[status]}
+    </span>
+  );
 }
 
 /** Copia o texto sugerido (botão e atalhos usam exatamente a mesma string). */
