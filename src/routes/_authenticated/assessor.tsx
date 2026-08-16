@@ -449,6 +449,33 @@ function isMac() {
   return typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent);
 }
 
+/** Estado da mensagem, sempre à vista: enviado, a processar, falhou, reagendado. */
+function StatusChip({ status }: { status: MessageStatus }) {
+  const tone: Record<MessageStatus, string> = {
+    sending: "opacity-70",
+    processing: "opacity-90",
+    sent: "opacity-70",
+    failed: "text-[var(--danger,#b3261e)] opacity-100",
+    requeued: "opacity-90",
+  };
+  return (
+    <span
+      className={cn("inline-flex items-center gap-1 text-[11px]", tone[status])}
+      aria-live="polite"
+    >
+      {(status === "sending" || status === "processing") && (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      )}
+      {status === "sent" && <Check className="h-3 w-3" />}
+      {STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+function _isMacUnused() {
+  return typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent);
+}
+
 /** Copia o texto sugerido (botão e atalhos usam exatamente a mesma string). */
 async function copySuggested(text: string) {
   try {
