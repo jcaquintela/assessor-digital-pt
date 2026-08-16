@@ -490,6 +490,13 @@ function AssessorPage() {
                        {isSuggestion && <CopyButton text={normalizeSuggestedText(m.content)} />}
                        <span className={cn("c-when flex items-center gap-1.5", isUser ? "justify-end" : "justify-start")}>
                          {formatHora(m.created_at)}
+                         {/* Mesma conversa, canais diferentes: mostramos a origem
+                             quando não veio do próprio painel. */}
+                         {m.channel && m.channel !== "dashboard" && (
+                           <span className="rounded-full border border-[var(--line)] px-1.5 text-[10px] uppercase tracking-wide">
+                             {m.channel === "whatsapp" ? "WhatsApp" : m.channel === "telegram" ? "Telegram" : m.channel}
+                           </span>
+                         )}
                          {isUser && <StatusChip status="sent" />}
                        </span>
                      </div>
