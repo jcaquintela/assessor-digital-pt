@@ -124,6 +124,10 @@ function AssessorPage() {
   // obrigar a escrever o nome outra vez.
   const { pending: pendingPerson, reload: reloadPerson } = usePendingPersonChoice(msgs.length);
   const [personBusy, setPersonBusy] = useState(false);
+  // Saúde do websocket: se não ligar (ou cair), passamos a consultar e
+  // dizemo-lo — nada fica em silêncio a fingir que está ligado.
+  const [health, setHealth] = useState<RealtimeHealth>("connecting");
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,20 +145,28 @@ function AssessorPage() {
     const ch = supabase
       .channel("assessor_messages_stream")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "assessor_messages" }, reload)
-      .subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
+      .subscribe((status) => {
+        if (cancelled) return;
+        setHealth(mapSubscribeStatus(status as string));
+      });
+    // Se a ligação não se estabelecer a tempo, assumimos indisponível.
+    const guard = setTimeout(() => {
+      if (cancelled) return;
+      setHealth((h) => (h === "connecting" ? "degraded" : h));
+    }, CONNECT_TIMEOUT_MS);
+    return () => { cancelled = true; clearTimeout(guard); supabase.removeChannel(ch); };
   }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [msgs.length, pendingMsgs.length]);
 
-  // Rede de segurança do envio: enquanto houver mensagens por resolver,
-  // recarregamos a conversa a cada 3s. Se o Realtime falhar (rede, websocket
-  // bloqueado), a mensagem deixa de ficar presa em "a enviar".
+  // Rede de segurança: consultamos a conversa ao ritmo que a saúde da ligação
+  // pedir — rápido quando há mensagens por resolver ou o websocket caiu,
+  // devagar quando está tudo ligado.
   const temPorResolver = sending || pendingMsgs.some((p) => !p.failed);
+  const ritmo = pollIntervalMs(health, temPorResolver);
   useEffect(() => {
-    if (!temPorResolver) return;
     const t = setInterval(() => {
       loadMessages(200)
         .then((rows) => {
@@ -162,9 +174,23 @@ function AssessorPage() {
           setPendingMsgs((p) => reconcilePending(p, rows));
         })
         .catch(() => {});
-    }, 3_000);
+    }, ritmo);
     return () => clearInterval(t);
-  }, [temPorResolver]);
+  }, [ritmo]);
+
+  const actualizarAgora = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const rows = await loadMessages(200);
+      setMsgs(rows);
+      setPendingMsgs((p) => reconcilePending(p, rows));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const canalLabel = channel ? CHANNEL_LABEL[channel] : "WhatsApp";
 
