@@ -318,6 +318,30 @@ function AssessorPage() {
               </div>
             )}
           </div>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 text-[11px]",
+                health === "degraded" ? "text-[var(--danger,#b3261e)]" : "c-muted",
+              )}
+              aria-live="polite"
+              title={healthLabel(health, temPorResolver)}
+            >
+              {health === "live" ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{healthLabel(health, temPorResolver)}</span>
+            </span>
+            {health !== "live" && (
+              <button
+                type="button"
+                onClick={() => void actualizarAgora()}
+                aria-label="Actualizar conversa agora"
+                className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] px-2 py-1 text-[11px]"
+              >
+                <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
+                Actualizar
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Histórico */}
