@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { dayWindowStartIso } from "./day-window";
 
 export type CartaoTipo = "conversa" | "seguimento" | "despesa" | "comissao" | "briefing" | "procura";
 export type EstadoCartao = "draft" | "confirmed" | "cancelled";
@@ -11,6 +12,8 @@ export interface MensagemDb {
   structured_payload: Record<string, unknown> | null;
   status: EstadoCartao | null;
   created_at: string;
+  /** Canal de origem: dashboard, whatsapp, telegram… */
+  channel?: string | null;
 }
 
 /** Quantas mensagens recentes lemos de cada vez. */
@@ -18,12 +21,16 @@ export const RECENT_PAGE = 200;
 /** Quantas mensagens antigas trazemos por cada "Carregar mais antigas". */
 export const OLDER_PAGE = 100;
 
-export async function loadMessages(limit = 80): Promise<MensagemDb[]> {
+export async function loadMessages(limit = 80, sinceIso?: string): Promise<MensagemDb[]> {
+  // Janela do dia corrente: a conversa do painel é "o que se passou hoje",
+  // de todos os canais. Histórico de dias anteriores é outro fluxo.
+  const since = sinceIso ?? dayWindowStartIso();
   const { data, error } = await supabase
     .from("assessor_messages")
     .select("*")
     // Conversa em bruto arquivada pela retenção de 3 semanas fica invisível.
     .is("archived_at", null)
+    .gte("created_at", since)
     // Pedimos SEMPRE as mais recentes. Com ordem ascendente + limite, quem
     // tinha mais mensagens do que o limite recebia as MAIS ANTIGAS e nunca
     // via as respostas novas — a conversa parecia morta.
