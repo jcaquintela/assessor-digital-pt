@@ -57,7 +57,7 @@ export function setStatus(p: PendingMessage, status: MessageStatus): PendingMess
 
 /** Uma pendente continua à vista enquanto não estiver resolvida com sucesso. */
 export function isTerminal(p: PendingMessage): boolean {
-  return p.status === "failed" || p.status === "requeued";
+  return p.failed || p.status === "failed" || p.status === "requeued";
 }
 
 /** Uma pendente é substituída quando existe já a mesma mensagem do consultor. */
