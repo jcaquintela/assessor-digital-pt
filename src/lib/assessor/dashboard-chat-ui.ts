@@ -4,11 +4,18 @@
 // que o motor demore. Enquanto o servidor não confirma, vive aqui como
 // "pendente"; quando a linha real chega da base de dados, a pendente sai.
 
+/**
+ * Estado visível de cada mensagem do consultor. O objectivo é simples: em
+ * qualquer momento ele percebe o que está a acontecer àquela linha.
+ */
+export type MessageStatus = "sending" | "processing" | "sent" | "failed" | "requeued";
+
 export interface PendingMessage {
   id: string;
   content: string;
   created_at: string;
   failed: boolean;
+  status: MessageStatus;
 }
 
 export interface MinimalMessage {
@@ -27,7 +34,30 @@ export function makePending(content: string, now: Date = new Date()): PendingMes
     content,
     created_at: now.toISOString(),
     failed: false,
+    status: "sending",
   };
+}
+
+/** Etiqueta curta, em português, para cada estado. */
+export const STATUS_LABEL: Record<MessageStatus, string> = {
+  sending: "a enviar…",
+  processing: "a processar…",
+  sent: "enviado",
+  failed: "falhou",
+  requeued: "reagendado",
+};
+
+/** Ao fim de alguns segundos, "a enviar" passa a ser "a processar". */
+export const PROCESSING_AFTER_MS = 4_000;
+
+/** Muda o estado de uma pendente, mantendo `failed` coerente. */
+export function setStatus(p: PendingMessage, status: MessageStatus): PendingMessage {
+  return { ...p, status, failed: status === "failed" };
+}
+
+/** Uma pendente continua à vista enquanto não estiver resolvida com sucesso. */
+export function isTerminal(p: PendingMessage): boolean {
+  return p.status === "failed" || p.status === "requeued";
 }
 
 /** Uma pendente é substituída quando existe já a mesma mensagem do consultor. */
