@@ -19,6 +19,10 @@ import {
   reconcilePending,
   withTimeout,
   TIMEOUT_MESSAGE,
+  STATUS_LABEL,
+  PROCESSING_AFTER_MS,
+  setStatus,
+  type MessageStatus,
   type PendingMessage,
 } from "@/lib/assessor/dashboard-chat-ui";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
@@ -171,6 +175,11 @@ function AssessorPage() {
     setSending(true);
     setDraft("");
     setPendingMsgs((p) => [...p, pending]);
+    // Passados alguns segundos deixa de ser "a enviar": está no motor.
+    const toProcessing = setTimeout(
+      () => setPendingMsgs((p) => p.map((m) => (m.id === pending.id && !m.failed ? setStatus(m, "processing") : m))),
+      PROCESSING_AFTER_MS,
+    );
     try {
       const race = await withTimeout(send({ data: { text } }));
       if (!race.ok) {
@@ -180,6 +189,7 @@ function AssessorPage() {
         marcarFalha(pending.id);
         toast.error(race.value.error || DASHBOARD_CHAT_ERROR);
       } else {
+        setPendingMsgs((p) => p.map((m) => (m.id === pending.id ? setStatus(m, "sent") : m)));
         // O histórico real chega por Realtime; recarregamos para garantir.
         const rows = await loadMessages(200).catch(() => null);
         if (rows) {
@@ -191,16 +201,19 @@ function AssessorPage() {
       marcarFalha(pending.id);
       toast.error((e as Error).message || DASHBOARD_CHAT_ERROR);
     } finally {
+      clearTimeout(toProcessing);
       setSending(false);
       void reloadConfirm();
     }
   };
 
   const marcarFalha = (id: string) =>
-    setPendingMsgs((p) => p.map((m) => (m.id === id ? { ...m, failed: true } : m)));
+    setPendingMsgs((p) => p.map((m) => (m.id === id ? setStatus(m, "failed") : m)));
 
   const reenviar = (m: PendingMessage) => {
-    setPendingMsgs((p) => p.filter((x) => x.id !== m.id));
+    // Fica visível como "reagendado" por instantes: nada desaparece sem aviso.
+    setPendingMsgs((p) => p.map((x) => (x.id === m.id ? setStatus(x, "requeued") : x)));
+    setTimeout(() => setPendingMsgs((p) => p.filter((x) => x.id !== m.id)), 1200);
     setDraft(m.content);
   };
 
@@ -367,8 +380,8 @@ function AssessorPage() {
               <div key={p.id} className="flex justify-end">
                 <div className={cn("c-bubble user", p.failed ? "opacity-70" : "opacity-60")}>
                   <span className="whitespace-pre-line">{p.content}</span>
-                  <span className="c-when text-right">
-                    {p.failed ? "não enviada" : "a enviar…"}
+                  <span className="c-when flex justify-end">
+                    <StatusChip status={p.status} />
                   </span>
                   {p.failed && (
                     <button
