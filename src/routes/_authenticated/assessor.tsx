@@ -142,6 +142,23 @@ function AssessorPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [msgs.length, pendingMsgs.length]);
 
+  // Rede de segurança do envio: enquanto houver mensagens por resolver,
+  // recarregamos a conversa a cada 3s. Se o Realtime falhar (rede, websocket
+  // bloqueado), a mensagem deixa de ficar presa em "a enviar".
+  const temPorResolver = sending || pendingMsgs.some((p) => !p.failed);
+  useEffect(() => {
+    if (!temPorResolver) return;
+    const t = setInterval(() => {
+      loadMessages(200)
+        .then((rows) => {
+          setMsgs(rows);
+          setPendingMsgs((p) => reconcilePending(p, rows));
+        })
+        .catch(() => {});
+    }, 3_000);
+    return () => clearInterval(t);
+  }, [temPorResolver]);
+
   const canalLabel = channel ? CHANNEL_LABEL[channel] : "WhatsApp";
 
   // Atalho global: Ctrl/Cmd + Shift + C copia o último texto sugerido,
