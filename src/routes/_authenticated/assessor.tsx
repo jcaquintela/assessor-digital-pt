@@ -472,10 +472,6 @@ function StatusChip({ status }: { status: MessageStatus }) {
   );
 }
 
-function _isMacUnused() {
-  return typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent);
-}
-
 /** Copia o texto sugerido (botão e atalhos usam exatamente a mesma string). */
 async function copySuggested(text: string) {
   try {
