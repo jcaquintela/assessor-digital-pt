@@ -108,7 +108,9 @@ function AssessorPage() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [noMoreOlder, setNoMoreOlder] = useState(false);
   const msgs = useMemo(() => mergeMessages(olderMsgs, recentMsgs), [olderMsgs, recentMsgs]);
-  const podeCarregarAntigas = !noMoreOlder && recentMsgs.length >= RECENT_PAGE;
+  // A conversa do painel é só o dia corrente. Rever dias anteriores é outro
+  // fluxo (por construir), por isso não oferecemos "carregar mais antigas".
+  const podeCarregarAntigas = false && !noMoreOlder && recentMsgs.length >= RECENT_PAGE;
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { data: tierData } = useEffectiveTier();
@@ -396,7 +398,7 @@ function AssessorPage() {
               <MessageCircle className="mx-auto mb-2 h-5 w-5" />
               {AI_DISCLOSURE}
               <br />
-              Ainda não há mensagens.
+              Ainda não há mensagens hoje.
               <br />
               {canWrite
                 ? <>Escreve aqui em baixo ou pelo {canalLabel}. É a mesma conversa.</>
