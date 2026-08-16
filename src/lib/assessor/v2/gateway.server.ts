@@ -93,6 +93,10 @@ export async function callGateway(input: GatewayCallInput): Promise<GatewayCallR
         "Lovable-API-Key": key,
       },
       body: JSON.stringify(body),
+      // Sem tecto, uma chamada pendurada prendia o turno inteiro (e o
+      // spinner do painel) para sempre. 45s é mais do que qualquer resposta
+      // normal; passado isso é indisponibilidade, e dizemo-lo.
+      signal: AbortSignal.timeout(45_000),
     });
     const latencyMs = Date.now() - started;
     const payload: any = await res.json().catch(() => ({}));

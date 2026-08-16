@@ -340,6 +340,8 @@ export async function interpretAssessorMessage(input: RouterInput): Promise<Rout
         method: "POST",
         headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
         body: JSON.stringify(buildBody(budget)),
+        // Tecto de tempo: uma chamada que não volta não pode prender o turno.
+        signal: AbortSignal.timeout(30_000),
       });
       const latencyMs = Date.now() - attemptStart;
       const payload: any = await res.json().catch(() => ({}));

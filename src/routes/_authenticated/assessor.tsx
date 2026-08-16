@@ -142,6 +142,23 @@ function AssessorPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [msgs.length, pendingMsgs.length]);
 
+  // Rede de segurança do envio: enquanto houver mensagens por resolver,
+  // recarregamos a conversa a cada 3s. Se o Realtime falhar (rede, websocket
+  // bloqueado), a mensagem deixa de ficar presa em "a enviar".
+  const temPorResolver = sending || pendingMsgs.some((p) => !p.failed);
+  useEffect(() => {
+    if (!temPorResolver) return;
+    const t = setInterval(() => {
+      loadMessages(200)
+        .then((rows) => {
+          setMsgs(rows);
+          setPendingMsgs((p) => reconcilePending(p, rows));
+        })
+        .catch(() => {});
+    }, 3_000);
+    return () => clearInterval(t);
+  }, [temPorResolver]);
+
   const canalLabel = channel ? CHANNEL_LABEL[channel] : "WhatsApp";
 
   // Atalho global: Ctrl/Cmd + Shift + C copia o último texto sugerido,
@@ -188,6 +205,9 @@ function AssessorPage() {
       } else if (race.value && race.value.ok === false) {
         marcarFalha(pending.id);
         toast.error(race.value.error || DASHBOARD_CHAT_ERROR);
+      } else if (race.value && "stillProcessing" in race.value && race.value.stillProcessing) {
+        // O servidor confirmou que recebeu; a resposta ainda vem a caminho.
+        setPendingMsgs((p) => p.map((m) => (m.id === pending.id ? setStatus(m, "processing") : m)));
       } else {
         setPendingMsgs((p) => p.map((m) => (m.id === pending.id ? setStatus(m, "sent") : m)));
         // O histórico real chega por Realtime; recarregamos para garantir.

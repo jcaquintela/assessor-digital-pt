@@ -14,12 +14,21 @@ export const DASHBOARD_CHAT_MIN_TIER = "pro" as const;
 
 export type DashboardSendResult =
   | { ok: true; reply: string | null }
+  | { ok: true; reply: null; stillProcessing: true }
   | { ok: false; error: string };
 
 // Mensagem honesta quando o ciclo falha: nunca uma resposta que parece
 // normal, nunca um spinner sem fim.
 export const DASHBOARD_CHAT_ERROR =
   "Não consegui processar isto agora. Tenta outra vez daqui a pouco.";
+
+// Orçamento de tempo do turno no painel. O motor pode demorar; o pedido HTTP
+// não pode ficar pendurado. Passado este tempo respondemos "ainda a
+// processar" — a mensagem já está gravada e a resposta aparece na conversa.
+const TURN_BUDGET_MS = 55_000;
+
+export const DASHBOARD_CHAT_STILL_PROCESSING =
+  "Recebi a tua mensagem. Ainda estou a pensar — a resposta aparece aqui assim que estiver.";
 
 export const sendDashboardMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -56,7 +65,14 @@ export const sendDashboardMessage = createServerFn({ method: "POST" })
 
     const startedAt = new Date().toISOString();
     try {
-      await runInboundPipeline(dashboardAdapter, supabaseAdmin, inbound);
+      const raced = await Promise.race([
+        runInboundPipeline(dashboardAdapter, supabaseAdmin, inbound).then(() => "done" as const),
+        new Promise<"budget">((r) => setTimeout(() => r("budget"), TURN_BUDGET_MS)),
+      ]);
+      if (raced === "budget") {
+        console.error("[dashboard-chat] orçamento de tempo esgotado no turno");
+        return { ok: true, reply: null, stillProcessing: true };
+      }
     } catch (err) {
       console.error(
         "[dashboard-chat] pipeline:",
