@@ -19,10 +19,14 @@ export async function loadMessages(limit = 80): Promise<MensagemDb[]> {
     .select("*")
     // Conversa em bruto arquivada pela retenção de 3 semanas fica invisível.
     .is("archived_at", null)
-    .order("created_at", { ascending: true })
+    // Pedimos SEMPRE as mais recentes. Com ordem ascendente + limite, quem
+    // tinha mais mensagens do que o limite recebia as MAIS ANTIGAS e nunca
+    // via as respostas novas — a conversa parecia morta.
+    .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []) as unknown as MensagemDb[];
+  // Devolvemos por ordem cronológica, como a conversa se lê.
+  return ((data ?? []) as unknown as MensagemDb[]).slice().reverse();
 }
 
 export async function saveMessage(m: {
