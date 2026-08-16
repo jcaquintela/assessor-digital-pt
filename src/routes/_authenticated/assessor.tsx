@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { toast } from "sonner";
-import { loadMessages, type MensagemDb } from "@/lib/assessor/messages";
+import { loadMessages, loadOlderMessages, mergeMessages, RECENT_PAGE, type MensagemDb } from "@/lib/assessor/messages";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { CHANNEL_LABEL, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
@@ -101,7 +101,14 @@ function AssessorPage() {
   useRedirectColdLaunchToHoje();
   const { name: assessorName } = useAssessorName();
   const { channel } = useLinkedChannel();
-  const [msgs, setMsgs] = useState<MensagemDb[]>([]);
+  const [recentMsgs, setRecentMsgs] = useState<MensagemDb[]>([]);
+  // Histórico antigo carregado a pedido. Fica separado da janela recente para
+  // que os recarregamentos nunca substituam nem escondam mensagens novas.
+  const [olderMsgs, setOlderMsgs] = useState<MensagemDb[]>([]);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [noMoreOlder, setNoMoreOlder] = useState(false);
+  const msgs = useMemo(() => mergeMessages(olderMsgs, recentMsgs), [olderMsgs, recentMsgs]);
+  const podeCarregarAntigas = !noMoreOlder && recentMsgs.length >= RECENT_PAGE;
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { data: tierData } = useEffectiveTier();
@@ -132,10 +139,10 @@ function AssessorPage() {
   useEffect(() => {
     let cancelled = false;
     const reload = () => {
-      loadMessages(200)
+      loadMessages(RECENT_PAGE)
         .then((rows) => {
           if (cancelled) return;
-          setMsgs(rows);
+          setRecentMsgs(rows);
           setPendingMsgs((p) => reconcilePending(p, rows));
           setLoading(false);
         })
@@ -159,7 +166,7 @@ function AssessorPage() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [msgs.length, pendingMsgs.length]);
+  }, [recentMsgs.length, pendingMsgs.length]);
 
   // Rede de segurança: consultamos a conversa ao ritmo que a saúde da ligação
   // pedir — rápido quando há mensagens por resolver ou o websocket caiu,
@@ -168,9 +175,9 @@ function AssessorPage() {
   const ritmo = pollIntervalMs(health, temPorResolver);
   useEffect(() => {
     const t = setInterval(() => {
-      loadMessages(200)
+      loadMessages(RECENT_PAGE)
         .then((rows) => {
-          setMsgs(rows);
+          setRecentMsgs(rows);
           setPendingMsgs((p) => reconcilePending(p, rows));
         })
         .catch(() => {});
@@ -182,13 +189,35 @@ function AssessorPage() {
     if (refreshing) return;
     setRefreshing(true);
     try {
-      const rows = await loadMessages(200);
-      setMsgs(rows);
+      const rows = await loadMessages(RECENT_PAGE);
+      setRecentMsgs(rows);
       setPendingMsgs((p) => reconcilePending(p, rows));
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const carregarAntigas = async () => {
+    if (loadingOlder) return;
+    const primeira = msgs[0];
+    if (!primeira) return;
+    setLoadingOlder(true);
+    const el = scrollRef.current;
+    const antes = el ? el.scrollHeight - el.scrollTop : 0;
+    try {
+      const rows = await loadOlderMessages(primeira.created_at);
+      if (rows.length === 0) setNoMoreOlder(true);
+      else setOlderMsgs((p) => mergeMessages(rows, p));
+      // Mantemos o ponto de leitura: o que estava à vista continua à vista.
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop = el.scrollHeight - antes;
+      });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoadingOlder(false);
     }
   };
 
@@ -244,9 +273,9 @@ function AssessorPage() {
       } else {
         setPendingMsgs((p) => p.map((m) => (m.id === pending.id ? setStatus(m, "sent") : m)));
         // O histórico real chega por Realtime; recarregamos para garantir.
-        const rows = await loadMessages(200).catch(() => null);
+        const rows = await loadMessages(RECENT_PAGE).catch(() => null);
         if (rows) {
-          setMsgs(rows);
+          setRecentMsgs(rows);
           setPendingMsgs((p) => reconcilePending(p, rows));
         }
       }
@@ -347,6 +376,18 @@ function AssessorPage() {
         {/* Histórico */}
         <div ref={scrollRef} className="min-h-0 overflow-y-auto px-3 py-4 md:px-6" style={{ WebkitOverflowScrolling: "touch" }}>
           {loading && <p className="c-muted text-center text-sm">A carregar…</p>}
+          {!loading && podeCarregarAntigas && (
+            <div className="mb-3 flex justify-center">
+              <button
+                type="button"
+                onClick={() => void carregarAntigas()}
+                disabled={loadingOlder}
+                className="rounded-full border border-[var(--line)] px-3 py-1.5 text-[12px] disabled:opacity-60"
+              >
+                {loadingOlder ? "A carregar…" : "Carregar mais antigas"}
+              </button>
+            </div>
+          )}
           {!loading && pendingConfirm && !pendingBulk && !pendingPerson && (
             <PendingConfirmationBanner pending={pendingConfirm} channel={pendingConfirm.channel} />
           )}
