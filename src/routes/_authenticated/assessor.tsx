@@ -368,7 +368,10 @@ function AssessorPage() {
                          {isSuggestion ? normalizeSuggestedText(m.content) : m.content}
                        </span>
                        {isSuggestion && <CopyButton text={normalizeSuggestedText(m.content)} />}
-                       <span className={cn("c-when", isUser ? "text-right" : "text-left")}>{formatHora(m.created_at)}</span>
+                       <span className={cn("c-when flex items-center gap-1.5", isUser ? "justify-end" : "justify-start")}>
+                         {formatHora(m.created_at)}
+                         {isUser && <StatusChip status="sent" />}
+                       </span>
                      </div>
                    </div>
                 </div>
