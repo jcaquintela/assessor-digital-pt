@@ -13,6 +13,11 @@ export interface MensagemDb {
   created_at: string;
 }
 
+/** Quantas mensagens recentes lemos de cada vez. */
+export const RECENT_PAGE = 200;
+/** Quantas mensagens antigas trazemos por cada "Carregar mais antigas". */
+export const OLDER_PAGE = 100;
+
 export async function loadMessages(limit = 80): Promise<MensagemDb[]> {
   const { data, error } = await supabase
     .from("assessor_messages")
@@ -27,6 +32,35 @@ export async function loadMessages(limit = 80): Promise<MensagemDb[]> {
   if (error) throw error;
   // Devolvemos por ordem cronológica, como a conversa se lê.
   return ((data ?? []) as unknown as MensagemDb[]).slice().reverse();
+}
+
+/**
+ * Página anterior do histórico: mensagens mais antigas do que `beforeIso`.
+ * Devolvidas por ordem cronológica, prontas a colar no topo da conversa.
+ */
+export async function loadOlderMessages(beforeIso: string, limit = OLDER_PAGE): Promise<MensagemDb[]> {
+  const { data, error } = await supabase
+    .from("assessor_messages")
+    .select("*")
+    .is("archived_at", null)
+    .lt("created_at", beforeIso)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data ?? []) as unknown as MensagemDb[]).slice().reverse();
+}
+
+/**
+ * Junta o histórico antigo já carregado com a janela recente, sem duplicados
+ * e sem nunca deixar cair mensagens novas que ainda não estavam na página.
+ */
+export function mergeMessages(older: MensagemDb[], recent: MensagemDb[]): MensagemDb[] {
+  const byId = new Map<string, MensagemDb>();
+  for (const m of older) byId.set(m.id, m);
+  for (const m of recent) byId.set(m.id, m);
+  return [...byId.values()].sort((a, b) =>
+    a.created_at === b.created_at ? a.id.localeCompare(b.id) : a.created_at.localeCompare(b.created_at),
+  );
 }
 
 export async function saveMessage(m: {
