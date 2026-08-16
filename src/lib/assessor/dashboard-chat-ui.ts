@@ -75,7 +75,7 @@ export function reconcilePending(
   pending: PendingMessage[],
   msgs: MinimalMessage[],
 ): PendingMessage[] {
-  return pending.filter((p) => p.failed || !isSettled(p, msgs));
+  return pending.filter((p) => isTerminal(p) || !isSettled(p, msgs));
 }
 
 /** Corre a promessa com limite de tempo — nunca deixamos o spinner infinito. */
