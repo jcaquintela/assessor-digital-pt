@@ -12,7 +12,8 @@ import { TierGate } from "@/components/tier-gate";
 import { GroupCardsRow } from "@/components/group-cards-row";
 import { ProInsightCard } from "@/components/pro-insight-card";
 import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
-import { factualInsight, stalledFacts } from "@/lib/insights/factual";
+import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 
@@ -37,6 +38,9 @@ export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
 
 function FaturacaoPage() {
   const { comissoes, oportunidades, pessoas, atualizarMovimento } = useStore();
+  // Gate Pro explícito: a rota já é Pro, mas a análise proativa nunca deve
+  // depender só do guard de rota (simulação "ver como", futuras mudanças).
+  const tier = useEffectiveTier().data?.tier;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const vista = resolveCardsView({ grp: search.grp });
@@ -56,7 +60,7 @@ function FaturacaoPage() {
   );
   const lista = vista.mode === "aberto" ? comissoes.filter((c) => c.estado === vista.key) : comissoes;
 
-  // Análise factual: comissões que ficaram para trás no ciclo (página já é Pro).
+  // Análise factual: comissões que ficaram para trás no ciclo.
   const analise = useMemo(() => {
     const hoje = Date.now();
     const paradas = comissoes
@@ -66,14 +70,17 @@ function FaturacaoPage() {
         label: `${formatEUR(c.valor)} · ${c.estado.toLowerCase()}`,
         days: Math.floor((hoje - new Date(c.data).getTime()) / 864e5),
       }));
-    return factualInsight(stalledFacts(paradas, 30), {
-      key: "faturacao-parada",
-      noun: ["comissão", "comissões"],
-      movimento: "data do movimento e estado no ciclo Prevista → Faturada → Recebida",
-      linkLabel: "Ver comissões →",
-      to: "/negocio/comissoes",
-    });
-  }, [comissoes]);
+    return applyProInsight(
+      factualInsight(stalledFacts(paradas, 30), {
+        key: "faturacao-parada",
+        noun: ["comissão", "comissões"],
+        movimento: "data do movimento e estado no ciclo Prevista → Faturada → Recebida",
+        linkLabel: "Ver comissões →",
+        to: "/negocio/comissoes",
+      }),
+      tier,
+    );
+  }, [comissoes, tier]);
 
   function nomeOportunidade(id?: string) {
     if (!id) return "—";
