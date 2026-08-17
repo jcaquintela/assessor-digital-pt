@@ -31,6 +31,7 @@ import { getPropertyInsight } from "@/lib/imoveis/insight.functions";
 import { GroupCardsRow } from "@/components/group-cards-row";
 import { ProInsightCard } from "@/components/pro-insight-card";
 import { EmptyState } from "@/components/empty-state";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
 import { PROPERTY_STATUSES } from "@/lib/assessor/properties-status";
 import { assuntoDeImovel } from "@/lib/assessor/assunto";
@@ -241,7 +242,7 @@ function ImoveisPage() {
       <ProInsightCard
         insight={analise.data ?? null}
         emptyHint={
-          !analise.isLoading && all.length > 0 && all.length < 3
+          tierAtual === "pro" && !analise.isLoading && all.length > 0 && all.length < 3
             ? "Ainda tens poucos imóveis para eu comparar. Com três ou mais na carteira começo a avisar-te do que está parado."
             : undefined
         }
