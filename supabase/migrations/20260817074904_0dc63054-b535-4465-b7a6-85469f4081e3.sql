@@ -1,0 +1,2 @@
+insert into public.product_updates (released_on, title, description, category, is_published)
+values (current_date, 'Ecrãs vazios com saída clara', 'Quando não há imóveis num estado, negócios numa fase ou movimentos de faturação, passas a ver uma mensagem clara com um botão para criar ou limpar a pesquisa, em vez de um espaço em branco.', 'melhoria', true);
