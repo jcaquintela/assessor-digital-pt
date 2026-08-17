@@ -7,8 +7,12 @@ import {
   type PropertyInput, type PropertyMatchInput,
 } from "./detector";
 import { isDealClosed } from "@/lib/deals/stages";
+import { normalizeTier, tierAtLeast } from "@/lib/subscription/tiers";
 
 const IMOVEL_FORA = new Set(["vendido", "arquivado", "reservado"]);
+// "Por angariar" é território exclusivo do Mentor (régua de 10 dias). Fica fora
+// deste motor para o consultor não ver dois avisos parecidos sobre o mesmo imóvel.
+const IMOVEL_SO_MENTOR = new Set(["por_angariar"]);
 /** Só cruzamos entradas recentes — evita repetir matches antigos todos os dias. */
 const JANELA_MATCH_DIAS = 21;
 
@@ -22,6 +26,10 @@ export async function computeOpportunityAlerts(
   userId: string,
   now = new Date(),
 ): Promise<OpportunityAlert[]> {
+  // Gate Pro — mesmo `effective_tier()` do resto da análise proativa.
+  const { data: tierRaw } = await supabase.rpc("effective_tier", { _user_id: userId });
+  if (!tierAtLeast(normalizeTier(tierRaw as string | null), "pro")) return [];
+
   const nowMs = now.getTime();
   const recente = new Date(nowMs - JANELA_MATCH_DIAS * 864e5).toISOString();
 
@@ -63,12 +71,14 @@ export async function computeOpportunityAlerts(
     (p) => !p.archived_at && !IMOVEL_FORA.has(String(p.status ?? "").toLowerCase()),
   );
 
-  const parados: PropertyInput[] = imoveisAtivos.map((p) => ({
-    id: p.id,
-    title: String(p.title ?? ""),
-    typology: p.typology ?? null,
-    lastMovementAt: porImovel.get(p.id) ?? p.created_at ?? null,
-  }));
+  const parados: PropertyInput[] = imoveisAtivos
+    .filter((p) => !IMOVEL_SO_MENTOR.has(String(p.status ?? "").toLowerCase()))
+    .map((p) => ({
+      id: p.id,
+      title: String(p.title ?? ""),
+      typology: p.typology ?? null,
+      lastMovementAt: porImovel.get(p.id) ?? p.created_at ?? null,
+    }));
 
   const negocios: DealInput[] = ((deals.data as any[]) ?? [])
     .filter((d) => !d.archived_at && !isDealClosed(d))
