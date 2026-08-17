@@ -128,7 +128,8 @@ function typologyScore(lead: string | null, prop: string | null): number | null 
   const nb = Number(b.match(/t(\d+)/)?.[1] ?? NaN);
   if (Number.isFinite(na) && Number.isFinite(nb)) {
     if (na === nb) return 30;
-    return Math.abs(na - nb) === 1 ? 18 : 0;
+    // Tipologia vizinha vale pouco de propósito: sozinha nunca chega aos 80%.
+    return Math.abs(na - nb) === 1 ? 8 : 0;
   }
   return 0;
 }
