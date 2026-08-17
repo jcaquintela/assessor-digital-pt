@@ -52,8 +52,10 @@ export function GroupCardsRow<T>({
                   {c.label}
                 </span>
                 <span className="text-xs" style={{ color: "var(--muted)" }}>
-                  {c.count} {c.count === 1 ? "registo" : "registos"}
-                  {c.inline ? "" : " · vista dedicada"}
+                  {c.count === 0
+                    ? "sem registos"
+                    : `${c.count} ${c.count === 1 ? "registo" : "registos"}`}
+                  {c.count > 0 && !c.inline ? " · vista dedicada" : ""}
                 </span>
               </span>
               <ChevronDown

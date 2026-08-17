@@ -14,7 +14,8 @@ import { TierGate } from "@/components/tier-gate";
 import { GroupCardsRow } from "@/components/group-cards-row";
 import { ProInsightCard } from "@/components/pro-insight-card";
 import { EmptyState } from "@/components/empty-state";
-import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { FATURA_GRUPOS, faturacaoCards } from "@/lib/insights/faturacao-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { foldText } from "@/lib/search/normalize";
@@ -23,9 +24,9 @@ const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escritório", "Formação", "Outros"];
 
 export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
-  validateSearch: (search: Record<string, unknown>): { grp?: string; tipo?: "despesas"; q?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { grp?: string; tipo?: "despesas" | "faturas"; q?: string } => ({
     grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
-    tipo: search.tipo === "despesas" ? "despesas" : undefined,
+    tipo: search.tipo === "despesas" ? "despesas" : search.tipo === "faturas" ? "faturas" : undefined,
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   head: () => ({
@@ -51,14 +52,15 @@ function FaturacaoPage() {
   const tier = useEffectiveTier().data?.tier;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const aba: "comissoes" | "despesas" = search.tipo === "despesas" ? "despesas" : "comissoes";
+  const aba: "comissoes" | "despesas" | "faturas" =
+    search.tipo === "despesas" ? "despesas" : search.tipo === "faturas" ? "faturas" : "comissoes";
   const vista = resolveCardsView({ q: search.q, grp: search.grp });
   const abrirGrupo = (key: string) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, ...nextSearchForGroup({ grp: search.grp }, key) }) });
   const setQ = (v: string) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
-  const abrirAba = (t: "comissoes" | "despesas") =>
-    navigate({ search: () => (t === "despesas" ? { tipo: "despesas" as const } : {}) });
+  const abrirAba = (t: "comissoes" | "despesas" | "faturas") =>
+    navigate({ search: () => (t === "comissoes" ? {} : { tipo: t }) });
 
   const totais = useMemo(() => ({
     Prevista: comissoes.filter((c) => c.estado === "Prevista").reduce((s, c) => s + c.valor, 0),
@@ -68,16 +70,15 @@ function FaturacaoPage() {
   const totalDespesas = useMemo(() => despesas.reduce((s, d) => s + d.valor, 0), [despesas]);
 
   // Cartões por estado do ciclo: a mesma navegação do Drive e dos Imóveis.
-  const cartoes = useMemo<ReturnType<typeof buildGroupCards<Comissao | Despesa>>>(
-    () =>
-      aba === "comissoes"
-        ? buildGroupCards<Comissao | Despesa>(ESTADOS.map((e) => ({ key: e, label: e, items: comissoes.filter((c) => c.estado === e) })))
-        : buildGroupCards<Comissao | Despesa>(CATEGORIAS.map((c) => ({ key: c, label: c, items: despesas.filter((d) => d.categoria === c) }))),
-    [aba, comissoes, despesas],
-  );
+  const cartoes = useMemo(() => faturacaoCards<Comissao, Despesa>(aba, comissoes, despesas), [aba, comissoes, despesas]);
   // Pesquisa transversal: quando há termo, atravessa todos os estados/categorias.
   const termo = foldText(search.q ?? "");
-  const lista = (vista.mode === "aberto" ? comissoes.filter((c) => c.estado === vista.key) : comissoes).filter((c) =>
+  const estadosDoGrupo =
+    aba === "faturas" ? (FATURA_GRUPOS.find((g) => g.key === vista.key)?.estados ?? null) : null;
+  const lista = (vista.mode === "aberto"
+    ? comissoes.filter((c) => (estadosDoGrupo ? estadosDoGrupo.includes(c.estado) : c.estado === vista.key))
+    : comissoes
+  ).filter((c) =>
     !termo
       ? true
       : foldText([nomeOportunidade(c.oportunidadeId), c.estado, String(c.valor), formatData(c.data)].join(" ")).includes(termo),
@@ -135,14 +136,19 @@ function FaturacaoPage() {
       <div className="mb-4 flex gap-2">
         <Button size="sm" variant={aba === "comissoes" ? "default" : "outline"} onClick={() => abrirAba("comissoes")}>Comissões</Button>
         <Button size="sm" variant={aba === "despesas" ? "default" : "outline"} onClick={() => abrirAba("despesas")}>Despesas</Button>
+        <Button size="sm" variant={aba === "faturas" ? "default" : "outline"} onClick={() => abrirAba("faturas")}>Faturas</Button>
       </div>
-      {aba === "comissoes" ? (
+      {aba !== "despesas" ? (
         <ProInsightCard
           insight={analise}
           emptyHint={
-            tier === "pro" && comissoes.length < 3
-              ? "Ainda não há movimentos suficientes para eu tirar conclusões. A partir de três comissões registadas começo a avisar-te do que está parado."
-              : undefined
+            tier !== "pro" || analise
+              ? undefined
+              : comissoes.length === 0
+                ? "Ainda não há comissões registadas, por isso não tenho nada para analisar. Assim que registares a primeira, sigo o ciclo contigo."
+                : comissoes.length < 3
+                  ? "Ainda não há movimentos suficientes para eu tirar conclusões. A partir de três comissões registadas começo a avisar-te do que está parado."
+                  : "Olhei para as comissões por receber e nenhuma está parada tempo suficiente para eu te chamar a atenção."
           }
         />
       ) : null}
@@ -168,7 +174,7 @@ function FaturacaoPage() {
       <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/negocio/faturacao" />
       {vista.mode === "aberto" ? (
         <Button size="sm" variant="ghost" className="mb-2" onClick={() => abrirGrupo(vista.key!)}>
-          {aba === "despesas" ? "← Ver todas as categorias" : "← Ver todos os estados"}
+          {aba === "despesas" ? "← Ver todas as categorias" : aba === "faturas" ? "← Ver todas as faturas" : "← Ver todos os estados"}
         </Button>
       ) : null}
       {aba === "despesas" ? (
@@ -211,8 +217,12 @@ function FaturacaoPage() {
               termo
                 ? "Nenhuma comissão corresponde à pesquisa."
                 : vista.mode === "aberto"
-                  ? `Sem comissões em ${vista.key}.`
-                  : "Ainda não há comissões registadas."
+                  ? `Sem ${aba === "faturas" ? "faturas" : "comissões"} em ${
+                      (aba === "faturas" ? FATURA_GRUPOS.find((g) => g.key === vista.key)?.label : vista.key) ?? vista.key
+                    }.`
+                  : aba === "faturas"
+                    ? "Ainda não há faturas para mostrar."
+                    : "Ainda não há comissões registadas."
             }
             hint="Assim que registares uma comissão, acompanho o ciclo Prevista → Faturada → Recebida contigo."
             actionLabel="Ver comissões"

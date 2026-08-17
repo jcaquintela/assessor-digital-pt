@@ -18,9 +18,18 @@ export type GroupCard<T> = {
   items: T[];
 };
 
-export function buildGroupCards<T>(groups: GroupInput<T>[], limit = INLINE_LIMIT): GroupCard<T>[] {
+/**
+ * Constrói os cartões. Por omissão os grupos canónicos aparecem sempre, mesmo
+ * a zero: um estado vazio é informação, esconder o cartão é que confunde.
+ * (O Drive tem o seu próprio módulo e mantém-se como está.)
+ */
+export function buildGroupCards<T>(
+  groups: GroupInput<T>[],
+  limit = INLINE_LIMIT,
+  keepEmpty = true,
+): GroupCard<T>[] {
   return groups
-    .filter((g) => g.items.length > 0)
+    .filter((g) => keepEmpty || g.items.length > 0)
     .map((g) => ({
       key: g.key,
       label: g.label,

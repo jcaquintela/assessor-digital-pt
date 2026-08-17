@@ -29,17 +29,14 @@ import {
 import { GroupCardsRow } from "@/components/group-cards-row";
 import { ProInsightCard } from "@/components/pro-insight-card";
 import { EmptyState } from "@/components/empty-state";
-import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { BOARD_COLUMNS, dealGroupCards } from "@/lib/deals/board-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { foldText } from "@/lib/search/normalize";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 
-/** Colunas do quadro: os grupos em curso + Perdido, sempre no fim. */
-const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
-  ...STAGE_GROUPS.map((g) => ({ key: g.key, label: g.label, stages: g.stages as DealStage[] })),
-  { key: "perdido", label: "Perdido", stages: ["perdido"] as DealStage[] },
-];
+// Colunas e cartões canónicos vivem em @/lib/deals/board-cards (puro, testado).
 
 export const Route = createFileRoute("/_authenticated/negocios/")({
   validateSearch: (search: Record<string, unknown>): { grp?: string; q?: string } => ({
@@ -131,20 +128,7 @@ function NegociosPage() {
     () => (vista.mode === "aberto" ? BOARD_COLUMNS.filter((c) => c.key === vista.key) : BOARD_COLUMNS),
     [vista.mode, vista.key],
   );
-  const cartoes = useMemo(
-    () =>
-      buildGroupCards(
-        BOARD_COLUMNS.map((g) => ({
-          key: g.key,
-          label: g.label,
-          items:
-            g.key === "perdido"
-              ? visiveis.filter((d) => d.stage === "perdido")
-              : ativos.filter((d) => groupOfStage(d.stage) === g.key),
-        })),
-      ),
-    [visiveis, ativos],
-  );
+  const cartoes = useMemo(() => dealGroupCards(visiveis), [visiveis]);
 
   // Análise proativa (Pro): negócios sem qualquer movimento registado.
   const analise = useMemo(
@@ -317,9 +301,13 @@ function NegociosPage() {
       <ProInsightCard
         insight={analise}
         emptyHint={
-          tier === "pro" && ativos.length > 0 && ativos.length < 3
-            ? "Ainda há poucos negócios em curso para eu tirar conclusões. Com três ou mais aviso-te dos que ficam parados."
-            : undefined
+          tier !== "pro" || analise
+            ? undefined
+            : ativos.length === 0
+              ? "Não tens negócios em curso, por isso não há nada para eu analisar. Assim que abrires um, começo a seguir o ritmo dele."
+              : ativos.length < 3
+                ? "Ainda há poucos negócios em curso para eu tirar conclusões. Com três ou mais aviso-te dos que ficam parados."
+                : "Analisei os negócios em curso e nenhum está parado tempo suficiente para eu te chamar a atenção."
         }
       />
 
@@ -427,15 +415,19 @@ function NegociosPage() {
         Arrasta um cartão para outra coluna para mudar de fase. Fica tudo registado no histórico do negócio.
       </p>
 
-      {concluidos.length > 0 && (
+      {(vista.mode !== "aberto" || vista.key === "concluido") && (
         <section className="mt-6">
           <div className="mb-2 flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold">Concluídos</h2>
             <span className="text-xs text-muted-foreground">{concluidos.length}</span>
           </div>
+          {concluidos.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Ainda não fechaste nenhum negócio.</p>
+          ) : (
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
             {concluidos.map((d) => <DealCard key={d.id} deal={d} />)}
           </div>
+          )}
         </section>
       )}
     </AppShell>
