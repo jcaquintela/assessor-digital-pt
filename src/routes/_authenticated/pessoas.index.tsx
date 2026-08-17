@@ -84,10 +84,13 @@ function PessoasPage() {
   const emEdicao = pessoas.find((p) => p.id === editId) ?? null;
   const fetchPeople = useServerFn(exportPeople);
   const fetchAttention = useServerFn(getPersonAttention);
+  const fetchInsight = useServerFn(getPeopleInsight);
   const [aExportar, setAExportar] = useState<"csv" | "vcf" | null>(null);
   const confirmacao = useDestructiveConfirm();
 
   const atencao = useQuery({ queryKey: ["person-attention"], queryFn: () => fetchAttention() });
+  const analise = useQuery({ queryKey: ["people-insight"], queryFn: () => fetchInsight() });
+  const { tier: tierAtual } = useEffectiveTier();
 
   // Todas pré-selecionadas por defeito; novas pessoas entram na seleção.
   useEffect(() => {
@@ -138,14 +141,24 @@ function PessoasPage() {
 
   const term = foldText(q);
   const digits = term.replace(/\D/g, "");
+  // Estado dos cartões vive no URL (`grp`), como no Drive e nos outros módulos.
+  const vista = resolveCardsView({ q: q || undefined, grp: search.grp });
+  const abrirGrupo = (key: string) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, ...nextSearchForGroup({ grp: search.grp }, key) }) });
+
   const filtradas = useMemo(() => pessoas.filter((p) => {
     if (!matchPeoplePreset(p, preset)) return false;
     if (tagId && !org.tagsOf(p.id).some((t) => t.id === tagId)) return false;
+    if (vista.mode === "aberto" && !personCategoryKeys(p).includes(vista.key as never)) return false;
     if (!term) return true;
     const byText = foldText(p.nome + " " + p.email + " " + p.resumo).includes(term);
     const byPhone = digits.length >= 3 && p.telefone.replace(/\D/g, "").includes(digits);
     return byText || byPhone;
-  }), [pessoas, tagId, term, digits, preset, org.tagLinks, org.tags]);
+  }), [pessoas, tagId, term, digits, preset, org.tagLinks, org.tags, vista.mode, vista.key]);
+
+  // Cartões canónicos por categoria — sempre todos, mesmo a zero.
+  const cartoes = useMemo(() => peopleCategoryCards(pessoas), [pessoas]);
+  const notaPapeis = useMemo(() => multiRoleNote(cartoes, pessoas.length), [cartoes, pessoas.length]);
 
   const contagens = useMemo(() => {
     const c: Record<string, number> = {};
