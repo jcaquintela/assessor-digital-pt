@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -25,6 +25,11 @@ import {
   DEAL_KINDS, KIND_LABEL, STAGE_GROUPS, STAGE_LABEL, groupOfStage,
   daysInStage, isDealStalled, STALLED_DAYS, type DealStage,
 } from "@/lib/deals/stages";
+import { GroupCardsRow } from "@/components/group-cards-row";
+import { ProInsightCard } from "@/components/pro-insight-card";
+import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 
 /** Colunas do quadro: os grupos em curso + Perdido, sempre no fim. */
 const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
@@ -33,6 +38,9 @@ const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
 ];
 
 export const Route = createFileRoute("/_authenticated/negocios/")({
+  validateSearch: (search: Record<string, unknown>): { grp?: string } => ({
+    grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Negócios — Afonso" },
@@ -49,6 +57,9 @@ function NegociosPage() {
   const createFn = useServerFn(createDeal);
   const qc = useQueryClient();
   const { pessoas, imoveis } = useStore();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const tier = useEffectiveTier().data?.tier;
 
   const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [novo, setNovo] = useState(false);
@@ -90,6 +101,55 @@ function NegociosPage() {
   );
   const emRisco = ativos.filter((d) => d.alert?.level === "risco");
   const precisamAtencao = ativos.filter((d) => !!d.alert).length;
+
+  // Cartões por fase do pipeline; o estado vive no URL para o link ser partilhável.
+  const vista = resolveCardsView({ grp: search.grp });
+  const abrirGrupo = (key: string) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, ...nextSearchForGroup({ grp: search.grp }, key) }) });
+  const colunas = useMemo(
+    () => (vista.mode === "aberto" ? BOARD_COLUMNS.filter((c) => c.key === vista.key) : BOARD_COLUMNS),
+    [vista.mode, vista.key],
+  );
+  const cartoes = useMemo(
+    () =>
+      buildGroupCards(
+        BOARD_COLUMNS.map((g) => ({
+          key: g.key,
+          label: g.label,
+          items:
+            g.key === "perdido"
+              ? visiveis.filter((d) => d.stage === "perdido")
+              : ativos.filter((d) => groupOfStage(d.stage) === g.key),
+        })),
+      ),
+    [visiveis, ativos],
+  );
+
+  // Análise proativa (Pro): negócios sem qualquer movimento registado.
+  const analise = useMemo(
+    () =>
+      applyProInsight(
+        factualInsight(
+          stalledFacts(
+            ativos.map((d) => ({
+              id: d.id,
+              label: d.title,
+              days: Math.floor((Date.now() - new Date(d.lastActivityAt ?? Date.now()).getTime()) / 864e5),
+            })),
+            STALLED_DAYS,
+          ),
+          {
+            key: "negocios-parados",
+            noun: ["negócio", "negócios"],
+            movimento: "último evento registado no negócio (fase, nota, seguimento ou movimento)",
+            linkLabel: "Ver negócios →",
+            to: "/negocios",
+          },
+        ),
+        tier,
+      ),
+    [ativos, tier],
+  );
 
   const moverFn = useServerFn(setDealStage);
   const atualizarFn = useServerFn(updateDeal);
@@ -232,6 +292,15 @@ function NegociosPage() {
         </div>
       )}
 
+      <ProInsightCard insight={analise} />
+
+      <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/negocios" />
+      {vista.mode === "aberto" ? (
+        <Button size="sm" variant="ghost" className="mb-2" onClick={() => abrirGrupo(vista.key!)}>
+          ← Ver todo o quadro
+        </Button>
+      ) : null}
+
       {!mostrarArquivados && <OrphanMovements deals={visiveis} />}
 
       {deals.isLoading && <p className="text-sm text-muted-foreground">A carregar negócios…</p>}
@@ -244,7 +313,7 @@ function NegociosPage() {
       {/* Mobile: fases empilhadas (lista agrupada) — sem scroll horizontal.
           Desktop: quadro em colunas. */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {BOARD_COLUMNS.map((g) => {
+        {colunas.map((g) => {
           const items =
             g.key === "perdido"
               ? visiveis.filter((d) => d.stage === "perdido")
