@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -56,7 +57,7 @@ function ReminderLeadCard() {
 }
 
 export const Route = createFileRoute("/admin/definicoes")({
-  head: () => ({ meta: [{ title: "Definições — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Definições") }] }),
   component: () => (
     <div className="space-y-4">
       <div className="space-y-1">

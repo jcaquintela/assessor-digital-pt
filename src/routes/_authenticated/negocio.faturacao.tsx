@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -29,9 +30,9 @@ export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
   }),
   head: () => ({
     meta: [
-      { title: "Faturação — Afonso" },
+      { title: appTitle("Faturação") },
       { name: "description", content: "Ciclo de faturação: comissões previstas, faturadas e recebidas, e despesas." },
-      { property: "og:title", content: "Faturação — Afonso" },
+      { property: "og:title", content: appTitle("Faturação") },
       { property: "og:description", content: "Gestão do ciclo de faturação de comissões e despesas." },
     ],
   }),

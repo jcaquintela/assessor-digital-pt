@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -9,12 +10,12 @@ import { formatDataHora, formatData } from "@/lib/demo-data";
 export const Route = createFileRoute("/_authenticated/briefing/detalhes")({
   head: () => ({
     meta: [
-      { title: "Detalhes do briefing — Afonso" },
+      { title: appTitle("Detalhes do briefing") },
       {
         name: "description",
         content: "Origem, estado atual e histórico dos compromissos que saíram do briefing.",
       },
-      { property: "og:title", content: "Detalhes do briefing — Afonso" },
+      { property: "og:title", content: appTitle("Detalhes do briefing") },
       {
         property: "og:description",
         content: "Origem, estado atual e histórico dos compromissos que saíram do briefing.",

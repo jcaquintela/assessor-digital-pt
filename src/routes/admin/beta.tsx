@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -37,7 +38,7 @@ import {
 export const Route = createFileRoute("/admin/beta")({
   head: () => ({
     meta: [
-      { title: "Beta testers — Afonso admin" },
+      { title: adminTitle("Beta testers") },
       { name: "description", content: "Gestão dos períodos de teste: prazos, extensões e conversões." },
     ],
   }),

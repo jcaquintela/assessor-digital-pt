@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { MODULE_NAME, moduleTitle, pageTitle, type ModuleNames } from "./module-names";
@@ -8,9 +9,9 @@ describe("nomes de módulos", () => {
   });
 
   it("gera o título do Drive de forma consistente", () => {
-    expect(moduleTitle("drive")).toBe("Drive Inteligente — Afonso");
+    expect(moduleTitle("drive")).toBe(appTitle("Drive Inteligente"));
     expect(moduleTitle("drive", "Ficheiro")).toBe(
-      "Ficheiro — Drive Inteligente — Afonso",
+      appTitle("Ficheiro — Drive Inteligente"),
     );
   });
 
@@ -21,7 +22,7 @@ describe("nomes de módulos", () => {
   });
 
   it("pageTitle acrescenta o nome da app", () => {
-    expect(pageTitle("Hoje")).toBe("Hoje — Afonso");
+    expect(pageTitle("Hoje")).toBe(appTitle("Hoje"));
   });
 });
 

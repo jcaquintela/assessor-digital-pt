@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -10,7 +11,7 @@ import { Badge, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/a
 import { fmtPct } from "@/lib/admin/metrics-format";
 
 export const Route = createFileRoute("/admin/")({
-  head: () => ({ meta: [{ title: "Visão geral — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Visão geral") }] }),
   component: OverviewPage,
 });
 

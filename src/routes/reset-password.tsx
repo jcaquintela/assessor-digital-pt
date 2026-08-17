@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,9 +12,9 @@ export const Route = createFileRoute("/reset-password")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Nova palavra-passe — Afonso" },
+      { title: appTitle("Nova palavra-passe") },
       { name: "description", content: "Definir uma nova palavra-passe." },
-      { property: "og:title", content: "Nova palavra-passe — Afonso" },
+      { property: "og:title", content: appTitle("Nova palavra-passe") },
       { property: "og:description", content: "Definir uma nova palavra-passe." },
     ],
   }),

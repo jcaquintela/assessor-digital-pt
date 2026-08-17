@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -14,7 +15,7 @@ import {
 } from "@/lib/assessor/v3/quality.functions";
 
 export const Route = createFileRoute("/admin/qualidade")({
-  head: () => ({ meta: [{ title: "Qualidade — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Qualidade") }] }),
   component: QualidadePage,
 });
 

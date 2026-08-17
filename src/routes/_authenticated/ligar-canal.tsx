@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,9 +16,9 @@ import { nextOnboardingStep, type OnboardingStep } from "@/lib/onboarding/steps"
 export const Route = createFileRoute("/_authenticated/ligar-canal")({
   head: () => ({
     meta: [
-      { title: "Escolhe o teu canal — Afonso" },
+      { title: appTitle("Escolhe o teu canal") },
       { name: "description", content: "WhatsApp com 14 dias grátis ou Telegram gratuito para sempre: escolhe por onde falas com o Afonso." },
-      { property: "og:title", content: "Escolhe o teu canal — Afonso" },
+      { property: "og:title", content: appTitle("Escolhe o teu canal") },
       { property: "og:description", content: "WhatsApp com 14 dias grátis ou Telegram gratuito para sempre: escolhe por onde falas com o Afonso." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

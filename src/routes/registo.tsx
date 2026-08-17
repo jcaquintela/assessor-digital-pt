@@ -1,3 +1,4 @@
+import { BRAND_NAME, appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -18,9 +19,9 @@ export const Route = createFileRoute("/registo")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Criar conta — Afonso" },
+      { title: appTitle("Criar conta") },
       { name: "description", content: "Cria a tua conta no plano Base, grátis, e liga o Afonso em minutos." },
-      { property: "og:title", content: "Criar conta — Afonso" },
+      { property: "og:title", content: appTitle("Criar conta") },
       { property: "og:description", content: "Cria a tua conta no plano Base, grátis, e liga o Afonso em minutos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -90,7 +91,7 @@ function RegistoPage() {
         <div className="mb-8 flex items-center gap-2">
           <BrandMark size={36} />
           <div>
-            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-sm font-semibold leading-tight">{BRAND_NAME}</div>
             <div className="text-xs text-muted-foreground">assistente de IA</div>
           </div>
         </div>

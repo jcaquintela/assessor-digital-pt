@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +19,7 @@ export function BrandMark({
     return (
       <div
         role="img"
-        aria-label="Afonso"
+        aria-label={BRAND_NAME}
         className={cn(
           "flex shrink-0 items-center justify-center rounded-xl font-medium",
           className,
@@ -40,7 +41,7 @@ export function BrandMark({
   return (
     <img
       src="/icon-192.png"
-      alt="Afonso"
+      alt={BRAND_NAME}
       width={size}
       height={size}
       onError={() => setFailed(true)}

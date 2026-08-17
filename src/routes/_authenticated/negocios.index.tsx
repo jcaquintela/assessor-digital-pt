@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,9 +48,9 @@ export const Route = createFileRoute("/_authenticated/negocios/")({
   }),
   head: () => ({
     meta: [
-      { title: "Negócios — Afonso" },
+      { title: appTitle("Negócios") },
       { name: "description", content: "Quadro de negócios do consultor: fase, pessoa, imóveis e próxima ação." },
-      { property: "og:title", content: "Negócios — Afonso" },
+      { property: "og:title", content: appTitle("Negócios") },
       { property: "og:description", content: "Cada negócio com a sua história, do primeiro contacto à escritura." },
     ],
   }),

@@ -1,7 +1,8 @@
+import { BRAND_NAME, appTitle } from "@/lib/brand";
 // Fonte única dos nomes visíveis dos módulos e dos títulos de página.
 // Mudar aqui muda menu, planos, <title> e og:title em todos os ambientes.
 
-export const APP_NAME = "Afonso";
+export const APP_NAME: string = BRAND_NAME;
 
 /** Módulos do produto (enum fechada — não há nomes de módulo fora daqui). */
 export const ModuleKey = {
@@ -44,7 +45,7 @@ export const MODULE_NAME = {
   definicoes: "Definições",
 } as const satisfies ModuleNames;
 
-/** "Drive Inteligente" -> "Drive Inteligente — Afonso" */
+/** "Drive Inteligente" -> appTitle("Drive Inteligente") */
 export function pageTitle(name: string): string {
   return `${name} — ${APP_NAME}`;
 }

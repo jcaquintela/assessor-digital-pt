@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState, useEffect } from "react";
@@ -15,9 +16,9 @@ type SeguimentosSearch = { status?: "overdue" | "hoje" | "semana" | "concluidos"
 export const Route = createFileRoute("/_authenticated/seguimentos/")({
   head: () => ({
     meta: [
-      { title: "Seguimentos — Afonso" },
+      { title: appTitle("Seguimentos") },
       { name: "description", content: "Tarefas e eventos do consultor." },
-      { property: "og:title", content: "Seguimentos — Afonso" },
+      { property: "og:title", content: appTitle("Seguimentos") },
       { property: "og:description", content: "Tarefas e eventos do consultor." },
     ],
   }),

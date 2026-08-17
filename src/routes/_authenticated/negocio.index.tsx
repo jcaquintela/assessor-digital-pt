@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -16,9 +17,9 @@ import { useAssessorName } from "@/lib/assessor/assessor-name";
 export const Route = createFileRoute("/_authenticated/negocio/")({
   head: () => ({
     meta: [
-      { title: "Faturação — Afonso" },
+      { title: appTitle("Faturação") },
       { name: "description", content: "Visão geral de comissões, faturação, despesas e rentabilidade." },
-      { property: "og:title", content: "Faturação — Afonso" },
+      { property: "og:title", content: appTitle("Faturação") },
       { property: "og:description", content: "Visão geral do negócio do consultor." },
     ],
   }),

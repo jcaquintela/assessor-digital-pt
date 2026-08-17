@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -54,9 +55,9 @@ export const Route = createFileRoute("/_authenticated/assessor")({
 
   head: () => ({
     meta: [
-      { title: "Conversa — Afonso" },
+      { title: appTitle("Conversa") },
       { name: "description", content: "Histórico da tua conversa com o Afonso." },
-      { property: "og:title", content: "Conversa — Afonso" },
+      { property: "og:title", content: appTitle("Conversa") },
       { property: "og:description", content: "Histórico da tua conversa com o Afonso." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

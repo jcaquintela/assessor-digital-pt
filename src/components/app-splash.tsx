@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { BrandMark } from "@/components/brand-mark";
 
 /**
@@ -15,7 +16,7 @@ export function AppSplash() {
       <BrandMark size={96} className="rounded-3xl shadow-lg" />
       <div className="text-center">
         <div className="brand text-lg font-medium" style={{ color: "#e9c46a" }}>
-          Afonso
+          {BRAND_NAME}
         </div>
         <div className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>
           o teu assessor

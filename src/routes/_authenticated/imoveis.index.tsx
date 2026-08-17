@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -49,9 +50,9 @@ export const Route = createFileRoute("/_authenticated/imoveis/")({
   }),
   head: () => ({
     meta: [
-      { title: "Imóveis — Afonso" },
+      { title: appTitle("Imóveis") },
       { name: "description", content: "Carteira de imóveis em angariação." },
-      { property: "og:title", content: "Imóveis — Afonso" },
+      { property: "og:title", content: appTitle("Imóveis") },
       { property: "og:description", content: "Carteira de imóveis em angariação." },
     ],
   }),

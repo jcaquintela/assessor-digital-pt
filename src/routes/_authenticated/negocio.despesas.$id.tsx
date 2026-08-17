@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -17,9 +18,9 @@ const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escrit
 export const Route = createFileRoute("/_authenticated/negocio/despesas/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de despesa — Afonso" },
+      { title: appTitle("Ficha de despesa") },
       { name: "description", content: "Editar ou eliminar despesa." },
-      { property: "og:title", content: "Ficha de despesa — Afonso" },
+      { property: "og:title", content: appTitle("Ficha de despesa") },
       { property: "og:description", content: "Editar despesa." },
     ],
   }),

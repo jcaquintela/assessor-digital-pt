@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -51,9 +52,9 @@ type HojeSearch = { filtro?: "imoveis-por-confirmar" };
 export const Route = createFileRoute("/_authenticated/hoje")({
   head: () => ({
     meta: [
-      { title: "Hoje — Afonso" },
+      { title: appTitle("Hoje") },
       { name: "description", content: "Briefing diário, compromissos e prioridades do consultor." },
-      { property: "og:title", content: "Hoje — Afonso" },
+      { property: "og:title", content: appTitle("Hoje") },
       { property: "og:description", content: "Briefing diário, compromissos e prioridades do consultor." },
     ],
   }),

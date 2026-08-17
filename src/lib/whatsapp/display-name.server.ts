@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/brand";
 // Nome de exibição do WhatsApp ("Afonso").
 //
 // A Meta não deixa alterar o display name enquanto houver uma revisão a
@@ -5,7 +6,7 @@
 // Esta rotina pergunta periodicamente o estado do número e, assim que a
 // revisão terminar, submete sozinha o pedido para "Afonso".
 
-export const TARGET_DISPLAY_NAME = "Afonso";
+export const TARGET_DISPLAY_NAME: string = BRAND_NAME;
 
 export interface DisplayNameState {
   verifiedName: string | null;

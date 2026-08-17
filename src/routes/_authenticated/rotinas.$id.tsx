@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,9 +19,9 @@ import { useStore } from "@/lib/store";
 export const Route = createFileRoute("/_authenticated/rotinas/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de rotina — Afonso" },
+      { title: appTitle("Ficha de rotina") },
       { name: "description", content: "Configura este lembrete recorrente." },
-      { property: "og:title", content: "Ficha de rotina — Afonso" },
+      { property: "og:title", content: appTitle("Ficha de rotina") },
       { property: "og:description", content: "Configura este lembrete recorrente." },
     ],
   }),

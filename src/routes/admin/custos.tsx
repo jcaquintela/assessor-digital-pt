@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -21,7 +22,7 @@ import { toast } from "sonner";
 import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 
 export const Route = createFileRoute("/admin/custos")({
-  head: () => ({ meta: [{ title: "Custos — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Custos") }] }),
   component: CustosPage,
 });
 

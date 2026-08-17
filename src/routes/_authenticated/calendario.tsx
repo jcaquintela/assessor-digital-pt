@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -34,9 +35,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
     meta: [
-      { title: "Calendário — Afonso" },
+      { title: appTitle("Calendário") },
       { name: "description", content: "Calendário interno do consultor." },
-      { property: "og:title", content: "Calendário — Afonso" },
+      { property: "og:title", content: appTitle("Calendário") },
       { property: "og:description", content: "Calendário interno do consultor." },
     ],
   }),

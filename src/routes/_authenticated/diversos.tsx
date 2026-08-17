@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -24,9 +25,9 @@ import {
 export const Route = createFileRoute("/_authenticated/diversos")({
   head: () => ({
     meta: [
-      { title: "Diversos — Afonso" },
+      { title: appTitle("Diversos") },
       { name: "description", content: "Notas, ideias e observações que o Afonso guardou por ti." },
-      { property: "og:title", content: "Diversos — Afonso" },
+      { property: "og:title", content: appTitle("Diversos") },
       { property: "og:description", content: "Notas, ideias e observações que o Afonso guardou por ti." },
     ],
   }),

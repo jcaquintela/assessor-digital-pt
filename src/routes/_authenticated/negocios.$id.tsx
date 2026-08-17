@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 // Ficha do Negócio: a história completa numa página — quem, que imóveis,
 // em que fase, o que já aconteceu e o que vem a seguir.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -40,9 +41,9 @@ export const Route = createFileRoute("/_authenticated/negocios/$id")({
   }),
   head: () => ({
     meta: [
-      { title: "Negócio — Afonso" },
+      { title: appTitle("Negócio") },
       { name: "description", content: "Pessoa, imóveis, fase, histórico, seguimentos e comissões de um negócio." },
-      { property: "og:title", content: "Negócio — Afonso" },
+      { property: "og:title", content: appTitle("Negócio") },
       { property: "og:description", content: "A história completa do negócio numa página." },
     ],
   }),

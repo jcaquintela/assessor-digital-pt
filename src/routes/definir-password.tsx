@@ -1,3 +1,4 @@
+import { BRAND_NAME, appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,12 +14,12 @@ export const Route = createFileRoute("/definir-password")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Definir palavra-passe — Afonso" },
+      { title: appTitle("Definir palavra-passe") },
       {
         name: "description",
         content: "Passo opcional para entrares no painel sem pedires um link novo.",
       },
-      { property: "og:title", content: "Definir palavra-passe — Afonso" },
+      { property: "og:title", content: appTitle("Definir palavra-passe") },
       {
         property: "og:description",
         content: "Passo opcional para entrares no painel sem pedires um link novo.",
@@ -88,7 +89,7 @@ function DefinirPasswordPage() {
         <div className="mb-6 flex items-center gap-2">
           <BrandMark size={36} />
           <div>
-            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-sm font-semibold leading-tight">{BRAND_NAME}</div>
             <div className="text-xs text-muted-foreground">o teu assessor</div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -16,9 +17,9 @@ import { getStripeEnvironment } from "@/lib/stripe";
 export const Route = createFileRoute("/_authenticated/subscricao")({
   head: () => ({
     meta: [
-      { title: "Subscrição — Afonso" },
+      { title: appTitle("Subscrição") },
       { name: "description", content: "Escolhe o teu plano do Afonso e gere a subscrição." },
-      { property: "og:title", content: "Subscrição — Afonso" },
+      { property: "og:title", content: appTitle("Subscrição") },
       { property: "og:description", content: "Escolhe o teu plano do Afonso e gere a subscrição." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

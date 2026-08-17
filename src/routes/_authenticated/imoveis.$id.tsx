@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 // Ficha completa do imóvel: absorve o que existe no Negócio ligado para o
 // consultor não ter de saltar de página. Conversa e dashboard escrevem nos
 // mesmos registos.
@@ -45,9 +46,9 @@ const ORIGEM_LABEL: Record<string, string> = {
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha do imóvel — Afonso" },
+      { title: appTitle("Ficha do imóvel") },
       { name: "description", content: "Negócio, valores, visitas, propostas, marketing, custos e documentos do imóvel." },
-      { property: "og:title", content: "Ficha do imóvel — Afonso" },
+      { property: "og:title", content: appTitle("Ficha do imóvel") },
       { property: "og:description", content: "Tudo sobre o imóvel numa página, sem saltar de ecrã." },
     ],
   }),

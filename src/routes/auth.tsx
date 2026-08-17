@@ -1,3 +1,4 @@
+import { BRAND_NAME, appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,9 +19,9 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
-      { title: "Entrar — Afonso" },
+      { title: appTitle("Entrar") },
       { name: "description", content: "Entra ou cria conta no Afonso, o teu assessor pessoal digital." },
-      { property: "og:title", content: "Entrar — Afonso" },
+      { property: "og:title", content: appTitle("Entrar") },
       { property: "og:description", content: "Entra ou cria conta no Afonso, o teu assessor pessoal digital." },
     ],
   }),
@@ -117,7 +118,7 @@ function AuthPage() {
         <div className="mb-8 flex items-center gap-2">
           <BrandMark size={36} />
           <div>
-            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-sm font-semibold leading-tight">{BRAND_NAME}</div>
             <div className="text-xs text-muted-foreground">o teu assessor</div>
           </div>
         </div>

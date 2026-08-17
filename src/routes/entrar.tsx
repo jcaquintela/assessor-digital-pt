@@ -1,3 +1,4 @@
+import { BRAND_NAME, appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,9 +11,9 @@ export const Route = createFileRoute("/entrar")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Entrar sem palavra-passe — Afonso" },
+      { title: appTitle("Entrar sem palavra-passe") },
       { name: "description", content: "Abre o painel com o link temporário que o Afonso te enviou." },
-      { property: "og:title", content: "Entrar sem palavra-passe — Afonso" },
+      { property: "og:title", content: appTitle("Entrar sem palavra-passe") },
       { property: "og:description", content: "Abre o painel com o link temporário que o Afonso te enviou." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -108,7 +109,7 @@ function EntrarPage() {
         <div className="mb-6 flex items-center justify-center gap-2">
           <BrandMark size={36} />
           <div className="text-left">
-            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-sm font-semibold leading-tight">{BRAND_NAME}</div>
             <div className="text-xs text-muted-foreground">o teu assessor</div>
           </div>
         </div>

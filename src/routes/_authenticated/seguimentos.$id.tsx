@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { classifyEvent } from "@/lib/assessor/event-class";
@@ -32,9 +33,9 @@ const PRIORIDADES: SeguimentoPrioridade[] = ["Alta", "Média", "Baixa"];
 export const Route = createFileRoute("/_authenticated/seguimentos/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de seguimento — Afonso" },
+      { title: appTitle("Ficha de seguimento") },
       { name: "description", content: "Detalhe de tarefa ou evento com pessoa, oportunidade e notas." },
-      { property: "og:title", content: "Ficha de seguimento — Afonso" },
+      { property: "og:title", content: appTitle("Ficha de seguimento") },
       { property: "og:description", content: "Memória organizada por seguimento." },
     ],
   }),

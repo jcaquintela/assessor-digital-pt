@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -5,7 +6,7 @@ import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admi
 import { listAuditLogs, listMfaRequired, listSensitiveAccessLogs } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin/auditoria-seguranca")({
-  head: () => ({ meta: [{ title: "Auditoria & segurança — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Auditoria & segurança") }] }),
   component: AuditoriaSegurancaPage,
 });
 

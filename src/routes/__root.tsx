@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -86,11 +87,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Afonso" },
-      { title: "Afonso" },
-      { name: "description", content: "O Afonso é o assessor pessoal digital dos consultores imobiliários." },
-      { property: "og:title", content: "Afonso" },
-      { property: "og:description", content: "O Afonso é o assessor pessoal digital dos consultores imobiliários." },
+      { name: "apple-mobile-web-app-title", content: BRAND_NAME },
+      { title: BRAND_NAME },
+      { name: "description", content: `O ${BRAND_NAME} é o assessor pessoal digital dos consultores imobiliários.` },
+      { property: "og:title", content: BRAND_NAME },
+      { property: "og:description", content: `O ${BRAND_NAME} é o assessor pessoal digital dos consultores imobiliários.` },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

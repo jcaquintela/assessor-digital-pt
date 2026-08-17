@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -45,9 +46,9 @@ const STATUS_OPTS: Status[] = ["inbox", "reviewed", "classified", "archived"];
 export const Route = createFileRoute("/_authenticated/diversos/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de nota — Afonso" },
+      { title: appTitle("Ficha de nota") },
       { name: "description", content: "Nota, ideia ou observação guardada pelo Afonso." },
-      { property: "og:title", content: "Ficha de nota — Afonso" },
+      { property: "og:title", content: appTitle("Ficha de nota") },
       { property: "og:description", content: "Memória organizada por observação." },
     ],
   }),

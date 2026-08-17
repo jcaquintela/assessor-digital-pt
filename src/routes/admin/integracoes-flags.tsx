@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -29,7 +30,7 @@ import {
 
 
 export const Route = createFileRoute("/admin/integracoes-flags")({
-  head: () => ({ meta: [{ title: "Integrações & flags — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Integrações & flags") }] }),
   component: IntegracoesFlagsPage,
 });
 

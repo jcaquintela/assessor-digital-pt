@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -13,9 +14,9 @@ import {
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos — Afonso" },
+      { title: appTitle("Planos") },
       { name: "description", content: "Compara os planos do Afonso, o teu assessor pessoal: módulos incluídos e nível de autonomia." },
-      { property: "og:title", content: "Planos — Afonso" },
+      { property: "og:title", content: appTitle("Planos") },
       { property: "og:description", content: "Compara os planos do Afonso, o teu assessor pessoal: módulos incluídos e nível de autonomia." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

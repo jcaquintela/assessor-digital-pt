@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -16,9 +17,9 @@ import { formatData, formatEUR } from "@/lib/demo-data";
 export const Route = createFileRoute("/_authenticated/interacoes/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha da interação — Afonso" },
+      { title: appTitle("Ficha da interação") },
       { name: "description", content: "Conteúdo original, resumo, pessoa e oportunidade associadas." },
-      { property: "og:title", content: "Ficha da interação — Afonso" },
+      { property: "og:title", content: appTitle("Ficha da interação") },
       { property: "og:description", content: "Memória cronológica do consultor." },
     ],
   }),

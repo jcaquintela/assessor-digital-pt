@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -29,7 +30,7 @@ function publishedLabel(cfg: PlanCfg) {
 }
 
 export const Route = createFileRoute("/admin/planos")({
-  head: () => ({ meta: [{ title: "Planos & preços — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Planos & preços") }] }),
   component: PlanosPage,
 });
 

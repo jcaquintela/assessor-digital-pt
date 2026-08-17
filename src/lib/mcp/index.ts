@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import listPessoasTool from "./tools/list-pessoas";
 import listOportunidadesTool from "./tools/list-oportunidades";
@@ -9,10 +10,10 @@ const projectRef = import.meta.env['VITE_SUPABASE_PROJECT_ID'] ?? "project-ref-u
 
 export default defineMcp({
   name: "assessor-do-consultor-mcp",
-  title: "Afonso",
+  title: BRAND_NAME,
   version: "0.1.0",
   instructions:
-    "Ferramentas do 'Afonso' — assessor pessoal digital para consultores imobiliários. Devolve pessoas, oportunidades, seguimentos e o briefing do dia (dados demo fictícios em PT-PT).",
+    `Ferramentas do '${BRAND_NAME}' — assessor pessoal digital para consultores imobiliários. Devolve pessoas, oportunidades, seguimentos e o briefing do dia (dados demo fictícios em PT-PT).`,
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

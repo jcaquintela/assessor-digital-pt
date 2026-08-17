@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/oportunidades/prospecao/")
     meta: [
       { title: "Prospeção — Placas e leads" },
       { name: "description", content: "Regista placas fotografadas na rua e números captados para contactar mais tarde." },
-      { property: "og:title", content: "Prospeção — Afonso" },
+      { property: "og:title", content: appTitle("Prospeção") },
       { property: "og:description", content: "Placas na rua e leads para contactar." },
     ],
   }),

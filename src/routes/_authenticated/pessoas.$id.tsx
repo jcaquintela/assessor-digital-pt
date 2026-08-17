@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState } from "react";
@@ -31,9 +32,9 @@ import { useAssessorName } from "@/lib/assessor/assessor-name";
 export const Route = createFileRoute("/_authenticated/pessoas/$id")({
   head: () => ({
     meta: [
-      { title: "Contexto da pessoa — Afonso" },
+      { title: appTitle("Contexto da pessoa") },
       { name: "description", content: "Quem é, o que procura, último contacto, próximo passo e ligações." },
-      { property: "og:title", content: "Contexto da pessoa — Afonso" },
+      { property: "og:title", content: appTitle("Contexto da pessoa") },
       { property: "og:description", content: "Memória organizada por pessoa." },
     ],
   }),

@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -40,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin/utilizadores")({
-  head: () => ({ meta: [{ title: "Utilizadores & planos — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Utilizadores & planos") }] }),
   component: AcessosPage,
 });
 

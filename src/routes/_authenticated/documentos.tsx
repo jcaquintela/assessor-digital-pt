@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
@@ -17,9 +18,9 @@ import { useQuotaRevalidate } from "@/lib/drive/use-quota-revalidate";
 export const Route = createFileRoute("/_authenticated/documentos")({
   head: () => ({
     meta: [
-      { title: "Documentos — Afonso" },
+      { title: appTitle("Documentos") },
       { name: "description", content: "Documentos do consultor, associados a pessoas e imóveis." },
-      { property: "og:title", content: "Documentos — Afonso" },
+      { property: "og:title", content: appTitle("Documentos") },
       { property: "og:description", content: "Documentos do consultor, associados a pessoas e imóveis." },
     ],
   }),

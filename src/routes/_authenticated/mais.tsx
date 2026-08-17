@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { MODULE_NAME } from "@/lib/seo/module-names";
@@ -7,9 +8,9 @@ import { Building2, CalendarDays, ChevronRight, CreditCard, FolderOpen, Inbox, M
 export const Route = createFileRoute("/_authenticated/mais")({
   head: () => ({
     meta: [
-      { title: "Mais — Afonso" },
+      { title: appTitle("Mais") },
       { name: "description", content: "Aceda a mais áreas do Afonso." },
-      { property: "og:title", content: "Mais — Afonso" },
+      { property: "og:title", content: appTitle("Mais") },
       { property: "og:description", content: "Aceda a mais áreas do Afonso." },
     ],
   }),
