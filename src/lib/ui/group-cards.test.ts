@@ -23,8 +23,18 @@ describe("cartões de grupo (padrão Drive generalizado)", () => {
     expect(c.count).toBe(20);
   });
 
-  it("grupo vazio não gera cartão", () => {
-    expect(cards.map((c) => c.key)).toEqual(["por_angariar", "ativo"]);
+  it("grupo vazio continua a gerar cartão, a zero", () => {
+    expect(cards.map((c) => c.key)).toEqual(["por_angariar", "ativo", "vendido"]);
+    expect(cards.find((c) => c.key === "vendido")).toMatchObject({ count: 0, inline: true });
+  });
+
+  it("esconder vazios é opt-in explícito", () => {
+    const so = buildGroupCards(
+      [{ key: "a", label: "A", items: mk(1, "a") }, { key: "b", label: "B", items: [] }],
+      INLINE_LIMIT,
+      false,
+    );
+    expect(so.map((c) => c.key)).toEqual(["a"]);
   });
 
   it("limite é inclusive", () => {
