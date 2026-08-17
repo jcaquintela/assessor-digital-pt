@@ -361,7 +361,7 @@ function NegociosPage() {
         ) : (
           <EmptyState
             title="Ainda não há negócios no quadro."
-            hint="Cria o primeiro ou conta ao teu assessor o que está a andar — ele trata do registo."
+            hint={`Cria o primeiro ou conta ao ${assessorName} o que está a andar — ele trata do registo.`}
             actionLabel="Novo negócio"
             onAction={() => setNovo(true)}
           />
