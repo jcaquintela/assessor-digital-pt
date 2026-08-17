@@ -216,7 +216,7 @@ function DriveDetail() {
               </div>
               {(!data?.links || data.links.length === 0) && (
                 <p className="text-sm text-muted-foreground">
-                  Ainda não está associado a nenhuma ficha. Podes pedir ao assessor para o organizar.
+                  Ainda não está associado a nenhuma ficha. Podes pedir ao {assessorName} para o organizar.
                 </p>
               )}
               <ul className="space-y-1.5">
