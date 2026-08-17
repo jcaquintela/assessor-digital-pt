@@ -7,9 +7,26 @@ import type { FactualInsight } from "@/lib/insights/factual";
  * Análise proativa (plano Pro). Só factos verificáveis, com "de onde vem isto"
  * sempre à mão — mesma regra do Mentor: se não houver caso real, não aparece.
  */
-export function ProInsightCard({ insight }: { insight: FactualInsight | null }) {
+export function ProInsightCard({
+  insight,
+  emptyHint,
+}: {
+  insight: FactualInsight | null;
+  /** Texto a mostrar quando (sendo Pro) ainda não há dados suficientes para analisar. */
+  emptyHint?: string;
+}) {
   const [porque, setPorque] = useState(false);
-  if (!insight) return null;
+  if (!insight) {
+    if (!emptyHint) return null;
+    return (
+      <section className="c-card mb-4 p-3.5">
+        <div className="c-spot-tag mb-2 flex items-center gap-1.5">
+          <Sparkles className="h-4 w-4" /> Análise do teu assessor
+        </div>
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--muted)" }}>{emptyHint}</p>
+      </section>
+    );
+  }
   return (
     <section className="c-card mb-4 p-3.5">
       <div className="c-spot-tag mb-2 flex items-center gap-1.5">

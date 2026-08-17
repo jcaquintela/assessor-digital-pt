@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
 import { GroupCardsRow } from "@/components/group-cards-row";
 import { ProInsightCard } from "@/components/pro-insight-card";
+import { EmptyState } from "@/components/empty-state";
 import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
@@ -133,7 +134,16 @@ function FaturacaoPage() {
         <Button size="sm" variant={aba === "comissoes" ? "default" : "outline"} onClick={() => abrirAba("comissoes")}>Comissões</Button>
         <Button size="sm" variant={aba === "despesas" ? "default" : "outline"} onClick={() => abrirAba("despesas")}>Despesas</Button>
       </div>
-      {aba === "comissoes" ? <ProInsightCard insight={analise} /> : null}
+      {aba === "comissoes" ? (
+        <ProInsightCard
+          insight={analise}
+          emptyHint={
+            tier === "pro" && comissoes.length < 3
+              ? "Ainda não há movimentos suficientes para eu tirar conclusões. A partir de três comissões registadas começo a avisar-te do que está parado."
+              : undefined
+          }
+        />
+      ) : null}
       <div className="mb-4 grid grid-cols-3 gap-3">
         <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">Prevista</div><div className="mt-1 text-lg font-semibold">{formatEUR(totais.Prevista)}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">Faturada</div><div className="mt-1 text-lg font-semibold">{formatEUR(totais.Faturada)}</div></CardContent></Card>
@@ -161,7 +171,20 @@ function FaturacaoPage() {
       ) : null}
       {aba === "despesas" ? (
         <div className="space-y-2">
-          {listaDespesas.length === 0 && <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Sem despesas registadas.</div>}
+          {listaDespesas.length === 0 && (
+            <EmptyState
+              title={
+                termo
+                  ? "Nenhuma despesa corresponde à pesquisa."
+                  : vista.mode === "aberto"
+                    ? `Sem despesas em ${vista.key}.`
+                    : "Ainda não registaste despesas."
+              }
+              hint="Regista deslocações, marketing ou formação para veres o que estás mesmo a gastar."
+              actionLabel="Registar despesa"
+              to="/negocio/despesas"
+            />
+          )}
           {listaDespesas.map((d) => (
             <Link key={d.id} to="/negocio/despesas/$id" params={{ id: d.id }} className="flex items-center justify-between rounded-lg border border-border bg-card p-3 text-sm">
               <div className="min-w-0 flex-1">
@@ -180,7 +203,20 @@ function FaturacaoPage() {
         </div>
       ) : (
       <div className="space-y-2">
-        {lista.length === 0 && <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Sem registos.</div>}
+        {lista.length === 0 && (
+          <EmptyState
+            title={
+              termo
+                ? "Nenhuma comissão corresponde à pesquisa."
+                : vista.mode === "aberto"
+                  ? `Sem comissões em ${vista.key}.`
+                  : "Ainda não há comissões registadas."
+            }
+            hint="Assim que registares uma comissão, acompanho o ciclo Prevista → Faturada → Recebida contigo."
+            actionLabel="Ver comissões"
+            to="/negocio/comissoes"
+          />
+        )}
         {lista.map((c) => (
           <div key={c.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-3 text-sm">
             <Link to="/negocio/comissoes/$id" params={{ id: c.id }} className="min-w-0 flex-1">
