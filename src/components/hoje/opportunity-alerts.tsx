@@ -101,7 +101,7 @@ export function OpportunityAlertsCard() {
             <p className="mt-1 text-sm">{a.action}</p>
             <div className="mt-2 flex items-center justify-between">
               <Button asChild variant="ghost" size="sm" className="gap-1 px-2">
-                <Link to={a.to}>
+                <Link to={a.to as string}>
                   Abrir <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
