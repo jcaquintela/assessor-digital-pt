@@ -1,0 +1,2 @@
+insert into public.product_updates (released_on, title, description, category, is_published)
+values (current_date, 'O Afonso passa a chamar-se sempre pelo nome', 'Corrigimos os sítios onde ainda aparecia "o teu assessor" em vez do nome que escolheste — por exemplo o cartão de análise em Imóveis, Negócios e Faturação passa a dizer "Análise do Afonso".', 'melhoria', true);
