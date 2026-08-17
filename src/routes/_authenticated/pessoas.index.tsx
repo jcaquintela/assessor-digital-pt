@@ -28,15 +28,23 @@ import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/expo
 import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { foldText } from "@/lib/search/normalize";
+import { GroupCardsRow } from "@/components/group-cards-row";
+import { ProInsightCard } from "@/components/pro-insight-card";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { multiRoleNote, peopleCategoryCards, personCategoryKeys } from "@/lib/people/category-cards";
+import { getPeopleInsight } from "@/lib/people/insight.functions";
+import { peopleEmptyHint } from "@/lib/people/insight";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { q?: string; tag?: string; view?: "grelha"; preset?: PeoplePreset } => ({
+  ): { q?: string; tag?: string; view?: "grelha"; preset?: PeoplePreset; grp?: string } => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
     view: search.view === "grelha" ? ("grelha" as const) : undefined,
     preset: isPeoplePreset(search.preset) ? search.preset : undefined,
+    grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
   }),
   head: () => ({
     meta: [
