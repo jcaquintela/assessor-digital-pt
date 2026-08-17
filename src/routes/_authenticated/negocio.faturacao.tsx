@@ -5,6 +5,7 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { formatData, formatEUR, type Comissao, type Despesa } from "@/lib/demo-data";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -14,14 +15,16 @@ import { ProInsightCard } from "@/components/pro-insight-card";
 import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { foldText } from "@/lib/search/normalize";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escritório", "Formação", "Outros"];
 
 export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
-  validateSearch: (search: Record<string, unknown>): { grp?: string; tipo?: "despesas" } => ({
+  validateSearch: (search: Record<string, unknown>): { grp?: string; tipo?: "despesas"; q?: string } => ({
     grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
     tipo: search.tipo === "despesas" ? "despesas" : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   head: () => ({
     meta: [
@@ -47,9 +50,11 @@ function FaturacaoPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const aba: "comissoes" | "despesas" = search.tipo === "despesas" ? "despesas" : "comissoes";
-  const vista = resolveCardsView({ grp: search.grp });
+  const vista = resolveCardsView({ q: search.q, grp: search.grp });
   const abrirGrupo = (key: string) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, ...nextSearchForGroup({ grp: search.grp }, key) }) });
+  const setQ = (v: string) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
   const abrirAba = (t: "comissoes" | "despesas") =>
     navigate({ search: () => (t === "despesas" ? { tipo: "despesas" as const } : {}) });
 
