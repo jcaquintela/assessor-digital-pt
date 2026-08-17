@@ -30,6 +30,7 @@ import { ProInsightCard } from "@/components/pro-insight-card";
 import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { foldText } from "@/lib/search/normalize";
 
 /** Colunas do quadro: os grupos em curso + Perdido, sempre no fim. */
 const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
@@ -310,6 +311,19 @@ function NegociosPage() {
 
       <ProInsightCard insight={analise} />
 
+      <div className="mb-3">
+        <Input
+          value={search.q ?? ""}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Procurar negócio, pessoa ou imóvel…"
+          aria-label="Procurar negócios"
+        />
+      </div>
+      {vista.mode === "pesquisa" ? (
+        <p className="mb-2 text-xs text-muted-foreground">
+          {visiveis.length} resultado{visiveis.length === 1 ? "" : "s"} em todas as fases.
+        </p>
+      ) : null}
       <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/negocios" />
       {vista.mode === "aberto" ? (
         <Button size="sm" variant="ghost" className="mb-2" onClick={() => abrirGrupo(vista.key!)}>
