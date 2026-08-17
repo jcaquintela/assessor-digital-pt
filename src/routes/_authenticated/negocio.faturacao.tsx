@@ -14,19 +14,14 @@ import { TierGate } from "@/components/tier-gate";
 import { GroupCardsRow } from "@/components/group-cards-row";
 import { ProInsightCard } from "@/components/pro-insight-card";
 import { EmptyState } from "@/components/empty-state";
-import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { FATURA_GRUPOS, faturacaoCards } from "@/lib/insights/faturacao-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { foldText } from "@/lib/search/normalize";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escritório", "Formação", "Outros"];
-/** Aba Faturas: o mesmo ciclo, visto do lado do documento emitido. */
-const FATURA_GRUPOS: { key: string; label: string; estados: Comissao["estado"][] }[] = [
-  { key: "por_faturar", label: "Por faturar", estados: ["Prevista"] },
-  { key: "emitida", label: "Emitida", estados: ["Faturada"] },
-  { key: "paga", label: "Paga", estados: ["Recebida"] },
-];
 
 export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
   validateSearch: (search: Record<string, unknown>): { grp?: string; tipo?: "despesas" | "faturas"; q?: string } => ({
@@ -75,21 +70,7 @@ function FaturacaoPage() {
   const totalDespesas = useMemo(() => despesas.reduce((s, d) => s + d.valor, 0), [despesas]);
 
   // Cartões por estado do ciclo: a mesma navegação do Drive e dos Imóveis.
-  const cartoes = useMemo<ReturnType<typeof buildGroupCards<Comissao | Despesa>>>(
-    () =>
-      aba === "comissoes"
-        ? buildGroupCards<Comissao | Despesa>(ESTADOS.map((e) => ({ key: e, label: e, items: comissoes.filter((c) => c.estado === e) })))
-        : aba === "faturas"
-          ? buildGroupCards<Comissao | Despesa>(
-              FATURA_GRUPOS.map((g) => ({
-                key: g.key,
-                label: g.label,
-                items: comissoes.filter((c) => g.estados.includes(c.estado)),
-              })),
-            )
-          : buildGroupCards<Comissao | Despesa>(CATEGORIAS.map((c) => ({ key: c, label: c, items: despesas.filter((d) => d.categoria === c) }))),
-    [aba, comissoes, despesas],
-  );
+  const cartoes = useMemo(() => faturacaoCards<Comissao, Despesa>(aba, comissoes, despesas), [aba, comissoes, despesas]);
   // Pesquisa transversal: quando há termo, atravessa todos os estados/categorias.
   const termo = foldText(search.q ?? "");
   const estadosDoGrupo =
