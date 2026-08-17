@@ -8,6 +8,7 @@ import {
 } from "./detector";
 import { isDealClosed } from "@/lib/deals/stages";
 import { normalizeTier, tierAtLeast } from "@/lib/subscription/tiers";
+import { computeLastContact } from "@/lib/insights/last-contact.server";
 
 const IMOVEL_FORA = new Set(["vendido", "arquivado", "reservado"]);
 // "Por angariar" é território exclusivo do Mentor (régua de 10 dias). Fica fora
@@ -15,11 +16,6 @@ const IMOVEL_FORA = new Set(["vendido", "arquivado", "reservado"]);
 const IMOVEL_SO_MENTOR = new Set(["por_angariar"]);
 /** Só cruzamos entradas recentes — evita repetir matches antigos todos os dias. */
 const JANELA_MATCH_DIAS = 21;
-
-function maisRecente(...vals: (string | null | undefined)[]): string | null {
-  const ts = vals.filter(Boolean).map((v) => new Date(v as string).getTime()).filter((n) => !Number.isNaN(n));
-  return ts.length ? new Date(Math.max(...ts)).toISOString() : null;
-}
 
 export async function computeOpportunityAlerts(
   supabase: any,
@@ -33,7 +29,7 @@ export async function computeOpportunityAlerts(
   const nowMs = now.getTime();
   const recente = new Date(nowMs - JANELA_MATCH_DIAS * 864e5).toISOString();
 
-  const [props, deals, ints, people, mutes] = await Promise.all([
+  const [props, deals, contacto, people, mutes] = await Promise.all([
     supabase
       .from("properties")
       .select("id, title, typology, status, location, parish, city, asking_price, value, created_at, archived_at")
@@ -44,11 +40,8 @@ export async function computeOpportunityAlerts(
       .select("id, title, stage, status, person_id, created_at, stage_changed_at, archived_at")
       .eq("user_id", userId)
       .limit(500),
-    supabase
-      .from("interactions")
-      .select("property_id, opportunity_id, person_id, occurred_at")
-      .eq("user_id", userId)
-      .limit(2000),
+    // Fonte única de "contacto real" — a mesma que o Mentor usa.
+    computeLastContact(supabase, userId),
     supabase
       .from("people")
       .select("id, name, roles, search_location, search_property_type, budget_min, budget_max, created_at, updated_at, archived_at")
@@ -57,15 +50,11 @@ export async function computeOpportunityAlerts(
     supabase.from("alert_mutes").select("alert_key, muted_until").eq("user_id", userId),
   ]);
 
-  // "Interação registada" = contacto real registado em `interactions`.
-  const porImovel = new Map<string, string | null>();
-  const porNegocio = new Map<string, string | null>();
-  const porPessoa = new Map<string, string | null>();
-  for (const r of ((ints.data as any[]) ?? [])) {
-    if (r.property_id) porImovel.set(r.property_id, maisRecente(porImovel.get(r.property_id), r.occurred_at));
-    if (r.opportunity_id) porNegocio.set(r.opportunity_id, maisRecente(porNegocio.get(r.opportunity_id), r.occurred_at));
-    if (r.person_id) porPessoa.set(r.person_id, maisRecente(porPessoa.get(r.person_id), r.occurred_at));
-  }
+  // "Contacto real" = interações + seguimentos com resultado (+ negócio ligado
+  // ao imóvel). Definição ampla, partilhada com o Mentor (`last-contact.ts`).
+  const porImovel = contacto.maps.byProperty;
+  const porNegocio = contacto.maps.byDeal;
+  const porPessoa = contacto.maps.byPerson;
 
   const imoveisAtivos = ((props.data as any[]) ?? []).filter(
     (p) => !p.archived_at && !IMOVEL_FORA.has(String(p.status ?? "").toLowerCase()),
