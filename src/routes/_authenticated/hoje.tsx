@@ -39,6 +39,7 @@ import { mentorFollowUpSuggestion } from "@/lib/assessor/supreme/mentor-followup
 import { usePreviewTier } from "@/lib/subscription/tier-preview";
 import { Lightbulb, ArrowRight } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
+import { OpportunityAlertsCard } from "@/components/hoje/opportunity-alerts";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { isDealActive } from "@/lib/deals/stages";
@@ -558,6 +559,13 @@ function HojePage() {
             ) : null}
             </>}
           />
+        </section>
+      )}
+
+      {/* Oportunidades detetadas — resumo diário agregado, com ação em cada alerta. */}
+      {!filtroAtivo && (
+        <section className="mb-6">
+          <OpportunityAlertsCard />
         </section>
       )}
 
