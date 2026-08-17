@@ -90,6 +90,7 @@ function ImoveisPage() {
 
   const [editId, setEditId] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
+  const tierAtual = useEffectiveTier().data?.tier;
   const [orgId, setOrgId] = useState<string | null>(null);
   const [catFor, setCatFor] = useState<string | null>(null);
   const [sel, setSel] = useState<Set<string>>(new Set());
