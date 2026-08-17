@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
@@ -9,10 +9,17 @@ import { formatData, formatEUR, type Comissao } from "@/lib/demo-data";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
+import { GroupCardsRow } from "@/components/group-cards-row";
+import { ProInsightCard } from "@/components/pro-insight-card";
+import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { factualInsight, stalledFacts } from "@/lib/insights/factual";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 
 export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
+  validateSearch: (search: Record<string, unknown>): { grp?: string } => ({
+    grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Faturação — Afonso" },
@@ -30,7 +37,11 @@ export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
 
 function FaturacaoPage() {
   const { comissoes, oportunidades, pessoas, atualizarMovimento } = useStore();
-  const [filtro, setFiltro] = useState<"Todas" | Comissao["estado"]>("Todas");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const vista = resolveCardsView({ grp: search.grp });
+  const abrirGrupo = (key: string) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, ...nextSearchForGroup({ grp: search.grp }, key) }) });
 
   const totais = useMemo(() => ({
     Prevista: comissoes.filter((c) => c.estado === "Prevista").reduce((s, c) => s + c.valor, 0),
@@ -38,7 +49,31 @@ function FaturacaoPage() {
     Recebida: comissoes.filter((c) => c.estado === "Recebida").reduce((s, c) => s + c.valor, 0),
   }), [comissoes]);
 
-  const lista = comissoes.filter((c) => filtro === "Todas" || c.estado === filtro);
+  // Cartões por estado do ciclo: a mesma navegação do Drive e dos Imóveis.
+  const cartoes = useMemo(
+    () => buildGroupCards(ESTADOS.map((e) => ({ key: e, label: e, items: comissoes.filter((c) => c.estado === e) }))),
+    [comissoes],
+  );
+  const lista = vista.mode === "aberto" ? comissoes.filter((c) => c.estado === vista.key) : comissoes;
+
+  // Análise factual: comissões que ficaram para trás no ciclo (página já é Pro).
+  const analise = useMemo(() => {
+    const hoje = Date.now();
+    const paradas = comissoes
+      .filter((c) => c.estado !== "Recebida")
+      .map((c) => ({
+        id: c.id,
+        label: `${formatEUR(c.valor)} · ${c.estado.toLowerCase()}`,
+        days: Math.floor((hoje - new Date(c.data).getTime()) / 864e5),
+      }));
+    return factualInsight(stalledFacts(paradas, 30), {
+      key: "faturacao-parada",
+      noun: ["comissão", "comissões"],
+      movimento: "data do movimento e estado no ciclo Prevista → Faturada → Recebida",
+      linkLabel: "Ver comissões →",
+      to: "/negocio/comissoes",
+    });
+  }, [comissoes]);
 
   function nomeOportunidade(id?: string) {
     if (!id) return "—";
@@ -61,16 +96,18 @@ function FaturacaoPage() {
   return (
     <AppShell>
       <PageHeader title="Faturação" subtitle="Ciclo Prevista → Faturada → Recebida" />
+      <ProInsightCard insight={analise} />
       <div className="mb-4 grid grid-cols-3 gap-3">
         <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">Prevista</div><div className="mt-1 text-lg font-semibold">{formatEUR(totais.Prevista)}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">Faturada</div><div className="mt-1 text-lg font-semibold">{formatEUR(totais.Faturada)}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">Recebida</div><div className="mt-1 text-lg font-semibold">{formatEUR(totais.Recebida)}</div></CardContent></Card>
       </div>
-      <div className="mb-3 flex flex-wrap gap-2">
-        {(["Todas", ...ESTADOS] as const).map((f) => (
-          <Button key={f} size="sm" variant={filtro === f ? "default" : "outline"} onClick={() => setFiltro(f)}>{f}</Button>
-        ))}
-      </div>
+      <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/negocio/faturacao" />
+      {vista.mode === "aberto" ? (
+        <Button size="sm" variant="ghost" className="mb-2" onClick={() => abrirGrupo(vista.key!)}>
+          ← Ver todos os estados
+        </Button>
+      ) : null}
       <div className="space-y-2">
         {lista.length === 0 && <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Sem registos.</div>}
         {lista.map((c) => (

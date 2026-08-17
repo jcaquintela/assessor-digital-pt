@@ -27,15 +27,21 @@ import { exportProperties } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 import { foldText } from "@/lib/search/normalize";
 import { getPropertyAttention } from "@/lib/imoveis/attention.functions";
+import { getPropertyInsight } from "@/lib/imoveis/insight.functions";
+import { GroupCardsRow } from "@/components/group-cards-row";
+import { ProInsightCard } from "@/components/pro-insight-card";
+import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { PROPERTY_STATUSES } from "@/lib/assessor/properties-status";
 import { assuntoDeImovel } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
 
 export const Route = createFileRoute("/_authenticated/imoveis/")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { q?: string; cat?: string; view?: "grelha"; preset?: PropertyPreset } => ({
+  ): { q?: string; cat?: string; grp?: string; view?: "grelha"; preset?: PropertyPreset } => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     cat: typeof search.cat === "string" && search.cat ? search.cat : undefined,
+    grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
     view: search.view === "grelha" ? ("grelha" as const) : undefined,
     preset: isPropertyPreset(search.preset) ? search.preset : undefined,
   }),
@@ -90,9 +96,12 @@ function ImoveisPage() {
   const emEdicao = all.find((p) => p.id === editId) ?? null;
   const fetchExport = useServerFn(exportProperties);
   const fetchAttention = useServerFn(getPropertyAttention);
+  const fetchInsight = useServerFn(getPropertyInsight);
   const [aExportar, setAExportar] = useState(false);
 
   const atencao = useQuery({ queryKey: ["property-attention"], queryFn: () => fetchAttention() });
+  // Análise proativa (Pro): o servidor devolve `null` a quem não tem plano.
+  const analise = useQuery({ queryKey: ["property-insight"], queryFn: () => fetchInsight() });
 
   // "Em carteira" usa a mesma régua de /hoje: exclui vendidos e arquivados.
   // A lista continua a mostrar tudo — só o contador é que fica alinhado.
@@ -152,14 +161,37 @@ function ImoveisPage() {
   }
 
   const term = foldText(q);
+  // Estado dos cartões vive no URL (`grp`), tal como no Drive: link partilhável
+  // e back/forward do browser repõem sempre o mesmo ecrã.
+  const vista = resolveCardsView({ q: q || undefined, grp: search.grp });
+  const abrirGrupo = (key: string) =>
+    navigate({
+      search: (p: Record<string, unknown>) => ({ ...p, ...nextSearchForGroup({ grp: search.grp }, key) }),
+    });
+
   const list = useMemo(() => all.filter((i) => {
     if (!matchPropertyPreset(i, preset)) return false;
     if (catId && i.category_id !== catId) return false;
+    if (vista.mode === "aberto" && String(i.status ?? "").toLowerCase() !== vista.key) return false;
     if (!term) return true;
     return foldText(
       [i.title, i.address, i.city, i.location, i.typology, i.property_type].filter(Boolean).join(" "),
     ).includes(term);
-  }), [all, catId, term, preset]);
+  }), [all, catId, term, preset, vista.mode, vista.key]);
+
+  // Cartões por estado — auto-organização a partir do estado real do imóvel,
+  // pela ordem natural do ciclo de angariação.
+  const cartoes = useMemo(() => {
+    const porEstado = new Map<string, any[]>();
+    for (const p of all) {
+      const k = String(p.status ?? "").toLowerCase() || "por_angariar";
+      porEstado.set(k, [...(porEstado.get(k) ?? []), p]);
+    }
+    const ordem = [...PROPERTY_STATUSES.map(String), ...[...porEstado.keys()].filter((k) => !PROPERTY_STATUSES.map(String).includes(k))];
+    return buildGroupCards(
+      ordem.map((k) => ({ key: k, label: propertyStatusLabel(k), items: porEstado.get(k) ?? [] })),
+    );
+  }, [all]);
 
   const contagens = useMemo(() => {
     const c: Record<string, number> = {};
@@ -205,6 +237,8 @@ function ImoveisPage() {
         </section>
       )}
 
+      <ProInsightCard insight={analise.data ?? null} />
+
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} />
         <Input
@@ -238,9 +272,25 @@ function ImoveisPage() {
       </div>
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Toda a carteira</div>
+        <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>
+          {vista.mode === "aberto" ? propertyStatusLabel(vista.key) : "Toda a carteira"}
+        </div>
         <ViewToggle view={view} onView={setView} />
       </div>
+
+      {vista.mode !== "pesquisa" ? (
+        <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/imoveis" />
+      ) : null}
+      {vista.mode === "aberto" ? (
+        <button
+          type="button"
+          className="tap-44 mb-3 text-[12.5px] font-semibold"
+          style={{ color: "var(--ink-soft)" }}
+          onClick={() => abrirGrupo(vista.key!)}
+        >
+          ← Ver todos os estados
+        </button>
+      ) : null}
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px]" style={{ color: "var(--muted)" }}>
         <span>{sel.size} de {all.length} selecionado{sel.size === 1 ? "" : "s"}</span>
