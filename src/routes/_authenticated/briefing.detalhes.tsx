@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -5,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, ArrowRight } from "lucide-react";
 import { getBriefingItemDetails } from "@/lib/assessor/supreme/briefing-details.functions";
 import { formatDataHora, formatData } from "@/lib/demo-data";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/briefing/detalhes")({
   head: () => ({

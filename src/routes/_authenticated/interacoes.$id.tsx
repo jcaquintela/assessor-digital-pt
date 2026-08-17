@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -12,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, Trash2, Save, Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { formatData, formatEUR } from "@/lib/demo-data";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/interacoes/$id")({
   head: () => ({

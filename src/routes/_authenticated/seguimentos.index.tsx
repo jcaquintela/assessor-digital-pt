@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState, useEffect } from "react";
@@ -9,7 +10,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatData, formatDataHora, type Seguimento } from "@/lib/demo-data";
 import { AlertTriangle, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { appTitle } from "@/lib/brand";
 
 type SeguimentosSearch = { status?: "overdue" | "hoje" | "semana" | "concluidos" };
 

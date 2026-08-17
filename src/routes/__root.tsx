@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -16,7 +17,6 @@ import { ScrollLockGuard } from "@/components/scroll-lock-guard";
 import { SupportModeBanner } from "@/components/support-mode-banner";
 import { supabase } from "@/integrations/supabase/client";
 import { registerServiceWorker } from "@/lib/pwa";
-import { BRAND_NAME } from "@/lib/brand";
 
 function NotFoundComponent() {
   return (

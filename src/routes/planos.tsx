@@ -1,10 +1,10 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, Lock } from "lucide-react";
 import { listPublishedPlans } from "@/lib/subscription/plans.functions";
 import {
-import { appTitle } from "@/lib/brand";
   MODULE_LABEL,
   planSummary,
   tierLabel,

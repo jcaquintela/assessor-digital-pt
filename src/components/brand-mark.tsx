@@ -1,6 +1,6 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { BRAND_NAME } from "@/lib/brand";
 
 /**
  * Monograma do Afonso com fallback: se a imagem não carregar (rede lenta,

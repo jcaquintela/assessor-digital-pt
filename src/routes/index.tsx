@@ -1,8 +1,8 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasLinkedChannel } from "@/lib/telegram/link.functions";
-import { BRAND_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/")({
   ssr: false,

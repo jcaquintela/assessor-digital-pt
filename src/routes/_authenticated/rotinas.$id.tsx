@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +15,6 @@ import { ChevronLeft, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { FREQ_LABEL, WEEKDAY_LABELS, computeNextRun, type Frequency, type Routine } from "@/lib/routines";
 import { useStore } from "@/lib/store";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/rotinas/$id")({
   head: () => ({

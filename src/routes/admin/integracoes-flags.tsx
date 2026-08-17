@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -22,7 +23,6 @@ import {
   sendBriefingTemplateTest,
 } from "@/lib/admin/template-binding.functions";
 import {
-import { adminTitle } from "@/lib/brand";
   listProactiveTestTargets,
   listProactiveTests,
   runProactiveTemplateTest,

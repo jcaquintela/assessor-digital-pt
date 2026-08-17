@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -13,7 +14,6 @@ import { BillingPanel } from "@/components/admin/billing-panel";
 import { confirmTrialPaid } from "@/lib/subscription/trial.functions";
 import { tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { fmtScore100, fmtPct } from "@/lib/admin/metrics-format";
-import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/consultor/$id")({
   head: () => ({ meta: [{ title: adminTitle("Ficha de consultor") }] }),

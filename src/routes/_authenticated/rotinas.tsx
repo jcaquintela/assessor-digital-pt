@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +15,6 @@ import { toast } from "sonner";
 import { Plus, RefreshCw, Repeat } from "lucide-react";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import {
-import { appTitle } from "@/lib/brand";
   FREQ_LABEL,
   WEEKDAY_LABELS,
   computeNextRun,

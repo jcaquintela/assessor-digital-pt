@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -6,7 +7,6 @@ import { getPaymentsStatus } from "@/lib/admin/payments-status.functions";
 import { mrrCardText, paymentsStatusLabel } from "@/lib/admin/payments-status";
 import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { tierLabel } from "@/lib/subscription/tiers";
-import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/negocio")({
   head: () => ({ meta: [{ title: adminTitle("Negócio") }] }),

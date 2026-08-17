@@ -1,9 +1,9 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import listPessoasTool from "./tools/list-pessoas";
 import listOportunidadesTool from "./tools/list-oportunidades";
 import listSeguimentosTool from "./tools/list-seguimentos";
 import briefingHojeTool from "./tools/briefing-hoje";
-import { BRAND_NAME } from "@/lib/brand";
 
 // Emissor OAuth: tem de ser o host directo do Supabase (o proxy é rejeitado).
 const projectRef = import.meta.env['VITE_SUPABASE_PROJECT_ID'] ?? "project-ref-unset";

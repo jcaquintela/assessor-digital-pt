@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -45,7 +46,6 @@ import { useNow } from "@/hooks/use-now";
 import { buildAgendaView, tomorrowLabel, type DayEvent } from "@/lib/agenda/day-events";
 import { lisbonYmd } from "@/lib/assessor/lisbon-day";
 import { fromSeguimento, isOverdueFollowUp, requiresOutcome } from "@/lib/follow-ups/pending";
-import { appTitle } from "@/lib/brand";
 
 type HojeSearch = { filtro?: "imoveis-por-confirmar" };
 

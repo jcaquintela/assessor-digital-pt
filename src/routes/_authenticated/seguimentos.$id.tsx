@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { classifyEvent } from "@/lib/assessor/event-class";
@@ -24,7 +25,6 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Briefcase, User as UserIcon, Phone } from "lucide-react";
-import { appTitle } from "@/lib/brand";
 
 const TIPOS: SeguimentoTipo[] = ["Tarefa", "Evento"];
 const ESTADOS: SeguimentoEstado[] = ["Pendente", "Concluído", "Atrasado"];

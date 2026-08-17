@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,7 +13,6 @@ import { PaymentPortalButton } from "@/components/payment-portal-button";
 import { exportMovements } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/negocio/")({
   head: () => ({

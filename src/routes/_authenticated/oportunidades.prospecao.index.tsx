@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -24,7 +25,6 @@ import { formatData } from "@/lib/demo-data";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { tierAtLeast } from "@/lib/subscription/tiers";
 import { Lock } from "lucide-react";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/prospecao/")({
   head: () => ({

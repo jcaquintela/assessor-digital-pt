@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -36,7 +37,6 @@ import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/
 import { PROPERTY_STATUSES } from "@/lib/assessor/properties-status";
 import { assuntoDeImovel } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/imoveis/")({
   validateSearch: (

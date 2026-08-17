@@ -1,5 +1,4 @@
 import { appTitle } from "@/lib/brand";
-import { BRAND_NAME } from "@/lib/brand";
 // Fonte única dos nomes visíveis dos módulos e dos títulos de página.
 // Mudar aqui muda menu, planos, <title> e og:title em todos os ambientes.
 

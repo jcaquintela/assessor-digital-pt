@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -13,8 +14,6 @@ import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { appTitle } from "@/lib/brand";
-import { BRAND_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/registo")({
   ssr: false,

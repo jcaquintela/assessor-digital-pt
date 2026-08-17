@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Outlet, Link, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +12,6 @@ import { HealthStrip } from "@/components/admin/health-strip";
 import { UnreadSuggestionsAlert, UnreadSuggestionsBadge } from "@/components/admin/unread-suggestions";
 import { WriteErrorsAlert, WriteErrorsBadge } from "@/components/admin/write-errors-alert";
 import { navGroups } from "./nav";
-import { BRAND_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,

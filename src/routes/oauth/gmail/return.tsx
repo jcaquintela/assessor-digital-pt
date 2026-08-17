@@ -1,6 +1,6 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { GmailOAuthReturn } from "@/components/email/gmail-oauth-return";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/oauth/gmail/return")({
   ssr: false,

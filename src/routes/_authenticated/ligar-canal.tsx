@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +12,6 @@ import { getWhatsAppLink, startWhatsAppLink } from "@/lib/whatsapp/link.function
 import { startWhatsAppTrial } from "@/lib/subscription/trial.functions";
 import { CalendarStep, EmailStep } from "@/components/canais/onboarding-setup";
 import { nextOnboardingStep, type OnboardingStep } from "@/lib/onboarding/steps";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/ligar-canal")({
   head: () => ({

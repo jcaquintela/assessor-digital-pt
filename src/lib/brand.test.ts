@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { BRAND_NAME, adminTitle, appTitle } from "@/lib/brand";
+import { describe, expect, it } from "vitest";
 import { APP_NAME } from "@/lib/seo/module-names";
 import { ASSESSOR_NAME_DEFAULT } from "@/lib/assessor/assessor-name";
 

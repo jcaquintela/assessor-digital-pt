@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 // Ficha completa do imóvel: absorve o que existe no Negócio ligado para o
 // consultor não ter de saltar de página. Conversa e dashboard escrevem nos
 // mesmos registos.
@@ -36,7 +37,6 @@ import {
 import { toast } from "sonner";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { TierGate } from "@/components/tier-gate";
-import { appTitle } from "@/lib/brand";
 
 const ORIGEM_LABEL: Record<string, string> = {
   whatsapp: "WhatsApp", telegram: "Telegram", web: "Dashboard", dashboard: "Dashboard",

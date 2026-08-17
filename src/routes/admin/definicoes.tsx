@@ -1,10 +1,10 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-import { adminTitle } from "@/lib/brand";
   getGlobalReminderLead,
   setGlobalReminderLead,
 } from "@/lib/admin/reminder-settings.functions";

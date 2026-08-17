@@ -1,5 +1,5 @@
-import type { EmailMessage, EmailProvider, EmailSendResult } from "./provider";
 import { BRAND_NAME } from "@/lib/brand";
+import type { EmailMessage, EmailProvider, EmailSendResult } from "./provider";
 
 // Remetente real: domínio meuafonso.com verificado no Resend.
 // (Antes era `onboarding@resend.dev`, que só entregava ao dono da conta.)

@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -30,7 +31,6 @@ import {
   type AgendaViewMode,
 } from "@/lib/agenda/views";
 import { cn } from "@/lib/utils";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({

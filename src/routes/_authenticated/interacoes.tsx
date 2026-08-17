@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -9,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageSquare, Search } from "lucide-react";
 import { formatData } from "@/lib/demo-data";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/interacoes")({
   head: () => ({

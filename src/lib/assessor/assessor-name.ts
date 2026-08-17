@@ -1,10 +1,10 @@
+import { BRAND_NAME } from "@/lib/brand";
 // Utilidades partilhadas para o nome personalizado do Assessor.
 // Regras: só personalização visual/conversacional. Nunca pode alterar
 // permissões, regras de segurança ou o comportamento do sistema.
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { BRAND_NAME } from "@/lib/brand";
 
 export const ASSESSOR_NAME_DEFAULT: string = BRAND_NAME;
 export const ASSESSOR_NAME_MAX = 30;

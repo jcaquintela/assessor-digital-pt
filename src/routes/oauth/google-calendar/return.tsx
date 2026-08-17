@@ -1,6 +1,6 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarOAuthReturn } from "@/components/calendar/oauth-return";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/oauth/google-calendar/return")({
   ssr: false,

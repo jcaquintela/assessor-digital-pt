@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -27,7 +28,6 @@ import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/expo
 import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { foldText } from "@/lib/search/normalize";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
   validateSearch: (

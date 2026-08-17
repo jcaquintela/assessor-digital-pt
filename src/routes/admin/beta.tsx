@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -26,7 +27,6 @@ import { TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tie
 import { formatForWhatsApp } from "@/lib/assessor/culture/whatsapp-format";
 import { formatForTelegram } from "@/lib/telegram/telegram-format";
 import {
-import { adminTitle } from "@/lib/brand";
   Dialog,
   DialogContent,
   DialogDescription,

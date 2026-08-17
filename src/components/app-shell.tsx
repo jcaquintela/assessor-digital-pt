@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/brand";
 import { MODULE_NAME } from "@/lib/seo/module-names";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -24,7 +25,6 @@ import { GlobalSearch } from "@/components/hoje/global-search";
 import { AccountArchiveBanner } from "@/components/account-archive-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { TierPreviewBanner } from "@/components/tier-preview";
-import { BRAND_NAME } from "@/lib/brand";
 
 const desktopNav = [
   { to: "/hoje", label: "Hoje", icon: Home },

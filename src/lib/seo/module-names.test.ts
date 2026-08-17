@@ -1,7 +1,7 @@
+import { appTitle } from "@/lib/brand";
 import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { MODULE_NAME, moduleTitle, pageTitle, type ModuleNames } from "./module-names";
-import { appTitle } from "@/lib/brand";
 
 describe("nomes de módulos", () => {
   it("o Drive chama-se sempre Drive Inteligente", () => {

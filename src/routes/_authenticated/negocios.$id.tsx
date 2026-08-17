@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 // Ficha do Negócio: a história completa numa página — quem, que imóveis,
 // em que fase, o que já aconteceu e o que vem a seguir.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -31,7 +32,6 @@ import {
   DEAL_KINDS, KIND_LABEL, PROPERTY_ROLE_LABEL, STAGE_LABEL,
 } from "@/lib/deals/stages";
 import { StagePath } from "@/components/negocios/stage-path";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/negocios/$id")({
   // Deep link: /negocios/<id>?destaque=seguimento:<uuid>

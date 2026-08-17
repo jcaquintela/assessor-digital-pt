@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -7,7 +8,6 @@ import { toast } from "sonner";
 import { EditPersonDialog } from "@/components/pessoas/edit-person-dialog";
 import { OrganizeDialog, useOrganizer } from "@/components/organizer/organizer";
 import { PersonCard, ViewToggle, type PeopleView } from "@/components/pessoas/people-explorer";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/grupos/$id")({
   head: () => ({

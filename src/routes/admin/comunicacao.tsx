@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -18,7 +19,6 @@ import {
 import { TIER_DISPLAY_NAME } from "@/lib/subscription/tiers";
 import { AnnouncementCard, sameText } from "@/components/announcement-banner";
 import { DailyDigest } from "@/components/admin/daily-digest";
-import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/comunicacao")({
   head: () => ({ meta: [{ title: adminTitle("Comunicação") }] }),

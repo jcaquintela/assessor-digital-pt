@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,7 +13,6 @@ import { getMyBilling, createBillingPortal } from "@/lib/subscription/billing.fu
 import { PLAN_OFFERS, BILLING_STATUS_LABEL } from "@/lib/subscription/billing-plans";
 import { tierLabel } from "@/lib/subscription/tiers";
 import { getStripeEnvironment } from "@/lib/stripe";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/subscricao")({
   head: () => ({

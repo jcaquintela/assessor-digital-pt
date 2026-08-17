@@ -1,9 +1,9 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAfonsoAcquisition } from "@/lib/admin/afonso.functions";
 import { Empty, Grid, MetricCard, PageTitle, SectionTitle, Source } from "@/components/admin/ui";
-import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/aquisicao")({
   head: () => ({ meta: [{ title: adminTitle("Aquisição") }] }),

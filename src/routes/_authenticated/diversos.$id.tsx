@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -16,7 +17,6 @@ import { MiscActions } from "@/components/diversos/misc-actions";
 import { MiscLinkedBadges } from "@/components/diversos/linked-badge";
 import { ChevronLeft, Save, Trash2, Archive, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { appTitle } from "@/lib/brand";
 
 type Status = "inbox" | "reviewed" | "classified" | "archived" | "deleted";
 

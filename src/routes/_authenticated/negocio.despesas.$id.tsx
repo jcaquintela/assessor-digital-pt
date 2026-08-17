@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -11,7 +12,6 @@ import { type Despesa } from "@/lib/demo-data";
 import { ChevronLeft, Save, Trash2, Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
-import { appTitle } from "@/lib/brand";
 
 const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escritório", "Formação", "Outros"];
 

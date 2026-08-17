@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -12,7 +13,6 @@ import { formatData, formatEUR, type Comissao } from "@/lib/demo-data";
 import { Plus, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
-import { appTitle } from "@/lib/brand";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 

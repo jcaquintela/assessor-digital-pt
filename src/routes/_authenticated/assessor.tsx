@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -46,7 +47,6 @@ import {
   usePendingConfirmation,
 } from "@/components/assessor/pending-confirmation";
 import {
-import { appTitle } from "@/lib/brand";
   PersonChoiceCard,
   usePendingPersonChoice,
 } from "@/components/assessor/person-choice-card";

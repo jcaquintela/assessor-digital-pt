@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState } from "react";
@@ -27,7 +28,6 @@ import { PersonLinkedCard } from "@/components/pessoas/person-linked-card";
 import { DealsOf } from "@/components/negocios/deals-of";
 import { EditPersonDialog } from "@/components/pessoas/edit-person-dialog";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
-import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/pessoas/$id")({
   head: () => ({

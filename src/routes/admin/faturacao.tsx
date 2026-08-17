@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,7 +13,6 @@ import { eur, paymentsStatusLabel } from "@/lib/admin/payments-status";
 import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { StackTable, Td, Tr } from "@/components/admin/stack-table";
 import { Button } from "@/components/ui/button";
-import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/faturacao")({
   head: () => ({ meta: [{ title: adminTitle("Faturação") }] }),

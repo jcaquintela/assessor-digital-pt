@@ -1,5 +1,5 @@
-import { BrandMark } from "@/components/brand-mark";
 import { BRAND_NAME } from "@/lib/brand";
+import { BrandMark } from "@/components/brand-mark";
 
 /**
  * Ecrã de carregamento / splash do Afonso.

@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -7,7 +8,6 @@ import { requestContentAccess } from "@/lib/admin/consent.functions";
 import { fmtPct, fmtScore100, fmtShare } from "@/lib/admin/metrics-format";
 import { dateStamp, downloadText, toCsv } from "@/lib/export/download";
 import {
-import { adminTitle } from "@/lib/brand";
   getQualityOverview,
   getReformulationTrend,
   getTrustOverview,

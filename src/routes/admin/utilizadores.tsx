@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -31,7 +32,6 @@ import { writeSupportMode } from "@/lib/admin/support-mode";
 import { supabase } from "@/integrations/supabase/client";
 import { tierLabel, TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tiers";
 import {
-import { adminTitle } from "@/lib/brand";
   Dialog,
   DialogContent,
   DialogDescription,

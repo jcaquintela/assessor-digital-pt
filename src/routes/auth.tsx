@@ -1,3 +1,4 @@
+import { appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,8 +11,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BrandMark } from "@/components/brand-mark";
 import { toast } from "sonner";
 import { requestPasswordRecovery } from "@/lib/auth/password-recovery.functions";
-import { appTitle } from "@/lib/brand";
-import { BRAND_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,

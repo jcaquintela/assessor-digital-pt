@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -5,7 +6,6 @@ import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admi
 import { StackTable, Td, Tr } from "@/components/admin/stack-table";
 import { Button } from "@/components/ui/button";
 import { getWhatsappDisplayName, runWhatsappDisplayNameSync } from "@/lib/admin.functions";
-import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/whatsapp-nome")({
   head: () => ({ meta: [{ title: adminTitle("Nome do WhatsApp") }] }),

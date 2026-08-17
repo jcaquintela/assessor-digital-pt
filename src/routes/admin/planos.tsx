@@ -1,3 +1,4 @@
+import { adminTitle } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -6,7 +7,6 @@ import { toast } from "sonner";
 import { listPlanConfigs, savePlanConfig } from "@/lib/admin/afonso.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { AUTONOMY_CAP_BY_TIER, MODULE_MIN_TIER, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
-import { adminTitle } from "@/lib/brand";
 
 type PricingMode = "paid" | "invite_only" | "free_beta" | "on_request";
 
