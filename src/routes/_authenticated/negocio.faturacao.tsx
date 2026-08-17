@@ -61,11 +61,11 @@ function FaturacaoPage() {
   const totalDespesas = useMemo(() => despesas.reduce((s, d) => s + d.valor, 0), [despesas]);
 
   // Cartões por estado do ciclo: a mesma navegação do Drive e dos Imóveis.
-  const cartoes = useMemo(
+  const cartoes = useMemo<ReturnType<typeof buildGroupCards<Comissao | Despesa>>>(
     () =>
       aba === "comissoes"
-        ? buildGroupCards(ESTADOS.map((e) => ({ key: e, label: e, items: comissoes.filter((c) => c.estado === e) })))
-        : buildGroupCards(CATEGORIAS.map((c) => ({ key: c, label: c, items: despesas.filter((d) => d.categoria === c) }))),
+        ? buildGroupCards<Comissao | Despesa>(ESTADOS.map((e) => ({ key: e, label: e, items: comissoes.filter((c) => c.estado === e) })))
+        : buildGroupCards<Comissao | Despesa>(CATEGORIAS.map((c) => ({ key: c, label: c, items: despesas.filter((d) => d.categoria === c) }))),
     [aba, comissoes, despesas],
   );
   const lista = vista.mode === "aberto" ? comissoes.filter((c) => c.estado === vista.key) : comissoes;
