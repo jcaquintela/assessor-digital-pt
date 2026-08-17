@@ -41,6 +41,12 @@ const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
   { key: "perdido", label: "Perdido", stages: ["perdido"] as DealStage[] },
 ];
 
+/** Cartões canónicos: o quadro + Concluído. Um negócio fechado nunca fica sem cartão. */
+const CARD_COLUMNS: { key: string; label: string }[] = [
+  ...BOARD_COLUMNS.map((c) => ({ key: c.key, label: c.label })),
+  { key: "concluido", label: "Concluído" },
+];
+
 export const Route = createFileRoute("/_authenticated/negocios/")({
   validateSearch: (search: Record<string, unknown>): { grp?: string; q?: string } => ({
     grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
@@ -134,12 +140,12 @@ function NegociosPage() {
   const cartoes = useMemo(
     () =>
       buildGroupCards(
-        BOARD_COLUMNS.map((g) => ({
+        CARD_COLUMNS.map((g) => ({
           key: g.key,
           label: g.label,
           items:
-            g.key === "perdido"
-              ? visiveis.filter((d) => d.stage === "perdido")
+            g.key === "perdido" || g.key === "concluido"
+              ? visiveis.filter((d) => d.stage === g.key)
               : ativos.filter((d) => groupOfStage(d.stage) === g.key),
         })),
       ),
