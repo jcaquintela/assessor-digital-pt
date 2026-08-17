@@ -73,8 +73,18 @@ function FaturacaoPage() {
         : buildGroupCards<Comissao | Despesa>(CATEGORIAS.map((c) => ({ key: c, label: c, items: despesas.filter((d) => d.categoria === c) }))),
     [aba, comissoes, despesas],
   );
-  const lista = vista.mode === "aberto" ? comissoes.filter((c) => c.estado === vista.key) : comissoes;
-  const listaDespesas = vista.mode === "aberto" ? despesas.filter((d) => d.categoria === vista.key) : despesas;
+  // Pesquisa transversal: quando há termo, atravessa todos os estados/categorias.
+  const termo = foldText(search.q ?? "");
+  const lista = (vista.mode === "aberto" ? comissoes.filter((c) => c.estado === vista.key) : comissoes).filter((c) =>
+    !termo
+      ? true
+      : foldText([nomeOportunidade(c.oportunidadeId), c.estado, String(c.valor), formatData(c.data)].join(" ")).includes(termo),
+  );
+  const listaDespesas = (vista.mode === "aberto" ? despesas.filter((d) => d.categoria === vista.key) : despesas).filter((d) =>
+    !termo
+      ? true
+      : foldText([d.descricao, d.categoria, String(d.valor), formatData(d.data)].join(" ")).includes(termo),
+  );
 
   // Análise factual: comissões que ficaram para trás no ciclo.
   const analise = useMemo(() => {
