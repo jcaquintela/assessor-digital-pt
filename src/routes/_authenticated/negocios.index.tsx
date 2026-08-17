@@ -153,6 +153,7 @@ function NegociosPage() {
               id: d.id,
               label: d.title,
               days: Math.floor((Date.now() - new Date(d.lastActivityAt ?? Date.now()).getTime()) / 864e5),
+              since: d.lastActivityAt ?? null,
             })),
             STALLED_DAYS,
           ),
