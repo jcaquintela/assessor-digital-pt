@@ -167,7 +167,6 @@ export async function computeMentor(
     supabase.from("prospecting_leads").select("id, created_at").eq("user_id", userId).gte("created_at", isoDaysAgo(7)),
   ]);
 
-  const intRows = contacto.rows.interactions;
   const doneRows = contacto.rows.followUps;
   const linkRows = contacto.rows.links;
   const dealRowsAll = ((deals.data as any[]) ?? []);
