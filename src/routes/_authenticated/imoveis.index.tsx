@@ -238,7 +238,14 @@ function ImoveisPage() {
         </section>
       )}
 
-      <ProInsightCard insight={analise.data ?? null} />
+      <ProInsightCard
+        insight={analise.data ?? null}
+        emptyHint={
+          !analise.isLoading && all.length > 0 && all.length < 3
+            ? "Ainda tens poucos imóveis para eu comparar. Com três ou mais na carteira começo a avisar-te do que está parado."
+            : undefined
+        }
+      />
 
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} />
