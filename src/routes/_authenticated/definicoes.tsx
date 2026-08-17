@@ -347,6 +347,10 @@ function AssessorNameSection() {
   const [uid, setUid] = useState("");
   const [name, setName] = useState(ASSESSOR_NAME_DEFAULT);
   const [draft, setDraft] = useState(ASSESSOR_NAME_DEFAULT);
+  const [tocado, setTocado] = useState(false);
+  const validacao = validateAssessorName(draft);
+  const mostrarErro = tocado && !validacao.ok;
+  const semAlteracoes = draft.trim() === name;
 
   useEffect(() => {
     (async () => {
@@ -356,17 +360,18 @@ function AssessorNameSection() {
       const { data: prof } = await supabase
         .from("profiles").select("assessor_name" as never).eq("id", data.user.id).maybeSingle();
       const nm = (prof as { assessor_name?: string } | null)?.assessor_name || ASSESSOR_NAME_DEFAULT;
-      setName(nm); setDraft(nm);
+      setName(nm); setDraft(nm); setTocado(false);
     })();
   }, []);
 
   const save = async () => {
     if (!uid) return;
     const v = validateAssessorName(draft);
+    setTocado(true);
     if (!v.ok) { toast.error(v.error ?? "Nome inválido."); return; }
     const { error } = await supabase.from("profiles").update({ assessor_name: v.value } as never).eq("id", uid);
     if (error) { toast.error(error.message); return; }
-    setName(v.value); setDraft(v.value);
+    setName(v.value); setDraft(v.value); setTocado(false);
   toast.success("Nome atualizado.");
   };
 
@@ -374,7 +379,7 @@ function AssessorNameSection() {
     if (!uid) return;
     const { error } = await supabase.from("profiles").update({ assessor_name: ASSESSOR_NAME_DEFAULT } as never).eq("id", uid);
     if (error) { toast.error(error.message); return; }
-    setName(ASSESSOR_NAME_DEFAULT); setDraft(ASSESSOR_NAME_DEFAULT);
+    setName(ASSESSOR_NAME_DEFAULT); setDraft(ASSESSOR_NAME_DEFAULT); setTocado(false);
     toast.success("Nome reposto.");
   };
 
@@ -387,19 +392,39 @@ function AssessorNameSection() {
           <input
             id="assessor-name"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => { setDraft(e.target.value); setTocado(true); }}
+            onBlur={() => setTocado(true)}
+            aria-invalid={mostrarErro}
+            aria-describedby="assessor-name-ajuda"
             maxLength={ASSESSOR_NAME_MAX}
             placeholder={ASSESSOR_NAME_DEFAULT}
-            className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px] text-[var(--ink)] outline-none focus-visible:border-[var(--brass)]"
+            className={`mt-1 w-full rounded-[10px] border bg-white px-3 py-2 text-[14px] text-[var(--ink)] outline-none focus-visible:border-[var(--brass)] ${
+              mostrarErro ? "border-[color:var(--danger,#b3261e)]" : "border-[var(--line)]"
+            }`}
           />
         </div>
       </div>
-      <p className="c-muted mt-2 text-[12px]">
-        É assim que o tratas na conversa. Máx. {ASSESSOR_NAME_MAX} caracteres. Atual: {name}.
-      </p>
+      {mostrarErro ? (
+        <p
+          id="assessor-name-ajuda"
+          role="alert"
+          aria-live="polite"
+          className="mt-2 text-[12px]"
+          style={{ color: "var(--danger, #b3261e)" }}
+        >
+          {validacao.error}
+        </p>
+      ) : (
+        <p id="assessor-name-ajuda" className="c-muted mt-2 text-[12px]">
+          É assim que o tratas na conversa. {draft.trim().length}/{ASSESSOR_NAME_MAX} caracteres. Atual: {name}.
+        </p>
+      )}
       <AssessorNamePreview draft={draft} />
       <div className="mt-3 flex flex-wrap gap-2">
-        <button className="c-cta" onClick={save} disabled={draft.trim() === name}>Guardar</button>
+        <button className="c-cta" onClick={save} disabled={semAlteracoes || !validacao.ok}>Guardar</button>
+        {mostrarErro && (
+          <span className="c-muted self-center text-[12px]">Corrige o nome para poderes guardar.</span>
+        )}
         <button className="c-btn" onClick={reset} disabled={name === ASSESSOR_NAME_DEFAULT}>
           Repor "{ASSESSOR_NAME_DEFAULT}"
         </button>
