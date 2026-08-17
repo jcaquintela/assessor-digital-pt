@@ -365,7 +365,7 @@ function AssessorNameSection() {
     const { error } = await supabase.from("profiles").update({ assessor_name: v.value } as never).eq("id", uid);
     if (error) { toast.error(error.message); return; }
     setName(v.value); setDraft(v.value);
-    toast.success("Nome do teu assessor atualizado.");
+  toast.success("Nome atualizado.");
   };
 
   const reset = async () => {
