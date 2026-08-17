@@ -30,6 +30,7 @@ import { getPropertyAttention } from "@/lib/imoveis/attention.functions";
 import { getPropertyInsight } from "@/lib/imoveis/insight.functions";
 import { GroupCardsRow } from "@/components/group-cards-row";
 import { ProInsightCard } from "@/components/pro-insight-card";
+import { EmptyState } from "@/components/empty-state";
 import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
 import { PROPERTY_STATUSES } from "@/lib/assessor/properties-status";
 import { assuntoDeImovel } from "@/lib/assessor/assunto";
@@ -308,7 +309,28 @@ function ImoveisPage() {
         </div>
       )}
       {all.length > 0 && list.length === 0 && (
-        <div className="c-empty">Nenhum imóvel corresponde a esta vista.</div>
+        vista.mode === "aberto" ? (
+          <EmptyState
+            title={`Sem imóveis em ${propertyStatusLabel(vista.key)}.`}
+            hint="Podes adicionar um imóvel neste estado ou voltar a ver toda a carteira."
+            actionLabel="Adicionar imóvel"
+            onAction={() => setNovo(true)}
+          />
+        ) : q ? (
+          <EmptyState
+            title="Nenhum imóvel corresponde à pesquisa."
+            hint="Tenta outra morada ou tipo de imóvel."
+            actionLabel="Limpar pesquisa"
+            onAction={() => setQ("")}
+          />
+        ) : (
+          <EmptyState
+            title="Nenhum imóvel nesta vista."
+            hint="Muda de filtro ou adiciona um imóvel novo."
+            actionLabel="Adicionar imóvel"
+            onAction={() => setNovo(true)}
+          />
+        )
       )}
 
       <div className={view === "grelha" ? "grid min-w-0 grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4" : "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 sm:gap-3"}>
