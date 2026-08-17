@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import type { FactualInsight } from "@/lib/insights/factual";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 
 const dataCurta = (iso?: string | null) => {
   if (!iso) return null;
@@ -31,12 +32,13 @@ export function ProInsightCard({
   emptyHint?: string;
 }) {
   const [porque, setPorque] = useState(false);
+  const { name: assessorName } = useAssessorName();
   if (!insight) {
     if (!emptyHint) return null;
     return (
       <section className="c-card mb-4 p-3.5">
         <div className="c-spot-tag mb-2 flex items-center gap-1.5">
-          <Sparkles className="h-4 w-4" /> Análise do teu assessor
+          <Sparkles className="h-4 w-4" /> Análise do {assessorName}
         </div>
         <p className="text-[13px] leading-relaxed" style={{ color: "var(--muted)" }}>{emptyHint}</p>
       </section>
@@ -45,7 +47,7 @@ export function ProInsightCard({
   return (
     <section className="c-card mb-4 p-3.5">
       <div className="c-spot-tag mb-2 flex items-center gap-1.5">
-        <Sparkles className="h-4 w-4" /> Análise do teu assessor
+        <Sparkles className="h-4 w-4" /> Análise do {assessorName}
       </div>
       <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ink)" }}>{insight.text}</p>
       <div className="mt-2 flex flex-wrap items-center gap-3">
