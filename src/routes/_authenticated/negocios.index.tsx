@@ -310,7 +310,14 @@ function NegociosPage() {
         </div>
       )}
 
-      <ProInsightCard insight={analise} />
+      <ProInsightCard
+        insight={analise}
+        emptyHint={
+          tier === "pro" && ativos.length > 0 && ativos.length < 3
+            ? "Ainda há poucos negócios em curso para eu tirar conclusões. Com três ou mais aviso-te dos que ficam parados."
+            : undefined
+        }
+      />
 
       <div className="mb-3">
         <Input
