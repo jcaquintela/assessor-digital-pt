@@ -56,6 +56,7 @@ import type { MentorFacts } from "./mentor-context";
 import { emptyFacts } from "./mentor-context";
 
 import { isDealActive } from "@/lib/deals/stages";
+import { computeLastContact } from "@/lib/insights/last-contact.server";
 
 const CLOSED_PROPERTY = new Set(["vendido", "arquivado"]);
 
