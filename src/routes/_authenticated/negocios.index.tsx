@@ -27,6 +27,7 @@ import {
 } from "@/lib/deals/stages";
 import { GroupCardsRow } from "@/components/group-cards-row";
 import { ProInsightCard } from "@/components/pro-insight-card";
+import { EmptyState } from "@/components/empty-state";
 import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
@@ -335,9 +336,28 @@ function NegociosPage() {
 
       {deals.isLoading && <p className="text-sm text-muted-foreground">A carregar negócios…</p>}
       {!deals.isLoading && visiveis.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          {mostrarArquivados ? "Sem negócios arquivados." : "Ainda não há negócios. Cria o primeiro ou fala com o Afonso."}
-        </p>
+        mostrarArquivados ? (
+          <EmptyState
+            title="Sem negócios arquivados."
+            hint="Quando arquivares um negócio, ele fica guardado aqui."
+            actionLabel="Ver em curso"
+            onAction={() => setMostrarArquivados(false)}
+          />
+        ) : search.q ? (
+          <EmptyState
+            title="Nenhum negócio corresponde à pesquisa."
+            hint="Tenta outro nome, imóvel ou tipo de negócio."
+            actionLabel="Limpar pesquisa"
+            onAction={() => setQ("")}
+          />
+        ) : (
+          <EmptyState
+            title="Ainda não há negócios no quadro."
+            hint="Cria o primeiro ou conta ao teu assessor o que está a andar — ele trata do registo."
+            actionLabel="Novo negócio"
+            onAction={() => setNovo(true)}
+          />
+        )
       )}
 
       {/* Mobile: fases empilhadas (lista agrupada) — sem scroll horizontal.
@@ -368,7 +388,15 @@ function NegociosPage() {
                 <span className="text-xs text-muted-foreground">{items.length}</span>
               </div>
               <div className="space-y-2">
-                {items.length === 0 && <p className="text-xs text-muted-foreground">—</p>}
+                {items.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setNovo(true)}
+                    className="w-full rounded-lg border border-dashed border-border p-3 text-left text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                  >
+                    Nada em {g.label.toLowerCase()}. Criar negócio nesta fase →
+                  </button>
+                )}
                 {items.map((d) => (
                   <DealCard
                     key={d.id}
