@@ -155,14 +155,19 @@ function FaturacaoPage() {
       <div className="mb-4 flex gap-2">
         <Button size="sm" variant={aba === "comissoes" ? "default" : "outline"} onClick={() => abrirAba("comissoes")}>Comissões</Button>
         <Button size="sm" variant={aba === "despesas" ? "default" : "outline"} onClick={() => abrirAba("despesas")}>Despesas</Button>
+        <Button size="sm" variant={aba === "faturas" ? "default" : "outline"} onClick={() => abrirAba("faturas")}>Faturas</Button>
       </div>
-      {aba === "comissoes" ? (
+      {aba !== "despesas" ? (
         <ProInsightCard
           insight={analise}
           emptyHint={
-            tier === "pro" && comissoes.length < 3
-              ? "Ainda não há movimentos suficientes para eu tirar conclusões. A partir de três comissões registadas começo a avisar-te do que está parado."
-              : undefined
+            tier !== "pro" || analise
+              ? undefined
+              : comissoes.length === 0
+                ? "Ainda não há comissões registadas, por isso não tenho nada para analisar. Assim que registares a primeira, sigo o ciclo contigo."
+                : comissoes.length < 3
+                  ? "Ainda não há movimentos suficientes para eu tirar conclusões. A partir de três comissões registadas começo a avisar-te do que está parado."
+                  : "Olhei para as comissões por receber e nenhuma está parada tempo suficiente para eu te chamar a atenção."
           }
         />
       ) : null}
@@ -188,7 +193,7 @@ function FaturacaoPage() {
       <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/negocio/faturacao" />
       {vista.mode === "aberto" ? (
         <Button size="sm" variant="ghost" className="mb-2" onClick={() => abrirGrupo(vista.key!)}>
-          {aba === "despesas" ? "← Ver todas as categorias" : "← Ver todos os estados"}
+          {aba === "despesas" ? "← Ver todas as categorias" : aba === "faturas" ? "← Ver todas as faturas" : "← Ver todos os estados"}
         </Button>
       ) : null}
       {aba === "despesas" ? (
