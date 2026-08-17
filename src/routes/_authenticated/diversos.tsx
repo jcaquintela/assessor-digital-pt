@@ -63,7 +63,6 @@ const CANAL_LABEL: Record<string, string> = {
 };
 
 function DiversosPage() {
-  const { name: assessorName } = useAssessorName();
   const qc = useQueryClient();
   const { name: assessorName } = useAssessorName();
   const [q, setQ] = useState("");
@@ -203,7 +202,7 @@ function DiversosPage() {
             Nada por tratar neste momento.
             <br />
             <span className="text-[12.5px]">
-              sempre que o teu assessor não perceber algo, fica aqui — nunca desaparece
+              sempre que o {assessorName} não perceber algo, fica aqui — nunca desaparece
             </span>
           </div>
         ) : (
