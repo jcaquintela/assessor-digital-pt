@@ -77,7 +77,8 @@ export async function computeOpportunityAlerts(
       label: String(d.title ?? "").trim() || "Negócio",
       stage: String(d.stage ?? "preparacao"),
       lastInteractionAt:
-        porNegocio.get(d.id) ?? (d.person_id ? porPessoa.get(d.person_id) ?? null : null) ?? d.created_at ?? null,
+        porNegocio.get(d.id) ??
+        (d.person_id ? porPessoa.get(d.person_id) ?? d.created_at ?? null : d.created_at ?? null),
     }));
 
   const leads: LeadInput[] = ((people.data as any[]) ?? [])
