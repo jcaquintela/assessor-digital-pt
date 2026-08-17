@@ -32,6 +32,7 @@ import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { foldText } from "@/lib/search/normalize";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 
 /** Colunas do quadro: os grupos em curso + Perdido, sempre no fim. */
 const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
@@ -56,6 +57,7 @@ export const Route = createFileRoute("/_authenticated/negocios/")({
 });
 
 function NegociosPage() {
+  const { name: assessorName } = useAssessorName();
   const listFn = useServerFn(listDeals);
   const createFn = useServerFn(createDeal);
   const qc = useQueryClient();
@@ -361,7 +363,7 @@ function NegociosPage() {
         ) : (
           <EmptyState
             title="Ainda não há negócios no quadro."
-            hint="Cria o primeiro ou conta ao teu assessor o que está a andar — ele trata do registo."
+            hint={`Cria o primeiro ou conta ao ${assessorName} o que está a andar — ele trata do registo.`}
             actionLabel="Novo negócio"
             onAction={() => setNovo(true)}
           />

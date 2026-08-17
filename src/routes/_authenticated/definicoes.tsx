@@ -365,7 +365,7 @@ function AssessorNameSection() {
     const { error } = await supabase.from("profiles").update({ assessor_name: v.value } as never).eq("id", uid);
     if (error) { toast.error(error.message); return; }
     setName(v.value); setDraft(v.value);
-    toast.success("Nome do teu assessor atualizado.");
+  toast.success("Nome atualizado.");
   };
 
   const reset = async () => {
@@ -1368,7 +1368,7 @@ function PendingCodeView({
   return (
     <div className="mt-4 rounded-[13px] border border-[var(--line)] bg-[var(--paper-2)] p-3">
       <p className="text-[13px]">
-        Envia a mensagem abaixo, a partir do número <strong>{formatDisplay(phone ?? "")}</strong>, para o WhatsApp do teu assessor.
+        Envia a mensagem abaixo, a partir do número <strong>{formatDisplay(phone ?? "")}</strong>, para o WhatsApp do {ASSESSOR_NAME_DEFAULT}.
       </p>
       {code ? (
         <div className="mt-2 flex items-center justify-between gap-2 rounded-[10px] border border-[var(--line)] bg-white px-3 py-2">

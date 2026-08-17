@@ -11,6 +11,7 @@ import { EditMovementDialog } from "@/components/negocio/edit-movement-dialog";
 import { PaymentPortalButton } from "@/components/payment-portal-button";
 import { exportMovements } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
+import { useAssessorName } from "@/lib/assessor/assessor-name";
 
 export const Route = createFileRoute("/_authenticated/negocio/")({
   head: () => ({
@@ -65,6 +66,7 @@ function formatDia(iso: string) {
 }
 
 function NegocioPage() {
+  const { name: assessorName } = useAssessorName();
   const movs = useQuery({
     queryKey: ["financial_movements", "list"],
     queryFn: async () => {
@@ -133,7 +135,7 @@ function NegocioPage() {
         <div className="c-empty">
           Ainda não há movimentos registados.
           <br />
-          Diz ao teu assessor “recebi 3.000€ de comissão” ou envia o recibo da despesa.
+          Diz ao {assessorName} “recebi 3.000€ de comissão” ou envia o recibo da despesa.
         </div>
       )}
 
