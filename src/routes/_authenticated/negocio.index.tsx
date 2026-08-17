@@ -135,7 +135,7 @@ function NegocioPage() {
         <div className="c-empty">
           Ainda não há movimentos registados.
           <br />
-          Diz ao teu assessor “recebi 3.000€ de comissão” ou envia o recibo da despesa.
+          Diz ao {assessorName} “recebi 3.000€ de comissão” ou envia o recibo da despesa.
         </div>
       )}
 
