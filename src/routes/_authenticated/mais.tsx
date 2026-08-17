@@ -8,9 +8,9 @@ export const Route = createFileRoute("/_authenticated/mais")({
   head: () => ({
     meta: [
       { title: "Mais — Afonso" },
-      { name: "description", content: "Aceda a mais áreas do assessor." },
+      { name: "description", content: "Aceda a mais áreas do Afonso." },
       { property: "og:title", content: "Mais — Afonso" },
-      { property: "og:description", content: "Aceda a mais áreas do assessor." },
+      { property: "og:description", content: "Aceda a mais áreas do Afonso." },
     ],
   }),
   component: MaisPage,
