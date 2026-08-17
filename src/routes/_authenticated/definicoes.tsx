@@ -9,6 +9,7 @@ import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, M
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "@/lib/assessor/assessor-name";
+import { assessorNamePreview } from "@/lib/assessor/name-preview";
 import { MODULE_LABEL, planSummary, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { isPlaceholderEmail, isValidEmail } from "@/lib/profile/email";
 import { CHANNEL_LABEL, maskContact, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
