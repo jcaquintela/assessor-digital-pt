@@ -139,6 +139,20 @@ function FaturacaoPage() {
         <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">Faturada</div><div className="mt-1 text-lg font-semibold">{formatEUR(totais.Faturada)}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">{aba === "despesas" ? "Despesas" : "Recebida"}</div><div className="mt-1 text-lg font-semibold">{formatEUR(aba === "despesas" ? totalDespesas : totais.Recebida)}</div></CardContent></Card>
       </div>
+      <div className="mb-3">
+        <Input
+          value={search.q ?? ""}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={aba === "despesas" ? "Procurar despesa ou categoria…" : "Procurar comissão, pessoa ou valor…"}
+          aria-label="Procurar em faturação"
+        />
+      </div>
+      {vista.mode === "pesquisa" ? (
+        <p className="mb-2 text-xs text-muted-foreground">
+          {(aba === "despesas" ? listaDespesas : lista).length} resultado
+          {(aba === "despesas" ? listaDespesas : lista).length === 1 ? "" : "s"} em todos os grupos.
+        </p>
+      ) : null}
       <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/negocio/faturacao" />
       {vista.mode === "aberto" ? (
         <Button size="sm" variant="ghost" className="mb-2" onClick={() => abrirGrupo(vista.key!)}>
