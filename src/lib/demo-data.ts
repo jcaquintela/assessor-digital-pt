@@ -10,6 +10,8 @@ export interface Pessoa {
   telefone: string;
   email: string;
   relacao: Relacao;
+  /** Papéis (people.roles). Uma pessoa pode ter mais do que um. */
+  papeis?: string[];
   resumo: string;
   proximaAcao?: string;
   proximaAcaoData?: string;
