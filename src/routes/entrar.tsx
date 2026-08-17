@@ -6,6 +6,7 @@ import { getPasswordSetupState } from "@/lib/auth/password-setup.functions";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { appTitle } from "@/lib/brand";
+import { BRAND_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/entrar")({
   ssr: false,
@@ -109,7 +110,7 @@ function EntrarPage() {
         <div className="mb-6 flex items-center justify-center gap-2">
           <BrandMark size={36} />
           <div className="text-left">
-            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-sm font-semibold leading-tight">{BRAND_NAME}</div>
             <div className="text-xs text-muted-foreground">o teu assessor</div>
           </div>
         </div>

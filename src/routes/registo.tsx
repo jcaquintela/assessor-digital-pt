@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { appTitle } from "@/lib/brand";
+import { BRAND_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/registo")({
   ssr: false,
@@ -91,7 +92,7 @@ function RegistoPage() {
         <div className="mb-8 flex items-center gap-2">
           <BrandMark size={36} />
           <div>
-            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-sm font-semibold leading-tight">{BRAND_NAME}</div>
             <div className="text-xs text-muted-foreground">assistente de IA</div>
           </div>
         </div>

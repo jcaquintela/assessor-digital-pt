@@ -4,8 +4,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { BRAND_NAME } from "@/lib/brand";
 
-export const ASSESSOR_NAME_DEFAULT = "Afonso";
+export const ASSESSOR_NAME_DEFAULT: string = BRAND_NAME;
 export const ASSESSOR_NAME_MAX = 30;
 
 // Letras (com acentos), espaços, hífenes e apóstrofos. Nada mais.

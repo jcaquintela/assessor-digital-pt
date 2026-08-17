@@ -11,6 +11,7 @@ import { HealthStrip } from "@/components/admin/health-strip";
 import { UnreadSuggestionsAlert, UnreadSuggestionsBadge } from "@/components/admin/unread-suggestions";
 import { WriteErrorsAlert, WriteErrorsBadge } from "@/components/admin/write-errors-alert";
 import { navGroups } from "./nav";
+import { BRAND_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -101,7 +102,7 @@ function AdminLayout() {
       <aside className="admin-nav fixed inset-y-0 left-0 z-20 hidden w-56 flex-col py-6 md:flex">
         <div className="brand flex items-center gap-2 px-[22px] pb-6">
           <span className="dot" />
-          Afonso — admin
+          {BRAND_NAME} — admin
         </div>
         <nav className="flex-1 overflow-y-auto">{renderNav()}</nav>
         <div className="navfoot">
@@ -128,7 +129,7 @@ function AdminLayout() {
             <div className="flex min-h-full flex-col py-6">
               <div className="brand flex items-center gap-2 px-[22px] pb-6">
                 <span className="dot" />
-                Afonso — admin
+                {BRAND_NAME} — admin
               </div>
               <nav className="flex-1">{renderNav(handleNavClick)}</nav>
               <div className="navfoot">
@@ -143,7 +144,7 @@ function AdminLayout() {
         </Sheet>
         <div className="flex min-w-0 items-center gap-2 text-white">
           <ShieldCheck className="h-4 w-4 shrink-0" />
-          <span className="truncate text-sm font-semibold">Afonso — admin</span>
+          <span className="truncate text-sm font-semibold">{BRAND_NAME} — admin</span>
         </div>
         <Button variant="ghost" size="sm" className="text-xs text-white" onClick={signOut}>Sair</Button>
       </header>

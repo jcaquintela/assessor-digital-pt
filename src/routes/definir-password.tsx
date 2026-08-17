@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { appTitle } from "@/lib/brand";
+import { BRAND_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/definir-password")({
   ssr: false,
@@ -89,7 +90,7 @@ function DefinirPasswordPage() {
         <div className="mb-6 flex items-center gap-2">
           <BrandMark size={36} />
           <div>
-            <div className="text-sm font-semibold leading-tight">Afonso</div>
+            <div className="text-sm font-semibold leading-tight">{BRAND_NAME}</div>
             <div className="text-xs text-muted-foreground">o teu assessor</div>
           </div>
         </div>

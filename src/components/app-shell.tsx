@@ -24,6 +24,7 @@ import { GlobalSearch } from "@/components/hoje/global-search";
 import { AccountArchiveBanner } from "@/components/account-archive-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { TierPreviewBanner } from "@/components/tier-preview";
+import { BRAND_NAME } from "@/lib/brand";
 
 const desktopNav = [
   { to: "/hoje", label: "Hoje", icon: Home },
@@ -102,7 +103,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         <Link to="/hoje" className="mb-8 flex items-center gap-2 px-2">
           <BrandMark size={36} />
           <div className="min-w-0">
-            <div className="brand text-[15px] font-medium leading-tight">Afonso</div>
+            <div className="brand text-[15px] font-medium leading-tight">{BRAND_NAME}</div>
             <div className="c-muted truncate text-xs">o teu assessor</div>
           </div>
         </Link>
