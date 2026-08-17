@@ -155,32 +155,20 @@ export async function computeMentor(
 ): Promise<{ tip: MentorTip | null; facts: MentorFacts }> {
   const now = Date.now();
   const days = (iso: string | null) => (iso ? Math.floor((now - new Date(iso).getTime()) / 864e5) : 0);
-  /** Data mais recente de um conjunto, ou null. */
-  const latest = (...vals: (string | null | undefined)[]) => {
-    const ts = vals.filter(Boolean).map((v) => new Date(v as string).getTime()).filter((n) => !Number.isNaN(n));
-    return ts.length ? new Date(Math.max(...ts)).toISOString() : null;
-  };
 
-  const [props, deals, people, ints, done, links, leads] = await Promise.all([
+  const [props, deals, people, contacto, leads] = await Promise.all([
     supabase.from("properties").select("id, status, created_at").eq("user_id", userId),
     supabase.from("opportunities").select("id, status, stage, stage_changed_at, archived_at").eq("user_id", userId),
     supabase.from("people").select("id, name, created_at").eq("user_id", userId).limit(200),
-    // Contactos reais registados (save_interaction e equivalentes).
-    // `interaction_type` e `source_channel` servem o eixo Produtividade (nível 2).
-    supabase.from("interactions")
-      .select("person_id, opportunity_id, occurred_at, interaction_type, source_channel")
-      .eq("user_id", userId),
-    // Seguimentos com resultado registado contam como contacto real.
-    supabase.from("follow_ups").select("person_id, opportunity_id, related_property_id, outcome_recorded_at")
-      .eq("user_id", userId).not("outcome_recorded_at", "is", null),
-    supabase.from("opportunity_properties").select("opportunity_id, property_id").eq("user_id", userId),
+    // Fonte única de "contacto real" — partilhada com a Deteção de Oportunidades.
+    computeLastContact(supabase, userId),
     // Crescimento: entrada nova no funil nos últimos 7 dias.
     supabase.from("prospecting_leads").select("id, created_at").eq("user_id", userId).gte("created_at", isoDaysAgo(7)),
   ]);
 
-  const intRows = ((ints.data as any[]) ?? []);
-  const doneRows = ((done.data as any[]) ?? []);
-  const linkRows = ((links.data as any[]) ?? []);
+  const intRows = contacto.rows.interactions;
+  const doneRows = contacto.rows.followUps;
+  const linkRows = contacto.rows.links;
   const dealRowsAll = ((deals.data as any[]) ?? []);
 
   // ---- Factos da semana (últimos 7 dias). Contagens factuais, nunca previsão.
@@ -191,23 +179,10 @@ export async function computeMentor(
     (d) => d.stage_changed_at && days(d.stage_changed_at) < 7,
   ).length;
 
-  // Último contacto real por negócio.
-  const lastByDeal = new Map<string, string | null>();
-  for (const r of intRows) if (r.opportunity_id) lastByDeal.set(r.opportunity_id, latest(lastByDeal.get(r.opportunity_id), r.occurred_at));
-  for (const r of doneRows) if (r.opportunity_id) lastByDeal.set(r.opportunity_id, latest(lastByDeal.get(r.opportunity_id), r.outcome_recorded_at));
-
-  // Último contacto real por pessoa.
-  const lastByPerson = new Map<string, string | null>();
-  for (const r of intRows) if (r.person_id) lastByPerson.set(r.person_id, latest(lastByPerson.get(r.person_id), r.occurred_at));
-  for (const r of doneRows) if (r.person_id) lastByPerson.set(r.person_id, latest(lastByPerson.get(r.person_id), r.outcome_recorded_at));
-
-  // Último contacto real por imóvel: seguimentos do imóvel + contactos dos negócios ligados a ele.
-  const lastByProperty = new Map<string, string | null>();
-  for (const r of doneRows) if (r.related_property_id) lastByProperty.set(r.related_property_id, latest(lastByProperty.get(r.related_property_id), r.outcome_recorded_at));
-  for (const l of linkRows) {
-    if (!l.property_id || !l.opportunity_id) continue;
-    lastByProperty.set(l.property_id, latest(lastByProperty.get(l.property_id), lastByDeal.get(l.opportunity_id) ?? null));
-  }
+  // Mapas de último contacto real — fonte única (`last-contact.ts`).
+  const lastByDeal = contacto.maps.byDeal;
+  const lastByPerson = contacto.maps.byPerson;
+  const lastByProperty = contacto.maps.byProperty;
 
   // 1. Imóveis por angariar sem contacto real há mais de 10 dias.
   //    Sem qualquer contacto, conta-se desde a criação do imóvel.
