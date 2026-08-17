@@ -220,7 +220,7 @@ function PessoasPage() {
 
       {loading && pessoas.length === 0 && <p className="c-muted text-sm">A carregar…</p>}
       {!loading && pessoas.length === 0 && (
-        <div className="c-empty">Ainda não tens contactos. Usa "+ Adicionar" ou fala com o teu assessor por WhatsApp.</div>
+        <div className="c-empty">Ainda não tens contactos. Usa "+ Adicionar" ou fala com o {assessorName} por WhatsApp.</div>
       )}
       {!loading && pessoas.length > 0 && filtradas.length === 0 && (
         <div className="c-empty">Nenhum contacto corresponde a esta vista.</div>
