@@ -1,0 +1,61 @@
+// Navegação por cartões, generalizada a partir do padrão já validado no Drive
+// (`src/lib/drive/category-cards.ts` + `category-url.ts`).
+//
+// Mesma disciplina: funções puras, sem React e sem BD. Os módulos (Imóveis,
+// Negócios, Faturação) só ligam a UI a estas funções.
+
+/** Acima deste número, o grupo abre em vista dedicada em vez de expandir. */
+export const INLINE_LIMIT = 15;
+
+export type GroupInput<T> = { key: string; label: string; items: T[] };
+
+export type GroupCard<T> = {
+  key: string;
+  label: string;
+  count: number;
+  /** true → expande por baixo do cartão; false → vale uma vista dedicada. */
+  inline: boolean;
+  items: T[];
+};
+
+export function buildGroupCards<T>(groups: GroupInput<T>[], limit = INLINE_LIMIT): GroupCard<T>[] {
+  return groups
+    .filter((g) => g.items.length > 0)
+    .map((g) => ({
+      key: g.key,
+      label: g.label,
+      count: g.items.length,
+      inline: g.items.length <= limit,
+      items: g.items,
+    }));
+}
+
+export type CardsSearch = { q?: string; grp?: string };
+
+/**
+ * O que o URL diz que está aberto. A pesquisa manda: é sempre transversal a
+ * todos os grupos, tal como no Drive.
+ */
+export function resolveCardsView(s: CardsSearch): {
+  mode: "cartoes" | "aberto" | "pesquisa";
+  key: string | null;
+} {
+  if (s.q?.trim()) return { mode: "pesquisa", key: null };
+  if (s.grp) return { mode: "aberto", key: s.grp };
+  return { mode: "cartoes", key: null };
+}
+
+/** Próximo estado do URL ao clicar num cartão (toggle). */
+export function nextSearchForGroup(s: CardsSearch, key: string): CardsSearch {
+  return { ...s, grp: s.grp === key ? undefined : key };
+}
+
+/** Fechar o grupo aberto. */
+export function closedGroupSearch(s: CardsSearch): CardsSearch {
+  return { ...s, grp: undefined };
+}
+
+/** Link partilhável: só o essencial para reabrir exactamente esta vista. */
+export function groupShareUrl(origin: string, pathname: string, key: string): string {
+  return `${origin}${pathname}?grp=${encodeURIComponent(key)}`;
+}
