@@ -35,17 +35,7 @@ import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { foldText } from "@/lib/search/normalize";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 
-/** Colunas do quadro: os grupos em curso + Perdido, sempre no fim. */
-const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
-  ...STAGE_GROUPS.map((g) => ({ key: g.key, label: g.label, stages: g.stages as DealStage[] })),
-  { key: "perdido", label: "Perdido", stages: ["perdido"] as DealStage[] },
-];
-
-/** Cartões canónicos: o quadro + Concluído. Um negócio fechado nunca fica sem cartão. */
-const CARD_COLUMNS: { key: string; label: string }[] = [
-  ...BOARD_COLUMNS.map((c) => ({ key: c.key, label: c.label })),
-  { key: "concluido", label: "Concluído" },
-];
+// Colunas e cartões canónicos vivem em @/lib/deals/board-cards (puro, testado).
 
 export const Route = createFileRoute("/_authenticated/negocios/")({
   validateSearch: (search: Record<string, unknown>): { grp?: string; q?: string } => ({
@@ -137,20 +127,7 @@ function NegociosPage() {
     () => (vista.mode === "aberto" ? BOARD_COLUMNS.filter((c) => c.key === vista.key) : BOARD_COLUMNS),
     [vista.mode, vista.key],
   );
-  const cartoes = useMemo(
-    () =>
-      buildGroupCards(
-        CARD_COLUMNS.map((g) => ({
-          key: g.key,
-          label: g.label,
-          items:
-            g.key === "perdido" || g.key === "concluido"
-              ? visiveis.filter((d) => d.stage === g.key)
-              : ativos.filter((d) => groupOfStage(d.stage) === g.key),
-        })),
-      ),
-    [visiveis, ativos],
-  );
+  const cartoes = useMemo(() => dealGroupCards(visiveis), [visiveis]);
 
   // Análise proativa (Pro): negócios sem qualquer movimento registado.
   const analise = useMemo(
