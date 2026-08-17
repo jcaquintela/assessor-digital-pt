@@ -90,7 +90,7 @@ function PessoasPage() {
 
   const atencao = useQuery({ queryKey: ["person-attention"], queryFn: () => fetchAttention() });
   const analise = useQuery({ queryKey: ["people-insight"], queryFn: () => fetchInsight() });
-  const { tier: tierAtual } = useEffectiveTier();
+  const tierAtual = useEffectiveTier().data?.tier;
 
   // Todas pré-selecionadas por defeito; novas pessoas entram na seleção.
   useEffect(() => {
