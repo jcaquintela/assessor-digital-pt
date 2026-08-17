@@ -30,6 +30,7 @@ import { ProInsightCard } from "@/components/pro-insight-card";
 import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { foldText } from "@/lib/search/normalize";
 
 /** Colunas do quadro: os grupos em curso + Perdido, sempre no fim. */
 const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
@@ -38,8 +39,9 @@ const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
 ];
 
 export const Route = createFileRoute("/_authenticated/negocios/")({
-  validateSearch: (search: Record<string, unknown>): { grp?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { grp?: string; q?: string } => ({
     grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   head: () => ({
     meta: [
@@ -89,9 +91,22 @@ function NegociosPage() {
   });
 
   const all = deals.data?.deals ?? [];
+  // Pesquisa transversal: atravessa todas as fases, tal como no Drive.
+  const termo = foldText(search.q ?? "");
   const visiveis = useMemo(
-    () => all.filter((d) => (mostrarArquivados ? !!d.archivedAt : !d.archivedAt)),
-    [all, mostrarArquivados],
+    () =>
+      all
+        .filter((d) => (mostrarArquivados ? !!d.archivedAt : !d.archivedAt))
+        .filter((d) =>
+          !termo
+            ? true
+            : foldText(
+                [d.title, d.personName, KIND_LABEL[d.kind], ...d.properties.map((p) => p.title)]
+                  .filter(Boolean)
+                  .join(" "),
+              ).includes(termo),
+        ),
+    [all, mostrarArquivados, termo],
   );
   // Concluído sai do quadro ativo e não conta como "em curso".
   const concluidos = useMemo(() => visiveis.filter((d) => d.stage === "concluido"), [visiveis]);
@@ -103,9 +118,11 @@ function NegociosPage() {
   const precisamAtencao = ativos.filter((d) => !!d.alert).length;
 
   // Cartões por fase do pipeline; o estado vive no URL para o link ser partilhável.
-  const vista = resolveCardsView({ grp: search.grp });
+  const vista = resolveCardsView({ q: search.q, grp: search.grp });
   const abrirGrupo = (key: string) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, ...nextSearchForGroup({ grp: search.grp }, key) }) });
+  const setQ = (v: string) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
   const colunas = useMemo(
     () => (vista.mode === "aberto" ? BOARD_COLUMNS.filter((c) => c.key === vista.key) : BOARD_COLUMNS),
     [vista.mode, vista.key],
@@ -294,6 +311,19 @@ function NegociosPage() {
 
       <ProInsightCard insight={analise} />
 
+      <div className="mb-3">
+        <Input
+          value={search.q ?? ""}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Procurar negócio, pessoa ou imóvel…"
+          aria-label="Procurar negócios"
+        />
+      </div>
+      {vista.mode === "pesquisa" ? (
+        <p className="mb-2 text-xs text-muted-foreground">
+          {visiveis.length} resultado{visiveis.length === 1 ? "" : "s"} em todas as fases.
+        </p>
+      ) : null}
       <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/negocios" />
       {vista.mode === "aberto" ? (
         <Button size="sm" variant="ghost" className="mb-2" onClick={() => abrirGrupo(vista.key!)}>

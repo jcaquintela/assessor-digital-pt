@@ -5,6 +5,7 @@ import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { formatData, formatEUR, type Comissao, type Despesa } from "@/lib/demo-data";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -14,14 +15,16 @@ import { ProInsightCard } from "@/components/pro-insight-card";
 import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { foldText } from "@/lib/search/normalize";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escritório", "Formação", "Outros"];
 
 export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
-  validateSearch: (search: Record<string, unknown>): { grp?: string; tipo?: "despesas" } => ({
+  validateSearch: (search: Record<string, unknown>): { grp?: string; tipo?: "despesas"; q?: string } => ({
     grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
     tipo: search.tipo === "despesas" ? "despesas" : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   head: () => ({
     meta: [
@@ -47,9 +50,11 @@ function FaturacaoPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const aba: "comissoes" | "despesas" = search.tipo === "despesas" ? "despesas" : "comissoes";
-  const vista = resolveCardsView({ grp: search.grp });
+  const vista = resolveCardsView({ q: search.q, grp: search.grp });
   const abrirGrupo = (key: string) =>
     navigate({ search: (p: Record<string, unknown>) => ({ ...p, ...nextSearchForGroup({ grp: search.grp }, key) }) });
+  const setQ = (v: string) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, q: v || undefined }), replace: true });
   const abrirAba = (t: "comissoes" | "despesas") =>
     navigate({ search: () => (t === "despesas" ? { tipo: "despesas" as const } : {}) });
 
@@ -68,8 +73,18 @@ function FaturacaoPage() {
         : buildGroupCards<Comissao | Despesa>(CATEGORIAS.map((c) => ({ key: c, label: c, items: despesas.filter((d) => d.categoria === c) }))),
     [aba, comissoes, despesas],
   );
-  const lista = vista.mode === "aberto" ? comissoes.filter((c) => c.estado === vista.key) : comissoes;
-  const listaDespesas = vista.mode === "aberto" ? despesas.filter((d) => d.categoria === vista.key) : despesas;
+  // Pesquisa transversal: quando há termo, atravessa todos os estados/categorias.
+  const termo = foldText(search.q ?? "");
+  const lista = (vista.mode === "aberto" ? comissoes.filter((c) => c.estado === vista.key) : comissoes).filter((c) =>
+    !termo
+      ? true
+      : foldText([nomeOportunidade(c.oportunidadeId), c.estado, String(c.valor), formatData(c.data)].join(" ")).includes(termo),
+  );
+  const listaDespesas = (vista.mode === "aberto" ? despesas.filter((d) => d.categoria === vista.key) : despesas).filter((d) =>
+    !termo
+      ? true
+      : foldText([d.descricao, d.categoria, String(d.valor), formatData(d.data)].join(" ")).includes(termo),
+  );
 
   // Análise factual: comissões que ficaram para trás no ciclo.
   const analise = useMemo(() => {
@@ -124,6 +139,20 @@ function FaturacaoPage() {
         <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">Faturada</div><div className="mt-1 text-lg font-semibold">{formatEUR(totais.Faturada)}</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">{aba === "despesas" ? "Despesas" : "Recebida"}</div><div className="mt-1 text-lg font-semibold">{formatEUR(aba === "despesas" ? totalDespesas : totais.Recebida)}</div></CardContent></Card>
       </div>
+      <div className="mb-3">
+        <Input
+          value={search.q ?? ""}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={aba === "despesas" ? "Procurar despesa ou categoria…" : "Procurar comissão, pessoa ou valor…"}
+          aria-label="Procurar em faturação"
+        />
+      </div>
+      {vista.mode === "pesquisa" ? (
+        <p className="mb-2 text-xs text-muted-foreground">
+          {(aba === "despesas" ? listaDespesas : lista).length} resultado
+          {(aba === "despesas" ? listaDespesas : lista).length === 1 ? "" : "s"} em todos os grupos.
+        </p>
+      ) : null}
       <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/negocio/faturacao" />
       {vista.mode === "aberto" ? (
         <Button size="sm" variant="ghost" className="mb-2" onClick={() => abrirGrupo(vista.key!)}>
