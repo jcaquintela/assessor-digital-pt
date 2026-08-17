@@ -323,9 +323,13 @@ function NegociosPage() {
       <ProInsightCard
         insight={analise}
         emptyHint={
-          tier === "pro" && ativos.length > 0 && ativos.length < 3
-            ? "Ainda há poucos negócios em curso para eu tirar conclusões. Com três ou mais aviso-te dos que ficam parados."
-            : undefined
+          tier !== "pro" || analise
+            ? undefined
+            : ativos.length === 0
+              ? "Não tens negócios em curso, por isso não há nada para eu analisar. Assim que abrires um, começo a seguir o ritmo dele."
+              : ativos.length < 3
+                ? "Ainda há poucos negócios em curso para eu tirar conclusões. Com três ou mais aviso-te dos que ficam parados."
+                : "Analisei os negócios em curso e nenhum está parado tempo suficiente para eu te chamar a atenção."
         }
       />
 
@@ -433,15 +437,19 @@ function NegociosPage() {
         Arrasta um cartão para outra coluna para mudar de fase. Fica tudo registado no histórico do negócio.
       </p>
 
-      {concluidos.length > 0 && (
+      {(vista.mode !== "aberto" || vista.key === "concluido") && (
         <section className="mt-6">
           <div className="mb-2 flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold">Concluídos</h2>
             <span className="text-xs text-muted-foreground">{concluidos.length}</span>
           </div>
+          {concluidos.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Ainda não fechaste nenhum negócio.</p>
+          ) : (
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
             {concluidos.map((d) => <DealCard key={d.id} deal={d} />)}
           </div>
+          )}
         </section>
       )}
     </AppShell>
