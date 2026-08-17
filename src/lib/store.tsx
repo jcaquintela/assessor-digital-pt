@@ -50,6 +50,7 @@ const toPessoa = (r: Row): Pessoa => ({
   telefone: r.phone ?? "",
   email: r.email ?? "",
   relacao: (r.relationship_type ?? "Potencial") as Pessoa["relacao"],
+  papeis: Array.isArray(r.roles) ? (r.roles as string[]) : [],
   resumo: r.summary ?? "",
   proximaAcao: r.next_action ?? undefined,
   proximaAcaoData: r.next_action_date ?? undefined,

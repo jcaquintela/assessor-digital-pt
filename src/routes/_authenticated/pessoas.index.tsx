@@ -28,15 +28,23 @@ import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/expo
 import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { foldText } from "@/lib/search/normalize";
+import { GroupCardsRow } from "@/components/group-cards-row";
+import { ProInsightCard } from "@/components/pro-insight-card";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { multiRoleNote, peopleCategoryCards, personCategoryKeys } from "@/lib/people/category-cards";
+import { getPeopleInsight } from "@/lib/people/insight.functions";
+import { peopleEmptyHint } from "@/lib/people/insight";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { q?: string; tag?: string; view?: "grelha"; preset?: PeoplePreset } => ({
+  ): { q?: string; tag?: string; view?: "grelha"; preset?: PeoplePreset; grp?: string } => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
     view: search.view === "grelha" ? ("grelha" as const) : undefined,
     preset: isPeoplePreset(search.preset) ? search.preset : undefined,
+    grp: typeof search.grp === "string" && search.grp ? search.grp : undefined,
   }),
   head: () => ({
     meta: [
@@ -76,10 +84,13 @@ function PessoasPage() {
   const emEdicao = pessoas.find((p) => p.id === editId) ?? null;
   const fetchPeople = useServerFn(exportPeople);
   const fetchAttention = useServerFn(getPersonAttention);
+  const fetchInsight = useServerFn(getPeopleInsight);
   const [aExportar, setAExportar] = useState<"csv" | "vcf" | null>(null);
   const confirmacao = useDestructiveConfirm();
 
   const atencao = useQuery({ queryKey: ["person-attention"], queryFn: () => fetchAttention() });
+  const analise = useQuery({ queryKey: ["people-insight"], queryFn: () => fetchInsight() });
+  const tierAtual = useEffectiveTier().data?.tier;
 
   // Todas pré-selecionadas por defeito; novas pessoas entram na seleção.
   useEffect(() => {
@@ -130,14 +141,24 @@ function PessoasPage() {
 
   const term = foldText(q);
   const digits = term.replace(/\D/g, "");
+  // Estado dos cartões vive no URL (`grp`), como no Drive e nos outros módulos.
+  const vista = resolveCardsView({ q: q || undefined, grp: search.grp });
+  const abrirGrupo = (key: string) =>
+    navigate({ search: (p: Record<string, unknown>) => ({ ...p, ...nextSearchForGroup({ grp: search.grp }, key) }) });
+
   const filtradas = useMemo(() => pessoas.filter((p) => {
     if (!matchPeoplePreset(p, preset)) return false;
     if (tagId && !org.tagsOf(p.id).some((t) => t.id === tagId)) return false;
+    if (vista.mode === "aberto" && !personCategoryKeys(p).includes(vista.key as never)) return false;
     if (!term) return true;
     const byText = foldText(p.nome + " " + p.email + " " + p.resumo).includes(term);
     const byPhone = digits.length >= 3 && p.telefone.replace(/\D/g, "").includes(digits);
     return byText || byPhone;
-  }), [pessoas, tagId, term, digits, preset, org.tagLinks, org.tags]);
+  }), [pessoas, tagId, term, digits, preset, org.tagLinks, org.tags, vista.mode, vista.key]);
+
+  // Cartões canónicos por categoria — sempre todos, mesmo a zero.
+  const cartoes = useMemo(() => peopleCategoryCards(pessoas), [pessoas]);
+  const notaPapeis = useMemo(() => multiRoleNote(cartoes, pessoas.length), [cartoes, pessoas.length]);
 
   const contagens = useMemo(() => {
     const c: Record<string, number> = {};
@@ -177,6 +198,22 @@ function PessoasPage() {
             {...assuntoDePessoa(aviso)}
           />
         </section>
+      )}
+
+      <ProInsightCard
+        insight={analise.data ?? null}
+        emptyHint={
+          tierAtual === "pro" && !analise.isLoading && !analise.data
+            ? peopleEmptyHint(pessoas.length)
+            : undefined
+        }
+      />
+
+      <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/pessoas" />
+      {notaPapeis && (
+        <p className="mb-4 text-[12px] leading-relaxed" style={{ color: "var(--muted)" }}>
+          {notaPapeis}
+        </p>
       )}
 
       <div className="relative mb-4">
