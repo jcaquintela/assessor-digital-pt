@@ -1,0 +1,2 @@
+insert into public.product_updates (released_on, title, description, category, is_published)
+values (current_date, 'Ver as contas por trás da análise', 'Nos cartões de análise (plano Pro) podes abrir "Ver as contas" e ver exatamente o que foi usado: quantos registos entraram, o limiar de dias, quantos ficaram acima, a lista dos casos e a data do último movimento de cada um.', 'melhoria', true);
