@@ -37,10 +37,13 @@ export function normalizeAddress(input: string | null | undefined): string {
     .join(" ");
 }
 
-/** Só as palavras que dão identidade (ignora o tipo de via em si). */
+/**
+ * Só as palavras que dão identidade: ignora o tipo de via e o número de porta
+ * (o número é comparado à parte, para distinguir "igual" de "provável").
+ */
 function tokensIdentidade(norm: string): string[] {
   const tipos = new Set(Object.values(TIPOS_VIA));
-  return norm.split(" ").filter((w) => w.length > 1 && !tipos.has(w));
+  return norm.split(" ").filter((w) => w.length > 1 && !tipos.has(w) && !/^\d+[a-z]?$/.test(w));
 }
 
 /** Número de porta, quando existe. Distingue nº 12 de nº 120. */
