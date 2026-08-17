@@ -236,8 +236,12 @@ function FaturacaoPage() {
               termo
                 ? "Nenhuma comissão corresponde à pesquisa."
                 : vista.mode === "aberto"
-                  ? `Sem comissões em ${vista.key}.`
-                  : "Ainda não há comissões registadas."
+                  ? `Sem ${aba === "faturas" ? "faturas" : "comissões"} em ${
+                      (aba === "faturas" ? FATURA_GRUPOS.find((g) => g.key === vista.key)?.label : vista.key) ?? vista.key
+                    }.`
+                  : aba === "faturas"
+                    ? "Ainda não há faturas para mostrar."
+                    : "Ainda não há comissões registadas."
             }
             hint="Assim que registares uma comissão, acompanho o ciclo Prevista → Faturada → Recebida contigo."
             actionLabel="Ver comissões"
