@@ -314,7 +314,7 @@ function ImoveisPage() {
       {isLoading && all.length === 0 && <p className="c-muted text-sm">A carregar…</p>}
       {!isLoading && all.length === 0 && (
         <div className="c-empty">
-          Ainda não tens imóveis. Usa "+ Adicionar" ou descreve o imóvel ao teu assessor por WhatsApp.
+          Ainda não tens imóveis. Usa "+ Adicionar" ou descreve o imóvel ao {assessorName} por WhatsApp.
         </div>
       )}
       {all.length > 0 && list.length === 0 && (
