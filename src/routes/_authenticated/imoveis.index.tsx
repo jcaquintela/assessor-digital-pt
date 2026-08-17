@@ -36,6 +36,7 @@ import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/
 import { PROPERTY_STATUSES } from "@/lib/assessor/properties-status";
 import { assuntoDeImovel } from "@/lib/assessor/assunto";
 import { AssuntoCard } from "@/components/assunto-card";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/imoveis/")({
   validateSearch: (
@@ -49,9 +50,9 @@ export const Route = createFileRoute("/_authenticated/imoveis/")({
   }),
   head: () => ({
     meta: [
-      { title: "Imóveis — Afonso" },
+      { title: appTitle("Imóveis") },
       { name: "description", content: "Carteira de imóveis em angariação." },
-      { property: "og:title", content: "Imóveis — Afonso" },
+      { property: "og:title", content: appTitle("Imóveis") },
       { property: "og:description", content: "Carteira de imóveis em angariação." },
     ],
   }),

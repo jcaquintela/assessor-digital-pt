@@ -17,6 +17,7 @@ import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { foldText } from "@/lib/search/normalize";
+import { appTitle } from "@/lib/brand";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escritório", "Formação", "Outros"];
@@ -29,9 +30,9 @@ export const Route = createFileRoute("/_authenticated/negocio/faturacao")({
   }),
   head: () => ({
     meta: [
-      { title: "Faturação — Afonso" },
+      { title: appTitle("Faturação") },
       { name: "description", content: "Ciclo de faturação: comissões previstas, faturadas e recebidas, e despesas." },
-      { property: "og:title", content: "Faturação — Afonso" },
+      { property: "og:title", content: appTitle("Faturação") },
       { property: "og:description", content: "Gestão do ciclo de faturação de comissões e despesas." },
     ],
   }),

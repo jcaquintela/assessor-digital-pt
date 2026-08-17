@@ -11,15 +11,16 @@ import { formatData, formatEUR, type Despesa } from "@/lib/demo-data";
 import { Plus, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
+import { appTitle } from "@/lib/brand";
 
 const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escritório", "Formação", "Outros"];
 
 export const Route = createFileRoute("/_authenticated/negocio/despesas")({
   head: () => ({
     meta: [
-      { title: "Despesas — Afonso" },
+      { title: appTitle("Despesas") },
       { name: "description", content: "Registo e gestão de despesas do consultor." },
-      { property: "og:title", content: "Despesas — Afonso" },
+      { property: "og:title", content: appTitle("Despesas") },
       { property: "og:description", content: "CRUD de despesas com categorias e valores." },
     ],
   }),

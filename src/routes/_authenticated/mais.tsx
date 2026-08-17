@@ -3,13 +3,14 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { MODULE_NAME } from "@/lib/seo/module-names";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, CalendarDays, ChevronRight, CreditCard, FolderOpen, Inbox, MapPin, MessagesSquare, Repeat, Settings, Sparkles, Users, Wallet, Briefcase } from "lucide-react";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/mais")({
   head: () => ({
     meta: [
-      { title: "Mais — Afonso" },
+      { title: appTitle("Mais") },
       { name: "description", content: "Aceda a mais áreas do Afonso." },
-      { property: "og:title", content: "Mais — Afonso" },
+      { property: "og:title", content: appTitle("Mais") },
       { property: "og:description", content: "Aceda a mais áreas do Afonso." },
     ],
   }),

@@ -8,9 +8,10 @@ import { mrrCardText } from "@/lib/admin/payments-status";
 import { useSystemHealth } from "@/components/admin/health-strip";
 import { Badge, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { fmtPct } from "@/lib/admin/metrics-format";
+import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/")({
-  head: () => ({ meta: [{ title: "Visão geral — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Visão geral") }] }),
   component: OverviewPage,
 });
 

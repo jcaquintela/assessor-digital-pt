@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BrandMark } from "@/components/brand-mark";
 import { toast } from "sonner";
 import { requestPasswordRecovery } from "@/lib/auth/password-recovery.functions";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -18,9 +19,9 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
-      { title: "Entrar — Afonso" },
+      { title: appTitle("Entrar") },
       { name: "description", content: "Entra ou cria conta no Afonso, o teu assessor pessoal digital." },
-      { property: "og:title", content: "Entrar — Afonso" },
+      { property: "og:title", content: appTitle("Entrar") },
       { property: "og:description", content: "Entra ou cria conta no Afonso, o teu assessor pessoal digital." },
     ],
   }),

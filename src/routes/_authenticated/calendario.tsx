@@ -30,13 +30,14 @@ import {
   type AgendaViewMode,
 } from "@/lib/agenda/views";
 import { cn } from "@/lib/utils";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
     meta: [
-      { title: "Calendário — Afonso" },
+      { title: appTitle("Calendário") },
       { name: "description", content: "Calendário interno do consultor." },
-      { property: "og:title", content: "Calendário — Afonso" },
+      { property: "og:title", content: appTitle("Calendário") },
       { property: "og:description", content: "Calendário interno do consultor." },
     ],
   }),

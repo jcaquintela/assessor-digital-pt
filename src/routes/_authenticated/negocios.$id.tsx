@@ -31,6 +31,7 @@ import {
   DEAL_KINDS, KIND_LABEL, PROPERTY_ROLE_LABEL, STAGE_LABEL,
 } from "@/lib/deals/stages";
 import { StagePath } from "@/components/negocios/stage-path";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/negocios/$id")({
   // Deep link: /negocios/<id>?destaque=seguimento:<uuid>
@@ -40,9 +41,9 @@ export const Route = createFileRoute("/_authenticated/negocios/$id")({
   }),
   head: () => ({
     meta: [
-      { title: "Negócio — Afonso" },
+      { title: appTitle("Negócio") },
       { name: "description", content: "Pessoa, imóveis, fase, histórico, seguimentos e comissões de um negócio." },
-      { property: "og:title", content: "Negócio — Afonso" },
+      { property: "og:title", content: appTitle("Negócio") },
       { property: "og:description", content: "A história completa do negócio numa página." },
     ],
   }),

@@ -31,6 +31,7 @@ import { writeSupportMode } from "@/lib/admin/support-mode";
 import { supabase } from "@/integrations/supabase/client";
 import { tierLabel, TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tiers";
 import {
+import { adminTitle } from "@/lib/brand";
   Dialog,
   DialogContent,
   DialogDescription,
@@ -40,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin/utilizadores")({
-  head: () => ({ meta: [{ title: "Utilizadores & planos — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Utilizadores & planos") }] }),
   component: AcessosPage,
 });
 

@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageTitle, SectionTitle, Empty, Source } from "@/components/admin/ui";
+import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/suporte")({
-  head: () => ({ meta: [{ title: "Suporte — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Suporte") }] }),
   component: SuportePage,
 });
 

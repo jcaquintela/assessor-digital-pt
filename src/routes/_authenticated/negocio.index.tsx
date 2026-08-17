@@ -12,13 +12,14 @@ import { PaymentPortalButton } from "@/components/payment-portal-button";
 import { exportMovements } from "@/lib/export/export.functions";
 import { csvDate, dateStamp, downloadText, toCsv } from "@/lib/export/download";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/negocio/")({
   head: () => ({
     meta: [
-      { title: "Faturação — Afonso" },
+      { title: appTitle("Faturação") },
       { name: "description", content: "Visão geral de comissões, faturação, despesas e rentabilidade." },
-      { property: "og:title", content: "Faturação — Afonso" },
+      { property: "og:title", content: appTitle("Faturação") },
       { property: "og:description", content: "Visão geral do negócio do consultor." },
     ],
   }),

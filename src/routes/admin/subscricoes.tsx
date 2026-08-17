@@ -9,9 +9,10 @@ import {
 import { tierLabel } from "@/lib/subscription/tiers";
 import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { StackTable, Td, Tr } from "@/components/admin/stack-table";
+import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/subscricoes")({
-  head: () => ({ meta: [{ title: "Subscrições — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Subscrições") }] }),
   component: SubscricoesPage,
 });
 

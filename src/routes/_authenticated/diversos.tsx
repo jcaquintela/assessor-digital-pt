@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { UploadedFilesList } from "@/components/uploaded-files-list";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import {
+import { appTitle } from "@/lib/brand";
   isTeamSuggestion,
   teamStateLabel,
   TEAM_SUGGESTION_NOTE,
@@ -24,9 +25,9 @@ import {
 export const Route = createFileRoute("/_authenticated/diversos")({
   head: () => ({
     meta: [
-      { title: "Diversos — Afonso" },
+      { title: appTitle("Diversos") },
       { name: "description", content: "Notas, ideias e observações que o Afonso guardou por ti." },
-      { property: "og:title", content: "Diversos — Afonso" },
+      { property: "og:title", content: appTitle("Diversos") },
       { property: "og:description", content: "Notas, ideias e observações que o Afonso guardou por ti." },
     ],
   }),

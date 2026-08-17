@@ -9,15 +9,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatData, formatDataHora, type Seguimento } from "@/lib/demo-data";
 import { AlertTriangle, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { appTitle } from "@/lib/brand";
 
 type SeguimentosSearch = { status?: "overdue" | "hoje" | "semana" | "concluidos" };
 
 export const Route = createFileRoute("/_authenticated/seguimentos/")({
   head: () => ({
     meta: [
-      { title: "Seguimentos — Afonso" },
+      { title: appTitle("Seguimentos") },
       { name: "description", content: "Tarefas e eventos do consultor." },
-      { property: "og:title", content: "Seguimentos — Afonso" },
+      { property: "og:title", content: appTitle("Seguimentos") },
       { property: "og:description", content: "Tarefas e eventos do consultor." },
     ],
   }),

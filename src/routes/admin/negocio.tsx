@@ -6,9 +6,10 @@ import { getPaymentsStatus } from "@/lib/admin/payments-status.functions";
 import { mrrCardText, paymentsStatusLabel } from "@/lib/admin/payments-status";
 import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { tierLabel } from "@/lib/subscription/tiers";
+import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/negocio")({
-  head: () => ({ meta: [{ title: "Negócio — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Negócio") }] }),
   component: NegocioPage,
 });
 

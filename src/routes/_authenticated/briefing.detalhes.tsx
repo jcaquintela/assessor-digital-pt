@@ -5,16 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, ArrowRight } from "lucide-react";
 import { getBriefingItemDetails } from "@/lib/assessor/supreme/briefing-details.functions";
 import { formatDataHora, formatData } from "@/lib/demo-data";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/briefing/detalhes")({
   head: () => ({
     meta: [
-      { title: "Detalhes do briefing — Afonso" },
+      { title: appTitle("Detalhes do briefing") },
       {
         name: "description",
         content: "Origem, estado atual e histórico dos compromissos que saíram do briefing.",
       },
-      { property: "og:title", content: "Detalhes do briefing — Afonso" },
+      { property: "og:title", content: appTitle("Detalhes do briefing") },
       {
         property: "og:description",
         content: "Origem, estado atual e histórico dos compromissos que saíram do briefing.",

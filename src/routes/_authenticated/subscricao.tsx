@@ -12,13 +12,14 @@ import { getMyBilling, createBillingPortal } from "@/lib/subscription/billing.fu
 import { PLAN_OFFERS, BILLING_STATUS_LABEL } from "@/lib/subscription/billing-plans";
 import { tierLabel } from "@/lib/subscription/tiers";
 import { getStripeEnvironment } from "@/lib/stripe";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/subscricao")({
   head: () => ({
     meta: [
-      { title: "Subscrição — Afonso" },
+      { title: appTitle("Subscrição") },
       { name: "description", content: "Escolhe o teu plano do Afonso e gere a subscrição." },
-      { property: "og:title", content: "Subscrição — Afonso" },
+      { property: "og:title", content: appTitle("Subscrição") },
       { property: "og:description", content: "Escolhe o teu plano do Afonso e gere a subscrição." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

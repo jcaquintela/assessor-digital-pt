@@ -13,13 +13,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { driveQuotaSummary } from "@/lib/drive/drive.functions";
 import { usePreviewTier } from "@/lib/subscription/tier-preview";
 import { useQuotaRevalidate } from "@/lib/drive/use-quota-revalidate";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/documentos")({
   head: () => ({
     meta: [
-      { title: "Documentos — Afonso" },
+      { title: appTitle("Documentos") },
       { name: "description", content: "Documentos do consultor, associados a pessoas e imóveis." },
-      { property: "og:title", content: "Documentos — Afonso" },
+      { property: "og:title", content: appTitle("Documentos") },
       { property: "og:description", content: "Documentos do consultor, associados a pessoas e imóveis." },
     ],
   }),

@@ -22,6 +22,7 @@ import {
   sendBriefingTemplateTest,
 } from "@/lib/admin/template-binding.functions";
 import {
+import { adminTitle } from "@/lib/brand";
   listProactiveTestTargets,
   listProactiveTests,
   runProactiveTemplateTest,
@@ -29,7 +30,7 @@ import {
 
 
 export const Route = createFileRoute("/admin/integracoes-flags")({
-  head: () => ({ meta: [{ title: "Integrações & flags — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Integrações & flags") }] }),
   component: IntegracoesFlagsPage,
 });
 

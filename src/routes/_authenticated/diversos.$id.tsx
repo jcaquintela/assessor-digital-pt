@@ -16,6 +16,7 @@ import { MiscActions } from "@/components/diversos/misc-actions";
 import { MiscLinkedBadges } from "@/components/diversos/linked-badge";
 import { ChevronLeft, Save, Trash2, Archive, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { appTitle } from "@/lib/brand";
 
 type Status = "inbox" | "reviewed" | "classified" | "archived" | "deleted";
 
@@ -45,9 +46,9 @@ const STATUS_OPTS: Status[] = ["inbox", "reviewed", "classified", "archived"];
 export const Route = createFileRoute("/_authenticated/diversos/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de nota — Afonso" },
+      { title: appTitle("Ficha de nota") },
       { name: "description", content: "Nota, ideia ou observação guardada pelo Afonso." },
-      { property: "og:title", content: "Ficha de nota — Afonso" },
+      { property: "og:title", content: appTitle("Ficha de nota") },
       { property: "og:description", content: "Memória organizada por observação." },
     ],
   }),

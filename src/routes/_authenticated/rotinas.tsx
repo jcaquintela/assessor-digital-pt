@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Plus, RefreshCw, Repeat } from "lucide-react";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import {
+import { appTitle } from "@/lib/brand";
   FREQ_LABEL,
   WEEKDAY_LABELS,
   computeNextRun,
@@ -25,9 +26,9 @@ import {
 export const Route = createFileRoute("/_authenticated/rotinas")({
   head: () => ({
     meta: [
-      { title: "Rotinas — Afonso" },
+      { title: appTitle("Rotinas") },
       { name: "description", content: "Lembretes recorrentes configuráveis do consultor." },
-      { property: "og:title", content: "Rotinas — Afonso" },
+      { property: "og:title", content: appTitle("Rotinas") },
       { property: "og:description", content: "Configura hábitos e lembretes que se repetem." },
     ],
   }),

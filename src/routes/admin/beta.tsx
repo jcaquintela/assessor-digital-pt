@@ -26,6 +26,7 @@ import { TIER_DISPLAY_NAME, type SubscriptionTier } from "@/lib/subscription/tie
 import { formatForWhatsApp } from "@/lib/assessor/culture/whatsapp-format";
 import { formatForTelegram } from "@/lib/telegram/telegram-format";
 import {
+import { adminTitle } from "@/lib/brand";
   Dialog,
   DialogContent,
   DialogDescription,
@@ -37,7 +38,7 @@ import {
 export const Route = createFileRoute("/admin/beta")({
   head: () => ({
     meta: [
-      { title: "Beta testers — Afonso admin" },
+      { title: adminTitle("Beta testers") },
       { name: "description", content: "Gestão dos períodos de teste: prazos, extensões e conversões." },
     ],
   }),

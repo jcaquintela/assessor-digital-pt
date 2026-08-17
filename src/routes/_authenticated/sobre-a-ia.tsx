@@ -3,13 +3,14 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
 import { Link } from "@tanstack/react-router";
 import { Brain, Shield, Lock, Eye, Trash2, MessageSquare, FileText, Mic, SlidersHorizontal } from "lucide-react";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/sobre-a-ia")({
   head: () => ({
     meta: [
-      { title: "Sobre a IA — Afonso" },
+      { title: appTitle("Sobre a IA") },
       { name: "description", content: "Como o Afonso usa inteligência artificial e trata os teus dados." },
-      { property: "og:title", content: "Sobre a IA — Afonso" },
+      { property: "og:title", content: appTitle("Sobre a IA") },
       { property: "og:description", content: "Como o Afonso usa inteligência artificial e trata os teus dados." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

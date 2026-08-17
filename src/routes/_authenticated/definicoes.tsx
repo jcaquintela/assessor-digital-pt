@@ -49,13 +49,14 @@ import {
 } from "@/lib/providers/active.functions";
 import { MAIL_PROVIDER_LABEL, type MailProvider } from "@/lib/email/providers";
 import { decideContentAccess, listMyConsentRequests } from "@/lib/admin/consent.functions";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
   head: () => ({
     meta: [
-      { title: "Definições — Afonso" },
+      { title: appTitle("Definições") },
       { name: "description", content: "O teu assessor, autonomia, canal ligado e conta." },
-      { property: "og:title", content: "Definições — Afonso" },
+      { property: "og:title", content: appTitle("Definições") },
       { property: "og:description", content: "O teu assessor, autonomia, canal ligado e conta." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

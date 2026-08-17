@@ -14,13 +14,14 @@ import { ChevronLeft, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { FREQ_LABEL, WEEKDAY_LABELS, computeNextRun, type Frequency, type Routine } from "@/lib/routines";
 import { useStore } from "@/lib/store";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/rotinas/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de rotina — Afonso" },
+      { title: appTitle("Ficha de rotina") },
       { name: "description", content: "Configura este lembrete recorrente." },
-      { property: "og:title", content: "Ficha de rotina — Afonso" },
+      { property: "og:title", content: appTitle("Ficha de rotina") },
       { property: "og:description", content: "Configura este lembrete recorrente." },
     ],
   }),

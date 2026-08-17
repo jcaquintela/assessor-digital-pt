@@ -5,9 +5,10 @@ import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admi
 import { StackTable, Td, Tr } from "@/components/admin/stack-table";
 import { Button } from "@/components/ui/button";
 import { getWhatsappDisplayName, runWhatsappDisplayNameSync } from "@/lib/admin.functions";
+import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/whatsapp-nome")({
-  head: () => ({ meta: [{ title: "Nome do WhatsApp — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Nome do WhatsApp") }] }),
   component: WhatsappNomePage,
 });
 

@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Check, Lock } from "lucide-react";
 import { listPublishedPlans } from "@/lib/subscription/plans.functions";
 import {
+import { appTitle } from "@/lib/brand";
   MODULE_LABEL,
   planSummary,
   tierLabel,
@@ -13,9 +14,9 @@ import {
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos — Afonso" },
+      { title: appTitle("Planos") },
       { name: "description", content: "Compara os planos do Afonso, o teu assessor pessoal: módulos incluídos e nível de autonomia." },
-      { property: "og:title", content: "Planos — Afonso" },
+      { property: "og:title", content: appTitle("Planos") },
       { property: "og:description", content: "Compara os planos do Afonso, o teu assessor pessoal: módulos incluídos e nível de autonomia." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

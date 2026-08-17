@@ -13,14 +13,15 @@ import { AI_DISCLOSURE } from "@/lib/assessor/ai-disclosure";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/registo")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Criar conta — Afonso" },
+      { title: appTitle("Criar conta") },
       { name: "description", content: "Cria a tua conta no plano Base, grátis, e liga o Afonso em minutos." },
-      { property: "og:title", content: "Criar conta — Afonso" },
+      { property: "og:title", content: appTitle("Criar conta") },
       { property: "og:description", content: "Cria a tua conta no plano Base, grátis, e liga o Afonso em minutos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

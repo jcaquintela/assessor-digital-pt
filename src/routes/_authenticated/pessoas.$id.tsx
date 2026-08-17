@@ -27,13 +27,14 @@ import { PersonLinkedCard } from "@/components/pessoas/person-linked-card";
 import { DealsOf } from "@/components/negocios/deals-of";
 import { EditPersonDialog } from "@/components/pessoas/edit-person-dialog";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/pessoas/$id")({
   head: () => ({
     meta: [
-      { title: "Contexto da pessoa — Afonso" },
+      { title: appTitle("Contexto da pessoa") },
       { name: "description", content: "Quem é, o que procura, último contacto, próximo passo e ligações." },
-      { property: "og:title", content: "Contexto da pessoa — Afonso" },
+      { property: "og:title", content: appTitle("Contexto da pessoa") },
       { property: "og:description", content: "Memória organizada por pessoa." },
     ],
   }),

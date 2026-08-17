@@ -5,14 +5,15 @@ import { redeemLoginLink, requestNewLoginLink } from "@/lib/auth/login-link.func
 import { getPasswordSetupState } from "@/lib/auth/password-setup.functions";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/entrar")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Entrar sem palavra-passe — Afonso" },
+      { title: appTitle("Entrar sem palavra-passe") },
       { name: "description", content: "Abre o painel com o link temporário que o Afonso te enviou." },
-      { property: "og:title", content: "Entrar sem palavra-passe — Afonso" },
+      { property: "og:title", content: appTitle("Entrar sem palavra-passe") },
       { property: "og:description", content: "Abre o painel com o link temporário que o Afonso te enviou." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAfonsoAcquisition } from "@/lib/admin/afonso.functions";
 import { Empty, Grid, MetricCard, PageTitle, SectionTitle, Source } from "@/components/admin/ui";
+import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/aquisicao")({
-  head: () => ({ meta: [{ title: "Aquisição — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Aquisição") }] }),
   component: AquisicaoPage,
 });
 

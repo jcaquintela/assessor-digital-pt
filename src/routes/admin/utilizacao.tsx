@@ -7,9 +7,10 @@ import { tierLabel } from "@/lib/subscription/tiers";
 import { Badge, Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { StackTable, Td, Tr } from "@/components/admin/stack-table";
 import { Button } from "@/components/ui/button";
+import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/utilizacao")({
-  head: () => ({ meta: [{ title: "Utilização — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Utilização") }] }),
   component: UtilizacaoPage,
 });
 

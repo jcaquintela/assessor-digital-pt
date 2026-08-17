@@ -33,6 +33,7 @@ import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/fa
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { foldText } from "@/lib/search/normalize";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { appTitle } from "@/lib/brand";
 
 /** Colunas do quadro: os grupos em curso + Perdido, sempre no fim. */
 const BOARD_COLUMNS: { key: string; label: string; stages: DealStage[] }[] = [
@@ -47,9 +48,9 @@ export const Route = createFileRoute("/_authenticated/negocios/")({
   }),
   head: () => ({
     meta: [
-      { title: "Negócios — Afonso" },
+      { title: appTitle("Negócios") },
       { name: "description", content: "Quadro de negócios do consultor: fase, pessoa, imóveis e próxima ação." },
-      { property: "og:title", content: "Negócios — Afonso" },
+      { property: "og:title", content: appTitle("Negócios") },
       { property: "og:description", content: "Cada negócio com a sua história, do primeiro contacto à escritura." },
     ],
   }),

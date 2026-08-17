@@ -7,13 +7,14 @@ import { toast } from "sonner";
 import { EditPersonDialog } from "@/components/pessoas/edit-person-dialog";
 import { OrganizeDialog, useOrganizer } from "@/components/organizer/organizer";
 import { PersonCard, ViewToggle, type PeopleView } from "@/components/pessoas/people-explorer";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/grupos/$id")({
   head: () => ({
     meta: [
-      { title: "Grupo — Afonso" },
+      { title: appTitle("Grupo") },
       { name: "description", content: "As pessoas deste grupo, com contactos e etiquetas." },
-      { property: "og:title", content: "Grupo — Afonso" },
+      { property: "og:title", content: appTitle("Grupo") },
       { property: "og:description", content: "As pessoas deste grupo, com contactos e etiquetas." },
     ],
   }),

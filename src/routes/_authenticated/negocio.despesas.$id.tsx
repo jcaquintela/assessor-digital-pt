@@ -11,15 +11,16 @@ import { type Despesa } from "@/lib/demo-data";
 import { ChevronLeft, Save, Trash2, Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
+import { appTitle } from "@/lib/brand";
 
 const CATEGORIAS: Despesa["categoria"][] = ["Deslocação", "Marketing", "Escritório", "Formação", "Outros"];
 
 export const Route = createFileRoute("/_authenticated/negocio/despesas/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de despesa — Afonso" },
+      { title: appTitle("Ficha de despesa") },
       { name: "description", content: "Editar ou eliminar despesa." },
-      { property: "og:title", content: "Ficha de despesa — Afonso" },
+      { property: "og:title", content: appTitle("Ficha de despesa") },
       { property: "og:description", content: "Editar despesa." },
     ],
   }),

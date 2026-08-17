@@ -24,13 +24,14 @@ import { formatData } from "@/lib/demo-data";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { tierAtLeast } from "@/lib/subscription/tiers";
 import { Lock } from "lucide-react";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/oportunidades/prospecao/")({
   head: () => ({
     meta: [
       { title: "Prospeção — Placas e leads" },
       { name: "description", content: "Regista placas fotografadas na rua e números captados para contactar mais tarde." },
-      { property: "og:title", content: "Prospeção — Afonso" },
+      { property: "og:title", content: appTitle("Prospeção") },
       { property: "og:description", content: "Placas na rua e leads para contactar." },
     ],
   }),

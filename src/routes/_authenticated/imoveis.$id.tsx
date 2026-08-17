@@ -36,6 +36,7 @@ import {
 import { toast } from "sonner";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { TierGate } from "@/components/tier-gate";
+import { appTitle } from "@/lib/brand";
 
 const ORIGEM_LABEL: Record<string, string> = {
   whatsapp: "WhatsApp", telegram: "Telegram", web: "Dashboard", dashboard: "Dashboard",
@@ -45,9 +46,9 @@ const ORIGEM_LABEL: Record<string, string> = {
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha do imóvel — Afonso" },
+      { title: appTitle("Ficha do imóvel") },
       { name: "description", content: "Negócio, valores, visitas, propostas, marketing, custos e documentos do imóvel." },
-      { property: "og:title", content: "Ficha do imóvel — Afonso" },
+      { property: "og:title", content: appTitle("Ficha do imóvel") },
       { property: "og:description", content: "Tudo sobre o imóvel numa página, sem saltar de ecrã." },
     ],
   }),

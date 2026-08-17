@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageSquare, Search } from "lucide-react";
 import { formatData } from "@/lib/demo-data";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/interacoes")({
   head: () => ({
     meta: [
-      { title: "Interações — Afonso" },
+      { title: appTitle("Interações") },
       { name: "description", content: "Histórico de conversas, ligações e notas relacionadas com pessoas e oportunidades." },
-      { property: "og:title", content: "Interações — Afonso" },
+      { property: "og:title", content: appTitle("Interações") },
       { property: "og:description", content: "Memória cronológica do consultor." },
     ],
   }),

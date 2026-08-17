@@ -12,13 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, Trash2, Save, Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { formatData, formatEUR } from "@/lib/demo-data";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/interacoes/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha da interação — Afonso" },
+      { title: appTitle("Ficha da interação") },
       { name: "description", content: "Conteúdo original, resumo, pessoa e oportunidade associadas." },
-      { property: "og:title", content: "Ficha da interação — Afonso" },
+      { property: "og:title", content: appTitle("Ficha da interação") },
       { property: "og:description", content: "Memória cronológica do consultor." },
     ],
   }),

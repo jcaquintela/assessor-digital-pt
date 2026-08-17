@@ -5,9 +5,10 @@ import { useState } from "react";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
 import { listAutonomousActions } from "@/lib/admin/autonomas.functions";
 import { requestContentAccess } from "@/lib/admin/consent.functions";
+import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/autonomas")({
-  head: () => ({ meta: [{ title: "Ações autónomas — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Ações autónomas") }] }),
   component: AutonomasPage,
 });
 

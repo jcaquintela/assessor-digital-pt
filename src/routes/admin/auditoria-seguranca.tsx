@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { PageTitle, SectionTitle, Empty, Badge, Source } from "@/components/admin/ui";
 import { listAuditLogs, listMfaRequired, listSensitiveAccessLogs } from "@/lib/admin.functions";
+import { adminTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/auditoria-seguranca")({
-  head: () => ({ meta: [{ title: "Auditoria & segurança — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Auditoria & segurança") }] }),
   component: AuditoriaSegurancaPage,
 });
 

@@ -7,6 +7,7 @@ import { requestContentAccess } from "@/lib/admin/consent.functions";
 import { fmtPct, fmtScore100, fmtShare } from "@/lib/admin/metrics-format";
 import { dateStamp, downloadText, toCsv } from "@/lib/export/download";
 import {
+import { adminTitle } from "@/lib/brand";
   getQualityOverview,
   getReformulationTrend,
   getTrustOverview,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/assessor/v3/quality.functions";
 
 export const Route = createFileRoute("/admin/qualidade")({
-  head: () => ({ meta: [{ title: "Qualidade — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Qualidade") }] }),
   component: QualidadePage,
 });
 

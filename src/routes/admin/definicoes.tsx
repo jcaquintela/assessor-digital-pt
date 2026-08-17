@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+import { adminTitle } from "@/lib/brand";
   getGlobalReminderLead,
   setGlobalReminderLead,
 } from "@/lib/admin/reminder-settings.functions";
@@ -56,7 +57,7 @@ function ReminderLeadCard() {
 }
 
 export const Route = createFileRoute("/admin/definicoes")({
-  head: () => ({ meta: [{ title: "Definições — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Definições") }] }),
   component: () => (
     <div className="space-y-4">
       <div className="space-y-1">

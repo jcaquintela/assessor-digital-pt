@@ -11,13 +11,14 @@ import { getWhatsAppLink, startWhatsAppLink } from "@/lib/whatsapp/link.function
 import { startWhatsAppTrial } from "@/lib/subscription/trial.functions";
 import { CalendarStep, EmailStep } from "@/components/canais/onboarding-setup";
 import { nextOnboardingStep, type OnboardingStep } from "@/lib/onboarding/steps";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/ligar-canal")({
   head: () => ({
     meta: [
-      { title: "Escolhe o teu canal — Afonso" },
+      { title: appTitle("Escolhe o teu canal") },
       { name: "description", content: "WhatsApp com 14 dias grátis ou Telegram gratuito para sempre: escolhe por onde falas com o Afonso." },
-      { property: "og:title", content: "Escolhe o teu canal — Afonso" },
+      { property: "og:title", content: appTitle("Escolhe o teu canal") },
       { property: "og:description", content: "WhatsApp com 14 dias grátis ou Telegram gratuito para sempre: escolhe por onde falas com o Afonso." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

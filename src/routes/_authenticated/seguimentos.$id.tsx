@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Briefcase, User as UserIcon, Phone } from "lucide-react";
+import { appTitle } from "@/lib/brand";
 
 const TIPOS: SeguimentoTipo[] = ["Tarefa", "Evento"];
 const ESTADOS: SeguimentoEstado[] = ["Pendente", "Concluído", "Atrasado"];
@@ -32,9 +33,9 @@ const PRIORIDADES: SeguimentoPrioridade[] = ["Alta", "Média", "Baixa"];
 export const Route = createFileRoute("/_authenticated/seguimentos/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de seguimento — Afonso" },
+      { title: appTitle("Ficha de seguimento") },
       { name: "description", content: "Detalhe de tarefa ou evento com pessoa, oportunidade e notas." },
-      { property: "og:title", content: "Ficha de seguimento — Afonso" },
+      { property: "og:title", content: appTitle("Ficha de seguimento") },
       { property: "og:description", content: "Memória organizada por seguimento." },
     ],
   }),

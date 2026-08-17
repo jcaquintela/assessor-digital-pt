@@ -27,6 +27,7 @@ import { buildVCards, csvDate, dateStamp, downloadText, toCsv } from "@/lib/expo
 import { useDestructiveConfirm } from "@/components/support-destructive-dialog";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { foldText } from "@/lib/search/normalize";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/_authenticated/pessoas/")({
   validateSearch: (
@@ -39,9 +40,9 @@ export const Route = createFileRoute("/_authenticated/pessoas/")({
   }),
   head: () => ({
     meta: [
-      { title: "Pessoas — Afonso" },
+      { title: appTitle("Pessoas") },
       { name: "description", content: "Clientes, potenciais, proprietários e referenciadores." },
-      { property: "og:title", content: "Pessoas — Afonso" },
+      { property: "og:title", content: appTitle("Pessoas") },
       { property: "og:description", content: "Clientes, potenciais, proprietários e referenciadores." },
     ],
   }),

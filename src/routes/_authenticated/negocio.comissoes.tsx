@@ -12,15 +12,16 @@ import { formatData, formatEUR, type Comissao } from "@/lib/demo-data";
 import { Plus, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
+import { appTitle } from "@/lib/brand";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 
 export const Route = createFileRoute("/_authenticated/negocio/comissoes")({
   head: () => ({
     meta: [
-      { title: "Comissões — Afonso" },
+      { title: appTitle("Comissões") },
       { name: "description", content: "Registo e gestão de comissões previstas, faturadas e recebidas." },
-      { property: "og:title", content: "Comissões — Afonso" },
+      { property: "og:title", content: appTitle("Comissões") },
       { property: "og:description", content: "CRUD de comissões por oportunidade." },
     ],
   }),

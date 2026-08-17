@@ -11,15 +11,16 @@ import { type Comissao } from "@/lib/demo-data";
 import { ChevronLeft, Save, Trash2, Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { TierGate } from "@/components/tier-gate";
+import { appTitle } from "@/lib/brand";
 
 const ESTADOS: Comissao["estado"][] = ["Prevista", "Faturada", "Recebida"];
 
 export const Route = createFileRoute("/_authenticated/negocio/comissoes/$id")({
   head: () => ({
     meta: [
-      { title: "Ficha de comissão — Afonso" },
+      { title: appTitle("Ficha de comissão") },
       { name: "description", content: "Editar ou eliminar comissão." },
-      { property: "og:title", content: "Ficha de comissão — Afonso" },
+      { property: "og:title", content: appTitle("Ficha de comissão") },
       { property: "og:description", content: "Editar comissão." },
     ],
   }),

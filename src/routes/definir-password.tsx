@@ -8,17 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { appTitle } from "@/lib/brand";
 
 export const Route = createFileRoute("/definir-password")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Definir palavra-passe — Afonso" },
+      { title: appTitle("Definir palavra-passe") },
       {
         name: "description",
         content: "Passo opcional para entrares no painel sem pedires um link novo.",
       },
-      { property: "og:title", content: "Definir palavra-passe — Afonso" },
+      { property: "og:title", content: appTitle("Definir palavra-passe") },
       {
         property: "og:description",
         content: "Passo opcional para entrares no painel sem pedires um link novo.",

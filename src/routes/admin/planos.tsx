@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { listPlanConfigs, savePlanConfig } from "@/lib/admin/afonso.functions";
 import { Badge, Empty, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { AUTONOMY_CAP_BY_TIER, MODULE_MIN_TIER, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
+import { adminTitle } from "@/lib/brand";
 
 type PricingMode = "paid" | "invite_only" | "free_beta" | "on_request";
 
@@ -29,7 +30,7 @@ function publishedLabel(cfg: PlanCfg) {
 }
 
 export const Route = createFileRoute("/admin/planos")({
-  head: () => ({ meta: [{ title: "Planos & preços — Afonso admin" }] }),
+  head: () => ({ meta: [{ title: adminTitle("Planos & preços") }] }),
   component: PlanosPage,
 });
 
