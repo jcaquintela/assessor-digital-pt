@@ -29,7 +29,8 @@ import {
 import { GroupCardsRow } from "@/components/group-cards-row";
 import { ProInsightCard } from "@/components/pro-insight-card";
 import { EmptyState } from "@/components/empty-state";
-import { buildGroupCards, nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { nextSearchForGroup, resolveCardsView } from "@/lib/ui/group-cards";
+import { BOARD_COLUMNS, dealGroupCards } from "@/lib/deals/board-cards";
 import { applyProInsight, factualInsight, stalledFacts } from "@/lib/insights/factual";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { foldText } from "@/lib/search/normalize";
