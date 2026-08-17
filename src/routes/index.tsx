@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasLinkedChannel } from "@/lib/telegram/link.functions";
+import { BRAND_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -35,7 +36,7 @@ function Index() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-      <p className="text-sm">A abrir o Afonso…</p>
+      <p className="text-sm">A abrir o {BRAND_NAME}…</p>
     </div>
   );
 }
