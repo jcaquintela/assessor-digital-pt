@@ -256,6 +256,33 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_mutes: {
+        Row: {
+          alert_key: string
+          created_at: string
+          id: string
+          muted_until: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_key: string
+          created_at?: string
+          id?: string
+          muted_until: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_key?: string
+          created_at?: string
+          id?: string
+          muted_until?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       announcement_dismissals: {
         Row: {
           announcement_id: string
