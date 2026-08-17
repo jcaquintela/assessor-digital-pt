@@ -1,4 +1,4 @@
-import { appTitle } from "@/lib/brand";
+import { BRAND_NAME, appTitle } from "@/lib/brand";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";

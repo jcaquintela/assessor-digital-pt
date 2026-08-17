@@ -1,4 +1,3 @@
-import { adminTitle, appTitle } from "@/lib/brand";
 // Fonte única do nome do assistente/produto.
 // Qualquer texto visível ao consultor que refira o produto deve derivar daqui
 // (ou do nome personalizado do consultor, via `useAssessorName`).
