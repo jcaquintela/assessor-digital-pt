@@ -7,8 +7,8 @@
 
 import { tierAtLeast } from "@/lib/subscription/tiers";
 
-/** Um registo já reduzido ao mínimo: rótulo e dias parado. */
-export type StalledItem = { id: string; label: string; days: number };
+/** Um registo já reduzido ao mínimo: rótulo, dias parado e (se houver) data do último movimento. */
+export type StalledItem = { id: string; label: string; days: number; since?: string | null };
 
 export interface FactualFacts {
   /** Registos considerados (universo desta leitura). */
@@ -21,10 +21,14 @@ export interface FactualFacts {
   minDias: number;
   /** O caso mais parado, para dar um exemplo concreto. */
   exemplo: StalledItem | null;
+  /** Os casos parados (até 5), para o consultor ver exactamente o que foi usado. */
+  top: StalledItem[];
+  /** Momento em que esta contagem foi feita (ISO). */
+  apuradoEm: string;
 }
 
 export function emptyFactualFacts(minDias: number): FactualFacts {
-  return { total: 0, parados: 0, dias: 0, minDias, exemplo: null };
+  return { total: 0, parados: 0, dias: 0, minDias, exemplo: null, top: [], apuradoEm: new Date().toISOString() };
 }
 
 /** Apura os factos a partir de registos já datados. Determinístico. */
@@ -36,6 +40,8 @@ export function stalledFacts(items: StalledItem[], minDias: number): FactualFact
     dias: parados.length ? parados[0].days : 0,
     minDias,
     exemplo: parados[0] ?? null,
+    top: parados.slice(0, 5),
+    apuradoEm: new Date().toISOString(),
   };
 }
 

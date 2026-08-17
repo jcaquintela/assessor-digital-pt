@@ -36,9 +36,13 @@ export async function computePropertyStalledItems(
 
   return ((props.data as any[]) ?? [])
     .filter((p) => !p.archived_at && !FORA.has(String(p.status ?? "").toLowerCase()))
-    .map((p) => ({
-      id: p.id as string,
-      label: String(p.title ?? "").trim() || "Imóvel sem título",
-      days: dias(last.get(p.id) ?? p.created_at ?? null),
-    }));
+    .map((p) => {
+      const desde = last.get(p.id) ?? p.created_at ?? null;
+      return {
+        id: p.id as string,
+        label: String(p.title ?? "").trim() || "Imóvel sem título",
+        days: dias(desde),
+        since: desde,
+      };
+    });
 }
