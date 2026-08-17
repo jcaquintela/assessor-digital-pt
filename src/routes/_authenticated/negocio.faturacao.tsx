@@ -96,6 +96,7 @@ function FaturacaoPage() {
         id: c.id,
         label: `${formatEUR(c.valor)} · ${c.estado.toLowerCase()}`,
         days: Math.floor((hoje - new Date(c.data).getTime()) / 864e5),
+        since: c.data,
       }));
     return applyProInsight(
       factualInsight(stalledFacts(paradas, 30), {
