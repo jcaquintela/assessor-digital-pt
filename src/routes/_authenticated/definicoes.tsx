@@ -9,6 +9,7 @@ import { LogOut, MessageCircle, Copy, ExternalLink, Clock, Lock, CalendarDays, M
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ASSESSOR_NAME_DEFAULT, ASSESSOR_NAME_MAX, validateAssessorName } from "@/lib/assessor/assessor-name";
+import { assessorNamePreview } from "@/lib/assessor/name-preview";
 import { MODULE_LABEL, planSummary, tierLabel, type SubscriptionTier } from "@/lib/subscription/tiers";
 import { isPlaceholderEmail, isValidEmail } from "@/lib/profile/email";
 import { CHANNEL_LABEL, maskContact, useLinkedChannel } from "@/lib/assessor/use-linked-channel";
@@ -396,6 +397,7 @@ function AssessorNameSection() {
       <p className="c-muted mt-2 text-[12px]">
         É assim que o tratas na conversa. Máx. {ASSESSOR_NAME_MAX} caracteres. Atual: {name}.
       </p>
+      <AssessorNamePreview draft={draft} />
       <div className="mt-3 flex flex-wrap gap-2">
         <button className="c-cta" onClick={save} disabled={draft.trim() === name}>Guardar</button>
         <button className="c-btn" onClick={reset} disabled={name === ASSESSOR_NAME_DEFAULT}>
@@ -403,6 +405,46 @@ function AssessorNameSection() {
         </button>
       </div>
     </Section>
+  );
+}
+
+function AssessorNamePreview({ draft }: { draft: string }) {
+  const [aberto, setAberto] = useState(true);
+  const validacao = validateAssessorName(draft);
+  const itens = assessorNamePreview(draft);
+
+  return (
+    <div className="mt-3 rounded-[12px] border border-[var(--line)] bg-[color:var(--sand,#fbf9f5)] p-3">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 text-left"
+        aria-expanded={aberto}
+      >
+        <span className="c-eyebrow">Como vai aparecer</span>
+        <span className="c-muted text-[12px]">{aberto ? "Esconder" : "Ver exemplos"}</span>
+      </button>
+      {aberto && (
+        <>
+          {!validacao.ok && draft.trim() !== "" && (
+            <p className="mt-2 text-[12px]" style={{ color: "var(--danger, #b3261e)" }}>
+              {validacao.error} Os exemplos abaixo usam o nome por defeito.
+            </p>
+          )}
+          <ul className="mt-2 flex flex-col gap-2">
+            {itens.map((i) => (
+              <li key={i.local} className="rounded-[10px] border border-[var(--line)] bg-white px-3 py-2">
+                <div className="c-muted text-[11px] uppercase tracking-wide">{i.local}</div>
+                <div className="mt-0.5 text-[13px] text-[var(--ink)]">{i.texto}</div>
+              </li>
+            ))}
+          </ul>
+          <p className="c-muted mt-2 text-[12px]">
+            Isto é só uma pré-visualização — nada fica guardado até carregares em "Guardar".
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 
