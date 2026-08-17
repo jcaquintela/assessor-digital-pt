@@ -15,6 +15,7 @@ import {
 import { FixLinkDialog } from "@/components/drive/fix-link-dialog";
 import { useState } from "react";
 import {
+import { useAssessorName } from "@/lib/assessor/assessor-name";
   ChevronLeft,
   Download,
   Archive,
@@ -55,6 +56,7 @@ const ENTITY_LABEL: Record<string, string> = {
 };
 
 function DriveDetail() {
+  const { name: assessorName } = useAssessorName();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();

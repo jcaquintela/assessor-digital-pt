@@ -63,6 +63,7 @@ const CANAL_LABEL: Record<string, string> = {
 };
 
 function DiversosPage() {
+  const { name: assessorName } = useAssessorName();
   const qc = useQueryClient();
   const { name: assessorName } = useAssessorName();
   const [q, setQ] = useState("");
