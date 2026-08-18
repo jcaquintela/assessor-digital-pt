@@ -10,6 +10,7 @@ import { CardActionsMenu } from "@/components/organizer/card-actions-menu";
 import { createFolder, createTag, deleteFolder, deleteTag } from "@/lib/organizer/organizer.functions";
 import type { Organizer } from "@/components/organizer/organizer";
 import type { Pessoa } from "@/lib/demo-data";
+import { relationLabel } from "@/lib/people/category-cards";
 
 /** Mesma paleta usada no Drive. */
 export const GROUP_COLORS = ["#B8863B", "#3F6B4F", "#2F5D8A", "#B8452F", "#A6741A", "#79766A"];
@@ -243,7 +244,7 @@ export function PersonCard({
               {[p.telefone, p.email].filter(Boolean).join(" · ") || "sem contacto"}
             </div>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
-              <span className="c-badge">{p.relacao}</span>
+              {relationLabel(p.relacao) && <span className="c-badge">{relationLabel(p.relacao)}</span>}
               {etiquetas.map((t) => <span key={t.id} className="c-badge">{t.name}</span>)}
               {org.foldersOf(p.id).map((f) => (
                 <span key={f.id} className="c-badge" style={f.color ? { background: `color-mix(in srgb, ${f.color} 14%, #fff)`, color: f.color, borderColor: "transparent" } : undefined}>
