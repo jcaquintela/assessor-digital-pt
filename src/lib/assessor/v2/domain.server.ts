@@ -1,5 +1,6 @@
 import { TELEMETRY_EVENTS, trackEvent, hoursBetween } from "@/lib/telemetry/events";
 import { sanitizeMiscFields } from "../misc-text";
+import { initialMiscClass } from "../misc-class";
 // Assessor v2 — Domain Services.
 //
 // Um executor por ferramenta declarada em `tools.ts`. Cada um:
