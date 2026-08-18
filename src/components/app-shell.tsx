@@ -208,8 +208,8 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <header className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:items-end sm:justify-between">
-      <div className="min-w-0">
+    <header className="mb-6 flex flex-wrap items-start justify-between gap-3 sm:flex-nowrap sm:items-end sm:gap-4">
+      <div className="min-w-0 flex-1 basis-full sm:basis-auto">
         <h1 className="c-serif truncate text-2xl font-medium md:text-[30px]">{title}</h1>
         {subtitle ? <p className="c-muted mt-1 text-sm">{subtitle}</p> : null}
       </div>

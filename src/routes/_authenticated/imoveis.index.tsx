@@ -290,7 +290,7 @@ function ImoveisPage() {
       </div>
 
       {vista.mode !== "pesquisa" ? (
-        <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/imoveis" hierarchy />
+        <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/imoveis" />
       ) : null}
       {vista.mode === "aberto" ? (
         <button

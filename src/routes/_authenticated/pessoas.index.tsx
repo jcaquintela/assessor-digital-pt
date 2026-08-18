@@ -209,7 +209,7 @@ function PessoasPage() {
         }
       />
 
-      <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/pessoas" hierarchy />
+      <GroupCardsRow cards={cartoes} openKey={vista.key} onOpen={abrirGrupo} pathname="/pessoas" />
       {notaPapeis && (
         <p className="mb-4 text-[12px] leading-relaxed" style={{ color: "var(--muted)" }}>
           {notaPapeis}
