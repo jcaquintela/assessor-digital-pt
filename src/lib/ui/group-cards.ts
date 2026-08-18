@@ -7,7 +7,14 @@
 /** Acima deste número, o grupo abre em vista dedicada em vez de expandir. */
 export const INLINE_LIMIT = 15;
 
-export type GroupInput<T> = { key: string; label: string; items: T[]; destaque?: boolean };
+export type GroupInput<T> = {
+  key: string;
+  label: string;
+  items: T[];
+  destaque?: boolean;
+  /** Nota curta ao lado do rótulo (ex.: "automática" no Drive). */
+  hint?: string;
+};
 
 export type GroupCard<T> = {
   key: string;
@@ -18,6 +25,8 @@ export type GroupCard<T> = {
   items: T[];
   /** Cartão a chamar a atenção (ex.: "Por categorizar" no Drive). */
   destaque?: boolean;
+  /** Nota curta ao lado do rótulo. */
+  hint?: string;
 };
 
 /**
@@ -39,6 +48,7 @@ export function buildGroupCards<T>(
       inline: g.items.length <= limit,
       items: g.items,
       destaque: g.destaque,
+      hint: g.hint,
     }));
 }
 
