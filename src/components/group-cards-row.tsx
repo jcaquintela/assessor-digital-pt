@@ -12,12 +12,15 @@ export function GroupCardsRow<T>({
   openKey,
   onOpen,
   pathname,
+  hierarchy = false,
 }: {
   cards: GroupCard<T>[];
   openKey: string | null;
   onOpen: (key: string) => void;
   /** Caminho desta página, para o link partilhável. */
   pathname: string;
+  /** Hierarquia "instrumento": contagem grande em cima, etiqueta cinza por baixo. */
+  hierarchy?: boolean;
 }) {
   if (!cards.length) return null;
 
@@ -32,13 +35,13 @@ export function GroupCardsRow<T>({
   }
 
   return (
-    <div className="mb-4 grid min-w-0 grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
+    <div className={`mb-4 grid min-w-0 grid-cols-[repeat(auto-fill,minmax(150px,1fr))] ${hierarchy ? "gap-3" : "gap-2"}`}>
       {cards.map((c) => {
         const aberto = openKey === c.key;
         return (
           <div
             key={c.key}
-            className={`c-card p-3 ${aberto ? "ring-1" : "c-card-hover"}`}
+            className={`c-card ${hierarchy ? "c-groupcard p-4" : "p-3"} ${aberto ? "ring-1" : "c-card-hover"}`}
             style={aberto ? { borderColor: "var(--ink-soft)" } : undefined}
           >
             <button
@@ -47,6 +50,15 @@ export function GroupCardsRow<T>({
               onClick={() => onOpen(c.key)}
               aria-expanded={aberto}
             >
+              {hierarchy ? (
+                <span className="min-w-0">
+                  <span className="c-group-count block">{c.count}</span>
+                  <span className="c-group-label block truncate font-medium">{c.label}</span>
+                  <span className="mt-0.5 block text-[11px]" style={{ color: "var(--muted)", opacity: 0.65 }}>
+                    {c.count === 0 ? "sem registos" : c.inline ? "abre aqui" : "vista dedicada"}
+                  </span>
+                </span>
+              ) : (
               <span className="min-w-0">
                 <span className="block truncate text-[13.5px] font-semibold" style={{ color: "var(--ink)" }}>
                   {c.label}
@@ -58,6 +70,7 @@ export function GroupCardsRow<T>({
                   {c.count > 0 && !c.inline ? " · vista dedicada" : ""}
                 </span>
               </span>
+              )}
               <ChevronDown
                 className={`h-4 w-4 shrink-0 transition-transform ${aberto ? "rotate-180" : ""}`}
                 style={{ color: "var(--muted)" }}
