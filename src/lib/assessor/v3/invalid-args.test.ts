@@ -73,7 +73,7 @@ describe("formatos soltos de hora e data", () => {
     expect(normalizeDate("amanhã")).toBeNull();
   });
   it("lisbonNow devolve data e hora válidas", () => {
-    const n = lisbonNow(new Date("2026-08-18T22:05:00Z"));
+    const n = lisbonNow(new Date("2026-08-18T23:05:00Z")); // Lisboa é UTC+1 no Verão
     expect(n.date).toBe("2026-08-19");
     expect(n.time).toBe("00:05");
   });
