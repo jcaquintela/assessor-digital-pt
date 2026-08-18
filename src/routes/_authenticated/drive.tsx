@@ -44,8 +44,10 @@ import {
   nextSearchForCard,
   closedSearch,
   categoryShareUrl,
+  legacySearch,
   type DriveSearch,
 } from "@/lib/drive/category-url";
+import { GroupCardsRow } from "@/components/group-cards-row";
 import {
   FileText,
   Image as ImageIcon,
@@ -88,14 +90,21 @@ export const Route = createFileRoute("/_authenticated/drive")({
   }),
   validateSearch: (
     s: Record<string, unknown>,
-  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; cat?: string; exp?: string } => ({
+  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; grp?: string; cat?: string; exp?: string } => ({
     tab: (s.tab as Tab | undefined) ?? undefined,
+    grp: (s.grp as string | undefined) ?? undefined,
     cat: (s.cat as string | undefined) ?? undefined,
     exp: (s.exp as string | undefined) ?? undefined,
     q: (s.q as string | undefined) ?? undefined,
     nif: (s.nif as string | undefined) ?? undefined,
     artigo: (s.artigo as string | undefined) ?? undefined,
   }),
+  // Links antigos (?cat= / ?exp=) já partilhados continuam a abrir a mesma
+  // categoria: reencaminhamos para o parâmetro único ?grp=.
+  beforeLoad: ({ search }) => {
+    const novo = legacySearch(search as DriveSearch);
+    if (novo) throw redirect({ to: "/drive", search: novo as never, replace: true });
+  },
   component: DrivePage,
 });
 
