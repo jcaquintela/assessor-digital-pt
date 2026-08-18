@@ -1455,6 +1455,29 @@ async function execUpdateProperty(ctx: DomainContext, args: unknown): Promise<Do
   const p = parse(UpdatePropertyArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
   const patch: Record<string, unknown> = {};
+  // Proprietário: ou vem um id já validado, ou resolvemos o nome pelo mesmo
+  // caminho das outras escritas — nunca ligamos "à Isabel Martins" às cegas.
+  if (v.owner_person_id) patch.owner_person_id = v.owner_person_id;
+  else if (!ctx.skipPersonResolution && String(v.owner_name ?? "").trim()) {
+    const { resolvePersonForWrite, recentlyRejectedPersonIds } =
+      await import("@/lib/people/resolve-person.server");
+    const excludeIds = ctx.rejectedPersonIds?.length
+      ? ctx.rejectedPersonIds
+      : await recentlyRejectedPersonIds(ctx);
+    const res = await resolvePersonForWrite(ctx, `para ${String(v.owner_name).trim()}`, { excludeIds });
+    if (res.status === "linked" && res.personId) {
+      patch.owner_person_id = res.personId;
+    } else if (res.status !== "none") {
+      return ok({
+        needsPersonConfirmation: true,
+        mode: res.status,
+        personName: res.name ?? String(v.owner_name).trim(),
+        suggestions: res.candidates,
+        candidateIds: res.candidates.map((c) => c.id),
+        incoming: { ...v, owner_name: null, owner_person_id: null },
+      });
+    }
+  }
   if (v.title !== undefined && v.title !== null && v.title.trim()) patch.title = v.title.trim().slice(0, 200);
   if (v.address !== undefined) patch.address = v.address?.trim() || null;
   if (v.typology !== undefined) patch.typology = v.typology?.trim() || null;
@@ -1465,7 +1488,7 @@ async function execUpdateProperty(ctx: DomainContext, args: unknown): Promise<Do
 
   const { data: before } = await ctx.supabase
     .from("properties" as never)
-    .select("title, address, typology, asking_price, status, notes")
+    .select("title, address, typology, asking_price, status, notes, owner_person_id")
     .eq("id", v.id).eq("user_id", ctx.userId).maybeSingle();
   if (!before) return fail("imovel_nao_encontrado");
 
