@@ -1,5 +1,5 @@
 import { MODULE_NAME, moduleTitle } from "@/lib/seo/module-names";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -44,8 +44,10 @@ import {
   nextSearchForCard,
   closedSearch,
   categoryShareUrl,
+  legacySearch,
   type DriveSearch,
 } from "@/lib/drive/category-url";
+import { GroupCardsRow } from "@/components/group-cards-row";
 import {
   FileText,
   Image as ImageIcon,
@@ -64,7 +66,6 @@ import {
   ChevronDown,
   ChevronRight,
   ListOrdered,
-  FolderOpen,
   ArrowLeft,
 } from "lucide-react";
 
@@ -88,14 +89,21 @@ export const Route = createFileRoute("/_authenticated/drive")({
   }),
   validateSearch: (
     s: Record<string, unknown>,
-  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; cat?: string; exp?: string } => ({
+  ): { tab?: Tab; q?: string; nif?: string; artigo?: string; grp?: string; cat?: string; exp?: string } => ({
     tab: (s.tab as Tab | undefined) ?? undefined,
+    grp: (s.grp as string | undefined) ?? undefined,
     cat: (s.cat as string | undefined) ?? undefined,
     exp: (s.exp as string | undefined) ?? undefined,
     q: (s.q as string | undefined) ?? undefined,
     nif: (s.nif as string | undefined) ?? undefined,
     artigo: (s.artigo as string | undefined) ?? undefined,
   }),
+  // Links antigos (?cat= / ?exp=) já partilhados continuam a abrir a mesma
+  // categoria: reencaminhamos para o parâmetro único ?grp=.
+  beforeLoad: ({ search }) => {
+    const novo = legacySearch(search as DriveSearch);
+    if (novo) throw redirect({ to: "/drive", search: novo as never, replace: true });
+  },
   component: DrivePage,
 });
 
@@ -425,34 +433,32 @@ function DrivePage() {
   // Vista por omissão: cartões de categoria com contagem. Pesquisar continua
   // a atravessar todas as categorias, por isso desliga os cartões.
   const cards = useMemo(() => buildCategoryCards(grupos as any[]), [grupos]);
+  const inlineDe = useMemo(() => {
+    const m = new Map(cards.map((c) => [c.key, c.inline]));
+    return (key: string) => m.get(key) === true;
+  }, [cards]);
+  // Categoria expandida vive no URL: o link é partilhável e o histórico funciona.
+  const vista = resolveCategoryView(search as DriveSearch, inlineDe);
   const vistaCartoes = shouldShowCards({
     groupBy,
     query: qParam,
     nif: nifParam,
     artigo: artigoParam,
-    openCategory: catParam,
+    openCategory: vista.mode === "dedicada" ? vista.key : null,
   });
-  // Categoria expandida vive no URL: o link é partilhável e o histórico funciona.
-  const vista = resolveCategoryView(search as DriveSearch);
   const expandido = vista.mode === "expandido" ? vista.key : null;
-  const abrirCategoria = (key: string, inline: boolean) => {
+  const abrirCategoria = (key: string) => {
     // Guardar o scroll para o repor quando se voltar aos cartões.
     scrollCartoes.current = typeof window !== "undefined" ? window.scrollY : null;
-    navigate({ search: (s: any) => nextSearchForCard(s as DriveSearch, key, inline) as any });
+    navigate({ search: (s: any) => nextSearchForCard(s as DriveSearch, key) as any });
   };
-  const urlCategoria = (key: string, inline: boolean) => {
+  const urlCategoria = (key: string) => {
     if (typeof window === "undefined") return "";
-    return categoryShareUrl(
-      window.location.origin,
-      window.location.pathname,
-      search as DriveSearch,
-      key,
-      inline,
-    );
+    return categoryShareUrl(window.location.origin, window.location.pathname, search as DriveSearch, key);
   };
-  const copiarLink = async (key: string, inline: boolean) => {
+  const copiarLink = async (key: string) => {
     try {
-      await navigator.clipboard.writeText(urlCategoria(key, inline));
+      await navigator.clipboard.writeText(urlCategoria(key));
       toast.success("Link da categoria copiado.");
     } catch {
       toast.error("Não consegui copiar o link.");
@@ -460,9 +466,7 @@ function DrivePage() {
   };
   // Pesquisar manda sobre a categoria aberta: os resultados são transversais.
   const catAberta =
-    catParam && !qParam && !nifParam && !artigoParam
-      ? grupos.find((g) => g.key === catParam) ?? null
-      : null;
+    vista.mode === "dedicada" ? grupos.find((g) => g.key === vista.key) ?? null : null;
   const fecharCategoria = () =>
     navigate({ search: (s: any) => closedSearch(s as DriveSearch) as any });
 
@@ -943,63 +947,15 @@ function DrivePage() {
           </div>
         )}
         {vistaCartoes ? (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {cards.map((c) => {
-              const aberto = expandido === c.key;
-              return (
-                <div
-                  key={c.key}
-                  data-categoria={c.key}
-                  className={"c-card p-0" + (aberto ? " sm:col-span-2 lg:col-span-3" : "")}
-                >
-                  <div className="flex w-full items-center">
-                  <button
-                    type="button"
-                    aria-expanded={c.inline ? aberto : undefined}
-                    className="flex min-w-0 flex-1 items-center gap-3 p-3.5 text-left"
-                    onClick={() => abrirCategoria(c.key, c.inline)}
-                  >
-                    <span className="rounded-lg bg-muted p-2">
-                      <FolderOpen className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className={
-                          "block truncate text-[14px] font-semibold" +
-                          (c.destaque ? " text-amber-600 dark:text-amber-400" : "")
-                        }
-                      >
-                        {c.label}
-                      </span>
-                      <span className="c-muted block text-[11.5px]">
-                        {c.count} {c.count === 1 ? "ficheiro" : "ficheiros"}
-                      </span>
-                    </span>
-                    {c.inline && aberto ? (
-                      <ChevronDown className="c-muted h-4 w-4 shrink-0" />
-                    ) : (
-                      <ChevronRight className="c-muted h-4 w-4 shrink-0" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Copiar link de ${c.label}`}
-                    title="Copiar link desta categoria"
-                    className="c-badge tap-44 mr-2.5"
-                    onClick={() => copiarLink(c.key, c.inline)}
-                  >
-                    <Link2 className="h-3 w-3" />
-                  </button>
-                  </div>
-                  {c.inline && aberto && (
-                    <div className="space-y-2 border-t border-border p-3">
-                      {c.files.map(renderFile)}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <GroupCardsRow
+            cards={cards}
+            openKey={expandido}
+            onOpen={abrirCategoria}
+            pathname="/drive"
+            keyAttr="data-categoria"
+            shareParams={{ tab: search.tab }}
+            renderInline={(c) => <>{(c.items as any[]).map(renderFile)}</>}
+          />
         ) : catAberta ? (
           <section className="space-y-2" data-categoria-aberta={catAberta.key}>
             <div className="flex flex-wrap items-center gap-2">
@@ -1011,7 +967,7 @@ function DrivePage() {
               <button
                 type="button"
                 className="c-badge tap-44"
-                onClick={() => copiarLink(catAberta.key, false)}
+                onClick={() => copiarLink(catAberta.key)}
               >
                 <Link2 className="h-3 w-3" /> Copiar link
               </button>

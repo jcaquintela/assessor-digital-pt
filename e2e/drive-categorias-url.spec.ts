@@ -1,7 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
- * Categorias do Drive Inteligente no URL: abrir por link direto (?cat= e ?exp=),
+ * Categorias do Drive Inteligente no URL: abrir por link direto (?grp=, e links
+ * antigos ?cat=/?exp= redireccionados),
  * back/forward do browser e reposição do scroll ao voltar aos cartões.
  */
 const SESSION = process.env.LOVABLE_BROWSER_SUPABASE_SESSION_JSON;
@@ -63,6 +64,7 @@ test("clicar num cartão escreve a categoria no URL e o back volta aos cartões"
   await page.goBack();
   await page.waitForLoadState("networkidle");
   const search = new URL(page.url()).searchParams;
+  expect(search.get("grp")).toBeNull();
   expect(search.get("cat")).toBeNull();
   expect(search.get("exp")).toBeNull();
   await expect(cartoes(page).first()).toBeVisible();
@@ -71,35 +73,42 @@ test("clicar num cartão escreve a categoria no URL e o back volta aos cartões"
   await page.goForward();
   await page.waitForLoadState("networkidle");
   const depois = new URL(page.url()).searchParams;
-  expect(depois.get("cat") ?? depois.get("exp")).toBe(chave);
+  expect(depois.get("grp")).toBe(chave);
 });
 
-test("link direto ?cat= abre a vista dedicada com 'Voltar às categorias'", async ({ page }) => {
+test("link direto ?grp= reabre a mesma categoria", async ({ page }) => {
+  test.skip((await cartoes(page).count()) === 0, "sem ficheiros no Drive desta conta");
+  const chave = (await cartoes(page).first().getAttribute("data-categoria"))!;
+
+  await irPara(page, `/drive?grp=${encodeURIComponent(chave)}`);
+  // Categoria pequena expande na própria grelha; grande abre vista dedicada.
+  const cartao = page.locator(`[data-categoria="${chave}"]`);
+  if (await cartao.count()) {
+    await expect(cartao.getByRole("button", { expanded: true }).first()).toBeVisible();
+  } else {
+    await expect(aberta(page)).toHaveAttribute("data-categoria-aberta", chave);
+    await page.getByRole("button", { name: "Voltar às categorias" }).click();
+    await expect(cartoes(page).first()).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("grp")).toBeNull();
+  }
+});
+
+test("links antigos ?cat= e ?exp= são redireccionados para ?grp=", async ({ page }) => {
   test.skip((await cartoes(page).count()) === 0, "sem ficheiros no Drive desta conta");
   const chave = (await cartoes(page).first().getAttribute("data-categoria"))!;
 
   await irPara(page, `/drive?cat=${encodeURIComponent(chave)}`);
-  await expect(aberta(page)).toHaveAttribute("data-categoria-aberta", chave);
-
-  await page.getByRole("button", { name: "Voltar às categorias" }).click();
-  await expect(cartoes(page).first()).toBeVisible();
+  await expect.poll(() => new URL(page.url()).searchParams.get("grp")).toBe(chave);
   expect(new URL(page.url()).searchParams.get("cat")).toBeNull();
-});
-
-test("link direto ?exp= mantém a grelha com o cartão expandido", async ({ page }) => {
-  test.skip((await cartoes(page).count()) === 0, "sem ficheiros no Drive desta conta");
-  const chave = (await cartoes(page).first().getAttribute("data-categoria"))!;
 
   await irPara(page, `/drive?exp=${encodeURIComponent(chave)}`);
-  const cartao = page.locator(`[data-categoria="${chave}"]`);
-  await expect(cartao.getByRole("button", { expanded: true }).first()).toBeVisible();
-  await expect(cartoes(page).first()).toBeVisible();
+  await expect.poll(() => new URL(page.url()).searchParams.get("grp")).toBe(chave);
 });
 
 test("pesquisa é transversal e ignora a categoria aberta", async ({ page }) => {
   test.skip((await cartoes(page).count()) === 0, "sem ficheiros no Drive desta conta");
   const chave = (await cartoes(page).first().getAttribute("data-categoria"))!;
-  await irPara(page, `/drive?cat=${encodeURIComponent(chave)}&q=a`);
+  await irPara(page, `/drive?grp=${encodeURIComponent(chave)}&q=a`);
   await expect(aberta(page)).toHaveCount(0);
 });
 

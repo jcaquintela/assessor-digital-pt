@@ -7,7 +7,7 @@
 /** Acima deste número, o grupo abre em vista dedicada em vez de expandir. */
 export const INLINE_LIMIT = 15;
 
-export type GroupInput<T> = { key: string; label: string; items: T[] };
+export type GroupInput<T> = { key: string; label: string; items: T[]; destaque?: boolean };
 
 export type GroupCard<T> = {
   key: string;
@@ -16,6 +16,8 @@ export type GroupCard<T> = {
   /** true → expande por baixo do cartão; false → vale uma vista dedicada. */
   inline: boolean;
   items: T[];
+  /** Cartão a chamar a atenção (ex.: "Por categorizar" no Drive). */
+  destaque?: boolean;
 };
 
 /**
@@ -36,6 +38,7 @@ export function buildGroupCards<T>(
       count: g.items.length,
       inline: g.items.length <= limit,
       items: g.items,
+      destaque: g.destaque,
     }));
 }
 
@@ -65,6 +68,14 @@ export function closedGroupSearch(s: CardsSearch): CardsSearch {
 }
 
 /** Link partilhável: só o essencial para reabrir exactamente esta vista. */
-export function groupShareUrl(origin: string, pathname: string, key: string): string {
-  return `${origin}${pathname}?grp=${encodeURIComponent(key)}`;
+export function groupShareUrl(
+  origin: string,
+  pathname: string,
+  key: string,
+  extra?: Record<string, string | undefined>,
+): string {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(extra ?? {})) if (v) p.set(k, v);
+  p.set("grp", key);
+  return `${origin}${pathname}?${p.toString()}`;
 }
