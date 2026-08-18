@@ -65,6 +65,7 @@ async function moveExhaustedDocumentNudgeToMisc(
       status: "inbox",
       occurred_at: new Date().toISOString(),
       tags: ["documentação", "proatividade_esgotada"],
+      item_class: "falha_interpretacao",
     } as never);
   }
   const ids = rows.filter((row) => isOpenNudgeStatus(row.status)).map((row) => row.id);
