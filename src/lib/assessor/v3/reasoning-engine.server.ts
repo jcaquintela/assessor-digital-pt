@@ -693,7 +693,9 @@ async function runReasoningEngineInner(
         }
         const result = await exec(
           { ...ctx, skipPersonResolution: true, skipDuplicateCheck: true },
-          { ...incoming, person_id: personId },
+          toolName === "update_property"
+            ? { ...incoming, owner_person_id: personId }
+            : { ...incoming, person_id: personId },
         );
         const createdId =
           (result.data as any)?.event?.id ?? (result.data as any)?.follow_up?.id ?? (result.data as any)?.id ?? null;
@@ -718,7 +720,14 @@ async function runReasoningEngineInner(
     }
     // Candidato de pessoa rejeitado: o "não" fecha esse candidato para os
     // turnos seguintes — nunca voltamos a propô-lo sem nova pesquisa.
-    if (pending && pending.intent === "confirm_event_person" && saIsRejection(trimmed)) {
+    // "Não, é outra pessoa" também é rejeição explícita (matchPersonChoice →
+    // "none"): é escolha do consultor, não falha de interpretação, por isso
+    // fecha aqui e nunca chega à rede de segurança (Diversos).
+    if (
+      pending &&
+      pending.intent === "confirm_event_person" &&
+      (saIsRejection(trimmed) || personChoiceIsNone(trimmed, pending))
+    ) {
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
       const ids: string[] = [
         ...(payload.candidate_ids ?? []),
