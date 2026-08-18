@@ -1,33 +1,24 @@
 // Vista de cartões de categoria do Drive Inteligente.
-// Função pura: decide o que cada cartão mostra e o que acontece ao clicar.
-// Poucos ficheiros → abre ali mesmo. Muitos → vale a pena uma página só dela.
+// Delega no motor partilhado (`src/lib/ui/group-cards.ts`) usado por Imóveis,
+// Negócios, Faturação e Pessoas — aqui com `keepEmpty:false`, porque as
+// categorias do Drive são dinâmicas (criadas pelo consultor ou pelo sistema),
+// ao contrário dos grupos canónicos dos outros módulos.
 
 import type { DriveGroup } from "./group-files";
+import { buildGroupCards, INLINE_LIMIT as SHARED_LIMIT, type GroupCard } from "@/lib/ui/group-cards";
 
 /** Acima deste número, abrir a categoria numa vista dedicada. */
-export const INLINE_LIMIT = 15;
+export const INLINE_LIMIT = SHARED_LIMIT;
 
-export type CategoryCard<F> = {
-  key: string;
-  label: string;
-  count: number;
-  destaque?: boolean;
-  /** true → expande por baixo do cartão; false → navega para vista dedicada. */
-  inline: boolean;
-  files: F[];
-};
+/** Igual ao cartão partilhado; `files` é o nome que o Drive já usava. */
+export type CategoryCard<F> = GroupCard<F> & { files: F[] };
 
 export function buildCategoryCards<F>(groups: DriveGroup<F>[], limit = INLINE_LIMIT): CategoryCard<F>[] {
-  return groups
-    .filter((g) => g.files.length > 0)
-    .map((g) => ({
-      key: g.key,
-      label: g.label || "Todos",
-      count: g.files.length,
-      destaque: g.destaque,
-      inline: g.files.length <= limit,
-      files: g.files,
-    }));
+  return buildGroupCards(
+    groups.map((g) => ({ key: g.key, label: g.label || "Todos", items: g.files, destaque: g.destaque })),
+    limit,
+    false,
+  ).map((c) => ({ ...c, files: c.items }));
 }
 
 /**
