@@ -47,13 +47,13 @@ export const CreatePersonArgs = z.object({
 export type CreatePersonArgs = z.infer<typeof CreatePersonArgs>;
 
 export const SearchPropertiesArgs = z.object({
-  query: z.string().default(""),
+  query: OptionalQuery,
   status: z.string().optional().nullable(),
 });
 export type SearchPropertiesArgs = z.infer<typeof SearchPropertiesArgs>;
 
 export const SearchFilesArgs = z.object({
-  query: z.string().default(""),
+  query: OptionalQuery,
   document_type: z.string().optional().nullable(),
 });
 export type SearchFilesArgs = z.infer<typeof SearchFilesArgs>;
