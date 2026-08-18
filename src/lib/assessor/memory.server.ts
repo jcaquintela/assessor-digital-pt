@@ -7,6 +7,7 @@
 // the authenticated path.
 
 import { describePendingPt, sanitizeMiscFields } from "./misc-text";
+import { initialMiscClass } from "./misc-class";
 import { pendingSlot, type PendingSlot } from "./pending-slots";
 
 export { describePendingPt };
