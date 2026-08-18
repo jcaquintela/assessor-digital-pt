@@ -23,9 +23,17 @@ const DONE_RE =
   /\b(tratad[oa]s?|feit[oa]s?|resolvid[oa]s?|concluid[oa]s?|despachad[oa]s?|fechad[oa]s?)\b/;
 const DONE_STRICT_RE = /\b(ja|esta|estao|foi|fiz|tratei|resolvi|conclui|despachei|fica|ficou)\b/;
 // "já fiz a avaliação", "já liguei ao Nuno": verbo na primeira pessoa depois
-// de "já" — cumprido, não é um plano.
+// de "já" — cumprido, não é um plano. Inclui verbos de aquisição/execução
+// correntes ("já comprei os envelopes", "já paguei o registo").
 const DONE_VERB_RE =
-  /\bja\s+(fiz|tratei|liguei|resolvi|conclui|despachei|acabei|terminei|falei|enviei|entreguei|visitei|marquei)\b/;
+  /\bja\s+(fiz|tratei|liguei|resolvi|conclui|despachei|acabei|terminei|falei|enviei|entreguei|visitei|marquei|comprei|paguei|arrumei|assinei|levantei|imprimi|preenchi)\b/;
+// Particípio colado ao assunto, sem auxiliar: "malas feitas", "contrato
+// entregue", "envelopes comprados". Exige um assunto nomeado antes.
+const PARTICIPLE_DONE_RE =
+  /\b([a-z][a-z0-9-]{3,})\s+(feit[oa]s?|entregues?|comprad[oa]s?|tratad[oa]s?|resolvid[oa]s?|concluid[oa]s?|pag[oa]s?|arrumad[oa]s?|despachad[oa]s?|assinad[oa]s?)\b/;
+// Nada disto é conclusão: é plano, intenção ou falta.
+const FUTURE_RE =
+  /\b(amanha|logo|depois|preciso|tenho de|tenho que|quero|falta|faltam|ainda|por fazer|vou|vamos|se |quando)\b/;
 // "cancelada"/"desmarcada" NÃO é conclusão: isso é o caminho do cancelamento.
 const CANCEL_RE = /\b(cancel\w*|desmarc\w*|anul\w*|adia\w*|remarc\w*)\b/i;
 
@@ -49,7 +57,7 @@ export interface CompletionInstruction {
 function hintFrom(part: string): string {
   const words = normalizeForMatch(part)
     .split(" ")
-    .filter((w) => w.length >= 3 && !HINT_STOP.has(w) && !DONE_RE.test(w) && !DONE_STRICT_RE.test(w) && !/^(fiz|liguei|acabei|terminei|falei|enviei|entreguei|visitei|marquei|tratei|resolvi|conclui|despachei)$/.test(w));
+    .filter((w) => w.length >= 3 && !HINT_STOP.has(w) && !DONE_RE.test(w) && !DONE_STRICT_RE.test(w) && !/^(fiz|liguei|acabei|terminei|falei|enviei|entreguei|visitei|marquei|tratei|resolvi|conclui|despachei|comprei|paguei|arrumei|assinei|levantei|imprimi|preenchi|entregues?|comprad[oa]s?|pag[oa]s?|arrumad[oa]s?|assinad[oa]s?)$/.test(w));
   return words.slice(0, 6).join(" ");
 }
 
@@ -70,16 +78,20 @@ export function detectCompletionInstructions(
   const out: CompletionInstruction[] = [];
   for (const part of parts) {
     const norm = normalizeForMatch(part);
-    const done = (DONE_RE.test(norm) && DONE_STRICT_RE.test(norm)) || DONE_VERB_RE.test(norm);
+    const done =
+      (DONE_RE.test(norm) && DONE_STRICT_RE.test(norm)) ||
+      DONE_VERB_RE.test(norm) ||
+      PARTICIPLE_DONE_RE.test(norm);
     if (!done) continue;
     if (CANCEL_RE.test(norm)) continue;
+    if (FUTURE_RE.test(norm)) continue;
     if (/\?\s*$/.test(part)) continue;
     const subjectHint = hintFrom(part);
     // Conservador: sem assunto nomeado não se fecha nada. Duas palavras, ou
-    // uma só quando é uma palavra longa e inequívoca ("avaliação").
+    // uma só quando é uma palavra longa e inequívoca ("avaliação", "malas").
     const hintWords = subjectHint.split(" ").filter(Boolean);
     if (!hintWords.length) continue;
-    if (hintWords.length < 2 && hintWords[0]!.length < 6) continue;
+    if (hintWords.length < 2 && hintWords[0]!.length < 5) continue;
     out.push({ part, subjectHint });
   }
   return out.slice(0, 3);
