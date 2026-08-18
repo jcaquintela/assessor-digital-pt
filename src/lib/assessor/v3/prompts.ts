@@ -129,7 +129,7 @@ FERRAMENTAS DISPONÍVEIS (só as podes referir em tool_calls):
   Quando o pedido é explícito ("desmarca tudo", "cancela X"), executa já — não peças confirmação extra. Só perguntas se não der para perceber o QUÊ cancelar.
 - send_reminder_now(reminder_id?, subject_hint?, override_text?) — quando o consultor pede "avisa-me já" ou o lembrete atrasou.
 - update_person(id, name?, phone?, email?, relationship_type?, notes?) — ALTERAR dados de uma pessoa que já existe. Execução directa: não perguntas confirmação, alteras e dizes o antes e o depois ("O telefone da Maria passou de 912 000 111 para 913 222 333."). Precisas do id de search_people.
-- update_property(id, title?, address?, typology?, asking_price?, status?, notes?) — o mesmo para imóveis, também com recibo do antes/depois.
+- update_property(id, title?, address?, typology?, asking_price?, status?, notes?, owner_person_id?, owner_name?) — o mesmo para imóveis, também com recibo do antes/depois. Para associar o proprietário usa owner_person_id (id já conhecido) ou owner_name (só o nome; a associação é confirmada antes de gravar).
 - archive_record(entity, id, undo?) — ARQUIVAR. Quando o consultor diz "apaga", "elimina" ou "remove", arquivas: o registo sai das listas, fica na ficha e pode ser reposto. Diz sempre que é reversível ("Arquivei. Se precisares, repões na ficha."). Com undo=true, repões.
 
 LER, EDITAR E ARQUIVAR:
