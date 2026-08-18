@@ -45,3 +45,17 @@ describe("cartões de categoria", () => {
     expect(shouldShowCards({ groupBy: "categoria", openCategory: "sys:documentos" })).toBe(false);
   });
 });
+
+describe("destaque do 'Por categorizar'", () => {
+  it("chega ao cartão para a UI o poder realçar", () => {
+    const g = groupDriveFiles(
+      [{ id: "x", custom_category_id: null, system_category: null }, ...mk(2, "notas")],
+      {},
+      [],
+      "categoria",
+    );
+    const cards = buildCategoryCards(g);
+    expect(cards.find((c) => c.label === "Por categorizar")!.destaque).toBe(true);
+    expect(cards.find((c) => c.label !== "Por categorizar")!.destaque).toBeFalsy();
+  });
+});
