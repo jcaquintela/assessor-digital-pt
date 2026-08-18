@@ -1,6 +1,7 @@
 import { sanitizeMiscFields } from "../misc-text";
 import { cleanTitle } from "../titles";
 import { classifyTechnicalReason, humanReason } from "../misc-reason";
+import { initialMiscClass } from "../misc-class";
 // Rede de segurança "nada se perde" — motor v3.
 //
 // Regra de produto: uma mensagem profissional do consultor NUNCA pode
@@ -85,6 +86,7 @@ export async function archiveToMiscellaneous(
       source_message_id: ctx.sourceMessageId ?? null,
       occurred_at: new Date().toISOString(),
       status: "inbox",
+      item_class: initialMiscClass({ source: "safety_net" }),
       tags: technical ? ["falha_assessor", `tec:${technical}`] : ["falha_assessor"],
     }) as never);
     return !error;

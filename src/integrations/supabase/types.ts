@@ -2486,6 +2486,7 @@ export type Database = {
           created_at: string
           id: string
           is_confidential: boolean
+          item_class: string
           occurred_at: string
           original_content: string | null
           related_opportunity_id: string | null
@@ -2509,6 +2510,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_confidential?: boolean
+          item_class?: string
           occurred_at?: string
           original_content?: string | null
           related_opportunity_id?: string | null
@@ -2532,6 +2534,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_confidential?: boolean
+          item_class?: string
           occurred_at?: string
           original_content?: string | null
           related_opportunity_id?: string | null

@@ -1,5 +1,6 @@
 import { TELEMETRY_EVENTS, trackEvent, hoursBetween } from "@/lib/telemetry/events";
 import { sanitizeMiscFields } from "../misc-text";
+import { initialMiscClass } from "../misc-class";
 // Assessor v2 — Domain Services.
 //
 // Um executor por ferramenta declarada em `tools.ts`. Cada um:
@@ -1131,6 +1132,7 @@ async function execSaveMiscellaneous(ctx: DomainContext, args: unknown): Promise
       occurred_at: new Date().toISOString(),
       status: "inbox",
       tags: v.tags ?? [],
+      item_class: initialMiscClass({ source: "tool_save_misc", tags: v.tags ?? [] }),
     }) as never)
     .select("id, title")
     .single();

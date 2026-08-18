@@ -1,4 +1,5 @@
 import { sanitizeMiscFields } from "./misc-text";
+import { initialMiscClass } from "./misc-class";
 // Motor central do Assessor — independente do canal.
 // Usa a OpenAI Responses API para interpretar linguagem natural PT-PT e
 // devolve uma resposta que o adaptador de canal (WhatsApp, web, Telegram)
@@ -510,6 +511,7 @@ async function processAssessorMessageInner(input: EngineInput): Promise<EngineOu
         summary: "Ficou só registado, sem lembrete.",
         source_channel: channel,
         status: "inbox",
+        item_class: initialMiscClass({ source: "register_only" }),
       }) as never);
       return {
         reply: error
@@ -1022,6 +1024,7 @@ async function saveMiscellaneous(
     summary,
     source_channel: channel,
     status: "inbox",
+    item_class: initialMiscClass({ source: "fallback_save" }),
     tags: [],
   }) as never);
   if (error) {
