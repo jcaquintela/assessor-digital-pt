@@ -25,7 +25,7 @@ export type PeopleCategoryKey = (typeof PEOPLE_CATEGORIES)[number]["key"];
 export const SEM_CATEGORIA: PeopleCategoryKey = "sem_categoria";
 
 /** Tira acentos, espaços e maiúsculas — "Proprietário" e "proprietario" são o mesmo. */
-function token(v: string): string {
+export function token(v: string): string {
   return v
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -61,6 +61,46 @@ const MAPA: Record<string, PeopleCategoryKey> = {
 };
 
 export type PersonLike = { id: string; papeis?: string[] | null; relacao?: string | null };
+
+/**
+ * Rótulo humano (singular) para a etiqueta da lista. Só UI: não altera dados.
+ * Deliberadamente NÃO promove `potencial_cliente` a "Potencial comprador" —
+ * o dado cru não diz se a pessoa quer comprar, vender ou arrendar.
+ */
+const ROTULOS: Record<string, string> = {
+  owner: "Proprietário",
+  proprietario: "Proprietário",
+  potential_owner: "Potencial proprietário",
+  potencial_proprietario: "Potencial proprietário",
+  buyer: "Comprador",
+  comprador: "Comprador",
+  potential_buyer: "Potencial comprador",
+  potencial_comprador: "Potencial comprador",
+  potencial_cliente: "Potencial cliente",
+  potencial: "Potencial cliente",
+  client: "Cliente",
+  cliente: "Cliente",
+  reference: "Referenciador",
+  referenciador: "Referenciador",
+  partner: "Parceiro",
+  parceiro: "Parceiro",
+  supplier: "Fornecedor",
+  fornecedor: "Fornecedor",
+  colleague: "Colega",
+  colega: "Colega",
+  other: "Rede",
+  outro: "Rede",
+};
+
+export function relationLabel(raw?: string | null): string | null {
+  const v = String(raw ?? "").trim();
+  if (!v) return null;
+  const t = token(v);
+  if (ROTULOS[t]) return ROTULOS[t];
+  // Sem tradução conhecida: pelo menos tira o snake_case.
+  const bonito = v.replace(/[_-]+/g, " ").trim();
+  return bonito.charAt(0).toUpperCase() + bonito.slice(1);
+}
 
 /**
  * Categorias de uma pessoa. Pode devolver mais do que uma — é por isso que a
