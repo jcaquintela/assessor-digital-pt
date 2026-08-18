@@ -27,6 +27,8 @@ export interface SumCardItem {
   icon: any;
   to: string;
   stat: string;
+  /** Unidade curta ao lado do número (nível 2 da hierarquia). */
+  unit?: string;
   statMono?: boolean;
   label: string;
   meta: string;
@@ -37,27 +39,28 @@ export function buildSumCards(resumo: SumGridSummary): SumCardItem[] {
   return [
     {
       key: "negocios", tone: "negocios", icon: Briefcase, to: "/negocios",
-      stat: String(resumo.deals.count), label: "Negócios em curso",
+      stat: String(resumo.deals.count), unit: "negócios", label: "Negócios em curso",
       // Sem valores estimados não se mostra "0 € em jogo" — seria enganador.
       meta: resumo.deals.value > 0 ? `${formatEUR(resumo.deals.value)} em jogo` : "sem valor estimado",
     },
     {
       key: "imoveis", tone: "imoveis", icon: Home, to: "/imoveis",
-      stat: String(resumo.properties.count), label: "Imóveis em carteira",
+      stat: String(resumo.properties.count), unit: "imóveis", label: "Imóveis em carteira",
       meta: `${resumo.properties.toAcquire} por angariar`,
     },
     {
       key: "pessoas", tone: "pessoas", icon: Users, to: "/pessoas",
-      stat: String(resumo.people.count), label: "Pessoas",
+      stat: String(resumo.people.count), unit: "pessoas", label: "Pessoas",
       meta: `${resumo.people.contactedWeek} contactadas esta semana`,
     },
     {
       key: "diversos", tone: "diversos", icon: Layers, to: "/diversos",
-      stat: String(resumo.misc.pending), label: "Por tratar", meta: "em Diversos",
+      stat: String(resumo.misc.pending), unit: "itens", label: "Por tratar", meta: "em Diversos",
     },
     {
       key: "agenda", tone: "neutro", icon: CalendarDays, to: "/calendario",
       stat: String(resumo.agenda.today),
+      unit: "hoje",
       label: `Compromisso${resumo.agenda.today === 1 ? "" : "s"} hoje`,
       meta:
         resumo.agenda.meta ??
@@ -76,11 +79,14 @@ export function buildSumCards(resumo: SumGridSummary): SumCardItem[] {
 }
 
 // Cartão de resumo: uma contagem e o detalhe mais relevante. Sem gráficos.
-export function SumCard({ tone, icon: Icon, to, stat, label, meta, statMono }: Omit<SumCardItem, "key">) {
+export function SumCard({ tone, icon: Icon, to, stat, unit, label, meta, statMono }: Omit<SumCardItem, "key">) {
   return (
     <Link to={to as any} className={`c-sumcard ${tone}`} aria-label={label} data-sumcard={tone}>
-      <Icon className="mb-2 h-[17px] w-[17px]" />
-      <div className={`c-sum-stat${statMono ? " c-mono" : ""}`} style={statMono ? { fontSize: 19 } : undefined}>{stat}</div>
+      <Icon className="mb-3 h-[15px] w-[15px] opacity-60" />
+      <div className={`c-sum-stat${statMono ? " c-mono" : ""}`} style={statMono ? { fontSize: 22 } : undefined}>
+        <span>{stat}</span>
+        {unit ? <span className="c-sum-unit">{unit}</span> : null}
+      </div>
       <div className="c-sum-label">{label}</div>
       <div className="c-sum-meta truncate">{meta}</div>
     </Link>
@@ -90,7 +96,9 @@ export function SumCard({ tone, icon: Icon, to, stat, label, meta, statMono }: O
 export function HojeSumGrid({ resumo }: { resumo: SumGridSummary }) {
   return (
     <section className="mb-6">
-      <div className="c-eyebrow mb-2.5">Resumo geral</div>
+      <div className="c-secthead">
+        <span className="c-secthead-title">Resumo geral</span>
+      </div>
       <div className="c-sumgrid" data-testid="sumgrid">
         {buildSumCards(resumo).map(({ key, ...card }) => (
           <SumCard key={key} {...card} />

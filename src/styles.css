@@ -547,20 +547,50 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   text-transform: uppercase; letter-spacing: .04em; color: var(--sage);
 }
 
+/* Cabeçalho de secção unificado: título à esquerda, ação à direita, mesma linha. */
+.consult-root .c-secthead {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin-bottom: 10px;
+}
+.consult-root .c-secthead .c-secthead-title {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-size: 16px; font-weight: 500; color: var(--ink); line-height: 1.2;
+}
+.consult-root .c-secthead .c-secthead-action {
+  font-size: 12.5px; font-weight: 600; color: var(--brass-dark); cursor: pointer;
+}
+
+/* Separadores com sublinhado — usados onde há 3 a 5 vistas da mesma área. */
+.consult-root .c-tabs { display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--line); }
+.consult-root .c-tab {
+  background: none; border: 0; padding: 8px 0; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.consult-root .c-tab:hover { color: var(--ink); }
+.consult-root .c-tab.active { color: var(--ink); border-bottom-color: var(--brass); }
+
 /* Grelha de resumo: cor por rubrica, sem gráficos nem percentagens. */
-.consult-root .c-sumgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.consult-root .c-sumgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (min-width: 900px) { .consult-root .c-sumgrid { grid-template-columns: repeat(3, 1fr); } }
 .consult-root .c-sumcard {
-  border-radius: 14px; padding: 14px; box-shadow: var(--c-shadow);
+  border-radius: 14px; padding: 16px; box-shadow: var(--c-shadow);
   border: 1px solid transparent; text-align: left; display: block;
   transition: transform .12s, box-shadow .12s;
 }
 .consult-root .c-sumcard:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(20,33,61,.05), 0 8px 22px rgba(20,33,61,.07); }
 .consult-root .c-sumcard .c-sum-stat {
-  font-family: "Fraunces", ui-serif, Georgia, serif; font-size: 22px; font-weight: 600; line-height: 1;
+  font-family: "Fraunces", ui-serif, Georgia, serif; font-size: 28px; font-weight: 600; line-height: 1;
+  display: flex; align-items: baseline; gap: 5px;
 }
-.consult-root .c-sumcard .c-sum-label { font-size: 12px; margin-top: 3px; opacity: .85; }
-.consult-root .c-sumcard .c-sum-meta { font-size: 11px; margin-top: 6px; opacity: .7; }
+@media (min-width: 900px) { .consult-root .c-sumcard .c-sum-stat { font-size: 34px; } }
+.consult-root .c-sumcard .c-sum-unit {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px; font-weight: 600; line-height: 1; opacity: .75;
+}
+/* A cor da rubrica vive no número e no fundo — nunca na etiqueta. */
+.consult-root .c-sumcard .c-sum-label { font-size: 12.5px; margin-top: 8px; color: var(--muted); opacity: 1; }
+.consult-root .c-sumcard .c-sum-meta { font-size: 11px; margin-top: 4px; opacity: .65; }
 .consult-root .c-sumcard.negocios { background: #F3E9D4; color: var(--brass-dark); }
 .consult-root .c-sumcard.negocios .c-sum-stat { color: var(--brass-dark); }
 .consult-root .c-sumcard.imoveis { background: var(--sage-bg); color: var(--sage); }
