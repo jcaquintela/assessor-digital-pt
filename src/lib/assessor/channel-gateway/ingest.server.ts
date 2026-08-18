@@ -126,36 +126,12 @@ async function routeInbound(
     if (!content.trim()) return;
 
     // Botão de resultado do check-in da tarde: actualiza o seguimento na
-    // hora e responde curto. Não passa pelo motor. Se a resposta vier
-    // escrita ("já liguei", "fica sem efeito"), resolvemos o seguimento a
-    // que o Assessor se referiu há pouco e fechamos na mesma.
-    let outcomeCmd = parseOutcomeCommand(content);
-    let outcomeAsk: string | null = null;
-    if (!outcomeCmd && inbound.messageType === "text") {
-      const { detectOutcomeFromText } = await import("@/lib/assessor/outcome-intent");
-      const detected = detectOutcomeFromText(content);
-      if (detected) {
-        // Um nome próprio explícito na frase manda sobre qualquer pendente
-        // antigo; havendo dúvida real, pergunta-se em vez de agir.
-        const { resolveOutcomeTargetFromText } = await import("@/lib/assessor/proactive/outcomes.server");
-        const { askWhichTarget } = await import("@/lib/assessor/outcome-target");
-        const decision = await resolveOutcomeTargetFromText(supabaseAdmin, userId, content);
-        if (decision.kind === "apply") {
-          outcomeCmd = { followUpId: decision.target.id, outcome: detected };
-        } else if (decision.kind === "ask") {
-          outcomeAsk = askWhichTarget(decision.options);
-        }
-      }
-    }
-    if (!outcomeCmd && outcomeAsk) {
-      const send = await adapter.sendText(inbound.externalConversationId, outcomeAsk);
-      await supabaseAdmin.from("assessor_messages").insert({
-        user_id: userId, role: "assistant", content: outcomeAsk,
-        message_type: "outcome_disambiguation", channel: adapter.channel,
-        status: send.ok ? "sent" : "failed",
-      } as never);
-      return;
-    }
+    // hora e responde curto. Só botões — a confirmação escrita ("já tratei
+    // disso", "malas feitas, já comprei os envelopes") segue sempre para o
+    // motor v3, que é o único sítio onde a deteção é multi-item. Havia aqui
+    // um segundo detetor de texto livre, singular: fechava o primeiro item e
+    // devolvia, deixando os restantes por registar (caso Iolanda, 18/08).
+    const outcomeCmd = parseOutcomeCommand(content);
     if (outcomeCmd) {
       const { applyFollowUpOutcome, outcomeAck } = await import("@/lib/assessor/proactive/outcomes.server");
       const r = await applyFollowUpOutcome(
