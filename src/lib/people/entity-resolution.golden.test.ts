@@ -43,15 +43,24 @@ function ctxFor(people: any[]) {
 }
 
 describe("Golden 3 — associar proprietário a imóvel existente", () => {
-  it("uma só Isabel Martins → owner_person_id actualizado", async () => {
+  it("uma só Isabel Martins → confirmação leve antes de escrever", async () => {
     const ctx = ctxFor([{ id: PES1, user_id: "u1", name: "Isabel Martins", phone: "911 111 111" }]);
     const res = await executeToolCalls(ctx, [
       { name: "update_property", arguments: { id: PROP_ID, owner_name: "Isabel Martins" } } as any,
     ]);
     expect(res[0].ok).toBe(true);
-    expect((res[0].data as any)?.needsPersonConfirmation).toBeUndefined();
-    const prop = (ctx.supabase as any).__state?.properties?.[0];
-    if (prop) expect(prop.owner_person_id).toBe(PES1);
+    expect((res[0].data as any)?.needsPersonConfirmation).toBe(true);
+    expect((res[0].data as any)?.mode).toBe("confirm_exact");
+  });
+
+  it("com a pessoa já escolhida → owner_person_id gravado no imóvel", async () => {
+    const ctx = ctxFor([{ id: PES1, user_id: "u1", name: "Isabel Martins" }]);
+    const res = await executeToolCalls({ ...ctx, skipPersonResolution: true }, [
+      { name: "update_property", arguments: { id: PROP_ID, owner_person_id: PES1 } } as any,
+    ]);
+    expect(res[0].ok).toBe(true);
+    const recibo = JSON.stringify((res[0].data as any)?.recibo ?? {});
+    expect(recibo).toContain(PES1);
   });
 
   it("duas Isabel Martins → pergunta em vez de escrever", async () => {
