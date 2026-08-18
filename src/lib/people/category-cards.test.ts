@@ -16,6 +16,12 @@ describe("cartões canónicos de Pessoas", () => {
     expect(cards.every((c) => c.count === 0)).toBe(true);
   });
 
+  it("potencial_cliente tem cartão próprio, não conta como comprador", () => {
+    const cards = peopleCategoryCards([p("1", [], "potencial_cliente")]);
+    expect(cards.find((c) => c.key === "potenciais_clientes")!.count).toBe(1);
+    expect(cards.find((c) => c.key === "potenciais_compradores")!.count).toBe(0);
+  });
+
   it("não esconde grupos vazios quando há pessoas noutro grupo", () => {
     const cards = peopleCategoryCards([p("1", ["owner"])]);
     expect(cards).toHaveLength(PEOPLE_CATEGORIES.length);
