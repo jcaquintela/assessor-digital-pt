@@ -757,3 +757,14 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   font-size: 11px; font-weight: 700; background: #E9E5D9; color: #4A4638;
 }
 .consult-root .c-tabcount.alerta { background: var(--coral); color: #fff; }
+
+/* Utilitários de visibilidade têm de vencer o display base dos botões. */
+.consult-root .c-cta.hidden { display: none; }
+@media (min-width: 768px) { .consult-root .c-cta.md\:inline-flex { display: inline-flex; } }
+
+/* Cards de categoria — a contagem é a protagonista. */
+.consult-root .c-groupcard .c-group-count {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-size: 24px; font-weight: 600; line-height: 1; color: var(--ink);
+}
+.consult-root .c-groupcard .c-group-label { font-size: 12px; color: var(--muted); margin-top: 6px; }
