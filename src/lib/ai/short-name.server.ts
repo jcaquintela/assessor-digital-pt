@@ -3,7 +3,12 @@
 // um resumo do assunto, nunca a fala literal.
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-3.6-flash";
+// Etiqueta de 3-5 palavras não justifica um modelo de raciocínio: o gemini-3.6-flash
+// gastava quase todos os max_tokens em reasoning e devolvia vazio (no_content).
+// O flash-lite não tem modo de raciocínio — resposta directa, mais barata e rápida.
+export const SHORT_NAME_MODEL = "google/gemini-2.5-flash-lite";
+const MODEL = SHORT_NAME_MODEL;
+const MAX_TOKENS = 40;
 
 const PROMPT = `És o assessor de um consultor imobiliário português.
 Recebes o conteúdo de um ficheiro (transcrição de voz, texto lido de um documento
@@ -39,7 +44,7 @@ export async function summarizeForName(
           { role: "user", content },
         ],
         temperature: 0,
-        max_tokens: 30,
+        max_tokens: MAX_TOKENS,
       }),
     });
     if (!res.ok) {
@@ -52,12 +57,20 @@ export async function summarizeForName(
       return { ok: false, error: `Gateway ${res.status}: ${t.slice(0, 200)}` };
     }
     const json = (await res.json()) as any;
-    const summary: string | undefined = json?.choices?.[0]?.message?.content;
+    const choice = json?.choices?.[0];
+    const finishReason: string = String(choice?.finish_reason ?? "");
+    const raw: string | undefined = choice?.message?.content;
+    // Resposta truncada nunca vira nome de ficheiro: fica lixo cortado a meio.
+    // Falhamos de forma segura e o chamador mantém o nome de recurso.
+    const truncated = finishReason === "length" || finishReason === "MAX_TOKENS";
+    const summary = truncated ? undefined : raw;
     await logAiUsage(telemetry, {
       modality: "texto", model: MODEL, intent: "short_file_name",
       tokens: readGatewayUsage(json), latencyMs: Date.now() - t0,
-      success: !!summary, error: summary ? null : "no_content",
+      success: !!summary,
+      error: summary ? null : truncated ? "truncated_response" : "no_content",
     });
+    if (truncated) return { ok: false, error: "resposta truncada" };
     if (!summary) return { ok: false, error: "sem conteúdo" };
     return { ok: true, summary: summary.trim() };
   } catch (err) {
