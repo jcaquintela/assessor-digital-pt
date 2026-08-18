@@ -27,6 +27,14 @@ import {
   createPendingAction,
 } from "../memory.server";
 import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from "../culture/short-answers";
+import { matchPersonChoice as pcMatchPersonChoice } from "@/lib/people/person-choice";
+
+/** "Não, é outra pessoa": recusa explícita do candidato proposto. */
+export function personChoiceIsNone(text: string, pending: { structured_payload?: unknown } | null): boolean {
+  const payload = ((pending?.structured_payload ?? {}) as Record<string, any>);
+  const candidates = ((payload.suggestions ?? []) as any[]).filter((c) => c?.id);
+  return pcMatchPersonChoice(text, candidates as any).kind === "none";
+}
 import {
   detectAgendaQuery,
   detectMiscQuery,
@@ -693,7 +701,9 @@ async function runReasoningEngineInner(
         }
         const result = await exec(
           { ...ctx, skipPersonResolution: true, skipDuplicateCheck: true },
-          { ...incoming, person_id: personId },
+          toolName === "update_property"
+            ? { ...incoming, owner_person_id: personId }
+            : { ...incoming, person_id: personId },
         );
         const createdId =
           (result.data as any)?.event?.id ?? (result.data as any)?.follow_up?.id ?? (result.data as any)?.id ?? null;
@@ -718,7 +728,14 @@ async function runReasoningEngineInner(
     }
     // Candidato de pessoa rejeitado: o "não" fecha esse candidato para os
     // turnos seguintes — nunca voltamos a propô-lo sem nova pesquisa.
-    if (pending && pending.intent === "confirm_event_person" && saIsRejection(trimmed)) {
+    // "Não, é outra pessoa" também é rejeição explícita (matchPersonChoice →
+    // "none"): é escolha do consultor, não falha de interpretação, por isso
+    // fecha aqui e nunca chega à rede de segurança (Diversos).
+    if (
+      pending &&
+      pending.intent === "confirm_event_person" &&
+      (saIsRejection(trimmed) || personChoiceIsNone(trimmed, pending))
+    ) {
       const payload = (pending.structured_payload ?? {}) as Record<string, any>;
       const ids: string[] = [
         ...(payload.candidate_ids ?? []),
@@ -1997,6 +2014,40 @@ async function runReasoningEngineInner(
           suggestions: d.suggestions ?? [],
           candidate_ids: d.candidateIds ?? [],
           tool: "create_follow_up",
+          incoming: d.incoming,
+        },
+        currentQuestion: question,
+        pendingQuestion: question,
+        sourceMessageId: sourceMessageId ?? null,
+      });
+    } catch { /* noop */ }
+    reply = question;
+  }
+
+  // Associar proprietário a um imóvel existente: mesma regra das outras
+  // escritas — ou é inequívoco, ou perguntamos antes de gravar.
+  const ownerPersonAsk = toolResults.find(
+    (t) => t.name === "update_property" && t.ok
+      && (t.data as any)?.needsPersonConfirmation === true,
+  );
+  if (ownerPersonAsk) {
+    const d = ownerPersonAsk.data as any;
+    const { personResolutionQuestion } = await import("@/lib/people/resolve-person.server");
+    const question = personResolutionQuestion({
+      status: d.mode, personId: null, name: d.personName ?? null,
+      candidates: d.suggestions ?? [],
+    });
+    try {
+      await createPendingAction(supabase, {
+        userId, channel,
+        intent: "confirm_event_person",
+        originalContent: trimmed,
+        payload: {
+          personName: d.personName,
+          mode: d.mode,
+          suggestions: d.suggestions ?? [],
+          candidate_ids: d.candidateIds ?? [],
+          tool: "update_property",
           incoming: d.incoming,
         },
         currentQuestion: question,

@@ -160,6 +160,21 @@ const NOT_A_NAME = new Set([
 
 const NAME_RE = /[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ'-]+)?/;
 
+// Transcrições de áudio chegam em minúsculas ("dona maria Manuel"). Só
+// aceitamos minúsculas quando vêm logo a seguir a um tratamento E têm pelo
+// menos duas palavras — a dupla exigência é o que evita falsos positivos
+// ("a casa dela" nunca é nome).
+const LOWER_NAME_RE = /\p{L}[\p{L}À-ÿ'-]+(?:\s+\p{L}[\p{L}À-ÿ'-]+)/u;
+
+/** "maria manuel" → "Maria Manuel" (só a apresentação, não a comparação). */
+function titleCase(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => (w.length <= 2 && /^(de|da|do|e)$/i.test(w) ? w.toLowerCase() : w[0]!.toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
 // Tratamentos: "Sra Carla Martins", "Dr. João", "Eng. Costa". Nunca são nome
 // próprio — caso real (15/08): o Afonso perguntou se criava o contacto "Sra".
 const HONORIFIC_SRC =
@@ -207,6 +222,18 @@ export function personNameFromEventText(text: string | null | undefined): string
     const first = foldText(cand.split(/\s+/)[0]);
     if (NOT_A_NAME.has(first) || first.length < 3) continue;
     return cand;
+  }
+  // Último recurso: tratamento + nome em minúsculas ("dona maria Manuel").
+  const lower = t.match(
+    new RegExp(`(?:^|[\\s,;:(.])${HONORIFIC_SRC}\\s+(${LOWER_NAME_RE.source})`, "u"),
+  );
+  const cand = stripHonorific(lower?.[1]);
+  if (cand && !isHonorificOnly(cand)) {
+    const parts = cand.split(/\s+/).filter(Boolean);
+    const first = foldText(parts[0]);
+    if (parts.length >= 2 && !NOT_A_NAME.has(first) && first.length >= 3) {
+      return titleCase(cand);
+    }
   }
   return null;
 }
