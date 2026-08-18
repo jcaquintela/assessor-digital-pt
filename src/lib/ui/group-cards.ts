@@ -68,6 +68,14 @@ export function closedGroupSearch(s: CardsSearch): CardsSearch {
 }
 
 /** Link partilhável: só o essencial para reabrir exactamente esta vista. */
-export function groupShareUrl(origin: string, pathname: string, key: string): string {
-  return `${origin}${pathname}?grp=${encodeURIComponent(key)}`;
+export function groupShareUrl(
+  origin: string,
+  pathname: string,
+  key: string,
+  extra?: Record<string, string | undefined>,
+): string {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(extra ?? {})) if (v) p.set(k, v);
+  p.set("grp", key);
+  return `${origin}${pathname}?${p.toString()}`;
 }
