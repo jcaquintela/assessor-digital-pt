@@ -7,6 +7,8 @@ import {
 import { ZOD_BY_TOOL, CreateProspectingLeadArgs, CreateDealArgs } from "../v2/tools";
 import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
 import { cleanTitle } from "../titles";
+import { fillMissingDate } from "./tool-args";
+import { getConversationState } from "../memory.server";
 import type { DecisionToolCall, MemoryWrite } from "./types";
 
 // O modelo escreve por vezes o estado em português ("por contactar") onde o
@@ -67,7 +69,9 @@ function normalizeToolArgs(name: string, args: unknown): unknown {
     const a = { ...(args as Record<string, unknown>) };
     const fallback = name === "create_event" ? "Compromisso" : "Lembrete";
     a.title = cleanTitle(a.title) ?? fallback;
-    return a;
+    // "09:30" como resposta a "para quando?" — hora sem data. Completa-se
+    // com hoje (ou amanhã, se já passou) em vez de rebentar na validação.
+    return fillMissingDate(name, a);
   }
   if (name === "create_person") {
     const a = { ...(args as Record<string, unknown>) };
