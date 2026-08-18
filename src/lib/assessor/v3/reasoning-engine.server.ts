@@ -27,6 +27,14 @@ import {
   createPendingAction,
 } from "../memory.server";
 import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from "../culture/short-answers";
+import { matchPersonChoice as pcMatchPersonChoice } from "@/lib/people/person-choice";
+
+/** "Não, é outra pessoa": recusa explícita do candidato proposto. */
+function personChoiceIsNone(text: string, pending: { structured_payload?: unknown } | null): boolean {
+  const payload = ((pending?.structured_payload ?? {}) as Record<string, any>);
+  const candidates = ((payload.suggestions ?? []) as any[]).filter((c) => c?.id);
+  return pcMatchPersonChoice(text, candidates as any).kind === "none";
+}
 import {
   detectAgendaQuery,
   detectMiscQuery,
