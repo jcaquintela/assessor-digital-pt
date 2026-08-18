@@ -438,15 +438,15 @@ function DrivePage() {
     const m = new Map(cards.map((c) => [c.key, c.inline]));
     return (key: string) => m.get(key) === true;
   }, [cards]);
+  // Categoria expandida vive no URL: o link é partilhável e o histórico funciona.
+  const vista = resolveCategoryView(search as DriveSearch, inlineDe);
   const vistaCartoes = shouldShowCards({
     groupBy,
     query: qParam,
     nif: nifParam,
     artigo: artigoParam,
-    openCategory: catAbertaKey,
+    openCategory: vista.mode === "dedicada" ? vista.key : null,
   });
-  // Categoria expandida vive no URL: o link é partilhável e o histórico funciona.
-  const vista = resolveCategoryView(search as DriveSearch, inlineDe);
   const expandido = vista.mode === "expandido" ? vista.key : null;
   const abrirCategoria = (key: string) => {
     // Guardar o scroll para o repor quando se voltar aos cartões.
