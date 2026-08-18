@@ -64,3 +64,13 @@ describe("Golden 3 — associar proprietário a imóvel existente", () => {
     expect(((res[0].data as any)?.suggestions ?? []).length).toBe(2);
   });
 });
+
+describe("debug", () => {
+  it("erro", async () => {
+    const ctx = ctxFor([{ id: "pes1", user_id: "u1", name: "Isabel Martins" }]);
+    const res = await executeToolCalls(ctx, [
+      { name: "update_property", arguments: { id: "im1", owner_name: "Isabel Martins" } } as any,
+    ]);
+    console.log(JSON.stringify(res));
+  });
+});
