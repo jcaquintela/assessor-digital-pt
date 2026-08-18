@@ -948,63 +948,15 @@ function DrivePage() {
           </div>
         )}
         {vistaCartoes ? (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {cards.map((c) => {
-              const aberto = expandido === c.key;
-              return (
-                <div
-                  key={c.key}
-                  data-categoria={c.key}
-                  className={"c-card p-0" + (aberto ? " sm:col-span-2 lg:col-span-3" : "")}
-                >
-                  <div className="flex w-full items-center">
-                  <button
-                    type="button"
-                    aria-expanded={c.inline ? aberto : undefined}
-                    className="flex min-w-0 flex-1 items-center gap-3 p-3.5 text-left"
-                    onClick={() => abrirCategoria(c.key, c.inline)}
-                  >
-                    <span className="rounded-lg bg-muted p-2">
-                      <FolderOpen className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className={
-                          "block truncate text-[14px] font-semibold" +
-                          (c.destaque ? " text-amber-600 dark:text-amber-400" : "")
-                        }
-                      >
-                        {c.label}
-                      </span>
-                      <span className="c-muted block text-[11.5px]">
-                        {c.count} {c.count === 1 ? "ficheiro" : "ficheiros"}
-                      </span>
-                    </span>
-                    {c.inline && aberto ? (
-                      <ChevronDown className="c-muted h-4 w-4 shrink-0" />
-                    ) : (
-                      <ChevronRight className="c-muted h-4 w-4 shrink-0" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Copiar link de ${c.label}`}
-                    title="Copiar link desta categoria"
-                    className="c-badge tap-44 mr-2.5"
-                    onClick={() => copiarLink(c.key, c.inline)}
-                  >
-                    <Link2 className="h-3 w-3" />
-                  </button>
-                  </div>
-                  {c.inline && aberto && (
-                    <div className="space-y-2 border-t border-border p-3">
-                      {c.files.map(renderFile)}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <GroupCardsRow
+            cards={cards}
+            openKey={expandido}
+            onOpen={abrirCategoria}
+            pathname="/drive"
+            keyAttr="data-categoria"
+            shareParams={{ tab: search.tab }}
+            renderInline={(c) => <>{(c.items as any[]).map(renderFile)}</>}
+          />
         ) : catAberta ? (
           <section className="space-y-2" data-categoria-aberta={catAberta.key}>
             <div className="flex flex-wrap items-center gap-2">
@@ -1016,7 +968,7 @@ function DrivePage() {
               <button
                 type="button"
                 className="c-badge tap-44"
-                onClick={() => copiarLink(catAberta.key, false)}
+                onClick={() => copiarLink(catAberta.key)}
               >
                 <Link2 className="h-3 w-3" /> Copiar link
               </button>
