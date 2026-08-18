@@ -66,7 +66,6 @@ import {
   ChevronDown,
   ChevronRight,
   ListOrdered,
-  FolderOpen,
   ArrowLeft,
 } from "lucide-react";
 
