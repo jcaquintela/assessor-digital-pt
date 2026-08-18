@@ -7,6 +7,8 @@ import {
 import { ZOD_BY_TOOL, CreateProspectingLeadArgs, CreateDealArgs } from "../v2/tools";
 import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
 import { cleanTitle } from "../titles";
+import { fillMissingDate } from "./tool-args";
+import { getConversationState } from "../memory.server";
 import type { DecisionToolCall, MemoryWrite } from "./types";
 
 // O modelo escreve por vezes o estado em português ("por contactar") onde o
@@ -67,7 +69,9 @@ function normalizeToolArgs(name: string, args: unknown): unknown {
     const a = { ...(args as Record<string, unknown>) };
     const fallback = name === "create_event" ? "Compromisso" : "Lembrete";
     a.title = cleanTitle(a.title) ?? fallback;
-    return a;
+    // "09:30" como resposta a "para quando?" — hora sem data. Completa-se
+    // com hoje (ou amanhã, se já passou) em vez de rebentar na validação.
+    return fillMissingDate(name, a);
   }
   if (name === "create_person") {
     const a = { ...(args as Record<string, unknown>) };
@@ -125,6 +129,30 @@ async function enrichWithProperty(
   return a;
 }
 
+/**
+ * "Sim, põe nessa categoria." — o imóvel foi dito duas mensagens antes e o
+ * modelo manda só `category_name`. O schema exigia property_id ou
+ * property_query e a categorização caía em Diversos. Aqui recuperamos o
+ * imóvel activo da conversa antes de validar.
+ */
+async function enrichCategoryProperty(
+  ctx: DomainContext,
+  name: string,
+  args: unknown,
+): Promise<unknown> {
+  if (name !== "set_property_category" || !args || typeof args !== "object") return args;
+  const a = { ...(args as Record<string, unknown>) };
+  if (a.property_id || (typeof a.property_query === "string" && a.property_query.trim().length >= 2)) return a;
+  try {
+    const state = await getConversationState(ctx.supabase, ctx.userId, ctx.channel);
+    const id = state?.last_property_id
+      || (state?.last_created_resource_type === "property" ? state?.last_created_resource_id : null)
+      || (state?.last_entity_type === "property" ? state?.last_entity_id : null);
+    if (id) a.property_id = id;
+  } catch { /* sem contexto, o schema recusa e o motor pergunta qual o imóvel */ }
+  return a;
+}
+
 export async function executeToolCalls(
   ctx: DomainContext,
   toolCalls: DecisionToolCall[],
@@ -151,10 +179,14 @@ export async function executeToolCalls(
       continue;
     }
     const schema = ZOD_BY_TOOL[tc.name];
-    const args = await enrichWithProperty(
+    const args = await enrichCategoryProperty(
       effectiveCtx,
       tc.name,
-      normalizeToolArgs(tc.name, tc.arguments),
+      await enrichWithProperty(
+        effectiveCtx,
+        tc.name,
+        normalizeToolArgs(tc.name, tc.arguments),
+      ),
     );
     const parsed = schema?.safeParse(args);
     if (schema && parsed && !parsed.success) {

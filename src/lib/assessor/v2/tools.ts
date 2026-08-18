@@ -14,9 +14,18 @@ import type { GatewayToolSpec } from "./gateway.server";
 
 // ---------- schemas Zod ----------
 
+// O modelo devolve muitas vezes `query: null` quando quer dizer "tudo"
+// ("lista os contactos todos que tens meus"). `z.string().default("")` só
+// aceita `undefined`, por isso uma leitura perfeitamente correcta era
+// rejeitada por validação e acabava em Diversos. Aqui null vira "".
+const OptionalQuery = z.preprocess(
+  (v) => (v == null ? "" : v),
+  z.string(),
+).default("");
+
 export const SearchPeopleArgs = z.object({
   // Vazio = listar tudo ("lista os contactos todos que tens meus").
-  query: z.string().default(""),
+  query: OptionalQuery,
   relationship_type: z.string().optional().nullable(),
 });
 export type SearchPeopleArgs = z.infer<typeof SearchPeopleArgs>;
@@ -38,13 +47,13 @@ export const CreatePersonArgs = z.object({
 export type CreatePersonArgs = z.infer<typeof CreatePersonArgs>;
 
 export const SearchPropertiesArgs = z.object({
-  query: z.string().default(""),
+  query: OptionalQuery,
   status: z.string().optional().nullable(),
 });
 export type SearchPropertiesArgs = z.infer<typeof SearchPropertiesArgs>;
 
 export const SearchFilesArgs = z.object({
-  query: z.string().default(""),
+  query: OptionalQuery,
   document_type: z.string().optional().nullable(),
 });
 export type SearchFilesArgs = z.infer<typeof SearchFilesArgs>;
