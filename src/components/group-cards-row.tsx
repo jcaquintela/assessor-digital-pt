@@ -66,6 +66,15 @@ export function GroupCardsRow<T>({
                 >
                   {c.label}
                 </span>
+                {c.hint && (
+                  <span
+                    className="mt-0.5 block truncate text-[10px] uppercase tracking-wide"
+                    style={{ color: "var(--muted)", opacity: 0.8 }}
+                    data-card-hint={c.hint}
+                  >
+                    {c.hint}
+                  </span>
+                )}
                 <span className="mt-0.5 block text-[11px]" style={{ color: "var(--muted)", opacity: 0.65 }}>
                   {c.count === 0 ? "sem registos" : c.inline ? "abre aqui" : "vista dedicada"}
                 </span>

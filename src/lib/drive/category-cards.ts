@@ -15,7 +15,15 @@ export type CategoryCard<F> = GroupCard<F> & { files: F[] };
 
 export function buildCategoryCards<F>(groups: DriveGroup<F>[], limit = INLINE_LIMIT): CategoryCard<F>[] {
   return buildGroupCards(
-    groups.map((g) => ({ key: g.key, label: g.label || "Todos", items: g.files, destaque: g.destaque })),
+    groups.map((g) => ({
+      key: g.key,
+      label: g.label || "Todos",
+      items: g.files,
+      destaque: g.destaque,
+      // Categorias do sistema (classificação automática) ficam marcadas para a
+      // UI as distinguir de categorias manuais com o mesmo nome.
+      hint: g.key.startsWith("sys:") ? "automática" : undefined,
+    })),
     limit,
     false,
   ).map((c) => ({ ...c, files: c.items }));
