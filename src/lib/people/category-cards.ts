@@ -16,6 +16,7 @@ export const PEOPLE_CATEGORIES = [
   { key: "compradores", label: "Compradores" },
   { key: "potenciais_compradores", label: "Potenciais compradores" },
   { key: "clientes", label: "Clientes" },
+  { key: "potenciais_clientes", label: "Potenciais clientes" },
   { key: "rede", label: "Rede" },
   { key: "sem_categoria", label: "Sem categoria" },
 ] as const;
@@ -43,9 +44,10 @@ const MAPA: Record<string, PeopleCategoryKey> = {
   comprador: "compradores",
   potential_buyer: "potenciais_compradores",
   potencial_comprador: "potenciais_compradores",
-  // Lead ainda sem intenção fechada: fica do lado da procura.
-  potencial_cliente: "potenciais_compradores",
-  potencial: "potenciais_compradores",
+  // Lead ainda sem intenção fechada: pode ser compra, venda ou arrendamento.
+  // Não assumimos comprador — tem cartão próprio.
+  potencial_cliente: "potenciais_clientes",
+  potencial: "potenciais_clientes",
   client: "clientes",
   cliente: "clientes",
   reference: "rede",
