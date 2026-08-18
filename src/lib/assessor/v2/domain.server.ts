@@ -1131,6 +1131,7 @@ async function execSaveMiscellaneous(ctx: DomainContext, args: unknown): Promise
       occurred_at: new Date().toISOString(),
       status: "inbox",
       tags: v.tags ?? [],
+      item_class: initialMiscClass({ source: "tool_save_misc", tags: v.tags ?? [] }),
     }) as never)
     .select("id, title")
     .single();
