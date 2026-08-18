@@ -434,34 +434,32 @@ function DrivePage() {
   // Vista por omissão: cartões de categoria com contagem. Pesquisar continua
   // a atravessar todas as categorias, por isso desliga os cartões.
   const cards = useMemo(() => buildCategoryCards(grupos as any[]), [grupos]);
+  const inlineDe = useMemo(() => {
+    const m = new Map(cards.map((c) => [c.key, c.inline]));
+    return (key: string) => m.get(key) === true;
+  }, [cards]);
   const vistaCartoes = shouldShowCards({
     groupBy,
     query: qParam,
     nif: nifParam,
     artigo: artigoParam,
-    openCategory: catParam,
+    openCategory: catAbertaKey,
   });
   // Categoria expandida vive no URL: o link é partilhável e o histórico funciona.
-  const vista = resolveCategoryView(search as DriveSearch);
+  const vista = resolveCategoryView(search as DriveSearch, inlineDe);
   const expandido = vista.mode === "expandido" ? vista.key : null;
-  const abrirCategoria = (key: string, inline: boolean) => {
+  const abrirCategoria = (key: string) => {
     // Guardar o scroll para o repor quando se voltar aos cartões.
     scrollCartoes.current = typeof window !== "undefined" ? window.scrollY : null;
-    navigate({ search: (s: any) => nextSearchForCard(s as DriveSearch, key, inline) as any });
+    navigate({ search: (s: any) => nextSearchForCard(s as DriveSearch, key) as any });
   };
-  const urlCategoria = (key: string, inline: boolean) => {
+  const urlCategoria = (key: string) => {
     if (typeof window === "undefined") return "";
-    return categoryShareUrl(
-      window.location.origin,
-      window.location.pathname,
-      search as DriveSearch,
-      key,
-      inline,
-    );
+    return categoryShareUrl(window.location.origin, window.location.pathname, search as DriveSearch, key);
   };
-  const copiarLink = async (key: string, inline: boolean) => {
+  const copiarLink = async (key: string) => {
     try {
-      await navigator.clipboard.writeText(urlCategoria(key, inline));
+      await navigator.clipboard.writeText(urlCategoria(key));
       toast.success("Link da categoria copiado.");
     } catch {
       toast.error("Não consegui copiar o link.");
@@ -469,9 +467,7 @@ function DrivePage() {
   };
   // Pesquisar manda sobre a categoria aberta: os resultados são transversais.
   const catAberta =
-    catParam && !qParam && !nifParam && !artigoParam
-      ? grupos.find((g) => g.key === catParam) ?? null
-      : null;
+    vista.mode === "dedicada" ? grupos.find((g) => g.key === vista.key) ?? null : null;
   const fecharCategoria = () =>
     navigate({ search: (s: any) => closedSearch(s as DriveSearch) as any });
 
