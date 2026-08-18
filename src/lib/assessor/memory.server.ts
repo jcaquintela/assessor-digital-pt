@@ -194,6 +194,7 @@ export async function createPendingAction(
         category: "Por tratar",
         source_channel: input.channel,
         status: "inbox",
+        item_class: initialMiscClass({ source: "superseded" }),
       }) as never);
       if (miscError) console.error("[memory] falha a guardar proposta substituída em Diversos", miscError);
     } catch (err) {
