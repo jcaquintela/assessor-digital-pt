@@ -296,6 +296,7 @@ async function runReasoningEngineInner(
   // aparecer nos briefings dias depois.
   if (!opts?.skipCompletionPass) {
     const done = detectCompletionInstructions(trimmed);
+    let handledAny = false;
     if (done.length) {
       const lines: string[] = [];
       const handled: typeof done = [];
@@ -316,6 +317,7 @@ async function runReasoningEngineInner(
         } catch { /* noop */ }
       }
       if (handled.length) {
+        handledAny = true;
         // A pergunta fica em memória na sua ranhura: o "sim"/"não" que vier a
         // seguir decide mesmo a recorrência, em vez de se perder.
         if (recurringAsk) {
@@ -336,6 +338,27 @@ async function runReasoningEngineInner(
           return { ...out, reply: [lines.join(" "), out.reply].filter(Boolean).join(" ").trim() };
         }
         return { reply: lines.join(" ") };
+      }
+    }
+
+    // Rede de segurança para a confirmação escrita que não nomeia assunto
+    // ("já tratei disso", "fica sem efeito", "não atendeu"): fecha o
+    // seguimento de que o Afonso falou há pouco. Vivia num atalho próprio no
+    // gateway de canais, que cortava a mensagem antes do passe multi-item.
+    if (!handledAny) {
+      const { detectOutcomeFromText } = await import("@/lib/assessor/outcome-intent");
+      const detected = detectOutcomeFromText(trimmed);
+      if (detected) {
+        const { resolveOutcomeTargetFromText, applyFollowUpOutcome, outcomeAck } =
+          await import("@/lib/assessor/proactive/outcomes.server");
+        const { askWhichTarget } = await import("@/lib/assessor/outcome-target");
+        const decision = await resolveOutcomeTargetFromText(supabase, userId, trimmed);
+        if (decision.kind === "apply") {
+          const r = await applyFollowUpOutcome(supabase, userId, decision.target.id, detected);
+          if (r.ok) return { reply: outcomeAck(detected, r.title) };
+        } else if (decision.kind === "ask") {
+          return { reply: askWhichTarget(decision.options) };
+        }
       }
     }
   }
