@@ -2023,6 +2023,40 @@ async function runReasoningEngineInner(
     } catch { /* noop */ }
     reply = question;
   }
+
+  // Associar proprietário a um imóvel existente: mesma regra das outras
+  // escritas — ou é inequívoco, ou perguntamos antes de gravar.
+  const ownerPersonAsk = toolResults.find(
+    (t) => t.name === "update_property" && t.ok
+      && (t.data as any)?.needsPersonConfirmation === true,
+  );
+  if (ownerPersonAsk) {
+    const d = ownerPersonAsk.data as any;
+    const { personResolutionQuestion } = await import("@/lib/people/resolve-person.server");
+    const question = personResolutionQuestion({
+      status: d.mode, personId: null, name: d.personName ?? null,
+      candidates: d.suggestions ?? [],
+    });
+    try {
+      await createPendingAction(supabase, {
+        userId, channel,
+        intent: "confirm_event_person",
+        originalContent: trimmed,
+        payload: {
+          personName: d.personName,
+          mode: d.mode,
+          suggestions: d.suggestions ?? [],
+          candidate_ids: d.candidateIds ?? [],
+          tool: "update_property",
+          incoming: d.incoming,
+        },
+        currentQuestion: question,
+        pendingQuestion: question,
+        sourceMessageId: sourceMessageId ?? null,
+      });
+    } catch { /* noop */ }
+    reply = question;
+  }
   if (leadTool) {
     const dup = (leadTool.data as any)?.duplicate === true;
     const leadId = (leadTool.data as any)?.lead?.id ?? (leadTool.data as any)?.existing?.id ?? null;
