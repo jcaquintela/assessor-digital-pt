@@ -4,6 +4,10 @@ import { matchPersonChoice } from "./person-choice";
 import { executeToolCalls } from "@/lib/assessor/v3/act.server";
 import { makeFakeSupabase } from "@/lib/test-utils/fake-supabase";
 
+const PROP_ID = "11111111-1111-4111-8111-111111111111";
+const PES1 = "22222222-2222-4222-8222-222222222222";
+const PES2 = "33333333-3333-4333-8333-333333333333";
+
 // Casos reais que caíram em Diversos como "falha de interpretação".
 
 describe("Golden 1 — rejeição explícita de candidato não é falha", () => {
@@ -31,7 +35,7 @@ describe("Golden 2 — honorífico com nome em minúsculas (transcrição de áu
 function ctxFor(people: any[]) {
   const supabase = makeFakeSupabase({
     people,
-    properties: [{ id: "im1", user_id: "u1", title: "T2 Canelas", owner_person_id: null }],
+    properties: [{ id: PROP_ID, user_id: "u1", title: "T2 Canelas", owner_person_id: null }],
     pending_actions: [],
     person_phones: [],
   });
@@ -40,37 +44,27 @@ function ctxFor(people: any[]) {
 
 describe("Golden 3 — associar proprietário a imóvel existente", () => {
   it("uma só Isabel Martins → owner_person_id actualizado", async () => {
-    const ctx = ctxFor([{ id: "pes1", user_id: "u1", name: "Isabel Martins", phone: "911 111 111" }]);
+    const ctx = ctxFor([{ id: PES1, user_id: "u1", name: "Isabel Martins", phone: "911 111 111" }]);
     const res = await executeToolCalls(ctx, [
-      { name: "update_property", arguments: { id: "im1", owner_name: "Isabel Martins" } } as any,
+      { name: "update_property", arguments: { id: PROP_ID, owner_name: "Isabel Martins" } } as any,
     ]);
     expect(res[0].ok).toBe(true);
     expect((res[0].data as any)?.needsPersonConfirmation).toBeUndefined();
     const prop = (ctx.supabase as any).__state?.properties?.[0];
-    if (prop) expect(prop.owner_person_id).toBe("pes1");
+    if (prop) expect(prop.owner_person_id).toBe(PES1);
   });
 
   it("duas Isabel Martins → pergunta em vez de escrever", async () => {
     const ctx = ctxFor([
-      { id: "pes1", user_id: "u1", name: "Isabel Martins", phone: "911 111 111" },
-      { id: "pes2", user_id: "u1", name: "Isabel Martins", phone: "922 222 222" },
+      { id: PES1, user_id: "u1", name: "Isabel Martins", phone: "911 111 111" },
+      { id: PES2, user_id: "u1", name: "Isabel Martins", phone: "922 222 222" },
     ]);
     const res = await executeToolCalls(ctx, [
-      { name: "update_property", arguments: { id: "im1", owner_name: "Isabel Martins" } } as any,
+      { name: "update_property", arguments: { id: PROP_ID, owner_name: "Isabel Martins" } } as any,
     ]);
     expect(res[0].ok).toBe(true);
     expect((res[0].data as any)?.needsPersonConfirmation).toBe(true);
     expect((res[0].data as any)?.mode).toBe("choose");
     expect(((res[0].data as any)?.suggestions ?? []).length).toBe(2);
-  });
-});
-
-describe("debug", () => {
-  it("erro", async () => {
-    const ctx = ctxFor([{ id: "pes1", user_id: "u1", name: "Isabel Martins" }]);
-    const res = await executeToolCalls(ctx, [
-      { name: "update_property", arguments: { id: "im1", owner_name: "Isabel Martins" } } as any,
-    ]);
-    console.log(JSON.stringify(res));
   });
 });
