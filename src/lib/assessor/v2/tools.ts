@@ -464,6 +464,10 @@ export const UpdatePropertyArgs = z.object({
   asking_price: z.number().optional().nullable(),
   status: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  /** Proprietário já identificado (id validado). */
+  owner_person_id: z.string().uuid().optional().nullable(),
+  /** Proprietário dito por nome — resolvido antes de escrever. */
+  owner_name: z.string().optional().nullable(),
 });
 export type UpdatePropertyArgs = z.infer<typeof UpdatePropertyArgs>;
 
