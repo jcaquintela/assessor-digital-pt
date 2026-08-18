@@ -47,6 +47,25 @@ describe("cartões de categoria", () => {
 });
 
 describe("destaque do 'Por categorizar'", () => {
+  it("categoria manual e automática com o mesmo nome ficam separadas e distinguíveis", () => {
+    const files = [
+      { id: "m1", custom_category_id: "c1", system_category: null },
+      { id: "m2", custom_category_id: "c1", system_category: null },
+      { id: "a1", custom_category_id: null, system_category: "documentos" },
+    ];
+    const cards = buildCategoryCards(
+      groupDriveFiles(files, {}, [{ id: "c1", name: "Documentos" }], "categoria"),
+    );
+    const docs = cards.filter((c) => c.label === "Documentos");
+    expect(docs).toHaveLength(2);
+    const manual = docs.find((c) => c.key === "cat:c1")!;
+    const auto = docs.find((c) => c.key === "sys:documentos")!;
+    expect(manual.count).toBe(2);
+    expect(manual.hint).toBeUndefined();
+    expect(auto.count).toBe(1);
+    expect(auto.hint).toBe("automática");
+  });
+
   it("chega ao cartão para a UI o poder realçar", () => {
     const g = groupDriveFiles(
       [{ id: "x", custom_category_id: null, system_category: null }, ...mk(2, "notas")],
