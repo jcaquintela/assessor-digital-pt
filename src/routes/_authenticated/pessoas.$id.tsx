@@ -2,6 +2,7 @@ import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { useMemo, useState } from "react";
+import { relationLabel } from "@/lib/people/category-cards";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
@@ -196,7 +197,7 @@ function PessoaDetail() {
 
       <PageHeader
         title={pessoa.nome}
-        subtitle={pessoa.relacao}
+        subtitle={relationLabel(pessoa.relacao) ?? undefined}
         action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -249,7 +250,7 @@ function PessoaDetail() {
 
       {/* Identidade e contacto, em leitura */}
       <div className="c-muted mb-4 flex flex-wrap items-center gap-3 text-xs">
-        <Badge variant="secondary">{pessoa.relacao}</Badge>
+        <Badge variant="secondary">{relationLabel(pessoa.relacao) ?? "Sem categoria"}</Badge>
         {pessoa.telefone && <span className="c-mono flex items-center gap-1"><Phone className="h-3 w-3" />{pessoa.telefone}</span>}
         {pessoa.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{pessoa.email}</span>}
         {/* Proveniência: quando entrou e por onde. */}
@@ -269,7 +270,7 @@ function PessoaDetail() {
         <CardContent className="grid gap-4 p-4 md:grid-cols-2">
           <div>
             <div className="c-muted text-xs">Quem é</div>
-            <div className="text-sm">{pessoa.relacao}</div>
+            <div className="text-sm">{relationLabel(pessoa.relacao) ?? "Sem categoria"}</div>
           </div>
           <div>
             <div className="c-muted text-xs">O que procura ou está a vender</div>
