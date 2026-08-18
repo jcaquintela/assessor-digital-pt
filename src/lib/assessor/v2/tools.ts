@@ -920,7 +920,7 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
     function: {
       name: "update_property",
       description:
-        "Altera dados de um imóvel já existente (título, morada, tipologia, preço, estado, notas). Execução directa, com recibo do antes/depois. Requer id obtido de search_properties.",
+        "Altera dados de um imóvel já existente (título, morada, tipologia, preço, estado, notas) e permite associar o proprietário (owner_person_id, ou owner_name quando só sabes o nome). Execução directa, com recibo do antes/depois. Requer id obtido de search_properties.",
       parameters: {
         type: "object",
         properties: {
@@ -931,6 +931,8 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
           asking_price: { type: ["number", "null"] },
           status: { type: ["string", "null"] },
           notes: { type: ["string", "null"] },
+          owner_person_id: { type: ["string", "null"] },
+          owner_name: { type: ["string", "null"] },
         },
         required: ["id"],
         additionalProperties: false,
