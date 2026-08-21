@@ -49,6 +49,12 @@ export function ProInsightCard({
       <div className="c-spot-tag mb-2 flex items-center gap-1.5">
         <Sparkles className="h-4 w-4" /> Análise do {assessorName}
       </div>
+      {/* Régua sempre à vista: cada superfície usa limiares diferentes de
+          propósito (Mentor, Imóveis, deteção Pro) e o consultor tem de saber
+          qual está a olhar sem ter de abrir "Ver as contas". */}
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>
+        Régua: parado há mais de {insight.facts.minDias} dias
+      </p>
       <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ink)" }}>{insight.text}</p>
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <Link to={insight.to} className="text-[13px] font-semibold" style={{ color: "var(--ink-soft)" }}>
