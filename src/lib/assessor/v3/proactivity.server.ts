@@ -5,7 +5,7 @@
 import { sanitizeReply } from "../culture/sanitize";
 import { isDealClosed } from "@/lib/deals/stages";
 import { DAILY_BRIEFING_PREFIX } from "../supreme/briefing.server";
-import { isFollowUpClosed } from "@/lib/follow-ups/state";
+import { isFollowUpClosed, isFollowUpOpen } from "@/lib/follow-ups/state";
 import { computePriorities } from "../supreme/priorities.server";
 import { lisbonYmd, ymdDiffDays } from "@/lib/assessor/lisbon-day";
 
