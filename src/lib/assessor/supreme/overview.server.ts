@@ -88,8 +88,8 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox").is("archived_at", null),
     supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, outcome, archived_at, person_id, related_property_id")
       .eq("user_id", userId).gte("due_date", start).lte("due_date", endTomorrow).order("due_time", { ascending: true }),
-    supabase.from("financial_movements").select("id, type, amount, status").eq("user_id", userId).eq("type", "commission"),
-    supabase.from("interactions").select("person_id").eq("user_id", userId).gte("occurred_at", isoDaysAgo(7)),
+    supabase.from("financial_movements").select("id, type, amount, status").eq("user_id", userId).eq("type", "commission").is("archived_at", null),
+    supabase.from("interactions").select("person_id").eq("user_id", userId).is("archived_at", null).gte("occurred_at", isoDaysAgo(7)),
   ]);
 
   const dealRows = ((deals.data as any[]) ?? []).filter(isDealActive);
@@ -160,9 +160,9 @@ export async function computeMentor(
   const days = (iso: string | null) => (iso ? Math.floor((now - new Date(iso).getTime()) / 864e5) : 0);
 
   const [props, deals, people, contacto, leads] = await Promise.all([
-    supabase.from("properties").select("id, status, created_at").eq("user_id", userId),
-    supabase.from("opportunities").select("id, status, stage, stage_changed_at, archived_at").eq("user_id", userId),
-    supabase.from("people").select("id, name, created_at").eq("user_id", userId).limit(200),
+    supabase.from("properties").select("id, status, created_at").eq("user_id", userId).is("archived_at", null),
+    supabase.from("opportunities").select("id, status, stage, stage_changed_at, archived_at").eq("user_id", userId).is("archived_at", null),
+    supabase.from("people").select("id, name, created_at").eq("user_id", userId).is("archived_at", null).limit(200),
     // Fonte única de "contacto real" — partilhada com a Deteção de Oportunidades.
     computeLastContact(supabase, userId),
     // Crescimento: entrada nova no funil nos últimos 7 dias.
