@@ -6,27 +6,29 @@ import {
 } from "./proactivity.server";
 import { makeFakeSupabase } from "@/lib/test-utils/fake-supabase";
 
+// Cada `from()` devolve um builder novo — há chamadas em paralelo (Promise.all).
 function fakeSupabase(fixtures: Record<string, any[]>) {
-  const chain: any = {
-    _table: "",
-    _rows: [] as any[],
-    from(t: string) { this._table = t; this._rows = fixtures[t] ?? []; this._headCount = false; return this; },
-    select(_s: string, opts?: any) { this._headCount = !!(opts?.head && opts?.count === "exact"); return this; },
-    eq(_k: string, _v: any) { return this; },
-    in(_k: string, _v: any) { return this; },
-    not(_k: string, _op: string, _v: any) { return this; },
-    lt(_k: string, _v: any) { return this; },
-    lte(_k: string, _v: any) { return this; },
-    gte(_k: string, _v: any) { return this; },
-    order() { return this; },
-    limit() { return this; },
-    maybeSingle() { return Promise.resolve({ data: this._rows[0] ?? null }); },
-    then(res: any) {
-      if (this._headCount) return res({ count: this._rows.length });
-      return res({ data: this._rows });
+  return {
+    from(t: string) {
+      const rows = fixtures[t] ?? [];
+      let headCount = false;
+      const b: any = {
+        select(_s?: string, opts?: any) { headCount = !!(opts?.head && opts?.count === "exact"); return b; },
+        eq() { return b; },
+        is() { return b; },
+        in() { return b; },
+        not() { return b; },
+        lt() { return b; },
+        lte() { return b; },
+        gte() { return b; },
+        order() { return b; },
+        limit() { return b; },
+        maybeSingle() { return Promise.resolve({ data: rows[0] ?? null }); },
+        then(res: any) { return res(headCount ? { count: rows.length } : { data: rows }); },
+      };
+      return b;
     },
   };
-  return chain;
 }
 
 describe("proactivity — regras", () => {

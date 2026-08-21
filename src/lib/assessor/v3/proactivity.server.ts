@@ -6,6 +6,8 @@ import { sanitizeReply } from "../culture/sanitize";
 import { isDealClosed } from "@/lib/deals/stages";
 import { DAILY_BRIEFING_PREFIX } from "../supreme/briefing.server";
 import { isFollowUpClosed, isFollowUpOpen } from "@/lib/follow-ups/state";
+import { computePriorities } from "../supreme/priorities.server";
+import { lisbonYmd, ymdDiffDays } from "@/lib/assessor/lisbon-day";
 
 /** O seguimento já foi tratado, desmarcado ou arquivado? */
 export async function isFollowUpSettled(supabase: any, followUpId: string): Promise<boolean> {
@@ -215,22 +217,24 @@ export async function generateNudgesForUser(
     }
   }
 
-  // 2) Follow-ups vencidos > 2 dias e ainda abertos.
-  const { data: overdueRaw } = await supabase
-    .from("follow_ups")
-    .select("id, title, due_date, type, due_time, status, outcome, archived_at")
-    .eq("user_id", userId)
-    .lt("due_date", daysAgo(2))
-    .limit(30);
-  const overdue = ((overdueRaw as any[]) ?? []).filter(isFollowUpOpen).slice(0, 3);
+  // 2) Follow-ups vencidos > 2 dias — MESMA fonte que /hoje e o briefing.
+  // Antes havia uma query própria aqui, que ignorava os filtros canónicos
+  // (eventos importados do calendário, reuniões internas, lazer, compromissos
+  // já terminados) e enchia a conversa de nudges por eventos do Outlook.
+  const prioridades = await computePriorities(supabase, userId, { limit: 20 });
+  const hojeYmd = lisbonYmd(new Date());
+  const overdue = prioridades
+    .filter((p) => p.subject_type === "follow_up")
+    .filter((p) => p.due_at != null && ymdDiffDays(hojeYmd, lisbonYmd(p.due_at)) > 2)
+    .slice(0, 3);
   for (const f of overdue) {
-    const dedupe = `followup_overdue:${f.id}:${todayKey()}`;
+    const dedupe = `followup_overdue:${f.subject_id}:${todayKey()}`;
     drafts.push({
       kind: "followup_overdue",
       subject_type: "follow_up",
-      subject_id: f.id,
-      reason: `Seguimento "${f.title}" já passou da data.`,
-      suggested_reply: sanitizeReply(`O seguimento "${f.title}" ficou para trás. Fechamos ou remarcamos?`),
+      subject_id: f.subject_id,
+      reason: `Seguimento "${f.action}" já passou da data.`,
+      suggested_reply: sanitizeReply(`O seguimento "${f.action}" ficou para trás. Fechamos ou remarcamos?`),
       dedupe_key: dedupe,
     });
   }
