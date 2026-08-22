@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { UploadedFilesList } from "@/components/uploaded-files-list";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { matchesMiscTab, type MiscTab } from "@/lib/misc/archived";
 import {
   isTeamSuggestion,
   teamStateLabel,
