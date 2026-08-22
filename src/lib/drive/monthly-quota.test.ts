@@ -16,6 +16,7 @@ function fakeSupabase(rows: { created_at: string }[]) {
       const api: any = {
         select: () => api,
         eq: () => api,
+        is: () => api,
         gte: (_col: string, v: string) => {
           from = v;
           return api;
@@ -85,7 +86,7 @@ describe("quota mensal de ficheiros do Drive", () => {
   });
 
   it("ficheiros arquivados ou expirados continuam a contar no mês em que entraram", async () => {
-    // A contagem não filtra deleted_at: o custo já foi feito.
+    // Arquivar não devolve quota; só a reciclagem (deleted_at) deixa de contar.
     const now = new Date("2026-08-15T10:00:00Z");
     const supabase = fakeSupabase(monthRows(40, "2026-08-02T10:00:00Z"));
     expect(await filesThisMonth(supabase, "u1", now)).toBe(40);

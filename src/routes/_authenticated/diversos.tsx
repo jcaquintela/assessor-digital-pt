@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { UploadedFilesList } from "@/components/uploaded-files-list";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { matchesMiscTab, type MiscTab } from "@/lib/misc/archived";
 import {
   isTeamSuggestion,
   teamStateLabel,
@@ -140,12 +141,8 @@ function DiversosPage() {
 
   const filtered = useMemo(() => {
     const rows = items.data ?? [];
-    const byTab = rows.filter((r) => {
-      if (tab === "tratar") return r.status === "inbox";
-      if (tab === "classificados") return r.status === "classified" || r.status === "reviewed";
-      if (tab === "arquivados") return r.status === "archived";
-      return r.status !== "archived";
-    });
+    const byTab = rows.filter((r) => matchesMiscTab(r, tab as MiscTab));
+
     const needle = foldText(q);
     if (!needle) return byTab;
     return byTab.filter(
