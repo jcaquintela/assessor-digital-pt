@@ -9,7 +9,12 @@ import {
   withinMonthlyQuota,
 } from "./monthly-quota";
 
-/** Ficheiros criados neste mês de calendário (incluindo arquivados). */
+/**
+ * Ficheiros criados neste mês de calendário que contam para a quota.
+ * Critério único (ver `./archived.ts`): conta arquivados, não conta o que foi
+ * para a reciclagem. Assim a quota bate certo com a grelha: quota = ativos +
+ * arquivados do mês.
+ */
 export async function filesThisMonth(
   supabase: any,
   userId: string,
@@ -19,9 +24,11 @@ export async function filesThisMonth(
     .from("uploaded_files")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .gte("created_at", monthStartISO(now));
   return Number(count ?? 0);
 }
+
 
 /** Pode processar mais um ficheiro este mês? */
 export async function canProcessAnotherFile(
