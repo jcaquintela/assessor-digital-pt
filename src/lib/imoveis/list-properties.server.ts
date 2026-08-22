@@ -3,10 +3,7 @@
 // um espelho para leitura humana. Toda a leitura de listas filtra por
 // `archived_at is null`, tal como o resumo de /hoje.
 
-export interface PropertyListRow {
-  id: string;
-  [k: string]: unknown;
-}
+export type PropertyListRow = Record<string, any>;
 
 const COLUMNS =
   "id, title, typology, property_type, city, location, address, source_channel, asking_price, status, owner_person_id, category_id, updated_at";
