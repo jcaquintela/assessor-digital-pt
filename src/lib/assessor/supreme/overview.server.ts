@@ -85,7 +85,9 @@ export async function computeOverview(supabase: any, userId: string): Promise<Ov
     supabase.from("opportunities").select("id, status, stage, value, archived_at").eq("user_id", userId).is("archived_at", null),
     supabase.from("properties").select("id, status").eq("user_id", userId).is("archived_at", null),
     supabase.from("people").select("id").eq("user_id", userId).is("archived_at", null),
-    supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox").is("archived_at", null),
+    // Diversos: a fonte única de verdade é `status` (archived_at nunca é
+    // escrito nesta tabela), por isso não se filtra por `archived_at`.
+    supabase.from("miscellaneous_items").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "inbox"),
     supabase.from("follow_ups").select("id, title, type, due_date, due_time, status, outcome, archived_at, person_id, related_property_id")
       .eq("user_id", userId).gte("due_date", start).lte("due_date", endTomorrow).order("due_time", { ascending: true }),
     supabase.from("financial_movements").select("id, type, amount, status").eq("user_id", userId).eq("type", "commission").is("archived_at", null),
