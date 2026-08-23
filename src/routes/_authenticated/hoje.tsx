@@ -370,6 +370,16 @@ function HojePage() {
   // Itens do briefing anterior que entretanto foram cancelados/arquivados.
   const settled: Settled[] = ((supreme.data as any)?.settled ?? []) as Settled[];
 
+  // Nível 2: só se procura a "próxima melhor ação" quando nada arde.
+  const nbaFn = useServerFn(getNextBestAction);
+  const nba = useQuery({
+    queryKey: ["hoje-next-best-action"],
+    queryFn: () => nbaFn({}),
+    enabled: priorities.length === 0,
+    staleTime: 5 * 60_000,
+  });
+  const sugestao = priorities.length === 0 ? nba.data?.suggestion ?? null : null;
+
   const localAwaiting: Awaiting[] = useMemo(
     () => atrasados
       // Mesma regra do servidor: só compromissos de negócio pedem resultado.
