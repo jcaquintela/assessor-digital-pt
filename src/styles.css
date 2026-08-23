@@ -768,3 +768,156 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   font-size: 24px; font-weight: 600; line-height: 1; color: var(--ink);
 }
 .consult-root .c-groupcard .c-group-label { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* =====================================================================
+ * "Comando escuro" — linguagem visual do ecrã Hoje.
+ * Azul-marinho para autoridade, dourado como assinatura contida,
+ * cor semântica só quando indica consequência (urgência, risco,
+ * oportunidade, espera). Ações primeiro, indicadores por último.
+ * ===================================================================== */
+.consult-root {
+  --navy: #0E1B33;
+  --navy-soft: #1B2A47;
+  --gold: #D4AF37;
+  --gold-deep: #B8962D;
+}
+
+.consult-root .c-focus-title {
+  font-family: "Inter", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 26px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15;
+  color: var(--navy);
+}
+@media (min-width: 900px) { .consult-root .c-focus-title { font-size: 32px; } }
+.consult-root .c-focus-sub { font-size: 13.5px; color: var(--ink-soft); margin-top: 6px; }
+
+/* Título de secção discreto: as secções não competem com as ações. */
+.consult-root .c-minihead {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted); margin-bottom: 10px;
+}
+
+/* ---- Cartão de ação: motivo, consequência, decisão ---- */
+.consult-root .c-act {
+  background: var(--c-card); border: 1px solid var(--line);
+  border-left: 3px solid var(--line); border-radius: 14px; padding: 18px;
+  box-shadow: var(--c-shadow); transition: transform .12s, box-shadow .12s, border-color .12s;
+}
+.consult-root .c-act:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(14,27,51,.06), 0 10px 26px rgba(14,27,51,.08); }
+.consult-root .c-act.urgente { border-left-color: var(--coral); }
+.consult-root .c-act.risco { border-left-color: var(--amber); }
+.consult-root .c-act.oportunidade { border-left-color: var(--sage); }
+.consult-root .c-act.espera { border-left-color: var(--blue); }
+
+/* Primeira ação do dia: peso máximo, marinho sólido com assinatura dourada. */
+.consult-root .c-act.principal {
+  background: var(--navy); color: #F4F6FA;
+  border-color: transparent; border-left: 4px solid var(--gold);
+  box-shadow: 0 10px 30px rgba(14,27,51,.22);
+}
+.consult-root .c-act.principal .c-act-title { color: #fff; }
+.consult-root .c-act.principal .c-act-why { color: rgba(244,246,250,.82); }
+.consult-root .c-act.principal .c-act-meta { color: rgba(244,246,250,.55); }
+.consult-root .c-act.principal .c-act-kicker { color: var(--gold); }
+
+.consult-root .c-act-kicker {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em;
+}
+.consult-root .c-act.urgente .c-act-kicker { color: var(--coral); }
+.consult-root .c-act.risco .c-act-kicker { color: var(--amber); }
+.consult-root .c-act.oportunidade .c-act-kicker { color: var(--sage); }
+.consult-root .c-act.espera .c-act-kicker { color: var(--blue); }
+
+.consult-root .c-act-title {
+  margin-top: 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.015em;
+  line-height: 1.3; color: var(--navy);
+}
+.consult-root .c-act-why { margin-top: 6px; font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); }
+.consult-root .c-act-meta { margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+.consult-root .c-act-actions { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+.consult-root .c-act-primary {
+  background: var(--navy); color: #fff; border: 1px solid transparent; border-radius: 9px;
+  padding: 8px 15px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.consult-root .c-act-primary:hover { background: var(--navy-soft); }
+.consult-root .c-act.principal .c-act-primary { background: var(--gold); color: #241703; }
+.consult-root .c-act.principal .c-act-primary:hover { background: var(--gold-deep); color: #1B1204; }
+.consult-root .c-act-second {
+  background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 9px;
+  padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.consult-root .c-act-second:hover { background: var(--paper-2); }
+.consult-root .c-act.principal .c-act-second { background: rgba(255,255,255,.1); border-color: transparent; color: #fff; }
+.consult-root .c-act.principal .c-act-second:hover { background: rgba(255,255,255,.18); }
+.consult-root .c-act-quiet {
+  background: transparent; border: 0; color: var(--muted); border-radius: 9px;
+  padding: 8px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.consult-root .c-act-quiet:hover { color: var(--ink); }
+.consult-root .c-act.principal .c-act-quiet { color: rgba(244,246,250,.6); }
+.consult-root .c-act.principal .c-act-quiet:hover { color: #fff; }
+
+/* ---- Linhas sóbrias: compromissos e itens à espera de terceiros ---- */
+.consult-root .c-row {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left;
+  background: var(--c-card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+  transition: border-color .12s;
+}
+.consult-root .c-row:hover { border-color: #D3CCB8; }
+.consult-root .c-row-time {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums;
+  font-size: 12px; font-weight: 700; color: var(--navy);
+  background: #EEF1F6; border-radius: 7px; padding: 5px 8px; min-width: 52px; text-align: center;
+}
+.consult-root .c-row-title { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.consult-root .c-row-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* ---- Faixa de indicadores: informação, não decisão. Fica no fim. ---- */
+.consult-root .c-strip {
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 16px; padding: 18px;
+}
+.consult-root .c-strip .c-sumgrid { gap: 10px; }
+.consult-root .c-strip .c-sumcard,
+.consult-root .c-strip .c-sumcard.negocios,
+.consult-root .c-strip .c-sumcard.imoveis,
+.consult-root .c-strip .c-sumcard.pessoas,
+.consult-root .c-strip .c-sumcard.diversos,
+.consult-root .c-strip .c-sumcard.neutro {
+  background: transparent; border: 0; box-shadow: none; padding: 4px 10px 4px 0; color: var(--muted);
+}
+.consult-root .c-strip .c-sumcard .c-sum-stat,
+.consult-root .c-strip .c-sumcard.negocios .c-sum-stat,
+.consult-root .c-strip .c-sumcard.imoveis .c-sum-stat,
+.consult-root .c-strip .c-sumcard.pessoas .c-sum-stat,
+.consult-root .c-strip .c-sumcard.diversos .c-sum-stat,
+.consult-root .c-strip .c-sumcard.neutro .c-sum-stat {
+  font-family: "Inter", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 22px !important; font-weight: 700; letter-spacing: -0.02em; color: var(--navy);
+}
+.consult-root .c-strip .c-sumcard svg { display: none; }
+.consult-root .c-strip .c-sumcard .c-sum-label { margin-top: 4px; font-size: 12px; color: var(--ink-soft); }
+.consult-root .c-strip .c-sumcard .c-sum-meta { font-size: 11px; color: var(--muted); }
+
+/* ---- Campo permanente para falar com o Afonso ---- */
+.consult-root .c-askbar {
+  position: sticky; bottom: 12px; z-index: 20; margin-top: 24px;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--navy); color: rgba(244,246,250,.7);
+  border-radius: 999px; padding: 12px 12px 12px 20px;
+  box-shadow: 0 10px 30px rgba(14,27,51,.24);
+  font-size: 13.5px;
+}
+.consult-root .c-askbar .c-askbar-go {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  background: var(--gold); color: #241703; border-radius: 999px;
+  padding: 8px 15px; font-size: 12.5px; font-weight: 700;
+}
+.consult-root .c-strip .c-secthead-title {
+  font-family: "Inter", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted);
+}
