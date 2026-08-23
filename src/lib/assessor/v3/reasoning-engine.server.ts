@@ -64,7 +64,12 @@ import {
   recurrenceQuestion,
   remainingRequest,
   remainderNeedsWork,
+  ambiguousCompletionQuestion,
+  claimsCompletion,
+  unverifiedCompletionReply,
 } from "./completion-intent";
+import { anchorFromBriefing, isEllipticCompletion } from "./briefing-anchor";
+
 import {
   isDiscardAudioRequest,
   UNDO_KEEP_WINDOW_MS,
@@ -309,13 +314,21 @@ async function runReasoningEngineInner(
       const lines: string[] = [];
       const handled: typeof done = [];
       let recurringAsk: { id: string; title: string } | null = null;
+      let ambiguousAsk: string | null = null;
       for (const instruction of done) {
         try {
           const res = await TOOL_REGISTRY.complete_follow_up!(ctx, {
             subject_hint: instruction.subjectHint,
           });
           const d = (res.data ?? {}) as any;
-          if (!res.ok || d?.ambiguous) continue; // ambíguo segue o caminho normal
+          // Ambíguo NÃO pode seguir em silêncio: o caminho do modelo já
+          // confirmou conclusões que nunca chegaram a ser escritas (20/08).
+          if (res.ok && d?.ambiguous) {
+            handled.push(instruction);
+            if (!ambiguousAsk) ambiguousAsk = ambiguousCompletionQuestion(d.candidates ?? []);
+            continue;
+          }
+          if (!res.ok) continue;
           handled.push(instruction);
           lines.push(formatCompletionReply(d.items ?? [], instruction.subjectHint));
           if (d?.recurring?.title && !recurringAsk) {
@@ -324,6 +337,7 @@ async function runReasoningEngineInner(
           }
         } catch { /* noop */ }
       }
+      if (ambiguousAsk) return { reply: [lines.join(" "), ambiguousAsk].filter(Boolean).join(" ").trim() };
       if (handled.length) {
         handledAny = true;
         // A pergunta fica em memória na sua ranhura: o "sim"/"não" que vier a
@@ -348,6 +362,36 @@ async function runReasoningEngineInner(
         return { reply: lines.join(" ") };
       }
     }
+
+    // Confirmação elíptica ancorada ao briefing: "Já está concluída", "Podes
+    // dar como concluída" logo a seguir a um "Bom dia" com UM único item.
+    if (!handledAny && isEllipticCompletion(trimmed)) {
+      try {
+        const { data: lastMsgs } = await supabase
+          .from("assessor_messages")
+          .select("content, message_type, created_at")
+          .eq("user_id", userId).eq("channel", channel).eq("role", "assistant")
+          .is("archived_at", null)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        const anchor = anchorFromBriefing(((lastMsgs as any[]) ?? [])[0] ?? null);
+        if (anchor) {
+          const res = await TOOL_REGISTRY.complete_follow_up!(ctx, {
+            subject_hint: anchor.subjectHint,
+          });
+          const d = (res.data ?? {}) as any;
+          if (res.ok && d?.ambiguous) {
+            return { reply: ambiguousCompletionQuestion(d.candidates ?? []) };
+          }
+          if (res.ok && (d?.items ?? []).length) {
+            const out = [formatCompletionReply(d.items)];
+            if (d?.recurring?.title) out.push(recurrenceQuestion(String(d.recurring.title)));
+            return { reply: out.join(" ") };
+          }
+        }
+      } catch { /* segue o caminho normal */ }
+    }
+
 
     // Rede de segurança para a confirmação escrita que não nomeia assunto
     // ("já tratei disso", "fica sem efeito", "não atendeu"): fecha o
@@ -2144,6 +2188,17 @@ async function runReasoningEngineInner(
       } catch { /* noop */ }
     }
   }
+
+  // Falsa confirmação positiva (caso real 20/08): o modelo escreveu "Dei o
+  // lembrete da marcação das unhas como concluído" sem nenhuma escrita na
+  // base de dados. Confirmar conclusão exige um fecho verificado.
+  if (claimsCompletion(reply)) {
+    const wrote = toolResults.some(
+      (t) => t.name === "complete_follow_up" && t.ok && (((t.data as any)?.items ?? []).length > 0),
+    );
+    if (!wrote) reply = unverifiedCompletionReply();
+  }
+
 
   // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
   // Financeiro: duplicado do mesmo dia — pergunta antes de assumir novo registo.

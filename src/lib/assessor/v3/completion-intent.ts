@@ -45,7 +45,13 @@ const HINT_STOP = new Set([
   "nos", "nas", "ao", "aos", "em", "meu", "minha", "e", "isso", "isto",
   "faz", "semana", "dias", "dia", "ontem", "hoje", "atualiza", "actualiza",
   "favor", "por favor", "tudo",
+  // Cola gramatical de frases elípticas: "já te tinha avisado", "podes dar
+  // como concluída". Sem isto, o assunto extraído era "tinha avisado".
+  "te", "tinha", "tinhas", "avisado", "avisada", "avisei", "disse", "dito",
+  "podes", "pode", "podia", "dar", "das-", "como", "dei", "deste", "disso",
+  "mesmo", "tambem", "entao", "agora", "aquilo", "essa", "esse", "lembrete",
 ]);
+
 
 export interface CompletionInstruction {
   /** frase original da instrução. */
@@ -141,4 +147,39 @@ export function formatCompletionReply(
 /** Pergunta sobre recorrência: fechar hoje não decide o futuro. */
 export function recurrenceQuestion(routineTitle: string): string {
   return `Isto repete-se automaticamente (${displayTitle(routineTitle)}) — queres que continue a repetir?`;
+}
+
+/**
+ * Dois seguimentos com o mesmo nome não se fecham à sorte: pergunta-se qual.
+ * (Caso real: "Marcação das unhas" existia duas vezes, 10h e 15h.)
+ */
+export function ambiguousCompletionQuestion(
+  candidates: Array<{ title?: string | null; due_time?: string | null }>,
+): string {
+  const list = candidates
+    .slice(0, 5)
+    .map((c, n) => {
+      const hora = String(c.due_time ?? "").trim();
+      return `${n + 1}) ${displayTitle(c.title)}${hora ? ` (${hora})` : ""}`;
+    })
+    .join(" ");
+  return `Tenho mais do que um por fechar: ${list} — qual deles dou como concluído?`;
+}
+
+// "Dei o lembrete X como concluído", "Marquei X como concluído", "Fica
+// concluído": frases que afirmam uma escrita.
+const CLAIMS_COMPLETION_RE =
+  /\b(dei|dou|marquei|marco|coloquei|pus|fica|ficou|deixei)\b[^.?!]{0,80}\bcomo\s+(conclu[íi]d|tratad|fechad|resolvid)/i;
+
+/** A frase afirma que um seguimento ficou concluído? */
+export function claimsCompletion(text: string | null | undefined): boolean {
+  return CLAIMS_COMPLETION_RE.test(String(text ?? ""));
+}
+
+/**
+ * Nunca confirmar sem escrita: quando a extração falha, pede-se
+ * esclarecimento em vez de inventar sucesso.
+ */
+export function unverifiedCompletionReply(): string {
+  return "Não fechei nada porque não percebi ao certo qual é o item — dizes-me qual?";
 }
