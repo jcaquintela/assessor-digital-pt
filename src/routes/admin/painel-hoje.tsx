@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getHojeUsage } from "@/lib/admin/hoje-usage.functions";
-import { surfaceLabel } from "@/lib/admin/hoje-usage.server";
+import { surfaceLabel } from "@/lib/admin/hoje-usage-labels";
 import { Empty, Grid, MetricCard, PageTitle, SectionTitle } from "@/components/admin/ui";
 import { StackTable, Td, Tr } from "@/components/admin/stack-table";
 import { Button } from "@/components/ui/button";

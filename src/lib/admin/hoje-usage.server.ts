@@ -13,17 +13,6 @@ export interface HojeUsageReport {
   daily: { day: string; views: number; clicks: number }[];
 }
 
-const SURFACE_LABELS: Record<string, string> = {
-  cabecalho: "Cabeçalho",
-  barra: "Barra permanente",
-  fab: "Botão flutuante (mobile)",
-  menu_prioridade: "Menu de uma prioridade",
-};
-
-export function surfaceLabel(key: string): string {
-  return SURFACE_LABELS[key] ?? key;
-}
-
 export async function hojeUsage(supabaseAdmin: any, days: number): Promise<HojeUsageReport> {
   const since = new Date(Date.now() - days * 864e5).toISOString();
   const { data, error } = await supabaseAdmin
