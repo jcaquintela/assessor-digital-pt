@@ -29,6 +29,7 @@ import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminSubscricoesRouteImport } from './routes/admin/subscricoes'
 import { Route as AdminSimuladorBriefingRouteImport } from './routes/admin/simulador-briefing'
 import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
+import { Route as AdminRotasRouteImport } from './routes/admin/rotas'
 import { Route as AdminRastreabilidadeOrigemRouteImport } from './routes/admin/rastreabilidade-origem'
 import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
 import { Route as AdminPlanosRouteImport } from './routes/admin/planos'
@@ -213,6 +214,11 @@ const AdminSimuladorBriefingRoute = AdminSimuladorBriefingRouteImport.update({
 const AdminSegurancaRoute = AdminSegurancaRouteImport.update({
   id: '/seguranca',
   path: '/seguranca',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminRotasRoute = AdminRotasRouteImport.update({
+  id: '/rotas',
+  path: '/rotas',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminRastreabilidadeOrigemRoute =
@@ -732,6 +738,7 @@ export interface FileRoutesByFullPath {
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/rastreabilidade-origem': typeof AdminRastreabilidadeOrigemRoute
+  '/admin/rotas': typeof AdminRotasRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/simulador-briefing': typeof AdminSimuladorBriefingRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
@@ -838,6 +845,7 @@ export interface FileRoutesByTo {
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/rastreabilidade-origem': typeof AdminRastreabilidadeOrigemRoute
+  '/admin/rotas': typeof AdminRotasRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/simulador-briefing': typeof AdminSimuladorBriefingRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
@@ -947,6 +955,7 @@ export interface FileRoutesById {
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/rastreabilidade-origem': typeof AdminRastreabilidadeOrigemRoute
+  '/admin/rotas': typeof AdminRotasRoute
   '/admin/seguranca': typeof AdminSegurancaRoute
   '/admin/simulador-briefing': typeof AdminSimuladorBriefingRoute
   '/admin/subscricoes': typeof AdminSubscricoesRoute
@@ -1056,6 +1065,7 @@ export interface FileRouteTypes {
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/rastreabilidade-origem'
+    | '/admin/rotas'
     | '/admin/seguranca'
     | '/admin/simulador-briefing'
     | '/admin/subscricoes'
@@ -1162,6 +1172,7 @@ export interface FileRouteTypes {
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/rastreabilidade-origem'
+    | '/admin/rotas'
     | '/admin/seguranca'
     | '/admin/simulador-briefing'
     | '/admin/subscricoes'
@@ -1270,6 +1281,7 @@ export interface FileRouteTypes {
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/rastreabilidade-origem'
+    | '/admin/rotas'
     | '/admin/seguranca'
     | '/admin/simulador-briefing'
     | '/admin/subscricoes'
@@ -1509,6 +1521,13 @@ declare module '@tanstack/react-router' {
       path: '/seguranca'
       fullPath: '/admin/seguranca'
       preLoaderRoute: typeof AdminSegurancaRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/rotas': {
+      id: '/admin/rotas'
+      path: '/rotas'
+      fullPath: '/admin/rotas'
+      preLoaderRoute: typeof AdminRotasRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/rastreabilidade-origem': {
@@ -2292,6 +2311,7 @@ interface AdminRouteRouteChildren {
   AdminPlanosRoute: typeof AdminPlanosRoute
   AdminQualidadeRoute: typeof AdminQualidadeRoute
   AdminRastreabilidadeOrigemRoute: typeof AdminRastreabilidadeOrigemRoute
+  AdminRotasRoute: typeof AdminRotasRoute
   AdminSegurancaRoute: typeof AdminSegurancaRoute
   AdminSimuladorBriefingRoute: typeof AdminSimuladorBriefingRoute
   AdminSubscricoesRoute: typeof AdminSubscricoesRoute
@@ -2328,6 +2348,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminPlanosRoute: AdminPlanosRoute,
   AdminQualidadeRoute: AdminQualidadeRoute,
   AdminRastreabilidadeOrigemRoute: AdminRastreabilidadeOrigemRoute,
+  AdminRotasRoute: AdminRotasRoute,
   AdminSegurancaRoute: AdminSegurancaRoute,
   AdminSimuladorBriefingRoute: AdminSimuladorBriefingRoute,
   AdminSubscricoesRoute: AdminSubscricoesRoute,
