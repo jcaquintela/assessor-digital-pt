@@ -1,6 +1,6 @@
 import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { MobileFab } from "@/components/mobile-fab";
 import { UI_EVENTS, trackCtaAfonso, trackUi } from "@/lib/telemetry/ui-events";
@@ -108,6 +108,11 @@ type Awaiting = {
 };
 
 function HojePage() {
+  // Telemetria: uma abertura por carregamento da página.
+  useEffect(() => {
+    trackUi(UI_EVENTS.hojeVisto, {}, { once: "hoje-visto" });
+  }, []);
+
   const search = Route.useSearch();
   const navigate = useNavigate();
   const filtroAtivo = search.filtro === "imoveis-por-confirmar";
