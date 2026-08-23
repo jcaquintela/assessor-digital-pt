@@ -472,38 +472,131 @@ function HojePage() {
   );
   const awaitingToShow = filtroAtivo ? awaitingImoveis : awaiting;
 
-  // Uma só observação em destaque — a mais pressionante do dia.
-  const atencao: Priority | null = !filtroAtivo && priorities.length ? priorities[0] : null;
+  // Tom operacional de cada ação: a cor só existe quando indica consequência.
+  const tomDe = (p: Priority): { tone: string; label: string } => {
+    const atrasado = !!p.due_at && new Date(p.due_at) < now;
+    if (atrasado) return { tone: "urgente", label: "Urgente · em atraso" };
+    if (p.subject_type === "opportunity") return { tone: "oportunidade", label: "Oportunidade" };
+    if (p.origin === "calendario" || p.reasons?.some((r) => r.toLowerCase().includes("compromisso"))) {
+      return { tone: "espera", label: "Compromisso de hoje" };
+    }
+    return { tone: "risco", label: "Merece atenção" };
+  };
+
+  const cartaoAcao = (p: Priority, principal: boolean) => {
+    const tom = tomDe(p);
+    return (
+      <article key={`${p.subject_type}:${p.subject_id}`} className={`c-act ${tom.tone}${principal ? " principal" : ""}`}>
+        <span className="c-act-kicker">
+          <AlertTriangle className="h-3.5 w-3.5" /> {tom.label}
+        </span>
+        <h3 className="c-act-title">{assuntoDe(p)}</h3>
+        <p className="c-act-why">{fraseComAcao(p, explainPriority(p))}</p>
+        <div className="c-act-meta">
+          {[
+            p.origin_label ?? (p.subject_type === "opportunity" ? "Negócio em curso" : "Seguimento"),
+            p.entity_label,
+            p.due_at ? formatData(p.due_at) : null,
+            p.state_label ? `Estado: ${p.state_label}` : null,
+          ].filter(Boolean).join(" · ")}
+        </div>
+        <div className="c-act-actions">
+          {p.subject_type === "opportunity" ? (
+            <Link className="c-act-primary" to="/negocios/$id" params={{ id: p.subject_id }}>
+              <ArrowRight className="h-3.5 w-3.5" /> Tratar agora
+            </Link>
+          ) : p.subject_type === "property" ? (
+            <Link className="c-act-primary" to="/imoveis/$id" params={{ id: p.subject_id }}>
+              <ArrowRight className="h-3.5 w-3.5" /> Tratar agora
+            </Link>
+          ) : (
+            <Link className="c-act-primary" to="/seguimentos/$id" params={{ id: p.subject_id }}>
+              <ArrowRight className="h-3.5 w-3.5" /> Tratar agora
+            </Link>
+          )}
+          <button type="button" className="c-act-second" onClick={() => savePriorityDone(p)}>
+            <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
+          </button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="c-act-second">Adiar</button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-40 p-1">
+              <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "1h")}>+1 hora</button>
+              <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "amanha")}>Amanhã</button>
+              <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "semana")}>Próxima semana</button>
+            </PopoverContent>
+          </Popover>
+          {p.deal_id && p.deal_label ? (
+            <Link
+              className="c-act-quiet"
+              to="/negocios/$id"
+              params={{ id: p.deal_id }}
+              search={p.subject_type === "follow_up" ? { destaque: `seguimento:${p.subject_id}` } : {}}
+            >
+              <Briefcase className="h-3.5 w-3.5" /> {p.deal_label}
+            </Link>
+          ) : (
+            <button type="button" className="c-act-quiet" onClick={() => openPriority(p)}>Abrir contexto</button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="c-act-quiet ml-auto" aria-label="Mais ações">
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem asChild>
+                <Link to="/assessor">
+                  <MessageSquare className="mr-2 h-3.5 w-3.5" /> Falar com {assessorName}
+                </Link>
+              </DropdownMenuItem>
+              {p.subject_type === "follow_up" && (
+                <DropdownMenuItem onSelect={() => dismiss.mutate({ id: p.subject_id })}>
+                  Não é prioridade
+                </DropdownMenuItem>
+              )}
+              {p.subject_type === "follow_up" && (
+                <DropdownMenuItem className="text-destructive" onSelect={() => void deletePriority(p)}>
+                  <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </article>
+    );
+  };
 
   return (
     <AppShell>
-      {/* A. Cabeçalho */}
-      <header className="mb-6 space-y-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      {/* A. A pergunta que abre o dia — ações antes de indicadores. */}
+      <header className="mb-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
-            <h1 className="c-serif text-[26px] font-medium md:text-[34px]">
-              {greeting(now)}{firstName ? `, ${firstName}` : ""}.
-            </h1>
-            <p className="c-soft mt-1 text-sm">
-              Hoje tens <strong style={{ color: "var(--ink)" }}>{prioridadesCount}</strong> prioridade{prioridadesCount === 1 ? "" : "s"} e{" "}
-              <strong style={{ color: "var(--ink)" }}>{compromissosCount}</strong> compromisso{compromissosCount === 1 ? "" : "s"}.
-              {" "}
+            <h1 className="c-focus-title">O que precisa da tua atenção?</h1>
+            <p className="c-focus-sub">
+              {greeting(now)}{firstName ? `, ${firstName}` : ""}. {prioridadesCount === 0
+                ? "Nada urgente neste momento."
+                : `${prioridadesCount} ação${prioridadesCount === 1 ? "" : "ões"} por decidir`}
+              {compromissosCount > 0 ? ` · ${compromissosCount} compromisso${compromissosCount === 1 ? "" : "s"} hoje` : ""}
+              {" · "}
               <span className="c-mono c-muted text-xs">
                 {new Intl.DateTimeFormat("pt-PT", { weekday: "long", day: "2-digit", month: "long" }).format(now)}
               </span>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <PaymentPortalButton variant="ghost" />
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Link to="/assessor" className="c-cta hidden md:inline-flex">
               <MessageSquare className="h-4 w-4" /> Falar com {assessorName}
             </Link>
+            <PaymentPortalButton variant="ghost" />
           </div>
         </div>
       </header>
 
       {/* Filtro rápido: ações por confirmar ligadas a imóveis. */}
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-5 flex items-center gap-2">
         <button
           type="button"
           onClick={() => setFiltro(!filtroAtivo)}
@@ -525,53 +618,120 @@ function HojePage() {
         )}
       </div>
 
-      {/* A-bis. "Isto merece atenção": UMA observação por dia, nunca uma lista. */}
-      {!filtroAtivo && atencao && (
-        <section className="c-spotlight mb-4">
-          <AssuntoCard
-            destaque
-            tag={<><AlertTriangle className="h-4 w-4" /> Isto merece atenção</>}
-            titulo={assuntoDe(atencao)}
-            frase={fraseComAcao(atencao, explainPriority(atencao))}
-            actions={<>
-            {atencao.subject_type === "follow_up" ? (
-              <Link className="c-cta" to="/seguimentos/$id" params={{ id: atencao.subject_id }}>
-                <ArrowRight className="h-3.5 w-3.5" /> Tratar
-              </Link>
-            ) : atencao.subject_type === "opportunity" ? (
-              <Link className="c-cta" to="/negocios/$id" params={{ id: atencao.subject_id }}>
-                <ArrowRight className="h-3.5 w-3.5" /> Tratar
-              </Link>
-            ) : (
-              <Link className="c-cta" to="/imoveis/$id" params={{ id: atencao.subject_id }}>
-                <ArrowRight className="h-3.5 w-3.5" /> Tratar
-              </Link>
-            )}
-            {atencao.deal_id ? (
-              <Link
-                className="c-btn"
-                to="/negocios/$id"
-                params={{ id: atencao.deal_id }}
-                search={atencao.subject_type === "follow_up" ? { destaque: `seguimento:${atencao.subject_id}` } : {}}
-              >
-                <Briefcase className="h-3.5 w-3.5" /> Ver negócio
-              </Link>
-            ) : null}
-            </>}
-          />
+      {/* B. As decisões do dia, por ordem de impacto. */}
+      {!filtroAtivo && (
+        <section className="mb-8 space-y-3">
+          {priorities.length === 0 ? (
+            <div className="c-empty">Nada urgente neste momento. O {assessorName} avisa-te quando algo mudar.</div>
+          ) : (
+            priorities.map((p, i) => cartaoAcao(p, i === 0))
+          )}
+          {settled.length > 0 && (
+            <div className="pt-1">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="c-muted text-xs">Já não se aplicam (estavam no briefing anterior):</p>
+                <Link to="/briefing/detalhes" className="c-btn-ghost shrink-0 text-xs">Ver detalhes</Link>
+              </div>
+              <div className="space-y-1.5">
+                {settled.map((s) => (
+                  <Link
+                    key={s.subject_id}
+                    to="/briefing/detalhes"
+                    hash={s.subject_id}
+                    className="flex items-start gap-2 text-xs text-muted-foreground hover:opacity-80"
+                  >
+                    <span className="c-badge shrink-0">{s.state_label}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="line-through">{s.action}</span>
+                      <span className="block">
+                        {[s.origin_label, s.due_at ? formatData(s.due_at) : null].filter(Boolean).join(" · ")}
+                      </span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
-      {/* Oportunidades detetadas — resumo diário agregado, com ação em cada alerta. */}
+      {/* C. Compromissos seguintes e itens à espera de terceiros. */}
+      <div className={filtroAtivo ? "space-y-8" : "mb-8 grid gap-8 lg:grid-cols-2"}>
+        {!filtroAtivo && (
+          <section>
+            <div className="c-minihead">Próximos compromissos</div>
+            <div className="space-y-2">
+              {eventosHoje.length === 0 && (
+                <div className="space-y-1">
+                  <p className="c-muted text-sm">{agenda.emptyLabel}</p>
+                  {tomorrowLabel(agenda.tomorrow) && (
+                    <p className="text-sm" style={{ color: "var(--ink)" }}>{tomorrowLabel(agenda.tomorrow)}</p>
+                  )}
+                </div>
+              )}
+              {eventosHoje.map((e) => (
+                <button key={e.id} type="button" onClick={() => openEvent(e.id)} className="c-row">
+                  <span className="c-row-time">{e.time ?? "—"}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="c-row-title block truncate">{e.title}</span>
+                    <span className="c-row-meta block">
+                      {[nomePessoa(e.personId ?? undefined), tituloImovel(e.propertyId ?? undefined)].filter(Boolean).join(" · ") || "—"}
+                    </span>
+                  </span>
+                  <ChevronRight className="mt-1 h-4 w-4 shrink-0" style={{ color: "var(--muted)" }} />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section>
+          <div className="c-minihead">
+            {filtroAtivo ? "Imóveis por confirmar" : "À espera de terceiros"}
+          </div>
+          <div className="space-y-2">
+            {awaitingToShow.length === 0 && (
+              <p className="c-muted text-sm">
+                {filtroAtivo
+                  ? "Nenhuma ação por confirmar ligada a imóveis."
+                  : "Não há nada à espera de resposta de terceiros."}
+              </p>
+            )}
+            {awaitingToShow.map((a) => (
+              <div key={a.id} className="c-row flex-col items-stretch">
+                <Link to="/seguimentos/$id" params={{ id: a.id }} className="block" aria-label={`Abrir ${a.title}`}>
+                  <span className="c-row-title block">{a.title}</span>
+                  <span className="c-row-meta block">
+                    <Clock className="mr-1 inline h-3 w-3" />
+                    {formatDataHora(a.due_at)}
+                    {a.entity_label ? ` · ${a.entity_label}` : ""}
+                    {a.property_id ? ` · ${tituloImovel(a.property_id) ?? "Imóvel"}` : ""}
+                  </span>
+                </Link>
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  <button type="button" className="c-act-second" onClick={() => outcome.mutate({ id: a.id, outcome: "concluido" })}>Correu bem</button>
+                  <button type="button" className="c-act-quiet" onClick={() => outcome.mutate({ id: a.id, outcome: "precisa_nova_acao" })}>Precisa seguimento</button>
+                  <button type="button" className="c-act-quiet" onClick={() => outcome.mutate({ id: a.id, outcome: "nao_realizado" })}>Sem efeito</button>
+                  <button type="button" className="c-act-quiet" onClick={() => { setNoteFor(a); setNoteText(""); }}>
+                    <StickyNote className="h-3.5 w-3.5" /> Nota
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      {/* D. Oportunidades detetadas — resumo agregado, com ação em cada alerta. */}
       {!filtroAtivo && (
-        <section className="mb-6">
+        <section className="mb-8">
           <OpportunityAlertsCard />
         </section>
       )}
 
-      {/* A-ter. Sugestão do mentor — conselho, não urgência. Só aparece se houver padrão real. */}
+      {/* E. Sugestão do mentor — conselho, não urgência. */}
       {!filtroAtivo && mentor && tipOff !== mentor.key && (
-        <section className="c-mentor mb-6">
+        <section className="c-mentor mb-8">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="c-mentor-tag">
               <Lightbulb className="h-4 w-4" /> O teu mentor sugere
@@ -745,253 +905,24 @@ function HojePage() {
         </section>
       )}
 
-      {/* A-quater. Resumo geral — 6 rubricas, contagens simples, cada uma clicável. */}
+      {/* F. Indicadores da carteira — informação, não decisão. Fica no fim. */}
       {!filtroAtivo && resumo && (
-        <HojeSumGrid
-          resumo={{
-            ...resumo,
-            // Agenda vem sempre do seletor central, reavaliado com o relógio local.
-            agenda: {
-              today: agenda.todayCount,
-              nextLabel: agenda.next?.title ?? null,
-              nextTime: agenda.next?.time ?? null,
-              meta: agenda.cardMeta,
-            },
-          }}
-        />
+        <section className="c-strip mb-6">
+          <HojeSumGrid
+            resumo={{
+              ...resumo,
+              agenda: {
+                today: agenda.todayCount,
+                nextLabel: agenda.next?.title ?? null,
+                nextTime: agenda.next?.time ?? null,
+                meta: agenda.cardMeta,
+              },
+            }}
+          />
+        </section>
       )}
 
-      <div className={filtroAtivo ? "space-y-6" : "grid gap-6 lg:grid-cols-2"}>
-        {!filtroAtivo && (
-          <div className="space-y-6">
-            {/* B. As minhas prioridades */}
-            <Card className="c-card border-0 shadow-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="c-section-title flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" style={{ color: "var(--brass)" }} /> As minhas prioridades
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {priorities.length === 0 && (
-                  <p className="c-muted text-sm">Nenhuma prioridade urgente. Bom trabalho.</p>
-                )}
-                {priorities.map((p) => (
-                  <AssuntoCard
-                    key={`${p.subject_type}:${p.subject_id}`}
-                    titulo={assuntoDe(p)}
-                    /* A pontuação numérica não diz nada ao consultor: explicamos o porquê. */
-                    frase={fraseComAcao(p, explainPriority(p))}
-                    meta={[
-                      p.entity_label,
-                      p.due_at ? formatData(p.due_at) : null,
-                    ].filter(Boolean).join(" · ")}
-                    extra={
-                      <>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          {/* Origem exata: o consultor tem de saber se isto veio
-                              do calendário ligado ou se é um seguimento do Afonso. */}
-                          <span className="c-badge inline-flex max-w-full truncate text-xs">
-                            {p.origin_label ?? (p.subject_type === "opportunity" ? "Negócio em curso" : "Seguimento")}
-                          </span>
-                          {p.state_label ? (
-                            <span className="c-badge inline-flex max-w-full truncate text-xs text-muted-foreground">
-                              Estado: {p.state_label}
-                            </span>
-                          ) : null}
-                        </div>
-                        {p.deal_id && p.deal_label ? (
-                          <Link
-                            to="/negocios/$id"
-                            params={{ id: p.deal_id }}
-                            search={p.subject_type === "follow_up" ? { destaque: `seguimento:${p.subject_id}` } : {}}
-                            className="c-badge mt-1.5 inline-flex max-w-full truncate text-xs"
-                          >
-                            Negócio: {p.deal_label}
-                          </Link>
-                        ) : null}
-                      </>
-                    }
-                    actions={<>
-                      <button type="button" className="c-btn" onClick={() => savePriorityDone(p)}>
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
-                      </button>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button type="button" className="c-btn-ghost">Adiar</button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" className="w-40 p-1">
-                          <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "1h")}>+1 hora</button>
-                          <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "amanha")}>Amanhã</button>
-                          <button className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => snoozePriority(p, "semana")}>Próxima semana</button>
-                        </PopoverContent>
-                      </Popover>
-                      {p.subject_type === "opportunity" ? (
-                        <Link className="c-btn-ghost" to="/negocios/$id" params={{ id: p.subject_id }}>Abrir contexto</Link>
-                      ) : p.deal_id ? (
-                        <Link
-                          className="c-btn-ghost"
-                          to="/negocios/$id"
-                          params={{ id: p.deal_id }}
-                          search={{ destaque: `seguimento:${p.subject_id}` }}
-                        >
-                          Abrir contexto
-                        </Link>
-                      ) : (
-                        <button type="button" className="c-btn-ghost" onClick={() => openPriority(p)}>Abrir contexto</button>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button type="button" className="c-btn-ghost ml-auto" aria-label="Mais ações">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuItem asChild>
-                            <Link to="/assessor">
-                              <MessageSquare className="mr-2 h-3.5 w-3.5" /> Falar com {assessorName}
-                            </Link>
-                          </DropdownMenuItem>
-                          {p.subject_type === "follow_up" && (
-                            <DropdownMenuItem className="text-destructive" onSelect={() => void deletePriority(p)}>
-                              <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>}
-                  />
-                ))}
-                {settled.length > 0 && (
-                  <div className="mt-3 border-t pt-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="c-muted text-xs">Já não se aplicam (estavam no briefing anterior):</p>
-                      <Link to="/briefing/detalhes" className="c-btn-ghost shrink-0 text-xs">
-                        Ver detalhes
-                      </Link>
-                    </div>
-                    <div className="space-y-1.5">
-                      {settled.map((s) => (
-                        <Link
-                          key={s.subject_id}
-                          to="/briefing/detalhes"
-                          hash={s.subject_id}
-                          className="flex items-start gap-2 text-xs text-muted-foreground hover:opacity-80"
-                        >
-                          <span className="c-badge shrink-0">{s.state_label}</span>
-                          <span className="min-w-0 flex-1">
-                            <span className="line-through">{s.action}</span>
-                            <span className="block">
-                              {[s.origin_label, s.due_at ? formatData(s.due_at) : null].filter(Boolean).join(" · ")}
-                            </span>
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* C. Próximos compromissos */}
-            <Card className="c-card border-0 shadow-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="c-section-title flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4" style={{ color: "var(--muted)" }} /> Próximos compromissos
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {eventosHoje.length === 0 && (
-                  <div className="space-y-1">
-                    <p className="c-muted text-sm">{agenda.emptyLabel}</p>
-                    {tomorrowLabel(agenda.tomorrow) && (
-                      <p className="text-sm" style={{ color: "var(--ink)" }}>
-                        {tomorrowLabel(agenda.tomorrow)}
-                      </p>
-                    )}
-                  </div>
-                )}
-                {eventosHoje.map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={() => openEvent(e.id)}
-                    className="c-card c-card-hover flex w-full items-start gap-3 p-3 text-left"
-                  >
-                    <div className="c-mono shrink-0 rounded-md px-2 py-1 text-xs font-semibold" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}>
-                      {e.time ?? "—"}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{e.title}</div>
-                      <div className="c-muted text-xs">
-                        {[nomePessoa(e.personId ?? undefined), tituloImovel(e.propertyId ?? undefined)].filter(Boolean).join(" · ") || "—"}
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "var(--muted)" }} />
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Coluna lateral — ou vista completa quando filtro ativo */}
-        <div className="space-y-6">
-          {/* D. Aguardam resultado */}
-          <Card className="c-card border-0 shadow-none">
-            <CardHeader className="pb-2">
-              <CardTitle className="c-section-title flex items-center gap-2">
-                <Clock className="h-4 w-4" style={{ color: "var(--muted)" }} />
-                {filtroAtivo ? "Imóveis por confirmar" : "Aguardam resultado"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {awaitingToShow.length === 0 && (
-                <p className="c-muted text-sm">
-                  {filtroAtivo
-                    ? "Nenhuma ação por confirmar ligada a imóveis."
-                    : "Não há nada a aguardar resultado."}
-                </p>
-              )}
-              {awaitingToShow.map((a) => (
-                <Link
-                  key={a.id}
-                  to="/seguimentos/$id"
-                  params={{ id: a.id }}
-                  className="c-card c-card-hover group block p-3 outline-none"
-                  aria-label={`Abrir ${a.title}`}
-                >
-                  <div className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{a.title}</div>
-                  <div className="c-mono c-muted text-xs">
-                    {formatDataHora(a.due_at)}
-                    {a.entity_label ? ` · ${a.entity_label}` : ""}
-                    {a.property_id ? ` · ${tituloImovel(a.property_id) ?? "Imóvel"}` : ""}
-                  </div>
-                  {a.property_id && (
-                    <Link
-                      to="/imoveis/$id"
-                      params={{ id: a.property_id }}
-                      className="c-badge mt-1.5 inline-flex max-w-full truncate text-xs"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Home className="mr-1 h-3 w-3" /> {tituloImovel(a.property_id) ?? "Ver imóvel"}
-                    </Link>
-                  )}
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <button type="button" className="c-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "concluido" }); }}>Correu bem</button>
-                    <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "precisa_nova_acao" }); }}>Precisa seguimento</button>
-                    <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); outcome.mutate({ id: a.id, outcome: "nao_realizado" }); }}>Sem efeito</button>
-                    <button type="button" className="c-btn-ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setNoteFor(a); setNoteText(""); }}>
-                      <StickyNote className="h-3.5 w-3.5" /> Nota
-                    </button>
-                  </div>
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* E. Banner de atenção agregado, no fundo da página */}
+      {/* G. Banda de atenção agregada. */}
       {!filtroAtivo && (atrasados.length > 0 || oportSemAcao.length > 0 || (docsPending.data ?? 0) > 0) && (
         <section className="c-alert mt-6">
           <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
@@ -1010,6 +941,13 @@ function HojePage() {
           </div>
         </section>
       )}
+
+      {/* H. Campo permanente para falar com o Afonso (desktop; em mobile é o FAB). */}
+      <Link to="/assessor" className="c-askbar hidden md:flex">
+        <MessageSquare className="h-4 w-4" style={{ color: "var(--gold)" }} />
+        <span>Diz ao {assessorName} o que aconteceu, ou pergunta-lhe o que quiseres…</span>
+        <span className="c-askbar-go">Falar <ArrowRight className="h-3.5 w-3.5" /></span>
+      </Link>
 
       {/* FAB mobile — única instância visível em mobile (o CTA do cabeçalho é desktop). */}
       <MobileFab>
@@ -1047,6 +985,7 @@ function HojePage() {
     </AppShell>
   );
 }
+
 
 function AlertRow({
   to, search, icon: Icon, label,
