@@ -10,6 +10,10 @@ export const UI_EVENTS = {
   hojeVisto: "hoje_visto",
   /** Clique em qualquer CTA "Falar com o Afonso" no painel Hoje. */
   hojeCtaAfonso: "hoje_cta_afonso",
+  /** Sugestão "próxima melhor ação" (nível 2) mostrada no painel Hoje. */
+  hojeNbaVisto: "hoje_nba_visto",
+  /** Clique na sugestão "próxima melhor ação". */
+  hojeNbaClicado: "hoje_nba_clicado",
 } as const;
 
 export type UiEvent = (typeof UI_EVENTS)[keyof typeof UI_EVENTS];

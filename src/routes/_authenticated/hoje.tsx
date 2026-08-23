@@ -17,6 +17,8 @@ import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { dismissPriority, getHojeSupreme } from "@/lib/assessor/supreme/priorities.functions";
+import { getNextBestAction } from "@/lib/assessor/supreme/next-best-action.functions";
+import { NextBestActionCard } from "@/components/hoje/next-best-action";
 import { eventWindow, isWindowOver } from "@/lib/assessor/supreme/event-window";
 import { saveFollowUpOutcome } from "@/lib/assessor/supreme/outcomes.functions";
 import { toast } from "sonner";
@@ -370,6 +372,16 @@ function HojePage() {
   // Itens do briefing anterior que entretanto foram cancelados/arquivados.
   const settled: Settled[] = ((supreme.data as any)?.settled ?? []) as Settled[];
 
+  // Nível 2: só se procura a "próxima melhor ação" quando nada arde.
+  const nbaFn = useServerFn(getNextBestAction);
+  const nba = useQuery({
+    queryKey: ["hoje-next-best-action"],
+    queryFn: () => nbaFn({}),
+    enabled: priorities.length === 0,
+    staleTime: 5 * 60_000,
+  });
+  const sugestao = priorities.length === 0 ? nba.data?.suggestion ?? null : null;
+
   const localAwaiting: Awaiting[] = useMemo(
     () => atrasados
       // Mesma regra do servidor: só compromissos de negócio pedem resultado.
@@ -629,7 +641,11 @@ function HojePage() {
       {!filtroAtivo && (
         <section className="mb-8 space-y-3">
           {priorities.length === 0 ? (
-            <div className="c-empty compacta">Nada urgente neste momento. O {assessorName} avisa-te quando algo mudar.</div>
+            sugestao ? (
+              <NextBestActionCard suggestion={sugestao} assessorName={assessorName} />
+            ) : (
+              <div className="c-empty compacta">Nada urgente neste momento. O {assessorName} avisa-te quando algo mudar.</div>
+            )
           ) : (
             priorities.map((p, i) => cartaoAcao(p, i === 0))
           )}
