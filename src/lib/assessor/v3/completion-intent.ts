@@ -169,7 +169,7 @@ export function ambiguousCompletionQuestion(
 // "Dei o lembrete X como concluído", "Marquei X como concluído", "Fica
 // concluído": frases que afirmam uma escrita.
 const CLAIMS_COMPLETION_RE =
-  /\b(dei|dou|marquei|marco|coloquei|pus|fica|ficou|deixei)\b[^.?!]{0,80}\b(conclu[íi]d|tratad|fechad|resolvid)/i;
+  /\b(dei|dou|marquei|marco|coloquei|pus|fica|ficou|deixei)\b[^.?!]{0,80}\bcomo\s+(conclu[íi]d|tratad|fechad|resolvid)/i;
 
 /** A frase afirma que um seguimento ficou concluído? */
 export function claimsCompletion(text: string | null | undefined): boolean {
