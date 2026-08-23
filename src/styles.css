@@ -1075,3 +1075,38 @@ html.design-v2:not(:has(.admin-root)) {
 .consult-root.v2 .c-strip .c-sumcard[data-atencao="bloqueado"] .c-sum-label,
 .consult-root.v2 .c-strip .c-sumcard[data-atencao="bloqueado"] .c-sum-meta { color: #6E2618; opacity: 1; }
 
+
+/* ---- Resumo Geral em mobile: mais número, menos moldura. -------------
+ * Em ecrãs estreitos a faixa perdia altura útil em padding. Aqui a
+ * moldura encolhe, os cartões ficam compactos e o número cresce, para
+ * caber tudo sem scroll extra. */
+@media (max-width: 640px) {
+  .consult-root .c-strip { padding: 12px; border-radius: 14px; }
+  .consult-root .c-strip .c-sumgrid { gap: 8px; }
+  .consult-root .c-strip .c-sumcard,
+  .consult-root .c-strip .c-sumcard.negocios,
+  .consult-root .c-strip .c-sumcard.imoveis,
+  .consult-root .c-strip .c-sumcard.pessoas,
+  .consult-root .c-strip .c-sumcard.diversos,
+  .consult-root .c-strip .c-sumcard.neutro {
+    padding: 10px 11px;
+  }
+  .consult-root .c-strip .c-sumcard .c-sum-stat { font-size: 24px !important; }
+  .consult-root .c-strip .c-sumcard .c-sum-label {
+    margin-top: 2px; font-size: 12px; line-height: 1.25;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .consult-root .c-strip .c-sumcard .c-sum-meta {
+    margin-top: 2px; font-size: 10.5px; line-height: 1.2;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .consult-root.v2 .c-strip { padding: 12px; }
+  .consult-root.v2 .c-strip .c-sumcard,
+  .consult-root.v2 .c-strip .c-sumcard.negocios,
+  .consult-root.v2 .c-strip .c-sumcard.imoveis,
+  .consult-root.v2 .c-strip .c-sumcard.pessoas,
+  .consult-root.v2 .c-strip .c-sumcard.diversos,
+  .consult-root.v2 .c-strip .c-sumcard.neutro {
+    padding: 10px 11px; border-radius: 11px;
+  }
+}
