@@ -123,7 +123,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         <div className="navfoot mt-auto flex flex-col gap-2">
           <p className="text-xs">Por conversa ou aqui no dashboard.</p>
           {/* No v2, "Sobre a IA" vive dentro de "Mais": não o repetimos aqui. */}
-          {!designV2 && (
+          {!v2 && (
             <Link
               to="/sobre-a-ia"
               className={cn("navitem text-xs", isNavActive(pathname, "/sobre-a-ia") && "active")}
