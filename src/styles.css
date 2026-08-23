@@ -933,3 +933,95 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
   color: var(--muted);
 }
+
+/* =====================================================================
+ * REDESENHO v2 — paleta operacional (flag `assessor.design.v2`).
+ *
+ * Léxico de cor: verde = confirmado, âmbar = risco/a decidir,
+ * vermelho = bloqueado/atrasado, latão = assinatura do Afonso (uma por
+ * ecrã), tudo o resto neutro. Nada de cor decorativa.
+ *
+ * A classe vive no <html> (e não só em .consult-root) para que os portais
+ * do Radix — Dialog, Sheet, Popover — recebam os mesmos tokens. Sem isto,
+ * Button/Badge/Input dentro de modais ficavam na paleta antiga.
+ * ===================================================================== */
+html.design-v2:not(:has(.admin-root)) {
+  /* Tokens shadcn/Tailwind alinhados com a paleta do consultor. */
+  --background: #F4F2ED;
+  --foreground: #14213D;
+  --card: #FFFFFF;
+  --card-foreground: #14213D;
+  --popover: #FFFFFF;
+  --popover-foreground: #14213D;
+  --primary: #14213D;
+  --primary-foreground: #FBFAF6;
+  --secondary: #EDEAE2;
+  --secondary-foreground: #14213D;
+  --muted: #EDEAE2;
+  --muted-foreground: #6E6B61;
+  --accent: #EDEAE2;
+  --accent-foreground: #14213D;
+  --destructive: #B8452F;
+  --destructive-foreground: #FFFFFF;
+  --border: #E3DFD3;
+  --input: #E3DFD3;
+  --ring: #B8863B;
+  /* Escala de gráficos derivada de --ink → --brass. Sem cores avulsas. */
+  --chart-1: #14213D;
+  --chart-2: #3E4C68;
+  --chart-3: #6E7C96;
+  --chart-4: #B8863B;
+  --chart-5: #8C6526;
+}
+
+/* ---- App do consultor ---- */
+.consult-root.v2 {
+  --paper: #F4F2ED;
+  --paper-2: #FAF9F6;
+  --line: #E3DFD3;
+  --muted: #6E6B61;
+}
+
+/* Resumo geral: neutro por omissão. A cor só entra quando o número exige
+   uma decisão (ex.: Diversos por tratar > 0 → âmbar). */
+.consult-root.v2 .c-sumcard,
+.consult-root.v2 .c-sumcard.negocios,
+.consult-root.v2 .c-sumcard.imoveis,
+.consult-root.v2 .c-sumcard.pessoas,
+.consult-root.v2 .c-sumcard.diversos {
+  background: var(--c-card);
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+.consult-root.v2 .c-sumcard .c-sum-stat { color: var(--ink); }
+.consult-root.v2 .c-sumcard[data-atencao="risco"] {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border-color: transparent;
+}
+.consult-root.v2 .c-sumcard[data-atencao="risco"] .c-sum-stat { color: var(--amber); }
+.consult-root.v2 .c-sumcard[data-atencao="bloqueado"] {
+  background: var(--coral-bg);
+  color: var(--coral);
+  border-color: transparent;
+}
+.consult-root.v2 .c-sumcard[data-atencao="bloqueado"] .c-sum-stat { color: var(--coral); }
+
+/* Cartões de grupo: borda neutra; latão só onde há destaque real. */
+.consult-root.v2 .c-groupcard { border-left-color: var(--line); }
+.consult-root.v2 .c-groupcard[data-destaque="true"] { border-left-color: var(--brass); }
+
+/* Conversa: identidade não é estado. Bot em papel, consultor em tinta suave. */
+.consult-root.v2 .c-bubble.bot {
+  background: var(--paper-2); color: var(--ink); border-color: var(--line);
+}
+.consult-root.v2 .c-bubble.user {
+  background: #E9E7E0; color: var(--ink); border-color: var(--line);
+}
+
+/* Avatares: cinza quente, nunca cor de estado. */
+.consult-root.v2 .c-avatar,
+.consult-root.v2 .c-pavatar,
+.consult-root.v2 .c-pavatar.sage {
+  background: #EDEAE2; color: var(--ink-soft);
+}
