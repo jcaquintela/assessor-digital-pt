@@ -1018,3 +1018,60 @@ html.design-v2:not(:has(.admin-root)) {
 .consult-root.v2 .c-pavatar.sage {
   background: #EDEAE2; color: var(--ink-soft);
 }
+
+/* ---------------------------------------------------------------------
+ * Resumo geral (v2): menos creme, mais leitura.
+ * O painel passa a ser uma superfície fria e recuada; cada rubrica volta
+ * a ser um cartão branco com borda própria, para o número se destacar.
+ * ------------------------------------------------------------------- */
+.consult-root.v2 .c-strip {
+  background: #ECECE8;
+  border-color: #DFDED8;
+  padding: 16px;
+}
+.consult-root.v2 .c-strip .c-sumgrid { gap: 10px; }
+.consult-root.v2 .c-strip .c-sumcard,
+.consult-root.v2 .c-strip .c-sumcard.negocios,
+.consult-root.v2 .c-strip .c-sumcard.imoveis,
+.consult-root.v2 .c-strip .c-sumcard.pessoas,
+.consult-root.v2 .c-strip .c-sumcard.diversos,
+.consult-root.v2 .c-strip .c-sumcard.neutro {
+  background: #FFFFFF;
+  border: 1px solid #E2E1DB;
+  border-radius: 12px;
+  padding: 13px 14px;
+  box-shadow: 0 1px 2px rgba(20, 33, 61, .04);
+  color: var(--ink-soft);
+}
+.consult-root.v2 .c-strip .c-sumcard:hover { border-color: #CBC9C0; }
+.consult-root.v2 .c-strip .c-sumcard .c-sum-stat,
+.consult-root.v2 .c-strip .c-sumcard.negocios .c-sum-stat,
+.consult-root.v2 .c-strip .c-sumcard.imoveis .c-sum-stat,
+.consult-root.v2 .c-strip .c-sumcard.pessoas .c-sum-stat,
+.consult-root.v2 .c-strip .c-sumcard.diversos .c-sum-stat,
+.consult-root.v2 .c-strip .c-sumcard.neutro .c-sum-stat {
+  color: #14213D;
+}
+.consult-root.v2 .c-strip .c-sumcard .c-sum-unit { color: #6E6B61; opacity: 1; }
+.consult-root.v2 .c-strip .c-sumcard .c-sum-label { color: #3A3F4E; }
+.consult-root.v2 .c-strip .c-sumcard .c-sum-meta { color: #6E6B61; opacity: 1; }
+
+/* Estados: a cor entra na aresta esquerda e no número, não em toda a
+   superfície — assim o cartão continua legível e o estado lê-se à distância. */
+.consult-root.v2 .c-strip .c-sumcard[data-atencao="risco"] {
+  background: #FDF6E8;
+  border-color: #EBD9AE;
+  box-shadow: inset 3px 0 0 #B8863B;
+}
+.consult-root.v2 .c-strip .c-sumcard[data-atencao="risco"] .c-sum-stat { color: #7A5310; }
+.consult-root.v2 .c-strip .c-sumcard[data-atencao="risco"] .c-sum-label,
+.consult-root.v2 .c-strip .c-sumcard[data-atencao="risco"] .c-sum-meta { color: #5C4310; opacity: 1; }
+.consult-root.v2 .c-strip .c-sumcard[data-atencao="bloqueado"] {
+  background: #FCF0ED;
+  border-color: #EFC9C0;
+  box-shadow: inset 3px 0 0 #B8452F;
+}
+.consult-root.v2 .c-strip .c-sumcard[data-atencao="bloqueado"] .c-sum-stat { color: #8E3221; }
+.consult-root.v2 .c-strip .c-sumcard[data-atencao="bloqueado"] .c-sum-label,
+.consult-root.v2 .c-strip .c-sumcard[data-atencao="bloqueado"] .c-sum-meta { color: #6E2618; opacity: 1; }
+
