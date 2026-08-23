@@ -47,8 +47,18 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
   // nunca revela algo que o utilizador não tenha direito a ver.
   const { data: tierData } = useEffectiveTier();
   const tier = tierData?.tier ?? "base";
-  const visibleDesktopNav = desktopNav.filter((n) => isModuleVisible(n.to, tier));
-  const visibleMobileNav = mobileNav.filter((n) => isModuleVisible(n.to, tier));
+  const v2 = useDesignV2();
+  // v2: 5 áreas na barra + "Mais". v1: as 10 de sempre.
+  const desktopEntries = v2 ? [...NAV_PRIMARY_V2, NAV_MORE_ENTRY] : NAV_DESKTOP_V1;
+  const visibleDesktopNav = visibleNav(desktopEntries, tier);
+  const visibleMobileNav = visibleNav(mobileNav, tier);
+
+  // Telemetria de navegação: que áreas são realmente usadas (valida o
+  // agrupamento da barra com dados, não com intuição).
+  useEffect(() => {
+    trackNavRota(pathname);
+  }, [pathname]);
+
 
   // Detect on-screen keyboard via visualViewport and expose as html[data-keyboard].
   useEffect(() => {
