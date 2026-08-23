@@ -995,14 +995,8 @@ function HojePage() {
         </section>
       )}
 
-      {/* H. Campo permanente para falar com o Afonso (desktop; em mobile é o FAB). */}
-      <Link to="/assessor" className="c-askbar hidden md:flex" onClick={() => trackCtaAfonso("barra")}>
-        <MessageSquare className="h-4 w-4" style={{ color: "var(--gold)" }} />
-        <span>Diz ao {assessorName} o que aconteceu, ou pergunta-lhe o que quiseres…</span>
-        <span className="c-askbar-go">Falar <ArrowRight className="h-3.5 w-3.5" /></span>
-      </Link>
-
       {/* FAB mobile — única instância visível em mobile (o CTA do cabeçalho é desktop). */}
+
       <MobileFab>
         <Link
           to="/assessor"
