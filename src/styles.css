@@ -65,8 +65,11 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   }
   /* Altura da barra (conteúdo ~56px) + safe area, para o conteúdo não ficar tapado. */
   .mobile-nav-pad {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+    /* tab bar (56px) + safe area + folga para o botão flutuante (48px) não
+       tapar o último bloco de conteúdo (resumo/indicadores). */
+    padding-bottom: calc(56px + 72px + env(safe-area-inset-bottom));
   }
+
   html[data-keyboard="open"] .mobile-nav-pad {
     padding-bottom: 0;
   }
