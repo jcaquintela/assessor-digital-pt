@@ -10,7 +10,7 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   } catch (error) {
     // Respostas atiradas (redirects, notFound, 401) são fluxo normal do router.
     if (error instanceof Response) {
-      return { response: error };
+      return error;
     }
     if (error != null && typeof error === "object" && "statusCode" in error) {
       throw error;
@@ -18,21 +18,18 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
     const message = error instanceof Error ? error.message : String(error);
     // Sessão expirada/ausente: devolver 401 em vez de página de erro 500.
     if (message.startsWith("Unauthorized")) {
-      return {
-        response: new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { "content-type": "application/json" },
-        }),
-      };
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "content-type": "application/json" },
+      });
     }
     console.error(error);
-    return {
-      response: new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      }),
-    };
+    return new Response(renderErrorPage(), {
+      status: 500,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
   }
+
 });
 
 
