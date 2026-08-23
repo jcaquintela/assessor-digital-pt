@@ -172,6 +172,22 @@ function HojePage() {
     },
   });
 
+  // Prospeção saiu da barra lateral no redesenho v2: aparece aqui, e só
+  // quando há mesmo placas por contactar.
+  const designV2 = useDesignV2();
+  const placasPorTratar = useQuery({
+    queryKey: ["prospecting_leads", "to_contact", "count"],
+    enabled: designV2,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("prospecting_leads" as never)
+        .select("id", { count: "exact", head: true })
+        .eq("status", "to_contact")
+        .is("archived_at", null);
+      return count ?? 0;
+    },
+  });
+
   // Primeiro nome do consultor para a saudação pessoal.
   const profileQ = useQuery({
     queryKey: ["profile", "first-name"],
@@ -636,6 +652,19 @@ function HojePage() {
         </div>
       )}
 
+
+      {designV2 && (placasPorTratar.data ?? 0) > 0 && !filtroAtivo && (
+        <div className="mb-4">
+          <Link
+            to="/oportunidades/prospecao"
+            className="tap-44 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
+            style={{ borderColor: "var(--line)", color: "var(--ink-soft)", background: "var(--c-card)" }}
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            {placasPorTratar.data} placa{placasPorTratar.data === 1 ? "" : "s"} por contactar
+          </Link>
+        </div>
+      )}
 
       {/* B. As decisões do dia, por ordem de impacto. */}
       {!filtroAtivo && (
