@@ -2189,6 +2189,17 @@ async function runReasoningEngineInner(
     }
   }
 
+  // Falsa confirmação positiva (caso real 20/08): o modelo escreveu "Dei o
+  // lembrete da marcação das unhas como concluído" sem nenhuma escrita na
+  // base de dados. Confirmar conclusão exige um fecho verificado.
+  if (claimsCompletion(reply)) {
+    const wrote = toolResults.some(
+      (t) => t.name === "complete_follow_up" && t.ok && (((t.data as any)?.items ?? []).length > 0),
+    );
+    if (!wrote) reply = unverifiedCompletionReply();
+  }
+
+
   // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
   // Financeiro: duplicado do mesmo dia — pergunta antes de assumir novo registo.
   // Dinheiro registado sem negócio: é aqui que o ciclo se fechava sozinho no
