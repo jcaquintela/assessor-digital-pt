@@ -50,12 +50,14 @@ function PainelHojePage() {
           value={data.clickRate == null ? "—" : nf(data.clickRate, 1)}
           tone={data.clickRate == null ? "muted" : "default"}
           sub="procura real de conversa a partir do painel"
+          source="product_telemetry_events · live"
           stale={data.clickRate == null}
         />
         <MetricCard
           label="Consultores que clicaram"
           value={data.viewers === 0 ? "—" : `${data.clickers} / ${data.viewers}`}
           sub="de quem abriu o painel"
+          source="product_telemetry_events · live"
           tone={data.viewers === 0 ? "muted" : "default"}
         />
       </Grid>
