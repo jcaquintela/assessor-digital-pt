@@ -37,7 +37,8 @@ import { type MentorDecisionKind } from "@/lib/assessor/supreme/mentor-decisions
 import { createMentorFollowUp } from "@/lib/assessor/supreme/mentor-followup.functions";
 import { mentorFollowUpSuggestion } from "@/lib/assessor/supreme/mentor-followup";
 import { usePreviewTier } from "@/lib/subscription/tier-preview";
-import { Lightbulb, ArrowRight } from "lucide-react";
+import { useDesignV2 } from "@/lib/design/use-design-v2";
+import { Lightbulb, ArrowRight, MapPin } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { OpportunityAlertsCard } from "@/components/hoje/opportunity-alerts";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -168,6 +169,22 @@ function HojePage() {
         .from("uploaded_files")
         .select("id", { count: "exact", head: true })
         .is("classification", null);
+      return count ?? 0;
+    },
+  });
+
+  // Prospeção saiu da barra lateral no redesenho v2: aparece aqui, e só
+  // quando há mesmo placas por contactar.
+  const designV2 = useDesignV2();
+  const placasPorTratar = useQuery({
+    queryKey: ["prospecting_leads", "to_contact", "count"],
+    enabled: designV2,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("prospecting_leads" as never)
+        .select("id", { count: "exact", head: true })
+        .eq("status", "to_contact")
+        .is("archived_at", null);
       return count ?? 0;
     },
   });
@@ -636,6 +653,19 @@ function HojePage() {
         </div>
       )}
 
+
+      {designV2 && (placasPorTratar.data ?? 0) > 0 && !filtroAtivo && (
+        <div className="mb-4">
+          <Link
+            to="/oportunidades/prospecao"
+            className="tap-44 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
+            style={{ borderColor: "var(--line)", color: "var(--ink-soft)", background: "var(--c-card)" }}
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            {placasPorTratar.data} placa{placasPorTratar.data === 1 ? "" : "s"} por contactar
+          </Link>
+        </div>
+      )}
 
       {/* B. As decisões do dia, por ordem de impacto. */}
       {!filtroAtivo && (

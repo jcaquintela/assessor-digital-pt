@@ -32,6 +32,11 @@ export interface SumCardItem {
   statMono?: boolean;
   label: string;
   meta: string;
+  /**
+   * Significado operacional do número (paleta v2): "risco" quando exige uma
+   * decisão, "bloqueado" quando trava trabalho. Ausente = neutro.
+   */
+  atencao?: "risco" | "bloqueado";
 }
 
 /** Ordem fixa das rubricas: Negócios, Imóveis, Pessoas, Diversos, Agenda, Faturação. */
@@ -56,6 +61,8 @@ export function buildSumCards(resumo: SumGridSummary): SumCardItem[] {
     {
       key: "diversos", tone: "diversos", icon: Layers, to: "/diversos",
       stat: String(resumo.misc.pending), unit: "itens", label: "Por tratar", meta: "em Diversos",
+      // Só é âmbar quando há mesmo algo por decidir.
+      atencao: resumo.misc.pending > 0 ? "risco" : undefined,
     },
     {
       key: "agenda", tone: "neutro", icon: CalendarDays, to: "/calendario",
@@ -79,9 +86,15 @@ export function buildSumCards(resumo: SumGridSummary): SumCardItem[] {
 }
 
 // Cartão de resumo: uma contagem e o detalhe mais relevante. Sem gráficos.
-export function SumCard({ tone, icon: Icon, to, stat, unit, label, meta, statMono }: Omit<SumCardItem, "key">) {
+export function SumCard({ tone, icon: Icon, to, stat, unit, label, meta, statMono, atencao }: Omit<SumCardItem, "key">) {
   return (
-    <Link to={to as any} className={`c-sumcard ${tone}`} aria-label={label} data-sumcard={tone}>
+    <Link
+      to={to as any}
+      className={`c-sumcard ${tone}`}
+      aria-label={label}
+      data-sumcard={tone}
+      data-atencao={atencao}
+    >
       <Icon className="mb-3 h-[15px] w-[15px] opacity-60" />
       <div className={`c-sum-stat${statMono ? " c-mono" : ""}`} style={statMono ? { fontSize: 22 } : undefined}>
         <span>{stat}</span>

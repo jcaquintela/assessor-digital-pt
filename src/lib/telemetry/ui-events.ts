@@ -14,6 +14,8 @@ export const UI_EVENTS = {
   hojeNbaVisto: "hoje_nba_visto",
   /** Clique na sugestão "próxima melhor ação". */
   hojeNbaClicado: "hoje_nba_clicado",
+  /** Entrada numa área do painel (valida o agrupamento da barra lateral). */
+  navRota: "nav_rota",
 } as const;
 
 export type UiEvent = (typeof UI_EVENTS)[keyof typeof UI_EVENTS];
@@ -59,4 +61,13 @@ export function trackUi(
 /** Atalho para os CTAs de conversa do painel Hoje. */
 export function trackCtaAfonso(surface: CtaSurface): void {
   trackUi(UI_EVENTS.hojeCtaAfonso, { superficie: surface });
+}
+
+/**
+ * Navegação por área. Só o caminho normalizado (sem ids), uma vez por rota
+ * por sessão de página — chega para saber que áreas se usam e quais não.
+ */
+export function trackNavRota(pathname: string): void {
+  const rota = pathname.replace(/\/[0-9a-f]{8}-[0-9a-f-]{27,}(?=\/|$)/gi, "/:id");
+  trackUi(UI_EVENTS.navRota, { rota }, { once: `nav:${rota}` });
 }

@@ -1,43 +1,29 @@
 import { BRAND_NAME } from "@/lib/brand";
-import { MODULE_NAME } from "@/lib/seo/module-names";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { BrandMark } from "@/components/brand-mark";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
-import { isModuleVisible } from "@/lib/subscription/tiers";
+import { useDesignV2 } from "@/lib/design/use-design-v2";
 import {
-  CalendarDays,
+  NAV_DESKTOP_V1,
+  NAV_MORE_ENTRY,
+  NAV_PRIMARY_V2,
+  visibleNav,
+} from "@/lib/nav/nav-items";
+import {
   Home,
-  Inbox,
   MoreHorizontal,
-  Settings,
   Building2,
   Users,
-  Wallet,
-  FolderOpen,
-  Handshake,
   Sparkles,
-  MapPin,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { trackNavRota } from "@/lib/telemetry/ui-events";
 import { GlobalSearch } from "@/components/hoje/global-search";
 import { AccountArchiveBanner } from "@/components/account-archive-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { TierPreviewBanner } from "@/components/tier-preview";
-
-const desktopNav = [
-  { to: "/hoje", label: "Hoje", icon: Home },
-  { to: "/pessoas", label: "Pessoas", icon: Users },
-  { to: "/imoveis", label: "Imóveis", icon: Building2 },
-  { to: "/negocios", label: "Negócios", icon: Handshake },
-  { to: "/oportunidades/prospecao", label: "Prospeção", icon: MapPin },
-  { to: "/calendario", label: "Agenda", icon: CalendarDays },
-  { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
-  { to: "/negocio", label: "Faturação", icon: Wallet },
-  { to: "/diversos", label: "Diversos", icon: Inbox },
-  { to: "/definicoes", label: "Definições", icon: Settings },
-] as const;
 
 const mobileNav = [
   { to: "/hoje", label: "Hoje", icon: Home },
@@ -54,14 +40,25 @@ export function isNavActive(pathname: string, to: string) {
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
+
 export function AppShell({ children, fullBleed = false }: { children: ReactNode; fullBleed?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Enquanto o tier ainda não carregou, assume 'base' — menos módulos visíveis,
   // nunca revela algo que o utilizador não tenha direito a ver.
   const { data: tierData } = useEffectiveTier();
   const tier = tierData?.tier ?? "base";
-  const visibleDesktopNav = desktopNav.filter((n) => isModuleVisible(n.to, tier));
-  const visibleMobileNav = mobileNav.filter((n) => isModuleVisible(n.to, tier));
+  const v2 = useDesignV2();
+  // v2: 5 áreas na barra + "Mais". v1: as 10 de sempre.
+  const desktopEntries = v2 ? [...NAV_PRIMARY_V2, NAV_MORE_ENTRY] : NAV_DESKTOP_V1;
+  const visibleDesktopNav = visibleNav(desktopEntries, tier);
+  const visibleMobileNav = visibleNav(mobileNav, tier);
+
+  // Telemetria de navegação: que áreas são realmente usadas (valida o
+  // agrupamento da barra com dados, não com intuição).
+  useEffect(() => {
+    trackNavRota(pathname);
+  }, [pathname]);
+
 
   // Detect on-screen keyboard via visualViewport and expose as html[data-keyboard].
   useEffect(() => {
@@ -91,6 +88,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
     <div
       className={cn(
         "consult-root text-foreground",
+        v2 && "v2",
         // Mobile: fixed viewport grid (header?/main/nav). Desktop: normal flow.
         "grid md:block",
         fullBleed
@@ -124,14 +122,18 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         </nav>
         <div className="navfoot mt-auto flex flex-col gap-2">
           <p className="text-xs">Por conversa ou aqui no dashboard.</p>
-          <Link
-            to="/sobre-a-ia"
-            className={cn("navitem text-xs", isNavActive(pathname, "/sobre-a-ia") && "active")}
-          >
-            <Sparkles className="h-4 w-4 shrink-0" />
-            <span className="truncate">Sobre a IA</span>
-          </Link>
+          {/* No v2, "Sobre a IA" vive dentro de "Mais": não o repetimos aqui. */}
+          {!v2 && (
+            <Link
+              to="/sobre-a-ia"
+              className={cn("navitem text-xs", isNavActive(pathname, "/sobre-a-ia") && "active")}
+            >
+              <Sparkles className="h-4 w-4 shrink-0" />
+              <span className="truncate">Sobre a IA</span>
+            </Link>
+          )}
         </div>
+
       </aside>
 
       {/* Main */}
