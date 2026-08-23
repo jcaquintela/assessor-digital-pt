@@ -1110,3 +1110,55 @@ html.design-v2:not(:has(.admin-root)) {
     padding: 10px 11px; border-radius: 11px;
   }
 }
+
+/* =====================================================================
+ * v2.1 — Presença visual: barra lateral azul-escura sólida e superfícies
+ * de cartão mais frias. O léxico de cor por significado não muda.
+ * ===================================================================== */
+.consult-root.v2 {
+  /* Fundo geral mantém-se papel; cartões passam a branco frio para
+     destacarem sobre ele. */
+  --paper: #F1F0EC;
+  --paper-2: #FAFAFA;
+  --c-card: #FFFFFF;
+  --line: #E2E1DC;
+  --nav-ink: #14213D;
+  --nav-ink-2: #1B2B4D;
+}
+
+/* Barra lateral: autoridade. Azul-escuro sólido, texto claro. */
+.consult-root.v2 .consult-nav {
+  background: var(--nav-ink);
+  border-right: 1px solid #0F1830;
+  color: #E7EBF3;
+}
+.consult-root.v2 .consult-nav .brand { color: #FFFFFF; }
+.consult-root.v2 .consult-nav .c-muted { color: #A9B4CA; }
+.consult-root.v2 .consult-nav .navitem { color: #C3CBDB; }
+.consult-root.v2 .consult-nav .navitem:hover {
+  background: var(--nav-ink-2);
+  color: #FFFFFF;
+}
+/* Ativo: latão como assinatura, com aresta esquerda para se ler à distância. */
+.consult-root.v2 .consult-nav .navitem.active {
+  background: rgba(184, 134, 59, .20);
+  color: #F0D6A4;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--brass);
+}
+.consult-root.v2 .consult-nav .navfoot {
+  color: #97A2B8;
+  border-top: 1px solid #26314C;
+}
+
+/* Cartões: fundo branco frio com borda um pouco mais definida, para
+   ganharem presença sobre o papel. */
+.consult-root.v2 .c-card { border-color: #E0DFD9; box-shadow: 0 1px 2px rgba(20,33,61,.05), 0 6px 18px rgba(20,33,61,.05); }
+.consult-root.v2 .c-card-hover:hover { border-color: #C9C7BE; }
+
+/* Latão mantém-se numa ação por ecrã, mas com peso suficiente para não se
+   perder no novo contraste. */
+.consult-root.v2 .c-cta,
+.consult-root.v2 .c-btn-primary {
+  box-shadow: 0 1px 2px rgba(20,33,61,.10), 0 6px 16px rgba(184,134,59,.22);
+}
