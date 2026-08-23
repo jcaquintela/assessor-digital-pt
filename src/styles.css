@@ -1053,7 +1053,7 @@ html.design-v2:not(:has(.admin-root)) {
   color: #14213D;
 }
 .consult-root.v2 .c-strip .c-sumcard .c-sum-unit { color: #6E6B61; opacity: 1; }
-.consult-root.v2 .c-strip .c-sumcard .c-sum-label { color: #2C3category; }
+.consult-root.v2 .c-strip .c-sumcard .c-sum-label { color: #3A3F4E; }
 .consult-root.v2 .c-strip .c-sumcard .c-sum-meta { color: #6E6B61; opacity: 1; }
 
 /* Estados: a cor entra na aresta esquerda e no número, não em toda a
