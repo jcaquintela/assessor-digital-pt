@@ -32,6 +32,7 @@ import { Route as AdminSegurancaRouteImport } from './routes/admin/seguranca'
 import { Route as AdminRastreabilidadeOrigemRouteImport } from './routes/admin/rastreabilidade-origem'
 import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
 import { Route as AdminPlanosRouteImport } from './routes/admin/planos'
+import { Route as AdminPainelHojeRouteImport } from './routes/admin/painel-hoje'
 import { Route as AdminNegocioRouteImport } from './routes/admin/negocio'
 import { Route as AdminIntegracoesFlagsRouteImport } from './routes/admin/integracoes-flags'
 import { Route as AdminIntegracoesRouteImport } from './routes/admin/integracoes'
@@ -228,6 +229,11 @@ const AdminQualidadeRoute = AdminQualidadeRouteImport.update({
 const AdminPlanosRoute = AdminPlanosRouteImport.update({
   id: '/planos',
   path: '/planos',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPainelHojeRoute = AdminPainelHojeRouteImport.update({
+  id: '/painel-hoje',
+  path: '/painel-hoje',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminNegocioRoute = AdminNegocioRouteImport.update({
@@ -722,6 +728,7 @@ export interface FileRoutesByFullPath {
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/integracoes-flags': typeof AdminIntegracoesFlagsRoute
   '/admin/negocio': typeof AdminNegocioRoute
+  '/admin/painel-hoje': typeof AdminPainelHojeRoute
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/rastreabilidade-origem': typeof AdminRastreabilidadeOrigemRoute
@@ -827,6 +834,7 @@ export interface FileRoutesByTo {
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/integracoes-flags': typeof AdminIntegracoesFlagsRoute
   '/admin/negocio': typeof AdminNegocioRoute
+  '/admin/painel-hoje': typeof AdminPainelHojeRoute
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/rastreabilidade-origem': typeof AdminRastreabilidadeOrigemRoute
@@ -935,6 +943,7 @@ export interface FileRoutesById {
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/integracoes-flags': typeof AdminIntegracoesFlagsRoute
   '/admin/negocio': typeof AdminNegocioRoute
+  '/admin/painel-hoje': typeof AdminPainelHojeRoute
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/rastreabilidade-origem': typeof AdminRastreabilidadeOrigemRoute
@@ -1043,6 +1052,7 @@ export interface FileRouteTypes {
     | '/admin/integracoes'
     | '/admin/integracoes-flags'
     | '/admin/negocio'
+    | '/admin/painel-hoje'
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/rastreabilidade-origem'
@@ -1148,6 +1158,7 @@ export interface FileRouteTypes {
     | '/admin/integracoes'
     | '/admin/integracoes-flags'
     | '/admin/negocio'
+    | '/admin/painel-hoje'
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/rastreabilidade-origem'
@@ -1255,6 +1266,7 @@ export interface FileRouteTypes {
     | '/admin/integracoes'
     | '/admin/integracoes-flags'
     | '/admin/negocio'
+    | '/admin/painel-hoje'
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/rastreabilidade-origem'
@@ -1518,6 +1530,13 @@ declare module '@tanstack/react-router' {
       path: '/planos'
       fullPath: '/admin/planos'
       preLoaderRoute: typeof AdminPlanosRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/painel-hoje': {
+      id: '/admin/painel-hoje'
+      path: '/painel-hoje'
+      fullPath: '/admin/painel-hoje'
+      preLoaderRoute: typeof AdminPainelHojeRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/negocio': {
@@ -2269,6 +2288,7 @@ interface AdminRouteRouteChildren {
   AdminIntegracoesRoute: typeof AdminIntegracoesRoute
   AdminIntegracoesFlagsRoute: typeof AdminIntegracoesFlagsRoute
   AdminNegocioRoute: typeof AdminNegocioRoute
+  AdminPainelHojeRoute: typeof AdminPainelHojeRoute
   AdminPlanosRoute: typeof AdminPlanosRoute
   AdminQualidadeRoute: typeof AdminQualidadeRoute
   AdminRastreabilidadeOrigemRoute: typeof AdminRastreabilidadeOrigemRoute
@@ -2304,6 +2324,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminIntegracoesRoute: AdminIntegracoesRoute,
   AdminIntegracoesFlagsRoute: AdminIntegracoesFlagsRoute,
   AdminNegocioRoute: AdminNegocioRoute,
+  AdminPainelHojeRoute: AdminPainelHojeRoute,
   AdminPlanosRoute: AdminPlanosRoute,
   AdminQualidadeRoute: AdminQualidadeRoute,
   AdminRastreabilidadeOrigemRoute: AdminRastreabilidadeOrigemRoute,

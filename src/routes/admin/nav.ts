@@ -34,6 +34,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { to: "/admin/custos", label: "Custos" },
       { to: "/admin/utilizacao", label: "Utilização" },
+      { to: "/admin/painel-hoje", label: "Painel Hoje" },
       { to: "/admin/comunicacao", label: "Comunicação" },
     ],
   },
