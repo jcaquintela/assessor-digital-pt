@@ -37,7 +37,8 @@ import { type MentorDecisionKind } from "@/lib/assessor/supreme/mentor-decisions
 import { createMentorFollowUp } from "@/lib/assessor/supreme/mentor-followup.functions";
 import { mentorFollowUpSuggestion } from "@/lib/assessor/supreme/mentor-followup";
 import { usePreviewTier } from "@/lib/subscription/tier-preview";
-import { Lightbulb, ArrowRight } from "lucide-react";
+import { useDesignV2 } from "@/lib/design/use-design-v2";
+import { Lightbulb, ArrowRight, MapPin } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { OpportunityAlertsCard } from "@/components/hoje/opportunity-alerts";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
