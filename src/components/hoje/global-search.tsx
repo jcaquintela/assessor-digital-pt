@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { foldLike } from "@/lib/search/normalize";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { BRAND_NAME } from "@/lib/brand";
 
 type Hit = { type: "pessoa" | "imovel" | "nota" | "seguimento"; id: string; label: string; sub?: string };
 
@@ -23,6 +25,8 @@ export function GlobalSearch({ size = "default" }: { size?: "default" | "lg" }) 
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Em mobile o texto longo fica cortado a meio: placeholder curto.
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const term = q.trim();
@@ -76,7 +80,7 @@ export function GlobalSearch({ size = "default" }: { size?: "default" | "lg" }) 
           value={q}
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
-          placeholder="Pesquisar pessoas, imóveis, notas ou compromissos…"
+          placeholder={isMobile ? `Pesquisar no ${BRAND_NAME}…` : "Pesquisar pessoas, imóveis, notas ou compromissos…"}
           className={cn(size === "lg" ? "h-12 pl-11 text-base md:text-base" : "h-9 pl-9")}
         />
         {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}

@@ -13,7 +13,6 @@ import {
   FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote, Archive,
   Home, X,
 } from "lucide-react";
-import { PaymentPortalButton } from "@/components/payment-portal-button";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -594,39 +593,43 @@ function HojePage() {
             <Link to="/assessor" className="c-cta hidden md:inline-flex" onClick={() => trackCtaAfonso("cabecalho")}>
               <MessageSquare className="h-4 w-4" /> Falar com {assessorName}
             </Link>
-            <PaymentPortalButton variant="ghost" />
           </div>
         </div>
       </header>
 
-      {/* Filtro rápido: ações por confirmar ligadas a imóveis. */}
-      <div className="mb-5 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setFiltro(!filtroAtivo)}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
-            filtroAtivo
-              ? "border-[var(--sage)] bg-[var(--sage)]/10 text-[var(--sage-dark)]"
-              : "border-[var(--border)] hover:bg-[var(--muted)]/5"
-          }`}
-          aria-pressed={filtroAtivo}
-        >
-          <Home className="h-3.5 w-3.5" />
-          {filtroAtivo ? "A mostrar imóveis por confirmar" : "Imóveis por confirmar"}
-          {filtroAtivo && <X className="h-3.5 w-3.5" />}
-        </button>
-        {filtroAtivo && (
-          <span className="text-[12px]" style={{ color: "var(--muted)" }}>
-            {awaitingImoveis.length} ação{awaitingImoveis.length === 1 ? "" : "ões"}
-          </span>
-        )}
-      </div>
+      {/* Filtro rápido: só aparece quando há mesmo imóveis por confirmar. */}
+      {(filtroAtivo || awaitingImoveis.length > 0) && (
+        <div className="mb-5 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFiltro(!filtroAtivo)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+              filtroAtivo
+                ? "border-[var(--sage)] bg-[var(--sage)]/10 text-[var(--sage-dark)]"
+                : "border-[var(--border)] hover:bg-[var(--muted)]/5"
+            }`}
+            aria-pressed={filtroAtivo}
+          >
+            <Home className="h-3.5 w-3.5" />
+            {filtroAtivo
+              ? "A mostrar imóveis por confirmar"
+              : `${awaitingImoveis.length} imóve${awaitingImoveis.length === 1 ? "l aguarda" : "is aguardam"} confirmação — Rever agora`}
+            {filtroAtivo && <X className="h-3.5 w-3.5" />}
+          </button>
+          {filtroAtivo && (
+            <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+              {awaitingImoveis.length} ação{awaitingImoveis.length === 1 ? "" : "ões"}
+            </span>
+          )}
+        </div>
+      )}
+
 
       {/* B. As decisões do dia, por ordem de impacto. */}
       {!filtroAtivo && (
         <section className="mb-8 space-y-3">
           {priorities.length === 0 ? (
-            <div className="c-empty">Nada urgente neste momento. O {assessorName} avisa-te quando algo mudar.</div>
+            <div className="c-empty compacta">Nada urgente neste momento. O {assessorName} avisa-te quando algo mudar.</div>
           ) : (
             priorities.map((p, i) => cartaoAcao(p, i === 0))
           )}
