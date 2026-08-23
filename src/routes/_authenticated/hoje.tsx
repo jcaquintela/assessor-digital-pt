@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { explainPriority } from "@/lib/assessor/priority-explain";
 import { assuntoDe, fraseComAcao } from "@/lib/assessor/assunto";
-import { AssuntoCard } from "@/components/assunto-card";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
 import { getHojeOverview } from "@/lib/assessor/supreme/overview.functions";
 import { saveMentorDecision, undoMentorDecision } from "@/lib/assessor/supreme/mentor-decisions.functions";
