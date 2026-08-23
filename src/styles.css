@@ -502,6 +502,11 @@ html[data-keyboard="open"] .mobile-bottom-nav {
   color: var(--muted); font-size: 13.5px; padding: 30px 20px; text-align: center;
   background: var(--paper-2); border: 1px dashed var(--line); border-radius: 14px; line-height: 1.65;
 }
+/* Variante compacta: mensagem curta não precisa de ocupar meio ecrã. */
+.consult-root .c-empty.compacta {
+  padding: 12px 14px; font-size: 13px; line-height: 1.5; text-align: left;
+}
+
 
 .consult-root .c-alert {
   background: var(--coral-bg); border: 1px solid #EBCFC5; border-radius: 13px;
