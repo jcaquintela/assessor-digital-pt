@@ -64,7 +64,12 @@ import {
   recurrenceQuestion,
   remainingRequest,
   remainderNeedsWork,
+  ambiguousCompletionQuestion,
+  claimsCompletion,
+  unverifiedCompletionReply,
 } from "./completion-intent";
+import { anchorFromBriefing, isEllipticCompletion } from "./briefing-anchor";
+
 import {
   isDiscardAudioRequest,
   UNDO_KEEP_WINDOW_MS,
