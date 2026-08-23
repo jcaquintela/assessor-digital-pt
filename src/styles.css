@@ -759,8 +759,12 @@ html[data-keyboard="open"] .mobile-bottom-nav {
 .consult-root .c-tabcount.alerta { background: var(--coral); color: #fff; }
 
 /* Utilitários de visibilidade têm de vencer o display base dos botões. */
-.consult-root .c-cta.hidden { display: none; }
-@media (min-width: 768px) { .consult-root .c-cta.md\:inline-flex { display: inline-flex; } }
+.consult-root .c-cta.hidden, .consult-root .c-askbar.hidden { display: none; }
+@media (min-width: 768px) {
+  .consult-root .c-cta.md\:inline-flex { display: inline-flex; }
+  .consult-root .c-askbar.md\:flex { display: flex; }
+}
+
 
 /* Cards de categoria — a contagem é a protagonista. */
 .consult-root .c-groupcard .c-group-count {
