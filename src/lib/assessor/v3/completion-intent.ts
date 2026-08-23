@@ -45,7 +45,13 @@ const HINT_STOP = new Set([
   "nos", "nas", "ao", "aos", "em", "meu", "minha", "e", "isso", "isto",
   "faz", "semana", "dias", "dia", "ontem", "hoje", "atualiza", "actualiza",
   "favor", "por favor", "tudo",
+  // Cola gramatical de frases elípticas: "já te tinha avisado", "podes dar
+  // como concluída". Sem isto, o assunto extraído era "tinha avisado".
+  "te", "tinha", "tinhas", "avisado", "avisada", "avisei", "disse", "dito",
+  "podes", "pode", "podia", "dar", "das-", "como", "dei", "deste", "disso",
+  "mesmo", "tambem", "entao", "agora", "aquilo", "essa", "esse", "lembrete",
 ]);
+
 
 export interface CompletionInstruction {
   /** frase original da instrução. */
