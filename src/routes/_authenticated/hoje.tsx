@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { MobileFab } from "@/components/mobile-fab";
+import { UI_EVENTS, trackCtaAfonso, trackUi } from "@/lib/telemetry/ui-events";
 import { useStore } from "@/lib/store";
 import { formatData, formatDataHora, formatEUR } from "@/lib/demo-data";
 import { Badge } from "@/components/ui/badge";
@@ -545,7 +546,7 @@ function HojePage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem asChild>
-                <Link to="/assessor">
+                <Link to="/assessor" onClick={() => trackCtaAfonso("menu_prioridade")}>
                   <MessageSquare className="mr-2 h-3.5 w-3.5" /> Falar com {assessorName}
                 </Link>
               </DropdownMenuItem>
@@ -585,7 +586,7 @@ function HojePage() {
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <Link to="/assessor" className="c-cta hidden md:inline-flex">
+            <Link to="/assessor" className="c-cta hidden md:inline-flex" onClick={() => trackCtaAfonso("cabecalho")}>
               <MessageSquare className="h-4 w-4" /> Falar com {assessorName}
             </Link>
             <PaymentPortalButton variant="ghost" />
@@ -941,7 +942,7 @@ function HojePage() {
       )}
 
       {/* H. Campo permanente para falar com o Afonso (desktop; em mobile é o FAB). */}
-      <Link to="/assessor" className="c-askbar hidden md:flex">
+      <Link to="/assessor" className="c-askbar hidden md:flex" onClick={() => trackCtaAfonso("barra")}>
         <MessageSquare className="h-4 w-4" style={{ color: "var(--gold)" }} />
         <span>Diz ao {assessorName} o que aconteceu, ou pergunta-lhe o que quiseres…</span>
         <span className="c-askbar-go">Falar <ArrowRight className="h-3.5 w-3.5" /></span>
@@ -951,6 +952,7 @@ function HojePage() {
       <MobileFab>
         <Link
           to="/assessor"
+          onClick={() => trackCtaAfonso("fab")}
           className="flex h-12 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-lg"
           style={{ background: "var(--brass)", color: "#241703" }}
         >
