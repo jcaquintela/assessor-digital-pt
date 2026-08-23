@@ -57,7 +57,10 @@ export const NAV_MORE_ENTRY: NavEntry = { to: "/mais", label: "Mais", icon: More
 /** O que passa para "Mais" no v2 (e o que a página /mais lista). */
 export const NAV_MORE_V2: NavEntry[] = [
   { to: "/oportunidades/prospecao", label: "Prospeção", icon: MapPin },
+  { to: "/rotinas", label: "Rotinas", icon: Repeat },
+  { to: "/interacoes", label: "Interações", icon: MessagesSquare },
   { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
+
   { to: "/negocio", label: "Faturação", icon: Wallet },
   { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/definicoes", label: "Definições", icon: Settings },
