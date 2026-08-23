@@ -13,7 +13,6 @@ import {
   FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote, Archive,
   Home, X,
 } from "lucide-react";
-import { PaymentPortalButton } from "@/components/payment-portal-button";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
