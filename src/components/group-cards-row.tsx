@@ -50,6 +50,7 @@ export function GroupCardsRow<T>({
           <div
             key={c.key}
             {...(keyAttr ? { [keyAttr]: c.key } : {})}
+            data-destaque={c.destaque ? "true" : undefined}
             className={`c-card c-groupcard p-4 ${aberto ? "ring-1" : "c-card-hover"} ${expandeAqui ? "col-span-full" : ""}`}
             style={aberto ? { borderColor: "var(--ink-soft)" } : undefined}
           >
