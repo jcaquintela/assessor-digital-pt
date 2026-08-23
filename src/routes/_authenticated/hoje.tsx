@@ -5,11 +5,10 @@ import { AppShell } from "@/components/app-shell";
 import { MobileFab } from "@/components/mobile-fab";
 import { useStore } from "@/lib/store";
 import { formatData, formatDataHora, formatEUR } from "@/lib/demo-data";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  AlertTriangle, CalendarClock, CheckCircle2, Clock, MessageSquare, Sparkles,
+  AlertTriangle, CheckCircle2, Clock, MessageSquare,
   FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote, Archive,
   Home, X,
 } from "lucide-react";
