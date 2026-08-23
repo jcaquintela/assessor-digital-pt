@@ -629,7 +629,7 @@ function HojePage() {
       {!filtroAtivo && (
         <section className="mb-8 space-y-3">
           {priorities.length === 0 ? (
-            <div className="c-empty">Nada urgente neste momento. O {assessorName} avisa-te quando algo mudar.</div>
+            <div className="c-empty compacta">Nada urgente neste momento. O {assessorName} avisa-te quando algo mudar.</div>
           ) : (
             priorities.map((p, i) => cartaoAcao(p, i === 0))
           )}
