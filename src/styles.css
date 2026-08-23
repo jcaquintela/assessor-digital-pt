@@ -994,18 +994,24 @@ html.design-v2:not(:has(.admin-root)) {
   border-color: var(--line);
 }
 .consult-root.v2 .c-sumcard .c-sum-stat { color: var(--ink); }
+/* Tons escurecidos face aos de badge: aqui há texto pequeno por cima
+   (rótulo e meta), e #A6741A sobre #F5EAD2 não passa AA. */
 .consult-root.v2 .c-sumcard[data-atencao="risco"] {
   background: var(--amber-bg);
-  color: var(--amber);
+  color: #7A5310;
   border-color: transparent;
 }
-.consult-root.v2 .c-sumcard[data-atencao="risco"] .c-sum-stat { color: var(--amber); }
+.consult-root.v2 .c-sumcard[data-atencao="risco"] .c-sum-stat { color: #7A5310; }
+.consult-root.v2 .c-sumcard[data-atencao="risco"] .c-sum-label,
+.consult-root.v2 .c-sumcard[data-atencao="risco"] .c-sum-meta { color: #5C4310; opacity: 1; }
 .consult-root.v2 .c-sumcard[data-atencao="bloqueado"] {
   background: var(--coral-bg);
-  color: var(--coral);
+  color: #8E3221;
   border-color: transparent;
 }
-.consult-root.v2 .c-sumcard[data-atencao="bloqueado"] .c-sum-stat { color: var(--coral); }
+.consult-root.v2 .c-sumcard[data-atencao="bloqueado"] .c-sum-stat { color: #8E3221; }
+.consult-root.v2 .c-sumcard[data-atencao="bloqueado"] .c-sum-label,
+.consult-root.v2 .c-sumcard[data-atencao="bloqueado"] .c-sum-meta { color: #6E2618; opacity: 1; }
 
 /* Cartões de grupo: borda neutra; latão só onde há destaque real. */
 .consult-root.v2 .c-groupcard { border-left-color: var(--line); }
