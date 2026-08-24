@@ -19,9 +19,9 @@ export type AgendaPeriod = "today" | "tomorrow" | "week";
 // Palavras que denotam agenda mesmo sem período explícito.
 const AGENDA_WORD_RE = /\b(agenda|marcad[oa]s?|marca[çc][ãa]o|compromiss[oa]s?|reuni[ãa]o|reuni[õo]es|visita[s]?|eventos?)\b/i;
 
-// Padrões interrogativos ("o que tenho", "que tenho", "tenho alguma coisa",
-// "que está marcado", "o que está marcado").
-const HAVE_Q_RE = /\b(?:o\s+)?que\s+(?:tenho|est[áa]\s+marcad|h[áa])\b/i;
+// Padrões interrogativos ("o que tenho", "que tenho", "que temos hoje",
+// "tenho alguma coisa", "que está marcado", "o que está marcado").
+const HAVE_Q_RE = /\b(?:o\s+)?que\s+(?:tenho|tens|temos|est[áa]\s+marcad|h[áa])\b/i;
 const HAVE_ANY_RE = /\btenho\s+(?:alguma\s+coisa|algo|algum\s+compromiss|alguma\s+reuni)/i;
 
 // "E hoje?" / "E amanhã?"
