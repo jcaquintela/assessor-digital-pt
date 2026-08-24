@@ -121,6 +121,23 @@ function AssessorPage() {
   const send = useServerFn(sendDashboardMessage);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  // Treino de objeções: liga o estado no servidor ANTES de enviar a mensagem.
+  const setSparring = useServerFn(setSparringMode);
+  const [treinoBusy, setTreinoBusy] = useState(false);
+  const comecarTreino = async () => {
+    if (treinoBusy || sending) return;
+    setTreinoBusy(true);
+    try {
+      await setSparring({ data: { active: true } });
+      await send({ data: { text: SPARRING_START_TEXT } });
+      const rows = await loadMessages(RECENT_PAGE).catch(() => null);
+      if (rows) setRecentMsgs(rows);
+    } catch (e) {
+      toast.error((e as Error).message || DASHBOARD_CHAT_ERROR);
+    } finally {
+      setTreinoBusy(false);
+    }
+  };
   // A mensagem do consultor aparece já na conversa; o motor pode demorar.
   const [pendingMsgs, setPendingMsgs] = useState<PendingMessage[]>([]);
   // Confirmação de arquivo em lote: a lista numerada passa a cartão com
