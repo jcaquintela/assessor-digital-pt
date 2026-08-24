@@ -9,6 +9,9 @@
 
 export const CHOICE_GRACE_MS = 2_500;
 
+/** Mensagem já lida por um turno anterior da mesma rajada: não volta a correr. */
+export const CONSUMED_STATUS = "coalesced";
+
 const TEXT_TYPES = (t: string | null | undefined): boolean => {
   const v = String(t ?? "text");
   return v === "text" || /_text$/.test(v);
@@ -28,7 +31,7 @@ export async function collectChoiceBurstFollowUps(
     graceMs?: number;
     sleep?: (ms: number) => Promise<void>;
   },
-): Promise<string[]> {
+): Promise<Array<{ id: string; content: string }>> {
   const { userId, channel, sourceMessageId } = args;
   if (!sourceMessageId) return [];
   const graceMs = args.graceMs ?? CHOICE_GRACE_MS;
@@ -47,7 +50,7 @@ export async function collectChoiceBurstFollowUps(
 
     const { data } = await supabase
       .from("assessor_messages")
-      .select("content, created_at, message_type, role")
+      .select("id, content, created_at, message_type, role, status")
       .eq("user_id", userId)
       .eq("channel", channel)
       .eq("role", "user")
@@ -56,10 +59,31 @@ export async function collectChoiceBurstFollowUps(
       .limit(5);
 
     return ((data as any[]) ?? [])
-      .filter((r) => TEXT_TYPES(r?.message_type))
-      .map((r) => String(r?.content ?? "").trim())
-      .filter((s) => s.length > 0);
+      .filter((r) => TEXT_TYPES(r?.message_type) && r?.status !== CONSUMED_STATUS)
+      .map((r) => ({ id: String(r?.id), content: String(r?.content ?? "").trim() }))
+      .filter((r) => r.content.length > 0);
   } catch {
     return [];
   }
+}
+
+/**
+ * Marca as mensagens da rajada como já lidas por este turno, para que o seu
+ * próprio turno não volte a responder (era a origem da contradição).
+ */
+export async function markChoiceBurstConsumed(
+  supabase: any,
+  ids: string[],
+  pendingActionId?: string | null,
+): Promise<void> {
+  if (!ids.length) return;
+  try {
+    await supabase
+      .from("assessor_messages")
+      .update({
+        status: CONSUMED_STATUS,
+        ...(pendingActionId ? { related_pending_action_id: pendingActionId } : {}),
+      })
+      .in("id", ids);
+  } catch { /* best-effort */ }
 }

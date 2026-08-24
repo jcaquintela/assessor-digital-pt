@@ -688,14 +688,20 @@ async function runReasoningEngineInner(
       // Rajada: a escolha só cobre parte dos candidatos. Antes de fechar,
       // damos uma janela curta às mensagens que ainda vêm a caminho ("Ambas").
       if (chosen.length && chosen.length < candidates.length) {
-        const { collectChoiceBurstFollowUps } = await import("./choice-burst.server");
+        const { collectChoiceBurstFollowUps, markChoiceBurstConsumed } =
+          await import("./choice-burst.server");
         const extra = await collectChoiceBurstFollowUps(supabase, {
           userId, channel, sourceMessageId: sourceMessageId ?? null,
         });
         if (extra.length) {
-          choiceText = [choiceText, ...extra].join("\n");
+          choiceText = [choiceText, ...extra.map((e) => e.content)].join("\n");
           const merged = pickCancelChoiceMulti(candidates as any[], choiceText);
-          if (merged.length > chosen.length) chosen = merged;
+          if (merged.length > chosen.length) {
+            chosen = merged;
+            await markChoiceBurstConsumed(
+              supabase, extra.map((e) => e.id), choicePending.id,
+            );
+          }
         }
       }
       if (chosen.length) {
