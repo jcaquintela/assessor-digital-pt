@@ -136,6 +136,7 @@ import {
 } from "./sparring";
 import { resolveSparringTurn, type SparringTurn } from "./sparring-turn";
 import { readSparringState, setSparringTopic, stopSparring } from "./sparring-state.server";
+import { logSparringSuppression } from "./sparring-audit.server";
 
 
 
