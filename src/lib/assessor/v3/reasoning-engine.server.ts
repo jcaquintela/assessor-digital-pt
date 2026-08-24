@@ -1983,6 +1983,15 @@ async function runReasoningEngineInner(
   });
 
   if (sparringActive) {
+    // Auditoria antes de descartar: fica o que ia correr e a mensagem original.
+    await logSparringSuppression({
+      userId, channel, message: trimmed,
+      toolCalls: decideR.decision.tool_calls,
+      memoryWrites: decideR.decision.memory_writes?.length ?? 0,
+      action: decideR.decision.action,
+      reason: sparringEnding ? "sparring_ending" : startedNow ? "sparring_starting" : "sparring_active",
+      turns, route: "v3",
+    });
     decideR.decision.tool_calls = [];
     decideR.decision.memory_writes = [];
     if (decideR.decision.action === "act" || decideR.decision.action === "search_more") {
