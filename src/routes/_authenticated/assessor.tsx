@@ -22,6 +22,7 @@ import {
   DASHBOARD_CHAT_MIN_TIER,
   DASHBOARD_CHAT_ERROR,
 } from "@/lib/assessor/dashboard-chat.functions";
+import { setSparringMode, SPARRING_START_TEXT } from "@/lib/assessor/sparring.functions";
 import {
   makePending,
   reconcilePending,
@@ -121,6 +122,23 @@ function AssessorPage() {
   const send = useServerFn(sendDashboardMessage);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  // Treino de objeções: liga o estado no servidor ANTES de enviar a mensagem.
+  const setSparring = useServerFn(setSparringMode);
+  const [treinoBusy, setTreinoBusy] = useState(false);
+  const comecarTreino = async () => {
+    if (treinoBusy || sending) return;
+    setTreinoBusy(true);
+    try {
+      await setSparring({ data: { active: true } });
+      await send({ data: { text: SPARRING_START_TEXT } });
+      const rows = await loadMessages(RECENT_PAGE).catch(() => null);
+      if (rows) setRecentMsgs(rows);
+    } catch (e) {
+      toast.error((e as Error).message || DASHBOARD_CHAT_ERROR);
+    } finally {
+      setTreinoBusy(false);
+    }
+  };
   // A mensagem do consultor aparece já na conversa; o motor pode demorar.
   const [pendingMsgs, setPendingMsgs] = useState<PendingMessage[]>([]);
   // Confirmação de arquivo em lote: a lista numerada passa a cartão com
@@ -542,6 +560,18 @@ function AssessorPage() {
           {canWrite ? (
             <>
             {pendingConfirm && !pendingBulk && <ReplyQuoteChip question={pendingConfirm.question} />}
+            {/* Entrada explícita no treino: o estado nasce deste clique, não da
+                interpretação do texto enviado. */}
+            <div className="mx-auto mb-2 flex w-full max-w-3xl justify-start">
+              <button
+                type="button"
+                disabled={treinoBusy || sending}
+                onClick={() => void comecarTreino()}
+                className="rounded-full border border-[var(--line)] bg-white px-3 py-1.5 text-[12.5px] disabled:opacity-40"
+              >
+                {treinoBusy ? "A preparar treino…" : "Treino de objeções"}
+              </button>
+            </div>
             <form
               className="mx-auto flex w-full max-w-3xl items-end gap-2"
               onSubmit={(e) => { e.preventDefault(); void enviar(); }}
