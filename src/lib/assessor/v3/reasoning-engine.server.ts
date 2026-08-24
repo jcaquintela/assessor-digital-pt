@@ -134,6 +134,10 @@ import {
   SPARRING_PAUSED_TOPIC,
   SPARRING_TOPIC,
 } from "./sparring";
+import { resolveSparringTurn, type SparringTurn } from "./sparring-turn";
+import { readSparringState, setSparringTopic, stopSparring } from "./sparring-state.server";
+
+
 
 const HISTORY_LIMIT = 6;
 
@@ -300,6 +304,27 @@ async function runReasoningEngineInner(
   if (!trimmed) return { reply: NATURAL_FALLBACKS.didNotUnderstand };
 
   const ctx: DomainContext = { supabase, userId, channel, sourceMessageId: sourceMessageId ?? null };
+
+  // ── Modo treino (sparring) — PRIMEIRO GUARD DO TURNO ──
+  //
+  // Tem de ser lido antes de qualquer atalho determinístico (conclusões,
+  // agenda, Drive) e antes do DECIDE/ACT: foi por os atalhos correrem antes
+  // deste ponto que uma pesquisa real de imóveis disparou a partir de fala em
+  // personagem. Em treino, o turno inteiro é tratado aqui e nada toca na base
+  // de dados.
+  {
+    const state = await readSparringState(supabase as never, userId, channel);
+    const turn = resolveSparringTurn({ state, text: trimmed });
+    if (turn.handleAsSparring) {
+      return await runSparringTurn({ supabase, userId, channel, trimmed, turn });
+    }
+    if (turn.stale || (turn.wasPaused && !turn.resumed)) {
+      // Nunca fica preso: treino esquecido ou pausa não retomada limpa o estado.
+      try { await stopSparring(supabase as never, userId, channel); } catch { /* noop */ }
+    }
+  }
+
+
 
   // ── Instruções de conclusão ("o estudo de mercado já está tratado") ──
   //
