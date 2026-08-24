@@ -316,6 +316,7 @@ export function detectEventNameQuery(text: string): string | null {
   if (!m) return null;
   let subject = m[1].replace(/[?!.\s]+$/g, "").trim();
   subject = subject.replace(LEADING_ARTICLE_RE, "").trim();
+  if (NOT_EVENT_SUBJECT_RE.test(subject)) return null;
   if (TODAY_RE.test(subject) || TOMORROW_RE.test(subject)) return null;
   const tokens = foldText(subject).split(" ").filter((w) => w.length > 2 && !STOP_TOKENS.has(w));
   if (!tokens.length) return null;
