@@ -682,8 +682,22 @@ async function runReasoningEngineInner(
     if (choicePending && choicePending.intent === "choosing_cancel_target") {
       const payload = (choicePending.structured_payload ?? {}) as Record<string, any>;
       const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
-      const { pickCancelChoice, formatMultiCancelReply } = await import("./cancel-choice");
-      const chosen = pickCancelChoice(candidates as any[], trimmed);
+      const { pickCancelChoiceMulti, formatMultiCancelReply } = await import("./cancel-choice");
+      let choiceText = trimmed;
+      let chosen = pickCancelChoiceMulti(candidates as any[], choiceText);
+      // Rajada: a escolha só cobre parte dos candidatos. Antes de fechar,
+      // damos uma janela curta às mensagens que ainda vêm a caminho ("Ambas").
+      if (chosen.length && chosen.length < candidates.length) {
+        const { collectChoiceBurstFollowUps } = await import("./choice-burst.server");
+        const extra = await collectChoiceBurstFollowUps(supabase, {
+          userId, channel, sourceMessageId: sourceMessageId ?? null,
+        });
+        if (extra.length) {
+          choiceText = [choiceText, ...extra].join("\n");
+          const merged = pickCancelChoiceMulti(candidates as any[], choiceText);
+          if (merged.length > chosen.length) chosen = merged;
+        }
+      }
       if (chosen.length) {
         const exec = TOOL_REGISTRY.cancel_follow_up;
         const result = await exec(ctx, { follow_up_ids: chosen.map((c) => c.id) });
