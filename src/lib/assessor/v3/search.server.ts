@@ -90,9 +90,12 @@ export async function search(
       .eq("channel", ctx.channel)
       .in("status", ["collecting_information", "pending_confirmation", "correction_pending"])
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    out.pending_action = data ?? null;
+      .limit(5);
+    // Só o assunto principal chega ao DECIDE. Perguntas laterais (escolhas,
+    // ficheiros, âncora de esclarecimento) têm ranhura própria e não podem
+    // tapar a proposta que está mesmo à espera de confirmação.
+    const rows = ((data as any[]) ?? []).filter((r) => pendingSlot(r?.intent) === "main");
+    out.pending_action = rows[0] ?? null;
   }
 
   // Prospeção — placas/leads. Usadas para deduplicação por telefone e
