@@ -44,10 +44,10 @@ describe("modo treino — entrada explícita", () => {
 
   it("4) atalhos deterministas (agenda e Drive) ficam suprimidos em treino", () => {
     // Agenda: atalho determinístico próprio (detectAgendaQuery).
-    expect(detectAgendaQuery("mostra a agenda de hoje")).toBeTruthy();
+    expect(detectAgendaQuery("o que tenho na agenda hoje?")).toBeTruthy();
     // Drive: atalho de leitura pura.
     expect(detectReadRequest("lista os documentos da drive").tool).toBe("search_files");
-    for (const msg of ["mostra a agenda de hoje", "lista os documentos da drive"]) {
+    for (const msg of ["o que tenho na agenda hoje?", "lista os documentos da drive"]) {
       expect(resolveSparringTurn({ state: activeState, text: msg }).handleAsSparring).toBe(true);
     }
   });
