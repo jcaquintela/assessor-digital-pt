@@ -55,7 +55,9 @@ import {
 import { applySafetyNet, buildArchiveContent, archiveToMiscellaneous } from "./safety-net.server";
 import { isRegisterOnly, isAnswerablePending } from "../pending-answerable";
 import { formatQueryResults, isQueryTool } from "./query-results";
-import { detectContactReadQuery, detectEllipticDriveRead, detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
+import { detectContactReadQuery, detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
+import { resolveEllipticRead } from "./elliptic-read";
+import { readLastRead, recordLastRead } from "./last-read.server";
 import { isDiscardCommand } from "../culture/discard";
 import { enforceTransparentConfirmation } from "./write-receipt";
 import {
