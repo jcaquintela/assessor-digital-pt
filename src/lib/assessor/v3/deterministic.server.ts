@@ -133,15 +133,21 @@ export function composeDayStateReply(
   return `${head}${head ? "aqui vai o teu dia" : "O teu dia"}:\n${blocks.join("\n\n")}`;
 }
 
-export function detectAgendaQuery(text: string): AgendaPeriod | null {
-  const t = (text ?? "").trim();
-  if (!t) return null;
-  if (MISC_MODULE_RE.test(t) && !AGENDA_WORD_RE.test(t)) return null;
+/**
+ * Frases da mensagem. Caso real (24/08): "Agenda hoje como está? Estou na
+ * Espanha" — o sufixo conversacional depois do "?" partia a âncora /\?$/ e a
+ * pergunta caía no motor. Avaliamos cada frase por si.
+ */
+function splitSentences(t: string): string[] {
+  const parts = t
+    .split(/(?<=[.?!])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 3);
+  // A mensagem inteira também conta (frases sem pontuação final).
+  return parts.length > 1 ? [t, ...parts] : [t];
+}
 
-  // Mensagem que pede para criar/lembrar, ou que declara um compromisso com
-  // hora, nunca é uma simples consulta: tem de ir ao motor de raciocínio.
-  if (CREATE_INTENT_RE.test(t) || EXPLICIT_TIME_RE.test(t)) return null;
-
+function matchAgendaClause(t: string): AgendaPeriod | null {
   const period: AgendaPeriod | null =
     TODAY_RE.test(t) ? "today" :
     TOMORROW_RE.test(t) ? "tomorrow" :
@@ -165,6 +171,23 @@ export function detectAgendaQuery(text: string): AgendaPeriod | null {
 
   return null;
 }
+
+export function detectAgendaQuery(text: string): AgendaPeriod | null {
+  const t = (text ?? "").trim();
+  if (!t) return null;
+  if (MISC_MODULE_RE.test(t) && !AGENDA_WORD_RE.test(t)) return null;
+
+  // Mensagem que pede para criar/lembrar, ou que declara um compromisso com
+  // hora, nunca é uma simples consulta: tem de ir ao motor de raciocínio.
+  if (CREATE_INTENT_RE.test(t) || EXPLICIT_TIME_RE.test(t)) return null;
+
+  for (const clause of splitSentences(t)) {
+    const hit = matchAgendaClause(clause);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 
 // Formatação natural PT-PT para a resposta de agenda.
 export interface AgendaItem {
