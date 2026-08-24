@@ -19,9 +19,9 @@ export type AgendaPeriod = "today" | "tomorrow" | "week";
 // Palavras que denotam agenda mesmo sem período explícito.
 const AGENDA_WORD_RE = /\b(agenda|marcad[oa]s?|marca[çc][ãa]o|compromiss[oa]s?|reuni[ãa]o|reuni[õo]es|visita[s]?|eventos?)\b/i;
 
-// Padrões interrogativos ("o que tenho", "que tenho", "tenho alguma coisa",
-// "que está marcado", "o que está marcado").
-const HAVE_Q_RE = /\b(?:o\s+)?que\s+(?:tenho|est[áa]\s+marcad|h[áa])\b/i;
+// Padrões interrogativos ("o que tenho", "que tenho", "que temos hoje",
+// "tenho alguma coisa", "que está marcado", "o que está marcado").
+const HAVE_Q_RE = /\b(?:o\s+)?que\s+(?:tenho|tens|temos|est[áa]\s+marcad|h[áa])\b/i;
 const HAVE_ANY_RE = /\btenho\s+(?:alguma\s+coisa|algo|algum\s+compromiss|alguma\s+reuni)/i;
 
 // "E hoje?" / "E amanhã?"
@@ -133,15 +133,21 @@ export function composeDayStateReply(
   return `${head}${head ? "aqui vai o teu dia" : "O teu dia"}:\n${blocks.join("\n\n")}`;
 }
 
-export function detectAgendaQuery(text: string): AgendaPeriod | null {
-  const t = (text ?? "").trim();
-  if (!t) return null;
-  if (MISC_MODULE_RE.test(t) && !AGENDA_WORD_RE.test(t)) return null;
+/**
+ * Frases da mensagem. Caso real (24/08): "Agenda hoje como está? Estou na
+ * Espanha" — o sufixo conversacional depois do "?" partia a âncora /\?$/ e a
+ * pergunta caía no motor. Avaliamos cada frase por si.
+ */
+function splitSentences(t: string): string[] {
+  const parts = t
+    .split(/(?<=[.?!])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 3);
+  // A mensagem inteira também conta (frases sem pontuação final).
+  return parts.length > 1 ? [t, ...parts] : [t];
+}
 
-  // Mensagem que pede para criar/lembrar, ou que declara um compromisso com
-  // hora, nunca é uma simples consulta: tem de ir ao motor de raciocínio.
-  if (CREATE_INTENT_RE.test(t) || EXPLICIT_TIME_RE.test(t)) return null;
-
+function matchAgendaClause(t: string): AgendaPeriod | null {
   const period: AgendaPeriod | null =
     TODAY_RE.test(t) ? "today" :
     TOMORROW_RE.test(t) ? "tomorrow" :
@@ -165,6 +171,23 @@ export function detectAgendaQuery(text: string): AgendaPeriod | null {
 
   return null;
 }
+
+export function detectAgendaQuery(text: string): AgendaPeriod | null {
+  const t = (text ?? "").trim();
+  if (!t) return null;
+  if (MISC_MODULE_RE.test(t) && !AGENDA_WORD_RE.test(t)) return null;
+
+  // Mensagem que pede para criar/lembrar, ou que declara um compromisso com
+  // hora, nunca é uma simples consulta: tem de ir ao motor de raciocínio.
+  if (CREATE_INTENT_RE.test(t) || EXPLICIT_TIME_RE.test(t)) return null;
+
+  for (const clause of splitSentences(t)) {
+    const hit = matchAgendaClause(clause);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 
 // Formatação natural PT-PT para a resposta de agenda.
 export interface AgendaItem {
@@ -261,9 +284,17 @@ export function formatAgendaDateReply(label: string, items: AgendaItem[]): strin
 // ---------------------------------------------------------------------------
 // Pesquisa de compromisso por nome ("Quando é a reunião de teste Outlook?",
 // "Que dia é a visita à Rua das Flores?").
+//
+// Caso real (24/08): "Que dia a Marta Santana" — sem o verbo ("é"/"será") o
+// padrão não casava e a pergunta acabava em Diversos. O verbo é opcional.
 
 const EVENT_NAME_RE =
-  /\b(?:quando\s+(?:é|e|ser[áa])(?:\s+que)?|que\s+dia\s+(?:é|e|ser[áa])?|a\s+que\s+horas\s+(?:é|e|ser[áa])?)\s+(.+)$/i;
+  /\b(?:quando\s+(?:é|e|ser[áa])(?:\s+que)?|que\s+dia\s+(?:(?:é|e|ser[áa]|foi|tenho|temos)\s+)?|a\s+que\s+horas\s+(?:(?:é|e|ser[áa])\s+)?)\s*(.+)$/i;
+
+// Sem verbo, "que dia marcamos a visita?" é um pedido de marcação, não uma
+// consulta. Estes arranques nunca são assunto de compromisso.
+const NOT_EVENT_SUBJECT_RE =
+  /^(?:marca\w*|agenda\w*|queres|quer[ea]s?|posso|podemos|devo|fica\w*|vamos|seria|prefere\w*|melhor)\b/i;
 
 const LEADING_ARTICLE_RE = /^(?:a|o|as|os|um|uma|essa|esse|aquela|aquele|minha|meu|nossa|nosso)\s+/i;
 
@@ -285,6 +316,7 @@ export function detectEventNameQuery(text: string): string | null {
   if (!m) return null;
   let subject = m[1].replace(/[?!.\s]+$/g, "").trim();
   subject = subject.replace(LEADING_ARTICLE_RE, "").trim();
+  if (NOT_EVENT_SUBJECT_RE.test(subject)) return null;
   if (TODAY_RE.test(subject) || TOMORROW_RE.test(subject)) return null;
   const tokens = foldText(subject).split(" ").filter((w) => w.length > 2 && !STOP_TOKENS.has(w));
   if (!tokens.length) return null;

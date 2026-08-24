@@ -55,7 +55,7 @@ import {
 import { applySafetyNet, buildArchiveContent, archiveToMiscellaneous } from "./safety-net.server";
 import { isRegisterOnly, isAnswerablePending } from "../pending-answerable";
 import { formatQueryResults, isQueryTool } from "./query-results";
-import { detectEllipticDriveRead, detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
+import { detectContactReadQuery, detectEllipticDriveRead, detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
 import { isDiscardCommand } from "../culture/discard";
 import { enforceTransparentConfirmation } from "./write-receipt";
 import {
@@ -1630,7 +1630,8 @@ async function runReasoningEngineInner(
     // (0) Resumo rápido de pessoa — leitura pura, sem confirmação e sem
     // depender do nível de autonomia. Vem antes da agenda porque "o que
     // tenho sobre a Marta" partilha o mesmo verbo.
-    const briefName = detectPersonBriefQuery(trimmed);
+    // "Manda o contacto do Paulo Lopes" é leitura: mesma ficha de pessoa.
+    const briefName = detectPersonBriefQuery(trimmed) ?? detectContactReadQuery(trimmed);
     if (briefName) {
       const t0 = Date.now();
       let reply: string;
