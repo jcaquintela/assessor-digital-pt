@@ -11,7 +11,7 @@ describe("sparring", () => {
 
   it("deteta fim do treino", () => {
     expect(detectSparringEnd("chega")).toBe(true);
-    expect(detectSparringEnd("obrigado")).toBe(true);
+    expect(detectSparringEnd("terminar treino")).toBe(true);
     expect(detectSparringEnd("voltamos ao normal")).toBe(true);
     expect(detectSparringEnd("o preço é justo")).toBe(false);
   });
