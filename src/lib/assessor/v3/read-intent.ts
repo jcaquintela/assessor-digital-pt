@@ -39,6 +39,54 @@ const READ_RE =
 const WRITE_RE =
   /\b(marca|marcar|agenda(?:r)?|regista|registar|guarda|guardar|cria|criar|adiciona|adicionar|apaga|apagar|elimina|eliminar|remove|remover|cancela|cancelar|desmarca|desmarcar|altera|alterar|actualiza|atualiza|lembra-?me|envia|enviar|manda|mandar|corrige|corrigir)\b/;
 
+// ---------------------------------------------------------------------------
+// Excepção ao WRITE_RE: "Manda o contacto do Paulo Lopes".
+//
+// Caso real (24/08): "manda" e "envia" bloqueavam indiscriminadamente e um
+// pedido de INFORMAÇÃO ("manda-me o número da Marta") era tratado como
+// escrita. Pedir o contacto DE alguém é leitura; mandar uma mensagem A
+// alguém continua a ser acção real e fica bloqueado.
+
+const GIVE_ME_RE =
+  /\b(manda|mandas|envia|envias|passa|passas|da|das|diz|dizes|mostra|mostras|partilha|qual\s+(?:e|o|a)?)\b/;
+
+// Objecto pedido, sempre com artigo definido ("o contacto", "a morada").
+const CONTACT_OBJ_RE =
+  /\b(?:o|a|os|as)\s+(contactos?|numeros?|telefones?|telemoveis?|telemovel|moradas?|emails?|e-mails?)\b/;
+
+// Sinais de envio real para terceiros — nunca leitura.
+const SEND_OUT_RE =
+  /\b(mensagem|mensagens|sms|whatsapp|recado|convite|proposta|email\s+(?:ao|a|para)|link|ficheiro\s+(?:ao|a|para))\b/;
+
+const CONTACT_NAME_RE =
+  /\b(?:contactos?|n[úu]meros?|telefones?|telem[óo]ve(?:l|is)|moradas?|e-?mails?)\s+(?:d[oaeu]s?\s+|de\s+|para\s+(?:o|a)\s+)?(.+)$/i;
+
+const NAME_PREFIX_RE = /^(?:sr\.?a?\.?|senhor[a]?|dona?|do|da|o|a)\s+/i;
+
+/** "Manda o contacto do Paulo Lopes" → "Paulo Lopes"; senão null. */
+export function detectContactReadQuery(raw: string): string | null {
+  const t = norm(raw ?? "");
+  if (!t || t.length > 160) return null;
+  if (!GIVE_ME_RE.test(t)) return null;
+  if (!CONTACT_OBJ_RE.test(t)) return null;
+  if (SEND_OUT_RE.test(t)) return null;
+
+  const m = String(raw ?? "").match(CONTACT_NAME_RE);
+  let name = (m?.[1] ?? "").replace(/[?!.,;:]+\s*$/g, "").replace(/\s+/g, " ").trim();
+  name = name.replace(NAME_PREFIX_RE, "").trim();
+  if (!name || name.length < 2 || name.length > 60) return null;
+  if (!/^\p{L}/u.test(name)) return null;
+  return name;
+}
+
+// Período temporal para perguntas de leitura sem assunto reconhecido
+// ("Que temos hoje?"): sem isto ficava sem ferramenta e o motor respondia de cor.
+const PERIOD_RE: Array<[RegExp, "today" | "tomorrow" | "week"]> = [
+  [/\bhoje\b/, "today"],
+  [/\bamanha\b/, "tomorrow"],
+  [/\b(esta semana|na semana|semana)\b/, "week"],
+];
+
 const TOPICS: Array<{ re: RegExp; tool: ReadTool | null; args?: Record<string, unknown>; topic?: "documents" }> = [
   { re: /\b(placas?|prospe(?:c|ç)ao|prospe(?:c|ç)cao)\b/, tool: "search_prospecting_leads", args: {} },
   { re: /\b(documentos?|ficheiros?|drive|cadernetas?|certificados?)\b/, tool: "search_files", args: { query: "" }, topic: "documents" },
@@ -56,6 +104,13 @@ const TOPICS: Array<{ re: RegExp; tool: ReadTool | null; args?: Record<string, u
 export function detectReadRequest(raw: string): ReadRequest {
   const text = norm(raw ?? "");
   if (!text) return NONE;
+
+  // Pedido de contacto ao próprio consultor: leitura, apesar do "manda".
+  const contactName = detectContactReadQuery(raw);
+  if (contactName) {
+    return { pure: true, tool: "search_people", arguments: { query: contactName }, topic: null };
+  }
+
   if (WRITE_RE.test(text)) return NONE;
   if (!READ_RE.test(text)) return NONE;
 
@@ -69,8 +124,17 @@ export function detectReadRequest(raw: string): ReadRequest {
       };
     }
   }
+
+  // "Que temos hoje?" — sem assunto, mas com período: é a agenda.
+  for (const [re, period] of PERIOD_RE) {
+    if (re.test(text)) {
+      return { pure: true, tool: "search_agenda", arguments: { period }, topic: null };
+    }
+  }
+
   return { pure: true, tool: null, arguments: {}, topic: null };
 }
+
 
 export const READ_FAILED_REPLY =
   "Não consegui consultar isso agora. Queres que tente outra vez?";
