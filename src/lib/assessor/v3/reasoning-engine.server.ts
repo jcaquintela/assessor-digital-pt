@@ -1651,6 +1651,9 @@ async function runReasoningEngineInner(
         reply = NATURAL_FALLBACKS.aiDown;
         void err;
       }
+      await recordLastRead(supabase, {
+        userId, channel, tool: "search_people", arguments: { query: briefName },
+      });
       try {
         await supabase.from("assessor_ai_logs").insert({
           user_id: userId, channel, model: "reasoning-engine-v3",
