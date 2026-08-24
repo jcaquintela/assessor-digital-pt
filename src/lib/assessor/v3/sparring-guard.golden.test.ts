@@ -11,6 +11,7 @@ import { resolveSparringTurn } from "./sparring-turn";
 import { readSparringState, startSparring, stopSparring } from "./sparring-state.server";
 import { detectSparringStart, SPARRING_TOPIC, SPARRING_IDLE_MS } from "./sparring";
 import { detectReadRequest } from "./read-intent";
+import { detectAgendaQuery } from "./deterministic.server";
 import { SPARRING_START_TEXT } from "../sparring.functions";
 
 const U = "user-1";
@@ -42,8 +43,11 @@ describe("modo treino — entrada explícita", () => {
   });
 
   it("4) atalhos deterministas (agenda e Drive) ficam suprimidos em treino", () => {
+    // Agenda: atalho determinístico próprio (detectAgendaQuery).
+    expect(detectAgendaQuery("mostra a agenda de hoje")).toBeTruthy();
+    // Drive: atalho de leitura pura.
+    expect(detectReadRequest("lista os documentos da drive").tool).toBe("search_files");
     for (const msg of ["mostra a agenda de hoje", "lista os documentos da drive"]) {
-      expect(detectReadRequest(msg).pure).toBe(true);
       expect(resolveSparringTurn({ state: activeState, text: msg }).handleAsSparring).toBe(true);
     }
   });
