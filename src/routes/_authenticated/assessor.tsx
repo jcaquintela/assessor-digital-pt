@@ -22,6 +22,7 @@ import {
   DASHBOARD_CHAT_MIN_TIER,
   DASHBOARD_CHAT_ERROR,
 } from "@/lib/assessor/dashboard-chat.functions";
+import { setSparringMode, SPARRING_START_TEXT } from "@/lib/assessor/sparring.functions";
 import {
   makePending,
   reconcilePending,
