@@ -6,7 +6,7 @@
 // Cada família de pedidos passa a ter a sua ranhura: uma resposta só resolve
 // (ou cancela) o pedido da ranhura a que pertence.
 
-export type PendingSlot = "main" | "documents" | "media" | "script" | "cancel" | "recurrence";
+export type PendingSlot = "main" | "documents" | "media" | "script" | "cancel" | "recurrence" | "clarify";
 
 const DOCUMENT_INTENTS = new Set(["choosing_document", "confirming_document_send"]);
 // "Guardo o ficheiro ou descarto?" é sempre uma pergunta lateral: não pode
@@ -21,6 +21,10 @@ const CANCEL_INTENTS = new Set(["choosing_cancel_target"]);
 // "Isto repete-se — queres que continue a repetir?" é uma pergunta lateral a
 // uma conclusão: o sim/não não pode ser roubado por outro rascunho aberto.
 const RECURRENCE_INTENTS = new Set(["confirm_recurrence_continue"]);
+// "A que te referes?" — pergunta de esclarecimento do Afonso. Ranhura própria
+// e expiração curta: a âncora não pode competir com o assunto principal nem
+// sobreviver ao dia (caso "Casa Final B", 30/07).
+const CLARIFY_INTENTS = new Set(["open_question"]);
 
 export function pendingSlot(intent: string | null | undefined): PendingSlot {
   if (intent && DOCUMENT_INTENTS.has(intent)) return "documents";
@@ -28,7 +32,8 @@ export function pendingSlot(intent: string | null | undefined): PendingSlot {
   if (intent && SCRIPT_INTENTS.has(intent)) return "script";
   if (intent && CANCEL_INTENTS.has(intent)) return "cancel";
   if (intent && RECURRENCE_INTENTS.has(intent)) return "recurrence";
+  if (intent && CLARIFY_INTENTS.has(intent)) return "clarify";
   return "main";
 }
 
-export const PENDING_SLOTS: PendingSlot[] = ["main", "documents", "media", "script", "cancel", "recurrence"];
+export const PENDING_SLOTS: PendingSlot[] = ["main", "documents", "media", "script", "cancel", "recurrence", "clarify"];

@@ -1902,6 +1902,30 @@ async function runReasoningEngineInner(
       return { reply };
     }
 
+    // (a3) Resposta à pergunta em aberto do Afonso ("A que te referes?" →
+    // "Casa Final B"). Resolvida pelos caminhos de pesquisa que já existem.
+    if (!pending) {
+      const { answerOpenQuestion } = await import("./open-question.server");
+      const answered = await answerOpenQuestion(supabase, {
+        userId, channel, text: trimmed,
+        lookup: (tool, toolArgs) =>
+          (TOOL_REGISTRY as any)[tool](ctx, toolArgs as any),
+      });
+      if (answered) {
+        try {
+          await supabase.from("assessor_ai_logs").insert({
+            user_id: userId, channel, model: "reasoning-engine-v3",
+            intent: "open_question_answer", confidence: 1,
+            input_tokens: 0, output_tokens: 0, total_tokens: 0,
+            latency_ms: 0, success: true, error: null,
+            domain: "assessor", route: "v3-deterministic", fallback_used: false,
+            tool_name: answered.tool, tool_success: true,
+          } as never);
+        } catch { /* noop */ }
+        return { reply: answered.reply };
+      }
+    }
+
     // (b) Confirmação curta sem contexto pendente → pede referência.
     if (
       saIsConfirmation(trimmed) &&
@@ -1916,10 +1940,22 @@ async function runReasoningEngineInner(
         !/\?\s*$/.test(lastAssistantContent0) &&
         !!lastAssistantAt0 &&
         (Date.now() - lastAssistantAt0.getTime()) < 30 * 60_000;
-      const reply =
+      let reply =
         recentStatement && isBareAcknowledgement(trimmed)
           ? ACKNOWLEDGED_REPLY
           : BARE_CONFIRMATION_REPLY;
+      // Rajada: o "não" da mensagem anterior fechou o pendente há 2s e este
+      // "sim" ficou órfão. A pergunta passa a nomear o assunto — e fica
+      // gravada como pergunta em aberto (caso "Casa Final B", 30/07).
+      let openSubject: string | null = null;
+      if (reply === BARE_CONFIRMATION_REPLY) {
+        const { findJustClosedPending, subjectOfPending, orphanBurstReply } =
+          await import("./open-question.server");
+        const justClosed = await findJustClosedPending(supabase, { userId, channel });
+        const subject = subjectOfPending(justClosed);
+        const anchored = orphanBurstReply(subject);
+        if (anchored) { reply = anchored; openSubject = subject; }
+      }
       try {
         await supabase.from("assessor_ai_logs").insert({
           user_id: userId, channel, model: "reasoning-engine-v3",
@@ -1931,6 +1967,15 @@ async function runReasoningEngineInner(
           tool_name: null, tool_success: null,
         } as never);
       } catch { /* noop */ }
+      if (reply !== ACKNOWLEDGED_REPLY) {
+        try {
+          const { recordOpenQuestion } = await import("./open-question.server");
+          await recordOpenQuestion(supabase, {
+            userId, channel, question: reply, subject: openSubject,
+            sourceMessageId: sourceMessageId ?? null, toolsExecuted: 0,
+          });
+        } catch { /* noop */ }
+      }
       return { reply };
     }
   } catch { /* noop — cai no fluxo normal */ }
@@ -2739,6 +2784,20 @@ async function runReasoningEngineInner(
       reply = appendOffer(reply, GOALS_QUESTION);
     }
   } catch { /* noop */ }
+
+  // Âncora: uma pergunta de esclarecimento sem nenhuma ferramenta executada
+  // deixa rastro (expiração curta). Sem isto, a resposta seguinte do
+  // consultor — "Casa Final B" — ficava à deriva (30/07).
+  if (!sparringActive && toolResults.length === 0) {
+    try {
+      const { recordOpenQuestion } = await import("./open-question.server");
+      await recordOpenQuestion(supabase, {
+        userId, channel, question: reply,
+        sourceMessageId: sourceMessageId ?? null,
+        toolsExecuted: toolResults.length,
+      });
+    } catch { /* noop — nunca bloquear a resposta */ }
+  }
 
   return { reply };
 }
