@@ -542,6 +542,18 @@ function AssessorPage() {
           {canWrite ? (
             <>
             {pendingConfirm && !pendingBulk && <ReplyQuoteChip question={pendingConfirm.question} />}
+            {/* Entrada explícita no treino: o estado nasce deste clique, não da
+                interpretação do texto enviado. */}
+            <div className="mx-auto mb-2 flex w-full max-w-3xl justify-start">
+              <button
+                type="button"
+                disabled={treinoBusy || sending}
+                onClick={() => void comecarTreino()}
+                className="rounded-full border border-[var(--line)] bg-white px-3 py-1.5 text-[12.5px] disabled:opacity-40"
+              >
+                {treinoBusy ? "A preparar treino…" : "Treino de objeções"}
+              </button>
+            </div>
             <form
               className="mx-auto flex w-full max-w-3xl items-end gap-2"
               onSubmit={(e) => { e.preventDefault(); void enviar(); }}
