@@ -1411,6 +1411,10 @@ export type Database = {
           last_entity_type: string | null
           last_intent: string | null
           last_property_id: string | null
+          last_read_args: Json | null
+          last_read_at: string | null
+          last_read_axis: string | null
+          last_read_tool: string | null
           pending_action_id: string | null
           sparring_turns: number
           state_summary: string | null
@@ -1433,6 +1437,10 @@ export type Database = {
           last_entity_type?: string | null
           last_intent?: string | null
           last_property_id?: string | null
+          last_read_args?: Json | null
+          last_read_at?: string | null
+          last_read_axis?: string | null
+          last_read_tool?: string | null
           pending_action_id?: string | null
           sparring_turns?: number
           state_summary?: string | null
@@ -1455,6 +1463,10 @@ export type Database = {
           last_entity_type?: string | null
           last_intent?: string | null
           last_property_id?: string | null
+          last_read_args?: Json | null
+          last_read_at?: string | null
+          last_read_axis?: string | null
+          last_read_tool?: string | null
           pending_action_id?: string | null
           sparring_turns?: number
           state_summary?: string | null
