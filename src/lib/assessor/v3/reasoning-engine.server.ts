@@ -1864,6 +1864,9 @@ async function runReasoningEngineInner(
       const r = await TOOL_REGISTRY.search_agenda(ctx, { period: agendaPeriod });
       const items: AgendaItem[] = ((r.data as any)?.items as AgendaItem[]) ?? [];
       const reply = formatAgendaReply(agendaPeriod, items);
+      await recordLastRead(supabase, {
+        userId, channel, tool: "search_agenda", arguments: { period: agendaPeriod },
+      });
       try {
         await supabase.from("assessor_ai_logs").insert({
           user_id: userId, channel, model: "reasoning-engine-v3",
@@ -1877,18 +1880,52 @@ async function runReasoningEngineInner(
       return { reply };
     }
 
-    // (a2) Consulta ao Drive Inteligente ("Lista os documentos da Drive",
-    // "E documentos?" logo a seguir a falar de ficheiros) → lê e responde já,
-    // sem depender da IA. Leitura não precisa de confirmação.
+    // (a2) Elipse de leitura ("E documentos?", "E para a próxima semana?").
+    // Resolve pelo TÓPICO da última leitura guardado na memória de conversa —
+    // já não depende de casar palavras no texto da resposta anterior.
+    if (!pending) {
+      const lastRead = await readLastRead(supabase, { userId, channel });
+      const elliptic = resolveEllipticRead(trimmed, lastRead);
+      if (elliptic) {
+        const t0 = Date.now();
+        const r = await (TOOL_REGISTRY as any)[elliptic.tool](ctx, elliptic.arguments);
+        const reply =
+          elliptic.tool === "search_agenda" && r.ok
+            ? formatAgendaReply(
+                (elliptic.arguments as any).period ?? "today",
+                (((r.data as any)?.items as AgendaItem[]) ?? []),
+              )
+            : r.ok
+              ? (formatQueryResults([{ name: elliptic.tool, ok: true, data: r.data } as any]) ?? READ_FAILED_REPLY)
+              : READ_FAILED_REPLY;
+        await recordLastRead(supabase, {
+          userId, channel, tool: elliptic.tool, arguments: elliptic.arguments,
+        });
+        try {
+          await supabase.from("assessor_ai_logs").insert({
+            user_id: userId, channel, model: "reasoning-engine-v3",
+            intent: "elliptic_read_fast_path", confidence: 1,
+            input_tokens: 0, output_tokens: 0, total_tokens: 0,
+            latency_ms: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
+            domain: "assessor", route: "v3-deterministic", fallback_used: false,
+            tool_name: elliptic.tool, tool_success: !!r.ok,
+          } as never);
+        } catch { /* noop */ }
+        return { reply };
+      }
+    }
+
+    // (a2b) Consulta ao Drive Inteligente ("Lista os documentos da Drive")
+    // → lê e responde já, sem depender da IA.
     const driveRead = detectReadRequest(trimmed);
-    const ellipticDrive = detectEllipticDriveRead(trimmed, lastAssistantContent0 ?? "");
-    if (!pending && ((driveRead.pure && driveRead.tool === "search_files") || ellipticDrive)) {
+    if (!pending && driveRead.pure && driveRead.tool === "search_files") {
       const t0 = Date.now();
-      const args = ellipticDrive ? { query: "" } : driveRead.arguments;
+      const args = driveRead.arguments;
       const r = await TOOL_REGISTRY.search_files(ctx, args);
       const reply = r.ok
         ? (formatQueryResults([{ name: "search_files", ok: true, data: r.data } as any]) ?? READ_FAILED_REPLY)
         : READ_FAILED_REPLY;
+      await recordLastRead(supabase, { userId, channel, tool: "search_files", arguments: args });
       try {
         await supabase.from("assessor_ai_logs").insert({
           user_id: userId, channel, model: "reasoning-engine-v3",
