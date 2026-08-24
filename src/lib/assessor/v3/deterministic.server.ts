@@ -284,9 +284,17 @@ export function formatAgendaDateReply(label: string, items: AgendaItem[]): strin
 // ---------------------------------------------------------------------------
 // Pesquisa de compromisso por nome ("Quando é a reunião de teste Outlook?",
 // "Que dia é a visita à Rua das Flores?").
+//
+// Caso real (24/08): "Que dia a Marta Santana" — sem o verbo ("é"/"será") o
+// padrão não casava e a pergunta acabava em Diversos. O verbo é opcional.
 
 const EVENT_NAME_RE =
-  /\b(?:quando\s+(?:é|e|ser[áa])(?:\s+que)?|que\s+dia\s+(?:é|e|ser[áa])?|a\s+que\s+horas\s+(?:é|e|ser[áa])?)\s+(.+)$/i;
+  /\b(?:quando\s+(?:é|e|ser[áa])(?:\s+que)?|que\s+dia\s+(?:(?:é|e|ser[áa]|foi|tenho|temos)\s+)?|a\s+que\s+horas\s+(?:(?:é|e|ser[áa])\s+)?)\s*(.+)$/i;
+
+// Sem verbo, "que dia marcamos a visita?" é um pedido de marcação, não uma
+// consulta. Estes arranques nunca são assunto de compromisso.
+const NOT_EVENT_SUBJECT_RE =
+  /^(?:marca\w*|agenda\w*|queres|quer[ea]s?|posso|podemos|devo|fica\w*|vamos|seria|prefere\w*|melhor)\b/i;
 
 const LEADING_ARTICLE_RE = /^(?:a|o|as|os|um|uma|essa|esse|aquela|aquele|minha|meu|nossa|nosso)\s+/i;
 
