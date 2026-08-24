@@ -3,6 +3,7 @@
 import { TOOL_REGISTRY, type DomainContext } from "../v2/domain.server";
 import type { Observation, SearchName, SearchResults } from "./types";
 import { foldLike } from "@/lib/search/normalize";
+import { pendingSlot } from "../pending-slots";
 
 function firstOf(observations: Observation[], type: Observation["type"]): Observation | undefined {
   return observations.find((o) => o.type === type);
