@@ -277,6 +277,110 @@ async function syncPendingQuestion(
     .eq("id", pending!.id);
 }
 
+/**
+ * Turno em modo treino. Nenhuma ferramenta real corre aqui: só o DECIDE com o
+ * bloco de sparring, para responder em personagem. Nada é arquivado nem
+ * escrito na base de dados.
+ */
+async function runSparringTurn(args: {
+  supabase: EngineInput["supabase"];
+  userId: string;
+  channel: string;
+  trimmed: string;
+  turn: SparringTurn;
+}): Promise<EngineOutcome> {
+  const { supabase, userId, channel, trimmed, turn } = args;
+  const started = Date.now();
+  const closing = turn.ending || turn.autoPause;
+
+  await setSparringTopic(
+    supabase as never,
+    userId,
+    channel,
+    turn.ending ? null : turn.autoPause ? SPARRING_PAUSED_TOPIC : SPARRING_TOPIC,
+    closing ? 0 : turn.turns,
+  );
+
+  // Auditoria: início e fim do treino ficam visíveis nas ações autónomas.
+  if (turn.startedNow || closing) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const rows: any[] = [];
+      if (turn.startedNow) {
+        rows.push({
+          admin_user_id: null, action: "sparring_started", target_user_id: userId,
+          resource_type: "conversation", resource_id: channel,
+          reason: "Modo treino (sparring) iniciado — escrita bloqueada.",
+          metadata: { channel, resumed: turn.resumed, source: "reasoning-engine-v3" },
+        });
+      }
+      if (closing) {
+        rows.push({
+          admin_user_id: null, action: "sparring_ended", target_user_id: userId,
+          resource_type: "conversation", resource_id: channel,
+          reason: turn.autoPause
+            ? "Modo treino em pausa automática após várias trocas."
+            : "Modo treino terminado pelo consultor.",
+          metadata: { channel, turns: turn.turns, auto: turn.autoPause, source: "reasoning-engine-v3" },
+        });
+      }
+      await supabaseAdmin.from("admin_audit_logs").insert(rows as never);
+    } catch { /* noop */ }
+  }
+
+  const [{ data: prof }, { data: recentRows }] = await Promise.all([
+    supabase.from("profiles").select("name, assessor_name").eq("id", userId).maybeSingle(),
+    supabase
+      .from("assessor_messages")
+      .select("role, content, created_at, id")
+      .eq("user_id", userId).eq("channel", channel)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false })
+      .limit(HISTORY_LIMIT),
+  ]);
+
+  const decideR = await decide({
+    content: trimmed,
+    observations: [],
+    hypotheses: [],
+    searches: {},
+    historyPreview: toHistoryPreview((recentRows as any[]) ?? []),
+    assessorName:
+      sanitizeAssessorName((prof as any)?.assessor_name ?? "") || ASSESSOR_NAME_DEFAULT,
+    userFirstName: String((prof as any)?.name ?? "").split(/\s+/)[0] || "",
+    nowLisbonYmd: nowLisbonYmd(),
+    nowLisbonHuman: nowLisbonHuman(),
+    sparring: true,
+  });
+
+  // Guard duro: mesmo que o modelo devolva ferramentas ou memórias, morrem aqui.
+  decideR.decision.tool_calls = [];
+  decideR.decision.memory_writes = [];
+
+  let reply = sanitizeReply(decideR.decision.natural_reply);
+  if (!reply) reply = NATURAL_FALLBACKS.aiDown;
+  if (turn.autoPause && !reply.includes("continuar o treino")) {
+    reply = `${reply}\n\n${SPARRING_CONTINUE_QUESTION}`.trim();
+  }
+
+  try {
+    await supabase.from("assessor_ai_logs").insert({
+      user_id: userId, channel, model: "reasoning-engine-v3",
+      intent: "sparring_turn", confidence: 1,
+      input_tokens: decideR.usage?.inputTokens ?? 0,
+      output_tokens: decideR.usage?.outputTokens ?? 0,
+      total_tokens: (decideR.usage?.inputTokens ?? 0) + (decideR.usage?.outputTokens ?? 0),
+      latency_ms: Date.now() - started, success: decideR.ok,
+      error: decideR.error ?? null,
+      domain: "assessor", route: "v3-sparring", fallback_used: !decideR.ok,
+      tool_name: null, tool_success: null,
+    } as never);
+  } catch { /* noop */ }
+
+  return { reply };
+}
+
+
 export async function runReasoningEngine(
   input: EngineInput,
   opts?: { skipCompletionPass?: boolean },
