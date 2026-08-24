@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { detectEllipticDriveRead, detectReadRequest } from "./read-intent";
+import { detectReadRequest } from "./read-intent";
+import { resolveEllipticRead } from "./elliptic-read";
 import {
   detectDriveFileRequest,
   buildFileActionQuestion,
