@@ -862,7 +862,7 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
       source_channel: ctx.channel,
       source_message_id: ctx.sourceMessageId ?? null,
       created_by_assessor: true,
-      source_pending_action_id: ctx.pendingActionId ?? null,
+      source_pending_action_id: ctx.sameTurnSeparateDates ? null : (ctx.pendingActionId ?? null),
       // Reunião interna nasce já marcada como interna: nunca pede "Como
       // correu?" nem entra nas superfícies de atenção do dashboard.
       event_class: initialEventClass({

@@ -423,7 +423,14 @@ async function runReasoningEngineInner(
   const trimmed = content.trim();
   if (!trimmed) return { reply: NATURAL_FALLBACKS.didNotUnderstand };
 
-  const ctx: DomainContext = { supabase, userId, channel, sourceMessageId: sourceMessageId ?? null };
+  // Duas datas distintas na MESMA instrução ("dia 13 às 15 e depois tenho dia
+  // 7 de setembro às 10") são dois compromissos, não um reagendamento.
+  const { allowsSameTurnSiblings } = await import("./multi-date-turn");
+  const ctx: DomainContext = {
+    supabase, userId, channel,
+    sourceMessageId: sourceMessageId ?? null,
+    sameTurnSeparateDates: allowsSameTurnSiblings(trimmed),
+  };
 
   // ── Modo treino (sparring) — PRIMEIRO GUARD DO TURNO ──
   //

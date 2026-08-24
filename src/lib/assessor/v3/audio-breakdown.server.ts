@@ -147,11 +147,19 @@ export async function executeAudioBreakdown(
   pending: PendingActionRow,
 ): Promise<string> {
   const breakdown = coerceBreakdown(pending.structured_payload ?? {});
+  // Áudio com dois compromissos do mesmo assunto em datas diferentes: cada
+  // item é um registo próprio — não se reaproveita o primeiro (Iolanda, 13/08).
+  const { breakdownHasSeparateDates } = await import("./multi-date-turn");
+  const separateDates = breakdownHasSeparateDates(breakdown.items as any[]);
   const created = { facts: 0, followUps: 0, notes: 0 };
   const records: { table: string; id: string }[] = [];
   for (const item of breakdown.items) {
     try {
-      const out = await execItem({ ...ctx, pendingActionId: pending.id } as DomainContext, item);
+      const out = await execItem({
+        ...ctx,
+        pendingActionId: pending.id,
+        sameTurnSeparateDates: separateDates || ctx.sameTurnSeparateDates,
+      } as DomainContext, item);
       if (!out) continue;
       if (out.record) records.push(out.record);
       if (out.kind === "fact") created.facts += 1;
