@@ -136,6 +136,7 @@ import {
 } from "./sparring";
 import { resolveSparringTurn, type SparringTurn } from "./sparring-turn";
 import { readSparringState, setSparringTopic, stopSparring } from "./sparring-state.server";
+import { logSparringSuppression } from "./sparring-audit.server";
 
 
 
@@ -354,6 +355,21 @@ async function runSparringTurn(args: {
   });
 
   // Guard duro: mesmo que o modelo devolva ferramentas ou memórias, morrem aqui.
+  // Fica registo do que foi bloqueado, com a mensagem original do consultor.
+  await logSparringSuppression({
+    userId, channel, message: trimmed,
+    toolCalls: decideR.decision.tool_calls,
+    memoryWrites: decideR.decision.memory_writes?.length ?? 0,
+    action: decideR.decision.action,
+    reason: turn.ending
+      ? "sparring_ending"
+      : turn.autoPause
+        ? "sparring_paused"
+        : turn.startedNow
+          ? "sparring_starting"
+          : "sparring_active",
+    turns: turn.turns, route: "v3-sparring",
+  });
   decideR.decision.tool_calls = [];
   decideR.decision.memory_writes = [];
 
@@ -1983,6 +1999,15 @@ async function runReasoningEngineInner(
   });
 
   if (sparringActive) {
+    // Auditoria antes de descartar: fica o que ia correr e a mensagem original.
+    await logSparringSuppression({
+      userId, channel, message: trimmed,
+      toolCalls: decideR.decision.tool_calls,
+      memoryWrites: decideR.decision.memory_writes?.length ?? 0,
+      action: decideR.decision.action,
+      reason: sparringEnding ? "sparring_ending" : startedNow ? "sparring_starting" : "sparring_active",
+      turns, route: "v3",
+    });
     decideR.decision.tool_calls = [];
     decideR.decision.memory_writes = [];
     if (decideR.decision.action === "act" || decideR.decision.action === "search_more") {
