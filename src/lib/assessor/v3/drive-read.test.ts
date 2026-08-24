@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { detectEllipticDriveRead, detectReadRequest } from "./read-intent";
+import { detectReadRequest } from "./read-intent";
+import { resolveEllipticRead } from "./elliptic-read";
 import {
   detectDriveFileRequest,
   buildFileActionQuestion,
@@ -42,9 +43,11 @@ describe("leitura do Drive Inteligente", () => {
     expect(r.tool).toBe("search_files");
   });
 
-  it("golden 4 — 'E documentos?' só é leitura quando o contexto é do Drive", () => {
-    expect(detectEllipticDriveRead("E documentos?", "Tens 3 áudios no Drive Inteligente")).toBe(true);
-    expect(detectEllipticDriveRead("E documentos?", "Marquei a visita para amanhã")).toBe(false);
+  it("golden 4 — 'E documentos?' resolve pelo tópico da última leitura", () => {
+    const now = Date.now();
+    const drive = { tool: "search_files", args: { query: "" }, axis: "none", at: new Date(now - 1000).toISOString() };
+    expect(resolveEllipticRead("E documentos?", drive, now)?.tool).toBe("search_files");
+    expect(resolveEllipticRead("E documentos?", null, now)).toBeNull();
   });
 });
 

@@ -209,6 +209,17 @@ export async function executeToolCalls(
       error: result.ok ? undefined : (result.error ?? "unknown"),
       latencyMs: Date.now() - t0,
     });
+    // Memória de conversa: o tópico da última leitura permite responder às
+    // elipses seguintes ("E documentos?", "E para a próxima semana?").
+    if (result.ok && tc.name.startsWith("search_")) {
+      const { recordLastRead } = await import("./last-read.server");
+      await recordLastRead(ctx.supabase, {
+        userId: ctx.userId,
+        channel: ctx.channel,
+        tool: tc.name,
+        arguments: (args ?? {}) as Record<string, unknown>,
+      });
+    }
   }
   return out;
 }
