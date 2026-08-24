@@ -96,3 +96,45 @@ export function formatMultiCancelReply(outcomes: CancelOutcome[]): string {
 }
 
 export { normalizeForMatch };
+
+// ── Rajadas ("burst") ────────────────────────────────────────────────────
+//
+// Caso real (24/08): à pergunta "qual delas queres desmarcar?" a consultora
+// enviou três mensagens em ~2 segundos — "15h00 — Lembrete: Marcação das
+// unhas", "10h00 — Marcação das unhas" e "Ambas". Lida como um bloco único,
+// a leitura antiga só apanhava a primeira hora e respondia por um item, o que
+// contradizia a mensagem seguinte. Aqui cada linha da rajada é lida por si e
+// o resultado é a união (com "ambas" a valer pelo conjunto todo).
+
+/** Separa o texto da rajada em respostas individuais (linhas / frases curtas). */
+export function splitChoiceSegments(text: string | null | undefined): string[] {
+  return String(text ?? "")
+    .split(/[\n\r]+|(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Lê a escolha em várias mensagens/linhas: união dos itens indicados em cada
+ * uma. Uma só linha comporta-se exactamente como `pickCancelChoice`.
+ */
+export function pickCancelChoiceMulti(
+  candidates: CancelCandidate[],
+  text: string | null | undefined,
+): CancelCandidate[] {
+  if (!candidates.length) return [];
+  const segments = splitChoiceSegments(text);
+  if (segments.length <= 1) return pickCancelChoice(candidates, text);
+  const picked = new Map<string, CancelCandidate>();
+  for (const seg of segments) {
+    if (isAllChoice(seg)) return [...candidates];
+    for (const item of pickCancelChoice(candidates, seg)) {
+      picked.set(String(item.id), item);
+    }
+  }
+  if (picked.size) {
+    // Mantém a ordem original dos candidatos na confirmação.
+    return candidates.filter((c) => picked.has(String(c.id)));
+  }
+  return pickCancelChoice(candidates, text);
+}
