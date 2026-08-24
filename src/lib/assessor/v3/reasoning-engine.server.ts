@@ -2785,10 +2785,16 @@ async function runReasoningEngineInner(
     }
   } catch { /* noop */ }
 
-  // Âncora: uma pergunta de esclarecimento sem nenhuma ferramenta executada
-  // deixa rastro (expiração curta). Sem isto, a resposta seguinte do
-  // consultor — "Casa Final B" — ficava à deriva (30/07).
-  if (!sparringActive && toolResults.length === 0) {
+  // Âncora: uma pergunta de esclarecimento sem nenhuma ferramenta executada e
+  // sem proposta viva deixa rastro (expiração curta). Sem isto, a resposta
+  // seguinte do consultor — "Casa Final B" — ficava à deriva (30/07).
+  // Quando o turno é uma proposta ("Abro o negócio?"), o pendente já é a
+  // âncora: gravar outra só ia competir com ele.
+  const askedWithDraft =
+    decideR.decision.action === "ask" ||
+    decideR.decision.action === "act" ||
+    !!pendingForArchive;
+  if (!sparringActive && toolResults.length === 0 && !askedWithDraft) {
     try {
       const { recordOpenQuestion } = await import("./open-question.server");
       await recordOpenQuestion(supabase, {
