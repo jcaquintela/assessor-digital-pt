@@ -131,6 +131,11 @@ export interface DomainContext {
   skipPersonResolution?: boolean;
   // Candidatos rejeitados nesta conversa — nunca voltam a ser propostos.
   rejectedPersonIds?: string[];
+  // A instrução original deste turno traz 2+ datas distintas para o mesmo
+  // assunto ("dia 13 às 15 e depois tenho dia 7 de setembro às 10"). Nesse
+  // caso um título igual com outra data é um compromisso NOVO — nunca um
+  // reagendamento do que acabou de ser criado (caso real da Iolanda, 13/08).
+  sameTurnSeparateDates?: boolean;
 }
 
 export interface DomainResult<T = unknown> {
@@ -760,7 +765,7 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   }
   const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   // Idempotência: um pending_action só pode criar um recurso.
-  if (ctx.pendingActionId) {
+  if (ctx.pendingActionId && !ctx.sameTurnSeparateDates) {
     const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
     if (existing) return ok({ event: existing, reminderId: null, idempotent: true });
   }
@@ -768,11 +773,13 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   // (o motor executa e ainda assim pergunta "marco?", e o "Sim" volta a
   // executar). Se já existe um evento aberto com o mesmo título e a mesma
   // pessoa/imóvel, devolvemo-lo — reagendando se a hora mudou.
-  const existingOpen = await findOpenFollowUpByTitle(ctx, {
-    title: v.title,
-    person_id: v.person_id ?? null,
-    property_id: v.property_id ?? null,
-  });
+  const existingOpen = ctx.sameTurnSeparateDates
+    ? null
+    : await findOpenFollowUpByTitle(ctx, {
+        title: v.title,
+        person_id: v.person_id ?? null,
+        property_id: v.property_id ?? null,
+      });
   if (existingOpen) {
     const { data: current } = await ctx.supabase
       .from("follow_ups")
@@ -997,7 +1004,7 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
   }
   const dueIsoDate = lisbonLocalToUtcIso(v.due_date, v.due_time ?? "09:00");
   // Idempotência: se já existe um follow_up para esta pending_action, devolve-o.
-  if (ctx.pendingActionId) {
+  if (ctx.pendingActionId && !ctx.sameTurnSeparateDates) {
     const existing = await findFollowUpByPending(ctx, ctx.pendingActionId);
     if (existing) return ok({ follow_up: existing, idempotent: true });
   }
@@ -1005,7 +1012,7 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
   // caso a idempotência forte já é feita pelo índice único parcial).
   // Se já existir um seguimento aberto com o mesmo título normalizado e
   // mesma pessoa/imóvel, reagendamo-lo em vez de criar um novo.
-  const existingOpen = ctx.pendingActionId
+  const existingOpen = (ctx.pendingActionId || ctx.sameTurnSeparateDates)
     ? null
     : await findOpenFollowUpByTitle(ctx, {
         title: v.title,
@@ -1065,7 +1072,7 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
       source_channel: ctx.channel,
       source_message_id: ctx.sourceMessageId ?? null,
       created_by_assessor: true,
-      source_pending_action_id: ctx.pendingActionId ?? null,
+      source_pending_action_id: ctx.sameTurnSeparateDates ? null : (ctx.pendingActionId ?? null),
     } as never)
     .select("id, title, due_date")
     .single();
