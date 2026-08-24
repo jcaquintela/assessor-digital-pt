@@ -205,6 +205,17 @@ async function routeInbound(
 
     try {
       const { processAssessorMessage } = await import("@/lib/assessor/engine.server");
+      // Já lida por um turno anterior da mesma rajada (ex.: resposta a uma
+      // pergunta de escolha): responder outra vez contradizia a confirmação.
+      if (persistedUuid) {
+        const { CONSUMED_STATUS } = await import("@/lib/assessor/v3/choice-burst.server");
+        const { data: self } = await supabaseAdmin
+          .from("assessor_messages")
+          .select("status")
+          .eq("id", persistedUuid)
+          .maybeSingle();
+        if ((self as any)?.status === CONSUMED_STATUS) return;
+      }
       // Rajada de mensagens seguidas: junta-as num só turno em vez de correr
       // um ciclo de raciocínio por mensagem (evita perguntas duplicadas).
       let engineContent = content;
