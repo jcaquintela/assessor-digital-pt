@@ -21,6 +21,7 @@ import {
 import { isAgendaEvent } from "@/lib/agenda-kind";
 import { outboundWindow } from "./event-body";
 import { inVerifyPlan, type VerifyPlan } from "./verify-slice";
+import { normalizeTitle, planDedupe, type ImportedRow } from "./dedupe";
 
 const DEFAULT_DURATION_MIN = 60;
 const TZ = "Europe/Lisbon";
@@ -530,22 +531,29 @@ export async function pullFromProvider(
     }
 
     // Evento novo criado directamente no Google/Outlook.
-    const { data: created } = await supabaseAdmin.from("follow_ups").insert({
-      user_id: userId,
-      title: ext.title,
-      type: "evento",
-      due_date: ext.startIso,
-      due_time: lisbonHhMm(ext.startIso),
-      status: "agendado",
-      priority: "media",
-      notes: ext.notes ?? null,
-      timezone: TZ,
-      source_channel: provider,
-      external_reference: ext.id,
-      created_by_assessor: false,
-    }).select("id").single();
-    const followUpId = (created as { id: string } | null)?.id;
+    // Antes de inserir, procuramos um compromisso já importado deste mesmo
+    // evento externo (ou um gémeo com o mesmo título e hora): evita o par
+    // duplicado que aparecia como sobreposição na agenda.
+    let followUpId = await findImportedTwin(supabaseAdmin, userId, provider, ext);
+    if (!followUpId) {
+      const { data: created } = await supabaseAdmin.from("follow_ups").insert({
+        user_id: userId,
+        title: ext.title,
+        type: "evento",
+        due_date: ext.startIso,
+        due_time: lisbonHhMm(ext.startIso),
+        status: "agendado",
+        priority: "media",
+        notes: ext.notes ?? null,
+        timezone: TZ,
+        source_channel: provider,
+        external_reference: ext.id,
+        created_by_assessor: false,
+      }).select("id").single();
+      followUpId = (created as { id: string } | null)?.id ?? null;
+    }
     if (!followUpId) { skipped++; continue; }
+
     await supabaseAdmin.from("calendar_event_links").upsert({
       user_id: userId,
       provider,
@@ -570,11 +578,108 @@ export async function pullFromProvider(
     delta_link: nextDelta ?? undefined,
     last_error: null,
   });
+  // Limpa pares duplicados que já estavam na agenda (importações repetidas).
+  applied += await dedupeImportedEvents(supabaseAdmin, userId, provider);
   if (verify !== false) {
     applied += await verifyLinkedEvents(supabaseAdmin, userId, provider, verify);
   }
   return { applied, skipped };
 }
+
+/**
+ * Compromisso já importado que corresponde a este evento externo: primeiro por
+ * referência externa, depois por título + hora (gémeo criado por uma ronda
+ * anterior que não conseguiu registar a ligação).
+ */
+async function findImportedTwin(
+  supabaseAdmin: any, userId: string, provider: CalendarProvider, ext: ExternalEvent,
+): Promise<string | null> {
+  const { data: byRef } = await supabaseAdmin
+    .from("follow_ups")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("external_reference", ext.id)
+    .is("archived_at", null)
+    .limit(1);
+  const ref = (byRef ?? []) as Array<{ id: string }>;
+  if (ref[0]) return ref[0].id;
+
+  if (!ext.startIso || !ext.title) return null;
+  const start = new Date(ext.startIso).getTime();
+  const { data: near } = await supabaseAdmin
+    .from("follow_ups")
+    .select("id, title, due_date, created_at, external_reference")
+    .eq("user_id", userId)
+    .eq("source_channel", provider)
+    .is("archived_at", null)
+    .gte("due_date", new Date(start - 60_000).toISOString())
+    .lte("due_date", new Date(start + 60_000).toISOString())
+    .limit(20);
+  const wanted = normalizeTitle(ext.title);
+  const twin = ((near ?? []) as ImportedRow[]).find((r) => normalizeTitle(r.title) === wanted);
+  return twin?.id ?? null;
+}
+
+/**
+ * Arquiva pares duplicados de eventos importados deste provedor (mesmo título
+ * e mesma hora ao minuto). Nunca apaga nada no calendário externo: só deixa um
+ * registo visível no Afonso.
+ */
+export async function dedupeImportedEvents(
+  supabaseAdmin: any, userId: string, provider: CalendarProvider,
+): Promise<number> {
+  const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const { data } = await supabaseAdmin
+    .from("follow_ups")
+    .select("id, title, due_date, created_at, external_reference, status")
+    .eq("user_id", userId)
+    .eq("source_channel", provider)
+    .is("archived_at", null)
+    .gte("due_date", since)
+    .order("created_at", { ascending: true })
+    .limit(500);
+  const rows = ((data ?? []) as Array<ImportedRow & { status: string | null }>)
+    .filter((r) => !["cancelado", "cancelada", "arquivado"].includes(String(r.status ?? "").toLowerCase()));
+  if (rows.length < 2) return 0;
+
+  const { data: links } = await supabaseAdmin
+    .from("calendar_event_links")
+    .select("follow_up_id")
+    .eq("user_id", userId)
+    .eq("provider", provider)
+    .eq("deleted", false);
+  const linked = new Set(
+    ((links ?? []) as Array<{ follow_up_id: string | null }>).map((l) => l.follow_up_id).filter(Boolean),
+  );
+
+  const plans = planDedupe(rows.map((r) => ({ ...r, has_link: linked.has(r.id) })));
+  let removed = 0;
+  for (const plan of plans) {
+    for (const dup of plan.duplicates) {
+      await supabaseAdmin.from("follow_ups")
+        .update({ status: "cancelado", archived_at: new Date().toISOString() })
+        .eq("id", dup.id).eq("user_id", userId);
+      await supabaseAdmin.from("reminders")
+        .update({ status: "cancelled" })
+        .eq("user_id", userId)
+        .eq("related_resource_type", "follow_up")
+        .eq("related_resource_id", dup.id)
+        .in("status", ["scheduled", "processing", "failed"]);
+      await supabaseAdmin.from("calendar_event_links")
+        .update({ deleted: true, last_synced_at: new Date().toISOString() })
+        .eq("user_id", userId).eq("provider", provider).eq("follow_up_id", dup.id);
+      await logSync(supabaseAdmin, {
+        userId, provider, followUpId: dup.id, externalEventId: dup.external_reference,
+        direction: "inbound", action: "dedupe", origin: provider,
+        detail: `duplicado de ${plan.survivor.id}`,
+      });
+      removed++;
+    }
+  }
+  return removed;
+}
+
+
 
 /**
  * Confirma, evento a evento, que os compromissos ligados ainda existem no
