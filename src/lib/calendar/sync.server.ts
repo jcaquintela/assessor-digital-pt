@@ -20,6 +20,7 @@ import {
 } from "./providers";
 import { isAgendaEvent } from "@/lib/agenda-kind";
 import { outboundWindow } from "./event-body";
+import { inVerifyPlan, type VerifyPlan } from "./verify-slice";
 
 const DEFAULT_DURATION_MIN = 60;
 const TZ = "Europe/Lisbon";
@@ -110,10 +111,19 @@ async function getLink(supabaseAdmin: any, userId: string, provider: CalendarPro
   return (data as any) ?? null;
 }
 
+// Contagem de chamadas à API por provider (para confirmar a quota real).
+const apiCalls: Record<string, number> = {};
+export function takeApiCallCounts(): Record<string, number> {
+  const snapshot = { ...apiCalls };
+  for (const k of Object.keys(apiCalls)) delete apiCalls[k];
+  return snapshot;
+}
+
 async function callProvider(
   supabaseAdmin: any, userId: string, provider: CalendarProvider,
   path: string, init?: RequestInit,
 ): Promise<{ ok: boolean; status: number; body: any; text: string }> {
+  apiCalls[provider] = (apiCalls[provider] ?? 0) + 1;
   const connectionAPIKey = await getConnectionKeyForUser(supabaseAdmin, userId, provider);
   if (!connectionAPIKey) return { ok: false, status: 0, body: null, text: "not_connected" };
   const res = await callAsAppUser({
@@ -415,7 +425,11 @@ async function fetchChanges(
  */
 export async function pullFromProvider(
   supabaseAdmin: any, userId: string, provider: CalendarProvider,
+  opts?: { verify?: VerifyPlan | null | false },
 ): Promise<{ applied: number; skipped: number; error?: string }> {
+  // `verify: false` -> só delta (ronda rápida). `null`/omitido -> verificação
+  // completa. Um plano -> apenas a fatia desta ronda.
+  const verify = opts?.verify ?? null;
   const connectionAPIKey = await getConnectionKeyForUser(supabaseAdmin, userId, provider);
   if (!connectionAPIKey) return { applied: 0, skipped: 0, error: "not_connected" };
 
@@ -424,7 +438,9 @@ export async function pullFromProvider(
     await saveSyncState(supabaseAdmin, userId, provider, { last_error: error });
     // Mesmo com o delta a falhar, confirmamos os eventos ligados: uma remoção
     // no calendário não pode ficar por detectar só porque o token caducou.
-    const applied = await verifyLinkedEvents(supabaseAdmin, userId, provider);
+    const applied = verify === false
+      ? 0
+      : await verifyLinkedEvents(supabaseAdmin, userId, provider, verify);
     return { applied, skipped: 0, error };
   }
 
@@ -554,7 +570,9 @@ export async function pullFromProvider(
     delta_link: nextDelta ?? undefined,
     last_error: null,
   });
-  applied += await verifyLinkedEvents(supabaseAdmin, userId, provider);
+  if (verify !== false) {
+    applied += await verifyLinkedEvents(supabaseAdmin, userId, provider, verify);
+  }
   return { applied, skipped };
 }
 
@@ -563,8 +581,9 @@ export async function pullFromProvider(
  * calendário externo. Cobre o caso em que o consultor apaga directamente no
  * Outlook/Google e o delta não nos traz a remoção.
  */
-async function verifyLinkedEvents(
+export async function verifyLinkedEvents(
   supabaseAdmin: any, userId: string, provider: CalendarProvider,
+  plan: VerifyPlan | null = null,
 ): Promise<number> {
   let cancelled = 0;
   const isGoogle = provider === "google_calendar";
@@ -587,6 +606,8 @@ async function verifyLinkedEvents(
       const fu = link.follow_ups;
       if (!link.external_event_id || !link.follow_up_id) continue;
       if (fu?.archived_at || String(fu?.status ?? "").toLowerCase() === "cancelado") continue;
+      // Rotação por fatias: nesta ronda só verificamos 1/N dos eventos.
+      if (!inVerifyPlan(String(link.external_event_id), plan)) continue;
       const path = isGoogle
         ? `/calendar/v3/calendars/primary/events/${encodeURIComponent(link.external_event_id)}`
         : `/me/events/${encodeURIComponent(link.external_event_id)}`;
@@ -640,7 +661,10 @@ export async function pullAllForUser(
 }
 
 /** Ronda global do cron: todos os consultores com pelo menos um calendário ligado. */
-export async function pullAllUsers(supabaseAdmin: any) {
+export async function pullAllUsers(
+  supabaseAdmin: any,
+  opts?: { verify?: VerifyPlan | null | false },
+) {
   const { data } = await supabaseAdmin
     .from("app_user_connections")
     .select("user_id, connector_id")
@@ -649,7 +673,9 @@ export async function pullAllUsers(supabaseAdmin: any) {
   let applied = 0;
   for (const row of rows) {
     try {
-      const r = await pullFromProvider(supabaseAdmin, row.user_id, row.connector_id);
+      const r = await pullFromProvider(supabaseAdmin, row.user_id, row.connector_id, {
+        verify: opts?.verify ?? false,
+      });
       applied += r.applied;
     } catch (e) {
       console.error("[calendar-sync] pull falhou", row.connector_id, e);
