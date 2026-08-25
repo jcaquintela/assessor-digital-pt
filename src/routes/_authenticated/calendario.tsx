@@ -418,6 +418,7 @@ function CalendarioPage() {
             <Link to="/definicoes" className="c-btn w-full justify-start">
               Gerir ligações de calendário
             </Link>
+            <ForceSyncButton />
           </div>
         </div>
       </div>
