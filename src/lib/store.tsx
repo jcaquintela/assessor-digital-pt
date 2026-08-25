@@ -1,3 +1,4 @@
+import { initialEventCategory } from "@/lib/agenda/event-category";
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,6 +105,8 @@ const toSeguimento = (r: Row): Seguimento => ({
   imovelId: r.related_property_id ?? undefined,
   leadProspecaoId: r.related_prospecting_lead_id ?? undefined,
   classeEvento: r.event_class ?? undefined,
+  categoriaAuto: r.event_category ?? undefined,
+  categoriaId: r.event_category_id ?? undefined,
 });
 
 const toDespesa = (r: Row): Despesa => ({
@@ -264,6 +267,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       status: s.estado ?? "Pendente",
       priority: s.prioridade ?? "Média",
       notes: s.notas ?? null,
+      // Agenda Inteligente: categoria automática à nascença (regras puras).
+      event_category: initialEventCategory({
+        title: s.titulo,
+        type: s.tipo,
+        person_id: s.pessoaId ?? null,
+        related_property_id: s.imovelId ?? null,
+        opportunity_id: s.oportunidadeId ?? null,
+      }),
       ...appSourceColumns(),
     }).select("id").single();
     if (error) throw error;
@@ -284,6 +295,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       status: s.estado ?? "Pendente",
       priority: s.prioridade ?? "Média",
       notes: s.notas ?? null,
+      // Agenda Inteligente: categoria automática à nascença (regras puras).
+      event_category: initialEventCategory({
+        title: s.titulo,
+        type: s.tipo,
+        person_id: s.pessoaId ?? null,
+        related_property_id: s.imovelId ?? null,
+        opportunity_id: s.oportunidadeId ?? null,
+      }),
       ...appSourceColumns(),
     }).select("*").single();
     if (error) throw error;
@@ -303,6 +322,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (patch.prioridade !== undefined) p.priority = patch.prioridade;
     if (patch.notas !== undefined) p.notes = patch.notas;
     if (patch.classeEvento !== undefined) p.event_class = patch.classeEvento || null;
+    if (patch.categoriaId !== undefined) p.event_category_id = patch.categoriaId || null;
     const { error } = await supabase.from("follow_ups").update(p as never).eq("id", id);
     if (error) throw error;
     syncCalendars(id, "upsert");

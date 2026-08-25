@@ -35,6 +35,16 @@ import {
   type AgendaViewMode,
 } from "@/lib/agenda/views";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { backfillEventCategories } from "@/lib/agenda/event-category.functions";
+import { GroupCardsRow } from "@/components/group-cards-row";
+import {
+  buildEventCategoryCards,
+  eventCategoryChips,
+  filterByCategoryChip,
+} from "@/lib/agenda/category-cards";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   head: () => ({
@@ -89,10 +99,24 @@ function CalendarioPage() {
   const [selectedKey, setSelectedKey] = useState(() => dayKey(new Date()));
   const [listDays, setListDays] = useState(30);
   const isMobile = useIsMobile();
+  // Agenda Inteligente: filtro por categoria. Aniversários só com activação
+  // explícita do consultor (213 registos nesta conta esmagavam tudo o resto).
+  const [chip, setChip] = useState("todos");
+  const [mostrarAniversarios, setMostrarAniversarios] = useState(false);
+  const [catAberta, setCatAberta] = useState<string | null>(null);
+  const classificar = useServerFn(backfillEventCategories);
+
+  const { data: categoriasManuais } = useQuery({
+    queryKey: ["event_categories"],
+    queryFn: async () => {
+      const { data } = await supabase.from("event_categories").select("id, name").order("name");
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
 
   // Compromissos = registos classificados como Evento (ver src/lib/agenda-kind.ts),
   // excluindo os já concluídos/cancelados.
-  const eventos = useMemo(
+  const todosEventos = useMemo(
     () =>
       seguimentos
         .filter((s) => s.tipo === "Evento")
@@ -102,6 +126,21 @@ function CalendarioPage() {
         })
         .sort((a, b) => a.data.localeCompare(b.data)),
     [seguimentos],
+  );
+
+  // Filtro de categoria aplicado antes de qualquer agrupamento: uma só fonte.
+  const eventos = useMemo(
+    () =>
+      filterByCategoryChip(
+        todosEventos.map((e) => ({
+          ...e,
+          event_category: e.categoriaAuto ?? null,
+          event_category_id: e.categoriaId ?? null,
+        })),
+        chip,
+        { mostrarAniversarios },
+      ),
+    [todosEventos, chip, mostrarAniversarios],
   );
 
   // Eventos agrupados por dia local, para o ponto indicador e a lista do dia.
@@ -313,6 +352,31 @@ function CalendarioPage() {
               )}
             </div>
           </div>
+          {/* Chips de categoria — mesma taxonomia dos cartões da vista Lista. */}
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {eventCategoryChips({ mostrarAniversarios }).map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                aria-pressed={chip === c.key}
+                className={cn("c-pill tap-44", chip === c.key && "active")}
+                onClick={() => setChip(c.key)}
+              >
+                {c.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              aria-pressed={mostrarAniversarios}
+              className="c-pill tap-44 text-[11px]"
+              onClick={() => {
+                setMostrarAniversarios((v) => !v);
+                setChip("todos");
+              }}
+            >
+              {mostrarAniversarios ? "Esconder aniversários" : "Mostrar aniversários"}
+            </button>
+          </div>
           <div className="space-y-4">
             {view === "mes" && (
               <MonthGrid
@@ -381,6 +445,28 @@ function CalendarioPage() {
 
             {view === "lista" && (
               <div className="space-y-4">
+                <GroupCardsRow
+                  cards={buildEventCategoryCards(eventos as never, categoriasManuais ?? [], {
+                    mostrarAniversarios,
+                  })}
+                  openKey={catAberta}
+                  onOpen={(k) => setCatAberta((cur) => (cur === k ? null : k))}
+                  pathname="/calendario"
+                  keyAttr="data-categoria"
+                  renderInline={(card) => (
+                    <div className="space-y-2">
+                      {card.items.length === 0 && (
+                        <div className="c-empty">Sem compromissos nesta categoria.</div>
+                      )}
+                      {(card.items as { id: string }[]).map((it) => {
+                        const c = cartao(it.id);
+                        return c ? (
+                          <EventCard key={it.id} e={c} onEdit={abrirEdicao} onArchive={remover} />
+                        ) : null;
+                      })}
+                    </div>
+                  )}
+                />
                 {lista.length === 0 && <div className="c-empty">Sem compromissos futuros.</div>}
                 {lista.map((g) => (
                   <div key={g.key} className="space-y-2">
@@ -437,6 +523,24 @@ function CalendarioPage() {
               Definições calendário
             </Link>
             <ForceSyncButton />
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              onClick={async () => {
+                try {
+                  const r = await classificar({});
+                  toast.success(
+                    r.updated
+                      ? `Classifiquei ${r.updated} compromissos por categoria.`
+                      : "Já estava tudo classificado.",
+                  );
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+            >
+              Classificar por categoria
+            </Button>
           </div>
         </div>
       </div>

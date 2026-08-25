@@ -15,6 +15,7 @@ import { initialMiscClass } from "../misc-class";
 import { z } from "zod";
 import { isAgendaEvent } from "@/lib/agenda-kind";
 import { initialEventClass } from "../event-class";
+import { initialEventCategory } from "@/lib/agenda/event-category";
 import {
   compareTokenMatches, filterByRelevance, foldLike, foldText, searchTokens, weightedTokenMatchScore,
 } from "@/lib/search/normalize";
@@ -867,6 +868,13 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
       // correu?" nem entra nas superfícies de atenção do dashboard.
       event_class: initialEventClass({
         title: v.title,
+        person_id: v.person_id ?? null,
+        related_property_id: v.property_id ?? null,
+      }),
+      // Agenda Inteligente: categoria automática à nascença (regras puras).
+      event_category: initialEventCategory({
+        title: v.title,
+        type: v.event_type,
         person_id: v.person_id ?? null,
         related_property_id: v.property_id ?? null,
       }),

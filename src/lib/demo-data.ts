@@ -94,6 +94,10 @@ export interface Seguimento {
   leadProspecaoId?: string;
   /** Classificação do compromisso: "negocio" ou "interno" (override manual). */
   classeEvento?: string;
+  /** Categoria automática da Agenda Inteligente (regras). */
+  categoriaAuto?: string;
+  /** Categoria manual escolhida pelo consultor (manda sempre). */
+  categoriaId?: string;
 }
 
 export interface Documento {
