@@ -43,6 +43,7 @@ import { Route as AdminFeedbackRouteImport } from './routes/admin/feedback'
 import { Route as AdminFaturacaoRouteImport } from './routes/admin/faturacao'
 import { Route as AdminErrosEscritaRouteImport } from './routes/admin/erros-escrita'
 import { Route as AdminEntradasRouteImport } from './routes/admin/entradas'
+import { Route as AdminDiagnosticoRouteImport } from './routes/admin/diagnostico'
 import { Route as AdminDefinicoesRouteImport } from './routes/admin/definicoes'
 import { Route as AdminCustosRouteImport } from './routes/admin/custos'
 import { Route as AdminConvitesRouteImport } from './routes/admin/convites'
@@ -285,6 +286,11 @@ const AdminErrosEscritaRoute = AdminErrosEscritaRouteImport.update({
 const AdminEntradasRoute = AdminEntradasRouteImport.update({
   id: '/entradas',
   path: '/entradas',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDiagnosticoRoute = AdminDiagnosticoRouteImport.update({
+  id: '/diagnostico',
+  path: '/diagnostico',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminDefinicoesRoute = AdminDefinicoesRouteImport.update({
@@ -725,6 +731,7 @@ export interface FileRoutesByFullPath {
   '/admin/convites': typeof AdminConvitesRoute
   '/admin/custos': typeof AdminCustosRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
+  '/admin/diagnostico': typeof AdminDiagnosticoRoute
   '/admin/entradas': typeof AdminEntradasRoute
   '/admin/erros-escrita': typeof AdminErrosEscritaRoute
   '/admin/faturacao': typeof AdminFaturacaoRoute
@@ -832,6 +839,7 @@ export interface FileRoutesByTo {
   '/admin/convites': typeof AdminConvitesRoute
   '/admin/custos': typeof AdminCustosRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
+  '/admin/diagnostico': typeof AdminDiagnosticoRoute
   '/admin/entradas': typeof AdminEntradasRoute
   '/admin/erros-escrita': typeof AdminErrosEscritaRoute
   '/admin/faturacao': typeof AdminFaturacaoRoute
@@ -942,6 +950,7 @@ export interface FileRoutesById {
   '/admin/convites': typeof AdminConvitesRoute
   '/admin/custos': typeof AdminCustosRoute
   '/admin/definicoes': typeof AdminDefinicoesRoute
+  '/admin/diagnostico': typeof AdminDiagnosticoRoute
   '/admin/entradas': typeof AdminEntradasRoute
   '/admin/erros-escrita': typeof AdminErrosEscritaRoute
   '/admin/faturacao': typeof AdminFaturacaoRoute
@@ -1052,6 +1061,7 @@ export interface FileRouteTypes {
     | '/admin/convites'
     | '/admin/custos'
     | '/admin/definicoes'
+    | '/admin/diagnostico'
     | '/admin/entradas'
     | '/admin/erros-escrita'
     | '/admin/faturacao'
@@ -1159,6 +1169,7 @@ export interface FileRouteTypes {
     | '/admin/convites'
     | '/admin/custos'
     | '/admin/definicoes'
+    | '/admin/diagnostico'
     | '/admin/entradas'
     | '/admin/erros-escrita'
     | '/admin/faturacao'
@@ -1268,6 +1279,7 @@ export interface FileRouteTypes {
     | '/admin/convites'
     | '/admin/custos'
     | '/admin/definicoes'
+    | '/admin/diagnostico'
     | '/admin/entradas'
     | '/admin/erros-escrita'
     | '/admin/faturacao'
@@ -1619,6 +1631,13 @@ declare module '@tanstack/react-router' {
       path: '/entradas'
       fullPath: '/admin/entradas'
       preLoaderRoute: typeof AdminEntradasRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/diagnostico': {
+      id: '/admin/diagnostico'
+      path: '/diagnostico'
+      fullPath: '/admin/diagnostico'
+      preLoaderRoute: typeof AdminDiagnosticoRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/definicoes': {
@@ -2298,6 +2317,7 @@ interface AdminRouteRouteChildren {
   AdminConvitesRoute: typeof AdminConvitesRoute
   AdminCustosRoute: typeof AdminCustosRoute
   AdminDefinicoesRoute: typeof AdminDefinicoesRoute
+  AdminDiagnosticoRoute: typeof AdminDiagnosticoRoute
   AdminEntradasRoute: typeof AdminEntradasRoute
   AdminErrosEscritaRoute: typeof AdminErrosEscritaRoute
   AdminFaturacaoRoute: typeof AdminFaturacaoRoute
@@ -2335,6 +2355,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminConvitesRoute: AdminConvitesRoute,
   AdminCustosRoute: AdminCustosRoute,
   AdminDefinicoesRoute: AdminDefinicoesRoute,
+  AdminDiagnosticoRoute: AdminDiagnosticoRoute,
   AdminEntradasRoute: AdminEntradasRoute,
   AdminErrosEscritaRoute: AdminErrosEscritaRoute,
   AdminFaturacaoRoute: AdminFaturacaoRoute,
