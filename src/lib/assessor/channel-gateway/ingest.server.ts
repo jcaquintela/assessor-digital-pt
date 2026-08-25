@@ -382,6 +382,27 @@ async function deliverReply(
       sender_phone: externalConversationId,
       whatsapp_message_id: s.ok ? s.messageId : null,
     });
+
+    // Terceira mensagem: a pergunta de confirmação, nunca no mesmo balão
+    // do texto a copiar (ex.: "diz 'enviar' e o email segue").
+    if (split.question) {
+      let q: AdapterSendResult;
+      try {
+        q = await adapter.sendText(externalConversationId, split.question);
+      } catch (err) {
+        q = { ok: false, error: err instanceof Error ? err.message : String(err) } as AdapterSendResult;
+      }
+      await supabaseAdmin.from("assessor_messages").insert({
+        user_id: userId,
+        role: "assistant",
+        content: split.question,
+        message_type: `${adapter.channel}_text`,
+        status: q.ok ? "sent" : "failed",
+        channel: adapter.channel,
+        sender_phone: externalConversationId,
+        whatsapp_message_id: q.ok ? q.messageId : null,
+      });
+    }
   }
   return send;
 }

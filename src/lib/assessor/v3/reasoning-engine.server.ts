@@ -1885,7 +1885,17 @@ async function runReasoningEngineInner(
       return { reply };
     }
 
+    // (a1b) Rascunho de email à espera de autorização. Determinístico: só
+    // este caminho envia, e só com frase inequívoca. "sim"/"ok" pedem
+    // reformulação; "envia mas muda X" itera em vez de enviar.
+    {
+      const { handleDraftConfirmation } = await import("@/lib/email/reply-draft.server");
+      const draftTurn = await handleDraftConfirmation({ userId, channel, text: trimmed });
+      if (draftTurn) return { reply: draftTurn.reply };
+    }
+
     // (a2) Elipse de leitura ("E documentos?", "E para a próxima semana?").
+
     // Resolve pelo TÓPICO da última leitura guardado na memória de conversa —
     // já não depende de casar palavras no texto da resposta anterior.
     if (!pending) {
@@ -2551,8 +2561,34 @@ async function runReasoningEngineInner(
   const queryReply = toolResults.some((t) => t.ok && isQueryTool(t.name))
     ? formatQueryResults(toolResults)
     : null;
+
+  // Rascunho de resposta a email: apresentação determinística em três bolhas
+  // (intro + corpo isolado para copiar + pergunta de confirmação). Nunca
+  // deixamos a IA redigir esta parte — o corpo tem de sair exactamente como
+  // foi gravado e como está na caixa do consultor.
+  const emailDraftTool = toolResults.find((t) => t.name === "draft_email_reply" && t.ok);
+  let emailDraftReply: string | null = null;
+  if (emailDraftTool) {
+    const d = (emailDraftTool.data ?? {}) as Record<string, any>;
+    const { withSuggestionAndQuestion } = await import("../culture/suggested-message");
+    if (d.body && d.draft_id) {
+      emailDraftReply = withSuggestionAndQuestion(String(d.intro), String(d.body), String(d.question));
+    } else if (d.needs_email_choice) {
+      emailDraftReply = String(d.question ?? "A qual dos emails queres responder?");
+    } else if (d.not_found) {
+      emailDraftReply = "Não encontrei esse email na tua caixa. Dizes-me o remetente ou o assunto?";
+    } else if (d.needs_reconnect) {
+      emailDraftReply = "O acesso ao teu email expirou. Liga outra vez a caixa em Definições e eu preparo o rascunho.";
+    } else if (d.not_connected) {
+      emailDraftReply = "Ainda não tens caixa de email ligada. Liga o Gmail ou o Outlook e eu preparo o rascunho.";
+    } else if (d.plan_required) {
+      emailDraftReply = "O email faz parte do plano Pro. Queres que te explique o que muda?";
+    }
+  }
   // A lista de desmarcações também não passa pelo corte de 2 frases.
-  if (queryReply || cancelTool) {
+  if (emailDraftReply) {
+    reply = emailDraftReply;
+  } else if (queryReply || cancelTool) {
     if (queryReply) reply = queryReply;
   } else {
     reply = enforceHumanTone(reply, {

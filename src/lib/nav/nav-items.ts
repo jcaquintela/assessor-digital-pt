@@ -18,6 +18,7 @@ import {
   Inbox,
   MapPin,
   MessagesSquare,
+  Mail,
   MoreHorizontal,
   Repeat,
   Settings,
@@ -59,6 +60,7 @@ export const NAV_MORE_V2: NavEntry[] = [
   { to: "/oportunidades/prospecao", label: "Prospeção", icon: MapPin },
   { to: "/rotinas", label: "Rotinas", icon: Repeat },
   { to: "/interacoes", label: "Interações", icon: MessagesSquare },
+  { to: "/comunicacao", label: "Comunicação", icon: Mail },
   { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
 
   { to: "/negocio", label: "Faturação", icon: Wallet },
@@ -77,6 +79,7 @@ export const NAV_MAIS_PAGE: NavEntry[] = [
   { to: "/calendario", label: "Calendário", icon: CalendarDays },
   { to: "/rotinas", label: "Rotinas", icon: Repeat },
   { to: "/interacoes", label: "Interações", icon: MessagesSquare },
+  { to: "/comunicacao", label: "Comunicação", icon: Mail },
   { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
   { to: "/diversos", label: "Diversos", icon: Inbox },
   { to: "/negocio", label: "Faturação", icon: Wallet },
