@@ -10,6 +10,7 @@
 // Todas as chamadas ao provider passam pelo connector gateway (tokens ficam
 // do lado do gateway, nunca na app).
 import { callAsAppUser } from "@/integrations/lovable/appUserConnector";
+import { initialEventCategory } from "@/lib/agenda/event-category";
 import { getConnectionKeyForUser } from "./connections.server";
 import { isCalendarAuthError } from "./auth-error";
 import { isExternalEventMissing } from "./missing-event";
@@ -571,6 +572,8 @@ export async function pullFromProvider(
         source_channel: provider,
         external_reference: ext.id,
         created_by_assessor: false,
+        // Agenda Inteligente: evento importado nasce já categorizado.
+        event_category: initialEventCategory({ title: ext.title, type: "evento", notes: ext.notes ?? null }),
       }).select("id").single();
       followUpId = (created as { id: string } | null)?.id ?? null;
     }
