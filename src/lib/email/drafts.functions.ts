@@ -21,3 +21,26 @@ export const cancelEmailDraft = createServerFn({ method: "POST" })
       reason: data.reason ?? null,
     });
   });
+
+// Recomeçar: cria um novo rascunho pendente a partir de um cancelado,
+// já com destinatário, assunto e texto preenchidos.
+export const restartEmailDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        draftId: z.string().uuid(),
+        subject: z.string().max(500).nullish(),
+        body: z.string().max(20000).nullish(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { restartDraft } = await import("./restart-draft.server");
+    return restartDraft({
+      userId: context.userId,
+      draftId: data.draftId,
+      subject: data.subject ?? null,
+      body: data.body ?? null,
+    });
+  });
