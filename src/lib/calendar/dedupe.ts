@@ -41,12 +41,16 @@ export function dupeKey(row: Pick<ImportedRow, "title" | "due_date">): string | 
 }
 
 /**
- * Sobrevivente do grupo: primeiro o que tem ligação ao calendário, depois o
- * mais antigo (o original), por fim o id mais baixo para ser determinístico.
+ * Sobrevivente do grupo: primeiro a ocorrência de uma série (é a entidade
+ * estável no delta do Outlook; o seriesMaster não), depois o que tem ligação ao
+ * calendário, depois o mais antigo (o original) e por fim o id mais baixo para
+ * ser determinístico.
  */
 export function chooseSurvivor<T extends ImportedRow>(rows: T[]): T | null {
   if (rows.length === 0) return null;
   return [...rows].sort((a, b) => {
+    const occ = Number(!!b.is_occurrence) - Number(!!a.is_occurrence);
+    if (occ !== 0) return occ;
     const link = Number(!!b.has_link) - Number(!!a.has_link);
     if (link !== 0) return link;
     const ta = a.created_at ? new Date(a.created_at).getTime() : Number.MAX_SAFE_INTEGER;
