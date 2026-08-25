@@ -417,7 +417,7 @@ function CalendarioPage() {
               sentidos.
             </p>
             <Link to="/definicoes" className="c-btn w-full justify-start">
-              Gerir ligações de calendário
+              Definições calendário
             </Link>
             <ForceSyncButton />
           </div>
