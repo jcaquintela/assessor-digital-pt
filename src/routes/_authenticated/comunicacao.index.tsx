@@ -5,7 +5,8 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Mail, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/comunicacao/")({
   head: () => ({
@@ -35,6 +36,7 @@ type DraftRow = {
   status: string;
   created_at: string;
   sent_at: string | null;
+  cancelled_at: string | null;
   expires_at: string | null;
   channel: string | null;
 };
@@ -63,7 +65,7 @@ function ComunicacaoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("email_drafts")
-        .select("id,to_name,to_emails,subject,status,created_at,sent_at,expires_at,channel")
+        .select("id,to_name,to_emails,subject,status,created_at,sent_at,cancelled_at,expires_at,channel")
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -90,39 +92,51 @@ function ComunicacaoPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {rows.map((r) => (
-            <Link
-              key={r.id}
-              to="/comunicacao/rascunho/$id"
-              params={{ id: r.id }}
-              className="block"
-            >
-              <Card className="transition-colors hover:border-primary/40">
-                <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {r.subject || "(sem assunto)"}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      Para {r.to_name || r.to_emails?.[0] || "—"} · {when(r.created_at)}
-                      {r.channel ? ` · ${r.channel}` : ""}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      r.status === "sent"
-                        ? "default"
-                        : r.status === "cancelled"
-                          ? "destructive"
-                          : "secondary"
-                    }
-                  >
-                    {STATUS_LABEL[r.status] ?? r.status}
-                  </Badge>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {rows.map((r) => {
+            const cancelled = r.status === "cancelled" || Boolean(r.cancelled_at);
+            return (
+              <Link
+                key={r.id}
+                to="/comunicacao/rascunho/$id"
+                params={{ id: r.id }}
+                className="block"
+              >
+                <Card
+                  className={cn(
+                    "transition-colors hover:border-primary/40",
+                    cancelled && "border-destructive/40 bg-destructive/5",
+                  )}
+                >
+                  <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4">
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                        {cancelled && (
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" aria-hidden />
+                        )}
+                        <span>{r.subject || "(sem assunto)"}</span>
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        Para {r.to_name || r.to_emails?.[0] || "—"} · {when(r.created_at)}
+                        {cancelled ? ` · cancelado ${when(r.cancelled_at)}` : ""}
+                        {r.channel ? ` · ${r.channel}` : ""}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        r.status === "sent"
+                          ? "default"
+                          : cancelled
+                            ? "destructive"
+                            : "secondary"
+                      }
+                    >
+                      {STATUS_LABEL[r.status] ?? r.status}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </AppShell>
