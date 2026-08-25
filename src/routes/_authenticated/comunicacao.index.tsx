@@ -35,6 +35,7 @@ type DraftRow = {
   status: string;
   created_at: string;
   sent_at: string | null;
+  cancelled_at: string | null;
   expires_at: string | null;
   channel: string | null;
 };
