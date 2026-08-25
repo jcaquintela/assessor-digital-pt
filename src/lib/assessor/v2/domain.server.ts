@@ -1445,7 +1445,8 @@ async function resolveUpdatePersonId(
   id: string,
   name: string | null,
   phone: string | null,
-): Promise<{ id: string; before: PersonRow; matchedBy: "id" | "memory" | "name" | "phone" } | null> {
+  email: string | null = null,
+): Promise<{ id: string; before: PersonRow; matchedBy: "id" | "memory" | "name" | "phone" | "email" } | null> {
   const COLS = "id, name, phone, email, relationship_type, notes";
   const byId = await ctx.supabase
     .from("people" as never)
