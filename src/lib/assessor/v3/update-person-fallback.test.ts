@@ -17,10 +17,12 @@ function fakeDb(people: any[]) {
         ilike(c: string, v: any) { f[`ilike:${c}`] = v; return api; },
         limit() {
           const name = f["ilike:name"]; const phone = f.phone;
+          const email = f.email_normalized;
           return Promise.resolve({
             data: people.filter((p) =>
               (name ? p.name.toLowerCase() === String(name).toLowerCase() : true)
-              && (phone ? p.phone === phone : true)),
+              && (phone ? p.phone === phone : true)
+              && (email ? (p.email ?? "").toLowerCase() === String(email) : true)),
           });
         },
         maybeSingle() {
@@ -46,6 +48,7 @@ function person() {
   return {
     id: REAL_ID, name: "Ana Catarina Santos", phone: "+351912345678",
     email: null, relationship_type: "potencial_cliente", notes: null,
+    email_normalized: null,
   };
 }
 
@@ -83,6 +86,17 @@ describe("update_person — rede de segurança no id", () => {
     );
     expect(res.ok).toBe(false);
     expect(res.error).toBe("pessoa_nao_encontrada");
+  });
+
+  it("golden 3d: sem nome nem telefone, resolve por email normalizado", async () => {
+    const p = { ...person(), name: "Outro Nome", email: "Ana.Santos@Exemplo.PT" };
+    const db = fakeDb([p]);
+    const res = await TOOL_REGISTRY.update_person(
+      { supabase: db.supabase, userId: "u1", channel: "whatsapp" } as any,
+      { id: FAKE_ID, email: " ana.santos@exemplo.pt ", notes: "Quer visitar sábado" },
+    );
+    expect(res.ok).toBe(true);
+    expect(p.notes).toBe("Quer visitar sábado");
   });
 
   it("golden 5: caso Ana Catarina Santos ponta a ponta", async () => {
