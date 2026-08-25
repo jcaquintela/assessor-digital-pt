@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect } from "react";
 import { getMyEffectiveTier } from "./tier.functions";
 import { usePreviewTier } from "./tier-preview";
+import { useHasSession } from "@/hooks/use-has-session";
 
 export const EFFECTIVE_TIER_QUERY_KEY = ["subscription", "effectiveTier"] as const;
 
@@ -15,10 +16,14 @@ export function useEffectiveTier() {
   const qc = useQueryClient();
   // Simulação "ver como" (só super admin, só nesta sessão de navegação).
   const previewTier = usePreviewTier();
+  // Sem sessão hidratada não vale a pena chamar: o middleware devolveria 401.
+  const hasSession = useHasSession();
 
   const query = useQuery({
     queryKey: EFFECTIVE_TIER_QUERY_KEY,
     queryFn: () => fetchTier(),
+    enabled: hasSession === true,
+    retry: false,
     staleTime: 30_000,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
