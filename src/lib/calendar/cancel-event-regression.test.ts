@@ -120,6 +120,7 @@ let missingExternalIds = new Set<string>();
 import { dispatchToolCall } from "@/lib/assessor/v2/domain.server";
 import { computePriorities } from "@/lib/assessor/supreme/priorities.server";
 import { pullFromProvider } from "./sync.server";
+import { VERIFY_SLICES, sliceOf } from "./verify-slice";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const FU = "f85a5c00-0000-4000-8000-000000000001";
@@ -240,5 +241,37 @@ describe("regressão: cancelar evento do Google Calendar", () => {
     expect(db.reminders[0].status).toBe("cancelled");
     expect(db.calendar_event_links[0].deleted).toBe(true);
     expect(gatewayCalls.some((c) => c.method === "GET" && c.path.includes("gcal-almeida"))).toBe(true);
+  });
+
+  it("a ronda rápida (2 min) faz o delta sem esperar pela verificação", async () => {
+    db.calendar_event_links[0].external_updated_at = new Date().toISOString();
+    externalItems = [{
+      id: "gcal-almeida", summary: "Visita com Sr. Almeida", status: "cancelled",
+      start: { dateTime: isoTodayAt("11:00") }, updated: db.calendar_event_links[0].external_updated_at,
+    }];
+    gatewayCalls.length = 0;
+    missingExternalIds.add("gcal-almeida");
+
+    await pullFromProvider(supabase, USER, "google_calendar", { verify: false });
+
+    // Cancelamento aplicado pelo delta, sem um único GET de verificação.
+    expect(db.follow_ups[0].status).toBe("cancelado");
+    expect(gatewayCalls.some((c) => c.method === "GET" && c.path.includes("events/gcal-almeida"))).toBe(false);
+  });
+
+  it("com rotação por fatias, apagar no Google continua a ser detectado numa volta", async () => {
+    externalItems = [];
+    missingExternalIds.add("gcal-almeida");
+    const minha = sliceOf("gcal-almeida");
+
+    // Fatia diferente: nada acontece nesta ronda.
+    const outra = (minha + 1) % VERIFY_SLICES;
+    await pullFromProvider(supabase, USER, "google_calendar", { verify: { slices: VERIFY_SLICES, index: outra } });
+    expect(db.follow_ups[0].status).not.toBe("cancelado");
+
+    // Ronda da fatia certa (dentro da volta de ~30 min): fantasma cancelado.
+    await pullFromProvider(supabase, USER, "google_calendar", { verify: { slices: VERIFY_SLICES, index: minha } });
+    expect(db.follow_ups[0].status).toBe("cancelado");
+    expect(db.calendar_event_links[0].deleted).toBe(true);
   });
 });
