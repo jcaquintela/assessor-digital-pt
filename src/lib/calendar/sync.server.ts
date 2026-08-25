@@ -434,7 +434,7 @@ async function fetchChanges(
       if (r.status === 410) await saveSyncState(supabaseAdmin, userId, provider, { delta_link: null });
       return { events: [], error: `${r.status}: ${r.text.slice(0, 200)}` };
     }
-    for (const it of r.body?.value ?? []) events.push(normalizeOutlook(it));
+    for (const ev of outlookEventsFromDelta(r.body?.value ?? [])) events.push(ev);
     const nextLink = r.body?.["@odata.nextLink"] ? String(r.body["@odata.nextLink"]) : null;
     if (!nextLink) return { events, nextDelta: r.body?.["@odata.deltaLink"] ?? state?.delta_link ?? null };
     path = nextLink.replace(/^https:\/\/graph\.microsoft\.com\/v1\.0/, "");
