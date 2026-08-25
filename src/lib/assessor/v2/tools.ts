@@ -73,6 +73,16 @@ export const SummarizeEmailArgs = z.object({
 });
 export type SummarizeEmailArgs = z.infer<typeof SummarizeEmailArgs>;
 
+// Rascunho de resposta a email: PROPÕE apenas. O envio nunca é ferramenta.
+export const DraftEmailReplyArgs = z.object({
+  message_id: z.string().optional().nullable(),
+  subject_hint: z.string().optional().nullable(),
+  instructions: z.string().optional().nullable(),
+});
+export type DraftEmailReplyArgs = z.infer<typeof DraftEmailReplyArgs>;
+
+
+
 export const CreatePropertyArgs = z.object({
   title: z.string().min(1),
   property_type: z.string().optional().nullable(),
@@ -653,6 +663,23 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
   {
     type: "function",
     function: {
+      name: "draft_email_reply",
+      description:
+        "Prepara um RASCUNHO de resposta a um email recebido, quando o consultor pede para responder a alguém ('responde ao email do Paulo sobre a proposta'). Nunca envia: o rascunho é sempre mostrado e o envio depende de o consultor dizer 'enviar'. Passa message_id quando o tens de search_emails, senão subject_hint com as palavras dele (remetente e/ou assunto). Em instructions põe o que ele quer dizer, se o disser.",
+      parameters: {
+        type: "object",
+        properties: {
+          message_id: { type: ["string", "null"] },
+          subject_hint: { type: ["string", "null"] },
+          instructions: { type: ["string", "null"] },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_event",
       description:
         "Cria um evento (visita, reunião de angariação, chamada) na agenda do consultor. Data em YYYY-MM-DD e hora em HH:MM (Europe/Lisbon). Associa person_id e property_id quando já os tens (obtém-nos de search_people/search_properties). Se reminder_minutes for definido, será criado o lembrete.",
@@ -1133,6 +1160,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   search_files: SearchFilesArgs,
   search_emails: SearchEmailsArgs,
   summarize_email: SummarizeEmailArgs,
+  draft_email_reply: DraftEmailReplyArgs,
   create_property: CreatePropertyArgs,
   search_agenda: SearchAgendaArgs,
   create_event: CreateEventArgs,

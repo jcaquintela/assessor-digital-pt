@@ -75,6 +75,7 @@ import { Route as AuthenticatedOportunidadesIndexRouteImport } from './routes/_a
 import { Route as AuthenticatedNegociosIndexRouteImport } from './routes/_authenticated/negocios.index'
 import { Route as AuthenticatedNegocioIndexRouteImport } from './routes/_authenticated/negocio.index'
 import { Route as AuthenticatedImoveisIndexRouteImport } from './routes/_authenticated/imoveis.index'
+import { Route as AuthenticatedComunicacaoIndexRouteImport } from './routes/_authenticated/comunicacao.index'
 import { Route as OauthOutlookReturnRouteImport } from './routes/oauth/outlook/return'
 import { Route as OauthOutlookMailReturnRouteImport } from './routes/oauth/outlook-mail/return'
 import { Route as OauthGoogleCalendarReturnRouteImport } from './routes/oauth/google-calendar/return'
@@ -117,6 +118,7 @@ import { Route as ApiPublicHooksBetaExpiryRouteImport } from './routes/api/publi
 import { Route as AuthenticatedOportunidadesProspecaoIdRouteImport } from './routes/_authenticated/oportunidades.prospecao.$id'
 import { Route as AuthenticatedNegocioDespesasIdRouteImport } from './routes/_authenticated/negocio.despesas.$id'
 import { Route as AuthenticatedNegocioComissoesIdRouteImport } from './routes/_authenticated/negocio.comissoes.$id'
+import { Route as AuthenticatedComunicacaoRascunhoIdRouteImport } from './routes/_authenticated/comunicacao.rascunho.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -456,6 +458,12 @@ const AuthenticatedImoveisIndexRoute =
     path: '/imoveis/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedComunicacaoIndexRoute =
+  AuthenticatedComunicacaoIndexRouteImport.update({
+    id: '/comunicacao/',
+    path: '/comunicacao/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const OauthOutlookReturnRoute = OauthOutlookReturnRouteImport.update({
   id: '/oauth/outlook/return',
   path: '/oauth/outlook/return',
@@ -695,6 +703,12 @@ const AuthenticatedNegocioComissoesIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedNegocioComissoesRoute,
   } as any)
+const AuthenticatedComunicacaoRascunhoIdRoute =
+  AuthenticatedComunicacaoRascunhoIdRouteImport.update({
+    id: '/comunicacao/rascunho/$id',
+    path: '/comunicacao/rascunho/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -779,12 +793,14 @@ export interface FileRoutesByFullPath {
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook-mail/return': typeof OauthOutlookMailReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
+  '/comunicacao/': typeof AuthenticatedComunicacaoIndexRoute
   '/imoveis/': typeof AuthenticatedImoveisIndexRoute
   '/negocio/': typeof AuthenticatedNegocioIndexRoute
   '/negocios/': typeof AuthenticatedNegociosIndexRoute
   '/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
   '/pessoas/': typeof AuthenticatedPessoasIndexRoute
   '/seguimentos/': typeof AuthenticatedSeguimentosIndexRoute
+  '/comunicacao/rascunho/$id': typeof AuthenticatedComunicacaoRascunhoIdRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
@@ -887,12 +903,14 @@ export interface FileRoutesByTo {
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook-mail/return': typeof OauthOutlookMailReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
+  '/comunicacao': typeof AuthenticatedComunicacaoIndexRoute
   '/imoveis': typeof AuthenticatedImoveisIndexRoute
   '/negocio': typeof AuthenticatedNegocioIndexRoute
   '/negocios': typeof AuthenticatedNegociosIndexRoute
   '/oportunidades': typeof AuthenticatedOportunidadesIndexRoute
   '/pessoas': typeof AuthenticatedPessoasIndexRoute
   '/seguimentos': typeof AuthenticatedSeguimentosIndexRoute
+  '/comunicacao/rascunho/$id': typeof AuthenticatedComunicacaoRascunhoIdRoute
   '/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
@@ -998,12 +1016,14 @@ export interface FileRoutesById {
   '/oauth/google-calendar/return': typeof OauthGoogleCalendarReturnRoute
   '/oauth/outlook-mail/return': typeof OauthOutlookMailReturnRoute
   '/oauth/outlook/return': typeof OauthOutlookReturnRoute
+  '/_authenticated/comunicacao/': typeof AuthenticatedComunicacaoIndexRoute
   '/_authenticated/imoveis/': typeof AuthenticatedImoveisIndexRoute
   '/_authenticated/negocio/': typeof AuthenticatedNegocioIndexRoute
   '/_authenticated/negocios/': typeof AuthenticatedNegociosIndexRoute
   '/_authenticated/oportunidades/': typeof AuthenticatedOportunidadesIndexRoute
   '/_authenticated/pessoas/': typeof AuthenticatedPessoasIndexRoute
   '/_authenticated/seguimentos/': typeof AuthenticatedSeguimentosIndexRoute
+  '/_authenticated/comunicacao/rascunho/$id': typeof AuthenticatedComunicacaoRascunhoIdRoute
   '/_authenticated/negocio/comissoes/$id': typeof AuthenticatedNegocioComissoesIdRoute
   '/_authenticated/negocio/despesas/$id': typeof AuthenticatedNegocioDespesasIdRoute
   '/_authenticated/oportunidades/prospecao/$id': typeof AuthenticatedOportunidadesProspecaoIdRoute
@@ -1109,12 +1129,14 @@ export interface FileRouteTypes {
     | '/oauth/google-calendar/return'
     | '/oauth/outlook-mail/return'
     | '/oauth/outlook/return'
+    | '/comunicacao/'
     | '/imoveis/'
     | '/negocio/'
     | '/negocios/'
     | '/oportunidades/'
     | '/pessoas/'
     | '/seguimentos/'
+    | '/comunicacao/rascunho/$id'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
     | '/oportunidades/prospecao/$id'
@@ -1217,12 +1239,14 @@ export interface FileRouteTypes {
     | '/oauth/google-calendar/return'
     | '/oauth/outlook-mail/return'
     | '/oauth/outlook/return'
+    | '/comunicacao'
     | '/imoveis'
     | '/negocio'
     | '/negocios'
     | '/oportunidades'
     | '/pessoas'
     | '/seguimentos'
+    | '/comunicacao/rascunho/$id'
     | '/negocio/comissoes/$id'
     | '/negocio/despesas/$id'
     | '/oportunidades/prospecao/$id'
@@ -1327,12 +1351,14 @@ export interface FileRouteTypes {
     | '/oauth/google-calendar/return'
     | '/oauth/outlook-mail/return'
     | '/oauth/outlook/return'
+    | '/_authenticated/comunicacao/'
     | '/_authenticated/imoveis/'
     | '/_authenticated/negocio/'
     | '/_authenticated/negocios/'
     | '/_authenticated/oportunidades/'
     | '/_authenticated/pessoas/'
     | '/_authenticated/seguimentos/'
+    | '/_authenticated/comunicacao/rascunho/$id'
     | '/_authenticated/negocio/comissoes/$id'
     | '/_authenticated/negocio/despesas/$id'
     | '/_authenticated/oportunidades/prospecao/$id'
@@ -1857,6 +1883,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImoveisIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/comunicacao/': {
+      id: '/_authenticated/comunicacao/'
+      path: '/comunicacao'
+      fullPath: '/comunicacao/'
+      preLoaderRoute: typeof AuthenticatedComunicacaoIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/oauth/outlook/return': {
       id: '/oauth/outlook/return'
       path: '/oauth/outlook/return'
@@ -2151,6 +2184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNegocioComissoesIdRouteImport
       parentRoute: typeof AuthenticatedNegocioComissoesRoute
     }
+    '/_authenticated/comunicacao/rascunho/$id': {
+      id: '/_authenticated/comunicacao/rascunho/$id'
+      path: '/comunicacao/rascunho/$id'
+      fullPath: '/comunicacao/rascunho/$id'
+      preLoaderRoute: typeof AuthenticatedComunicacaoRascunhoIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -2255,12 +2295,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOportunidadesIdRoute: typeof AuthenticatedOportunidadesIdRoute
   AuthenticatedPessoasIdRoute: typeof AuthenticatedPessoasIdRoute
   AuthenticatedSeguimentosIdRoute: typeof AuthenticatedSeguimentosIdRoute
+  AuthenticatedComunicacaoIndexRoute: typeof AuthenticatedComunicacaoIndexRoute
   AuthenticatedImoveisIndexRoute: typeof AuthenticatedImoveisIndexRoute
   AuthenticatedNegocioIndexRoute: typeof AuthenticatedNegocioIndexRoute
   AuthenticatedNegociosIndexRoute: typeof AuthenticatedNegociosIndexRoute
   AuthenticatedOportunidadesIndexRoute: typeof AuthenticatedOportunidadesIndexRoute
   AuthenticatedPessoasIndexRoute: typeof AuthenticatedPessoasIndexRoute
   AuthenticatedSeguimentosIndexRoute: typeof AuthenticatedSeguimentosIndexRoute
+  AuthenticatedComunicacaoRascunhoIdRoute: typeof AuthenticatedComunicacaoRascunhoIdRoute
   AuthenticatedOportunidadesProspecaoIdRoute: typeof AuthenticatedOportunidadesProspecaoIdRoute
   AuthenticatedOportunidadesProspecaoIndexRoute: typeof AuthenticatedOportunidadesProspecaoIndexRoute
 }
@@ -2291,12 +2333,15 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOportunidadesIdRoute: AuthenticatedOportunidadesIdRoute,
   AuthenticatedPessoasIdRoute: AuthenticatedPessoasIdRoute,
   AuthenticatedSeguimentosIdRoute: AuthenticatedSeguimentosIdRoute,
+  AuthenticatedComunicacaoIndexRoute: AuthenticatedComunicacaoIndexRoute,
   AuthenticatedImoveisIndexRoute: AuthenticatedImoveisIndexRoute,
   AuthenticatedNegocioIndexRoute: AuthenticatedNegocioIndexRoute,
   AuthenticatedNegociosIndexRoute: AuthenticatedNegociosIndexRoute,
   AuthenticatedOportunidadesIndexRoute: AuthenticatedOportunidadesIndexRoute,
   AuthenticatedPessoasIndexRoute: AuthenticatedPessoasIndexRoute,
   AuthenticatedSeguimentosIndexRoute: AuthenticatedSeguimentosIndexRoute,
+  AuthenticatedComunicacaoRascunhoIdRoute:
+    AuthenticatedComunicacaoRascunhoIdRoute,
   AuthenticatedOportunidadesProspecaoIdRoute:
     AuthenticatedOportunidadesProspecaoIdRoute,
   AuthenticatedOportunidadesProspecaoIndexRoute:

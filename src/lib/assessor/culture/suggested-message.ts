@@ -10,10 +10,30 @@
 // SUGGESTION_MARKER; quando não o faz, tentamos reconhecer o padrão.
 
 export const SUGGESTION_MARKER = "[[SUGESTAO]]";
+/**
+ * Pergunta que tem de sair DEPOIS do texto sugerido, em bolha própria.
+ * Caso real: o corpo de um email e o "posso enviar?" não podem partilhar
+ * balão — quem faz long-press para copiar apanharia a pergunta pelo meio.
+ */
+export const QUESTION_MARKER = "[[PERGUNTA]]";
 
 export interface SplitSuggestion {
   intro: string;
   suggestion: string;
+  /** Terceira bolha, opcional: a pergunta de confirmação. */
+  question?: string;
+}
+
+/** Intro + texto sugerido + pergunta de confirmação, em três bolhas. */
+export function withSuggestionAndQuestion(
+  intro: string,
+  suggestion: string,
+  question: string,
+): string {
+  const base = withSuggestion(intro, suggestion);
+  const q = String(question ?? "").trim();
+  if (!q || !String(suggestion ?? "").trim()) return base;
+  return `${base}\n${QUESTION_MARKER}\n${q}`;
 }
 
 /** Marca um texto como sugestão para o pipeline o separar no envio. */
@@ -88,9 +108,12 @@ export function splitSuggestedMessage(reply: string | null | undefined): SplitSu
   const marked = text.indexOf(SUGGESTION_MARKER);
   if (marked >= 0) {
     const intro = text.slice(0, marked).trim();
-    const suggestion = normalizeSuggestedText(text.slice(marked + SUGGESTION_MARKER.length));
+    const rest = text.slice(marked + SUGGESTION_MARKER.length);
+    const qAt = rest.indexOf(QUESTION_MARKER);
+    const question = qAt >= 0 ? rest.slice(qAt + QUESTION_MARKER.length).trim() : "";
+    const suggestion = normalizeSuggestedText(qAt >= 0 ? rest.slice(0, qAt) : rest);
     if (!suggestion) return null;
-    return { intro, suggestion };
+    return question ? { intro, suggestion, question } : { intro, suggestion };
   }
 
   const m = LEAD_IN_RE.exec(text);
@@ -109,5 +132,9 @@ export function splitSuggestedMessage(reply: string | null | undefined): SplitSu
 
 /** Remove o marcador quando não vale a pena separar (ex.: histórico). */
 export function stripSuggestionMarker(reply: string | null | undefined): string {
-  return String(reply ?? "").split(SUGGESTION_MARKER).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return String(reply ?? "")
+    .split(SUGGESTION_MARKER)
+    .join("\n")
+    .split(QUESTION_MARKER)
+    .join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }

@@ -1723,48 +1723,85 @@ export type Database = {
       }
       email_drafts: {
         Row: {
+          archived_at: string | null
           body: string
+          channel: string
+          confirmation_text: string | null
           confirmed_at: string | null
           created_at: string
+          expires_at: string
           id: string
+          in_reply_to_message_id: string | null
+          person_id: string | null
           provider: string
           provider_draft_id: string | null
+          revisions: number
+          sent_at: string | null
+          sent_body: string | null
           status: string
           subject: string | null
           thread_id: string | null
           to_emails: string[]
+          to_name: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           body: string
+          channel?: string
+          confirmation_text?: string | null
           confirmed_at?: string | null
           created_at?: string
+          expires_at?: string
           id?: string
+          in_reply_to_message_id?: string | null
+          person_id?: string | null
           provider?: string
           provider_draft_id?: string | null
+          revisions?: number
+          sent_at?: string | null
+          sent_body?: string | null
           status?: string
           subject?: string | null
           thread_id?: string | null
           to_emails?: string[]
+          to_name?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           body?: string
+          channel?: string
+          confirmation_text?: string | null
           confirmed_at?: string | null
           created_at?: string
+          expires_at?: string
           id?: string
+          in_reply_to_message_id?: string | null
+          person_id?: string | null
           provider?: string
           provider_draft_id?: string | null
+          revisions?: number
+          sent_at?: string | null
+          sent_body?: string | null
           status?: string
           subject?: string | null
           thread_id?: string | null
           to_emails?: string[]
+          to_name?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "email_drafts_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_drafts_thread_id_fkey"
             columns: ["thread_id"]
