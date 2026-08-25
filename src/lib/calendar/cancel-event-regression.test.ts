@@ -242,7 +242,6 @@ describe("regressão: cancelar evento do Google Calendar", () => {
     expect(db.calendar_event_links[0].deleted).toBe(true);
     expect(gatewayCalls.some((c) => c.method === "GET" && c.path.includes("gcal-almeida"))).toBe(true);
   });
-}
 
   it("a ronda rápida (2 min) faz o delta sem esperar pela verificação", async () => {
     db.calendar_event_links[0].external_updated_at = new Date().toISOString();
