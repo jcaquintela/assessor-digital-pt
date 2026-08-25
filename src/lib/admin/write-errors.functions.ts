@@ -9,12 +9,13 @@ export const listWriteErrors = createServerFn({ method: "GET" })
     const { assertAdmin } = await import("./suggestions-actions.server");
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { fetchWriteErrors, fetchModelFallbackTrend } = await import("./write-errors.server");
-    const [res, modelTrend] = await Promise.all([
+    const { fetchWriteErrors, fetchModelFallbackTrend, fetchNotFoundStats } = await import("./write-errors.server");
+    const [res, modelTrend, notFound] = await Promise.all([
       fetchWriteErrors(supabaseAdmin, { hours: data.hours }),
       fetchModelFallbackTrend(supabaseAdmin),
+      fetchNotFoundStats(supabaseAdmin, { hours: data.hours }),
     ]);
-    return { ...res, modelTrend };
+    return { ...res, modelTrend, notFound };
   });
 
 /** Contagem das últimas 24h, para o alerta e o badge do menu. */
@@ -24,8 +25,11 @@ export const countWriteErrors = createServerFn({ method: "GET" })
     const { assertAdmin } = await import("./suggestions-actions.server");
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { fetchWriteErrors } = await import("./write-errors.server");
-    const { items, last24h, modelLast24h } = await fetchWriteErrors(supabaseAdmin, { hours: 24, limit: 50 });
+    const { fetchWriteErrors, fetchNotFoundStats } = await import("./write-errors.server");
+    const [{ items, last24h, modelLast24h }, notFound] = await Promise.all([
+      fetchWriteErrors(supabaseAdmin, { hours: 24, limit: 50 }),
+      fetchNotFoundStats(supabaseAdmin, { sampleLimit: 1 }),
+    ]);
     // O alerta/badge só reage a falhas de escrita — fallback do modelo não é alarme.
     const latest = items.find((i) => i.kind === "escrita");
     return {
@@ -34,6 +38,9 @@ export const countWriteErrors = createServerFn({ method: "GET" })
       latestTool: latest?.tool_name ?? null,
       latestError: latest?.error ?? null,
       latestAt: latest?.created_at ?? null,
+      notFound24h: notFound.last24h,
+      notFoundTool: notFound.samples[0]?.tool_name ?? null,
+      notFoundEntity: notFound.samples[0]?.entity ?? null,
     };
   });
 
