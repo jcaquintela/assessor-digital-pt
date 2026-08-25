@@ -42,9 +42,6 @@ function lisbonHhMm(iso: string): string {
   }).format(new Date(iso));
 }
 
-function endIso(startIso: string): string {
-  return new Date(new Date(startIso).getTime() + DEFAULT_DURATION_MIN * 60_000).toISOString();
-}
 
 async function logSync(
   supabaseAdmin: any,
