@@ -40,6 +40,7 @@ describe("ConnectorOAuthReturn", () => {
     (window as any).opener = undefined;
     window.close = vi.fn();
   });
+  afterEach(() => cleanup());
 
   it("mostra confirmação e caminho de volta assim que o servidor confirma", async () => {
     setSearch("?success=true&code=abc");
