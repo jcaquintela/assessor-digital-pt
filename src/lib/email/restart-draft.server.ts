@@ -49,11 +49,16 @@ export async function restartDraft(args: {
   if (insErr || !created) throw new Error(insErr?.message ?? "rascunho não criado");
 
   await supabaseAdmin.from("admin_audit_logs").insert({
-    user_id: args.userId,
-    action: "email_draft_restarted",
-    details: {
+    admin_user_id: null,
+    action: "email.rascunho_recomecado",
+    target_user_id: args.userId,
+    resource_type: "email_draft",
+    resource_id: String((created as any).id),
+    reason: "Novo rascunho criado a partir de um rascunho cancelado.",
+    metadata: {
+      source: "email/restart-draft:dashboard",
       source_draft_id: args.draftId,
-      new_draft_id: String((created as any).id),
+      provider: src.provider,
     },
   } as never);
 
