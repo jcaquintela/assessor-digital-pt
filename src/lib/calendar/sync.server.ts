@@ -619,6 +619,11 @@ export async function pullFromProvider(
   return { applied, skipped };
 }
 
+/** Ocorrência (ou excepção) de uma série recorrente do Outlook. */
+function isSeriesOccurrence(ext: ExternalEvent): boolean {
+  return ext.recurrenceType === "occurrence" || ext.recurrenceType === "exception";
+}
+
 /**
  * Compromisso já importado que corresponde a este evento externo: primeiro por
  * referência externa, depois por título + hora (gémeo criado por uma ronda
