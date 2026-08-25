@@ -59,6 +59,17 @@ export function describeWrites(tools: ToolOutcome[]): string | null {
  * Última linha de defesa antes de responder: sem "Feito." isolado e sem
  * promessas de envio quando o motor só escreveu localmente.
  */
+// Verbos no presente/futuro que descrevem uma escrita JÁ FEITA. "Adiciono a
+// Ana Catarina Santos..." lê-se como proposta e provoca um "Sim" inútil do
+// consultor (caso real, 25/08). Uma escrita executada fala sempre no passado.
+const PRESENT_WRITE_RE =
+  /\b(?:vou\s+(?:adicionar|registar|criar|marcar|guardar|atualizar|actualizar|agendar)|adiciono|registo|crio|marco|guardo|atualizo|actualizo|agendo|coloco|ponho|aponto)\b/i;
+
+/** A frase descreve no presente/futuro algo que já foi executado? */
+export function promisesFutureWrite(text: string | null | undefined): boolean {
+  return PRESENT_WRITE_RE.test(String(text ?? ""));
+}
+
 export function enforceTransparentConfirmation(
   reply: string,
   tools: ToolOutcome[],
@@ -68,6 +79,9 @@ export function enforceTransparentConfirmation(
   let out = reply;
   if (claimsDelivery(reply)) out = receipt ?? "Guardei o registo no dashboard. Não enviei nada a ninguém.";
   else if (opts.executedOk && isBareAck(reply) && receipt) out = receipt;
+  // Escrita feita, mas contada no presente/futuro: substituímos pelo recibo
+  // no passado para não parecer uma proposta à espera de "Sim".
+  else if (opts.executedOk && promisesFutureWrite(reply) && receipt) out = receipt;
   return withProspectingHint(out, tools);
 }
 
