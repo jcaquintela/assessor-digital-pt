@@ -84,7 +84,7 @@ function CalendarioPage() {
   const [saving, setSaving] = useState(false);
   const hoje = new Date();
   const todayKey = dayKey(hoje);
-  const [view, setView] = useState<AgendaViewMode>("hoje");
+  const [view, setView] = useState<AgendaViewMode>("lista");
   const [month, setMonth] = useState(() => new Date(hoje.getFullYear(), hoje.getMonth(), 1));
   const [selectedKey, setSelectedKey] = useState(() => dayKey(new Date()));
   const [listDays, setListDays] = useState(30);
