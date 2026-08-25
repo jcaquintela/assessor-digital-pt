@@ -23,6 +23,7 @@ import { trackNavRota } from "@/lib/telemetry/ui-events";
 import { GlobalSearch } from "@/components/hoje/global-search";
 import { AccountArchiveBanner } from "@/components/account-archive-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
+import { TierAuthNotice } from "@/components/subscricao/tier-auth-notice";
 import { TierPreviewBanner } from "@/components/tier-preview";
 
 const mobileNav = [
@@ -162,6 +163,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
           <div className="mx-auto min-w-0 max-w-6xl px-4 py-6 md:px-8 md:py-8">
             <AccountArchiveBanner />
             <AnnouncementBanner />
+            <TierAuthNotice />
             {children}
           </div>
         </main>
