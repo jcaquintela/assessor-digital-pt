@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { X, Megaphone } from "lucide-react";
 import { dismissAnnouncement, getMyAnnouncements } from "@/lib/admin/comunicacao.functions";
+import { useHasSession } from "@/hooks/use-has-session";
 
 export function sameText(a?: string | null, b?: string | null) {
   const n = (s?: string | null) => String(s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
@@ -43,12 +44,15 @@ export function AnnouncementCard({
 export function AnnouncementBanner() {
   const fetchAnnouncements = useServerFn(getMyAnnouncements);
   const dismissFn = useServerFn(dismissAnnouncement);
+  const hasSession = useHasSession();
   const qc = useQueryClient();
   // Só para esconder já o banner enquanto o servidor grava.
   const [hidden, setHidden] = useState<string[]>([]);
   const { data } = useQuery({
     queryKey: ["announcements", "mine"],
     queryFn: () => fetchAnnouncements(),
+    enabled: hasSession === true,
+    retry: false,
     staleTime: 5 * 60_000,
   });
 
