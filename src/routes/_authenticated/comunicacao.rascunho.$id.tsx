@@ -168,11 +168,27 @@ function RascunhoPage() {
                 onChange={(e) => setBody(e.target.value)}
               />
             </div>
-            {locked ? (
+            {cancelled ? (
+              <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-4">
+                <div className="flex items-start gap-2">
+                  <Ban className="mt-0.5 h-4 w-4 text-destructive" aria-hidden />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Rascunho cancelado</p>
+                    <p className="text-xs text-muted-foreground">
+                      Este rascunho ficou fechado: não podes editá-lo nem autorizá-lo, e dizer
+                      “enviar” na conversa também não o desbloqueia. Se ainda quiseres responder,
+                      posso abrir um novo rascunho com este texto já preenchido.
+                    </p>
+                  </div>
+                </div>
+                <Button onClick={() => restart.mutate()} disabled={restart.isPending}>
+                  <RotateCcw className="mr-1 h-4 w-4" aria-hidden />
+                  Criar novo rascunho com este texto
+                </Button>
+              </div>
+            ) : locked ? (
               <p className="text-xs text-muted-foreground">
-                {cancelled
-                  ? "Cancelaste este rascunho. Nem na conversa nem aqui volta a ser enviado."
-                  : "Já autorizaste este rascunho, por isso ficou fechado a alterações."}
+                Já autorizaste este rascunho, por isso ficou fechado a alterações.
               </p>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
