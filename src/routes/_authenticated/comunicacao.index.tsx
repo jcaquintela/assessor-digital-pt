@@ -108,7 +108,15 @@ function ComunicacaoPage() {
                       {r.channel ? ` · ${r.channel}` : ""}
                     </p>
                   </div>
-                  <Badge variant={r.status === "sent" ? "default" : "secondary"}>
+                  <Badge
+                    variant={
+                      r.status === "sent"
+                        ? "default"
+                        : r.status === "cancelled"
+                          ? "destructive"
+                          : "secondary"
+                    }
+                  >
                     {STATUS_LABEL[r.status] ?? r.status}
                   </Badge>
                 </CardContent>
