@@ -21,6 +21,7 @@ import {
 import { isAgendaEvent } from "@/lib/agenda-kind";
 import { outboundWindow } from "./event-body";
 import { inVerifyPlan, type VerifyPlan } from "./verify-slice";
+import { normalizeTitle, planDedupe, type ImportedRow } from "./dedupe";
 
 const DEFAULT_DURATION_MIN = 60;
 const TZ = "Europe/Lisbon";
