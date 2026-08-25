@@ -133,7 +133,7 @@ function DiagnosticoPage() {
             dela”.
           </p>
           {diag.data?.states?.length ? (
-            <StackTable head={["Canal", "Atualizado", "Última criação", "Entidade ativa", "Imóvel", "Intenção"]}>
+            <StackTable headers={["Canal", "Atualizado", "Última criação", "Entidade ativa", "Imóvel", "Intenção"]}>
               {diag.data.states.map((s, i) => (
                 <Tr key={`${s.channel}-${i}`}>
                   <Td>{s.channel ?? "—"}</Td>
