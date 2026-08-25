@@ -69,21 +69,23 @@ async function logSync(
 
 /* ============================ Mapeamento ============================ */
 
-function toGoogleBody(ev: LocalEvent) {
+export function toGoogleBody(ev: LocalEvent) {
+  const { startIso, endIso: end } = outboundWindow(ev);
   return {
     summary: ev.title,
     description: ev.notes ?? undefined,
-    start: { dateTime: new Date(ev.due_date).toISOString(), timeZone: TZ },
-    end: { dateTime: endIso(ev.due_date), timeZone: TZ },
+    start: { dateTime: startIso, timeZone: TZ },
+    end: { dateTime: end, timeZone: TZ },
   };
 }
 
-function toOutlookBody(ev: LocalEvent) {
+export function toOutlookBody(ev: LocalEvent) {
+  const { startIso, endIso: end } = outboundWindow(ev);
   return {
     subject: ev.title,
     body: { contentType: "Text", content: ev.notes ?? "" },
-    start: { dateTime: new Date(ev.due_date).toISOString().replace("Z", ""), timeZone: "UTC" },
-    end: { dateTime: endIso(ev.due_date).replace("Z", ""), timeZone: "UTC" },
+    start: { dateTime: startIso.replace("Z", ""), timeZone: "UTC" },
+    end: { dateTime: end.replace("Z", ""), timeZone: "UTC" },
   };
 }
 
