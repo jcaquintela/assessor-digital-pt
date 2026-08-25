@@ -11,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChevronLeft, Save, Ban } from "lucide-react";
+import { ChevronLeft, Save, Ban, RotateCcw } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { cancelEmailDraft } from "@/lib/email/drafts.functions";
+import { cancelEmailDraft, restartEmailDraft } from "@/lib/email/drafts.functions";
 
 export const Route = createFileRoute("/_authenticated/comunicacao/rascunho/$id")({
   head: () => ({
@@ -103,6 +103,26 @@ function RascunhoPage() {
     },
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Não deu para cancelar."),
+  });
+
+  const restartFn = useServerFn(restartEmailDraft);
+  const navigate = Route.useNavigate();
+  const restart = useMutation({
+    mutationFn: async () => restartFn({ data: { draftId: id, subject, body } }),
+    onSuccess: (res: { status: string; draftId?: string }) => {
+      if (res.status === "created" && res.draftId) {
+        toast.success("Novo rascunho criado com o teu texto.");
+        void qc.invalidateQueries({ queryKey: ["email-drafts"] });
+        void navigate({
+          to: "/comunicacao/rascunho/$id",
+          params: { id: res.draftId },
+        });
+      } else {
+        toast.error("Não deu para recomeçar este rascunho.");
+      }
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Não deu para recomeçar."),
   });
 
   const save = useMutation({
