@@ -65,7 +65,7 @@ export function ForceSyncButton() {
       disabled={busy}
     >
       <RefreshCw className={`mr-2 h-4 w-4${busy ? " animate-spin" : ""}`} />
-      {busy ? "A sincronizar…" : "Forçar sincronização"}
+      {busy ? "A sincronizar…" : "Sincronizar"}
     </Button>
   );
 }
