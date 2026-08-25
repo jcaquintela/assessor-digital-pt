@@ -44,6 +44,13 @@ export function useEffectiveTier() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [qc]);
 
+  // Log no browser para diagnóstico: o servidor devolve a razão em vez de 401.
+  const reason = query.data?.reason;
+  useEffect(() => {
+    if (!reason) return;
+    console.warn("[subscription] tier em fallback (base)", { reason });
+  }, [reason]);
+
   if (previewTier) {
     return { ...query, data: { tier: previewTier }, isPending: false } as typeof query;
   }
