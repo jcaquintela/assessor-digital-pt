@@ -26,6 +26,15 @@ function makeDb() {
     let op: "select" | "update" | "insert" | "upsert" | "delete" = "select";
     let payload: any = null;
 
+    const valueOf = (r: Row, c: string) => {
+      if (table === "calendar_event_links" && c.startsWith("follow_ups.")) {
+        const field = c.split(".")[1];
+        const fu = (db.follow_ups ?? []).find((f) => f.id === r.follow_up_id && f.user_id === r.user_id);
+        return field ? fu?.[field] : undefined;
+      }
+      return r[c];
+    };
+
     const run = () => {
       if (op === "select") return applyFilters(db[table], filters);
       if (op === "update") {
@@ -55,21 +64,22 @@ function makeDb() {
 
     const api: any = {
       select: () => api,
-      eq: (c: string, v: any) => { filters.push((r) => r[c] === v); return api; },
-      neq: (c: string, v: any) => { filters.push((r) => r[c] !== v); return api; },
-      is: (c: string, v: any) => { filters.push((r) => (r[c] ?? null) === v); return api; },
-      in: (c: string, v: any[]) => { filters.push((r) => v.includes(r[c])); return api; },
+      eq: (c: string, v: any) => { filters.push((r) => valueOf(r, c) === v); return api; },
+      neq: (c: string, v: any) => { filters.push((r) => valueOf(r, c) !== v); return api; },
+      is: (c: string, v: any) => { filters.push((r) => (valueOf(r, c) ?? null) === v); return api; },
+      in: (c: string, v: any[]) => { filters.push((r) => v.includes(valueOf(r, c))); return api; },
       not: (c: string, o: string, v: any) => {
-        if (o === "in") { const list = parseInList(String(v)); filters.push((r) => !list.includes(r[c])); }
-        else filters.push((r) => r[c] !== v);
+        if (o === "in") { const list = parseInList(String(v)); filters.push((r) => !list.includes(valueOf(r, c))); }
+        else filters.push((r) => valueOf(r, c) !== v);
         return api;
       },
-      gte: (c: string, v: any) => { filters.push((r) => new Date(r[c]) >= new Date(v)); return api; },
-      lte: (c: string, v: any) => { filters.push((r) => new Date(r[c]) <= new Date(v)); return api; },
+      gte: (c: string, v: any) => { filters.push((r) => new Date(valueOf(r, c)) >= new Date(v)); return api; },
+      lte: (c: string, v: any) => { filters.push((r) => new Date(valueOf(r, c)) <= new Date(v)); return api; },
       ilike: () => api,
       or: () => api,
       order: () => api,
       limit: () => api,
+      range: () => api,
       update: (p: Row) => { op = "update"; payload = p; return api; },
       insert: (p: Row) => { op = "insert"; payload = p; return api; },
       upsert: (p: Row) => { op = "upsert"; payload = p; return api; },
@@ -97,11 +107,15 @@ vi.mock("@/integrations/lovable/appUserConnector", () => ({
     gatewayCalls.push({ method: String(init?.method ?? "GET"), path });
     if (init?.method === "DELETE") return new Response("", { status: 200 });
     if (path.includes("events?")) return new Response(JSON.stringify({ items: externalItems, nextSyncToken: "tok" }), { status: 200 });
+    if (missingExternalIds.has(String(path).split("/").pop() ?? "")) {
+      return new Response(JSON.stringify({ error: { code: 410, message: "Resource has been deleted" } }), { status: 410 });
+    }
     return new Response(JSON.stringify({ id: "gcal-almeida", updated: new Date().toISOString() }), { status: 200 });
   },
 }));
 
 let externalItems: any[] = [];
+let missingExternalIds = new Set<string>();
 
 import { dispatchToolCall } from "@/lib/assessor/v2/domain.server";
 import { computePriorities } from "@/lib/assessor/supreme/priorities.server";
@@ -122,6 +136,7 @@ function seed() {
   for (const k of Object.keys(db)) delete db[k];
   gatewayCalls.length = 0;
   externalItems = [];
+  missingExternalIds = new Set<string>();
   db.follow_ups = [{
     id: FU, user_id: USER, title: "Visita com Sr. Almeida", type: "visita",
     due_date: isoTodayAt("11:00"), due_time: "11:00", status: "agendado",
@@ -197,9 +212,10 @@ describe("regressão: cancelar evento do Google Calendar", () => {
   });
 
   it("cancelar do lado do Google arquiva cá e mata os avisos internos", async () => {
+    db.calendar_event_links[0].external_updated_at = new Date().toISOString();
     externalItems = [{
       id: "gcal-almeida", summary: "Visita com Sr. Almeida", status: "cancelled",
-      start: { dateTime: isoTodayAt("11:00") }, updated: new Date().toISOString(),
+      start: { dateTime: isoTodayAt("11:00") }, updated: db.calendar_event_links[0].external_updated_at,
     }];
 
     await pullFromProvider(supabase, USER, "google_calendar");
@@ -211,5 +227,18 @@ describe("regressão: cancelar evento do Google Calendar", () => {
 
     const items = await computePriorities(supabase, USER, { now: new Date(Date.now() + 86_400_000) });
     expect(items.find((i) => i.subject_id === FU)).toBeUndefined();
+  });
+
+  it("quando o delta omite a remoção, confirma o evento ligado e cancela o fantasma", async () => {
+    externalItems = [];
+    missingExternalIds.add("gcal-almeida");
+
+    await pullFromProvider(supabase, USER, "google_calendar");
+
+    expect(db.follow_ups[0].status).toBe("cancelado");
+    expect(db.follow_ups[0].archived_at).toBeTruthy();
+    expect(db.reminders[0].status).toBe("cancelled");
+    expect(db.calendar_event_links[0].deleted).toBe(true);
+    expect(gatewayCalls.some((c) => c.method === "GET" && c.path.includes("gcal-almeida"))).toBe(true);
   });
 });
