@@ -530,22 +530,29 @@ export async function pullFromProvider(
     }
 
     // Evento novo criado directamente no Google/Outlook.
-    const { data: created } = await supabaseAdmin.from("follow_ups").insert({
-      user_id: userId,
-      title: ext.title,
-      type: "evento",
-      due_date: ext.startIso,
-      due_time: lisbonHhMm(ext.startIso),
-      status: "agendado",
-      priority: "media",
-      notes: ext.notes ?? null,
-      timezone: TZ,
-      source_channel: provider,
-      external_reference: ext.id,
-      created_by_assessor: false,
-    }).select("id").single();
-    const followUpId = (created as { id: string } | null)?.id;
+    // Antes de inserir, procuramos um compromisso já importado deste mesmo
+    // evento externo (ou um gémeo com o mesmo título e hora): evita o par
+    // duplicado que aparecia como sobreposição na agenda.
+    let followUpId = await findImportedTwin(supabaseAdmin, userId, provider, ext);
+    if (!followUpId) {
+      const { data: created } = await supabaseAdmin.from("follow_ups").insert({
+        user_id: userId,
+        title: ext.title,
+        type: "evento",
+        due_date: ext.startIso,
+        due_time: lisbonHhMm(ext.startIso),
+        status: "agendado",
+        priority: "media",
+        notes: ext.notes ?? null,
+        timezone: TZ,
+        source_channel: provider,
+        external_reference: ext.id,
+        created_by_assessor: false,
+      }).select("id").single();
+      followUpId = (created as { id: string } | null)?.id ?? null;
+    }
     if (!followUpId) { skipped++; continue; }
+
     await supabaseAdmin.from("calendar_event_links").upsert({
       user_id: userId,
       provider,
