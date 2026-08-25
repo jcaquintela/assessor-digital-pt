@@ -25,6 +25,15 @@ function makeDb() {
     let op: "select" | "update" | "insert" | "upsert" | "delete" = "select";
     let payload: any = null;
 
+    const valueOf = (r: Row, c: string) => {
+      if (table === "calendar_event_links" && c.startsWith("follow_ups.")) {
+        const field = c.split(".")[1];
+        const fu = (db.follow_ups ?? []).find((f) => f.id === r.follow_up_id && f.user_id === r.user_id);
+        return field ? fu?.[field] : undefined;
+      }
+      return r[c];
+    };
+
     const run = () => {
       if (op === "select") return applyFilters(db[table], filters);
       if (op === "update") {
@@ -54,21 +63,22 @@ function makeDb() {
 
     const api: any = {
       select: () => api,
-      eq: (c: string, v: any) => { filters.push((r) => r[c] === v); return api; },
-      neq: (c: string, v: any) => { filters.push((r) => r[c] !== v); return api; },
-      is: (c: string, v: any) => { filters.push((r) => (r[c] ?? null) === v); return api; },
-      in: (c: string, v: any[]) => { filters.push((r) => v.includes(r[c])); return api; },
+      eq: (c: string, v: any) => { filters.push((r) => valueOf(r, c) === v); return api; },
+      neq: (c: string, v: any) => { filters.push((r) => valueOf(r, c) !== v); return api; },
+      is: (c: string, v: any) => { filters.push((r) => (valueOf(r, c) ?? null) === v); return api; },
+      in: (c: string, v: any[]) => { filters.push((r) => v.includes(valueOf(r, c))); return api; },
       not: (c: string, o: string, v: any) => {
-        if (o === "in") { const list = parseInList(String(v)); filters.push((r) => !list.includes(r[c])); }
-        else filters.push((r) => r[c] !== v);
+        if (o === "in") { const list = parseInList(String(v)); filters.push((r) => !list.includes(valueOf(r, c))); }
+        else filters.push((r) => valueOf(r, c) !== v);
         return api;
       },
-      gte: (c: string, v: any) => { filters.push((r) => new Date(r[c]) >= new Date(v)); return api; },
-      lte: (c: string, v: any) => { filters.push((r) => new Date(r[c]) <= new Date(v)); return api; },
+      gte: (c: string, v: any) => { filters.push((r) => new Date(valueOf(r, c)) >= new Date(v)); return api; },
+      lte: (c: string, v: any) => { filters.push((r) => new Date(valueOf(r, c)) <= new Date(v)); return api; },
       ilike: () => api,
       or: () => api,
       order: () => api,
       limit: () => api,
+      range: () => api,
       update: (p: Row) => { op = "update"; payload = p; return api; },
       insert: (p: Row) => { op = "insert"; payload = p; return api; },
       upsert: (p: Row) => { op = "upsert"; payload = p; return api; },
