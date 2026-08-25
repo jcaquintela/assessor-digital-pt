@@ -21,6 +21,9 @@ import { EventCard, type AgendaCardEvent } from "@/components/calendario/event-c
 import { EmptyDay } from "@/components/calendario/empty-day";
 import { ForceSyncButton } from "@/components/calendario/force-sync-button";
 import { EmptyWeek } from "@/components/calendario/empty-week";
+import { TimeGrid } from "@/components/calendario/time-grid";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { groupByDay } from "@/lib/agenda/views";
 import {
   addDaysKey,
   countsByDay,
@@ -85,6 +88,7 @@ function CalendarioPage() {
   const [month, setMonth] = useState(() => new Date(hoje.getFullYear(), hoje.getMonth(), 1));
   const [selectedKey, setSelectedKey] = useState(() => dayKey(new Date()));
   const [listDays, setListDays] = useState(30);
+  const isMobile = useIsMobile();
 
   // Compromissos = registos classificados como Evento (ver src/lib/agenda-kind.ts),
   // excluindo os já concluídos/cancelados.
@@ -117,6 +121,7 @@ function CalendarioPage() {
   const porId = useMemo(() => new Map(eventos.map((e) => [e.id, e])), [eventos]);
 
   const contagens = useMemo(() => countsByDay(fonte), [fonte]);
+  const porDia = useMemo(() => groupByDay(fonte), [fonte]);
   const semanaInicio = useMemo(() => startOfWeekKey(selectedKey), [selectedKey]);
   const semana = useMemo(() => weekGroups(fonte, semanaInicio), [fonte, semanaInicio]);
   const lista = useMemo(() => listGroups(fonte, todayKey, listDays), [fonte, todayKey, listDays]);
@@ -201,6 +206,18 @@ function CalendarioPage() {
       hora: (e.hora ?? "").slice(0, 5),
       notas: full?.notas ?? "",
     });
+  };
+
+  // Clique num bloco da grelha de horas → mesmo formulário de edição.
+  const abrirEdicaoPorId = (id: string) => {
+    const c = cartao(id);
+    if (c) abrirEdicao(c);
+  };
+
+  // Clique num slot vazio da grelha → novo compromisso com o horário pré-preenchido.
+  const criarNoSlot = (key: string, hora: string) => {
+    setSelectedKey(key);
+    setEditing({ id: null, titulo: "", data: key, hora, notas: "" });
   };
 
   return (
@@ -322,44 +339,44 @@ function CalendarioPage() {
                 {semana.every((g) => g.events.length === 0) && (
                   <EmptyWeek onAddEvent={() => criarNoDia(selectedKey)} />
                 )}
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {semana.map((g) => (
-                    <div
-                      key={g.key}
-                      className={cn(
-                        "rounded-lg border border-border p-2",
-                        g.key === todayKey && "border-primary/50",
-                        g.key === selectedKey && "bg-accent/40",
-                      )}
-                    >
+                {/* Grelha de horas: em mobile mostra só o dia selecionado (como o
+                    Google Calendar), em ecrã largo os 7 dias lado a lado. */}
+                <TimeGrid
+                  dayKeys={isMobile ? [selectedKey] : semana.map((g) => g.key)}
+                  eventsByDay={porDia}
+                  todayKey={todayKey}
+                  selectedKey={selectedKey}
+                  onSelectDay={setSelectedKey}
+                  onEventClick={abrirEdicaoPorId}
+                  onSlotClick={criarNoSlot}
+                />
+                {isMobile && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {semana.map((g) => (
                       <button
+                        key={g.key}
                         type="button"
+                        aria-pressed={g.key === selectedKey}
+                        className={cn("c-pill tap-44", g.key === selectedKey && "active")}
                         onClick={() => setSelectedKey(g.key)}
-                        className="c-section-title mb-2 block w-full text-left capitalize"
                       >
                         {shortDayLabel(g.key)}
                       </button>
-                      <button
-                        type="button"
-                        aria-label={`Novo compromisso em ${g.key}`}
-                        onClick={() => criarNoDia(g.key)}
-                        className="mb-2 flex items-center gap-1 text-[12px] text-muted-foreground hover:text-primary"
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Novo
-                      </button>
-                      {g.events.length === 0 && (
-                        <EmptyDay label="Sem compromissos neste dia." />
-                      )}
-                      <div className="space-y-1.5">
-                        {g.events.map((e) => {
-                          const c = cartao(e.id);
-                          return c ? <EventCard key={e.id} e={c} compact /> : null;
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
+            )}
+
+            {view === "hoje" && (
+              <TimeGrid
+                dayKeys={[todayKey]}
+                eventsByDay={porDia}
+                todayKey={todayKey}
+                selectedKey={todayKey}
+                onEventClick={abrirEdicaoPorId}
+                onSlotClick={criarNoSlot}
+              />
             )}
 
             {view === "lista" && (
