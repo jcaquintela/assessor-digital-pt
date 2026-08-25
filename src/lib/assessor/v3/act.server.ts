@@ -220,6 +220,34 @@ export async function executeToolCalls(
         arguments: (args ?? {}) as Record<string, unknown>,
       });
     }
+    // Memória de escrita: o que acabou de nascer fica em conversation_states,
+    // para a referência seguinte ("muda o telefone dela") não adivinhar ids.
+    if (result.ok) {
+      const created = createdResourceFrom(tc.name, result.data);
+      if (created) {
+        const { recordCreatedResource } = await import("./created-memory.server");
+        await recordCreatedResource(ctx.supabase, {
+          userId: ctx.userId,
+          channel: ctx.channel,
+          type: created.type,
+          id: created.id,
+        });
+      }
+    }
+    // Auditoria de escrita (assessor_tool_calls) — parada desde 28/07.
+    if (!tc.name.startsWith("search_")) {
+      const { logToolCall } = await import("./created-memory.server");
+      await logToolCall(ctx.supabase, {
+        userId: ctx.userId,
+        channel: ctx.channel,
+        tool: tc.name,
+        arguments: args,
+        result: result.ok ? result.data : null,
+        success: !!result.ok,
+        error: result.ok ? null : (result.error ?? "unknown"),
+        latencyMs: Date.now() - t0,
+      });
+    }
   }
   return out;
 }
