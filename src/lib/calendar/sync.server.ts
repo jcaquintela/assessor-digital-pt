@@ -350,8 +350,20 @@ export function normalizeOutlook(item: any): ExternalEvent {
     startIso,
     updatedIso: item?.lastModifiedDateTime ? new Date(item.lastModifiedDateTime).toISOString() : null,
     cancelled: !!item?.["@removed"] || item?.isCancelled === true,
+    recurrenceType: recurrenceType(item),
+    seriesMasterId: seriesMasterId(item),
   };
 }
+
+/**
+ * Converte a página do delta do Outlook em eventos, ignorando o `seriesMaster`:
+ * ele repetiria a 1ª ocorrência da série com outro id e criava um duplicado.
+ * Ocorrências e excepções entram normalmente.
+ */
+export function outlookEventsFromDelta(items: any[]): ExternalEvent[] {
+  return (items ?? []).filter((it) => !isSeriesMaster(it)).map((it) => normalizeOutlook(it));
+}
+
 
 async function getSyncState(supabaseAdmin: any, userId: string, provider: CalendarProvider) {
   const { data } = await supabaseAdmin
