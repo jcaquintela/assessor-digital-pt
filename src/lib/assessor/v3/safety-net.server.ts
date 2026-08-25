@@ -75,6 +75,17 @@ export async function archiveToMiscellaneous(
     // O motivo técnico (nome de ferramenta, código de erro) fica só numa
     // etiqueta interna; o consultor lê exclusivamente o texto em PT.
     const key = classifyTechnicalReason(reason);
+    // Se este turno já criou uma pessoa, o registo em Diversos fica ligado a
+    // ela — sem isto o consultor lê a nota sem saber a quem pertence.
+    let relatedPersonId: string | null = null;
+    try {
+      const { readCreatedResource } = await import("./created-memory.server");
+      const created = await readCreatedResource(ctx.supabase, {
+        userId: ctx.userId,
+        channel: ctx.channel,
+      });
+      if (created?.type === "person") relatedPersonId = created.id;
+    } catch { /* ligação é bónus */ }
     const technical = String(reason ?? "").trim().slice(0, 180);
     const { error } = await ctx.supabase.from("miscellaneous_items").insert(sanitizeMiscFields({
       user_id: ctx.userId,
@@ -84,6 +95,7 @@ export async function archiveToMiscellaneous(
       category: "Por tratar",
       source_channel: ctx.channel,
       source_message_id: ctx.sourceMessageId ?? null,
+      related_person_id: relatedPersonId,
       occurred_at: new Date().toISOString(),
       status: "inbox",
       item_class: initialMiscClass({ source: "safety_net" }),
