@@ -294,13 +294,17 @@ async function pushOne(
 
 /* ====================== Calendar -> Afonso ========================== */
 
-interface ExternalEvent {
+export interface ExternalEvent {
   id: string;
   title: string | null;
   notes: string | null;
   startIso: string | null;
   updatedIso: string | null;
   cancelled: boolean;
+  /** Outlook: tipo de recorrência do item devolvido pelo delta. */
+  recurrenceType?: OutlookRecurrenceType | null;
+  /** Outlook: série a que a ocorrência/excepção pertence. */
+  seriesMasterId?: string | null;
 }
 
 const PROVIDER_PAGE_LIMIT = 50;
