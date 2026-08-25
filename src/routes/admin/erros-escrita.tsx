@@ -177,7 +177,7 @@ function ErrosEscritaPage() {
           {data.notFound.samples.map((s) => (
             <div key={s.id} className="rounded-lg border p-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge>{s.tool_name}</Badge>
+                <Badge tone="warn">{s.tool_name}</Badge>
                 <span className="font-medium">{s.error}</span>
                 <span className="sub">{fmt(s.created_at)}</span>
                 {s.consultant ? <span className="sub">· {s.consultant}</span> : null}

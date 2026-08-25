@@ -181,7 +181,7 @@ export type NotFoundSample = {
   user_id: string | null;
   consultant: string | null;
   /** Input que provocou a falha, truncado e com contactos mascarados. */
-  input: Record<string, unknown> | null;
+  input: Record<string, string | number | boolean | null> | null;
 };
 
 export type NotFoundStats = {

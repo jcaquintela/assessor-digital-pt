@@ -34,7 +34,9 @@ export function notFoundEntity(error: string | null | undefined): string | null 
   return hit ? ENTITY_BY_ERROR[hit]! : null;
 }
 
-function maskValue(key: string, value: unknown): unknown {
+export type SampleValue = string | number | boolean | null;
+
+function maskValue(key: string, value: unknown): SampleValue {
   if (typeof value === "number" || typeof value === "boolean" || value === null) return value;
   if (typeof value !== "string") return "[…]";
   const k = key.toLowerCase();
@@ -52,9 +54,9 @@ function maskValue(key: string, value: unknown): unknown {
  * Amostra do input que provocou a falha: chaves preservadas, valores curtos
  * e contactos mascarados. Serve para perceber o padrão sem expor dados.
  */
-export function inputSample(args: unknown, maxKeys = 6): Record<string, unknown> | null {
+export function inputSample(args: unknown, maxKeys = 6): Record<string, SampleValue> | null {
   if (!args || typeof args !== "object" || Array.isArray(args)) return null;
-  const out: Record<string, unknown> = {};
+  const out: Record<string, SampleValue> = {};
   for (const [k, v] of Object.entries(args as Record<string, unknown>)) {
     if (Object.keys(out).length >= maxKeys) {
       out["…"] = `+${Object.keys(args as object).length - maxKeys} campos`;
