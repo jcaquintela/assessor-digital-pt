@@ -57,6 +57,16 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelado",
 };
 
+function when(iso: string | null) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("pt-PT", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function RascunhoPage() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
