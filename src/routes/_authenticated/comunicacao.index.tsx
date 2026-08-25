@@ -5,7 +5,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail } from "lucide-react";
+import { Mail, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/comunicacao/")({
   head: () => ({
