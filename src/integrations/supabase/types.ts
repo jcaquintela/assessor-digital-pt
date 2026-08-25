@@ -1725,6 +1725,8 @@ export type Database = {
         Row: {
           archived_at: string | null
           body: string
+          cancel_reason: string | null
+          cancelled_at: string | null
           channel: string
           confirmation_text: string | null
           confirmed_at: string | null
@@ -1749,6 +1751,8 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           body: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           channel?: string
           confirmation_text?: string | null
           confirmed_at?: string | null
@@ -1773,6 +1777,8 @@ export type Database = {
         Update: {
           archived_at?: string | null
           body?: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           channel?: string
           confirmation_text?: string | null
           confirmed_at?: string | null
