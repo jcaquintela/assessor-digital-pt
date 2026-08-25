@@ -576,6 +576,15 @@ export async function pullFromProvider(
     }
     if (!followUpId) { skipped++; continue; }
 
+    // Se reaproveitámos um gémeo e este evento é a ocorrência de uma série,
+    // a referência externa passa a ser a ocorrência: é a entidade estável no
+    // delta (o seriesMaster não volta a aparecer).
+    if (isSeriesOccurrence(ext)) {
+      await supabaseAdmin.from("follow_ups")
+        .update({ external_reference: ext.id })
+        .eq("id", followUpId).eq("user_id", userId);
+    }
+
     await supabaseAdmin.from("calendar_event_links").upsert({
       user_id: userId,
       provider,
@@ -587,6 +596,8 @@ export async function pullFromProvider(
       last_origin: provider,
       deleted: false,
       last_synced_at: new Date().toISOString(),
+      series_master_id: ext.seriesMasterId ?? null,
+      recurrence_type: ext.recurrenceType ?? null,
     }, { onConflict: "user_id,provider,follow_up_id" });
     await logSync(supabaseAdmin, {
       userId, provider, followUpId, externalEventId: ext.id,
