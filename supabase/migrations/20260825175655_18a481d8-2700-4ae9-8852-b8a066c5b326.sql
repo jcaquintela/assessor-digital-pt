@@ -1,0 +1,1 @@
+GRANT SELECT, INSERT, UPDATE ON public.app_settings TO service_role;
