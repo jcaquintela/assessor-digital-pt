@@ -190,23 +190,24 @@ function RascunhoPage() {
               />
             </div>
             {cancelled ? (
-              <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-4">
-                <div className="flex items-start gap-2">
-                  <Ban className="mt-0.5 h-4 w-4 text-destructive" aria-hidden />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Rascunho cancelado</p>
-                    <p className="text-xs text-muted-foreground">
-                      Este rascunho ficou fechado: não podes editá-lo nem autorizá-lo, e dizer
-                      “enviar” na conversa também não o desbloqueia. Se ainda quiseres responder,
-                      posso abrir um novo rascunho com este texto já preenchido.
-                    </p>
+              <Alert variant="destructive" className="space-y-3">
+                <AlertTriangle className="h-4 w-4" aria-hidden />
+                <div className="space-y-3">
+                  <div>
+                    <AlertTitle>Rascunho cancelado</AlertTitle>
+                    <AlertDescription>
+                      Este rascunho ficou fechado a {q.data?.cancelled_at ? when(q.data.cancelled_at) : ""}.
+                      Não podes editá-lo nem autorizá-lo, e dizer “enviar” na conversa também não o
+                      desbloqueia. Se ainda quiseres responder, posso abrir um novo rascunho com este
+                      texto já preenchido.
+                    </AlertDescription>
                   </div>
+                  <Button onClick={() => restart.mutate()} disabled={restart.isPending}>
+                    <RotateCcw className="mr-1 h-4 w-4" aria-hidden />
+                    Criar novo rascunho com este texto
+                  </Button>
                 </div>
-                <Button onClick={() => restart.mutate()} disabled={restart.isPending}>
-                  <RotateCcw className="mr-1 h-4 w-4" aria-hidden />
-                  Criar novo rascunho com este texto
-                </Button>
-              </div>
+              </Alert>
             ) : locked ? (
               <p className="text-xs text-muted-foreground">
                 Já autorizaste este rascunho, por isso ficou fechado a alterações.
