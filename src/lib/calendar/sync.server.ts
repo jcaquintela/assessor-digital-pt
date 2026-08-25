@@ -19,6 +19,7 @@ import {
   type CalendarProvider,
 } from "./providers";
 import { isAgendaEvent } from "@/lib/agenda-kind";
+import { outboundWindow } from "./event-body";
 
 const DEFAULT_DURATION_MIN = 60;
 const TZ = "Europe/Lisbon";
