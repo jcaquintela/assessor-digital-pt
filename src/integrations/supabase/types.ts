@@ -1102,6 +1102,8 @@ export type Database = {
           last_synced_at: string
           local_updated_at: string | null
           provider: string
+          recurrence_type: string | null
+          series_master_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1117,6 +1119,8 @@ export type Database = {
           last_synced_at?: string
           local_updated_at?: string | null
           provider: string
+          recurrence_type?: string | null
+          series_master_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1132,6 +1136,8 @@ export type Database = {
           last_synced_at?: string
           local_updated_at?: string | null
           provider?: string
+          recurrence_type?: string | null
+          series_master_id?: string | null
           updated_at?: string
           user_id?: string
         }
