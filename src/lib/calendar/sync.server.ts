@@ -22,6 +22,12 @@ import { isAgendaEvent } from "@/lib/agenda-kind";
 import { outboundWindow } from "./event-body";
 import { inVerifyPlan, type VerifyPlan } from "./verify-slice";
 import { normalizeTitle, planDedupe, type ImportedRow } from "./dedupe";
+import {
+  isSeriesMaster,
+  recurrenceType,
+  seriesMasterId,
+  type OutlookRecurrenceType,
+} from "./outlook-recurrence";
 
 const DEFAULT_DURATION_MIN = 60;
 const TZ = "Europe/Lisbon";
@@ -288,13 +294,17 @@ async function pushOne(
 
 /* ====================== Calendar -> Afonso ========================== */
 
-interface ExternalEvent {
+export interface ExternalEvent {
   id: string;
   title: string | null;
   notes: string | null;
   startIso: string | null;
   updatedIso: string | null;
   cancelled: boolean;
+  /** Outlook: tipo de recorrência do item devolvido pelo delta. */
+  recurrenceType?: OutlookRecurrenceType | null;
+  /** Outlook: série a que a ocorrência/excepção pertence. */
+  seriesMasterId?: string | null;
 }
 
 const PROVIDER_PAGE_LIMIT = 50;
@@ -324,7 +334,7 @@ function normalizeGoogle(item: any): ExternalEvent {
   };
 }
 
-function normalizeOutlook(item: any): ExternalEvent {
+export function normalizeOutlook(item: any): ExternalEvent {
   const raw = item?.start?.dateTime as string | undefined;
   const tz = item?.start?.timeZone as string | undefined;
   let startIso: string | null = null;
@@ -340,8 +350,20 @@ function normalizeOutlook(item: any): ExternalEvent {
     startIso,
     updatedIso: item?.lastModifiedDateTime ? new Date(item.lastModifiedDateTime).toISOString() : null,
     cancelled: !!item?.["@removed"] || item?.isCancelled === true,
+    recurrenceType: recurrenceType(item),
+    seriesMasterId: seriesMasterId(item),
   };
 }
+
+/**
+ * Converte a página do delta do Outlook em eventos, ignorando o `seriesMaster`:
+ * ele repetiria a 1ª ocorrência da série com outro id e criava um duplicado.
+ * Ocorrências e excepções entram normalmente.
+ */
+export function outlookEventsFromDelta(items: any[]): ExternalEvent[] {
+  return (items ?? []).filter((it) => !isSeriesMaster(it)).map((it) => normalizeOutlook(it));
+}
+
 
 async function getSyncState(supabaseAdmin: any, userId: string, provider: CalendarProvider) {
   const { data } = await supabaseAdmin
@@ -412,7 +434,7 @@ async function fetchChanges(
       if (r.status === 410) await saveSyncState(supabaseAdmin, userId, provider, { delta_link: null });
       return { events: [], error: `${r.status}: ${r.text.slice(0, 200)}` };
     }
-    for (const it of r.body?.value ?? []) events.push(normalizeOutlook(it));
+    for (const ev of outlookEventsFromDelta(r.body?.value ?? [])) events.push(ev);
     const nextLink = r.body?.["@odata.nextLink"] ? String(r.body["@odata.nextLink"]) : null;
     if (!nextLink) return { events, nextDelta: r.body?.["@odata.deltaLink"] ?? state?.delta_link ?? null };
     path = nextLink.replace(/^https:\/\/graph\.microsoft\.com\/v1\.0/, "");
@@ -554,6 +576,15 @@ export async function pullFromProvider(
     }
     if (!followUpId) { skipped++; continue; }
 
+    // Se reaproveitámos um gémeo e este evento é a ocorrência de uma série,
+    // a referência externa passa a ser a ocorrência: é a entidade estável no
+    // delta (o seriesMaster não volta a aparecer).
+    if (isSeriesOccurrence(ext)) {
+      await supabaseAdmin.from("follow_ups")
+        .update({ external_reference: ext.id })
+        .eq("id", followUpId).eq("user_id", userId);
+    }
+
     await supabaseAdmin.from("calendar_event_links").upsert({
       user_id: userId,
       provider,
@@ -565,6 +596,8 @@ export async function pullFromProvider(
       last_origin: provider,
       deleted: false,
       last_synced_at: new Date().toISOString(),
+      series_master_id: ext.seriesMasterId ?? null,
+      recurrence_type: ext.recurrenceType ?? null,
     }, { onConflict: "user_id,provider,follow_up_id" });
     await logSync(supabaseAdmin, {
       userId, provider, followUpId, externalEventId: ext.id,
@@ -584,6 +617,11 @@ export async function pullFromProvider(
     applied += await verifyLinkedEvents(supabaseAdmin, userId, provider, verify);
   }
   return { applied, skipped };
+}
+
+/** Ocorrência (ou excepção) de uma série recorrente do Outlook. */
+function isSeriesOccurrence(ext: ExternalEvent): boolean {
+  return ext.recurrenceType === "occurrence" || ext.recurrenceType === "exception";
 }
 
 /**
@@ -644,15 +682,22 @@ export async function dedupeImportedEvents(
 
   const { data: links } = await supabaseAdmin
     .from("calendar_event_links")
-    .select("follow_up_id")
+    .select("follow_up_id, recurrence_type")
     .eq("user_id", userId)
     .eq("provider", provider)
     .eq("deleted", false);
-  const linked = new Set(
-    ((links ?? []) as Array<{ follow_up_id: string | null }>).map((l) => l.follow_up_id).filter(Boolean),
+  const linkRows = (links ?? []) as Array<{ follow_up_id: string | null; recurrence_type?: string | null }>;
+  const linked = new Set(linkRows.map((l) => l.follow_up_id).filter(Boolean));
+  const occurrences = new Set(
+    linkRows
+      .filter((l) => l.recurrence_type === "occurrence" || l.recurrence_type === "exception")
+      .map((l) => l.follow_up_id)
+      .filter(Boolean),
   );
 
-  const plans = planDedupe(rows.map((r) => ({ ...r, has_link: linked.has(r.id) })));
+  const plans = planDedupe(
+    rows.map((r) => ({ ...r, has_link: linked.has(r.id), is_occurrence: occurrences.has(r.id) })),
+  );
   let removed = 0;
   for (const plan of plans) {
     for (const dup of plan.duplicates) {
