@@ -333,6 +333,7 @@ export type DraftRow = {
   body: string;
   status: string;
   sent_at: string | null;
+  cancelled_at: string | null;
   expires_at: string | null;
   revisions: number | null;
   in_reply_to_message_id: string | null;
@@ -363,11 +364,76 @@ export async function latestPendingDraft(userId: string, channel: string): Promi
   return ((data as DraftRow[] | null) ?? [])[0] ?? null;
 }
 
+export type CancelOutcome =
+  | { status: "cancelled" }
+  | { status: "already_cancelled" }
+  | { status: "already_sent" }
+  | { status: "not_found" };
+
+/**
+ * Cancela um rascunho de email. Estado terminal: depois disto nenhuma frase de
+ * confirmação (nem "enviar") volta a autorizar este rascunho — o caminho
+ * determinístico só aceita rascunhos `pending`.
+ */
+export async function cancelDraft(args: {
+  userId: string;
+  draftId: string;
+  source: "canal" | "dashboard";
+  reason?: string | null;
+  channel?: string | null;
+}): Promise<CancelOutcome> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { isDraftCancelled } = await import("./reply-draft");
+  const draft = await loadDraft(args.userId, args.draftId);
+  if (!draft) return { status: "not_found" };
+  if (isAlreadySent(draft)) return { status: "already_sent" };
+  if (isDraftCancelled(draft)) return { status: "already_cancelled" };
+
+  // Transição condicional: só sai de `pending`/`discarded`, nunca de `sent`.
+  const { data: claimed } = await supabaseAdmin
+    .from("email_drafts")
+    .update({
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+      cancel_reason: (args.reason ?? `cancelado pelo consultor (${args.source})`).slice(0, 500),
+    } as never)
+    .eq("id", draft.id)
+    .eq("user_id", args.userId)
+    .in("status", ["pending", "discarded"])
+    .select("id");
+  if (!((claimed as any[] | null) ?? []).length) return { status: "already_cancelled" };
+
+  try {
+    await supabaseAdmin.from("admin_audit_logs").insert({
+      admin_user_id: null,
+      action: "email.rascunho_cancelado",
+      target_user_id: args.userId,
+      resource_type: "email_draft",
+      resource_id: draft.id,
+      reason: "Rascunho de email cancelado pelo consultor; confirmações posteriores bloqueadas.",
+      metadata: {
+        source: `email/reply-draft:${args.source}`,
+        channel: args.channel ?? draft.channel,
+        provider: draft.provider,
+        to: draft.to_emails,
+        subject: draft.subject,
+        revisions: draft.revisions,
+        cancel_reason: args.reason ?? null,
+      },
+    } as never);
+  } catch {
+    /* auditoria nunca bloqueia o cancelamento */
+  }
+
+  return { status: "cancelled" };
+}
+
 export type SendOutcome =
   | { status: "sent" }
   | { status: "manual" }
   | { status: "already_sent" }
   | { status: "expired" }
+  | { status: "cancelled" }
   | { status: "failed"; error: string };
 
 /**
@@ -393,6 +459,10 @@ export async function sendConfirmedDraft(args: {
   const draft = await loadDraft(args.userId, args.draftId);
   if (!draft) return { status: "failed", error: "rascunho inexistente" };
   if (isAlreadySent(draft)) return { status: "already_sent" };
+  {
+    const { isDraftCancelled } = await import("./reply-draft");
+    if (isDraftCancelled(draft)) return { status: "cancelled" };
+  }
   if (isDraftExpired(draft.expires_at)) return { status: "expired" };
 
   // Reserva idempotente: só quem conseguir passar de `pending` para
@@ -480,6 +550,8 @@ export async function handleDraftConfirmation(args: {
     classifyDraftReply,
     AMBIGUOUS_REPLY,
     alreadySentReply,
+    cancelConfirmationReply,
+    cancelledReply,
     expiredReply,
     exhaustedReply,
     iterationExhausted,
@@ -498,18 +570,26 @@ export async function handleDraftConfirmation(args: {
     // Idempotência: segunda confirmação sobre o mesmo rascunho não reenvia.
     return intent === "send" ? { reply: alreadySentReply() } : null;
   }
+  const { isDraftCancelled } = await import("./reply-draft");
+  if (isDraftCancelled(draft)) {
+    // Estado terminal: "enviar" depois de um cancelamento não vale nada.
+    return intent === "send" ? { reply: cancelledReply() } : null;
+  }
   if (draft.status !== "pending") return null;
 
   const label = draft.to_name || draft.to_emails?.[0] || "o destinatário";
 
   if (intent === "reject") {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
-      .from("email_drafts")
-      .update({ status: "discarded" } as never)
-      .eq("id", draft.id)
-      .eq("user_id", args.userId);
-    return { reply: rejectedReply() };
+    const outcome = await cancelDraft({
+      userId: args.userId,
+      draftId: draft.id,
+      source: "canal",
+      reason: args.text.slice(0, 500),
+      channel: args.channel,
+    });
+    return {
+      reply: outcome.status === "cancelled" ? cancelConfirmationReply(label) : rejectedReply(),
+    };
   }
 
   if (isDraftExpired(draft.expires_at)) return { reply: expiredReply(draft.id) };
@@ -565,6 +645,7 @@ export async function handleDraftConfirmation(args: {
   if (outcome.status === "manual") return { reply: manualSendReply(label) };
   if (outcome.status === "already_sent") return { reply: alreadySentReply() };
   if (outcome.status === "expired") return { reply: expiredReply(draft.id) };
+  if (outcome.status === "cancelled") return { reply: cancelledReply() };
   return {
     reply: "Não consegui concluir o envio agora. O rascunho continua na tua caixa — queres tentar outra vez?",
   };

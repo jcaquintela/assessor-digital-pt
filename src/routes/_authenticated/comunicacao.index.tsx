@@ -44,6 +44,7 @@ const STATUS_LABEL: Record<string, string> = {
   confirmed: "Autorizado",
   sent: "Autorizado e concluído",
   discarded: "Descartado",
+  cancelled: "Cancelado",
 };
 
 function when(iso: string | null) {

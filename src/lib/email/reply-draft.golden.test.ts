@@ -11,6 +11,8 @@ import {
   DRAFT_TTL_MS,
   draftConfirmationQuestion,
   draftPresentationIntro,
+  isDraftCancelled,
+  cancelledReply,
 } from "./reply-draft";
 import { addressOf, rankEmailCandidates, replySubject } from "./reply-draft.server";
 import { confirmAndSendDraft } from "./gmail/gmail.server";
@@ -92,5 +94,27 @@ describe("rascunho de resposta a email", () => {
 
   it("8. no Gmail o envio rebenta sem confirmed=true", async () => {
     await expect(confirmAndSendDraft("chave", "d1", false)).rejects.toThrow(/não confirmado/i);
+  });
+});
+
+// --- Cancelamento (estado terminal) --------------------------------------
+describe("cancelamento de rascunho", () => {
+  it("reconhece rascunho cancelado por status", () => {
+    expect(isDraftCancelled({ status: "cancelled" })).toBe(true);
+  });
+  it("reconhece rascunho cancelado por cancelled_at", () => {
+    expect(isDraftCancelled({ status: "pending", cancelled_at: new Date().toISOString() })).toBe(
+      true,
+    );
+  });
+  it("rascunho pendente não conta como cancelado", () => {
+    expect(isDraftCancelled({ status: "pending", cancelled_at: null })).toBe(false);
+  });
+  it("recusa explícita continua a ser classificada como reject", () => {
+    expect(classifyDraftReply("cancela isso")).toBe("reject");
+    expect(classifyDraftReply("não envies")).toBe("reject");
+  });
+  it("resposta de cancelado não convida a reenviar", () => {
+    expect(cancelledReply()).toMatch(/cancelado/i);
   });
 });
