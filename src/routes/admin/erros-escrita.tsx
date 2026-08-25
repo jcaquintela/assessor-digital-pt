@@ -129,6 +129,72 @@ function ErrosEscritaPage() {
         />
       </Grid>
 
+      <SectionTitle>Entidade não encontrada (alteração perdida)</SectionTitle>
+      <p className="sub mb-3">
+        O consultor pediu uma alteração e a ferramenta não encontrou a pessoa, o imóvel ou o registo — normalmente um
+        id inventado pelo modelo. Nada ficou gravado, por isso é sempre perda de trabalho.
+      </p>
+      <Grid cols={3}>
+        <MetricCard
+          label="Últimas 24h"
+          value={data?.notFound?.last24h ?? "—"}
+          tone={(data?.notFound?.last24h ?? 0) > 0 ? "coral" : "default"}
+          sub={
+            data?.notFound?.lastAt ? `mais recente: ${fmt(data.notFound.lastAt)}` : "sem ocorrências"
+          }
+          source="assessor_tool_calls · live"
+        />
+        <MetricCard
+          label="Últimos 7 dias"
+          value={data?.notFound?.last7d ?? "—"}
+          sub={
+            data?.notFound
+              ? `7 dias anteriores: ${data.notFound.prev7d}${
+                  data.notFound.last7d > data.notFound.prev7d
+                    ? " — a subir"
+                    : data.notFound.last7d < data.notFound.prev7d
+                      ? " — a descer"
+                      : " — estável"
+                }`
+              : "—"
+          }
+          source="tendência · 14 dias"
+        />
+        <MetricCard
+          label="Onde falha mais"
+          value={data?.notFound?.byTool?.[0]?.tool ?? "—"}
+          sub={
+            data?.notFound?.byEntity?.length
+              ? data.notFound.byEntity.map((e) => `${e.entity}: ${e.count}`).join(" · ")
+              : "sem falhas"
+          }
+          source="agregado · 14 dias"
+          stale={!data?.notFound?.byTool?.length}
+        />
+      </Grid>
+      {!!data?.notFound?.samples?.length && (
+        <div className="mb-6 mt-3 space-y-2">
+          {data.notFound.samples.map((s) => (
+            <div key={s.id} className="rounded-lg border p-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="warn">{s.tool_name}</Badge>
+                <span className="font-medium">{s.error}</span>
+                <span className="sub">{fmt(s.created_at)}</span>
+                {s.consultant ? <span className="sub">· {s.consultant}</span> : null}
+                {s.channel ? <span className="sub">· {s.channel}</span> : null}
+              </div>
+              {s.input ? (
+                <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-xs">
+                  {JSON.stringify(s.input, null, 2)}
+                </pre>
+              ) : (
+                <p className="sub mt-2">Sem argumentos guardados.</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       <SectionTitle>Falhas de modelo (com recurso)</SectionTitle>
       <p className="sub mb-3">
         A primeira chamada ao modelo falhou ou demorou demais e a resposta saiu pelo caminho de recurso. O consultor

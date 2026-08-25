@@ -165,3 +165,86 @@ export async function fetchModelFallbackTrend(
     avgLatencyMs: lat.length ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length) : null,
   };
 }
+
+/**
+ * Alerta dedicado: ferramentas de atualização que falharam por não encontrarem
+ * a entidade (id inventado pelo modelo). O consultor pediu uma alteração e
+ * nada ficou gravado — é sempre perda de trabalho, mesmo sem exceção.
+ */
+export type NotFoundSample = {
+  id: string;
+  created_at: string;
+  tool_name: string;
+  error: string;
+  entity: string | null;
+  channel: string | null;
+  user_id: string | null;
+  consultant: string | null;
+  /** Input que provocou a falha, truncado e com contactos mascarados. */
+  input: Record<string, string | number | boolean | null> | null;
+};
+
+export type NotFoundStats = {
+  last24h: number;
+  last7d: number;
+  prev7d: number;
+  byTool: { tool: string; count: number }[];
+  byEntity: { entity: string; count: number }[];
+  samples: NotFoundSample[];
+  lastAt: string | null;
+};
+
+export async function fetchNotFoundStats(
+  supabaseAdmin: any,
+  opts: { hours?: number; sampleLimit?: number } = {},
+): Promise<NotFoundStats> {
+  const { isEntityNotFound, notFoundEntity, inputSample } = await import("@/lib/assessor/v3/not-found");
+  const hours = Math.max(opts.hours ?? 24 * 14, 24 * 14);
+  const { data } = await supabaseAdmin
+    .from("assessor_tool_calls")
+    .select("id, created_at, channel, tool_name, error, arguments, user_id")
+    .eq("success", false)
+    .gte("created_at", since(hours))
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  const rows = ((data ?? []) as any[]).filter((r) => isEntityNotFound(r.error));
+  const c24 = since(24);
+  const c7 = since(24 * 7);
+  const c14 = since(24 * 14);
+
+  const tally = (key: (r: any) => string) => {
+    const m = new Map<string, number>();
+    for (const r of rows) m.set(key(r), (m.get(key(r)) ?? 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  };
+
+  const samples: NotFoundSample[] = rows.slice(0, opts.sampleLimit ?? 10).map((r) => ({
+    id: r.id,
+    created_at: r.created_at,
+    tool_name: r.tool_name ?? "desconhecida",
+    error: r.error ?? "",
+    entity: notFoundEntity(r.error),
+    channel: r.channel ?? null,
+    user_id: r.user_id ?? null,
+    consultant: null,
+    input: inputSample(r.arguments),
+  }));
+
+  const ids = [...new Set(samples.map((s) => s.user_id).filter(Boolean))] as string[];
+  if (ids.length) {
+    const profiles = await supabaseAdmin.from("profiles").select("id, name, email").in("id", ids);
+    const byId = new Map(((profiles.data ?? []) as any[]).map((p) => [p.id, p.name || p.email]));
+    for (const s of samples) if (s.user_id) s.consultant = byId.get(s.user_id) ?? null;
+  }
+
+  return {
+    last24h: rows.filter((r) => r.created_at >= c24).length,
+    last7d: rows.filter((r) => r.created_at >= c7).length,
+    prev7d: rows.filter((r) => r.created_at < c7 && r.created_at >= c14).length,
+    byTool: tally((r) => r.tool_name ?? "desconhecida").map(([tool, count]) => ({ tool, count })),
+    byEntity: tally((r) => notFoundEntity(r.error) ?? "outra").map(([entity, count]) => ({ entity, count })),
+    samples,
+    lastAt: rows[0]?.created_at ?? null,
+  };
+}
