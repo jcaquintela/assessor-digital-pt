@@ -433,6 +433,7 @@ export type SendOutcome =
   | { status: "manual" }
   | { status: "already_sent" }
   | { status: "expired" }
+  | { status: "cancelled" }
   | { status: "failed"; error: string };
 
 /**
@@ -458,6 +459,10 @@ export async function sendConfirmedDraft(args: {
   const draft = await loadDraft(args.userId, args.draftId);
   if (!draft) return { status: "failed", error: "rascunho inexistente" };
   if (isAlreadySent(draft)) return { status: "already_sent" };
+  {
+    const { isDraftCancelled } = await import("./reply-draft");
+    if (isDraftCancelled(draft)) return { status: "cancelled" };
+  }
   if (isDraftExpired(draft.expires_at)) return { status: "expired" };
 
   // Reserva idempotente: só quem conseguir passar de `pending` para
@@ -640,6 +645,7 @@ export async function handleDraftConfirmation(args: {
   if (outcome.status === "manual") return { reply: manualSendReply(label) };
   if (outcome.status === "already_sent") return { reply: alreadySentReply() };
   if (outcome.status === "expired") return { reply: expiredReply(draft.id) };
+  if (outcome.status === "cancelled") return { reply: cancelledReply() };
   return {
     reply: "Não consegui concluir o envio agora. O rascunho continua na tua caixa — queres tentar outra vez?",
   };
