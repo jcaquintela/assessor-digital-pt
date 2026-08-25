@@ -286,6 +286,21 @@ interface ExternalEvent {
   cancelled: boolean;
 }
 
+const PROVIDER_PAGE_LIMIT = 50;
+const VERIFY_LOOKBACK_DAYS = 1;
+const VERIFY_LOOKAHEAD_DAYS = 370;
+const VERIFY_PAGE_SIZE = 100;
+const VERIFY_MAX_EVENTS = 500;
+
+function appendQuery(path: string, params: Record<string, string | null | undefined>): string {
+  const [base, rawQuery = ""] = path.split("?");
+  const query = new URLSearchParams(rawQuery);
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query.set(key, value);
+  }
+  return `${base}?${query.toString()}`;
+}
+
 function normalizeGoogle(item: any): ExternalEvent {
   const start = item?.start?.dateTime ?? (item?.start?.date ? `${item.start.date}T09:00:00Z` : null);
   return {
@@ -354,14 +369,19 @@ async function fetchChanges(
       const timeMin = new Date(Date.now() - 7 * 86_400_000).toISOString();
       path = `/calendar/v3/calendars/primary/events?showDeleted=true&singleEvents=true&maxResults=250&timeMin=${encodeURIComponent(timeMin)}`;
     }
-    const r = await callProvider(supabaseAdmin, userId, provider, path);
-    if (!r.ok) {
-      // syncToken expirado (410) -> recomeçar sem token na próxima ronda.
-      if (r.status === 410) await saveSyncState(supabaseAdmin, userId, provider, { sync_token: null });
-      return { events: [], error: `${r.status}: ${r.text.slice(0, 200)}` };
+    for (let page = 0; page < PROVIDER_PAGE_LIMIT; page++) {
+      const r = await callProvider(supabaseAdmin, userId, provider, path);
+      if (!r.ok) {
+        // syncToken expirado (410) -> recomeçar sem token na próxima ronda.
+        if (r.status === 410) await saveSyncState(supabaseAdmin, userId, provider, { sync_token: null });
+        return { events: [], error: `${r.status}: ${r.text.slice(0, 200)}` };
+      }
+      for (const it of r.body?.items ?? []) events.push(normalizeGoogle(it));
+      const nextPageToken = r.body?.nextPageToken ? String(r.body.nextPageToken) : null;
+      if (!nextPageToken) return { events, nextToken: r.body?.nextSyncToken ?? state?.sync_token ?? null };
+      path = appendQuery(path, { pageToken: nextPageToken });
     }
-    for (const it of r.body?.items ?? []) events.push(normalizeGoogle(it));
-    return { events, nextToken: r.body?.nextSyncToken ?? state?.sync_token ?? null };
+    return { events, error: "calendar_pagination_limit" };
   }
 
   // Microsoft Graph delta
@@ -373,15 +393,20 @@ async function fetchChanges(
     const end = new Date(Date.now() + 180 * 86_400_000).toISOString();
     path = `/me/calendarView/delta?startDateTime=${encodeURIComponent(start)}&endDateTime=${encodeURIComponent(end)}`;
   }
-  const r = await callProvider(supabaseAdmin, userId, provider, path, {
-    headers: { Prefer: "odata.maxpagesize=200" },
-  });
-  if (!r.ok) {
-    if (r.status === 410) await saveSyncState(supabaseAdmin, userId, provider, { delta_link: null });
-    return { events: [], error: `${r.status}: ${r.text.slice(0, 200)}` };
+  for (let page = 0; page < PROVIDER_PAGE_LIMIT; page++) {
+    const r = await callProvider(supabaseAdmin, userId, provider, path, {
+      headers: { Prefer: "odata.maxpagesize=200" },
+    });
+    if (!r.ok) {
+      if (r.status === 410) await saveSyncState(supabaseAdmin, userId, provider, { delta_link: null });
+      return { events: [], error: `${r.status}: ${r.text.slice(0, 200)}` };
+    }
+    for (const it of r.body?.value ?? []) events.push(normalizeOutlook(it));
+    const nextLink = r.body?.["@odata.nextLink"] ? String(r.body["@odata.nextLink"]) : null;
+    if (!nextLink) return { events, nextDelta: r.body?.["@odata.deltaLink"] ?? state?.delta_link ?? null };
+    path = nextLink.replace(/^https:\/\/graph\.microsoft\.com\/v1\.0/, "");
   }
-  for (const it of r.body?.value ?? []) events.push(normalizeOutlook(it));
-  return { events, nextDelta: r.body?.["@odata.deltaLink"] ?? state?.delta_link ?? null };
+  return { events, error: "calendar_pagination_limit" };
 }
 
 /**
@@ -416,35 +441,22 @@ export async function pullFromProvider(
       .eq("external_event_id", ext.id)
       .maybeSingle();
 
-    // Eco da nossa própria escrita — nada a fazer.
-    if (link && ext.updatedIso && link.external_updated_at
-        && new Date(ext.updatedIso).getTime() <= new Date(link.external_updated_at).getTime()) {
-      skipped++;
+    if (ext.cancelled) {
+      if (link?.follow_up_id && !link.deleted) {
+        await cancelLocalEvent(supabaseAdmin, userId, provider, link.follow_up_id, link.id, ext.id, ext.updatedIso);
+        applied++;
+      } else {
+        skipped++;
+      }
       continue;
     }
 
-    if (ext.cancelled) {
-      if (link?.follow_up_id) {
-        await supabaseAdmin.from("follow_ups")
-          .update({ status: "cancelado", archived_at: new Date().toISOString() })
-          .eq("id", link.follow_up_id).eq("user_id", userId);
-        // Sem isto, o aviso interno das 11h continuava a sair mesmo depois de
-        // o evento ter sido cancelado no calendário.
-        await supabaseAdmin.from("reminders")
-          .update({ status: "cancelled" })
-          .eq("user_id", userId)
-          .eq("related_resource_type", "follow_up")
-          .eq("related_resource_id", link.follow_up_id)
-          .in("status", ["scheduled", "processing", "failed"]);
-        await supabaseAdmin.from("calendar_event_links")
-          .update({ deleted: true, last_origin: provider, external_updated_at: ext.updatedIso, last_synced_at: new Date().toISOString() })
-          .eq("id", link.id);
-        await logSync(supabaseAdmin, {
-          userId, provider, followUpId: link.follow_up_id, externalEventId: ext.id,
-          direction: "inbound", action: "delete", origin: provider,
-        });
-        applied++;
-      }
+    // Eco da nossa própria escrita — nada a fazer. Cancelamentos vindos do
+    // Google têm prioridade sobre este guard, porque por vezes chegam com o
+    // mesmo `updated` que já tínhamos guardado na criação.
+    if (link && ext.updatedIso && link.external_updated_at
+        && new Date(ext.updatedIso).getTime() <= new Date(link.external_updated_at).getTime()) {
+      skipped++;
       continue;
     }
 
@@ -554,29 +566,36 @@ export async function pullFromProvider(
 async function verifyLinkedEvents(
   supabaseAdmin: any, userId: string, provider: CalendarProvider,
 ): Promise<number> {
-  const since = new Date(Date.now() - 86_400_000).toISOString();
-  const { data } = await supabaseAdmin
-    .from("calendar_event_links")
-    .select("id, external_event_id, follow_up_id, follow_ups!inner(id, due_date, status, archived_at)")
-    .eq("user_id", userId)
-    .eq("provider", provider)
-    .eq("deleted", false)
-    .gte("follow_ups.due_date", since)
-    .limit(50);
-  const links = (data ?? []) as any[];
   let cancelled = 0;
   const isGoogle = provider === "google_calendar";
-  for (const link of links) {
-    const fu = link.follow_ups;
-    if (!link.external_event_id || !link.follow_up_id) continue;
-    if (fu?.archived_at || String(fu?.status ?? "").toLowerCase() === "cancelado") continue;
-    const path = isGoogle
-      ? `/calendar/v3/calendars/primary/events/${encodeURIComponent(link.external_event_id)}`
-      : `/me/events/${encodeURIComponent(link.external_event_id)}`;
-    const r = await callProvider(supabaseAdmin, userId, provider, path);
-    if (!isExternalEventMissing(r.status, r.body, r.text)) continue;
-    await cancelLocalEvent(supabaseAdmin, userId, provider, link.follow_up_id, link.id, link.external_event_id);
-    cancelled++;
+  const since = new Date(Date.now() - VERIFY_LOOKBACK_DAYS * 86_400_000).toISOString();
+  const until = new Date(Date.now() + VERIFY_LOOKAHEAD_DAYS * 86_400_000).toISOString();
+  for (let offset = 0; offset < VERIFY_MAX_EVENTS; offset += VERIFY_PAGE_SIZE) {
+    const { data } = await supabaseAdmin
+      .from("calendar_event_links")
+      .select("id, external_event_id, follow_up_id, follow_ups!inner(id, due_date, status, archived_at)")
+      .eq("user_id", userId)
+      .eq("provider", provider)
+      .eq("deleted", false)
+      .gte("follow_ups.due_date", since)
+      .lte("follow_ups.due_date", until)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + VERIFY_PAGE_SIZE - 1);
+    const links = (data ?? []) as any[];
+    if (!links.length) break;
+    for (const link of links) {
+      const fu = link.follow_ups;
+      if (!link.external_event_id || !link.follow_up_id) continue;
+      if (fu?.archived_at || String(fu?.status ?? "").toLowerCase() === "cancelado") continue;
+      const path = isGoogle
+        ? `/calendar/v3/calendars/primary/events/${encodeURIComponent(link.external_event_id)}`
+        : `/me/events/${encodeURIComponent(link.external_event_id)}`;
+      const r = await callProvider(supabaseAdmin, userId, provider, path);
+      if (!isExternalEventMissing(r.status, r.body, r.text)) continue;
+      await cancelLocalEvent(supabaseAdmin, userId, provider, link.follow_up_id, link.id, link.external_event_id);
+      cancelled++;
+    }
+    if (links.length < VERIFY_PAGE_SIZE) break;
   }
   return cancelled;
 }
@@ -584,7 +603,7 @@ async function verifyLinkedEvents(
 /** Cancela no Afonso um compromisso que desapareceu do calendário externo. */
 async function cancelLocalEvent(
   supabaseAdmin: any, userId: string, provider: CalendarProvider,
-  followUpId: string, linkId: string, externalEventId: string,
+  followUpId: string, linkId: string, externalEventId: string, externalUpdatedAt?: string | null,
 ) {
   await supabaseAdmin.from("follow_ups")
     .update({ status: "cancelado", archived_at: new Date().toISOString() })
@@ -596,7 +615,7 @@ async function cancelLocalEvent(
     .eq("related_resource_id", followUpId)
     .in("status", ["scheduled", "processing", "failed"]);
   await supabaseAdmin.from("calendar_event_links")
-    .update({ deleted: true, last_origin: provider, last_synced_at: new Date().toISOString() })
+    .update({ deleted: true, last_origin: provider, external_updated_at: externalUpdatedAt ?? null, last_synced_at: new Date().toISOString() })
     .eq("id", linkId);
   await logSync(supabaseAdmin, {
     userId, provider, followUpId, externalEventId,
