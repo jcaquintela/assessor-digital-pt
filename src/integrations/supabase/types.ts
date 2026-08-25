@@ -1921,6 +1921,33 @@ export type Database = {
           },
         ]
       }
+      event_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       feature_flag_users: {
         Row: {
           flag_key: string
@@ -2187,6 +2214,8 @@ export type Database = {
           created_by_assessor: boolean
           due_date: string
           due_time: string | null
+          event_category: string | null
+          event_category_id: string | null
           event_class: string | null
           external_reference: string | null
           id: string
@@ -2220,6 +2249,8 @@ export type Database = {
           created_by_assessor?: boolean
           due_date?: string
           due_time?: string | null
+          event_category?: string | null
+          event_category_id?: string | null
           event_class?: string | null
           external_reference?: string | null
           id?: string
@@ -2253,6 +2284,8 @@ export type Database = {
           created_by_assessor?: boolean
           due_date?: string
           due_time?: string | null
+          event_category?: string | null
+          event_category_id?: string | null
           event_class?: string | null
           external_reference?: string | null
           id?: string
@@ -2280,6 +2313,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "follow_ups_event_category_id_fkey"
+            columns: ["event_category_id"]
+            isOneToOne: false
+            referencedRelation: "event_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "follow_ups_opportunity_id_fkey"
             columns: ["opportunity_id"]
