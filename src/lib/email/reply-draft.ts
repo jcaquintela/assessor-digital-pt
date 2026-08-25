@@ -108,6 +108,11 @@ export function isAlreadySent(row: { status?: string | null; sent_at?: string | 
   return row.status === "sent" || Boolean(row.sent_at);
 }
 
+/** Cancelado pelo consultor: nenhuma confirmação posterior vale. */
+export function isDraftCancelled(row: { status?: string | null; cancelled_at?: string | null }): boolean {
+  return row.status === "cancelled" || Boolean(row.cancelled_at);
+}
+
 /** A 4ª tentativa de iteração deixa de adivinhar e vai para o dashboard. */
 export function iterationExhausted(revisions: number | null | undefined): boolean {
   return Number(revisions ?? 0) >= MAX_REVISIONS;
@@ -164,6 +169,14 @@ export function sentReply(toLabel: string): string {
 
 export function manualSendReply(toLabel: string): string {
   return `O rascunho para ${toLabel} está pronto na tua caixa do Outlook — o envio é o teu clique. Registei a tua autorização no histórico.`;
+}
+
+export function cancelledReply(): string {
+  return "Esse rascunho está cancelado — não o envio mesmo que digas \u201cenviar\u201d. Se quiseres, preparo outro de novo.";
+}
+
+export function cancelConfirmationReply(toLabel: string): string {
+  return `Cancelei o rascunho para ${toLabel}. Não segue nada e deixei o cancelamento registado.`;
 }
 
 export function rejectedReply(): string {
