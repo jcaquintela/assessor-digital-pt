@@ -50,6 +50,9 @@ export function TimeGrid({
   const { from, to } = useMemo(() => hourRange(all), [all]);
   const hours = useMemo(() => Array.from({ length: to - from }, (_, i) => from + i), [from, to]);
   const bodyHeight = hours.length * HOUR_HEIGHT;
+  // Largura mínima por dia: com 7 colunas estreitas os títulos ficavam ilegíveis,
+  // por isso a grelha ganha scroll horizontal em vez de encolher.
+  const colMin = dayKeys.length > 1 ? "8.5rem" : "0px";
   const colsRef = useRef<HTMLDivElement | null>(null);
 
   const semHora = dayKeys.flatMap((k) =>
@@ -63,7 +66,9 @@ export function TimeGrid({
           {/* Cabeçalho de dias */}
           <div
             className="grid border-b border-border"
-            style={{ gridTemplateColumns: `3.25rem repeat(${dayKeys.length}, minmax(0,1fr))` }}
+            style={{
+              gridTemplateColumns: `3.25rem repeat(${dayKeys.length}, minmax(${colMin},1fr))`,
+            }}
           >
             <div />
             {dayKeys.map((k) => (
@@ -85,7 +90,9 @@ export function TimeGrid({
           {/* Corpo: eixo de horas + colunas */}
           <div
             className="grid"
-            style={{ gridTemplateColumns: `3.25rem repeat(${dayKeys.length}, minmax(0,1fr))` }}
+            style={{
+              gridTemplateColumns: `3.25rem repeat(${dayKeys.length}, minmax(${colMin},1fr))`,
+            }}
           >
             <div className="relative" style={{ height: bodyHeight }}>
               {hours.map((h, i) => (
@@ -102,7 +109,7 @@ export function TimeGrid({
               ref={colsRef}
               className="col-span-full col-start-2 grid"
               style={{
-                gridTemplateColumns: `repeat(${dayKeys.length}, minmax(0,1fr))`,
+                gridTemplateColumns: `repeat(${dayKeys.length}, minmax(${colMin},1fr))`,
                 height: bodyHeight,
               }}
             >
