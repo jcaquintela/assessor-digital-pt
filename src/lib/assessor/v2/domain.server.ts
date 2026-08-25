@@ -1532,12 +1532,13 @@ async function execUpdatePerson(ctx: DomainContext, args: unknown): Promise<Doma
   // 25/08). Lemos SEMPRE antes de escrever e, se não existir, tentamos
   // recuperar a pessoa certa pela memória de escrita da conversa e depois
   // por nome/telefone. "pessoa_nao_encontrada" é o último recurso.
-  const resolved = await resolveUpdatePersonId(ctx, v.id, v.name ?? null, v.phone ?? null);
+  const resolved = await resolveUpdatePersonId(ctx, v.id, v.name ?? null, v.phone ?? null, v.email ?? null);
   if (!resolved) return fail("pessoa_nao_encontrada");
   const targetId = resolved.id;
   const before = resolved.before;
   // Se a pessoa foi recuperada por nome, não faz sentido reescrever o nome.
   if (resolved.matchedBy === "name") delete patch.name;
+  if (resolved.matchedBy === "email") delete patch.email;
   if (!Object.keys(patch).length) return fail("nada_para_actualizar");
 
   const { data, error } = await ctx.supabase
