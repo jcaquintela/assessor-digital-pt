@@ -16,6 +16,8 @@ export interface ImportedRow {
   external_reference: string | null;
   created_at: string | null;
   has_link?: boolean;
+  /** Ocorrência/excepção de uma série recorrente (Outlook). */
+  is_occurrence?: boolean;
 }
 
 /** Título normalizado: sem acentos, sem espaços a mais, minúsculas. */
