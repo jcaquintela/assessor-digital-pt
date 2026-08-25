@@ -1497,6 +1497,23 @@ async function resolveUpdatePersonId(
     if (rows.length === 1) return { id: String(rows[0].id), before: rows[0], matchedBy: "phone" };
   }
 
+  // Email normalizado (minúsculas, sem espaços) — a coluna email_normalized é
+  // mantida por trigger, por isso é a comparação fiável mesmo quando o modelo
+  // escreve "Ana.Santos@Exemplo.PT ".
+  const normEmail = typeof email === "string" && email.includes("@")
+    ? email.trim().toLowerCase()
+    : null;
+  if (normEmail) {
+    const { data } = await ctx.supabase
+      .from("people" as never)
+      .select(COLS)
+      .eq("user_id", ctx.userId)
+      .eq("email_normalized", normEmail)
+      .limit(2);
+    const rows = (data ?? []) as PersonRow[];
+    if (rows.length === 1) return { id: String(rows[0].id), before: rows[0], matchedBy: "email" };
+  }
+
   return null;
 }
 
