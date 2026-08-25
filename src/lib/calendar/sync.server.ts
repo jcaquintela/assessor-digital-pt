@@ -682,15 +682,22 @@ export async function dedupeImportedEvents(
 
   const { data: links } = await supabaseAdmin
     .from("calendar_event_links")
-    .select("follow_up_id")
+    .select("follow_up_id, recurrence_type")
     .eq("user_id", userId)
     .eq("provider", provider)
     .eq("deleted", false);
-  const linked = new Set(
-    ((links ?? []) as Array<{ follow_up_id: string | null }>).map((l) => l.follow_up_id).filter(Boolean),
+  const linkRows = (links ?? []) as Array<{ follow_up_id: string | null; recurrence_type?: string | null }>;
+  const linked = new Set(linkRows.map((l) => l.follow_up_id).filter(Boolean));
+  const occurrences = new Set(
+    linkRows
+      .filter((l) => l.recurrence_type === "occurrence" || l.recurrence_type === "exception")
+      .map((l) => l.follow_up_id)
+      .filter(Boolean),
   );
 
-  const plans = planDedupe(rows.map((r) => ({ ...r, has_link: linked.has(r.id) })));
+  const plans = planDedupe(
+    rows.map((r) => ({ ...r, has_link: linked.has(r.id), is_occurrence: occurrences.has(r.id) })),
+  );
   let removed = 0;
   for (const plan of plans) {
     for (const dup of plan.duplicates) {
