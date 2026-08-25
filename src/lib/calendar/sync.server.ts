@@ -22,6 +22,12 @@ import { isAgendaEvent } from "@/lib/agenda-kind";
 import { outboundWindow } from "./event-body";
 import { inVerifyPlan, type VerifyPlan } from "./verify-slice";
 import { normalizeTitle, planDedupe, type ImportedRow } from "./dedupe";
+import {
+  isSeriesMaster,
+  recurrenceType,
+  seriesMasterId,
+  type OutlookRecurrenceType,
+} from "./outlook-recurrence";
 
 const DEFAULT_DURATION_MIN = 60;
 const TZ = "Europe/Lisbon";
