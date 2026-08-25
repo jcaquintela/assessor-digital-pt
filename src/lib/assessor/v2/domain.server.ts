@@ -1445,7 +1445,8 @@ async function resolveUpdatePersonId(
   id: string,
   name: string | null,
   phone: string | null,
-): Promise<{ id: string; before: PersonRow; matchedBy: "id" | "memory" | "name" | "phone" } | null> {
+  email: string | null = null,
+): Promise<{ id: string; before: PersonRow; matchedBy: "id" | "memory" | "name" | "phone" | "email" } | null> {
   const COLS = "id, name, phone, email, relationship_type, notes";
   const byId = await ctx.supabase
     .from("people" as never)
@@ -1496,6 +1497,23 @@ async function resolveUpdatePersonId(
     if (rows.length === 1) return { id: String(rows[0].id), before: rows[0], matchedBy: "phone" };
   }
 
+  // Email normalizado (minúsculas, sem espaços) — a coluna email_normalized é
+  // mantida por trigger, por isso é a comparação fiável mesmo quando o modelo
+  // escreve "Ana.Santos@Exemplo.PT ".
+  const normEmail = typeof email === "string" && email.includes("@")
+    ? email.trim().toLowerCase()
+    : null;
+  if (normEmail) {
+    const { data } = await ctx.supabase
+      .from("people" as never)
+      .select(COLS)
+      .eq("user_id", ctx.userId)
+      .eq("email_normalized", normEmail)
+      .limit(2);
+    const rows = (data ?? []) as PersonRow[];
+    if (rows.length === 1) return { id: String(rows[0].id), before: rows[0], matchedBy: "email" };
+  }
+
   return null;
 }
 
@@ -1514,12 +1532,13 @@ async function execUpdatePerson(ctx: DomainContext, args: unknown): Promise<Doma
   // 25/08). Lemos SEMPRE antes de escrever e, se não existir, tentamos
   // recuperar a pessoa certa pela memória de escrita da conversa e depois
   // por nome/telefone. "pessoa_nao_encontrada" é o último recurso.
-  const resolved = await resolveUpdatePersonId(ctx, v.id, v.name ?? null, v.phone ?? null);
+  const resolved = await resolveUpdatePersonId(ctx, v.id, v.name ?? null, v.phone ?? null, v.email ?? null);
   if (!resolved) return fail("pessoa_nao_encontrada");
   const targetId = resolved.id;
   const before = resolved.before;
   // Se a pessoa foi recuperada por nome, não faz sentido reescrever o nome.
   if (resolved.matchedBy === "name") delete patch.name;
+  if (resolved.matchedBy === "email") delete patch.email;
   if (!Object.keys(patch).length) return fail("nada_para_actualizar");
 
   const { data, error } = await ctx.supabase

@@ -51,6 +51,7 @@ export const navGroups: NavGroup[] = [
       { to: "/admin/goldens", label: "Goldens" },
       { to: "/admin/simulador-briefing", label: "Simulador do briefing" },
       { to: "/admin/agenda-debug", label: "Debug da agenda" },
+      { to: "/admin/diagnostico", label: "Diagnóstico do motor" },
     ],
   },
   {
