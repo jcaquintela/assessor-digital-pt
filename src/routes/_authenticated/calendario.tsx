@@ -37,6 +37,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { backfillEventCategories } from "@/lib/agenda/event-category.functions";
 import { GroupCardsRow } from "@/components/group-cards-row";
 import {
   buildEventCategoryCards,
@@ -102,6 +104,7 @@ function CalendarioPage() {
   const [chip, setChip] = useState("todos");
   const [mostrarAniversarios, setMostrarAniversarios] = useState(false);
   const [catAberta, setCatAberta] = useState<string | null>(null);
+  const classificar = useServerFn(backfillEventCategories);
 
   const { data: categoriasManuais } = useQuery({
     queryKey: ["event_categories"],
@@ -520,6 +523,24 @@ function CalendarioPage() {
               Definições calendário
             </Link>
             <ForceSyncButton />
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              onClick={async () => {
+                try {
+                  const r = await classificar({});
+                  toast.success(
+                    r.updated
+                      ? `Classifiquei ${r.updated} compromissos por categoria.`
+                      : "Já estava tudo classificado.",
+                  );
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+            >
+              Classificar por categoria
+            </Button>
           </div>
         </div>
       </div>
