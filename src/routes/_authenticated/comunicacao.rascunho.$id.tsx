@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChevronLeft, Save } from "lucide-react";
+import { ChevronLeft, Save, Ban } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { cancelEmailDraft } from "@/lib/email/drafts.functions";
 
 export const Route = createFileRoute("/_authenticated/comunicacao/rascunho/$id")({
   head: () => ({
@@ -42,6 +44,7 @@ type Draft = {
   body: string;
   status: string;
   sent_at: string | null;
+  cancelled_at: string | null;
   expires_at: string | null;
 };
 
@@ -50,6 +53,7 @@ const STATUS_LABEL: Record<string, string> = {
   confirmed: "Autorizado",
   sent: "Autorizado e concluído",
   discarded: "Descartado",
+  cancelled: "Cancelado",
 };
 
 function RascunhoPage() {
@@ -63,7 +67,9 @@ function RascunhoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("email_drafts")
-        .select("id,provider,to_name,to_emails,subject,body,status,sent_at,expires_at")
+        .select(
+          "id,provider,to_name,to_emails,subject,body,status,sent_at,cancelled_at,expires_at",
+        )
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -78,7 +84,26 @@ function RascunhoPage() {
     }
   }, [q.data]);
 
-  const locked = q.data ? q.data.status === "sent" || q.data.status === "confirmed" : true;
+  const cancelled = q.data ? q.data.status === "cancelled" || Boolean(q.data.cancelled_at) : false;
+  const locked = q.data
+    ? q.data.status === "sent" || q.data.status === "confirmed" || cancelled
+    : true;
+
+  const cancelFn = useServerFn(cancelEmailDraft);
+  const cancel = useMutation({
+    mutationFn: async () => cancelFn({ data: { draftId: id } }),
+    onSuccess: (res: { status: string }) => {
+      if (res.status === "already_sent") {
+        toast.error("Este email já tinha seguido — não há nada para cancelar.");
+      } else {
+        toast.success("Rascunho cancelado. Já não pode ser confirmado.");
+      }
+      void qc.invalidateQueries({ queryKey: ["email-draft", id] });
+      void qc.invalidateQueries({ queryKey: ["email-drafts"] });
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Não deu para cancelar."),
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -145,13 +170,23 @@ function RascunhoPage() {
             </div>
             {locked ? (
               <p className="text-xs text-muted-foreground">
-                Já autorizaste este rascunho, por isso ficou fechado a alterações.
+                {cancelled
+                  ? "Cancelaste este rascunho. Nem na conversa nem aqui volta a ser enviado."
+                  : "Já autorizaste este rascunho, por isso ficou fechado a alterações."}
               </p>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button onClick={() => save.mutate()} disabled={save.isPending}>
                   <Save className="mr-1 h-4 w-4" aria-hidden />
                   Guardar alterações
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => cancel.mutate()}
+                  disabled={cancel.isPending}
+                >
+                  <Ban className="mr-1 h-4 w-4" aria-hidden />
+                  Cancelar rascunho
                 </Button>
                 <span className="text-xs text-muted-foreground">
                   Depois volta à conversa e diz “enviar”.
