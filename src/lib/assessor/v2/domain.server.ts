@@ -1431,6 +1431,74 @@ function buildReceipt(before: Record<string, unknown> | null, patch: Record<stri
   }));
 }
 
+type PersonRow = Record<string, unknown>;
+
+/**
+ * Verificação prévia + rede de segurança para update_person.
+ * 1. id do modelo, se existir mesmo;
+ * 2. último recurso criado nesta conversa (conversation_states), quando é
+ *    uma pessoa e o nome bate certo (ou não veio nome nenhum);
+ * 3. nome exacto ou telefone normalizado.
+ */
+async function resolveUpdatePersonId(
+  ctx: DomainContext,
+  id: string,
+  name: string | null,
+  phone: string | null,
+): Promise<{ id: string; before: PersonRow; matchedBy: "id" | "memory" | "name" | "phone" } | null> {
+  const COLS = "id, name, phone, email, relationship_type, notes";
+  const byId = await ctx.supabase
+    .from("people" as never)
+    .select(COLS)
+    .eq("id", id).eq("user_id", ctx.userId).maybeSingle();
+  if (byId?.data) return { id, before: byId.data as PersonRow, matchedBy: "id" };
+
+  const wanted = String(name ?? "").trim().toLowerCase();
+
+  try {
+    const { readCreatedResource } = await import("@/lib/assessor/v3/created-memory.server");
+    const created = await readCreatedResource(ctx.supabase, {
+      userId: ctx.userId,
+      channel: ctx.channel,
+    });
+    if (created && created.type === "person") {
+      const { data } = await ctx.supabase
+        .from("people" as never)
+        .select(COLS)
+        .eq("id", created.id).eq("user_id", ctx.userId).maybeSingle();
+      const rowName = String((data as PersonRow | null)?.name ?? "").trim().toLowerCase();
+      if (data && (!wanted || rowName === wanted || rowName.includes(wanted) || wanted.includes(rowName))) {
+        return { id: created.id, before: data as PersonRow, matchedBy: "memory" };
+      }
+    }
+  } catch { /* memória é bónus, nunca bloqueia */ }
+
+  if (wanted) {
+    const { data } = await ctx.supabase
+      .from("people" as never)
+      .select(COLS)
+      .eq("user_id", ctx.userId)
+      .ilike("name", String(name ?? "").trim())
+      .limit(2);
+    const rows = (data ?? []) as PersonRow[];
+    if (rows.length === 1) return { id: String(rows[0].id), before: rows[0], matchedBy: "name" };
+  }
+
+  const normPhone = phone ? normalizePhone(phone) : null;
+  if (normPhone) {
+    const { data } = await ctx.supabase
+      .from("people" as never)
+      .select(COLS)
+      .eq("user_id", ctx.userId)
+      .eq("phone", normPhone)
+      .limit(2);
+    const rows = (data ?? []) as PersonRow[];
+    if (rows.length === 1) return { id: String(rows[0].id), before: rows[0], matchedBy: "phone" };
+  }
+
+  return null;
+}
+
 async function execUpdatePerson(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(UpdatePersonArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
@@ -1442,16 +1510,22 @@ async function execUpdatePerson(ctx: DomainContext, args: unknown): Promise<Doma
   if (v.notes !== undefined) patch.notes = v.notes?.slice(0, 2000) ?? null;
   if (!Object.keys(patch).length) return fail("nada_para_actualizar");
 
-  const { data: before } = await ctx.supabase
-    .from("people" as never)
-    .select("name, phone, email, relationship_type, notes")
-    .eq("id", v.id).eq("user_id", ctx.userId).maybeSingle();
-  if (!before) return fail("pessoa_nao_encontrada");
+  // O id vem do modelo e pode ser inventado (caso Ana Catarina Santos,
+  // 25/08). Lemos SEMPRE antes de escrever e, se não existir, tentamos
+  // recuperar a pessoa certa pela memória de escrita da conversa e depois
+  // por nome/telefone. "pessoa_nao_encontrada" é o último recurso.
+  const resolved = await resolveUpdatePersonId(ctx, v.id, v.name ?? null, v.phone ?? null);
+  if (!resolved) return fail("pessoa_nao_encontrada");
+  const targetId = resolved.id;
+  const before = resolved.before;
+  // Se a pessoa foi recuperada por nome, não faz sentido reescrever o nome.
+  if (resolved.matchedBy === "name") delete patch.name;
+  if (!Object.keys(patch).length) return fail("nada_para_actualizar");
 
   const { data, error } = await ctx.supabase
     .from("people" as never)
     .update(patch as never)
-    .eq("id", v.id).eq("user_id", ctx.userId)
+    .eq("id", targetId).eq("user_id", ctx.userId)
     .select("id, name")
     .single();
   if (error) return fail(error.message);
