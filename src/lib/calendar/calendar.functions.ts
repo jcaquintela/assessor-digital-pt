@@ -94,11 +94,10 @@ export const completeCalendarConnect = createServerFn({ method: "POST" })
       throw new Error("Ligação devolvida para o conector errado.");
     }
     await saveConnectionKeyForUser(supabaseAdmin, context.userId, connectorId, connectionAPIKey);
-    // Primeira sincronização imediata, para o consultor ver logo o efeito.
-    try {
-      const { pullFromProvider } = await import("./sync.server");
-      await pullFromProvider(supabaseAdmin, context.userId, connectorId);
-    } catch { /* o cron apanha na próxima ronda */ }
+    // A primeira sincronização NÃO corre aqui: numa agenda cheia levava
+    // dezenas de segundos e deixava a página de retorno presa em "a validar".
+    // Quem chama pede `syncCalendarNow` em segundo plano; o cron é a rede.
+
     // Se for o único calendário ligado, fica ativo automaticamente.
     try {
       const { ensureActiveAfterConnect } = await import("@/lib/providers/active.server");
