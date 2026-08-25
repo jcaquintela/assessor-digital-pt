@@ -334,7 +334,7 @@ function normalizeGoogle(item: any): ExternalEvent {
   };
 }
 
-function normalizeOutlook(item: any): ExternalEvent {
+export function normalizeOutlook(item: any): ExternalEvent {
   const raw = item?.start?.dateTime as string | undefined;
   const tz = item?.start?.timeZone as string | undefined;
   let startIso: string | null = null;
