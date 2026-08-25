@@ -11,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChevronLeft, Save, Ban } from "lucide-react";
+import { ChevronLeft, Save, Ban, RotateCcw } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { cancelEmailDraft } from "@/lib/email/drafts.functions";
+import { cancelEmailDraft, restartEmailDraft } from "@/lib/email/drafts.functions";
 
 export const Route = createFileRoute("/_authenticated/comunicacao/rascunho/$id")({
   head: () => ({
@@ -105,6 +105,26 @@ function RascunhoPage() {
       toast.error(e instanceof Error ? e.message : "Não deu para cancelar."),
   });
 
+  const restartFn = useServerFn(restartEmailDraft);
+  const navigate = Route.useNavigate();
+  const restart = useMutation({
+    mutationFn: async () => restartFn({ data: { draftId: id, subject, body } }),
+    onSuccess: (res: { status: string; draftId?: string }) => {
+      if (res.status === "created" && res.draftId) {
+        toast.success("Novo rascunho criado com o teu texto.");
+        void qc.invalidateQueries({ queryKey: ["email-drafts"] });
+        void navigate({
+          to: "/comunicacao/rascunho/$id",
+          params: { id: res.draftId },
+        });
+      } else {
+        toast.error("Não deu para recomeçar este rascunho.");
+      }
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Não deu para recomeçar."),
+  });
+
   const save = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -168,11 +188,27 @@ function RascunhoPage() {
                 onChange={(e) => setBody(e.target.value)}
               />
             </div>
-            {locked ? (
+            {cancelled ? (
+              <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-4">
+                <div className="flex items-start gap-2">
+                  <Ban className="mt-0.5 h-4 w-4 text-destructive" aria-hidden />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Rascunho cancelado</p>
+                    <p className="text-xs text-muted-foreground">
+                      Este rascunho ficou fechado: não podes editá-lo nem autorizá-lo, e dizer
+                      “enviar” na conversa também não o desbloqueia. Se ainda quiseres responder,
+                      posso abrir um novo rascunho com este texto já preenchido.
+                    </p>
+                  </div>
+                </div>
+                <Button onClick={() => restart.mutate()} disabled={restart.isPending}>
+                  <RotateCcw className="mr-1 h-4 w-4" aria-hidden />
+                  Criar novo rascunho com este texto
+                </Button>
+              </div>
+            ) : locked ? (
               <p className="text-xs text-muted-foreground">
-                {cancelled
-                  ? "Cancelaste este rascunho. Nem na conversa nem aqui volta a ser enviado."
-                  : "Já autorizaste este rascunho, por isso ficou fechado a alterações."}
+                Já autorizaste este rascunho, por isso ficou fechado a alterações.
               </p>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
