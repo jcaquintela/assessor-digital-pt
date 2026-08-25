@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Golden: a página de retorno do OAuth nunca fica presa em "a validar".
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import { readOAuthReturn } from "./return-state";
 
 vi.mock("@tanstack/react-router", () => ({
