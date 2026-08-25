@@ -8,6 +8,7 @@ import { ZOD_BY_TOOL, CreateProspectingLeadArgs, CreateDealArgs } from "../v2/to
 import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
 import { cleanTitle } from "../titles";
 import { fillMissingDate } from "./tool-args";
+import { createdResourceFrom } from "./created-memory";
 import { getConversationState } from "../memory.server";
 import type { DecisionToolCall, MemoryWrite } from "./types";
 
@@ -190,10 +191,12 @@ export async function executeToolCalls(
     );
     const parsed = schema?.safeParse(args);
     if (schema && parsed && !parsed.success) {
-      out.push({
-        name: tc.name, ok: false,
-        error: `invalid_args:${parsed.error.issues[0]?.message ?? "unknown"}`,
-        latencyMs: Date.now() - t0,
+      const error = `invalid_args:${parsed.error.issues[0]?.message ?? "unknown"}`;
+      out.push({ name: tc.name, ok: false, error, latencyMs: Date.now() - t0 });
+      const { logToolCall } = await import("./created-memory.server");
+      await logToolCall(ctx.supabase, {
+        userId: ctx.userId, channel: ctx.channel, tool: tc.name,
+        arguments: args, success: false, error, latencyMs: Date.now() - t0,
       });
       continue;
     }
