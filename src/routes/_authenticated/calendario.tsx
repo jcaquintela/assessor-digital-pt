@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { MonthGrid, dayKey, monthLabel } from "@/components/calendario/month-grid";
 import { EventCard, type AgendaCardEvent } from "@/components/calendario/event-card";
 import { EmptyDay } from "@/components/calendario/empty-day";
+import { ForceSyncButton } from "@/components/calendario/force-sync-button";
 import { EmptyWeek } from "@/components/calendario/empty-week";
 import {
   addDaysKey,
@@ -418,6 +419,7 @@ function CalendarioPage() {
             <Link to="/definicoes" className="c-btn w-full justify-start">
               Gerir ligações de calendário
             </Link>
+            <ForceSyncButton />
           </div>
         </div>
       </div>
