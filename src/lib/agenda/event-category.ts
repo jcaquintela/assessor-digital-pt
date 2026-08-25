@@ -192,3 +192,11 @@ export function effectiveEventCategory(row: {
     automatica: true,
   };
 }
+
+/**
+ * Só entram no backfill os registos ainda sem categoria automática. Garante
+ * que uma segunda corrida não repete trabalho nem toca em nada já classificado.
+ */
+export function needsAutoCategory(row: { event_category?: string | null }): boolean {
+  return !row.event_category;
+}
