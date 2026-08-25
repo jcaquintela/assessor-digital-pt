@@ -10,7 +10,16 @@ import { auditSupportActions } from "@/lib/admin/support-audit-middleware";
 const errorMiddleware = createMiddleware({ type: "request" }).server(
   async ({ next }) => {
     try {
-      return await next();
+      const result = await next();
+      // `next()` devolve o contexto do TanStack; em rotas serverFn queremos
+      // devolver explicitamente a Response já produzida para evitar o fallback
+      // "forgot to return a response" quando a função termina cedo.
+      if (result instanceof Response) return result;
+      if (result != null && typeof result === "object" && "response" in result) {
+        const response = (result as { response?: unknown }).response;
+        if (response instanceof Response) return response;
+      }
+      return result;
     } catch (error) {
       // Respostas atiradas (redirects, notFound, 401) são fluxo normal do router.
       if (error instanceof Response) {

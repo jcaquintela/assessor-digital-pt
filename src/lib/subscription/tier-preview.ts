@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyAdminRole } from "@/lib/admin.functions";
+import { useHasSession } from "@/hooks/use-has-session";
 import { normalizeTier, type SubscriptionTier } from "./tiers";
 
 // Simulação de plano ("ver como") para super admin.
@@ -27,9 +28,11 @@ export function setPreviewTier(tier: SubscriptionTier | null) {
 // true só quando o utilizador autenticado é super admin.
 export function useIsSuperAdmin() {
   const fetchRole = useServerFn(getMyAdminRole);
+  const hasSession = useHasSession();
   const { data } = useQuery({
     queryKey: ["admin", "my-role"],
     queryFn: () => fetchRole(),
+    enabled: hasSession === true,
     staleTime: 5 * 60_000,
     retry: false,
   });

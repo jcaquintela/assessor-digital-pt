@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect } from "react";
 import { getMyDesignV2 } from "./design-v2.functions";
+import { useHasSession } from "@/hooks/use-has-session";
 
 export const DESIGN_V2_QUERY_KEY = ["design", "v2"] as const;
 
@@ -14,9 +15,12 @@ export const DESIGN_V2_QUERY_KEY = ["design", "v2"] as const;
  */
 export function useDesignV2(): boolean {
   const fetchFlag = useServerFn(getMyDesignV2);
+  const hasSession = useHasSession();
   const { data } = useQuery({
     queryKey: DESIGN_V2_QUERY_KEY,
     queryFn: () => fetchFlag(),
+    enabled: hasSession === true,
+    retry: false,
     staleTime: 5 * 60_000,
   });
   const enabled = !!data?.enabled;
