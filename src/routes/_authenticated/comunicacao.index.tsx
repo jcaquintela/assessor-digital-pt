@@ -64,7 +64,7 @@ function ComunicacaoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("email_drafts")
-        .select("id,to_name,to_emails,subject,status,created_at,sent_at,expires_at,channel")
+        .select("id,to_name,to_emails,subject,status,created_at,sent_at,cancelled_at,expires_at,channel")
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
