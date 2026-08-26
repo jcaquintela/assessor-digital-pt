@@ -2071,6 +2071,10 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
     import("@/lib/email/tools.server").then((m) => m.execSummarizeEmail(ctx, args)),
   draft_email_reply: (ctx, args) =>
     import("@/lib/email/reply-draft.server").then((m) => m.execDraftEmailReply(ctx as any, args)),
+  compose_email_to_contact: (ctx, args) =>
+    import("@/lib/email/outbound-draft.server").then((m) =>
+      m.execComposeEmailToContact(ctx as any, args),
+    ),
   create_event: execCreateEvent,
   create_follow_up: execCreateFollowUp,
   save_interaction: execSaveInteraction,

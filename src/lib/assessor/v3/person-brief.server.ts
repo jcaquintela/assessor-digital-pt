@@ -3,6 +3,7 @@
 import type { DomainContext } from "../v2/domain.server";
 import type { PersonBrief } from "./person-brief";
 import { foldLike } from "@/lib/search/normalize";
+import { dropConfidential, outwardInteractionFilter } from "../culture/confidential";
 
 export type PersonBriefLookup =
   | { kind: "not_found" }
@@ -12,16 +13,25 @@ export type PersonBriefLookup =
 export async function buildPersonBrief(
   ctx: DomainContext,
   name: string,
+  /**
+   * `outward`: o resumo vai alimentar texto que SAI para fora (rascunho de
+   * email a um contacto). Nesse caso as interações confidenciais nunca entram.
+   * `personId`: quando o chamador já sabe de quem se trata, não há ambiguidade.
+   */
+  opts?: { outward?: boolean; personId?: string | null },
 ): Promise<PersonBriefLookup> {
   const { supabase, userId } = ctx;
 
-  const { data: people } = await supabase
+  const base = supabase
     .from("people")
     .select("id, name, phone, relationship_type, summary, next_action, next_action_date")
-    .eq("user_id", userId)
-    .ilike("name_norm", `%${foldLike(name)}%`)
-    .order("updated_at", { ascending: false })
-    .limit(5);
+    .eq("user_id", userId);
+  const { data: people } = opts?.personId
+    ? await base.eq("id", opts.personId).limit(1)
+    : await base
+        .ilike("name_norm", `%${foldLike(name)}%`)
+        .order("updated_at", { ascending: false })
+        .limit(5);
 
   const rows = (people as any[]) ?? [];
   if (!rows.length) return { kind: "not_found" };
@@ -38,14 +48,20 @@ export async function buildPersonBrief(
     }
   }
 
-  const [interactionsR, propertiesR, opportunitiesR, followUpsR] = await Promise.all([
-    supabase
+  // Texto que sai para fora nunca leva notas confidenciais.
+  const interactionsQ = (() => {
+    const q = supabase
       .from("interactions")
-      .select("summary, original_content, occurred_at, created_at")
+      .select("summary, original_content, occurred_at, created_at, is_confidential")
       .eq("user_id", userId)
-      .eq("person_id", person.id)
+      .eq("person_id", person.id);
+    return (opts?.outward ? outwardInteractionFilter(q) : q)
       .order("occurred_at", { ascending: false })
-      .limit(1),
+      .limit(opts?.outward ? 5 : 1);
+  })();
+
+  const [interactionsR, propertiesR, opportunitiesR, followUpsR] = await Promise.all([
+    interactionsQ,
     supabase
       .from("properties")
       .select("title, status, asking_price")
@@ -70,7 +86,9 @@ export async function buildPersonBrief(
       .limit(1),
   ]);
 
-  const inter = ((interactionsR as any)?.data as any[])?.[0] ?? null;
+  // Segunda rede: mesmo que a query falhe o filtro, nada confidencial passa.
+  const interRows = dropConfidential(((interactionsR as any)?.data as any[]) ?? []);
+  const inter = interRows[0] ?? null;
   const props = (((propertiesR as any)?.data as any[]) ?? []).map((p) => ({
     title: String(p.title ?? "Imóvel"),
     status: p.status ?? null,

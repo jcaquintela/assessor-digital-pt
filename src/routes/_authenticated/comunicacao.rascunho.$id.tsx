@@ -47,6 +47,7 @@ type Draft = {
   sent_at: string | null;
   cancelled_at: string | null;
   expires_at: string | null;
+  kind: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -79,7 +80,7 @@ function RascunhoPage() {
       const { data, error } = await supabase
         .from("email_drafts")
         .select(
-          "id,provider,to_name,to_emails,subject,body,status,sent_at,cancelled_at,expires_at",
+          "id,provider,to_name,to_emails,subject,body,status,sent_at,cancelled_at,expires_at,kind",
         )
         .eq("id", id)
         .maybeSingle();
@@ -176,10 +177,19 @@ function RascunhoPage() {
               <Badge variant={q.data.status === "sent" ? "default" : "secondary"}>
                 {STATUS_LABEL[q.data.status] ?? q.data.status}
               </Badge>
+              <Badge variant="outline">
+                {q.data.kind === "outbound" ? "Email de iniciativa" : "Resposta a email"}
+              </Badge>
               <span className="text-xs text-muted-foreground">
                 Para {q.data.to_name || q.data.to_emails?.[0] || "—"}
               </span>
             </div>
+            {q.data.status === "sent" && q.data.provider !== "gmail" ? (
+              <p className="text-xs text-muted-foreground">
+                Autorizaste o envio e o rascunho ficou na tua caixa do Outlook — o clique em
+                Enviar é sempre teu.
+              </p>
+            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="assunto">Assunto</Label>
               <Input

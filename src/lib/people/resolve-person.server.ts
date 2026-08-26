@@ -86,7 +86,12 @@ export async function recentlyRejectedPersonIds(ctx: ResolveCtx): Promise<string
 export async function resolvePersonForWrite(
   ctx: ResolveCtx,
   text: string,
-  opts?: { excludeIds?: string[]; senderEmail?: string | null },
+  /**
+   * `nameOverride`: quem já sabe o nome (ex.: o módulo de Email de saída, que
+   * o recebe como argumento da ferramenta) não passa pela extracção de nomes
+   * de frases faladas — mas usa exactamente as mesmas regras de comparação.
+   */
+  opts?: { excludeIds?: string[]; senderEmail?: string | null; nameOverride?: string | null },
 ): Promise<PersonResolution> {
   const empty = (status: PersonResolutionStatus, name: string | null = null): PersonResolution =>
     ({ status, personId: null, name, candidates: [] });
@@ -133,7 +138,7 @@ export async function resolvePersonForWrite(
   }
 
   // 2) Nome mencionado na frase.
-  const name = personNameFromEventText(text);
+  const name = String(opts?.nameOverride ?? "").trim() || personNameFromEventText(text);
   if (!name) return empty("none");
 
   const { data } = await ctx.supabase

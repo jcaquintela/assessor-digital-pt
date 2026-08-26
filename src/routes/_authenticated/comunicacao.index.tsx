@@ -31,6 +31,7 @@ export const Route = createFileRoute("/_authenticated/comunicacao/")({
 type DraftRow = {
   id: string;
   to_name: string | null;
+  kind?: string | null;
   to_emails: string[] | null;
   subject: string | null;
   status: string;
@@ -65,7 +66,7 @@ function ComunicacaoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("email_drafts")
-        .select("id,to_name,to_emails,subject,status,created_at,sent_at,cancelled_at,expires_at,channel")
+        .select("id,to_name,to_emails,subject,status,created_at,sent_at,cancelled_at,expires_at,channel,kind")
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -116,7 +117,8 @@ function ComunicacaoPage() {
                         <span>{r.subject || "(sem assunto)"}</span>
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        Para {r.to_name || r.to_emails?.[0] || "—"} · {when(r.created_at)}
+                        {r.kind === "outbound" ? "Iniciativa para" : "Resposta a"}{" "}
+                        {r.to_name || r.to_emails?.[0] || "—"} · {when(r.created_at)}
                         {cancelled ? ` · cancelado ${when(r.cancelled_at)}` : ""}
                         {r.channel ? ` · ${r.channel}` : ""}
                       </p>
