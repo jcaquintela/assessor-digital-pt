@@ -64,7 +64,7 @@ describe("3. teste cruzado automático sobre toda a lista partilhada", () => {
     const divergencias: string[] = [];
     for (const [, termos] of internos) {
       for (const termo of termos) {
-        const ev = comLigacao(termo.trim());
+        const ev = comLigacao(`Reunião ${termo} de agosto`);
         const categoria = eventCategoryFor(ev);
         const classe = classifyEvent(ev);
         const coerente = INTERNAL_CATEGORY_KEYS.includes(categoria) && classe === "interno";
@@ -77,7 +77,7 @@ describe("3. teste cruzado automático sobre toda a lista partilhada", () => {
   it("todos os termos de visita: categoria 'visitas' E classe 'negocio' com ligação", () => {
     const divergencias: string[] = [];
     for (const termo of VISIT_TERMS) {
-      const ev = comLigacao(termo.trim());
+      const ev = comLigacao(`Reunião ${termo} de agosto`);
       const categoria = eventCategoryFor(ev);
       const classe = classifyEvent(ev);
       if (categoria !== "visitas" || classe !== "negocio") {
@@ -89,7 +89,7 @@ describe("3. teste cruzado automático sobre toda a lista partilhada", () => {
 
   it("nunca há termo interno que a Agenda leia como comercial", () => {
     const maus = INTERNAL_TITLE_TERMS.filter(
-      (termo) => eventCategoryFor({ title: termo.trim() }) === "visitas",
+      (termo) => eventCategoryFor({ title: `Reunião ${termo} de agosto` }) === "visitas",
     );
     expect(maus).toEqual([]);
   });
