@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NAV_DESKTOP_V1,
   NAV_MAIS_PAGE,
+  NAV_MOBILE,
   NAV_MORE_ENTRY,
   NAV_MORE_V2,
   NAV_PRIMARY_V2,
@@ -57,5 +58,24 @@ describe("gating por plano dentro de 'Mais'", () => {
 
   it("a entrada 'Mais' nunca é filtrada por plano", () => {
     expect(visibleNav([NAV_MORE_ENTRY], "base")).toHaveLength(1);
+  });
+});
+
+describe("acesso à Agenda nunca desaparece", () => {
+  const listas: Record<string, { to: string }[]> = {
+    "sidebar v1": NAV_DESKTOP_V1,
+    "sidebar v2": NAV_PRIMARY_V2,
+    "barra mobile": NAV_MOBILE,
+    "página /mais": NAV_MAIS_PAGE,
+  };
+  for (const [nome, lista] of Object.entries(listas)) {
+    it(`${nome} inclui /calendario em base, consultor e pro`, () => {
+      for (const tier of ["base", "consultor", "pro"]) {
+        expect(rotas(visibleNav(lista, tier)), `${nome} / ${tier}`).toContain("/calendario");
+      }
+    });
+  }
+  it("Negócios também continua acessível no mobile (via /mais)", () => {
+    expect(rotas(visibleNav(NAV_MAIS_PAGE, "base"))).toContain("/negocios");
   });
 });

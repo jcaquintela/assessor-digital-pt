@@ -11,13 +11,7 @@ import {
   NAV_PRIMARY_V2,
   visibleNav,
 } from "@/lib/nav/nav-items";
-import {
-  Home,
-  MoreHorizontal,
-  Building2,
-  Users,
-  Sparkles,
-} from "lucide-react";
+import { Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { trackNavRota } from "@/lib/telemetry/ui-events";
