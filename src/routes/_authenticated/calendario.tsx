@@ -326,7 +326,7 @@ function CalendarioPage() {
                   key={v.id}
                   type="button"
                   aria-pressed={view === v.id}
-                  className={cn("c-pill tap-44", view === v.id && "active")}
+                  className={cn("c-pill tap-44 shrink-0", view === v.id && "active")}
                   onClick={() => {
                     setView(v.id);
                     if (v.id === "mes") {
@@ -341,7 +341,7 @@ function CalendarioPage() {
               {(view === "mes" || view === "semana") && (
                 <button
                   type="button"
-                  className="c-pill tap-44"
+                  className="c-pill tap-44 shrink-0"
                   onClick={() => {
                     const n = new Date();
                     setMonth(new Date(n.getFullYear(), n.getMonth(), 1));
@@ -354,13 +354,13 @@ function CalendarioPage() {
             </div>
           </div>
           {/* Chips de categoria — mesma taxonomia dos cartões da vista Lista. */}
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <div className="c-chiprow mb-3">
             {eventCategoryChips({ mostrarAniversarios }).map((c) => (
               <button
                 key={c.key}
                 type="button"
                 aria-pressed={chip === c.key}
-                className={cn("c-pill tap-44", chip === c.key && "active")}
+                className={cn("c-pill tap-44 shrink-0", chip === c.key && "active")}
                 onClick={() => setChip(c.key)}
               >
                 {c.label}
@@ -369,7 +369,7 @@ function CalendarioPage() {
             <button
               type="button"
               aria-pressed={mostrarAniversarios}
-              className="c-pill tap-44 text-[11px]"
+              className="c-pill tap-44 shrink-0 text-[11px]"
               onClick={() => {
                 setMostrarAniversarios((v) => !v);
                 setChip("todos");
