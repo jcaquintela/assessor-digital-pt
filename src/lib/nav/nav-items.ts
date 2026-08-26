@@ -55,6 +55,18 @@ export const NAV_PRIMARY_V2: NavEntry[] = [
 
 export const NAV_MORE_ENTRY: NavEntry = { to: "/mais", label: "Mais", icon: MoreHorizontal };
 
+/**
+ * Barra inferior do mobile. Agenda é uso diário: sem ela, a única forma de
+ * chegar ao calendário era o resumo de Hoje.
+ */
+export const NAV_MOBILE: NavEntry[] = [
+  { to: "/hoje", label: "Hoje", icon: Home },
+  { to: "/pessoas", label: "Pessoas", icon: Users },
+  { to: "/imoveis", label: "Imóveis", icon: Building2 },
+  { to: "/calendario", label: "Agenda", icon: CalendarDays },
+  NAV_MORE_ENTRY,
+];
+
 /** O que passa para "Mais" no v2 (e o que a página /mais lista). */
 export const NAV_MORE_V2: NavEntry[] = [
   { to: "/oportunidades/prospecao", label: "Prospeção", icon: MapPin },
