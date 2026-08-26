@@ -10,7 +10,13 @@
 // pelo caminho determinístico de confirmação.
 
 import { DRAFT_TTL_MS, draftConfirmationQuestion } from "./reply-draft";
-import { emailFromText, missingEmailQuestion, outboundIntro, outboundSubject } from "./outbound-draft";
+import {
+  emailFromText,
+  missingEmailQuestion,
+  outboundIntro,
+  outboundPreview,
+  outboundSubject,
+} from "./outbound-draft";
 import type { MailProvider } from "./providers";
 import type { PersonBrief } from "@/lib/assessor/v3/person-brief";
 
@@ -115,6 +121,8 @@ export interface OutboundPresentation {
   body: string;
   provider: MailProvider;
   manual_send: boolean;
+  /** Assunto + corpo, tal como vai sair. Bolha de pré-visualização. */
+  preview: string;
   intro: string;
   question: string;
   note?: string | null;
@@ -212,7 +220,8 @@ export async function createOutboundDraft(args: {
     body,
     provider: args.provider,
     manual_send: manualSend,
-    intro: outboundIntro({ toName: args.personName, subject }),
+    preview: outboundPreview({ to: args.to, subject, body }),
+    intro: outboundIntro({ toName: args.personName, subject, manualSend }),
     question: draftConfirmationQuestion({ draftId, manualSend }),
     note: args.note ?? null,
   };
@@ -453,7 +462,7 @@ export async function handleAwaitingEmailAddress(args: {
   return {
     reply: withSuggestionAndQuestion(
       `${emailSavedNote(personName)} ${created.intro}`.trim(),
-      created.body,
+      created.preview,
       created.question,
     ),
   };

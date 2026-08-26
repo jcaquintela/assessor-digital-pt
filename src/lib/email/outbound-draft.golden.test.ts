@@ -3,6 +3,8 @@ import {
   emailFromText,
   emailSavedNote,
   missingEmailQuestion,
+  outboundIntro,
+  outboundPreview,
   outboundSendConfirmation,
   outboundSubject,
 } from "./outbound-draft";
@@ -57,5 +59,27 @@ describe("email de iniciativa — regras invioláveis", () => {
       "Não tenho email do Ana. Qual é o endereço para eu preparar a mensagem?",
     );
     expect(emailSavedNote("Nuno")).toBe("Guardei o email na ficha do Nuno.");
+  });
+});
+
+describe("pré-visualização antes de confirmar", () => {
+  it("8. mostra destinatário, assunto e corpo tal como vão sair", () => {
+    const p = outboundPreview({
+      to: "ana@exemplo.pt",
+      subject: "Sobre T3 em Alvalade",
+      body: "Olá Ana,\n\nSegue a informação.",
+    });
+    expect(p).toBe("Para: ana@exemplo.pt\nAssunto: Sobre T3 em Alvalade\n\nOlá Ana,\n\nSegue a informação.");
+  });
+
+  it("9. a introdução diz quem dá o clique final", () => {
+    expect(outboundIntro({ toName: "Ana", subject: "Sobre T3", manualSend: true })).toMatch(/Outlook/);
+    expect(outboundIntro({ toName: "Ana", subject: "Sobre T3", manualSend: false })).toMatch(/Gmail/);
+  });
+
+  it("10. mensagem final do Outlook diz onde carregar em Enviar", () => {
+    const m = outboundSendConfirmation({ toLabel: "ana@exemplo.pt", manualSend: true });
+    expect(m).toMatch(/pasta Rascunhos do Outlook/);
+    expect(m).toMatch(/carrega em Enviar/);
   });
 });
