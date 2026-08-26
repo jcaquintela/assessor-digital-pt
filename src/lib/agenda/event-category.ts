@@ -7,6 +7,15 @@
 // A categoria manual do consultor (`follow_ups.event_category_id`) manda sempre:
 // esta função só decide a categoria automática (`follow_ups.event_category`).
 
+import {
+  ADMIN_TERMS,
+  BIRTHDAY_TERMS,
+  OPERATION_TERMS,
+  PERSONAL_TERMS,
+  TRAINING_TERMS,
+  VISIT_TERMS,
+} from "./shared-terms";
+
 export type EventCategoryKey =
   | "visitas"
   | "operacao"
@@ -68,7 +77,7 @@ function norm(v: unknown): string {
     .trim();
 }
 
-const has = (t: string, terms: string[]) => terms.some((w) => t.includes(w));
+const has = (t: string, terms: readonly string[]) => terms.some((w) => t.includes(w));
 
 export interface EventCategoryCandidate {
   title?: string | null;
