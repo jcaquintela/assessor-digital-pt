@@ -1734,6 +1734,7 @@ export type Database = {
           expires_at: string
           id: string
           in_reply_to_message_id: string | null
+          kind: string
           person_id: string | null
           provider: string
           provider_draft_id: string | null
@@ -1760,6 +1761,7 @@ export type Database = {
           expires_at?: string
           id?: string
           in_reply_to_message_id?: string | null
+          kind?: string
           person_id?: string | null
           provider?: string
           provider_draft_id?: string | null
@@ -1786,6 +1788,7 @@ export type Database = {
           expires_at?: string
           id?: string
           in_reply_to_message_id?: string | null
+          kind?: string
           person_id?: string | null
           provider?: string
           provider_draft_id?: string | null

@@ -74,12 +74,24 @@ export const SummarizeEmailArgs = z.object({
 export type SummarizeEmailArgs = z.infer<typeof SummarizeEmailArgs>;
 
 // Rascunho de resposta a email: PROPÕE apenas. O envio nunca é ferramenta.
+// Dormente desde 26/08: o Afonso não lê a caixa de entrada. Fica no ficheiro
+// porque a infraestrutura de rascunhos é a mesma do email de saída.
 export const DraftEmailReplyArgs = z.object({
   message_id: z.string().optional().nullable(),
   subject_hint: z.string().optional().nullable(),
   instructions: z.string().optional().nullable(),
 });
 export type DraftEmailReplyArgs = z.infer<typeof DraftEmailReplyArgs>;
+
+// Email de INICIATIVA a um lead/contacto. Também só propõe.
+export const ComposeEmailToContactArgs = z.object({
+  person_id: z.string().optional().nullable(),
+  person_name: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  subject: z.string().optional().nullable(),
+  instructions: z.string().optional().nullable(),
+});
+export type ComposeEmailToContactArgs = z.infer<typeof ComposeEmailToContactArgs>;
 
 
 
@@ -622,55 +634,22 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
       },
     },
   },
+  // Email: o Afonso NÃO lê a caixa de entrada (decisão de 26/08). As
+  // ferramentas de leitura (search_emails, summarize_email, draft_email_reply)
+  // continuam no código mas fora desta lista, para o modelo não as oferecer.
   {
     type: "function",
     function: {
-      name: "search_emails",
+      name: "compose_email_to_contact",
       description:
-        "Lê a caixa de entrada do consultor (conta de email ligada) e devolve os emails recentes: remetente, assunto, excerto, data e se está por ler. Usa sempre que perguntarem por emails novos, por lidos/não lidos ou por mensagens de alguém.",
+        "Prepara um RASCUNHO de email de INICIATIVA para uma pessoa da lista do consultor ('manda um email à Ana sobre o apartamento', 'escreve ao Nuno a dar seguimento'). Nunca envia: o rascunho é sempre mostrado e o envio depende de o consultor dizer 'enviar'. Passa person_id quando o tens de search_people, senão person_name com o nome que ele disse. Em instructions põe o que ele quer dizer. Se ele te der um endereço de email, passa-o em email.",
       parameters: {
         type: "object",
         properties: {
-          query: { type: ["string", "null"], description: "Pesquisa no estilo Gmail (ex.: from:maria, subject:proposta)." },
-          only_unread: { type: ["boolean", "null"], description: "true para só emails por ler." },
-          max: { type: ["integer", "null"], description: "Máximo de emails (1-20)." },
-          include_all: {
-            type: ["boolean", "null"],
-            description:
-              "true só quando ele pedir para ver tudo ('mostra todos', 'inclui newsletters'). Por defeito escondemos newsletters e notificações automáticas.",
-          },
-        },
-        required: [],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "summarize_email",
-      description:
-        "Resume um email concreto, só quando o consultor pede o resumo. Passa message_id quando o tens de search_emails, senão subject_hint com as palavras dele (assunto ou remetente).",
-      parameters: {
-        type: "object",
-        properties: {
-          message_id: { type: ["string", "null"] },
-          subject_hint: { type: ["string", "null"] },
-        },
-        required: [],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "draft_email_reply",
-      description:
-        "Prepara um RASCUNHO de resposta a um email recebido, quando o consultor pede para responder a alguém ('responde ao email do Paulo sobre a proposta'). Nunca envia: o rascunho é sempre mostrado e o envio depende de o consultor dizer 'enviar'. Passa message_id quando o tens de search_emails, senão subject_hint com as palavras dele (remetente e/ou assunto). Em instructions põe o que ele quer dizer, se o disser.",
-      parameters: {
-        type: "object",
-        properties: {
-          message_id: { type: ["string", "null"] },
-          subject_hint: { type: ["string", "null"] },
+          person_id: { type: ["string", "null"], format: "uuid" },
+          person_name: { type: ["string", "null"] },
+          email: { type: ["string", "null"], description: "Endereço, só quando o consultor o der." },
+          subject: { type: ["string", "null"], description: "Assunto, só se ele o disser." },
           instructions: { type: ["string", "null"] },
         },
         required: [],
@@ -1161,6 +1140,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   search_emails: SearchEmailsArgs,
   summarize_email: SummarizeEmailArgs,
   draft_email_reply: DraftEmailReplyArgs,
+  compose_email_to_contact: ComposeEmailToContactArgs,
   create_property: CreatePropertyArgs,
   search_agenda: SearchAgendaArgs,
   create_event: CreateEventArgs,

@@ -77,7 +77,7 @@ async function readBody(provider: MailProvider, key: string, id: string): Promis
   return g.fetchMessageBody(key, id);
 }
 
-async function providerCreateDraft(
+export async function providerCreateDraft(
   provider: MailProvider,
   key: string,
   args: { to: string[]; subject: string; body: string; threadId?: string | null },
@@ -338,6 +338,9 @@ export type DraftRow = {
   revisions: number | null;
   in_reply_to_message_id: string | null;
   channel: string | null;
+  /** "reply" (resposta a email recebido) ou "outbound" (iniciativa). */
+  kind?: string | null;
+  person_id?: string | null;
 };
 
 export async function loadDraft(userId: string, draftId: string): Promise<DraftRow | null> {
@@ -600,7 +603,29 @@ export async function handleDraftConfirmation(args: {
     if (iterationExhausted(draft.revisions)) return { reply: exhaustedReply(draft.id) };
     const { activeMailProvider } = await import("./tools.server");
     const conn = (await activeMailProvider(args.userId)) as { provider: MailProvider; key: string } | null;
-    if (!conn?.key || !draft.in_reply_to_message_id) return { reply: exhaustedReply(draft.id) };
+    if (!conn?.key) return { reply: exhaustedReply(draft.id) };
+
+    // Email de iniciativa: reescreve-se a partir da pessoa, não de um email recebido.
+    if (draft.kind === "outbound") {
+      const { reviseOutboundDraft } = await import("./outbound-draft.server");
+      const revised = await reviseOutboundDraft({
+        userId: args.userId,
+        channel: args.channel,
+        provider: conn.provider,
+        key: conn.key,
+        draft,
+        instructions: args.text,
+      });
+      if (!revised) return { reply: exhaustedReply(draft.id) };
+      const { withSuggestionAndQuestion } = await import(
+        "@/lib/assessor/culture/suggested-message"
+      );
+      return {
+        reply: withSuggestionAndQuestion("Reescrevi com essa alteração:", revised.body, revised.question),
+      };
+    }
+
+    if (!draft.in_reply_to_message_id) return { reply: exhaustedReply(draft.id) };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin

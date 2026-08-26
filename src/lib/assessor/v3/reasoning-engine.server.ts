@@ -1894,6 +1894,14 @@ async function runReasoningEngineInner(
       if (draftTurn) return { reply: draftTurn.reply };
     }
 
+    // (a1c) Faltava o endereço de email de um contacto e ele acabou de o dar.
+    // Determinístico: grava na ficha e retoma o mesmo email, sem LLM.
+    {
+      const { handleAwaitingEmailAddress } = await import("@/lib/email/outbound-draft.server");
+      const addrTurn = await handleAwaitingEmailAddress({ userId, channel, text: trimmed });
+      if (addrTurn) return { reply: addrTurn.reply };
+    }
+
     // (a2) Elipse de leitura ("E documentos?", "E para a próxima semana?").
 
     // Resolve pelo TÓPICO da última leitura guardado na memória de conversa —
@@ -2566,13 +2574,20 @@ async function runReasoningEngineInner(
   // (intro + corpo isolado para copiar + pergunta de confirmação). Nunca
   // deixamos a IA redigir esta parte — o corpo tem de sair exactamente como
   // foi gravado e como está na caixa do consultor.
-  const emailDraftTool = toolResults.find((t) => t.name === "draft_email_reply" && t.ok);
+  const emailDraftTool = toolResults.find(
+    (t) => (t.name === "draft_email_reply" || t.name === "compose_email_to_contact") && t.ok,
+  );
   let emailDraftReply: string | null = null;
   if (emailDraftTool) {
     const d = (emailDraftTool.data ?? {}) as Record<string, any>;
     const { withSuggestionAndQuestion } = await import("../culture/suggested-message");
     if (d.body && d.draft_id) {
-      emailDraftReply = withSuggestionAndQuestion(String(d.intro), String(d.body), String(d.question));
+      const intro = [d.note ? String(d.note) : "", String(d.intro)].filter(Boolean).join(" ");
+      emailDraftReply = withSuggestionAndQuestion(intro, String(d.body), String(d.question));
+    } else if (d.needs_person_choice || d.needs_email_address) {
+      emailDraftReply = String(d.question ?? "De quem estamos a falar?");
+    } else if (d.needs_person_name) {
+      emailDraftReply = "A quem queres que escreva? Diz-me o nome.";
     } else if (d.needs_email_choice) {
       emailDraftReply = String(d.question ?? "A qual dos emails queres responder?");
     } else if (d.not_found) {

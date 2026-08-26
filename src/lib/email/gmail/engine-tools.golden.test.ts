@@ -7,13 +7,25 @@ import {
 } from "@/lib/assessor/v3/query-results";
 
 describe("email exposto ao motor", () => {
-  it("as ferramentas estão registadas e descritas", () => {
+  // Direcção de 26/08: o Afonso escreve emails de iniciativa e NÃO lê a caixa
+  // de entrada. As ferramentas de leitura continuam a existir (triagem interna,
+  // rascunhos antigos) mas saíram do que é oferecido ao modelo.
+  it("só o email de iniciativa é oferecido ao modelo", () => {
+    expect(ZOD_BY_TOOL["compose_email_to_contact"]).toBeTruthy();
     expect(ZOD_BY_TOOL["search_emails"]).toBeTruthy();
     expect(ZOD_BY_TOOL["summarize_email"]).toBeTruthy();
+
     const names = TOOL_SPECS.map((t) => t.function.name);
-    expect(names).toContain("search_emails");
-    expect(names).toContain("summarize_email");
-    expect(DECIDE_SYSTEM_PROMPT).toContain("search_emails");
+    expect(names).toContain("compose_email_to_contact");
+    expect(names).not.toContain("search_emails");
+    expect(names).not.toContain("summarize_email");
+    expect(names).not.toContain("draft_email_reply");
+
+    expect(DECIDE_SYSTEM_PROMPT).toContain("compose_email_to_contact");
+    expect(DECIDE_SYSTEM_PROMPT).not.toContain("search_emails(");
+  });
+
+  it("a leitura interna continua a formatar resultados", () => {
     expect(isQueryTool("search_emails")).toBe(true);
   });
 
