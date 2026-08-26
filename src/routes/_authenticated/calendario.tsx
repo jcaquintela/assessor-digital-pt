@@ -262,10 +262,11 @@ function CalendarioPage() {
   return (
     <AppShell>
       <PageHeader title="Calendário" subtitle="Vista interna dos compromissos." />
-      <div className="grid gap-4 md:grid-cols-[1fr_320px]">
-        <div className="c-card p-2 sm:p-4">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-1">
+      <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="c-card min-w-0 p-2 sm:p-4">
+          <div className="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-1">
+
               {view === "mes" && (
                 <>
                   <Button
