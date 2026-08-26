@@ -320,7 +320,7 @@ function CalendarioPage() {
                 <div className="text-[15px] font-semibold">Próximos compromissos</div>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="c-chiprow">
               {VIEWS.map((v) => (
                 <button
                   key={v.id}
