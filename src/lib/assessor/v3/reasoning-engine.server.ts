@@ -2583,7 +2583,11 @@ async function runReasoningEngineInner(
     const { withSuggestionAndQuestion } = await import("../culture/suggested-message");
     if (d.body && d.draft_id) {
       const intro = [d.note ? String(d.note) : "", String(d.intro)].filter(Boolean).join(" ");
-      emailDraftReply = withSuggestionAndQuestion(intro, String(d.body), String(d.question));
+      emailDraftReply = withSuggestionAndQuestion(
+        intro,
+        String(d.preview ?? d.body),
+        String(d.question),
+      );
     } else if (d.needs_person_choice || d.needs_email_address) {
       emailDraftReply = String(d.question ?? "De quem estamos a falar?");
     } else if (d.needs_person_name) {

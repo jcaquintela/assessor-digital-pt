@@ -168,7 +168,7 @@ export function sentReply(toLabel: string): string {
 }
 
 export function manualSendReply(toLabel: string): string {
-  return `O rascunho para ${toLabel} está pronto na tua caixa do Outlook — o envio é o teu clique. Registei a tua autorização no histórico.`;
+  return `Guardei o rascunho para ${toLabel} na pasta Rascunhos do Outlook — abre-o e carrega em Enviar para a mensagem seguir. Registei a tua autorização no histórico em /comunicacao.`;
 }
 
 export function cancelledReply(): string {
