@@ -13,20 +13,18 @@
 //   4. Só um compromisso ligado ao negócio pode ser classificado como negócio.
 
 import { hasCommercialOutcomeContext, type OutcomeCandidateContext } from "./outcome-eligibility";
+import { eventCategoryFor } from "@/lib/agenda/event-category";
+import { INTERNAL_CATEGORY_KEYS, INTERNAL_TITLE_TERMS } from "@/lib/agenda/shared-terms";
 
 export type EventClass = "negocio" | "interno";
 
-/** Padrões de reunião interna. Comparados sem acentos, em minúsculas. */
-export const INTERNAL_TERMS: readonly string[] = [
-  "equipa", "team", "team building", "level up",
-  "operacoes", "operacional", "lideranca", "direcao",
-  "interno", "interna", "internos", "internas",
-  "1:1", "1-1", "one on one", "one-on-one",
-  "daily", "standup", "stand up", "weekly", "kick off interno",
-  "alinhamento", "briefing interno", "reuniao geral", "plenario",
-  "administrativo", "administrativa", "backoffice", "back office",
-  "formacao interna", "onboarding interno",
-];
+/**
+ * Padrões de reunião interna. Comparados sem acentos, em minúsculas.
+ * FONTE ÚNICA: `src/lib/agenda/shared-terms.ts` — a mesma lista que alimenta a
+ * taxonomia da Agenda Inteligente, para os dois sistemas nunca divergirem.
+ */
+export const INTERNAL_TERMS: readonly string[] = INTERNAL_TITLE_TERMS;
+
 
 function norm(v: unknown): string {
   return String(v ?? "")
@@ -63,8 +61,16 @@ export function classifyEvent(item: EventClassCandidate): EventClass {
   if (override) return override;
   if (!hasCommercialOutcomeContext(item)) return "interno";
   if (isInternalTitle(item.title)) return "interno";
+  // Coerência com a Agenda Inteligente: se a família do compromisso não é
+  // trabalho comercial (Operação, Formação, Pessoal, Suporte, Aniversários),
+  // não pode pedir resultado. É esta linha que impede as duas classificações
+  // de divergirem (ex.: "Entrevista de recrutamento" ligada a uma pessoa).
+  if (INTERNAL_CATEGORY_KEYS.includes(eventCategoryFor({ title: item.title }))) {
+    return "interno";
+  }
   return "negocio";
 }
+
 
 /**
  * Só compromissos de negócio pedem resultado ("Como correu?") e entram em

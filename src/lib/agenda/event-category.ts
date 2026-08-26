@@ -7,6 +7,15 @@
 // A categoria manual do consultor (`follow_ups.event_category_id`) manda sempre:
 // esta função só decide a categoria automática (`follow_ups.event_category`).
 
+import {
+  ADMIN_TERMS,
+  BIRTHDAY_TERMS,
+  OPERATION_TERMS,
+  PERSONAL_TERMS,
+  TRAINING_TERMS,
+  VISIT_TERMS,
+} from "./shared-terms";
+
 export type EventCategoryKey =
   | "visitas"
   | "operacao"
@@ -68,7 +77,7 @@ function norm(v: unknown): string {
     .trim();
 }
 
-const has = (t: string, terms: string[]) => terms.some((w) => t.includes(w));
+const has = (t: string, terms: readonly string[]) => terms.some((w) => t.includes(w));
 
 export interface EventCategoryCandidate {
   title?: string | null;
@@ -90,68 +99,27 @@ export function eventCategoryFor(item: EventCategoryCandidate): EventCategoryKey
   const t = norm(item.title);
   const type = norm(item.type);
 
+  // Todos os termos vêm da fonte única `shared-terms.ts`, partilhada com o
+  // classificador binário 'interno' vs 'negocio' (`event-class.ts`).
+
   // 1. Aniversários — séries recorrentes importadas, dominam a agenda.
-  if (has(t, ["aniversario", "birthday", "anniversary", "parabens", "b-day"])) {
-    return "aniversarios";
-  }
+  if (has(t, BIRTHDAY_TERMS)) return "aniversarios";
 
   // 2. Visitas & Angariação — o núcleo comercial.
-  if (
-    type === "visita" ||
-    has(t, [
-      "visita", "revisita", "angariacao", "angariar", "avaliacao", "avaliar imovel",
-      "cpcv", "escritura", "promessa", "proposta", "chaves", "entrega de chaves",
-      "reuniao com proprietario", "captacao", "open house", "prospecao", "placa",
-    ])
-  ) {
-    return "visitas";
-  }
+  if (type === "visita" || has(t, VISIT_TERMS)) return "visitas";
 
   // 3. Operação & Liderança — reuniões internas de equipa e gestão.
-  if (
-    has(t, [
-      "closing", "weekly", "ops", "operacoes", "operacional", "equipa", "team",
-      "lideranca", "direcao", "1:1", "1-1", "one on one", "daily", "standup",
-      "stand up", "alinhamento", "kick off", "kickoff", "reuniao geral",
-      "plenario", "level up", "pipeline", "forecast", "recrutamento", "entrevista",
-    ])
-  ) {
-    return "operacao";
-  }
+  if (has(t, OPERATION_TERMS)) return "operacao";
 
   // 4. Formação & Eventos.
-  if (
-    has(t, [
-      "academia", "formacao", "curso", "workshop", "webinar", "masterclass",
-      "conferencia", "congresso", "summit", "convencao", "seminario", "bootcamp",
-      "certificacao", "evento", "gala", "save the date", "networking", "kick-off anual",
-    ])
-  ) {
-    return "formacao";
-  }
+  if (has(t, TRAINING_TERMS)) return "formacao";
 
   // 5. Pessoal & Saúde.
-  if (
-    has(t, [
-      "treino", "ginasio", "medico", "dentista", "consulta", "analises", "fisioterapia",
-      "ferias", "familia", "almoco em familia", "escola", "aniversario de casamento",
-      "pessoal", "folga", "viagem pessoal", "psicologo", "vacina",
-    ])
-  ) {
-    return "pessoal";
-  }
+  if (has(t, PERSONAL_TERMS)) return "pessoal";
 
   // 6. Suporte & Administrativo.
-  if (
-    has(t, [
-      "piquete", "informatica", "it ", "suporte", "helpdesk", "administrativo",
-      "administrativa", "backoffice", "back office", "contabilidade", "faturacao",
-      "financas", "banco", "seguros", "juridico", "advogado", "notario", "cartorio",
-      "renovacao", "licenca", "manutencao",
-    ])
-  ) {
-    return "suporte";
-  }
+  if (has(t, ADMIN_TERMS)) return "suporte";
+
 
   // 7. Sinais estruturais: sem palavras-chave, um compromisso ligado a
   // pessoa/imóvel/negócio/lead é trabalho comercial.
