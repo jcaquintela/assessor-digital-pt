@@ -3,8 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight } from "lucide-react";
-import { NAV_MAIS_PAGE, NAV_MORE_V2, visibleNav } from "@/lib/nav/nav-items";
-import { useDesignV2 } from "@/lib/design/use-design-v2";
+import { NAV_MAIS_PAGE, visibleNav } from "@/lib/nav/nav-items";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 
 export const Route = createFileRoute("/_authenticated/mais")({
@@ -23,10 +22,9 @@ function MaisPage() {
   // Mesmo gate da barra lateral: consolidar o menu não pode expor módulos
   // que o plano do consultor não inclui.
   const { data: tierData } = useEffectiveTier();
-  // No v2 as áreas de uso diário já estão na barra: repeti-las aqui só
-  // dilui o menu.
-  const v2 = useDesignV2();
-  const items = visibleNav(v2 ? NAV_MORE_V2 : NAV_MAIS_PAGE, tierData?.tier ?? "base");
+  // A página /mais lista sempre todas as áreas. Filtrar pelo que "já está na
+  // barra" assumia a sidebar do desktop e escondia Agenda/Negócios no mobile.
+  const items = visibleNav(NAV_MAIS_PAGE, tierData?.tier ?? "base");
   return (
     <AppShell>
       <PageHeader title="Mais" />
