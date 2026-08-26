@@ -38,9 +38,35 @@ export function emailFromText(text: string | null | undefined): string | null {
   return /^\S+@\S+\.\S{2,}$/.test(addr) ? addr : null;
 }
 
-export function outboundIntro(args: { toName: string; subject: string }): string {
+export function outboundIntro(args: {
+  toName: string;
+  subject: string;
+  manualSend?: boolean;
+}): string {
   const alvo = args.toName || "o contacto";
-  return `Preparei a mensagem para ${alvo}${args.subject ? ` sobre "${args.subject}"` : ""}. Lê antes de seguir:`;
+  const destino = args.manualSend
+    ? "Se estiver bem, deixo-o pronto na tua caixa do Outlook para dares o clique final."
+    : "Se estiver bem, envio-o eu pelo Gmail depois de confirmares.";
+  return `Preparei a mensagem para ${alvo}${args.subject ? ` sobre "${args.subject}"` : ""}. Lê antes de seguir — ${destino}`;
+}
+
+/**
+ * Pré-visualização do email tal como vai sair: assunto e corpo, sem enfeites.
+ * Sai numa bolha isolada (padrão "mensagem sugerida") para o consultor ler e
+ * copiar antes de autorizar o envio.
+ */
+export function outboundPreview(args: {
+  to: string;
+  subject: string;
+  body: string;
+}): string {
+  const to = String(args.to ?? "").trim();
+  const subject = String(args.subject ?? "").trim();
+  const head = [to ? `Para: ${to}` : "", subject ? `Assunto: ${subject}` : ""]
+    .filter(Boolean)
+    .join("\n");
+  const body = String(args.body ?? "").trim();
+  return head ? `${head}\n\n${body}` : body;
 }
 
 /** Sem email na ficha não inventamos endereço: perguntamos. */
@@ -61,6 +87,7 @@ export function outboundSendConfirmation(args: {
   manualSend: boolean;
 }): string {
   return args.manualSend
-    ? `Deixei o rascunho na tua caixa do Outlook, é só carregares em Enviar. A tua autorização fica no histórico.`
+    ? `Guardei o rascunho para ${args.toLabel} na pasta Rascunhos do Outlook — abre-o e carrega em Enviar para seguir. A tua autorização fica no histórico em /comunicacao.`
     : `Enviado para ${args.toLabel}. Fica no histórico em /comunicacao.`;
 }
+
