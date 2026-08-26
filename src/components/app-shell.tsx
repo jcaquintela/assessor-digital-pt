@@ -6,6 +6,7 @@ import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 import { useDesignV2 } from "@/lib/design/use-design-v2";
 import {
   NAV_DESKTOP_V1,
+  NAV_MOBILE,
   NAV_MORE_ENTRY,
   NAV_PRIMARY_V2,
   visibleNav,
@@ -26,12 +27,6 @@ import { AnnouncementBanner } from "@/components/announcement-banner";
 import { TierAuthNotice } from "@/components/subscricao/tier-auth-notice";
 import { TierPreviewBanner } from "@/components/tier-preview";
 
-const mobileNav = [
-  { to: "/hoje", label: "Hoje", icon: Home },
-  { to: "/pessoas", label: "Pessoas", icon: Users },
-  { to: "/imoveis", label: "Imóveis", icon: Building2 },
-  { to: "/mais", label: "Mais", icon: MoreHorizontal },
-] as const;
 
 // "/negocio" (Faturação) e "/negocios" (Negócios) partilham prefixo: um
 // startsWith simples destacava os dois ao mesmo tempo. Só conta a rota exata
@@ -52,7 +47,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
   // v2: 5 áreas na barra + "Mais". v1: as 10 de sempre.
   const desktopEntries = v2 ? [...NAV_PRIMARY_V2, NAV_MORE_ENTRY] : NAV_DESKTOP_V1;
   const visibleDesktopNav = visibleNav(desktopEntries, tier);
-  const visibleMobileNav = visibleNav(mobileNav, tier);
+  const visibleMobileNav = visibleNav(NAV_MOBILE, tier);
 
   // Telemetria de navegação: que áreas são realmente usadas (valida o
   // agrupamento da barra com dados, não com intuição).

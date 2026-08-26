@@ -3,8 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight } from "lucide-react";
-import { NAV_MAIS_PAGE, NAV_MORE_V2, visibleNav } from "@/lib/nav/nav-items";
-import { useDesignV2 } from "@/lib/design/use-design-v2";
+import { NAV_MAIS_PAGE, visibleNav } from "@/lib/nav/nav-items";
 import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
 
 export const Route = createFileRoute("/_authenticated/mais")({
