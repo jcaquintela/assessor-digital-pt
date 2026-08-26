@@ -61,8 +61,16 @@ export function classifyEvent(item: EventClassCandidate): EventClass {
   if (override) return override;
   if (!hasCommercialOutcomeContext(item)) return "interno";
   if (isInternalTitle(item.title)) return "interno";
+  // Coerência com a Agenda Inteligente: se a família do compromisso não é
+  // trabalho comercial (Operação, Formação, Pessoal, Suporte, Aniversários),
+  // não pode pedir resultado. É esta linha que impede as duas classificações
+  // de divergirem (ex.: "Entrevista de recrutamento" ligada a uma pessoa).
+  if (INTERNAL_CATEGORY_KEYS.includes(eventCategoryFor({ title: item.title }))) {
+    return "interno";
+  }
   return "negocio";
 }
+
 
 /**
  * Só compromissos de negócio pedem resultado ("Como correu?") e entram em
