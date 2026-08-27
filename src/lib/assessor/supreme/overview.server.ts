@@ -28,7 +28,7 @@ export interface AgendaItem {
 }
 
 import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
-import { lisbonYmd } from "@/lib/assessor/lisbon-day";
+import { lisbonYmd, lisbonInstant } from "@/lib/assessor/lisbon-day";
 import { todayEvents, type DayEvent } from "@/lib/agenda/day-events";
 
 /**
