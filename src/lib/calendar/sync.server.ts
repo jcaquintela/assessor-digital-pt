@@ -11,6 +11,7 @@
 // do lado do gateway, nunca na app).
 import { callAsAppUser } from "@/integrations/lovable/appUserConnector";
 import { initialEventCategory } from "@/lib/agenda/event-category";
+import { lisbonHhMm } from "@/lib/assessor/lisbon-day";
 import { getConnectionKeyForUser } from "./connections.server";
 import { isCalendarAuthError } from "./auth-error";
 import { isExternalEventMissing } from "./missing-event";
