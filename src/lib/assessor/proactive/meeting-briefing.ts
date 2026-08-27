@@ -56,19 +56,11 @@ export function eventStartMs(ev: Pick<BriefingEvent, "due_date" | "due_time">): 
   const hhmm = String(ev.due_time ?? "").trim();
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
   if (!m) return base.getTime();
-  // Data (em Lisboa) do due_date + hora de due_time, interpretada em Lisboa.
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(base);
-  const map: Record<string, string> = {};
-  for (const p of parts) map[p.type] = p.value;
-  const dayIso = `${map.year}-${map.month}-${map.day}`;
-  // Offset de Lisboa nesse dia (0 ou -1h face a UTC no verão).
-  const guess = new Date(`${dayIso}T${m[1].padStart(2, "0")}:${m[2]}:00Z`);
-  const offsetMin =
-    (new Date(guess.toLocaleString("en-US", { timeZone: "UTC" })).getTime() -
-      new Date(guess.toLocaleString("en-US", { timeZone: "Europe/Lisbon" })).getTime()) / 60000;
-  return guess.getTime() + offsetMin * 60000;
+  // Dia (em Lisboa) do due_date + hora de due_time, interpretada em Lisboa.
+  // A conversão local→UTC é a canónica de lisbon-day.ts: antes fazia-se por
+  // re-parsing de uma string localizada (toLocaleString "en-US"), que depende
+  // do formato do runtime e era a variante mais frágil das que existiam.
+  return lisbonInstant(lisbonYmd(base), Number(m[1]), Number(m[2]));
 }
 
 /**
