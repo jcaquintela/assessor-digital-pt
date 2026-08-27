@@ -153,9 +153,7 @@ export function hasBriefContent(b: PersonBrief): boolean {
 }
 
 export function timePt(ms: number): string {
-  return new Intl.DateTimeFormat("pt-PT", {
-    timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit", hour12: false,
-  }).format(new Date(ms));
+  return lisbonHhMm(ms);
 }
 
 /** Texto final da cartela. Cabeçalho = motivo do compromisso + pessoa. */
