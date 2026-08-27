@@ -18,6 +18,7 @@ import { captureCorrection, looksLikeCorrection } from "./corrections.server";
 import { suppressRejectedQuestion } from "./rejected-question";
 import { reflect, type ReflectionTrigger } from "./reflection.server";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
+import { lisbonYmd } from "../lisbon-day";
 import { blockedChannelReason } from "../channel-guard";
 import type { DomainContext } from "../v2/domain.server";
 import { TOOL_REGISTRY } from "../v2/domain.server";
@@ -178,15 +179,7 @@ function formatPtMoney(value: number): string {
 }
 
 function todayLisbonYmd(): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const m: Record<string, string> = {};
-  for (const part of parts) m[part.type] = part.value;
-  return `${m.year}-${m.month}-${m.day}`;
+  return lisbonYmd(new Date());
 }
 
 function extractFinanceCommission(content: string): Record<string, unknown> | null {
@@ -235,12 +228,7 @@ function nowLisbonHuman(): string {
   }).format(new Date());
 }
 function nowLisbonYmd(): string {
-  const p = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(new Date());
-  const m: Record<string, string> = {};
-  for (const x of p) m[x.type] = x.value;
-  return `${m.year}-${m.month}-${m.day}`;
+  return lisbonYmd(new Date());
 }
 function toHistoryPreview(rows: Array<{ role: string; content: string }>): string {
   return [...rows].reverse()

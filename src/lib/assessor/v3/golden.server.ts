@@ -7,6 +7,7 @@ import { decide } from "./decide.server";
 import { sanitizeReply, enforceHumanTone, enforceSingleQuestion } from "../culture/sanitize";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
 import type { Observation, SearchName, SearchResults } from "./types";
+import { lisbonYmd } from "../lisbon-day";
 import {
   detectAgendaQuery,
   formatAgendaReply,
@@ -50,12 +51,7 @@ export interface GoldenRunResult {
 }
 
 function nowLisbonYmd(): string {
-  const p = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(new Date());
-  const m: Record<string, string> = {};
-  for (const x of p) m[x.type] = x.value;
-  return `${m.year}-${m.month}-${m.day}`;
+  return lisbonYmd(new Date());
 }
 function nowLisbonHuman(): string {
   return new Intl.DateTimeFormat("pt-PT", {

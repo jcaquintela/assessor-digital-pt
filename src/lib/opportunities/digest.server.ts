@@ -5,16 +5,12 @@ import type { NudgeDraft } from "@/lib/assessor/v3/proactivity.server";
 import { sanitizeReply } from "@/lib/assessor/culture/sanitize";
 import { composeDigestText } from "./detector";
 import { computeOpportunityAlerts } from "./detector.server";
+import { lisbonYmd } from "@/lib/assessor/lisbon-day";
 
 export const OPPORTUNITY_DIGEST_PREFIX = "opportunity_digest:";
 
 function lisbonYmdKey(now: Date): string {
-  const p = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(now);
-  const m: Record<string, string> = {};
-  for (const x of p) m[x.type] = x.value;
-  return `${m.year}${m.month}${m.day}`;
+  return lisbonYmd(now).replaceAll("-", "");
 }
 
 /** Gera (no máximo) um draft de resumo por dia e por consultor. */

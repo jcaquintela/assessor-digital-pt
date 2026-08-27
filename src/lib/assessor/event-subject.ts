@@ -10,7 +10,7 @@
 // dia (ou no dia seguinte). Havendo correspondência provável com hora
 // diferente, NUNCA assumir — perguntar se é actualização ou compromisso novo.
 
-import { lisbonHhMm } from "./lisbon-day";
+import { lisbonHhMm, lisbonYmd } from "./lisbon-day";
 
 const STOPWORDS = new Set([
   "a", "o", "as", "os", "um", "uma", "de", "do", "da", "dos", "das", "com", "sem",
@@ -59,14 +59,7 @@ export function subjectSimilarity(a: string | null | undefined, b: string | null
 /** Data local de Lisboa (YYYY-MM-DD) a partir de um instante ISO/UTC. */
 export function lisbonYmdFromIso(iso: string | null | undefined): string | null {
   if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(d);
-  const m: Record<string, string> = {};
-  for (const p of parts) m[p.type] = p.value;
-  return `${m.year}-${m.month}-${m.day}`;
+  return lisbonYmd(iso) || null;
 }
 
 /** Hora local de Lisboa (HH:MM) a partir de um instante ISO/UTC. */

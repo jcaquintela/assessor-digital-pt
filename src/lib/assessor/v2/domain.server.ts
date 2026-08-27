@@ -79,7 +79,7 @@ import {
 // Conversão local Lisboa → UTC (DST-aware): fonte única em lisbon-day.ts.
 // Sem isto, `${date}T${time}:00` sem offset seria interpretado como UTC e
 // "hoje às 12:10" ficaria guardado como 13:10 de Lisboa.
-import { lisbonLocalToUtcIso, lisbonHhMm } from "@/lib/assessor/lisbon-day";
+import { lisbonLocalToUtcIso, lisbonHhMm, lisbonYmd } from "@/lib/assessor/lisbon-day";
 
 function agendaRange(period: "today" | "tomorrow" | "week" | "next_week"): { startIso: string; endIso: string; label: string } {
   const now = new Date();
@@ -1134,15 +1134,7 @@ async function execSaveMiscellaneous(ctx: DomainContext, args: unknown): Promise
 }
 
 function todayLisbonYmd(): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const m: Record<string, string> = {};
-  for (const part of parts) m[part.type] = part.value;
-  return `${m.year}-${m.month}-${m.day}`;
+  return lisbonYmd(new Date());
 }
 
 

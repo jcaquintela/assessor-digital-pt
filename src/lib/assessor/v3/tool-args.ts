@@ -5,16 +5,11 @@
 // foi recusada pelo schema por um detalhe de formato. Isso não é falha de
 // interpretação, é mapeamento LLM→schema. Este módulo é puro e testável.
 
-/** Hora em Europe/Lisbon no formato HH:MM. */
+import { lisbonYmd, lisbonHhMm } from "../lisbon-day";
+
+/** Dia e hora em Europe/Lisbon (YYYY-MM-DD, HH:MM) — fonte única em lisbon-day.ts. */
 export function lisbonNow(now: Date = new Date()): { date: string; time: string } {
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Lisbon",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-  const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value]));
-  const hour = parts.hour === "24" ? "00" : parts.hour;
-  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${hour}:${parts.minute}` };
+  return { date: lisbonYmd(now), time: lisbonHhMm(now) };
 }
 
 /** "9:30", "9h30", "09.30", "9 h 30" → "09:30". Devolve null se não for hora. */

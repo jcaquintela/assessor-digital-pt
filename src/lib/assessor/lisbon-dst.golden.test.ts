@@ -102,3 +102,71 @@ describe("hora local de Lisboa (HH:MM)", () => {
     expect(lisbonHhMm("não é data")).toBe("");
   });
 });
+
+// --- Lote 2: os pontos de entrada que passaram a consumir a fonte única ---
+// Cada um destes módulos tinha a sua própria cópia do cálculo de "que dia é
+// hoje em Lisboa". O que se garante aqui é que, agora que todos consomem
+// lisbonYmd, continuam a concordar entre si e com o helper — incluindo no
+// instante crítico das 23:30 UTC do verão, em que o dia de Lisboa já virou.
+import { nowLisbonYmd } from "./v3/reminders.server";
+import { todayLisbonYmd as breakdownToday } from "./v3/audio-breakdown.server";
+import { todayLisbonYmd as themesToday } from "./v3/audio-themes.server";
+import { lisbonNow } from "./v3/tool-args";
+import { lisbonParts } from "./agenda";
+import { lisbonIsoWeek } from "./proactive/empty-day";
+import { lisbonDate, lisbonHour } from "@/lib/admin/digest.server";
+import { lisbonYmdFromIso } from "./event-subject";
+import { mentorFollowUpDueDate } from "./supreme/mentor-followup";
+
+describe("pontos de entrada unificados (Lote 2)", () => {
+  const INSTANTES = [
+    "2026-08-09T23:30:00Z", // verão: em Lisboa já é dia 10
+    "2026-01-09T23:30:00Z", // inverno: em Lisboa ainda é dia 9
+    "2026-03-29T00:30:00Z", // dia da mudança para hora de verão
+    "2026-10-25T00:30:00Z", // dia da mudança para hora de inverno
+  ];
+
+  it("todos concordam com lisbonYmd no mesmo instante", () => {
+    for (const iso of INSTANTES) {
+      const d = new Date(iso);
+      const esperado = lisbonYmd(d);
+      expect(nowLisbonYmd(d)).toBe(esperado);
+      expect(lisbonNow(d).date).toBe(esperado);
+      expect(lisbonParts(d).ymd).toBe(esperado);
+      expect(lisbonDate(d)).toBe(esperado);
+      expect(lisbonYmdFromIso(iso)).toBe(esperado);
+      expect(mentorFollowUpDueDate(0, d)).toBe(esperado);
+    }
+  });
+
+  it("23:30Z de agosto já é o dia seguinte em Lisboa", () => {
+    expect(nowLisbonYmd(new Date("2026-08-09T23:30:00Z"))).toBe("2026-08-10");
+    expect(nowLisbonYmd(new Date("2026-01-09T23:30:00Z"))).toBe("2026-01-09");
+  });
+
+  it("os helpers sem argumento continuam a devolver o dia de hoje em Lisboa", () => {
+    const hoje = lisbonYmd(new Date());
+    expect(breakdownToday()).toBe(hoje);
+    expect(themesToday()).toBe(hoje);
+  });
+
+  it("digest: hora local coerente com lisbonHhMm", () => {
+    expect(lisbonHour(new Date("2026-08-09T23:30:00Z"))).toBe(0);
+    expect(lisbonHour(new Date("2026-01-09T23:30:00Z"))).toBe(23);
+  });
+
+  it("dia-da-semana derivado do YMD é o real (10/08/2026 = segunda)", () => {
+    expect(lisbonParts(new Date("2026-08-09T23:30:00Z")).weekday).toBe(1);
+    expect(lisbonParts(new Date("2026-08-09T12:00:00Z")).weekday).toBe(0);
+  });
+
+  it("semana ISO mantém o formato próprio por cima do YMD único", () => {
+    expect(lisbonIsoWeek(new Date("2026-01-01T12:00:00Z"))).toBe(1);
+    expect(lisbonIsoWeek(new Date("2026-08-09T23:30:00Z")))
+      .toBe(lisbonIsoWeek(new Date("2026-08-10T09:00:00Z")));
+  });
+
+  it("mentorFollowUpDueDate soma dias sobre o dia de Lisboa", () => {
+    expect(mentorFollowUpDueDate(3, new Date("2026-08-09T23:30:00Z"))).toBe("2026-08-13");
+  });
+});

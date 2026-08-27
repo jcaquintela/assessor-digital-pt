@@ -15,6 +15,7 @@ import { runInterpretationLoop } from "./interpret.server";
 import { V2_MODEL_DEFAULT, type GatewayMessage } from "./gateway.server";
 import { TOOL_SPECS } from "./tools";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
+import { lisbonYmd } from "../lisbon-day";
 
 const HISTORY_LIMIT = 8;
 
@@ -31,12 +32,7 @@ function nowLisbonHuman(): string {
 }
 
 function nowLisbonYmd(): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(new Date());
-  const m: Record<string, string> = {};
-  for (const p of parts) m[p.type] = p.value;
-  return `${m.year}-${m.month}-${m.day}`;
+  return lisbonYmd(new Date());
 }
 
 function buildSystemPrompt(assessorName: string, userFirstName: string): string {

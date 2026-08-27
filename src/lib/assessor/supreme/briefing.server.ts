@@ -65,26 +65,22 @@ export async function resolveBriefingAtDispatch(
   return { send: true, text: sanitizeReply(composeBriefingText(priorities, { firstName })) };
 }
 
-function nowLisbonParts(now: Date) {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", weekday: "short", hour12: false,
-  }).formatToParts(now);
-  const m: Record<string, string> = {};
-  for (const p of parts) m[p.type] = p.value;
-  return {
-    hour: Number(m.hour ?? "0"),
-    minute: Number(m.minute ?? "0"),
-    weekday: (m.weekday ?? "").toLowerCase(),
-    ymd: `${m.year}${m.month}${m.day}`,
-    isoDay: weekdayIso(m.weekday ?? ""),
-  };
-}
+// Dia e hora de Lisboa vêm da fonte única (lisbon-day.ts); o dia-da-semana é
+// derivado desse mesmo dia de calendário, para não haver dois cálculos de fuso.
+const WEEKDAY_SHORT = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
-function weekdayIso(short: string): number {
-  const map: Record<string, number> = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7 };
-  return map[short.toLowerCase()] ?? 0;
+function nowLisbonParts(now: Date) {
+  const ymdDash = lisbonYmd(now);
+  const [hh, mm] = lisbonHhMm(now).split(":");
+  const [y, m, d] = ymdDash.split("-").map(Number);
+  const dow = new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay();
+  return {
+    hour: Number(hh ?? "0"),
+    minute: Number(mm ?? "0"),
+    weekday: WEEKDAY_SHORT[dow]!,
+    ymd: ymdDash.replaceAll("-", ""),
+    isoDay: dow === 0 ? 7 : dow,
+  };
 }
 
 function withinWindow(target: string, now: { hour: number; minute: number }, toleranceMin = 15): boolean {
