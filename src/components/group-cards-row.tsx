@@ -63,19 +63,20 @@ export function GroupCardsRow<T>({
               <span className="min-w-0">
                 <span className="c-group-count block">{c.count}</span>
                 <span
-                  className={`c-group-label block truncate font-medium${c.destaque ? " text-amber-600 dark:text-amber-400" : ""}`}
+                  className={`c-group-label block hyphens-auto break-words font-medium${c.destaque ? " text-amber-600 dark:text-amber-400" : ""}`}
                 >
                   {c.label}
                 </span>
                 {c.hint && (
                   <span
-                    className="mt-0.5 block truncate text-[10px] uppercase tracking-wide"
+                    className="mt-0.5 block break-words text-[10px] uppercase tracking-wide"
                     style={{ color: "var(--muted)", opacity: 0.8 }}
                     data-card-hint={c.hint}
                   >
                     {c.hint}
                   </span>
                 )}
+
                 <span className="mt-0.5 block text-[11px]" style={{ color: "var(--muted)", opacity: 0.65 }}>
                   {c.count === 0 ? "sem registos" : c.inline ? "abre aqui" : "vista dedicada"}
                 </span>
