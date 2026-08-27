@@ -36,26 +36,9 @@ export interface ReminderRow {
   updated_at: string;
 }
 
-// Converte data+hora locais Europe/Lisbon → ISO UTC (DST-aware).
-// Idêntica à helper interna em v2/domain.server.ts para evitar acoplamento.
-export function lisbonLocalToUtcIso(dateYmd: string, timeHm: string): string {
-  const [hh, mm] = timeHm.split(":").map((n) => parseInt(n, 10));
-  const [y, mo, d] = dateYmd.split("-").map((n) => parseInt(n, 10));
-  const naiveUtc = Date.UTC(y, mo - 1, d, hh, mm, 0);
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  }).formatToParts(new Date(naiveUtc));
-  const m: Record<string, string> = {};
-  for (const p of parts) m[p.type] = p.value;
-  const asLisbonUtc = Date.UTC(
-    parseInt(m.year, 10), parseInt(m.month, 10) - 1, parseInt(m.day, 10),
-    parseInt(m.hour === "24" ? "0" : m.hour, 10), parseInt(m.minute, 10), parseInt(m.second, 10),
-  );
-  const offsetMin = (asLisbonUtc - naiveUtc) / 60_000;
-  return new Date(naiveUtc - offsetMin * 60_000).toISOString();
-}
+// Conversão local Lisboa → UTC: fonte única em lisbon-day.ts (DST-aware).
+// Re-exportada aqui porque vários chamadores históricos a importam deste módulo.
+export { lisbonLocalToUtcIso } from "@/lib/assessor/lisbon-day";
 
 export function nowLisbonYmd(now: Date = new Date()): string {
   const p = new Intl.DateTimeFormat("en-GB", {
