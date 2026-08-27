@@ -182,13 +182,13 @@ export function EmailStep({ onNext }: { onNext: () => void }) {
   }
 
   const cards = [
-    {
+    ...(GMAIL_CONNECT_ENABLED ? [{
       id: GMAIL_CONNECTOR_ID,
       label: "Gmail",
       connected: Boolean(gmail.data?.connected),
       start: () => startGmailConnect(),
       queryKey: "gmail-status",
-    },
+    }] : []),
     {
       id: OUTLOOK_CONNECTOR_ID,
       label: "Outlook",

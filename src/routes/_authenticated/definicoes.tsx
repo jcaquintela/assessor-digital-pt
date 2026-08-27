@@ -1212,8 +1212,8 @@ function EmailSection() {
   }
 
   const cards: Array<{ id: MailProvider; card: React.ReactNode }> = [
-    {
-      id: "gmail",
+    ...(GMAIL_CONNECT_ENABLED ? [{
+      id: "gmail" as MailProvider,
       card: (
         <MailProviderCard
           key="gmail"
@@ -1227,7 +1227,7 @@ function EmailSection() {
           stop={() => disconnectGmail()}
         />
       ),
-    },
+    }] : []),
     {
       id: "outlook",
       card: (

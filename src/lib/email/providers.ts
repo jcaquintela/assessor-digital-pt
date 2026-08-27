@@ -18,6 +18,14 @@ export const MAIL_CONNECTOR_ID: Record<MailProvider, string> = {
   outlook: "microsoft_outlook",
 };
 
+/**
+ * Ligar o Gmail está desativado em produção: os scopes gmail.readonly e
+ * gmail.compose foram retirados da submissão de verificação Google.
+ * O conector fica dormente (código intacto) mas nenhum ecrã pode iniciar o
+ * fluxo OAuth. Voltar a true só depois de os scopes serem verificados.
+ */
+export const GMAIL_CONNECT_ENABLED = false;
+
 export function isMailProvider(v: unknown): v is MailProvider {
   return v === "gmail" || v === "outlook";
 }
