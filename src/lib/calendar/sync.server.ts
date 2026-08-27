@@ -45,11 +45,7 @@ export interface LocalEvent {
   archived_at?: string | null;
 }
 
-function lisbonHhMm(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: TZ, hour12: false, hour: "2-digit", minute: "2-digit",
-  }).format(new Date(iso));
-}
+// Hora local de Lisboa: fonte única em lisbon-day.ts.
 
 
 async function logSync(
