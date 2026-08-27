@@ -76,30 +76,10 @@ import {
   nowLisbonHhMm,
 } from "../v3/reminders.server";
 
-// Converte uma data+hora locais em Europe/Lisbon para um ISO absoluto (UTC).
-// Sem isto, `${date}T${time}:00` sem offset é interpretado pelo Postgres como
-// UTC, fazendo com que "hoje às 12:10" fique guardado como 13:10 Lisbon
-// (uma hora depois do que o consultor pediu).
-function lisbonLocalToUtcIso(dateYmd: string, timeHm: string): string {
-  const [hh, mm] = timeHm.split(":").map((n) => parseInt(n, 10));
-  const [y, mo, d] = dateYmd.split("-").map((n) => parseInt(n, 10));
-  const naiveUtc = Date.UTC(y, mo - 1, d, hh, mm, 0);
-  // Descobre o offset de Lisbon nessa instância (minutos).
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon",
-    hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  }).formatToParts(new Date(naiveUtc));
-  const m: Record<string, string> = {};
-  for (const p of parts) m[p.type] = p.value;
-  const asLisbonUtc = Date.UTC(
-    parseInt(m.year, 10), parseInt(m.month, 10) - 1, parseInt(m.day, 10),
-    parseInt(m.hour === "24" ? "0" : m.hour, 10), parseInt(m.minute, 10), parseInt(m.second, 10),
-  );
-  const offsetMin = (asLisbonUtc - naiveUtc) / 60_000;
-  return new Date(naiveUtc - offsetMin * 60_000).toISOString();
-}
+// Conversão local Lisboa → UTC (DST-aware): fonte única em lisbon-day.ts.
+// Sem isto, `${date}T${time}:00` sem offset seria interpretado como UTC e
+// "hoje às 12:10" ficaria guardado como 13:10 de Lisboa.
+import { lisbonLocalToUtcIso, lisbonHhMm } from "@/lib/assessor/lisbon-day";
 
 function agendaRange(period: "today" | "tomorrow" | "week" | "next_week"): { startIso: string; endIso: string; label: string } {
   const now = new Date();
