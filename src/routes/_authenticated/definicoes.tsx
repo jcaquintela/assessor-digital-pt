@@ -49,7 +49,7 @@ import {
   getActiveProviders,
   setActiveProviderFn,
 } from "@/lib/providers/active.functions";
-import { MAIL_PROVIDER_LABEL, type MailProvider } from "@/lib/email/providers";
+import { MAIL_PROVIDER_LABEL, GMAIL_CONNECT_ENABLED, type MailProvider } from "@/lib/email/providers";
 import { decideContentAccess, listMyConsentRequests } from "@/lib/admin/consent.functions";
 
 export const Route = createFileRoute("/_authenticated/definicoes")({
@@ -1212,8 +1212,8 @@ function EmailSection() {
   }
 
   const cards: Array<{ id: MailProvider; card: React.ReactNode }> = [
-    {
-      id: "gmail",
+    ...(GMAIL_CONNECT_ENABLED ? [{
+      id: "gmail" as MailProvider,
       card: (
         <MailProviderCard
           key="gmail"
@@ -1227,7 +1227,7 @@ function EmailSection() {
           stop={() => disconnectGmail()}
         />
       ),
-    },
+    }] : []),
     {
       id: "outlook",
       card: (

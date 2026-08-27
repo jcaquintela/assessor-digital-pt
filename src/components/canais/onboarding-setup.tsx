@@ -10,6 +10,7 @@ import {
 } from "@/lib/calendar/providers";
 import { getCalendarStatus, startCalendarConnect } from "@/lib/calendar/calendar.functions";
 import { GMAIL_CONNECTOR_ID } from "@/lib/email/gmail/provider";
+import { GMAIL_CONNECT_ENABLED } from "@/lib/email/providers";
 import { OUTLOOK_CONNECTOR_ID } from "@/lib/email/outlook/provider";
 import { getGmailStatus, startGmailConnect } from "@/lib/email/gmail/gmail.functions";
 import { getOutlookMailStatus, startOutlookMailConnect } from "@/lib/email/outlook/outlook.functions";
@@ -182,13 +183,13 @@ export function EmailStep({ onNext }: { onNext: () => void }) {
   }
 
   const cards = [
-    {
+    ...(GMAIL_CONNECT_ENABLED ? [{
       id: GMAIL_CONNECTOR_ID,
       label: "Gmail",
       connected: Boolean(gmail.data?.connected),
       start: () => startGmailConnect(),
       queryKey: "gmail-status",
-    },
+    }] : []),
     {
       id: OUTLOOK_CONNECTOR_ID,
       label: "Outlook",
