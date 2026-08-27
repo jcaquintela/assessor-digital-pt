@@ -19,26 +19,6 @@ function ymdOf(value: unknown): string {
   return lisbonYmd(value as string | number | Date);
 }
 
-/** Instante (ms) de uma hora local de Lisboa num dado dia de calendário. */
-function lisbonInstant(ymd: string, hh: number, mm: number): number {
-  const [y, m, d] = ymd.split("-").map(Number);
-  if (!y || !m || !d) return NaN;
-  const guess = Date.UTC(y, m - 1, d, hh, mm, 0);
-  // Descobre o desvio real (0 ou -60min no Verão) formatando o palpite.
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Lisbon", hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  }).formatToParts(new Date(guess));
-  const p: Record<string, string> = {};
-  for (const q of parts) p[q.type] = q.value;
-  const hour = p.hour === "24" ? "00" : p.hour;
-  const asLocal = Date.UTC(
-    Number(p.year), Number(p.month) - 1, Number(p.day),
-    Number(hour), Number(p.minute), Number(p.second),
-  );
-  return guess + (guess - asLocal);
-}
 
 function parseHhmm(value: unknown): { hh: number; mm: number } | null {
   const m = /^(\d{1,2}):(\d{2})/.exec(String(value ?? "").trim());
