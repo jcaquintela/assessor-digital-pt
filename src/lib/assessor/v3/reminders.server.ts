@@ -38,7 +38,7 @@ export interface ReminderRow {
 
 // Conversão local Lisboa → UTC: fonte única em lisbon-day.ts (DST-aware).
 // Re-exportada aqui porque vários chamadores históricos a importam deste módulo.
-export { lisbonLocalToUtcIso } from "@/lib/assessor/lisbon-day";
+export { lisbonLocalToUtcIso };
 
 export function nowLisbonYmd(now: Date = new Date()): string {
   const p = new Intl.DateTimeFormat("en-GB", {
