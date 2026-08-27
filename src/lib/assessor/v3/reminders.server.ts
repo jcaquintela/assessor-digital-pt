@@ -12,6 +12,7 @@
 //  - A janela é `now - 30min .. now + 1min` para tolerar cron atrasado.
 
 import { foldLike } from "@/lib/search/normalize";
+import { lisbonLocalToUtcIso, lisbonHhMm } from "@/lib/assessor/lisbon-day";
 
 export type ReminderStatus = "scheduled" | "processing" | "sent" | "failed" | "cancelled";
 export type ReminderResourceType = "follow_up" | "event" | "prospecting_lead" | "other";
