@@ -5,6 +5,7 @@
 // como se escreve a cartela. O runner vive em `meeting-briefing.server.ts`.
 
 import { boldWa } from "../culture/whatsapp-format";
+import { lisbonHhMm } from "../lisbon-day";
 import { formatPersonBrief, type PersonBrief } from "../v3/person-brief";
 import { classifyEvent } from "../event-class";
 import { STAGE_LABEL, type DealStage } from "@/lib/deals/stages";
