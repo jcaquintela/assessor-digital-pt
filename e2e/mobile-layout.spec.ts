@@ -26,6 +26,7 @@ const ROTAS = [
   { nome: "Negócios", url: "/negocios" },
   { nome: "Seguimentos", url: "/seguimentos" },
   { nome: "Imóveis", url: "/imoveis" },
+  { nome: "Agenda", url: "/calendario" },
 ];
 
 async function autenticar(page: Page) {
