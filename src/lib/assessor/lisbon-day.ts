@@ -35,17 +35,54 @@ export function ymdDiffDays(a: string, b: string): number {
   return Math.round((ta - tb) / 864e5);
 }
 
+/**
+ * Instante (ms epoch) de uma hora local de Lisboa num dia de calendário.
+ *
+ * Fonte única do cálculo de offset (DST-aware): formata um palpite em UTC no
+ * fuso de Lisboa e corrige pela diferença encontrada. Toda a conversão
+ * local→UTC do produto passa por aqui — as cópias espalhadas por
+ * v2/domain.server.ts, v3/reminders.server.ts e supreme/event-window.ts foram
+ * eliminadas para que uma correcção de DST só tenha de ser feita num sítio.
+ */
+export function lisbonInstant(ymd: string, hh = 0, mm = 0, ss = 0): number {
+  const [y, m, d] = ymd.split("-").map(Number);
+  if (!y || !m || !d) return NaN;
+  const guess = Date.UTC(y, m - 1, d, hh, mm, ss);
+  return guess + (guess - lisbonPartsAsUtc(new Date(guess)));
+}
+
+/** Data+hora locais de Lisboa ("2026-07-29", "13:40") → instante ISO em UTC. */
+export function lisbonLocalToUtcIso(dateYmd: string, timeHm: string): string {
+  const [hh, mm] = String(timeHm).split(":").map((n) => parseInt(n, 10));
+  const ms = lisbonInstant(dateYmd, hh || 0, mm || 0);
+  if (!Number.isFinite(ms)) throw new Error(`data/hora inválida: ${dateYmd} ${timeHm}`);
+  return new Date(ms).toISOString();
+}
+
+/** Hora local de Lisboa (HH:MM, 24h) de um instante. "" se inválido. */
+export function lisbonHhMm(value: string | number | Date): string {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return HHMM_FMT.format(d);
+}
+
+const HHMM_FMT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Lisbon",
+  hour12: false,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 /** Instante ISO do fim do dia de Lisboa (limite superior seguro para queries). */
 export function endOfLisbonDayIso(now: Date = new Date()): string {
   const ymd = lisbonYmd(now);
   const [y, m, d] = ymd.split("-").map(Number);
-  // Meia-noite de amanhã em Lisboa, obtida por aproximação + correcção do fuso.
-  const guess = new Date(Date.UTC(y!, m! - 1, d! + 1, 0, 0, 0));
-  const offsetMs = guess.getTime() - lisbonInstantOfLocalMidnight(guess);
-  return new Date(guess.getTime() + offsetMs - 1).toISOString();
+  const tomorrow = new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10);
+  return new Date(lisbonInstant(tomorrow, 0, 0) - 1).toISOString();
 }
 
-function lisbonInstantOfLocalMidnight(d: Date): number {
+/** Partes locais de Lisboa relidas como se fossem UTC — base do cálculo de offset. */
+function lisbonPartsAsUtc(d: Date): number {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Lisbon",
     hour12: false,

@@ -5,6 +5,7 @@
 // como se escreve a cartela. O runner vive em `meeting-briefing.server.ts`.
 
 import { boldWa } from "../culture/whatsapp-format";
+import { lisbonHhMm } from "../lisbon-day";
 import { formatPersonBrief, type PersonBrief } from "../v3/person-brief";
 import { classifyEvent } from "../event-class";
 import { STAGE_LABEL, type DealStage } from "@/lib/deals/stages";
@@ -153,9 +154,7 @@ export function hasBriefContent(b: PersonBrief): boolean {
 }
 
 export function timePt(ms: number): string {
-  return new Intl.DateTimeFormat("pt-PT", {
-    timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit", hour12: false,
-  }).format(new Date(ms));
+  return lisbonHhMm(ms);
 }
 
 /** Texto final da cartela. Cabeçalho = motivo do compromisso + pessoa. */

@@ -12,6 +12,7 @@
 //  - A janela é `now - 30min .. now + 1min` para tolerar cron atrasado.
 
 import { foldLike } from "@/lib/search/normalize";
+import { lisbonLocalToUtcIso, lisbonHhMm } from "@/lib/assessor/lisbon-day";
 
 export type ReminderStatus = "scheduled" | "processing" | "sent" | "failed" | "cancelled";
 export type ReminderResourceType = "follow_up" | "event" | "prospecting_lead" | "other";
@@ -36,26 +37,9 @@ export interface ReminderRow {
   updated_at: string;
 }
 
-// Converte data+hora locais Europe/Lisbon → ISO UTC (DST-aware).
-// Idêntica à helper interna em v2/domain.server.ts para evitar acoplamento.
-export function lisbonLocalToUtcIso(dateYmd: string, timeHm: string): string {
-  const [hh, mm] = timeHm.split(":").map((n) => parseInt(n, 10));
-  const [y, mo, d] = dateYmd.split("-").map((n) => parseInt(n, 10));
-  const naiveUtc = Date.UTC(y, mo - 1, d, hh, mm, 0);
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  }).formatToParts(new Date(naiveUtc));
-  const m: Record<string, string> = {};
-  for (const p of parts) m[p.type] = p.value;
-  const asLisbonUtc = Date.UTC(
-    parseInt(m.year, 10), parseInt(m.month, 10) - 1, parseInt(m.day, 10),
-    parseInt(m.hour === "24" ? "0" : m.hour, 10), parseInt(m.minute, 10), parseInt(m.second, 10),
-  );
-  const offsetMin = (asLisbonUtc - naiveUtc) / 60_000;
-  return new Date(naiveUtc - offsetMin * 60_000).toISOString();
-}
+// Conversão local Lisboa → UTC: fonte única em lisbon-day.ts (DST-aware).
+// Re-exportada aqui porque vários chamadores históricos a importam deste módulo.
+export { lisbonLocalToUtcIso };
 
 export function nowLisbonYmd(now: Date = new Date()): string {
   const p = new Intl.DateTimeFormat("en-GB", {
@@ -67,10 +51,7 @@ export function nowLisbonYmd(now: Date = new Date()): string {
 }
 
 export function nowLisbonHhMm(now: Date = new Date()): string {
-  const p = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", hour12: false, hour: "2-digit", minute: "2-digit",
-  }).format(now);
-  return p;
+  return lisbonHhMm(now);
 }
 
 function isUniqueViolation(err: any): boolean {

@@ -7,7 +7,7 @@ import { isDealClosed } from "@/lib/deals/stages";
 import { DAILY_BRIEFING_PREFIX } from "../supreme/briefing.server";
 import { isFollowUpClosed, isFollowUpOpen } from "@/lib/follow-ups/state";
 import { computePriorities } from "../supreme/priorities.server";
-import { lisbonYmd, ymdDiffDays } from "@/lib/assessor/lisbon-day";
+import { lisbonYmd, ymdDiffDays, lisbonHhMm } from "@/lib/assessor/lisbon-day";
 
 /** O seguimento já foi tratado, desmarcado ou arquivado? */
 export async function isFollowUpSettled(supabase: any, followUpId: string): Promise<boolean> {
@@ -486,9 +486,7 @@ export async function dispatchDueFollowUpReminders(
     if (sentIds.has(fu.id)) { skipped++; continue; }
     const target = targets.get(fu.user_id) ?? null;
     if (!target || !v3Set.has(fu.user_id)) { skipped++; continue; }
-    const hhmm = new Intl.DateTimeFormat("pt-PT", {
-      timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit", hour12: false,
-    }).format(new Date(fu.due_date));
+    const hhmm = lisbonHhMm(fu.due_date);
     const text = sanitizeReply(`Lembrete: ${fu.title} (${hhmm}).`);
     const r = await sendReplyForChannel(target.channel, target.externalId, text);
     if (r.ok) {
