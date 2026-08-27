@@ -64,14 +64,30 @@ function isoDaysAgo(n: number): string {
   return new Date(Date.now() - n * 864e5).toISOString();
 }
 
-function todayRangeLisbon(now = new Date()): { start: string; end: string } {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(now);
-  const m: Record<string, string> = {};
-  for (const p of parts) m[p.type] = p.value;
-  const start = new Date(`${m.year}-${m.month}-${m.day}T00:00:00+00:00`);
-  return { start: start.toISOString(), end: new Date(start.getTime() + 864e5 - 1).toISOString() };
+/**
+ * Janela de "hoje" em Lisboa, como instantes reais.
+ *
+ * `follow_ups.due_date` é `timestamptz` (o sync do calendário grava o instante
+ * de início), por isso estes limites são comparados como instantes, não como
+ * dias soltos. A versão anterior tirava o dia correcto em Lisboa mas colava-lhe
+ * `T00:00:00+00:00` — meia-noite UTC. No horário de verão isso fazia o dia
+ * começar à 01:00 de Lisboa e um compromisso das 00:30 caía fora de "hoje".
+ *
+ * Os limites saem agora de `lisbonInstant`, que é DST-aware: nos dias de
+ * transição o dia tem 23h ou 25h e o fim é sempre "o instante antes da
+ * meia-noite seguinte", nunca início+24h.
+ */
+export function todayRangeLisbon(now = new Date()): { start: string; end: string; endTomorrow: string } {
+  const ymd = lisbonYmd(now);
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dayAfter = (n: number) =>
+    new Date(Date.UTC(y!, m! - 1, d! + n)).toISOString().slice(0, 10);
+  const startMs = lisbonInstant(ymd, 0, 0);
+  return {
+    start: new Date(startMs).toISOString(),
+    end: new Date(lisbonInstant(dayAfter(1), 0, 0) - 1).toISOString(),
+    endTomorrow: new Date(lisbonInstant(dayAfter(2), 0, 0) - 1).toISOString(),
+  };
 }
 
 export async function computeOverview(supabase: any, userId: string): Promise<OverviewSummary> {
