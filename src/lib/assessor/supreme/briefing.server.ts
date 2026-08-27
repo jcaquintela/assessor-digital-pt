@@ -9,6 +9,7 @@ import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
 import { computePriorities } from "./priorities.server";
 import { composeEmptyDayBriefing } from "../proactive/empty-day";
 import { formatPreEventNudge, isPreEventDue } from "./pre-event";
+import { lisbonYmd, lisbonHhMm } from "../lisbon-day";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
 
