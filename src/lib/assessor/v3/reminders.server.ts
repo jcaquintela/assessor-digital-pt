@@ -51,10 +51,7 @@ export function nowLisbonYmd(now: Date = new Date()): string {
 }
 
 export function nowLisbonHhMm(now: Date = new Date()): string {
-  const p = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", hour12: false, hour: "2-digit", minute: "2-digit",
-  }).format(now);
-  return p;
+  return lisbonHhMm(now);
 }
 
 function isUniqueViolation(err: any): boolean {
