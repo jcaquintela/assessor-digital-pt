@@ -10,6 +10,7 @@ import {
 } from "@/lib/calendar/providers";
 import { getCalendarStatus, startCalendarConnect } from "@/lib/calendar/calendar.functions";
 import { GMAIL_CONNECTOR_ID } from "@/lib/email/gmail/provider";
+import { GMAIL_CONNECT_ENABLED } from "@/lib/email/providers";
 import { OUTLOOK_CONNECTOR_ID } from "@/lib/email/outlook/provider";
 import { getGmailStatus, startGmailConnect } from "@/lib/email/gmail/gmail.functions";
 import { getOutlookMailStatus, startOutlookMailConnect } from "@/lib/email/outlook/outlook.functions";
