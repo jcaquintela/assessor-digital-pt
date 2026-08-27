@@ -10,6 +10,8 @@
 // dia (ou no dia seguinte). Havendo correspondência provável com hora
 // diferente, NUNCA assumir — perguntar se é actualização ou compromisso novo.
 
+import { lisbonHhMm } from "./lisbon-day";
+
 const STOPWORDS = new Set([
   "a", "o", "as", "os", "um", "uma", "de", "do", "da", "dos", "das", "com", "sem",
   "em", "no", "na", "nos", "nas", "para", "pra", "por", "ao", "aos", "e", "que",
