@@ -4,7 +4,7 @@
 // das 10:00". A sugestão de preparação só faz sentido ANTES do compromisso.
 // Um compromisso com hora tem de ser comparado com a hora atual, não apenas
 // com o dia de calendário.
-import { lisbonYmd, ymdDiffDays } from "@/lib/assessor/lisbon-day";
+import { lisbonYmd, ymdDiffDays, lisbonInstant } from "@/lib/assessor/lisbon-day";
 
 /** Sem duração na base de dados, assume-se uma hora de compromisso. */
 export const DEFAULT_EVENT_MINUTES = 60;
