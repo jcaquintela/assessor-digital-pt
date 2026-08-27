@@ -70,11 +70,7 @@ export function lisbonYmdFromIso(iso: string | null | undefined): string | null 
 /** Hora local de Lisboa (HH:MM) a partir de um instante ISO/UTC. */
 export function lisbonHhMmFromIso(iso: string | null | undefined): string | null {
   if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", hour12: false, hour: "2-digit", minute: "2-digit",
-  }).format(d);
+  return lisbonHhMm(iso) || null;
 }
 
 function daysApart(a: string, b: string): number {
