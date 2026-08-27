@@ -160,13 +160,9 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 864e5).toISOString();
 }
 
+/** Chave de dedupe do dia (YYYYMMDD) — dia de calendário vem da fonte única. */
 function todayKey(): string {
-  const p = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(new Date());
-  const m: Record<string, string> = {};
-  for (const x of p) m[x.type] = x.value;
-  return `${m.year}${m.month}${m.day}`;
+  return lisbonYmd(new Date()).replaceAll("-", "");
 }
 
 // Gera nudges para um consultor. Não envia — devolve drafts para gravar.

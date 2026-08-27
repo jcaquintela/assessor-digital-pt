@@ -3,6 +3,8 @@
 // Never invents dates. Used to override AI extraction so "amanhã" is never
 // silently converted to "hoje" (or vice versa).
 
+import { lisbonYmd } from "./lisbon-day";
+
 const MESES: Record<string, number> = {
   janeiro: 0, fevereiro: 1, março: 2, marco: 2, abril: 3, maio: 4, junho: 5,
   julho: 6, agosto: 7, setembro: 8, outubro: 9, novembro: 10, dezembro: 11,
@@ -14,18 +16,9 @@ const DIAS_SEMANA: Record<string, number> = {
   sábado: 6, sabado: 6,
 };
 
+// Dia de calendário em Lisboa — fonte única em lisbon-day.ts.
 function ymdInLisbon(d: Date): string {
-  // Format the date in Europe/Lisbon regardless of the host timezone.
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Lisbon",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(d);
-  const y = parts.find((p) => p.type === "year")!.value;
-  const m = parts.find((p) => p.type === "month")!.value;
-  const day = parts.find((p) => p.type === "day")!.value;
-  return `${y}-${m}-${day}`;
+  return lisbonYmd(d);
 }
 
 function addDaysYmd(ymd: string, delta: number): string {

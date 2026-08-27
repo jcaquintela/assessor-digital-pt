@@ -2,6 +2,8 @@
 // e formatação de resposta agrupada por dia em PT-PT (Europe/Lisbon).
 // Puro: sem I/O. Recebe as linhas da BD e devolve a string final.
 
+import { lisbonYmd } from "./lisbon-day";
+
 export type AgendaPeriod =
   | { kind: "today"; from: string; to: string; label: string }
   | { kind: "tomorrow"; from: string; to: string; label: string }
@@ -28,20 +30,13 @@ const WEEKDAY_PT = [
 ];
 
 // Devolve YYYY-MM-DD + weekday (0=domingo..6=sábado) no fuso Europe/Lisbon.
+// O dia vem da fonte única (lisbon-day.ts); o dia-da-semana é derivado desse
+// mesmo dia de calendário, para não haver dois cálculos de fuso diferentes.
 export function lisbonParts(d: Date): { ymd: string; weekday: number } {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-  }).formatToParts(d);
-  const m: Record<string, string> = {};
-  for (const p of parts) m[p.type] = p.value;
-  const wd: Record<string, number> = {
-    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
-  };
-  return { ymd: `${m.year}-${m.month}-${m.day}`, weekday: wd[m.weekday] ?? 0 };
+  const ymd = lisbonYmd(d);
+  const [y, m, day] = ymd.split("-").map(Number);
+  const weekday = new Date(Date.UTC(y!, m! - 1, day!)).getUTCDay();
+  return { ymd, weekday };
 }
 
 export function addDaysYmd(ymd: string, delta: number): string {

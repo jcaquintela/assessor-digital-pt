@@ -6,6 +6,7 @@
 
 import { isPlaceholderEmail } from "@/lib/profile/email";
 import { getEmailProvider } from "@/lib/email/provider";
+import { lisbonYmd, lisbonHhMm } from "@/lib/assessor/lisbon-day";
 
 export const DIGEST_TZ = "Europe/Lisbon";
 export const DIGEST_HOUR = 19;
@@ -13,30 +14,14 @@ export const DIGEST_HOUR = 19;
 export const DIGEST_LOCK_HOUR = 18;
 const ACTIVE_WINDOW_DAYS = 30;
 
-type Parts = { year: string; month: string; day: string; hour: string };
-
-function lisbonParts(now: Date): Parts {
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: DIGEST_TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    hour12: false,
-  });
-  const p = Object.fromEntries(fmt.formatToParts(now).map((x) => [x.type, x.value])) as Record<string, string>;
-  return { year: p.year!, month: p.month!, day: p.day!, hour: p.hour! };
-}
-
 /** Data de hoje em Lisboa (YYYY-MM-DD) — o dia do consultor, não o UTC. */
 export function lisbonDate(now: Date = new Date()): string {
-  const p = lisbonParts(now);
-  return `${p.year}-${p.month}-${p.day}`;
+  return lisbonYmd(now);
 }
 
 /** Hora local em Lisboa (0-23). */
 export function lisbonHour(now: Date = new Date()): number {
-  return Number(lisbonParts(now).hour);
+  return Number(lisbonHhMm(now).slice(0, 2));
 }
 
 const CATEGORY_LABEL: Record<string, string> = {

@@ -12,7 +12,7 @@
 //  - A janela é `now - 30min .. now + 1min` para tolerar cron atrasado.
 
 import { foldLike } from "@/lib/search/normalize";
-import { lisbonLocalToUtcIso, lisbonHhMm } from "@/lib/assessor/lisbon-day";
+import { lisbonLocalToUtcIso, lisbonHhMm, lisbonYmd } from "@/lib/assessor/lisbon-day";
 
 export type ReminderStatus = "scheduled" | "processing" | "sent" | "failed" | "cancelled";
 export type ReminderResourceType = "follow_up" | "event" | "prospecting_lead" | "other";
@@ -42,12 +42,7 @@ export interface ReminderRow {
 export { lisbonLocalToUtcIso };
 
 export function nowLisbonYmd(now: Date = new Date()): string {
-  const p = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(now);
-  const m: Record<string, string> = {};
-  for (const x of p) m[x.type] = x.value;
-  return `${m.year}-${m.month}-${m.day}`;
+  return lisbonYmd(now);
 }
 
 export function nowLisbonHhMm(now: Date = new Date()): string {

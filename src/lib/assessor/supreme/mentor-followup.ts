@@ -1,6 +1,8 @@
 // Seguimento sugerido a partir de um sinal do Mentor.
 // Determinístico: a mesma sugestão gera sempre o mesmo tipo, notas e prazo.
 
+import { lisbonYmd } from "../lisbon-day";
+
 export interface MentorFollowUpSuggestion {
   title: string;
   /** Tipo do seguimento — "chamada" é tarefa, não compromisso de agenda. */
@@ -40,8 +42,5 @@ export function mentorFollowUpSuggestion(tipKey: string): MentorFollowUpSuggesti
 
 /** Data-limite (YYYY-MM-DD) do seguimento sugerido. */
 export function mentorFollowUpDueDate(dueInDays: number, from = new Date()): string {
-  const d = new Date(from.getTime() + dueInDays * 864e5);
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(d);
+  return lisbonYmd(new Date(from.getTime() + dueInDays * 864e5));
 }

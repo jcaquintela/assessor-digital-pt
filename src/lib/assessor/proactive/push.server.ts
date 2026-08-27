@@ -10,6 +10,7 @@ import { computePriorities, findAwaitingOutcome } from "@/lib/assessor/supreme/p
 import { buildOutcomeCheckinPrompt } from "@/lib/assessor/interactive";
 import { sanitizeReply } from "@/lib/assessor/culture/sanitize";
 import { morningTemplatePayload, resolveCheckinTemplatePayload } from "./templates";
+import { lisbonYmd, lisbonHhMm } from "@/lib/assessor/lisbon-day";
 
 /**
  * Autorização para enviar fora da janela de 24h.
@@ -31,14 +32,7 @@ export async function templatesApproved(supabase?: any): Promise<boolean> {
 }
 
 function lisbonParts(now: Date) {
-  const p = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Lisbon",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  }).formatToParts(now);
-  const m: Record<string, string> = {};
-  for (const x of p) m[x.type] = x.value;
-  return { date: `${m.year}-${m.month}-${m.day}`, hour: Number(m.hour ?? "0") };
+  return { date: lisbonYmd(now), hour: Number(lisbonHhMm(now).slice(0, 2)) };
 }
 
 function hourOf(time: string | null | undefined, fallback: number): number {

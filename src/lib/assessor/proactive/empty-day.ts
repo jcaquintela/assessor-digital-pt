@@ -2,6 +2,8 @@
 // com uma sugestão de acção. O texto roda por semana para não soar a robô
 // em semanas consecutivas de agenda vazia.
 
+import { lisbonYmd } from "../lisbon-day";
+
 export const EMPTY_DAY_SUGGESTIONS: string[] = [
   "Boa oportunidade para fazeres a ronda de prospeção — só tirares uma foto a uma placa e eu trato do resto.",
   "Aproveita para ligar a dois ou três proprietários antigos — diz-me quem são e eu preparo o guião.",
@@ -10,10 +12,7 @@ export const EMPTY_DAY_SUGGESTIONS: string[] = [
 
 /** Semana ISO em Lisboa — base estável para rodar as variantes. */
 export function lisbonIsoWeek(now: Date): number {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(now);
-  const d = new Date(`${ymd}T00:00:00Z`);
+  const d = new Date(`${lisbonYmd(now)}T00:00:00Z`);
   const day = (d.getUTCDay() + 6) % 7; // segunda = 0
   d.setUTCDate(d.getUTCDate() - day + 3);
   const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
