@@ -872,9 +872,7 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   let reminderId: string | null = null;
   if (v.reminder_minutes && v.reminder_minutes > 0) {
     const remindAt = new Date(new Date(dueIsoDate).getTime() - v.reminder_minutes * 60_000);
-    const lisbonHm = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Europe/Lisbon", hour12: false, hour: "2-digit", minute: "2-digit",
-    }).format(remindAt);
+    const lisbonHm = lisbonHhMm(remindAt);
     const { data: rem } = await ctx.supabase
       .from("follow_ups")
       .insert({
