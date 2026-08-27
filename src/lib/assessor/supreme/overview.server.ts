@@ -91,9 +91,8 @@ export function todayRangeLisbon(now = new Date()): { start: string; end: string
 }
 
 export async function computeOverview(supabase: any, userId: string): Promise<OverviewSummary> {
-  const { start, end } = todayRangeLisbon();
   // Hoje + amanhã: quando já não há nada hoje, o dashboard mostra o primeiro de amanhã.
-  const endTomorrow = new Date(new Date(end).getTime() + 864e5).toISOString();
+  const { start, endTomorrow } = todayRangeLisbon();
 
   // Arquivado nunca conta: o resumo de /hoje tem de bater certo com as páginas
   // de cada módulo (Pessoas, Imóveis, Negócios), que já filtram `archived_at`.
