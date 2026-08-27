@@ -87,7 +87,7 @@ export function outboundSendConfirmation(args: {
   manualSend: boolean;
 }): string {
   return args.manualSend
-    ? `Guardei o rascunho para ${args.toLabel} na pasta Rascunhos do Outlook — abre-o e carrega em Enviar para seguir. A tua autorização fica no histórico em /comunicacao.`
+    ? `Deixei o rascunho pronto na tua caixa do Outlook, pasta Rascunhos. Ainda não tenho autorização para enviar por ti — é só abrires e carregares em Enviar, leva 10 segundos.`
     : `Enviado para ${args.toLabel}. Fica no histórico em /comunicacao.`;
 }
 

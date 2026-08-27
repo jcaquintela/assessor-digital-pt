@@ -77,9 +77,11 @@ describe("pré-visualização antes de confirmar", () => {
     expect(outboundIntro({ toName: "Ana", subject: "Sobre T3", manualSend: false })).toMatch(/Gmail/);
   });
 
-  it("10. mensagem final do Outlook diz onde carregar em Enviar", () => {
+  it("10. mensagem final do Outlook explica onde, o que e porquê", () => {
     const m = outboundSendConfirmation({ toLabel: "ana@exemplo.pt", manualSend: true });
-    expect(m).toMatch(/pasta Rascunhos do Outlook/);
-    expect(m).toMatch(/carrega em Enviar/);
+    expect(m).toMatch(/pasta Rascunhos/);
+    expect(m).toMatch(/carregares em Enviar/);
+    expect(m).toMatch(/não tenho autorização para enviar/);
+    expect(m).not.toMatch(/\bEnviado\b/);
   });
 });
