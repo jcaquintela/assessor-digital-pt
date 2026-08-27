@@ -42,7 +42,7 @@ export function GroupCardsRow<T>({
   }
 
   return (
-    <div className={`mb-4 grid min-w-0 grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3`}>
+    <div className={`mb-4 grid min-w-0 grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-3`}>
       {cards.map((c) => {
         const aberto = openKey === c.key;
         const expandeAqui = aberto && !!renderInline && c.inline;
