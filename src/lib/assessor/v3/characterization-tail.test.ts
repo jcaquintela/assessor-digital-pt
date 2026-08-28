@@ -232,7 +232,8 @@ describe("caracterização — rede de segurança no fim do turno", () => {
     });
     executeToolCallsMock.mockResolvedValue([{ name: "create_follow_up", ok: true, latencyMs: 1, data: {} }]);
     const reply = await turn(makeDb());
-    expect(reply).toBe(NATURAL_FALLBACKS.done);
+    expect(reply).not.toMatch(/não percebi/i);
+    expect(reply).toMatch(/Guardei o seguimento/i);
   });
 
   it("executou e mesmo assim perguntou → resposta afirmativa", async () => {
