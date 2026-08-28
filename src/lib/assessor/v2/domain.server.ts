@@ -676,36 +676,6 @@ export async function resolvePropertyFromText(ctx: DomainContext, text: string):
  * dia seguinte) com hora diferente. Ver `event-subject.ts`.
  */
 
-export interface ResolvedPerson {
-  personId: string | null;
-  name: string | null;
-  suggestions: Array<{ id: string; name: string; phone?: string | null; relationship_type?: string | null }>;
-}
-
-/**
- * Descobre de que pessoa se fala num compromisso quando o motor não devolveu
- * o id. Só liga quando há uma correspondência de palavra inteira e única;
- * caso contrário devolve o nome (e os parecidos) para o motor perguntar.
- */
-export async function resolvePersonFromText(ctx: DomainContext, text: string): Promise<ResolvedPerson> {
-  const name = personNameFromEventText(text);
-  if (!name) return { personId: null, name: null, suggestions: [] };
-  const { data } = await ctx.supabase
-    .from("people")
-    .select("id, name, phone, relationship_type")
-    .eq("user_id", ctx.userId)
-    .limit(500);
-  const rows = ((data as any[]) ?? []) as Array<{ id: string; name: string; phone?: string | null; relationship_type?: string | null }>;
-  const { exact, suggestions } = classifyPeopleMatches(name, rows);
-  if (exact.length === 1) return { personId: exact[0]!.id, name, suggestions: [] };
-  const brief = (r: { id: string; name: string; phone?: string | null; relationship_type?: string | null }) =>
-    ({ id: r.id, name: r.name, phone: r.phone ?? null, relationship_type: r.relationship_type ?? null });
-  if (exact.length > 1) {
-    return { personId: null, name, suggestions: exact.slice(0, 4).map(brief) };
-  }
-  return { personId: null, name, suggestions: suggestions.slice(0, 3).map(brief) };
-}
-
 async function findRescheduleCandidateInDb(
   ctx: DomainContext,
   incoming: { title: string; date: string; time: string },
