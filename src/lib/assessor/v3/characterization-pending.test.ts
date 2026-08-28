@@ -806,3 +806,54 @@ describe("caracterização — higiene dos rascunhos", () => {
     expect(pendings[0].status).toBe("expired");
   });
 });
+
+// ── Fusão dos ramos de confirmação de contacto ───────────────────────────
+describe("confirmação de contacto — caminho único", () => {
+  const ask = (name: string) => ({
+    name, ok: true, latencyMs: 1,
+    data: {
+      needsPersonConfirmation: true,
+      mode: "confirm_exact",
+      personName: "Ana",
+      suggestions: [{ id: "p1", name: "Ana Silva" }],
+      candidateIds: ["p1"],
+      incoming: { title: "Visita" },
+    },
+  });
+
+  it("dois pedidos no mesmo turno geram uma só pergunta (primeiro match ganha)", async () => {
+    const db = makeDb();
+    decideMock.mockResolvedValue({
+      ok: true,
+      decision: {
+        confidence: 0.9, action: "execute", memory_writes: [],
+        tool_calls: [{ name: "create_event", arguments: {} }, { name: "create_follow_up", arguments: {} }],
+        natural_reply: "Certo.",
+      },
+      usage: { inputTokens: 0, outputTokens: 0 }, latencyMs: 0,
+    });
+    executeToolCallsMock.mockResolvedValue([ask("create_event"), ask("create_follow_up")]);
+    await turn(db, "marca visita e liga à Ana amanhã");
+    const created = pendings.filter((p) => p.intent === "confirm_event_person");
+    expect(created).toHaveLength(1);
+    expect(created[0].structured_payload.tool).toBe("create_event");
+  });
+
+  it("proprietário do imóvel: 'salta' fala em imóvel, não em seguimento", async () => {
+    const db = makeDb();
+    setPending(db, {
+      intent: "confirm_event_person",
+      payload: {
+        tool: "update_property",
+        personName: "Ana",
+        suggestions: [{ id: "p1", name: "Ana Silva" }],
+        incoming: { property_id: "imo-1" },
+        mode: "confirm_exact",
+      },
+      question: "É a Ana Silva?",
+    });
+    const reply = await turn(db, "salta");
+    expect(reply).toContain("imóvel");
+    expect(reply).not.toContain("seguimento");
+  });
+});
