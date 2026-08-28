@@ -121,7 +121,11 @@ function isWhitelisted(host: string): boolean {
 export function isIndividualListing(url: string): boolean {
   let path = "";
   try {
-    path = new URL(url).pathname.toLowerCase();
+    const u = new URL(url);
+    path = u.pathname.toLowerCase();
+    // casa.sapo.pt e afins põem o identificador do anúncio na query (?id=...).
+    const qid = u.searchParams.get("id");
+    if (qid && /^\d{4,}$/.test(qid)) return true;
   } catch {
     return false;
   }
@@ -136,7 +140,9 @@ function listingId(url: string): string {
   const host = hostOf(url) ?? url;
   let path = "";
   try {
-    path = new URL(url).pathname;
+    const u = new URL(url);
+    const qid = u.searchParams.get("id");
+    path = qid && /^\d{4,}$/.test(qid) ? `${u.pathname}/${qid}` : u.pathname;
   } catch {
     path = url;
   }
