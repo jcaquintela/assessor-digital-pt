@@ -271,10 +271,18 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
       continue;
     }
     const shown = rows.slice(0, MAX_ITEMS);
+    // Agenda de vários dias: cada linha leva o dia, senão parece tudo do mesmo.
+    if (r.name === "search_agenda") {
+      const days = new Set(shown.map((row) => dayDdMm(s(row.due_date))).filter(Boolean));
+      if (days.size > 1) for (const row of shown) row.__showDay = true;
+    }
     const lines = shown.map((row) => `- ${lineFor(r.name, row)}`.trim());
     const total = Number((r.data as any)?.total);
     const count = Number.isFinite(total) && total > rows.length ? total : rows.length;
-    const header = count === 1 ? head.one : head.many(count);
+    const rangeLabel = r.name === "search_agenda" ? s(d?.range?.label) : "";
+    const header = rangeLabel
+      ? (count === 1 ? `Para ${rangeLabel} tens 1 compromisso:` : `Para ${rangeLabel} tens ${count} compromissos:`)
+      : count === 1 ? head.one : head.many(count);
     // Quando a lista é grande, mostramos os mais recentes mas nunca trocamos
     // silenciosamente o pedido de "todos" por uma pergunta fechada: a opção de
     // ver tudo tem de estar sempre na resposta.
