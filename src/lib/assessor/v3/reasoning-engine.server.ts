@@ -136,6 +136,7 @@ import { readSparringState, setSparringTopic, stopSparring } from "./sparring-st
 import { logSparringSuppression } from "./sparring-audit.server";
 import { assertNoSparringLeak } from "./sparring-assert.server";
 import { logAiTurn, recordEngineTurn } from "./telemetry-repo.server";
+import { runEngineTail } from "./engine-tail.server";
 
 
 
