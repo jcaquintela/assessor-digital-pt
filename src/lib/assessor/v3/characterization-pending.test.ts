@@ -35,6 +35,7 @@ const tool = {
   create_follow_up: vi.fn(async (..._a: any[]) => ({ ok: true, data: { follow_up: { id: "f9" } } })),
   create_prospecting_lead: vi.fn(async (..._a: any[]) => ({ ok: true, data: { lead: { id: "lead-1" } } })),
   create_deal: vi.fn(async (..._a: any[]) => ({ ok: true, data: { id: "d1", title: "Venda do T3", linkedMovements: 0 } })),
+  update_property: vi.fn(async (..._a: any[]) => ({ ok: true, data: { property: { id: "imo-1" } } })),
   create_financial_movement: vi.fn(async (..._a: any[]) => ({ ok: true, data: {} })),
 };
 const keepAudioFile = vi.fn(async () => undefined);
