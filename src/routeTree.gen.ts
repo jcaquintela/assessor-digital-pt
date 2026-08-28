@@ -33,6 +33,7 @@ import { Route as AdminRotasRouteImport } from './routes/admin/rotas'
 import { Route as AdminRastreabilidadeOrigemRouteImport } from './routes/admin/rastreabilidade-origem'
 import { Route as AdminQualidadeRouteImport } from './routes/admin/qualidade'
 import { Route as AdminPlanosRouteImport } from './routes/admin/planos'
+import { Route as AdminPerfilGotasRouteImport } from './routes/admin/perfil-gotas'
 import { Route as AdminPainelHojeRouteImport } from './routes/admin/painel-hoje'
 import { Route as AdminNegocioRouteImport } from './routes/admin/negocio'
 import { Route as AdminIntegracoesFlagsRouteImport } from './routes/admin/integracoes-flags'
@@ -238,6 +239,11 @@ const AdminQualidadeRoute = AdminQualidadeRouteImport.update({
 const AdminPlanosRoute = AdminPlanosRouteImport.update({
   id: '/planos',
   path: '/planos',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPerfilGotasRoute = AdminPerfilGotasRouteImport.update({
+  id: '/perfil-gotas',
+  path: '/perfil-gotas',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminPainelHojeRoute = AdminPainelHojeRouteImport.update({
@@ -756,6 +762,7 @@ export interface FileRoutesByFullPath {
   '/admin/integracoes-flags': typeof AdminIntegracoesFlagsRoute
   '/admin/negocio': typeof AdminNegocioRoute
   '/admin/painel-hoje': typeof AdminPainelHojeRoute
+  '/admin/perfil-gotas': typeof AdminPerfilGotasRoute
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/rastreabilidade-origem': typeof AdminRastreabilidadeOrigemRoute
@@ -866,6 +873,7 @@ export interface FileRoutesByTo {
   '/admin/integracoes-flags': typeof AdminIntegracoesFlagsRoute
   '/admin/negocio': typeof AdminNegocioRoute
   '/admin/painel-hoje': typeof AdminPainelHojeRoute
+  '/admin/perfil-gotas': typeof AdminPerfilGotasRoute
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/rastreabilidade-origem': typeof AdminRastreabilidadeOrigemRoute
@@ -979,6 +987,7 @@ export interface FileRoutesById {
   '/admin/integracoes-flags': typeof AdminIntegracoesFlagsRoute
   '/admin/negocio': typeof AdminNegocioRoute
   '/admin/painel-hoje': typeof AdminPainelHojeRoute
+  '/admin/perfil-gotas': typeof AdminPerfilGotasRoute
   '/admin/planos': typeof AdminPlanosRoute
   '/admin/qualidade': typeof AdminQualidadeRoute
   '/admin/rastreabilidade-origem': typeof AdminRastreabilidadeOrigemRoute
@@ -1092,6 +1101,7 @@ export interface FileRouteTypes {
     | '/admin/integracoes-flags'
     | '/admin/negocio'
     | '/admin/painel-hoje'
+    | '/admin/perfil-gotas'
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/rastreabilidade-origem'
@@ -1202,6 +1212,7 @@ export interface FileRouteTypes {
     | '/admin/integracoes-flags'
     | '/admin/negocio'
     | '/admin/painel-hoje'
+    | '/admin/perfil-gotas'
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/rastreabilidade-origem'
@@ -1314,6 +1325,7 @@ export interface FileRouteTypes {
     | '/admin/integracoes-flags'
     | '/admin/negocio'
     | '/admin/painel-hoje'
+    | '/admin/perfil-gotas'
     | '/admin/planos'
     | '/admin/qualidade'
     | '/admin/rastreabilidade-origem'
@@ -1587,6 +1599,13 @@ declare module '@tanstack/react-router' {
       path: '/planos'
       fullPath: '/admin/planos'
       preLoaderRoute: typeof AdminPlanosRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/perfil-gotas': {
+      id: '/admin/perfil-gotas'
+      path: '/perfil-gotas'
+      fullPath: '/admin/perfil-gotas'
+      preLoaderRoute: typeof AdminPerfilGotasRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/painel-hoje': {
@@ -2373,6 +2392,7 @@ interface AdminRouteRouteChildren {
   AdminIntegracoesFlagsRoute: typeof AdminIntegracoesFlagsRoute
   AdminNegocioRoute: typeof AdminNegocioRoute
   AdminPainelHojeRoute: typeof AdminPainelHojeRoute
+  AdminPerfilGotasRoute: typeof AdminPerfilGotasRoute
   AdminPlanosRoute: typeof AdminPlanosRoute
   AdminQualidadeRoute: typeof AdminQualidadeRoute
   AdminRastreabilidadeOrigemRoute: typeof AdminRastreabilidadeOrigemRoute
@@ -2411,6 +2431,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminIntegracoesFlagsRoute: AdminIntegracoesFlagsRoute,
   AdminNegocioRoute: AdminNegocioRoute,
   AdminPainelHojeRoute: AdminPainelHojeRoute,
+  AdminPerfilGotasRoute: AdminPerfilGotasRoute,
   AdminPlanosRoute: AdminPlanosRoute,
   AdminQualidadeRoute: AdminQualidadeRoute,
   AdminRastreabilidadeOrigemRoute: AdminRastreabilidadeOrigemRoute,

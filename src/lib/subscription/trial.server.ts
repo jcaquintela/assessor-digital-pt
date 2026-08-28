@@ -278,34 +278,6 @@ export async function sendTrialValueSummaries(
   return { sent };
 }
 
-/** Dia 12: pedido de escolha de plano. */
-export async function askTrialChoice(
-  supabaseAdmin: any,
-  opts: { now?: Date } = {},
-): Promise<{ asked: string[] }> {
-  const now = opts.now ?? new Date();
-  const rows = await loadActiveTrials(supabaseAdmin);
-  const asked: string[] = [];
-
-  for (const r of rows) {
-    if (r.trial_choice_asked_at || r.trial_choice || !r.trial_started_at) continue;
-    const elapsedDays = (now.getTime() - new Date(r.trial_started_at).getTime()) / DAY;
-    if (elapsedDays < TRIAL_CHOICE_DAY) continue;
-
-    const { trialChoiceText } = await import("@/lib/assessor/proactive/templates");
-    const ok = await notify(supabaseAdmin, r.id, trialChoiceText(firstName(r.name)), "trial_choice");
-    if (!ok) continue;
-
-    await supabaseAdmin
-      .from("profiles")
-      .update({ trial_choice_asked_at: now.toISOString() } as never)
-      .eq("id", r.id);
-    await audit(supabaseAdmin, "trial_choice_asked", r.id, "Pedido de escolha de plano (dia 12).", {});
-    asked.push(r.id);
-  }
-  return { asked };
-}
-
 /**
  * Aviso de fim próximo (dia 12), por WhatsApp com fallback Telegram. Usa
  * template aprovado quando a janela de 24h já fechou.
@@ -379,10 +351,11 @@ export async function warnExpiringTrials(
       message_type: "trial_ending",
       status: "sent",
     } as never);
-    await supabaseAdmin
-      .from("profiles")
-      .update({ trial_warned_at: now.toISOString() } as never)
-      .eq("id", r.id);
+    // O aviso é também o pedido de escolha de plano: marca os dois carimbos
+    // para que a resposta ("Pro", "Base") seja lida como escolha.
+    const patch: Record<string, unknown> = { trial_warned_at: now.toISOString() };
+    if (!r.trial_choice && !r.trial_choice_asked_at) patch.trial_choice_asked_at = now.toISOString();
+    await supabaseAdmin.from("profiles").update(patch as never).eq("id", r.id);
     await audit(supabaseAdmin, "trial_ending_warning", r.id, `Aviso de fim de período experimental (${days} dias).`, {
       days_left: days, channel,
     });
@@ -478,12 +451,13 @@ export async function expireDueTrials(
 /** Corrida diária: dia 7, dia 12 e fim aos 14. */
 export async function runTrialLifecycle(supabaseAdmin: any, opts: { now?: Date } = {}) {
   const summary = await sendTrialValueSummaries(supabaseAdmin, opts);
-  const ask = await askTrialChoice(supabaseAdmin, opts);
+  // Fonte única do aviso "faltam 2 dias": warnExpiringTrials. O antigo
+  // askTrialChoice (dia 12) disparava no mesmo turno e duplicava a mensagem.
   const warn = await warnExpiringTrials(supabaseAdmin, opts);
   const exp = await expireDueTrials(supabaseAdmin, opts);
   return {
     valueSummaries: summary.sent.length,
-    choiceAsked: ask.asked.length,
+    choiceAsked: warn.warned.length,
     warned: warn.warned.length,
     expired: exp.expired.length,
     details: exp.expired,
