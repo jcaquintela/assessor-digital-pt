@@ -135,6 +135,15 @@ export const ListUncategorizedPropertiesArgs = z.object({
 });
 export type ListUncategorizedPropertiesArgs = z.infer<typeof ListUncategorizedPropertiesArgs>;
 
+// Comparáveis de mercado (pesquisa web dirigida). LEITURA — nunca escreve.
+export const SearchSimilarListingsArgs = z.object({
+  property_id: z.string().uuid().optional().nullable(),
+  property_query: z.string().min(2).optional().nullable(),
+  typology: z.string().min(1).max(20).optional().nullable(),
+  location: z.string().min(2).max(80).optional().nullable(),
+});
+export type SearchSimilarListingsArgs = z.infer<typeof SearchSimilarListingsArgs>;
+
 export const SetPropertyCategoryArgs = z.object({
   property_id: z.string().uuid().optional().nullable(),
   // O modelo nem sempre traz o id do search — aceitamos também a morada/título
@@ -1135,6 +1144,23 @@ TOOL_SPECS.push(
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_similar_listings",
+      description:
+        "Procura na web anúncios de imóveis SEMELHANTES a um imóvel do consultor ('imóveis parecidos ao T3 de Gaia', 'o que há no mercado como este', 'comparáveis'). Só a pedido explícito. NÃO é avaliação nem estimativa de valor: devolve anúncios publicados como referência rápida. Passa property_id se o tiveres do search_properties, senão property_query com a morada/título dito.",
+      parameters: {
+        type: "object",
+        properties: {
+          property_id: { type: ["string", "null"], format: "uuid" },
+          property_query: { type: ["string", "null"], description: "Morada ou título dito pelo consultor." },
+          typology: { type: ["string", "null"], description: "T2, T3, moradia… se o consultor disser." },
+          location: { type: ["string", "null"], description: "Zona, se o consultor disser." },
+        },
+      },
+    },
+  },
 );
 
 export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
@@ -1172,6 +1198,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   list_property_categories: ListPropertyCategoriesArgs,
   list_uncategorized_properties: ListUncategorizedPropertiesArgs,
   set_property_category: SetPropertyCategoryArgs,
+  search_similar_listings: SearchSimilarListingsArgs,
 };
 
 export const TOOL_NAMES = Object.keys(ZOD_BY_TOOL);
