@@ -95,7 +95,7 @@ export async function generateConflictNudges(
   const rows = ((follows as any[]) ?? []).filter((f) => {
     if (!isFollowUpOpen(f)) return false;
     if (!belongsInDailyAgenda(f)) return false;
-    if (effectiveEventCategory(f) === "aniversarios") return false;
+    if (String(f.event_category ?? "") === "aniversarios") return false;
     return true;
   });
 
