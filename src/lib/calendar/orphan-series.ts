@@ -11,6 +11,8 @@
 // Este módulo tem a parte pura (que linhas são candidatas a master órfão), para
 // poder ser testada sem tocar no Microsoft Graph.
 
+import { isFollowUpOpen } from "@/lib/follow-ups/state";
+
 export interface ImportedEventRow {
   id: string;
   title: string | null;
@@ -20,7 +22,7 @@ export interface ImportedEventRow {
   external_reference?: string | null;
 }
 
-const SETTLED = new Set(["cancelado", "cancelada", "arquivado", "concluido", "concluído"]);
+// Estados terminais vêm da fonte única (isFollowUpOpen) — nunca uma lista local.
 
 /**
  * Candidatos a master órfão: compromisso importado do Outlook, ainda aberto,
@@ -36,7 +38,7 @@ export function orphanMasterCandidates(
   return rows
     .filter((r) => !!r.external_reference)
     .filter((r) => !r.archived_at)
-    .filter((r) => !SETTLED.has(String(r.status ?? "").toLowerCase()))
+    .filter((r) => isFollowUpOpen({ status: r.status, archived_at: r.archived_at }))
     .filter((r) => {
       const t = r.due_date ? new Date(r.due_date).getTime() : NaN;
       return Number.isFinite(t) && t < nowMs;
