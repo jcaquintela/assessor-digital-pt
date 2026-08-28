@@ -402,16 +402,10 @@ async function runReasoningEngineInner(
   // personagem. Em treino, o turno inteiro é tratado aqui e nada toca na base
   // de dados.
   {
-    const state = await readSparringState(supabase as never, userId, channel);
-    const turn = resolveSparringTurn({ state, text: trimmed });
-    if (turn.handleAsSparring) {
-      return await runSparringTurn({ supabase, userId, channel, trimmed, turn });
-    }
-    if (turn.stale || (turn.wasPaused && !turn.resumed)) {
-      // Nunca fica preso: treino esquecido ou pausa não retomada limpa o estado.
-      try { await stopSparring(supabase as never, userId, channel); } catch { /* noop */ }
-    }
+    const sparred = await runSparringGuard({ supabase, userId, channel, trimmed });
+    if (sparred) return sparred;
   }
+
 
 
 
