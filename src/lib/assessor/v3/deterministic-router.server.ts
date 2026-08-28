@@ -10,7 +10,6 @@
 import type { DomainContext } from "../v2/domain.server";
 import { TOOL_REGISTRY } from "../v2/domain.server";
 import { logAiTurn } from "./telemetry-repo.server";
-import { applySafetyNet } from "./safety-net.server";
 import { NATURAL_FALLBACKS } from "../culture/sanitize";
 import { formatQueryResults } from "./query-results";
 import { detectContactReadQuery, detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
@@ -467,4 +466,3 @@ export const ROUTER_CASES = {
   openQuestionCase,
 };
 
-void applySafetyNet;
