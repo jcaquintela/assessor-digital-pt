@@ -25,7 +25,7 @@ import {
   expireDueTrials,
   markTrialConverted,
   sendTrialValueSummaries,
-  askTrialChoice,
+  runTrialLifecycle,
   readTrialChoice,
   setTrialChoice,
   TRIAL_DAYS,
@@ -113,13 +113,24 @@ describe("trial WhatsApp de 14 dias", () => {
     expect((await sendTrialValueSummaries(db as any, { now: NOW })).sent).toHaveLength(0);
   });
 
-  it("dia 12: pede a escolha de plano", async () => {
+  it("dia 12: um só aviso de fim de período experimental (nunca dois)", async () => {
     const db = baseDb({
       trial_status: "active", trial_started_at: inDays(-12), trial_expires_at: inDays(2),
     });
-    const r = await askTrialChoice(db as any, { now: NOW });
-    expect(r.asked).toEqual([USER]);
+    await runTrialLifecycle(db as any, { now: NOW });
+    const avisos = db.state.assessor_messages.filter(
+      (m: any) => m.message_type === "trial_ending" || m.message_type === "trial_choice",
+    );
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].content).toMatch(/Consultor/);
+    expect(avisos[0].content).toMatch(/ficas no Base/i);
+    // O aviso vale também como pedido de escolha: a resposta é lida como plano.
     expect(db.state.profiles[0].trial_choice_asked_at).toBeTruthy();
+
+    await runTrialLifecycle(db as any, { now: NOW });
+    expect(
+      db.state.assessor_messages.filter((m: any) => m.message_type === "trial_ending"),
+    ).toHaveLength(1);
   });
 
   it("lê a escolha em linguagem natural", () => {
