@@ -277,7 +277,8 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
       empty: "Não encontrei nada com esses critérios.",
     };
     if (!rows.length) {
-      blocks.push(head.empty);
+      const label = r.name === "search_agenda" ? s(d?.range?.label) : "";
+      blocks.push(label ? `Não tens compromissos para ${label}.` : head.empty);
       continue;
     }
     const shown = rows.slice(0, MAX_ITEMS);
