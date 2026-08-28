@@ -5,6 +5,8 @@
 // em voz alta a um cliente. Isto separa o áudio nesses itens e escreve a
 // proposta única que o consultor confirma de uma vez.
 
+import { describeCandidates } from "@/lib/people/name-match";
+
 export type BreakdownKind = "fact" | "follow_up" | "note";
 
 export interface BreakdownItem {
@@ -118,9 +120,8 @@ export function pendingPersonAmbiguities(
 /** Mesmo padrão de escolha usado nos outros caminhos: índice, nome, telefone. */
 export function formatPersonAmbiguityQuestion(
   a: { index: number; name: string; candidates: BreakdownPersonCandidate[] },
-  describe: (rows: BreakdownPersonCandidate[]) => string[],
 ): string {
-  const labels = describe(a.candidates.slice(0, 4));
+  const labels = describeCandidates(a.candidates.slice(0, 4));
   const list = labels.map((l, i) => `${i + 1}. ${l}`).join("\n");
   const head = a.candidates.length === 1
     ? `No ponto ${a.index + 1}, o "${a.name}" é este contacto?`
@@ -147,10 +148,13 @@ export function formatBreakdownProposal(breakdown: AudioBreakdown): string {
   const head = breakdown.subject
     ? `Ouvi o áudio sobre ${breakdown.subject}. Separei em ${breakdown.items.length} coisas:`
     : `Ouvi o áudio. Separei em ${breakdown.items.length} coisas:`;
+  const amb = pendingPersonAmbiguities(breakdown);
   const confidential = breakdown.items.some((i) => i.kind === "note" && i.confidential);
-  const tail = confidential
+  const base = confidential
     ? "A nota confidencial fica só para ti — nunca sai em nada que eu prepare para outra pessoa.\n\nSe algum ponto estiver errado, diz-me qual (ex.: 'o 2 é amanhã às 10h'). Guardo tudo assim?"
     : "Se algum ponto estiver errado, diz-me qual (ex.: 'o 2 é amanhã às 10h'). Guardo tudo assim?";
+  // A dúvida de contacto sai na mesma confirmação — nunca numa segunda conversa.
+  const tail = amb.length ? formatPersonAmbiguityQuestion(amb[0]!) : base;
   return `${head}\n\n${lines.join("\n")}\n\n${tail}`;
 }
 
