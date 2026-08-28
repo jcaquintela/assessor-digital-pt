@@ -67,7 +67,7 @@ describe("TelemetryRepo", () => {
       error: null, confidence: 0.8,
     });
     expect(traceId).toBe("trace-1");
-    expect(db.writes.map((w) => w.table)).toEqual([
+    expect(db.writes.map((w: { table: string }) => w.table)).toEqual([
       "assessor_reasoning_traces", "assessor_ai_logs",
     ]);
     expect(db.writes[1]?.row).toMatchObject({
