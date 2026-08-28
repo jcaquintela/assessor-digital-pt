@@ -180,7 +180,8 @@ export function trialEndingText(name: string, days: number) {
   return (
     `Olá${name ? ` ${name}` : ""}. O teu período experimental termina em ${days} dias. ` +
     "A conta é sempre a mesma e nada do que organizámos se perde — só muda o que fica " +
-    "disponível. Diz-me com que plano queres continuar: Consultor, Pro ou Base."
+    "disponível. Diz-me com que plano queres continuar: *Consultor*, *Pro* ou *Base*. " +
+    "Se não me disseres nada, ficas no Base — a conta e o histórico mantêm-se iguais."
   );
 }
 
@@ -211,7 +212,10 @@ export function trialValueSummaryText(
   );
 }
 
-/** Dia 12: escolha de plano, com o que acontece se não responderes. */
+/**
+ * @deprecated Fundido em trialEndingText — havia duas mensagens quase iguais
+ * no mesmo dia. Mantido só para histórico; não usar.
+ */
 export function trialChoiceText(name: string) {
   return (
     `Olá${name ? ` ${name}` : ""}. Faltam 2 dias para acabar o período experimental. ` +
