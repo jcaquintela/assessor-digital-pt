@@ -364,89 +364,19 @@ async function runReasoningEngineInner(
     }
 
 
-    // Um pendente antigo, cuja pergunta já não é a que está em aberto, não
-    // pode ser resolvido por uma resposta destinada a outro assunto.
-    if (
-      pending &&
-      !isAnswerablePending(pending, {
-        lastAssistantContent: lastAssistantContent0,
+    // Higiene do rascunho vivo (pendente caducado → reabertura de
+    // confirmação velha → "só registar"). Extraído para
+    // `stale-pending.server.ts` (Lote 8) — mesma ordem.
+    {
+      const stale = await resolveStalePending({
+        ctx, supabase, userId, channel, trimmed, pending,
+        lastAssistantContent0, lastAssistantAskedQuestion,
         quotedText: input.quotedText ?? null,
-      })
-    ) {
-      await markPendingActionStatus(supabase, pending.id, "expired", {
-        error_message: "stale: pergunta já não estava em aberto",
       });
-      // Uma resposta objetiva nunca cai no vazio: dizemos que caducou e
-      // reperguntamos, em vez de responder "a que te referes?". Mas só quando
-      // a pergunta era mesmo a última coisa dita pelo Afonso — se a conversa
-      // já seguiu para outro assunto, um "ok" solto é conversa normal.
-      const { pendingIsLastQuestion, quotedMatchesPending } = await import("../pending-answerable");
-      const wasOnScreen =
-        pendingIsLastQuestion(pending, lastAssistantContent0) ||
-        quotedMatchesPending(pending, input.quotedText ?? null);
-      if (wasOnScreen && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
-        const { expiredConfirmationReply, isDestructiveConfirmation } =
-          await import("../expired-confirmation");
-        const reply = expiredConfirmationReply(
-          pending.current_question ?? pending.pending_question,
-          {
-            destructive: isDestructiveConfirmation(
-              pending.intent,
-              pending.structured_payload as Record<string, unknown>,
-            ),
-          },
-        );
-        pending = null;
-        return { reply };
-      }
-      pending = null;
+      if (stale.kind === "reply") return stale.outcome;
+      pending = stale.pending;
     }
 
-    // Sem rascunho vivo, mas o consultor respondeu "sim"/"não": se houve uma
-    // confirmação a caducar há pouco, assumimos que era essa e reperguntamos.
-    if (!pending && !lastAssistantAskedQuestion && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
-      const { findRecentExpiredConfirmation } = await import("../memory.server");
-      const stale = await findRecentExpiredConfirmation(supabase, userId, channel);
-      const { pendingIsLastQuestion: staleOnScreen, quotedMatchesPending: staleQuoted } =
-        await import("../pending-answerable");
-      // Só reabrimos o assunto se a pergunta caducada ainda era a última coisa
-      // dita, ou se o consultor citou mesmo essa mensagem.
-      const staleRelevant =
-        !!stale &&
-        (staleOnScreen(stale, lastAssistantContent0) ||
-          staleQuoted(stale, input.quotedText ?? null));
-      if (stale && staleRelevant) {
-        const { expiredConfirmationReply, isDestructiveConfirmation } =
-          await import("../expired-confirmation");
-        // Fecha o assunto: o aviso é dado uma vez, não a cada "sim" solto.
-        await markPendingActionStatus(supabase, stale.id, "cancelled", {
-          error_message: "confirmação caducada — avisado o consultor",
-        });
-        return {
-          reply: expiredConfirmationReply(stale.current_question ?? stale.pending_question, {
-            destructive: isDestructiveConfirmation(
-              stale.intent,
-              stale.structured_payload as Record<string, unknown>,
-            ),
-          }),
-        };
-      }
-    }
-
-    // "Só registar" / "sem lembrete": recusa explícita de agendar. Fecha já o
-    // rascunho e guarda o assunto em Diversos, em vez de o deixar vivo.
-    if (pending && isRegisterOnly(trimmed)) {
-      const content = String(pending.original_content ?? "").trim() || trimmed;
-      await markPendingActionStatus(supabase, pending.id, "cancelled", {
-        error_message: "consultor pediu só registo, sem lembrete",
-      });
-      const saved = await archiveToMiscellaneous(ctx, content, "ficou só registado, sem lembrete");
-      return {
-        reply: saved
-          ? "Certo — fica só registado, sem lembrete. Deixei em Diversos."
-          : "Certo — fica só registado, sem lembrete.",
-      };
-    }
 
     pendingForArchive = pending ?? null;
     // Escolha de contacto: o consultor escolheu (por botão no painel ou por
