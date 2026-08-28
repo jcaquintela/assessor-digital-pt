@@ -125,6 +125,12 @@ import { runDeterministicRouter } from "./deterministic-router.server";
 
 import { HISTORY_LIMIT, nowLisbonHuman, nowLisbonYmd, toHistoryPreview } from "./engine-shared";
 import { shapeExecutionOutcome, shapeAgendaAsks, shapeToolReplies } from "./post-act-reply.server";
+import { runCompletionPass } from "./completion-pass.server";
+import { runTurnOpeners } from "./turn-openers.server";
+import { runScriptOfferPending, runRecurrenceAndCancelChoice } from "./pre-pending.server";
+import { resolveStalePending } from "./stale-pending.server";
+import { resolveBareConfirmation } from "./bare-confirmation.server";
+
 
 // Padrão de linguagem de incompreensão. Usado (a) para nunca comunicar
 // falha depois de uma execução bem sucedida e (b) para reclassificar o
