@@ -158,6 +158,27 @@ import {
   recordProductFeedbackPending,
 } from "./pending-resolvers/feedback.server";
 import { financeCommissionShortcut } from "./pending-resolvers/finance-commission.server";
+import {
+  confirmEventPersonPending,
+  rejectEventPersonPending,
+  confirmEventReschedulePending,
+} from "./pending-resolvers/agenda-person.server";
+import {
+  createProspectingLeadPending,
+  createPersonEllipticPending,
+  createDealPending,
+} from "./pending-resolvers/create-entities.server";
+
+// Tabela de despacho por intent. A ORDEM é comportamento: replica
+// exactamente a cascata de `if` que existia no motor.
+const INTENT_PENDING_RESOLVERS: PendingResolver[] = [
+  confirmEventPersonPending,
+  rejectEventPersonPending,
+  confirmEventReschedulePending,
+  createProspectingLeadPending,
+  createPersonEllipticPending,
+  createDealPending,
+];
 
 // Pendentes de baixo acoplamento (Drive, feedback) + atalho de comissão.
 // A ORDEM desta lista é comportamento: mantém-se a mesma do código inline.
