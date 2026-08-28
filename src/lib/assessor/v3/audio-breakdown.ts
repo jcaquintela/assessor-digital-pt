@@ -22,13 +22,56 @@ export interface BreakdownItem {
   confidential?: boolean;
 }
 
+/**
+ * Contacto candidato a um item. Espelha `PersonCandidate` de
+ * `people/resolve-person.server` sem importar servidor para o lado puro.
+ */
+export interface BreakdownPersonCandidate {
+  id: string;
+  name: string;
+  phone?: string | null;
+  relationship_type?: string | null;
+}
+
+/**
+ * Ligação de contacto de cada item (paralelo a `items`).
+ * `person_id` só fica preenchido quando a resolução é inequívoca; caso
+ * contrário guardamos os candidatos e perguntamos na confirmação do áudio.
+ */
+export interface BreakdownPersonLink {
+  person_id: string | null;
+  candidates: BreakdownPersonCandidate[];
+}
+
 export interface AudioBreakdown {
   items: BreakdownItem[];
   /** Assunto geral do áudio, para dar contexto à proposta. */
   subject?: string | null;
+  /** Uma entrada por item, na mesma ordem. */
+  links?: BreakdownPersonLink[];
 }
 
 const MAX_ITEMS = 8;
+
+export function emptyPersonLink(): BreakdownPersonLink {
+  return { person_id: null, candidates: [] };
+}
+
+function coerceLink(raw: any): BreakdownPersonLink {
+  const list = Array.isArray(raw?.candidates) ? raw.candidates : [];
+  return {
+    person_id: raw?.person_id ? String(raw.person_id) : null,
+    candidates: list
+      .filter((c: any) => c?.id && c?.name)
+      .slice(0, 4)
+      .map((c: any) => ({
+        id: String(c.id),
+        name: String(c.name),
+        phone: c?.phone ? String(c.phone) : null,
+        relationship_type: c?.relationship_type ? String(c.relationship_type) : null,
+      })),
+  };
+}
 
 export function coerceBreakdown(raw: any): AudioBreakdown {
   const list = Array.isArray(raw?.items) ? raw.items : [];
