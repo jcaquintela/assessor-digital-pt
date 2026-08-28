@@ -30,6 +30,8 @@ export interface MentorFacts {
   diasSemContacto: number | null;
   /** O caso da sugestão não tem nenhum negócio ligado. */
   semNegocioLigado: boolean;
+  /** Contexto de equipa do perfil ("sozinho", "equipa de 3"...). Ajusta o tom. */
+  teamContext?: string | null;
 }
 
 export function emptyFacts(): MentorFacts {
@@ -42,6 +44,7 @@ export function emptyFacts(): MentorFacts {
     unicoNoEstado: false,
     diasSemContacto: null,
     semNegocioLigado: false,
+    teamContext: null,
   };
 }
 
@@ -127,7 +130,23 @@ function fraseLigacao(f: MentorFacts, tipKey?: string): string {
  * quando não há nada de concreto a acrescentar.
  */
 export function mentorContextLine(f: MentorFacts, tipKey?: string): string | null {
-  return `${fraseSinais(f)} ${fraseLigacao(f, tipKey)}`;
+  return `${fraseSinais(f)} ${fraseLigacao(f, tipKey)}${teamTone(f)}`;
+}
+
+/**
+ * Ajuste de tom pelo contexto de equipa (perfil "por gotas"). Uma frase curta,
+ * nunca um motor de perfil. Sem contexto, nada muda.
+ */
+export function teamTone(f: MentorFacts): string {
+  const t = String(f.teamContext ?? "").toLowerCase();
+  if (!t) return "";
+  if (/sozinh|s[óo]\b|individual|apenas eu/.test(t)) {
+    return " Como estás sozinho, escolhe só uma frente e fecha-a bem.";
+  }
+  if (/equipa|team|s[óo]cio|parceir|coleg/.test(t)) {
+    return " Com equipa contigo, vale a pena distribuir o que não precisa de ser teu.";
+  }
+  return "";
 }
 
 export interface MentorReinforcement {

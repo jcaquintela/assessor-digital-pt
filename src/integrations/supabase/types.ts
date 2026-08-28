@@ -3247,11 +3247,17 @@ export type Database = {
           phone: string | null
           phone_verified_at: string | null
           primary_channel: string
+          profile_last_question_at: string | null
+          profile_notice_sent_at: string | null
+          profile_paused_until: string | null
+          profile_questions_asked: Json
+          profile_refusal_streak: number
           readonly_until: string | null
           stripe_customer_id: string | null
           stripe_price_id: string | null
           stripe_subscription_id: string | null
           subscription_tier: string
+          team_context: string | null
           telegram_retention_warned_at: string | null
           trial_choice: string | null
           trial_choice_asked_at: string | null
@@ -3264,6 +3270,7 @@ export type Database = {
           updated_at: string
           whatsapp_link_status: string
           whatsapp_linked_at: string | null
+          work_area: string | null
         }
         Insert: {
           account_kind?: string
@@ -3288,11 +3295,17 @@ export type Database = {
           phone?: string | null
           phone_verified_at?: string | null
           primary_channel?: string
+          profile_last_question_at?: string | null
+          profile_notice_sent_at?: string | null
+          profile_paused_until?: string | null
+          profile_questions_asked?: Json
+          profile_refusal_streak?: number
           readonly_until?: string | null
           stripe_customer_id?: string | null
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
           subscription_tier?: string
+          team_context?: string | null
           telegram_retention_warned_at?: string | null
           trial_choice?: string | null
           trial_choice_asked_at?: string | null
@@ -3305,6 +3318,7 @@ export type Database = {
           updated_at?: string
           whatsapp_link_status?: string
           whatsapp_linked_at?: string | null
+          work_area?: string | null
         }
         Update: {
           account_kind?: string
@@ -3329,11 +3343,17 @@ export type Database = {
           phone?: string | null
           phone_verified_at?: string | null
           primary_channel?: string
+          profile_last_question_at?: string | null
+          profile_notice_sent_at?: string | null
+          profile_paused_until?: string | null
+          profile_questions_asked?: Json
+          profile_refusal_streak?: number
           readonly_until?: string | null
           stripe_customer_id?: string | null
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
           subscription_tier?: string
+          team_context?: string | null
           telegram_retention_warned_at?: string | null
           trial_choice?: string | null
           trial_choice_asked_at?: string | null
@@ -3346,6 +3366,7 @@ export type Database = {
           updated_at?: string
           whatsapp_link_status?: string
           whatsapp_linked_at?: string | null
+          work_area?: string | null
         }
         Relationships: []
       }

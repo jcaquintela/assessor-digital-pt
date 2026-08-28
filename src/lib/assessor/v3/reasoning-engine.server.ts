@@ -602,7 +602,35 @@ async function runReasoningEngineInner(
     }
   }
 
+  // ── Resposta a uma pergunta de perfil ("por gotas") ─────────────────
+  try {
+    const {
+      findProfileQuestion, closeProfileQuestion, loadProfileDripState,
+      saveProfileAnswer, registerProfileRefusal,
+    } = await import("./profile-drip.server");
+    const openProfile = await findProfileQuestion(supabase, { userId, channel });
+    if (openProfile) {
+      const { readProfileAnswer, WORK_AREA_SAVED_REPLY, TEAM_SAVED_REPLY } =
+        await import("./profile-drip");
+      const answer = readProfileAnswer(openProfile.key, trimmed);
+      if (answer.kind === "value") {
+        await saveProfileAnswer(supabase, userId, openProfile.key, answer.text);
+        await closeProfileQuestion(supabase, openProfile.id, "executed");
+        return {
+          reply: openProfile.key === "work_area"
+            ? WORK_AREA_SAVED_REPLY(answer.text)
+            : TEAM_SAVED_REPLY,
+        };
+      }
+      // Recusa ou trabalho real: fecha sem insistir.
+      const state = await loadProfileDripState(supabase, userId);
+      await registerProfileRefusal(supabase, userId, state);
+      await closeProfileQuestion(supabase, openProfile.id, "cancelled");
+    }
+  } catch { /* noop */ }
+
   // ── Arranque leve (2 perguntas, nunca obrigatórias) ──────────────────
+
   let onboarding: OnboardingState = {
     stage: "not_started", offers: 0, lastOfferAt: null, goals: null,
   };
@@ -2850,6 +2878,8 @@ async function runReasoningEngineInner(
 
   // Oferta das perguntas de arranque — só numa pausa natural: nada em curso,
   // nenhuma execução neste turno e a resposta não terminou já com pergunta.
+  let offeredProfileQuestion = false;
+  let offeredOnboarding = false;
   try {
     const busyWithTask =
       sparringActive ||
@@ -2864,11 +2894,48 @@ async function runReasoningEngineInner(
     if (offer === "name") {
       await markOnboardingOffered(supabase, userId, "name_asked", onboarding.offers);
       reply = appendOffer(reply, NAME_QUESTION(assessorName));
+      offeredOnboarding = true;
     } else if (offer === "goals") {
       await markOnboardingOffered(supabase, userId, "goals_asked", onboarding.offers);
       reply = appendOffer(reply, GOALS_QUESTION);
+      offeredOnboarding = true;
     }
   } catch { /* noop */ }
+
+  // Perfil "por gotas" (zona de atuação, equipa) — só quando o arranque leve
+  // não pediu nada neste turno. Nunca duas perguntas na mesma conversa.
+  if (!offeredOnboarding && !sparringActive) {
+    try {
+      const {
+        loadProfileDripState, markProfileQuestionAsked, recordProfileQuestion, isCalmDay,
+      } = await import("./profile-drip.server");
+      const { composeDripReply, nextProfileQuestion } = await import("./profile-drip");
+      const dripState = await loadProfileDripState(supabase, userId);
+      const anchor =
+        toolResults.some((t) => t.ok && (t.name === "create_prospecting_lead" || t.name === "create_property"))
+          ? ("work_area" as const)
+          : null;
+      const busyWithTask =
+        decideR.decision.action === "ask" || !!pendingForArchive || toolResults.some((t) => !t.ok);
+      const offer = nextProfileQuestion(dripState, {
+        replyIsQuestion: reply.includes("?"),
+        busyWithTask,
+        anchor,
+        calmDay: anchor ? true : await isCalmDay(supabase, userId),
+        onboardingPending: onboarding.stage !== "done" && onboarding.stage !== "skipped",
+      });
+      if (offer) {
+        await markProfileQuestionAsked(supabase, userId, dripState, offer.key, offer.withNotice);
+        await recordProfileQuestion(supabase, {
+          userId, channel, key: offer.key, question: offer.question,
+          sourceMessageId: sourceMessageId ?? null,
+        });
+        reply = composeDripReply(reply, offer);
+        offeredProfileQuestion = true;
+      }
+    } catch { /* noop — nunca bloquear a resposta */ }
+  }
+
 
   // Âncora: uma pergunta de esclarecimento sem nenhuma ferramenta executada e
   // sem proposta viva deixa rastro (expiração curta). Sem isto, a resposta
@@ -2879,7 +2946,7 @@ async function runReasoningEngineInner(
     decideR.decision.action === "ask" ||
     decideR.decision.action === "act" ||
     !!pendingForArchive;
-  if (!sparringActive && toolResults.length === 0 && !askedWithDraft) {
+  if (!sparringActive && !offeredProfileQuestion && toolResults.length === 0 && !askedWithDraft) {
     try {
       const { recordOpenQuestion } = await import("./open-question.server");
       await recordOpenQuestion(supabase, {

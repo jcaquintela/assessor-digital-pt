@@ -400,6 +400,25 @@ async function execSearchFiles(ctx: DomainContext, args: unknown): Promise<Domai
   return ok({ results: scored, total: scored.length });
 }
 
+/**
+ * Zona de atuação do consultor (perfil "por gotas") como desempate: quando ela
+ * existe, imóveis da zona vêm primeiro. Sem zona, ordem inalterada.
+ */
+async function preferWorkArea(
+  ctx: DomainContext,
+  rows: Record<string, unknown>[],
+): Promise<Record<string, unknown>[]> {
+  if (rows.length < 2) return rows;
+  try {
+    const { loadWorkArea } = await import("../v3/profile-drip.server");
+    const { rankByWorkArea } = await import("../v3/profile-drip");
+    const area = await loadWorkArea(ctx.supabase, ctx.userId);
+    return area ? rankByWorkArea(rows, area) : rows;
+  } catch {
+    return rows;
+  }
+}
+
 async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(SearchPropertiesArgs, args); if (!p.ok) return fail(p.error);
   const { query, status } = p.value;
@@ -413,7 +432,10 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) return fail(error.message);
-  if (data && data.length) return ok({ results: data });
+  if (data && data.length) {
+    return ok({ results: await preferWorkArea(ctx, data as Record<string, unknown>[]) });
+  }
+
 
   // O consultor diz "Rua do Sol Matosinhos" mas o título é "Moradia V3 na Rua
   // do Sol, Matosinhos": a frase inteira nunca casa. Segunda tentativa por
@@ -451,7 +473,7 @@ async function execSearchPropertiesInner(ctx: DomainContext, args: unknown): Pro
       compareTokenMatches({ hits: a.score, spread: a.spread }, { hits: b.score, spread: b.spread }))
     .slice(0, 8)
     .map((x: Scored) => x.row);
-  return ok({ results: scored });
+  return ok({ results: await preferWorkArea(ctx, scored) });
 }
 
 async function execCreateProperty(ctx: DomainContext, args: unknown): Promise<DomainResult> {
