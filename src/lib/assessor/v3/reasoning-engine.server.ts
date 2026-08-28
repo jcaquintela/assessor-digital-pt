@@ -128,7 +128,7 @@ import { runDeterministicRouter } from "./deterministic-router.server";
 
 
 
-const HISTORY_LIMIT = 6;
+import { HISTORY_LIMIT, nowLisbonHuman, nowLisbonYmd, toHistoryPreview } from "./engine-shared";
 
 // Padrão de linguagem de incompreensão. Usado (a) para nunca comunicar
 // falha depois de uma execução bem sucedida e (b) para reclassificar o
