@@ -298,6 +298,13 @@ export async function generateNudgesForUser(
     }
   }
 
+  // 3b) Conflitos de horário na agenda (próximos 14 dias). Mesmo caminho
+  // proativo — só muda a origem do draft.
+  const { generateConflictNudges } = await import("@/lib/agenda/conflicts.server");
+  for (const c of await generateConflictNudges(supabase, userId, { max: 2 })) {
+    drafts.push({ ...c, kind: c.kind as NudgeKind });
+  }
+
   // 4) Silêncio do consultor há ≥ 3 dias.
   const { data: lastMsg } = await supabase
     .from("assessor_messages")
