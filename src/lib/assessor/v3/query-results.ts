@@ -53,6 +53,16 @@ const LEAD_STATUS_LABEL: Record<string, string> = {
   archived: "arquivada",
 };
 
+/** "31/08" no calendário de Lisboa. */
+function dayDdMm(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-PT", {
+    timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit",
+  }).format(d);
+}
+
 function joinParts(parts: Array<string | null | undefined>, sep = " · "): string {
   return parts.map((p) => s(p)).filter(Boolean).join(sep);
 }
