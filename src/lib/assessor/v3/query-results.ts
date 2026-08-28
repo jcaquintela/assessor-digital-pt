@@ -8,6 +8,7 @@
 import type { ToolExecResult } from "./act.server";
 import { boldWa, italicWa } from "../culture/whatsapp-format";
 import { noExactMatchReply, unlinkedEventReply } from "@/lib/people/name-match";
+import { formatSimilarListings } from "@/lib/imoveis/similar-listings";
 
 // Ferramentas que só lêem. Nunca escrevem na BD.
 export const QUERY_TOOLS = new Set([
@@ -19,6 +20,7 @@ export const QUERY_TOOLS = new Set([
   "search_files",
   "search_emails",
   "summarize_email",
+  "search_similar_listings",
 ]);
 
 export function isQueryTool(name: string): boolean {
@@ -212,6 +214,10 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
     const rows = rowsOf(r.data);
     // "Manuel" não pode devolver "Manuela" como se fosse a mesma pessoa.
     const d = r.data as any;
+    if (r.name === "search_similar_listings") {
+      blocks.push(formatSimilarListings(d ?? {}));
+      continue;
+    }
     if (r.name === "search_emails" || r.name === "summarize_email") {
       if (d?.plan_required) { blocks.push(EMAIL_PLAN_REQUIRED_REPLY); continue; }
       if (d?.not_connected) { blocks.push(EMAIL_NOT_CONNECTED_REPLY); continue; }

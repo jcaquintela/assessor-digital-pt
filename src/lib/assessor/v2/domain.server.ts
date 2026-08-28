@@ -2122,6 +2122,11 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   complete_follow_up: execCompleteFollowUp,
   set_routine_active: execSetRoutineActive,
   send_reminder_now: execSendReminderNow,
+  // Comparáveis de mercado — pesquisa web dirigida (connector Firecrawl).
+  search_similar_listings: (ctx, args) =>
+    import("@/lib/imoveis/similar-listings.server").then((m) =>
+      m.execSearchSimilarListings(ctx as any, args),
+    ),
 };
 
 export async function dispatchToolCall(
