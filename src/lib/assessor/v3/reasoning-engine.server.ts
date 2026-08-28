@@ -69,11 +69,6 @@ import {
 import { anchorFromBriefing, isEllipticCompletion } from "./briefing-anchor";
 
 import {
-  isDiscardAudioRequest,
-  UNDO_KEEP_WINDOW_MS,
-  UNDO_KEEP_TOO_LATE_REPLY,
-} from "./audio-undo";
-import {
   detectPersonBriefQuery,
   formatPersonBrief,
   personNotFoundReply,
@@ -120,14 +115,6 @@ import {
   setOnboardingStage,
 } from "./onboarding.server";
 import { validateAssessorName } from "../assessor-name";
-import {
-  SPARRING_CONTINUE_QUESTION,
-  SPARRING_PAUSED_TOPIC,
-  SPARRING_TOPIC,
-
-} from "./sparring";
-import { resolveSparringTurn, type SparringTurn } from "./sparring-turn";
-import { readSparringState, setSparringTopic, stopSparring } from "./sparring-state.server";
 import { logSparringSuppression } from "./sparring-audit.server";
 import { assertNoSparringLeak } from "./sparring-assert.server";
 import { logAiTurn, recordEngineTurn } from "./telemetry-repo.server";
@@ -136,7 +123,7 @@ import { runDeterministicRouter } from "./deterministic-router.server";
 
 
 
-const HISTORY_LIMIT = 6;
+import { HISTORY_LIMIT, nowLisbonHuman, nowLisbonYmd, toHistoryPreview } from "./engine-shared";
 
 // Padrão de linguagem de incompreensão. Usado (a) para nunca comunicar
 // falha depois de uma execução bem sucedida e (b) para reclassificar o
@@ -168,6 +155,11 @@ import {
   createPersonEllipticPending,
   createDealPending,
 } from "./pending-resolvers/create-entities.server";
+import {
+  AUDIO_PENDING_RESOLVERS,
+  resolveAudioMediaSlot,
+} from "./pending-resolvers/audio.server";
+import { runSparringGuard } from "./sparring-runner.server";
 
 // Tabela de despacho por intent. A ORDEM é comportamento: replica
 // exactamente a cascata de `if` que existia no motor.
@@ -193,23 +185,8 @@ const LOW_COUPLING_PENDING_RESOLVERS: PendingResolver[] = [
 ];
 
 
-function nowLisbonHuman(): string {
-  return new Intl.DateTimeFormat("pt-PT", {
-    timeZone: "Europe/Lisbon",
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  }).format(new Date());
-}
-function nowLisbonYmd(): string {
-  return lisbonYmd(new Date());
-}
-function toHistoryPreview(rows: Array<{ role: string; content: string }>): string {
-  return [...rows].reverse()
-    .filter((r) => r?.content && (r.role === "user" || r.role === "assistant"))
-    .slice(-HISTORY_LIMIT)
-    .map((r) => `${r.role === "user" ? "consultor" : "assessor"}: ${r.content}`)
-    .join("\n");
-}
+// Os auxiliares de data/histórico vivem em `engine-shared.ts`.
+
 
 /**
  * Reformular a MESMA pergunta não pode encurtar a janela de confirmação.
@@ -241,117 +218,8 @@ async function syncPendingQuestion(
     .eq("id", pending!.id);
 }
 
-/**
- * Turno em modo treino. Nenhuma ferramenta real corre aqui: só o DECIDE com o
- * bloco de sparring, para responder em personagem. Nada é arquivado nem
- * escrito na base de dados.
- */
-async function runSparringTurn(args: {
-  supabase: EngineInput["supabase"];
-  userId: string;
-  channel: string;
-  trimmed: string;
-  turn: SparringTurn;
-}): Promise<EngineOutcome> {
-  const { supabase, userId, channel, trimmed, turn } = args;
-  const started = Date.now();
-  const closing = turn.ending || turn.autoPause;
+// O turno de treino (sparring) vive em `sparring-runner.server.ts`.
 
-  await setSparringTopic(
-    supabase as never,
-    userId,
-    channel,
-    turn.ending ? null : turn.autoPause ? SPARRING_PAUSED_TOPIC : SPARRING_TOPIC,
-    closing ? 0 : turn.turns,
-  );
-
-  // Auditoria: início e fim do treino ficam visíveis nas ações autónomas.
-  if (turn.startedNow || closing) {
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const rows: any[] = [];
-      if (turn.startedNow) {
-        rows.push({
-          admin_user_id: null, action: "sparring_started", target_user_id: userId,
-          resource_type: "conversation", resource_id: channel,
-          reason: "Modo treino (sparring) iniciado — escrita bloqueada.",
-          metadata: { channel, resumed: turn.resumed, source: "reasoning-engine-v3" },
-        });
-      }
-      if (closing) {
-        rows.push({
-          admin_user_id: null, action: "sparring_ended", target_user_id: userId,
-          resource_type: "conversation", resource_id: channel,
-          reason: turn.autoPause
-            ? "Modo treino em pausa automática após várias trocas."
-            : "Modo treino terminado pelo consultor.",
-          metadata: { channel, turns: turn.turns, auto: turn.autoPause, source: "reasoning-engine-v3" },
-        });
-      }
-      await supabaseAdmin.from("admin_audit_logs").insert(rows as never);
-    } catch { /* noop */ }
-  }
-
-  const [{ data: prof }, { data: recentRows }] = await Promise.all([
-    supabase.from("profiles").select("name, assessor_name").eq("id", userId).maybeSingle(),
-    supabase
-      .from("assessor_messages")
-      .select("role, content, created_at, id")
-      .eq("user_id", userId).eq("channel", channel)
-      .is("archived_at", null)
-      .order("created_at", { ascending: false })
-      .limit(HISTORY_LIMIT),
-  ]);
-
-  const decideR = await decide({
-    content: trimmed,
-    observations: [],
-    hypotheses: [],
-    searches: {},
-    historyPreview: toHistoryPreview((recentRows as any[]) ?? []),
-    assessorName:
-      sanitizeAssessorName((prof as any)?.assessor_name ?? "") || ASSESSOR_NAME_DEFAULT,
-    userFirstName: String((prof as any)?.name ?? "").split(/\s+/)[0] || "",
-    nowLisbonYmd: nowLisbonYmd(),
-    nowLisbonHuman: nowLisbonHuman(),
-    sparring: true,
-  });
-
-  // Guard duro: mesmo que o modelo devolva ferramentas ou memórias, morrem aqui.
-  // Fica registo do que foi bloqueado, com a mensagem original do consultor.
-  await logSparringSuppression({
-    userId, channel, message: trimmed,
-    toolCalls: decideR.decision.tool_calls,
-    memoryWrites: decideR.decision.memory_writes?.length ?? 0,
-    action: decideR.decision.action,
-    reason: turn.ending
-      ? "sparring_ending"
-      : turn.autoPause
-        ? "sparring_paused"
-        : turn.startedNow
-          ? "sparring_starting"
-          : "sparring_active",
-    turns: turn.turns, route: "v3-sparring",
-  });
-  decideR.decision.tool_calls = [];
-  decideR.decision.memory_writes = [];
-
-  let reply = sanitizeReply(decideR.decision.natural_reply);
-  if (!reply) reply = NATURAL_FALLBACKS.aiDown;
-  if (turn.autoPause && !reply.includes("continuar o treino")) {
-    reply = `${reply}\n\n${SPARRING_CONTINUE_QUESTION}`.trim();
-  }
-
-  await logAiTurn(supabase, {
-    userId, channel, intent: "sparring_turn", route: "v3-sparring",
-    inputTokens: decideR.usage?.inputTokens ?? 0,
-    outputTokens: decideR.usage?.outputTokens ?? 0,
-    latencyMs: Date.now() - started, success: decideR.ok,
-    error: decideR.error ?? null, fallbackUsed: !decideR.ok,
-  });
-
-  return { reply };
-}
 
 
 export async function runReasoningEngine(
@@ -397,16 +265,10 @@ async function runReasoningEngineInner(
   // personagem. Em treino, o turno inteiro é tratado aqui e nada toca na base
   // de dados.
   {
-    const state = await readSparringState(supabase as never, userId, channel);
-    const turn = resolveSparringTurn({ state, text: trimmed });
-    if (turn.handleAsSparring) {
-      return await runSparringTurn({ supabase, userId, channel, trimmed, turn });
-    }
-    if (turn.stale || (turn.wasPaused && !turn.resumed)) {
-      // Nunca fica preso: treino esquecido ou pausa não retomada limpa o estado.
-      try { await stopSparring(supabase as never, userId, channel); } catch { /* noop */ }
-    }
+    const sparred = await runSparringGuard({ supabase, userId, channel, trimmed });
+    if (sparred) return sparred;
   }
+
 
 
 
@@ -737,46 +599,10 @@ async function runReasoningEngineInner(
     // Só é resolvida quando não há outro assunto principal em aberto, para
     // um "não" nunca cair no rascunho errado.
     if (!pending) {
-      const mediaPending = await findActivePendingAction(supabase, userId, channel, "media");
-      if (mediaPending && mediaPending.intent === "confirm_keep_audio") {
-        const payload = (mediaPending.structured_payload ?? {}) as Record<string, any>;
-        const fileId = payload.file_id ? String(payload.file_id) : null;
-        const { discardAudioFile, keepAudioFile } = await import("./audio-keep.server");
-        if (saIsConfirmation(trimmed)) {
-          if (fileId) await keepAudioFile(supabase, fileId, userId);
-          await markPendingActionStatus(supabase, mediaPending.id, "executed", {
-            created_resource_type: "uploaded_file",
-            created_resource_id: fileId,
-          });
-          return { reply: "Guardei o áudio no Drive Inteligente." };
-        }
-        if (saIsRejection(trimmed) || isDiscardCommand(trimmed)) {
-          if (fileId) await discardAudioFile(supabase, fileId, userId);
-          await markPendingActionStatus(supabase, mediaPending.id, "cancelled");
-          // Descartar é descartar: sai o ficheiro E tudo o que dele saiu.
-          const { discardLastInput } = await import("./discard.server");
-          const { DISCARD_DONE_REPLY } = await import("../culture/discard");
-          await discardLastInput(supabase, userId, channel);
-          return { reply: DISCARD_DONE_REPLY };
-        }
-      }
-
-      // "Descarta" dito DEPOIS de já ter confirmado o guardar: ou desfazemos
-      // mesmo, ou dizemos claramente que o ficheiro ficou guardado e como
-      // removê-lo. Nunca "fica sem efeito" sem dizer que efeito.
-      if (!mediaPending && isDiscardAudioRequest(trimmed)) {
-        const { findRecentlyKeptAudio } = await import("./audio-keep.server");
-        const { discardLastInput } = await import("./discard.server");
-        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
-        const kept = await findRecentlyKeptAudio(supabase, userId, channel, UNDO_KEEP_WINDOW_MS);
-        if (kept) {
-          await discardLastInput(supabase, userId, channel);
-          return { reply: DISCARD_DONE_REPLY };
-        }
-        const older = await findRecentlyKeptAudio(supabase, userId, channel, 7 * 24 * 60 * 60 * 1000);
-        if (older) return { reply: UNDO_KEEP_TOO_LATE_REPLY };
-      }
+      const media = await resolveAudioMediaSlot({ supabase, userId, channel, trimmed });
+      if (media) return media;
     }
+
 
     // Um pendente antigo, cuja pergunta já não é a que está em aberto, não
     // pode ser resolvido por uma resposta destinada a outro assunto.
@@ -880,162 +706,16 @@ async function runReasoningEngineInner(
     }
 
 
-    // Processador de Áudio Imobiliário — proposta única com vários itens.
-    if (pending && pending.intent === "audio_breakdown") {
-      // (o caminho por temas está tratado logo abaixo, em "audio_themes")
-      // A pergunta lateral do ficheiro só sai quando a proposta fecha, para
-      // não competir com o "sim" que confirma os itens.
-      const askAudioFile = async (reply: string): Promise<string> => {
-        const payload = (pending!.structured_payload ?? {}) as Record<string, any>;
-        const fileId = payload.audio_file_id ? String(payload.audio_file_id) : null;
-        if (!fileId) return reply;
-        const { askKeepAudio } = await import("./audio-keep.server");
-        const { appendKeepQuestion } = await import("./audio-keep");
-        const question = await askKeepAudio(supabase, {
-          userId,
-          channel,
-          fileId,
-          transcript: String(pending!.original_content ?? ""),
-          subject: payload.subject ?? null,
-        });
-        return question ? appendKeepQuestion(reply, question) : reply;
-      };
-      if (saIsConfirmation(trimmed)) {
-        const { executeAudioBreakdown } = await import("./audio-breakdown.server");
-        const reply = await executeAudioBreakdown(ctx, pending);
-        return { reply: await askAudioFile(reply) };
-      }
-      if (saIsRejection(trimmed)) {
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: await askAudioFile("Está bem, não guardei nada do áudio.") };
-      }
-      // "Descartar": sai tudo — itens, transcrição e o próprio ficheiro.
-      if (isDiscardCommand(trimmed)) {
-        const { discardLastInput } = await import("./discard.server");
-        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        await discardLastInput(supabase, userId, channel);
-        return { reply: DISCARD_DONE_REPLY };
-      }
-      // Correção a um item específico antes do "sim" — a proposta mantém-se
-      // aberta e é reescrita já corrigida.
-      {
-        const { coerceBreakdown, formatBreakdownRevised } = await import("./audio-breakdown");
-        const { parseBreakdownEdit, applyBreakdownEdit, describeBreakdownEdit } =
-          await import("./audio-breakdown-edit");
-        const { todayLisbonYmd } = await import("./audio-breakdown.server");
-        const current = coerceBreakdown(pending.structured_payload ?? {});
-        const edit = parseBreakdownEdit(
-          trimmed,
-          current.items.length,
-          todayLisbonYmd(),
-          current.items,
-        );
-        if (edit) {
-          const removedItem = edit.remove ? current.items[edit.index] : undefined;
-          const next = applyBreakdownEdit(current, edit);
-          if (!next.items.length) {
-            await markPendingActionStatus(supabase, pending.id, "cancelled");
-            return {
-              reply: await askAudioFile("Tirei o último ponto — já não fica nada por guardar deste áudio."),
-            };
-          }
-          const { updatePendingActionPayload } = await import("../memory.server");
-          await updatePendingActionPayload(
-            supabase,
-            pending.id,
-            {
-              ...(next as unknown as Record<string, any>),
-              audio_file_id: (pending.structured_payload as any)?.audio_file_id ?? null,
-            },
-            { status: "pending_confirmation" },
-          );
-          return { reply: formatBreakdownRevised(next, describeBreakdownEdit(edit, removedItem)) };
-        }
+    // ---------- Áudio (breakdown + temas) ----------
+    // Mesma precedência de sempre: proposta por itens → proposta por temas.
+    {
+      const pc = { ctx, supabase, userId, channel, trimmed, pending };
+      for (const resolver of AUDIO_PENDING_RESOLVERS) {
+        const handled = await resolver(pc);
+        if (handled) return handled;
       }
     }
 
-    // Áudio separado em TEMAS (lead = pessoa + imóvel + oportunidade ligados).
-    // Nada é escrito antes do "sim", e uma ambiguidade de contacto pergunta-se
-    // sempre em vez de se decidir sozinho.
-    if (pending && pending.intent === "audio_themes") {
-      const {
-        formatThemesProposal, formatThemesRevised, pendingAmbiguities, formatAmbiguityQuestion,
-        matchAmbiguityAnswer, parseThemeEdit, applyThemeEdit, describeThemeEdit,
-      } = await import("./audio-themes");
-      const { readThemesPayload, executeAudioThemes, todayLisbonYmd } =
-        await import("./audio-themes.server");
-      const { updatePendingActionPayload } = await import("../memory.server");
-      const payload = readThemesPayload(pending.structured_payload ?? {});
-      const savePayload = async (themes: typeof payload.themes, links: typeof payload.links) => {
-        await updatePendingActionPayload(
-          supabase,
-          pending!.id,
-          {
-            ...(payload as unknown as Record<string, any>),
-            themes: themes as unknown as any,
-            links: links as unknown as any,
-          },
-          { status: "pending_confirmation" },
-        );
-      };
-
-      // "Descartar": sai tudo — temas, transcrição e ficheiro.
-      if (isDiscardCommand(trimmed)) {
-        const { discardLastInput } = await import("./discard.server");
-        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        await discardLastInput(supabase, userId, channel);
-        return { reply: DISCARD_DONE_REPLY };
-      }
-
-      // Resposta a uma desambiguação de contacto.
-      const ambiguities = pendingAmbiguities(payload.themes, payload.links);
-      if (ambiguities.length) {
-        const chosen = matchAmbiguityAnswer(trimmed, ambiguities[0].candidates);
-        if (chosen) {
-          const links = payload.links.map((l, i) =>
-            i === ambiguities[0].index
-              ? { ...l, person_id: chosen.id, person_label: chosen.label, ambiguous_people: [] }
-              : l);
-          await savePayload(payload.themes, links);
-          const rest = pendingAmbiguities(payload.themes, links);
-          return {
-            reply: rest.length
-              ? formatAmbiguityQuestion(rest[0])
-              : formatThemesRevised(payload.themes, links, `Certo, é o ${chosen.label}. Fica assim:`),
-          };
-        }
-        if (saIsConfirmation(trimmed)) {
-          return { reply: formatAmbiguityQuestion(ambiguities[0]) };
-        }
-      }
-
-      if (saIsConfirmation(trimmed) && !ambiguities.length) {
-        const reply = await executeAudioThemes(ctx, pending);
-        return { reply };
-      }
-      if (saIsRejection(trimmed)) {
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: "Está bem, não guardei nada do áudio." };
-      }
-
-      // Correcção ou descarte de um tema, mantendo os restantes.
-      const edit = parseThemeEdit(trimmed, payload.themes.length, todayLisbonYmd());
-      if (edit) {
-        const removed = edit.remove ? payload.themes[edit.index] : undefined;
-        const next = applyThemeEdit(payload.themes, payload.links, edit);
-        if (!next.themes.length) {
-          await markPendingActionStatus(supabase, pending.id, "cancelled");
-          return { reply: "Tirei o último ponto — já não fica nada por guardar deste áudio." };
-        }
-        await savePayload(next.themes, next.links);
-        return { reply: formatThemesRevised(next.themes, next.links, describeThemeEdit(edit, removed)) };
-      }
-      if (!ambiguities.length && !trimmed) {
-        return { reply: formatThemesProposal(payload.themes, payload.links) };
-      }
-    }
 
     // ---------- Pendentes de baixo acoplamento + atalho de comissão ----------
     // Mesma ordem de sempre: Drive (ligação, foto, lote) → feedback → comissão.
