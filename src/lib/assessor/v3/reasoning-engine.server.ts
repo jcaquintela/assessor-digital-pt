@@ -278,7 +278,7 @@ async function runReasoningEngineInner(
   if (!opts?.skipCompletionPass) {
     const completed = await runCompletionPass({
       ctx, supabase, userId, channel, trimmed,
-      rerun: (content) => runReasoningEngine({ ...input, content }, { skipCompletionPass: true }),
+      rerun: (content: string) => runReasoningEngine({ ...input, content }, { skipCompletionPass: true }),
     });
     if (completed) return completed;
   }
