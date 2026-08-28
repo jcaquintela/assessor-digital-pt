@@ -897,92 +897,38 @@ async function runReasoningEngineInner(
   if (isolation.isolated) {
     reply = stripInheritedMotive(reply, { message: trimmed, pendingText: isolation.pendingText });
   }
-  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" | "service_down" = "executed_ok";
-  let archiveReason: string | null = null;
   // A IA esteve em baixo (créditos, rate limit, timeout, erro do provedor).
   // Isto NÃO é incompreensão: o consultor tem de perceber a diferença.
   const aiUnavailable = thinkR.unavailable === true || decideR.unavailable === true;
-  // Executou e mesmo assim perguntou ("Marco a ação ... ?") — a pergunta faz o
-  // consultor responder "Sim" e o turno seguinte volta a executar o mesmo.
-  // Se a acção já foi feita, a resposta tem de ser afirmativa, nunca uma
-  // proposta.
-  if (shouldAct && allOk && /\?\s*$/.test(reply)) {
-    reply = "Feito.";
-  }
-  if (shouldAct && !allOk) {
-    archiveOutcome = "tool_failed";
-    archiveReason = toolResults.filter((r) => !r.ok)
-      .map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ") || "tool_failed";
-    reply = readReq.pure
-      ? READ_FAILED_REPLY
-      : "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
-  }
-  if (actedWithoutTools && !readReq.pure) {
-    archiveOutcome = "not_understood";
-    // Motivo interno: sem capacidade. O texto visível vem do formatter PT.
-    archiveReason = "no_tool";
-    if (!reply || CLAIMS_COMPLETION_RE.test(reply)) {
-      reply = "Não cheguei a mexer em nada. Diz-me exactamente o que queres que faça?";
-    }
-  }
 
-  // Idempotência: se `create_follow_up`/`create_event` devolveu um recurso
-  // pré-existente para a mesma pending_action, respondemos de forma explícita
-  // em vez de fingir que criámos algo novo.
-  const idemHit = toolResults.find(
-    (t) => (t.name === "create_follow_up" || t.name === "create_event")
-      && t.ok && (t.data as any)?.idempotent === true,
-  );
-  if (idemHit) {
-    const d = idemHit.data as any;
-    if (d?.typeCorrected) {
-      reply = d?.rescheduled
-        ? "Já tinhas isso como lembrete, não como compromisso. Corrigi e passei para o novo horário — já aparece na agenda."
-        : "Já tinhas isso como lembrete, não como compromisso. Corrigi — já aparece na agenda.";
-    } else {
-      reply = d?.rescheduled
-        ? "Já tinhas esse seguimento. Passei-o para o novo horário."
-        : "Já estava registado.";
-    }
-  }
+  // Pós-ACT (parte 1): resultado da execução e idempotência.
+  const outcome = shapeExecutionOutcome({
+    reply,
+    toolResults: toolResults as any,
+    shouldAct,
+    allOk,
+    actedWithoutTools,
+    pureRead: readReq.pure,
+    readFailedReply: READ_FAILED_REPLY,
+  });
+  reply = outcome.reply;
+  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" | "service_down" = outcome.archiveOutcome;
+  let archiveReason: string | null = outcome.archiveReason;
 
   // Override natural para prospeção executada dentro do DECIDE (turno único).
   const leadTool = toolResults.find((t) => t.name === "create_prospecting_lead");
 
-  // Compromisso provavelmente já existente com outra hora: perguntar sempre,
-  // nunca duplicar em silêncio (caso real da consulta às 09:00 → 10:30).
-  const rescheduleAsk = toolResults.find(
-    (t) => t.name === "create_event" && t.ok
-      && (t.data as any)?.needsRescheduleConfirmation === true,
-  );
-  if (rescheduleAsk) {
-    const d = rescheduleAsk.data as any;
-    const { rescheduleQuestion } = await import("../event-subject");
-    const question = rescheduleQuestion(d.candidate, d.incoming);
-    try {
-      await createPendingAction(supabase, {
-        userId, channel,
-        intent: "confirm_event_reschedule",
-        originalContent: trimmed,
-        payload: { candidate: d.candidate, incoming: d.incoming },
-        currentQuestion: question,
-        pendingQuestion: question,
-        sourceMessageId: sourceMessageId ?? null,
-      });
-    } catch { /* noop */ }
-    reply = question;
-  }
+  // Pós-ACT (parte 2): perguntas de agenda (reagendamento, calendário).
+  const agendaAsks = await shapeAgendaAsks({
+    supabase, userId, channel,
+    sourceMessageId: sourceMessageId ?? null,
+    trimmed,
+    reply,
+    toolResults: toolResults as any,
+  });
+  reply = agendaAsks.reply;
+  const rescheduleAsk = agendaAsks.rescheduleAsk;
 
-  // Compromisso agendado por nome sem contacto na base: perguntar antes de
-  // gravar, para o evento nunca ficar "solto" com um nome só em texto.
-  const calendarChoiceAsk = toolResults.find(
-    (t) => t.name === "create_event" && t.ok
-      && (t.data as any)?.needsCalendarProviderChoice === true,
-  );
-  if (calendarChoiceAsk) {
-    const { CALENDAR_PROVIDER_CHOICE_REPLY } = await import("@/lib/providers/active");
-    reply = CALENDAR_PROVIDER_CHOICE_REPLY;
-  }
 
   const personAsk = toolResults.find(
     (t) => t.name === "create_event" && t.ok
