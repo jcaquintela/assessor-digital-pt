@@ -151,72 +151,31 @@ const NOT_UNDERSTOOD_RE = /n[ãa]o\s+(percebi|entendi|compreendi)|podes\s+explic
 const CLAIMS_COMPLETION_RE =
   /\b(feito|combinado|tratado|resolvido|est[áa]\s+feito|j[áa]\s+est[áa]|desmarquei|desmarcado|cancelei|cancelado|apaguei|limpei|registei|guardei|marquei|actualizei|atualizei)\b/i;
 
-function parsePtAmount(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  const cleaned = raw
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/euros?|eur|€/g, "");
-  const multiplier = /k$/.test(cleaned) ? 1000 : /m$/.test(cleaned) ? 1_000_000 : 1;
-  const withoutSuffix = cleaned.replace(/[km]$/, "");
-  const normalized = withoutSuffix.includes(",")
-    ? withoutSuffix.replace(/\./g, "").replace(",", ".")
-    : /\.\d{3}(?!\d)/.test(withoutSuffix)
-      ? withoutSuffix.replace(/\./g, "")
-      : withoutSuffix;
-  const value = Number(normalized);
-  return Number.isFinite(value) ? Math.round(value * multiplier) : null;
-}
+import type { PendingResolver } from "./pending-resolvers/types";
+import {
+  suggestFileLinkPending,
+  keepPhotoPending,
+  bulkArchivePending,
+} from "./pending-resolvers/drive-files.server";
+import {
+  collectingFeedbackPending,
+  clarifyFeedbackTargetPending,
+  recordProductFeedbackPending,
+} from "./pending-resolvers/feedback.server";
+import { financeCommissionShortcut } from "./pending-resolvers/finance-commission.server";
 
-function formatPtMoney(value: number): string {
-  return new Intl.NumberFormat("pt-PT", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+// Pendentes de baixo acoplamento (Drive, feedback) + atalho de comissão.
+// A ORDEM desta lista é comportamento: mantém-se a mesma do código inline.
+const LOW_COUPLING_PENDING_RESOLVERS: PendingResolver[] = [
+  suggestFileLinkPending,
+  keepPhotoPending,
+  bulkArchivePending,
+  collectingFeedbackPending,
+  clarifyFeedbackTargetPending,
+  recordProductFeedbackPending,
+  financeCommissionShortcut,
+];
 
-function todayLisbonYmd(): string {
-  return lisbonYmd(new Date());
-}
-
-function extractFinanceCommission(content: string): Record<string, unknown> | null {
-  const text = content.trim();
-  const lower = text.toLowerCase();
-  if (!/\bcomiss(?:ã|a)o|\bcomiss(?:õ|o)es/.test(lower)) return null;
-  const commissionRaw = text.match(/comiss(?:ã|a)o(?:\s+[^\d€]{0,30})?\s*(\d[\d.\s]*(?:,\d+)?\s*(?:k€|m€|€|eur|euros?|k\b|m\b)?)/i)?.[1] ?? null;
-  const amount = parsePtAmount(commissionRaw);
-  if (amount == null) return null;
-  const productionRaw = text.match(/produ(?:ç|c)[aã]o(?:\s+de)?\s*(\d[\d.\s]*(?:,\d+)?\s*(?:k€|m€|€|eur|euros?|k\b|m\b)?)/i)?.[1] ?? null;
-  const dealRaw = text.match(/neg[óo]cio\s+(?:do|da|de|dos|das)?\s*[^,.;]*?\s+por\s*(\d[\d.\s]*(?:,\d+)?\s*(?:k€|m€|€|eur|euros?|k\b|m\b)?)/i)?.[1]
-    ?? text.match(/\bpor\s*(\d[\d.\s]*(?:,\d+)?\s*(?:k€|m€|€|eur|euros?|k\b|m\b)?)/i)?.[1]
-    ?? null;
-  const productionAmount = parsePtAmount(productionRaw);
-  const dealValue = parsePtAmount(dealRaw);
-  const propertyReference = text.match(/neg[óo]cio\s+(?:do|da|de|dos|das)\s+([^,.;]+?)(?:\s+por\s|,|$)/i)?.[1]?.trim() ?? null;
-  const status = /\b(recebid[ao]|paga|pago)\b/i.test(text)
-    ? "Recebida"
-    : /\b(faturad[ao]|facturad[ao])\b/i.test(text)
-      ? "Faturada"
-      : "Prevista";
-  const descriptionParts = [
-    `Comissão ${propertyReference ? `do ${propertyReference}` : "do negócio"}`,
-    dealValue != null ? `valor do negócio ${formatPtMoney(dealValue)}` : null,
-    productionAmount != null ? `produção ${formatPtMoney(productionAmount)} + IVA` : null,
-  ].filter(Boolean);
-  return {
-    type: "commission",
-    amount,
-    description: descriptionParts.join(" · "),
-    status,
-    movement_date: todayLisbonYmd(),
-    category: "Comissão",
-    deal_value: dealValue,
-    production_amount: productionAmount,
-    property_reference: propertyReference,
-    opportunity_title: propertyReference ? `Negócio ${propertyReference}` : "Negócio fechado",
-  };
-}
 
 function nowLisbonHuman(): string {
   return new Intl.DateTimeFormat("pt-PT", {
@@ -1386,200 +1345,16 @@ async function runReasoningEngineInner(
       }
     }
 
-    if (pending && pending.intent === "suggest_file_link") {
-      // (bloco de temas de áudio inserido acima)
-      // (ver também confirm_keep_photo, logo abaixo)
-      // Sugestão de ligação extra de um documento (Drive Inteligente).
-      // Confirmar acrescenta a ligação; recusar não mexe em nada.
-      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
-      if (saIsConfirmation(trimmed)) {
-        const { applyLinkSuggestion } = await import("@/lib/drive/link-suggestions.server");
-        const reply = await applyLinkSuggestion(supabase, userId, payload);
-        await markPendingActionStatus(supabase, pending.id, "executed", {
-          created_resource_type: "file_link",
-          created_resource_id: payload.file_id ?? null,
-        });
-        return { reply };
-      }
-      if (saIsRejection(trimmed)) {
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: "Sem problema, deixo a ligação como está." };
+    // ---------- Pendentes de baixo acoplamento + atalho de comissão ----------
+    // Mesma ordem de sempre: Drive (ligação, foto, lote) → feedback → comissão.
+    {
+      const pc = { ctx, supabase, userId, channel, trimmed, pending };
+      for (const resolver of LOW_COUPLING_PENDING_RESOLVERS) {
+        const handled = await resolver(pc);
+        if (handled) return handled;
       }
     }
 
-    // Foto sem valor documental: ficou de fora do Drive à espera de resposta.
-    // "Sim" recupera-a com tudo; "não" deixa-a ir.
-    if (pending && pending.intent === "confirm_keep_photo") {
-      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
-      const fileId = payload.file_id ? String(payload.file_id) : null;
-      if (saIsConfirmation(trimmed)) {
-        if (fileId) {
-          await supabase
-            .from("uploaded_files")
-            .update({ deleted_at: null, processing_status: "organized", photo_value: "documental" } as never)
-            .eq("id", fileId)
-            .eq("user_id", userId);
-        }
-        await markPendingActionStatus(supabase, pending.id, "executed", {
-          created_resource_type: "uploaded_file",
-          created_resource_id: fileId,
-        });
-        return { reply: "Guardei a foto no Drive Inteligente." };
-      }
-      if (saIsRejection(trimmed)) {
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: "Certo, não fica no Drive Inteligente." };
-      }
-    }
-
-    // Feedback anunciado ("posso dar uma sugestão?") — aguarda o corpo.
-    // Aqui já não é preciso repetir "sugestão"/"erro" nem falar do produto.
-    // Arquivo em lote de ficheiros do Drive: só arquiva depois de o consultor
-    // ver a lista e confirmar. Eliminar definitivo continua fora da conversa.
-    if (pending && pending.intent === "confirm_bulk_archive") {
-      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
-      const ids: string[] = Array.isArray(payload.file_ids) ? payload.file_ids.map(String) : [];
-      const kind = (payload.kind ?? "any") as any;
-      const mode = payload.mode === "delete" ? "delete" : "archive";
-      if (saIsConfirmation(trimmed)) {
-        const { archiveFilesBulk, deleteFilesBulk } = await import("@/lib/drive/bulk-archive.server");
-        const { fileActionDoneReply } = await import("@/lib/drive/bulk-archive");
-        let count = 0;
-        let okBulk = true;
-        try {
-          count = mode === "delete"
-            ? await deleteFilesBulk(supabase, userId, ids)
-            : await archiveFilesBulk(supabase, userId, ids);
-        } catch {
-          okBulk = false;
-        }
-        await markPendingActionStatus(supabase, pending.id, okBulk ? "executed" : "failed", {
-          created_resource_type: "uploaded_file",
-          error_message: okBulk ? null : `bulk_${mode}_failed`,
-        });
-        return {
-          reply: okBulk
-            ? fileActionDoneReply(kind, count, mode)
-            : mode === "delete"
-              ? "Tentei apagar os ficheiros e não consegui. Tenta outra vez daqui a pouco."
-              : "Tentei arquivar os ficheiros e não consegui. Tenta outra vez daqui a pouco.",
-        };
-      }
-      if (saIsRejection(trimmed)) {
-        const { fileActionCancelledReply } = await import("@/lib/drive/bulk-archive");
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: fileActionCancelledReply(mode) };
-      }
-    }
-
-    if (pending && pending.intent === "collecting_feedback") {
-      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
-      const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
-      if (saIsRejection(trimmed)) {
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: FEEDBACK_CANCELLED_REPLY };
-      }
-      if (isEmptyFeedbackBody(trimmed)) {
-        return { reply: FEEDBACK_BODY_RETRY };
-      }
-      await markPendingActionStatus(supabase, pending.id, "executed");
-      const { createPendingAction } = await import("../memory.server");
-      const question = feedbackConfirmQuestion(kind);
-      await createPendingAction(supabase, {
-        userId,
-        channel,
-        intent: "record_product_feedback",
-        originalContent: trimmed,
-        payload: { kind, original: trimmed },
-        pendingQuestion: question,
-        currentQuestion: question,
-      });
-      return { reply: question };
-    }
-
-    if (pending && pending.intent === "clarify_feedback_target") {
-      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
-      const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
-      const original = String(payload.original ?? pending.original_content ?? "");
-      const answer = readClarifyAnswer(trimmed);
-      if (answer === null) {
-        return { reply: FEEDBACK_CLARIFY_RETRY };
-      }
-      await markPendingActionStatus(supabase, pending.id, answer === "product" ? "executed" : "cancelled");
-      if (answer === "person") {
-        return { reply: FEEDBACK_NOT_PRODUCT_REPLY };
-      }
-      const { createPendingAction } = await import("../memory.server");
-      const question = feedbackConfirmQuestion(kind);
-      await createPendingAction(supabase, {
-        userId,
-        channel,
-        intent: "record_product_feedback",
-        originalContent: original,
-        payload: { kind, original },
-        pendingQuestion: question,
-        currentQuestion: question,
-      });
-      return { reply: question };
-    }
-
-    // Feedback sobre o produto — só grava depois de confirmação explícita.
-    if (pending && pending.intent === "record_product_feedback") {
-      // (nota) a recolha do corpo é tratada no bloco collecting_feedback.
-      const payload = (pending.structured_payload ?? {}) as Record<string, any>;
-      const kind: FeedbackKind = payload.kind === "bug" ? "bug" : "suggestion";
-      if (saIsRejection(trimmed)) {
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: FEEDBACK_CANCELLED_REPLY };
-      }
-      // "sim" sozinho → guarda a mensagem original; texto novo → guarda esse.
-      const body = saIsConfirmation(trimmed)
-        ? String(payload.original ?? pending.original_content ?? "")
-        : trimmed;
-      const attachmentFileId = payload.attachment_file_id ? String(payload.attachment_file_id) : null;
-      const saved = await saveProductFeedback(supabase, {
-        userId, kind, body, channel, attachmentFileId,
-      });
-      await markPendingActionStatus(supabase, pending.id, saved ? "executed" : "failed", {
-        created_resource_type: saved ? "product_feedback" : null,
-        error_message: saved ? null : "feedback_insert_failed",
-      });
-      if (!saved) return { reply: FEEDBACK_FAILED_REPLY };
-      return {
-        reply: feedbackSavedReply(kind, {
-          title: body,
-          withAttachment: Boolean(attachmentFileId),
-        }),
-      };
-    }
-
-    const commissionArgs = extractFinanceCommission(trimmed);
-    if (commissionArgs) {
-      const t0 = Date.now();
-      const result = await TOOL_REGISTRY.create_financial_movement(ctx, commissionArgs);
-      await logAiTurn(supabase, {
-        userId, channel, intent: "create_financial_movement_fast_path", route: "v3-deterministic",
-        domain: "financial",
-        latencyMs: Date.now() - t0, success: !!result.ok, error: result.ok ? null : (result.error ?? null),
-        toolName: "create_financial_movement", toolSuccess: !!result.ok, fallbackUsed: !result.ok,
-      });
-      const amount = Number((commissionArgs as any).amount ?? 0);
-      const reference = String((commissionArgs as any).property_reference ?? "negócio");
-      if (result.ok && (result.data as any)?.duplicate === true) {
-        return {
-          reply: `Já tinha uma ${(commissionArgs as any).type === "expense" ? "despesa" : "comissão"} de ${formatPtMoney(amount)} registada hoje. É a mesma ou queres registar outra?`,
-        };
-      }
-      const finReply = await applySafetyNet(ctx, {
-        content: trimmed,
-        outcome: result.ok ? "executed_ok" : "tool_failed",
-        reason: result.error ?? "financial_failed",
-        reply: result.ok
-          ? `Feito. Registei a comissão de ${formatPtMoney(amount)} no ${reference}.`
-          : "Tentei guardar a comissão e não consegui.",
-      });
-      return { reply: finReply };
-    }
 
     // ---------- Router determinístico ----------
     // Ordem = precedência. Cada caso vive em deterministic-router.server.ts.
