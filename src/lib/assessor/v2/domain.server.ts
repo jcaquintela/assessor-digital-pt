@@ -635,41 +635,43 @@ function normalizeForMatch(s: string): string {
 }
 
 /**
- * Tenta descobrir de que imóvel se fala quando o motor não devolveu o id.
- * Compara o texto do compromisso com o título/morada/cidade dos imóveis do
- * consultor. Só liga quando há uma única correspondência clara.
+ * Descobre de que imóvel se fala quando o motor não devolveu o id.
+ * Delegado em `resolvePropertyForWrite` (palavras de identidade + número de
+ * porta): só liga quando a morada é a mesma. Em correspondência "provável"
+ * ("Boavista 120" vs "Boavista 12") devolve uma pergunta — nunca liga em
+ * silêncio, nem escolhe por nós.
  */
-export async function resolvePropertyFromText(ctx: DomainContext, text: string): Promise<string | null> {
-  let source = text || "";
-  // O título gravado pode perder a morada ("Visita com Sr. Almeida"); nesse
-  // caso, olhamos para a frase original do consultor.
-  if (ctx.sourceMessageId) {
-    const { data: msg } = await ctx.supabase
-      .from("assessor_messages")
-      .select("content")
-      .eq("id", ctx.sourceMessageId)
-      .eq("user_id", ctx.userId)
-      .maybeSingle();
-    const extra = (msg as { content?: string } | null)?.content;
-    if (extra) source = `${source} ${extra}`;
-  }
-  const hay = normalizeForMatch(source);
-  if (hay.length < 6) return null;
-  const { data } = await ctx.supabase
-    .from("properties")
-    .select("id, title, address, location, city")
-    .eq("user_id", ctx.userId)
-    .limit(300);
-  const rows = (data ?? []) as Array<{ id: string; title: string | null; address: string | null; location: string | null; city: string | null }>;
-  const matches = new Set<string>();
-  for (const r of rows) {
-    for (const raw of [r.address, r.title, r.location]) {
-      const needle = normalizeForMatch(String(raw ?? ""));
-      if (needle.length >= 6 && hay.includes(needle)) { matches.add(r.id); break; }
-    }
-  }
-  return matches.size === 1 ? [...matches][0]! : null;
+export interface PropertyAsk {
+  mode: "confirm_partial" | "choose";
+  propertyQuery: string | null;
+  suggestions: Array<{ id: string; title?: string | null; address?: string | null; location?: string | null }>;
+  candidateIds: string[];
+  question: string;
 }
+
+export async function resolvePropertyOrAsk(
+  ctx: DomainContext,
+  text: string,
+): Promise<{ id: string | null; ask: PropertyAsk | null }> {
+  if (ctx.skipPropertyResolution) return { id: null, ask: null };
+  const { resolvePropertyForWrite, propertyResolutionQuestion } = await import(
+    "@/lib/imoveis/resolve-property.server"
+  );
+  const res = await resolvePropertyForWrite(ctx, text);
+  if (res.status === "linked" && res.propertyId) return { id: res.propertyId, ask: null };
+  if (res.status === "none") return { id: null, ask: null };
+  return {
+    id: null,
+    ask: {
+      mode: res.status,
+      propertyQuery: res.said,
+      suggestions: res.candidates,
+      candidateIds: res.candidates.map((c) => String(c.id)),
+      question: propertyResolutionQuestion(res),
+    },
+  };
+}
+
 
 /**
  * Procura na BD um compromisso aberto do mesmo assunto no mesmo dia (ou no
