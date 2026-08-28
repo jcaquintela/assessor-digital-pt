@@ -17,7 +17,8 @@ import { createPendingAction } from "../memory.server";
 export type ToolResult = { name: string; ok: boolean; data?: unknown; error?: string | null };
 export type ArchiveOutcome = "executed_ok" | "tool_failed" | "not_understood" | "service_down";
 
-const CLAIMS_COMPLETION_RE = /\b(feito|conclu[íi]d|marcad[oa] como|dei .* como)\b/i;
+const CLAIMS_COMPLETION_RE =
+  /\b(feito|combinado|tratado|resolvido|est[áa]\s+feito|j[áa]\s+est[áa]|desmarquei|desmarcado|cancelei|cancelado|apaguei|limpei|registei|guardei|marquei|actualizei|atualizei)\b/i;
 
 /**
  * Resultado da execução: transforma o texto do modelo naquilo que é honesto
