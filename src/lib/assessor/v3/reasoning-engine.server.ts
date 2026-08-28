@@ -136,6 +136,7 @@ import { readSparringState, setSparringTopic, stopSparring } from "./sparring-st
 import { logSparringSuppression } from "./sparring-audit.server";
 import { assertNoSparringLeak } from "./sparring-assert.server";
 import { logAiTurn, recordEngineTurn } from "./telemetry-repo.server";
+import { runEngineTail } from "./engine-tail.server";
 
 
 
@@ -2459,355 +2460,40 @@ async function runReasoningEngineInner(
     reply = `Já tinha uma ${kind} desse valor registada hoje. É a mesma ou queres registar outra?`;
   }
 
-  // técnico, no máximo 2 frases, uma pergunta de cada vez.
-  const prospectingActed = !!leadTool && leadTool.ok && !(leadTool.data as any)?.duplicate;
-  // Leituras bem sucedidas: o consultor pediu para VER. A resposta tem de
-  // trazer os dados devolvidos pela ferramenta — nunca "Feito." nem uma
-  // frase de intenção ("Vou procurar…"). O bloco de resultados substitui a
-  // frase gerada e não passa pelo corte de 2 frases (cortaria a lista).
-  const queryReply = toolResults.some((t) => t.ok && isQueryTool(t.name))
-    ? formatQueryResults(toolResults)
-    : null;
-
-  // Rascunho de resposta a email: apresentação determinística em três bolhas
-  // (intro + corpo isolado para copiar + pergunta de confirmação). Nunca
-  // deixamos a IA redigir esta parte — o corpo tem de sair exactamente como
-  // foi gravado e como está na caixa do consultor.
-  const emailDraftTool = toolResults.find(
-    (t) => (t.name === "draft_email_reply" || t.name === "compose_email_to_contact") && t.ok,
-  );
-  let emailDraftReply: string | null = null;
-  if (emailDraftTool) {
-    const d = (emailDraftTool.data ?? {}) as Record<string, any>;
-    const { withSuggestionAndQuestion } = await import("../culture/suggested-message");
-    if (d.body && d.draft_id) {
-      const intro = [d.note ? String(d.note) : "", String(d.intro)].filter(Boolean).join(" ");
-      emailDraftReply = withSuggestionAndQuestion(
-        intro,
-        String(d.preview ?? d.body),
-        String(d.question),
-      );
-    } else if (d.needs_person_choice || d.needs_email_address) {
-      emailDraftReply = String(d.question ?? "De quem estamos a falar?");
-    } else if (d.needs_person_name) {
-      emailDraftReply = "A quem queres que escreva? Diz-me o nome.";
-    } else if (d.needs_email_choice) {
-      emailDraftReply = String(d.question ?? "A qual dos emails queres responder?");
-    } else if (d.not_found) {
-      emailDraftReply = "Não encontrei esse email na tua caixa. Dizes-me o remetente ou o assunto?";
-    } else if (d.needs_reconnect) {
-      emailDraftReply = "O acesso ao teu email expirou. Liga outra vez a caixa em Definições e eu preparo o rascunho.";
-    } else if (d.not_connected) {
-      emailDraftReply = "Ainda não tens caixa de email ligada. Liga o Gmail ou o Outlook e eu preparo o rascunho.";
-    } else if (d.plan_required) {
-      emailDraftReply = "O email faz parte do plano Pro. Queres que te explique o que muda?";
-    }
-  }
-  // A lista de desmarcações também não passa pelo corte de 2 frases.
-  if (emailDraftReply) {
-    reply = emailDraftReply;
-  } else if (queryReply || cancelTool) {
-    if (queryReply) reply = queryReply;
-  } else {
-    reply = enforceHumanTone(reply, {
-      // Uma pergunta de desambiguação não é uma acção executada: se dissermos
-      // que sim, o tom humano transforma a pergunta em "Feito.".
-      actionExecutedOk: ((shouldAct && allOk) || prospectingActed) && !rescheduleAsk,
-    });
-    if (decideR.decision.action === "ask") {
-      reply = enforceSingleQuestion(reply);
-    }
-  }
-  // Ordem correcta: o outcome real (execução) manda sobre a frase gerada.
-  // Quando a ferramenta correu bem, a resposta NUNCA pode ser linguagem de
-  // incompreensão — nem por fallback, nem porque o passo de redacção falhou.
-  const executedOk = ((shouldAct && allOk) || prospectingActed) && !rescheduleAsk;
-  if (executedOk) {
-    const soundsLikeFailure =
-      !reply ||
-      reply === NATURAL_FALLBACKS.didNotUnderstand ||
-      reply === NATURAL_FALLBACKS.aiDown ||
-      NOT_UNDERSTOOD_RE.test(reply);
-    if (soundsLikeFailure) reply = NATURAL_FALLBACKS.done;
-  }
-  if (isCorrection && !rescheduleAsk) {
-    reply = suppressRejectedQuestion(reply, lastAssistantReply);
-  }
-  if (!reply) {
-    // Sem execução e sem resposta: a origem manda no texto. Se a IA esteve
-    // indisponível, dizemos isso; só dizemos "não percebi" quando o serviço
-    // respondeu e mesmo assim não chegámos a lado nenhum.
-    reply = aiUnavailable ? NATURAL_FALLBACKS.aiDown : NATURAL_FALLBACKS.didNotUnderstand;
-  }
-  // Mesmo que o modelo tenha devolvido texto parcial de incompreensão numa
-  // falha de serviço, a mensagem honesta é a de indisponibilidade.
-  if (aiUnavailable && !shouldAct && !prospectingActed && NOT_UNDERSTOOD_RE.test(reply)) {
-    reply = NATURAL_FALLBACKS.aiDown;
-  }
-
-  // Rede de segurança final: quando o motor não executou nada e a resposta é
-  // um fallback de não-compreensão (ou o DECIDE/THINK falhou), a mensagem
-  // original fica em Diversos > Por tratar antes de responder.
-  if (archiveOutcome === "executed_ok" && !shouldAct && !prospectingActed) {
-    if (aiUnavailable) {
-      archiveOutcome = "service_down";
-      archiveReason = decideR.error ?? thinkR.error ?? "serviço de IA indisponível";
-    } else {
-    const isFallbackReply =
-      reply === NATURAL_FALLBACKS.didNotUnderstand ||
-      reply === NATURAL_FALLBACKS.aiDown ||
-      NOT_UNDERSTOOD_RE.test(reply);
-    if (isFallbackReply || decideR.error || thinkR.error) {
-      archiveOutcome = "not_understood";
-      archiveReason = decideR.error ?? thinkR.error ?? "não percebi a mensagem";
-    }
-    }
-  }
-  // Em treino nada é arquivado: a simulação não pode deixar rasto em Diversos.
-  if (!sparringActive) {
-  reply = await applySafetyNet(ctx, {
-    content: buildArchiveContent({
-      trimmed,
-      pendingContent: pendingForArchive?.original_content ?? null,
-      recentRows: (recentRows as any[]) ?? [],
-    }),
-    outcome: archiveOutcome,
-    reason: archiveReason,
-    reply,
-  });
-  }
-
-  const totalLatencyMs = Date.now() - started;
-  // Confirmação transparente: o quê + onde, sem prometer envios.
-  reply = enforceTransparentConfirmation(reply, toolResults as any, { executedOk });
-  const inputTokens = thinkR.usage.inputTokens + decideR.usage.inputTokens;
-  const outputTokens = thinkR.usage.outputTokens + decideR.usage.outputTokens;
-  const success = allOk && !decideR.error && !thinkR.error;
-
-  const traceId: string | null = await recordEngineTurn(supabase, {
+  // Cauda do turno (finalização, rede de segurança, métricas, ofertas):
+  // extraída para engine-tail.server.ts sem alteração de ordem nem de lógica.
+  return await runEngineTail({
+    ctx,
+    supabase,
     userId,
     channel,
     sourceMessageId: sourceMessageId ?? null,
-    inputContent: trimmed,
-    observations: observations as unknown,
-    hypotheses: thinkR.output.hypotheses as unknown,
-    searches: searches as unknown,
-    decision: decideR.decision as unknown,
-    toolCalls: toolResults as any,
-    memoryWrites: decideR.decision.memory_writes as unknown,
+    trimmed,
     reply,
-    thinkLatencyMs: thinkR.latencyMs,
-    decideLatencyMs: decideR.latencyMs,
-    totalLatencyMs,
-    inputTokens,
-    outputTokens,
-    success,
-    error: (decideR.error ?? thinkR.error) ?? null,
-    confidence: decideR.decision.confidence,
+    toolResults: toolResults as any,
+    cancelTool,
+    leadTool: leadTool as any,
+    decideR,
+    thinkR,
+    observations,
+    searches,
+    historyPreview,
+    recentRows: (recentRows as any[]) ?? [],
+    lastAssistantReply,
+    isCorrection,
+    shouldAct,
+    allOk,
+    rescheduleAsk: !!rescheduleAsk,
+    aiUnavailable,
+    archiveOutcome,
+    archiveReason,
+    pendingForArchive: pendingForArchive as any,
+    sparringActive,
+    started,
+    onboarding,
+    assessorName,
+    userFirstName,
+    nowLisbonYmd: nowLisbonYmd(),
+    nowLisbonHuman: nowLisbonHuman(),
   });
-
-  // AQS — Assistant Quality Score.
-  let aqsScore: number | null = null;
-  try {
-    // A mensagem ACTUAL do consultor já está gravada em `recentRows`; se a
-    // apanhássemos aqui, a diferença seria ≈0 s e quase tudo virava
-    // "reformulação". Excluímo-la explicitamente.
-    const userRows = ((recentRows as any[]) ?? []).filter((r) => r?.role === "user");
-    // Índice da mensagem actual (por id, ou a mais recente com o mesmo texto).
-    let curIdx = sourceMessageId ? userRows.findIndex((r) => r?.id === sourceMessageId) : -1;
-    if (curIdx < 0) curIdx = userRows.findIndex((r) => String(r?.content ?? "").trim() === trimmed);
-    // A repetição genuína tem o mesmo texto: só saltamos UMA ocorrência.
-    const prevUserRow = userRows[(curIdx < 0 ? -1 : curIdx) + 1] ?? null;
-    const prevUserAt = prevUserRow?.created_at ?? null;
-    const signals = computeQualitySignals({
-      decision: decideR.decision,
-      toolResults,
-      reply,
-      previousUserTurnAt: prevUserAt ? new Date(prevUserAt) : null,
-      message: trimmed,
-      previousUserMessage: prevUserRow ? String(prevUserRow.content ?? "") : null,
-      lastAssistantReply,
-    });
-    aqsScore = signals.score;
-    await persistQualityScore(supabase, { userId, channel, traceId, signals });
-  } catch { /* noop */ }
-
-  // Correção do consultor → grava e conta para o ATS deste turno.
-  let correctionRecord: { id: string; category: string } | null = null;
-  if (isCorrection) {
-    try {
-      correctionRecord = await captureCorrection(supabase, {
-        userId,
-        channel,
-        conversationId: channel,
-        previousTraceId: null,
-        originalAssistantReply: lastAssistantReply,
-        correctionMessage: trimmed,
-      });
-    } catch { /* noop */ }
-  }
-
-  // ATS — Assistant Trust Score.
-  let atsValue: number | null = null;
-  try {
-    const searchesForContext = searches;
-    const contextPreservation = computeContextPreservation({
-      decision: decideR.decision,
-      toolResults,
-      conversationState: (searchesForContext as any).conversation_state ?? null,
-      historyPreview,
-      currentMessage: trimmed,
-    });
-    const safeDecisions = computeSafeDecisions({
-      decision: decideR.decision,
-      toolResults,
-      finalReply: reply,
-    });
-    const taskSuccess = computeTaskSuccess(decideR.decision, toolResults);
-    const signals: TrustSignals = {
-      task_success: taskSuccess,
-      aqs_score: aqsScore,
-      corrections_count: correctionRecord ? 1 : 0,
-      context_preservation: contextPreservation,
-      safe_decisions: safeDecisions,
-      ats: null,
-    };
-    signals.ats = computeATS({
-      task_success: signals.task_success,
-      aqs_score: signals.aqs_score,
-      corrections_count: signals.corrections_count,
-      context_preservation: signals.context_preservation,
-      safe_decisions: signals.safe_decisions,
-    });
-    atsValue = signals.ats;
-    await persistTrustScore(supabase, { userId, channel, traceId, signals });
-  } catch { /* noop */ }
-
-  // Reflection Engine — dispara em background quando o turno é fraco.
-  const shouldReflect =
-    (aqsScore != null && aqsScore < 0.80) ||
-    (atsValue != null && atsValue < 85) ||
-    !!correctionRecord;
-  if (shouldReflect) {
-    const trigger: ReflectionTrigger = correctionRecord
-      ? "user_correction"
-      : (atsValue != null && atsValue < 85 ? "low_ats" : "low_aqs");
-    // Fire-and-forget para não atrasar a resposta ao consultor.
-    void reflect(supabase, {
-      userId,
-      traceId,
-      correctionId: correctionRecord?.id ?? null,
-      trigger,
-      message: trimmed,
-      assistantReply: reply,
-      decisionAction: decideR.decision.action,
-      observations,
-      searches,
-      aqs: aqsScore,
-      ats: atsValue,
-      correctionCategory: correctionRecord?.category ?? null,
-      correctionMessage: correctionRecord ? trimmed : null,
-    });
-  }
-
-  // Shadow Mode — estratégia alternativa amostrada, não bloqueia a resposta.
-  if (shouldRunShadow()) {
-    void runShadow(supabase, {
-      userId, channel, traceId,
-      strategy: "decide_temp_0.6",
-      content: trimmed,
-      observations,
-      hypotheses: thinkR.output.hypotheses,
-      searches,
-      historyPreview,
-      assessorName,
-      userFirstName,
-      nowLisbonYmd: nowLisbonYmd(),
-      nowLisbonHuman: nowLisbonHuman(),
-      baseline: { action: decideR.decision.action, reply },
-    });
-  }
-
-  // Oferta das perguntas de arranque — só numa pausa natural: nada em curso,
-  // nenhuma execução neste turno e a resposta não terminou já com pergunta.
-  let offeredProfileQuestion = false;
-  let offeredOnboarding = false;
-  try {
-    const busyWithTask =
-      sparringActive ||
-      decideR.decision.action === "act" ||
-      decideR.decision.action === "ask" ||
-      toolResults.length > 0 ||
-      !!pendingForArchive;
-    const offer = nextOnboardingOffer(onboarding, {
-      replyIsQuestion: reply.includes("?"),
-      busyWithTask,
-    });
-    if (offer === "name") {
-      await markOnboardingOffered(supabase, userId, "name_asked", onboarding.offers);
-      reply = appendOffer(reply, NAME_QUESTION(assessorName));
-      offeredOnboarding = true;
-    } else if (offer === "goals") {
-      await markOnboardingOffered(supabase, userId, "goals_asked", onboarding.offers);
-      reply = appendOffer(reply, GOALS_QUESTION);
-      offeredOnboarding = true;
-    }
-  } catch { /* noop */ }
-
-  // Perfil "por gotas" (zona de atuação, equipa) — só quando o arranque leve
-  // não pediu nada neste turno. Nunca duas perguntas na mesma conversa.
-  if (!offeredOnboarding && !sparringActive) {
-    try {
-      const {
-        loadProfileDripState, markProfileQuestionAsked, recordProfileQuestion, isCalmDay,
-      } = await import("./profile-drip.server");
-      const { composeDripReply, nextProfileQuestion } = await import("./profile-drip");
-      const dripState = await loadProfileDripState(supabase, userId);
-      const anchor =
-        toolResults.some((t) => t.ok && (t.name === "create_prospecting_lead" || t.name === "create_property"))
-          ? ("work_area" as const)
-          : null;
-      const busyWithTask =
-        decideR.decision.action === "ask" || !!pendingForArchive || toolResults.some((t) => !t.ok);
-      const offer = nextProfileQuestion(dripState, {
-        replyIsQuestion: reply.includes("?"),
-        busyWithTask,
-        anchor,
-        calmDay: anchor ? true : await isCalmDay(supabase, userId),
-        onboardingPending: onboarding.stage !== "done" && onboarding.stage !== "skipped",
-      });
-      if (offer) {
-        await markProfileQuestionAsked(supabase, userId, dripState, offer.key, offer.withNotice);
-        await recordProfileQuestion(supabase, {
-          userId, channel, key: offer.key, question: offer.question,
-          sourceMessageId: sourceMessageId ?? null,
-        });
-        reply = composeDripReply(reply, offer);
-        offeredProfileQuestion = true;
-      }
-    } catch { /* noop — nunca bloquear a resposta */ }
-  }
-
-
-  // Âncora: uma pergunta de esclarecimento sem nenhuma ferramenta executada e
-  // sem proposta viva deixa rastro (expiração curta). Sem isto, a resposta
-  // seguinte do consultor — "Casa Final B" — ficava à deriva (30/07).
-  // Quando o turno é uma proposta ("Abro o negócio?"), o pendente já é a
-  // âncora: gravar outra só ia competir com ele.
-  const askedWithDraft =
-    decideR.decision.action === "ask" ||
-    decideR.decision.action === "act" ||
-    !!pendingForArchive;
-  if (!sparringActive && !offeredProfileQuestion && toolResults.length === 0 && !askedWithDraft) {
-    try {
-      const { recordOpenQuestion } = await import("./open-question.server");
-      await recordOpenQuestion(supabase, {
-        userId, channel, question: reply,
-        sourceMessageId: sourceMessageId ?? null,
-        toolsExecuted: toolResults.length,
-      });
-    } catch { /* noop — nunca bloquear a resposta */ }
-  }
-
-  return { reply };
 }
