@@ -15,7 +15,7 @@ const executeToolCallsMock = vi.fn(async (..._a: any[]) => [] as any[]);
 const applySafetyNetMock = vi.fn(async (_c: any, o: any) => o.reply as string);
 const persistQualityScore = vi.fn(async () => undefined);
 const persistTrustScore = vi.fn(async () => undefined);
-const reflectMock = vi.fn(async () => undefined);
+const reflectMock = vi.fn(async (..._a: any[]) => undefined);
 const runShadowMock = vi.fn();
 const shouldRunShadowMock = vi.fn(() => false);
 const recordOpenQuestion = vi.fn(async () => undefined);
