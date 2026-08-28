@@ -190,23 +190,8 @@ const LOW_COUPLING_PENDING_RESOLVERS: PendingResolver[] = [
 ];
 
 
-function nowLisbonHuman(): string {
-  return new Intl.DateTimeFormat("pt-PT", {
-    timeZone: "Europe/Lisbon",
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  }).format(new Date());
-}
-function nowLisbonYmd(): string {
-  return lisbonYmd(new Date());
-}
-function toHistoryPreview(rows: Array<{ role: string; content: string }>): string {
-  return [...rows].reverse()
-    .filter((r) => r?.content && (r.role === "user" || r.role === "assistant"))
-    .slice(-HISTORY_LIMIT)
-    .map((r) => `${r.role === "user" ? "consultor" : "assessor"}: ${r.content}`)
-    .join("\n");
-}
+// Os auxiliares de data/histórico vivem em `engine-shared.ts`.
+
 
 /**
  * Reformular a MESMA pergunta não pode encurtar a janela de confirmação.
