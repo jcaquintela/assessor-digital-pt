@@ -68,7 +68,7 @@ export function matchPersonChoice(reply: string, candidates: PersonCandidate[]):
 /** Confirmação explícita de a quem ficou ligado o registo. */
 export function personLinkedFeedback(
   name: string,
-  what: "compromisso" | "seguimento" = "seguimento",
+  what: "compromisso" | "seguimento" | "imóvel" = "seguimento",
 ): string {
   return `Feito — ${what} ligado ao contacto ${name}. Fica no histórico dele.`;
 }
