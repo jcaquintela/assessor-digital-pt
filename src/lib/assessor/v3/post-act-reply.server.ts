@@ -1,14 +1,14 @@
 // Pós-ACT — finalização do texto da resposta a partir do que foi mesmo
 // escrito na base de dados.
 //
-// Extraído do motor v3 sem alterar comportamento nem ordem. Os três blocos de
-// confirmação de contacto (`confirm_event_person`) ficam deliberadamente
-// inline no motor: a decisão de os fundir é um lote próprio.
+// Extraído do motor v3 sem alterar comportamento nem ordem. A confirmação de
+// contacto (`confirm_event_person`) vive agora aqui, num caminho único para as
+// três escritas que resolvem pessoa antes de gravar.
 //
 // A ordem preservada é:
 //   1. shapeExecutionOutcome  (falha de ferramenta, acto sem ferramenta, idempotência)
 //   2. shapeAgendaAsks        (reagendamento, escolha de calendário)
-//   3. [inline no motor]      confirmação de contacto ×3
+//   3. shapePersonAsk         (confirmação de contacto — primeiro match ganha)
 //   4. shapeToolReplies       (prospeção, desmarcação, conclusão, financeiro)
 
 import { claimsCompletion, unverifiedCompletionReply, recurrenceQuestion } from "./completion-intent";
