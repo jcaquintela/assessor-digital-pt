@@ -1181,6 +1181,7 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   list_property_categories: ListPropertyCategoriesArgs,
   list_uncategorized_properties: ListUncategorizedPropertiesArgs,
   set_property_category: SetPropertyCategoryArgs,
+  search_similar_listings: SearchSimilarListingsArgs,
 };
 
 export const TOOL_NAMES = Object.keys(ZOD_BY_TOOL);
