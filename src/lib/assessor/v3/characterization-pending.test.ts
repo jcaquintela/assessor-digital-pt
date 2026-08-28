@@ -419,6 +419,83 @@ describe("caracterização — escolha de contacto", () => {
   });
 });
 
+// Mesma família, ferramentas que até aqui não tinham rede de segurança.
+describe("caracterização — escolha de contacto (seguimento)", () => {
+  const payload = {
+    tool: "create_follow_up",
+    personName: "Ana",
+    suggestions: [{ id: "p1", name: "Ana Silva" }],
+    incoming: { title: "Ligar", date: "2026-09-01", time: "15:00" },
+    mode: "confirm_exact",
+  };
+
+  it("'sim' a candidato único executa a ferramenta com a pessoa ligada", async () => {
+    const db = makeDb();
+    setPending(db, { intent: "confirm_event_person", payload, question: "É a Ana Silva?" });
+    const reply = await turn(db, "sim");
+    expect(tool.create_follow_up).toHaveBeenCalledTimes(1);
+    expect(tool.create_follow_up.mock.calls[0][1]).toMatchObject({ person_id: "p1" });
+    expect(reply).toContain("Ana Silva");
+    expect(pendings[0].status).toBe("executed");
+  });
+
+  it("'não, é outra pessoa' fecha o candidato e pergunta quem é", async () => {
+    const db = makeDb();
+    setPending(db, { intent: "confirm_event_person", payload, question: "É a Ana Silva?" });
+    const reply = await turn(db, "não, é outra pessoa");
+    expect(tool.create_follow_up).not.toHaveBeenCalled();
+    expect(reply).toMatch(/Diz-me quem é/i);
+    expect(pendings[0].status).toBe("cancelled");
+  });
+
+  it("ferramenta falhada não promete execução", async () => {
+    const db = makeDb();
+    setPending(db, { intent: "confirm_event_person", payload, question: "É a Ana Silva?" });
+    tool.create_follow_up.mockResolvedValue({ ok: false, error: "db" } as any);
+    const reply = await turn(db, "sim");
+    expect(reply).toMatch(/não consegui/i);
+    expect(pendings[0].status).toBe("failed");
+  });
+});
+
+describe("caracterização — escolha de contacto (proprietário do imóvel)", () => {
+  const payload = {
+    tool: "update_property",
+    personName: "Ana",
+    suggestions: [{ id: "p1", name: "Ana Silva" }],
+    incoming: { property_id: "imo-1", owner_name: null },
+    mode: "confirm_exact",
+  };
+
+  it("'sim' a candidato único liga o proprietário ao imóvel", async () => {
+    const db = makeDb();
+    setPending(db, { intent: "confirm_event_person", payload, question: "É a Ana Silva?" });
+    const reply = await turn(db, "sim");
+    expect(tool.update_property).toHaveBeenCalledTimes(1);
+    expect(tool.update_property.mock.calls[0][1]).toMatchObject({ owner_person_id: "p1" });
+    expect(reply).toContain("Ana Silva");
+    expect(pendings[0].status).toBe("executed");
+  });
+
+  it("'não, é outra pessoa' fecha o candidato e pergunta quem é", async () => {
+    const db = makeDb();
+    setPending(db, { intent: "confirm_event_person", payload, question: "É a Ana Silva?" });
+    const reply = await turn(db, "não, é outra pessoa");
+    expect(tool.update_property).not.toHaveBeenCalled();
+    expect(reply).toMatch(/Diz-me quem é/i);
+    expect(pendings[0].status).toBe("cancelled");
+  });
+
+  it("ferramenta falhada não promete execução", async () => {
+    const db = makeDb();
+    setPending(db, { intent: "confirm_event_person", payload, question: "É a Ana Silva?" });
+    tool.update_property.mockResolvedValue({ ok: false, error: "db" } as any);
+    const reply = await turn(db, "sim");
+    expect(reply).toMatch(/não consegui/i);
+    expect(pendings[0].status).toBe("failed");
+  });
+});
+
 describe("caracterização — duplicado vs. reagendamento", () => {
   const payload = {
     candidate: { id: "f1", title: "Visita ao T3" },
