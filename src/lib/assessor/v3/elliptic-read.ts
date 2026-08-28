@@ -67,6 +67,21 @@ const PERIOD_VALUES: Array<[RegExp, "today" | "tomorrow" | "week" | "next_week"]
   [/^(proxima semana|semana que vem|na proxima semana)$/, "next_week"],
 ];
 
+// (c) Elipse SEM tópico nem período: "Que mais?", "E mais?", "Mais alguma
+// coisa?". Não nomeia nada — só pede a continuação da MESMA leitura. Sem isto
+// caía no caminho de escrita e acabava em Diversos.
+const ELLIPTIC_MORE_RE =
+  /^(?:e |entao |mas )?(?:que|o que|ha|tens|falta|sobra)?\s*(?:mais|mais alguma coisa|alguma coisa mais|mais alguma|mais algum)\s*(?:coisa|alguma coisa|para (?:hoje|ver))?\s*[?!.]*$/;
+
+const READ_TOOLS = new Set<ReadTool>([
+  "search_people",
+  "search_properties",
+  "search_prospecting_leads",
+  "search_agenda",
+  "search_active_reminders",
+  "search_files",
+]);
+
 export function isLastReadFresh(state: LastReadState | null | undefined, now = Date.now()): boolean {
   if (!state?.tool || !state.at) return false;
   const at = state.at instanceof Date ? state.at : new Date(state.at);
@@ -109,6 +124,14 @@ export function resolveEllipticRead(
           arguments: { ...(state!.args ?? {}), period: value },
         };
       }
+    }
+  }
+
+  // (c) "Que mais?" isolado: repete a última leitura tal e qual.
+  if (ELLIPTIC_MORE_RE.test(text) && /\bmais\b/.test(text)) {
+    const tool = state!.tool as ReadTool;
+    if (READ_TOOLS.has(tool)) {
+      return { tool, arguments: { ...(state!.args ?? {}) } };
     }
   }
 
