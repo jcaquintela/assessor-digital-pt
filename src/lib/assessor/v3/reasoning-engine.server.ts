@@ -880,162 +880,16 @@ async function runReasoningEngineInner(
     }
 
 
-    // Processador de Áudio Imobiliário — proposta única com vários itens.
-    if (pending && pending.intent === "audio_breakdown") {
-      // (o caminho por temas está tratado logo abaixo, em "audio_themes")
-      // A pergunta lateral do ficheiro só sai quando a proposta fecha, para
-      // não competir com o "sim" que confirma os itens.
-      const askAudioFile = async (reply: string): Promise<string> => {
-        const payload = (pending!.structured_payload ?? {}) as Record<string, any>;
-        const fileId = payload.audio_file_id ? String(payload.audio_file_id) : null;
-        if (!fileId) return reply;
-        const { askKeepAudio } = await import("./audio-keep.server");
-        const { appendKeepQuestion } = await import("./audio-keep");
-        const question = await askKeepAudio(supabase, {
-          userId,
-          channel,
-          fileId,
-          transcript: String(pending!.original_content ?? ""),
-          subject: payload.subject ?? null,
-        });
-        return question ? appendKeepQuestion(reply, question) : reply;
-      };
-      if (saIsConfirmation(trimmed)) {
-        const { executeAudioBreakdown } = await import("./audio-breakdown.server");
-        const reply = await executeAudioBreakdown(ctx, pending);
-        return { reply: await askAudioFile(reply) };
-      }
-      if (saIsRejection(trimmed)) {
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: await askAudioFile("Está bem, não guardei nada do áudio.") };
-      }
-      // "Descartar": sai tudo — itens, transcrição e o próprio ficheiro.
-      if (isDiscardCommand(trimmed)) {
-        const { discardLastInput } = await import("./discard.server");
-        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        await discardLastInput(supabase, userId, channel);
-        return { reply: DISCARD_DONE_REPLY };
-      }
-      // Correção a um item específico antes do "sim" — a proposta mantém-se
-      // aberta e é reescrita já corrigida.
-      {
-        const { coerceBreakdown, formatBreakdownRevised } = await import("./audio-breakdown");
-        const { parseBreakdownEdit, applyBreakdownEdit, describeBreakdownEdit } =
-          await import("./audio-breakdown-edit");
-        const { todayLisbonYmd } = await import("./audio-breakdown.server");
-        const current = coerceBreakdown(pending.structured_payload ?? {});
-        const edit = parseBreakdownEdit(
-          trimmed,
-          current.items.length,
-          todayLisbonYmd(),
-          current.items,
-        );
-        if (edit) {
-          const removedItem = edit.remove ? current.items[edit.index] : undefined;
-          const next = applyBreakdownEdit(current, edit);
-          if (!next.items.length) {
-            await markPendingActionStatus(supabase, pending.id, "cancelled");
-            return {
-              reply: await askAudioFile("Tirei o último ponto — já não fica nada por guardar deste áudio."),
-            };
-          }
-          const { updatePendingActionPayload } = await import("../memory.server");
-          await updatePendingActionPayload(
-            supabase,
-            pending.id,
-            {
-              ...(next as unknown as Record<string, any>),
-              audio_file_id: (pending.structured_payload as any)?.audio_file_id ?? null,
-            },
-            { status: "pending_confirmation" },
-          );
-          return { reply: formatBreakdownRevised(next, describeBreakdownEdit(edit, removedItem)) };
-        }
+    // ---------- Áudio (breakdown + temas) ----------
+    // Mesma precedência de sempre: proposta por itens → proposta por temas.
+    {
+      const pc = { ctx, supabase, userId, channel, trimmed, pending };
+      for (const resolver of AUDIO_PENDING_RESOLVERS) {
+        const handled = await resolver(pc);
+        if (handled) return handled;
       }
     }
 
-    // Áudio separado em TEMAS (lead = pessoa + imóvel + oportunidade ligados).
-    // Nada é escrito antes do "sim", e uma ambiguidade de contacto pergunta-se
-    // sempre em vez de se decidir sozinho.
-    if (pending && pending.intent === "audio_themes") {
-      const {
-        formatThemesProposal, formatThemesRevised, pendingAmbiguities, formatAmbiguityQuestion,
-        matchAmbiguityAnswer, parseThemeEdit, applyThemeEdit, describeThemeEdit,
-      } = await import("./audio-themes");
-      const { readThemesPayload, executeAudioThemes, todayLisbonYmd } =
-        await import("./audio-themes.server");
-      const { updatePendingActionPayload } = await import("../memory.server");
-      const payload = readThemesPayload(pending.structured_payload ?? {});
-      const savePayload = async (themes: typeof payload.themes, links: typeof payload.links) => {
-        await updatePendingActionPayload(
-          supabase,
-          pending!.id,
-          {
-            ...(payload as unknown as Record<string, any>),
-            themes: themes as unknown as any,
-            links: links as unknown as any,
-          },
-          { status: "pending_confirmation" },
-        );
-      };
-
-      // "Descartar": sai tudo — temas, transcrição e ficheiro.
-      if (isDiscardCommand(trimmed)) {
-        const { discardLastInput } = await import("./discard.server");
-        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        await discardLastInput(supabase, userId, channel);
-        return { reply: DISCARD_DONE_REPLY };
-      }
-
-      // Resposta a uma desambiguação de contacto.
-      const ambiguities = pendingAmbiguities(payload.themes, payload.links);
-      if (ambiguities.length) {
-        const chosen = matchAmbiguityAnswer(trimmed, ambiguities[0].candidates);
-        if (chosen) {
-          const links = payload.links.map((l, i) =>
-            i === ambiguities[0].index
-              ? { ...l, person_id: chosen.id, person_label: chosen.label, ambiguous_people: [] }
-              : l);
-          await savePayload(payload.themes, links);
-          const rest = pendingAmbiguities(payload.themes, links);
-          return {
-            reply: rest.length
-              ? formatAmbiguityQuestion(rest[0])
-              : formatThemesRevised(payload.themes, links, `Certo, é o ${chosen.label}. Fica assim:`),
-          };
-        }
-        if (saIsConfirmation(trimmed)) {
-          return { reply: formatAmbiguityQuestion(ambiguities[0]) };
-        }
-      }
-
-      if (saIsConfirmation(trimmed) && !ambiguities.length) {
-        const reply = await executeAudioThemes(ctx, pending);
-        return { reply };
-      }
-      if (saIsRejection(trimmed)) {
-        await markPendingActionStatus(supabase, pending.id, "cancelled");
-        return { reply: "Está bem, não guardei nada do áudio." };
-      }
-
-      // Correcção ou descarte de um tema, mantendo os restantes.
-      const edit = parseThemeEdit(trimmed, payload.themes.length, todayLisbonYmd());
-      if (edit) {
-        const removed = edit.remove ? payload.themes[edit.index] : undefined;
-        const next = applyThemeEdit(payload.themes, payload.links, edit);
-        if (!next.themes.length) {
-          await markPendingActionStatus(supabase, pending.id, "cancelled");
-          return { reply: "Tirei o último ponto — já não fica nada por guardar deste áudio." };
-        }
-        await savePayload(next.themes, next.links);
-        return { reply: formatThemesRevised(next.themes, next.links, describeThemeEdit(edit, removed)) };
-      }
-      if (!ambiguities.length && !trimmed) {
-        return { reply: formatThemesProposal(payload.themes, payload.links) };
-      }
-    }
 
     // ---------- Pendentes de baixo acoplamento + atalho de comissão ----------
     // Mesma ordem de sempre: Drive (ligação, foto, lote) → feedback → comissão.
