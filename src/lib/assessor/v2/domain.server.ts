@@ -118,6 +118,9 @@ export interface DomainContext {
   // O consultor já decidiu (nesta conversa) que o seguimento fica sem pessoa
   // associada, ou já respondeu à pergunta de ligação.
   skipPersonResolution?: boolean;
+  // O consultor já respondeu à pergunta "que imóvel é?" (ou decidiu avançar
+  // sem imóvel): não voltamos a resolver nem a perguntar.
+  skipPropertyResolution?: boolean;
   // Candidatos rejeitados nesta conversa — nunca voltam a ser propostos.
   rejectedPersonIds?: string[];
   // A instrução original deste turno traz 2+ datas distintas para o mesmo
@@ -531,7 +534,22 @@ async function execSetPropertyCategory(ctx: DomainContext, args: unknown): Promi
 
   let propertyId = p.value.property_id ?? null;
   if (!propertyId && p.value.property_query) {
-    propertyId = await resolvePropertyFromText(ctx, p.value.property_query);
+    // Reclassificar o imóvel errado é destrutivo: em correspondência
+    // "provável" bloqueamos sempre e perguntamos, sem fallback silencioso.
+    const r = await resolvePropertyOrAsk(ctx, p.value.property_query);
+    if (r.id) propertyId = r.id;
+    else if (r.ask) {
+      return ok({
+        needsPropertyConfirmation: true,
+        tool: "set_property_category",
+        mode: r.ask.mode,
+        propertyQuery: r.ask.propertyQuery,
+        question: r.ask.question,
+        suggestions: r.ask.suggestions,
+        candidateIds: r.ask.candidateIds,
+        incoming: { ...p.value, property_id: null },
+      });
+    }
   }
   if (!propertyId) return fail("property_not_found");
 
@@ -635,41 +653,43 @@ function normalizeForMatch(s: string): string {
 }
 
 /**
- * Tenta descobrir de que imóvel se fala quando o motor não devolveu o id.
- * Compara o texto do compromisso com o título/morada/cidade dos imóveis do
- * consultor. Só liga quando há uma única correspondência clara.
+ * Descobre de que imóvel se fala quando o motor não devolveu o id.
+ * Delegado em `resolvePropertyForWrite` (palavras de identidade + número de
+ * porta): só liga quando a morada é a mesma. Em correspondência "provável"
+ * ("Boavista 120" vs "Boavista 12") devolve uma pergunta — nunca liga em
+ * silêncio, nem escolhe por nós.
  */
-export async function resolvePropertyFromText(ctx: DomainContext, text: string): Promise<string | null> {
-  let source = text || "";
-  // O título gravado pode perder a morada ("Visita com Sr. Almeida"); nesse
-  // caso, olhamos para a frase original do consultor.
-  if (ctx.sourceMessageId) {
-    const { data: msg } = await ctx.supabase
-      .from("assessor_messages")
-      .select("content")
-      .eq("id", ctx.sourceMessageId)
-      .eq("user_id", ctx.userId)
-      .maybeSingle();
-    const extra = (msg as { content?: string } | null)?.content;
-    if (extra) source = `${source} ${extra}`;
-  }
-  const hay = normalizeForMatch(source);
-  if (hay.length < 6) return null;
-  const { data } = await ctx.supabase
-    .from("properties")
-    .select("id, title, address, location, city")
-    .eq("user_id", ctx.userId)
-    .limit(300);
-  const rows = (data ?? []) as Array<{ id: string; title: string | null; address: string | null; location: string | null; city: string | null }>;
-  const matches = new Set<string>();
-  for (const r of rows) {
-    for (const raw of [r.address, r.title, r.location]) {
-      const needle = normalizeForMatch(String(raw ?? ""));
-      if (needle.length >= 6 && hay.includes(needle)) { matches.add(r.id); break; }
-    }
-  }
-  return matches.size === 1 ? [...matches][0]! : null;
+export interface PropertyAsk {
+  mode: "confirm_partial" | "choose";
+  propertyQuery: string | null;
+  suggestions: Array<{ id: string; title?: string | null; address?: string | null; location?: string | null }>;
+  candidateIds: string[];
+  question: string;
 }
+
+export async function resolvePropertyOrAsk(
+  ctx: DomainContext,
+  text: string,
+): Promise<{ id: string | null; ask: PropertyAsk | null }> {
+  if (ctx.skipPropertyResolution) return { id: null, ask: null };
+  const { resolvePropertyForWrite, propertyResolutionQuestion } = await import(
+    "@/lib/imoveis/resolve-property.server"
+  );
+  const res = await resolvePropertyForWrite(ctx, text);
+  if (res.status === "linked" && res.propertyId) return { id: res.propertyId, ask: null };
+  if (res.status === "none") return { id: null, ask: null };
+  return {
+    id: null,
+    ask: {
+      mode: res.status as "confirm_partial" | "choose",
+      propertyQuery: res.said,
+      suggestions: res.candidates,
+      candidateIds: res.candidates.map((c) => String(c.id)),
+      question: propertyResolutionQuestion(res),
+    },
+  };
+}
+
 
 /**
  * Procura na BD um compromisso aberto do mesmo assunto no mesmo dia (ou no
@@ -714,9 +734,14 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   const v = { ...p.value, title: ensureTitle(p.value.title, "Compromisso") };
   // O imóvel é muitas vezes falado ("visita à Alameda da República") sem que o
   // motor devolva o id. Sem ligação, a visita não aparece na ficha do imóvel.
+  // Só ligamos quando a morada é a mesma; "provável" pergunta-se sempre.
+  let propertyAsk: PropertyAsk | null = null;
   if (!v.property_id) {
-    v.property_id = await resolvePropertyFromText(ctx, [v.title, v.notes].filter(Boolean).join(" "));
+    const r = await resolvePropertyOrAsk(ctx, [v.title, v.notes].filter(Boolean).join(" "));
+    if (r.id) v.property_id = r.id;
+    else propertyAsk = r.ask;
   }
+
   // Um compromisso "com o Manuel" nunca pode ficar só como texto. Ou ligamos
   // ao contacto certo, ou perguntamos — nunca inventamos nem deixamos solto.
   //
@@ -746,6 +771,19 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
         incoming: { ...v, person_id: null, date: v.date, time: v.start_time },
       });
     }
+  }
+  // Imóvel "provável" nunca liga em silêncio: perguntamos antes de gravar.
+  if (propertyAsk) {
+    return ok({
+      needsPropertyConfirmation: true,
+      tool: "create_event",
+      mode: propertyAsk.mode,
+      propertyQuery: propertyAsk.propertyQuery,
+      question: propertyAsk.question,
+      suggestions: propertyAsk.suggestions,
+      candidateIds: propertyAsk.candidateIds,
+      incoming: { ...v, property_id: null, date: v.date, time: v.start_time },
+    });
   }
   const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   // Idempotência: um pending_action só pode criar um recurso.
@@ -953,8 +991,11 @@ async function findActiveProspectingLead(ctx: DomainContext): Promise<{ id: stri
 async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateFollowUpArgs, args); if (!p.ok) return fail(p.error);
   const v = { ...p.value, title: ensureTitle(p.value.title, "Lembrete") };
+  let propertyAsk: PropertyAsk | null = null;
   if (!v.property_id) {
-    v.property_id = await resolvePropertyFromText(ctx, [v.title, (v as any).notes].filter(Boolean).join(" "));
+    const r = await resolvePropertyOrAsk(ctx, [v.title, (v as any).notes].filter(Boolean).join(" "));
+    if (r.id) v.property_id = r.id;
+    else propertyAsk = r.ask;
   }
   // Resolução obrigatória de pessoa ANTES de escrever: um seguimento falado
   // "com o Manuel" nunca pode ficar com o nome preso em texto livre e
@@ -990,6 +1031,19 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
     }
   } else if (!v.person_id && ctx.skipPersonResolution) {
     personDeliberatelyUnlinked = true;
+  }
+  // Imóvel "provável" nunca liga em silêncio: perguntamos antes de gravar.
+  if (propertyAsk) {
+    return ok({
+      needsPropertyConfirmation: true,
+      tool: "create_follow_up",
+      mode: propertyAsk.mode,
+      propertyQuery: propertyAsk.propertyQuery,
+      question: propertyAsk.question,
+      suggestions: propertyAsk.suggestions,
+      candidateIds: propertyAsk.candidateIds,
+      incoming: { ...v, property_id: null },
+    });
   }
   const dueIsoDate = lisbonLocalToUtcIso(v.due_date, v.due_time ?? "09:00");
   // Idempotência: se já existe um follow_up para esta pending_action, devolve-o.

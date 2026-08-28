@@ -1,7 +1,7 @@
 // Reasoning Engine — Fase 5: ACT.
 
 import {
-  TOOL_REGISTRY, resolvePropertyFromText,
+  TOOL_REGISTRY, resolvePropertyOrAsk,
   type DomainContext, type DomainResult,
 } from "../v2/domain.server";
 import { ZOD_BY_TOOL, CreateProspectingLeadArgs, CreateDealArgs } from "../v2/tools";
@@ -124,8 +124,12 @@ async function enrichWithProperty(
     .filter((x) => typeof x === "string" && x.trim())
     .join(" ");
   try {
-    const id = await resolvePropertyFromText(ctx, text);
-    if (id) a.property_id = id;
+    // "Igual" liga; "provável"/"diferente" nunca ligam sozinhos. Quando há
+    // dúvida, o create_event/create_follow_up levanta a pergunta; nas outras
+    // ferramentas fica simplesmente por associar (melhor sem imóvel do que no
+    // imóvel errado).
+    const r = await resolvePropertyOrAsk(ctx, text);
+    if (r.id) a.property_id = r.id;
   } catch { /* ligar ao imóvel é um bónus; nunca pode falhar o registo */ }
   return a;
 }
