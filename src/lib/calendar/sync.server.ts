@@ -638,16 +638,6 @@ export async function applyExternalEvents(
     applied++;
   }
 
-  await saveSyncState(supabaseAdmin, userId, provider, {
-    sync_token: nextToken ?? undefined,
-    delta_link: nextDelta ?? undefined,
-    last_error: null,
-  });
-  // Limpa pares duplicados que já estavam na agenda (importações repetidas).
-  applied += await dedupeImportedEvents(supabaseAdmin, userId, provider);
-  if (verify !== false) {
-    applied += await verifyLinkedEvents(supabaseAdmin, userId, provider, verify);
-  }
   return { applied, skipped };
 }
 
