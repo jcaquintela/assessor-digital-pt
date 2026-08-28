@@ -7,13 +7,15 @@ import { callGateway, V2_MODEL_DEFAULT } from "../v2/gateway.server";
 import { TOOL_REGISTRY, type DomainContext, resolvePropertyFromText } from "../v2/domain.server";
 import { createPendingAction, markPendingActionStatus, type PendingActionRow } from "../memory.server";
 import { looksConfidential } from "../culture/confidential";
-import { foldLike } from "@/lib/search/normalize";
 import {
   coerceBreakdown,
+  emptyPersonLink,
   formatBreakdownDone,
   formatBreakdownProposal,
   type AudioBreakdown,
   type BreakdownItem,
+  type BreakdownPersonCandidate,
+  type BreakdownPersonLink,
 } from "./audio-breakdown";
 import { lisbonYmd } from "../lisbon-day";
 
@@ -73,36 +75,64 @@ export async function proposeAudioBreakdown(
   breakdown: AudioBreakdown,
   audioFileId?: string | null,
 ): Promise<string> {
+  // A resolução de contactos acontece ANTES da proposta: o que ficar em
+  // dúvida vai perguntado na mesma confirmação.
+  const links = await resolveBreakdownPeople(ctx, breakdown);
+  const withLinks: AudioBreakdown = { ...breakdown, links };
   await createPendingAction(ctx.supabase, {
     userId: ctx.userId,
     channel: ctx.channel,
     intent: AUDIO_BREAKDOWN_INTENT,
     originalContent: transcript.slice(0, 4000),
-    payload: { ...(breakdown as unknown as Record<string, any>), audio_file_id: audioFileId ?? null },
+    payload: { ...(withLinks as unknown as Record<string, any>), audio_file_id: audioFileId ?? null },
     confidence: 0.8,
     sourceMessageId: ctx.sourceMessageId ?? null,
   });
-  return formatBreakdownProposal(breakdown);
+  return formatBreakdownProposal(withLinks);
 }
 
-async function resolvePersonId(ctx: DomainContext, name: string | null | undefined): Promise<string | null> {
-  const q = String(name ?? "").trim();
-  if (q.length < 2) return null;
-  const { data } = await ctx.supabase
-    .from("people")
-    .select("id")
-    .eq("user_id", ctx.userId)
-    .ilike("name_norm", `%${foldLike(q)}%`)
-    .order("updated_at", { ascending: false })
-    .limit(1);
-  return ((data as any[]) ?? [])[0]?.id ?? null;
+/**
+ * Resolução de contacto de cada item — mesma regra de confiança do resto do
+ * produto (`resolvePersonForWrite`): só liga sozinho quando é inequívoco.
+ *
+ * Caso real: um áudio que diz "Manuel", havendo "Manuel Silva" e "Manuela
+ * Dias" na conta, ligava à Manuela por pesquisa de substring. Agora a dúvida
+ * sobe à confirmação do áudio e é o consultor que escolhe.
+ */
+export async function resolveBreakdownPeople(
+  ctx: DomainContext,
+  breakdown: AudioBreakdown,
+): Promise<BreakdownPersonLink[]> {
+  const { resolvePersonForWrite } = await import("@/lib/people/resolve-person.server");
+  const cache = new Map<string, BreakdownPersonLink>();
+  const out: BreakdownPersonLink[] = [];
+  for (const item of breakdown.items) {
+    const name = String(item.person_name ?? "").trim();
+    if (name.length < 2) { out.push(emptyPersonLink()); continue; }
+    const key = name.toLowerCase();
+    const cached = cache.get(key);
+    if (cached) { out.push(cached); continue; }
+    let link: BreakdownPersonLink = emptyPersonLink();
+    try {
+      const res = await resolvePersonForWrite(ctx as any, "", { nameOverride: name });
+      if ((res.status === "linked" || res.status === "confirm_exact") && res.personId) {
+        link = { person_id: res.personId, candidates: [] };
+      } else if (res.status !== "none") {
+        link = { person_id: null, candidates: (res.candidates ?? []).slice(0, 4) as BreakdownPersonCandidate[] };
+      }
+    } catch { /* sem resolução, fica por associar */ }
+    cache.set(key, link);
+    out.push(link);
+  }
+  return out;
 }
 
 async function execItem(
   ctx: DomainContext,
   item: BreakdownItem,
+  link: BreakdownPersonLink,
 ): Promise<{ kind: "fact" | "follow_up" | "note"; record: { table: string; id: string } | null } | null> {
-  const personId = await resolvePersonId(ctx, item.person_name);
+  const personId = link.person_id;
   const propertyId = item.property_hint
     ? await resolvePropertyFromText(ctx, item.property_hint)
     : null;
@@ -149,13 +179,14 @@ export async function executeAudioBreakdown(
   const separateDates = breakdownHasSeparateDates(breakdown.items as any[]);
   const created = { facts: 0, followUps: 0, notes: 0 };
   const records: { table: string; id: string }[] = [];
-  for (const item of breakdown.items) {
+  const links = breakdown.links ?? [];
+  for (const [index, item] of breakdown.items.entries()) {
     try {
       const out = await execItem({
         ...ctx,
         pendingActionId: pending.id,
         sameTurnSeparateDates: separateDates || ctx.sameTurnSeparateDates,
-      } as DomainContext, item);
+      } as DomainContext, item, links[index] ?? emptyPersonLink());
       if (!out) continue;
       if (out.record) records.push(out.record);
       if (out.kind === "fact") created.facts += 1;

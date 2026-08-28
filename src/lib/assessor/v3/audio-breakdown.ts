@@ -5,6 +5,8 @@
 // em voz alta a um cliente. Isto separa o áudio nesses itens e escreve a
 // proposta única que o consultor confirma de uma vez.
 
+import { describeCandidates } from "@/lib/people/name-match";
+
 export type BreakdownKind = "fact" | "follow_up" | "note";
 
 export interface BreakdownItem {
@@ -22,13 +24,56 @@ export interface BreakdownItem {
   confidential?: boolean;
 }
 
+/**
+ * Contacto candidato a um item. Espelha `PersonCandidate` de
+ * `people/resolve-person.server` sem importar servidor para o lado puro.
+ */
+export interface BreakdownPersonCandidate {
+  id: string;
+  name: string;
+  phone?: string | null;
+  relationship_type?: string | null;
+}
+
+/**
+ * Ligação de contacto de cada item (paralelo a `items`).
+ * `person_id` só fica preenchido quando a resolução é inequívoca; caso
+ * contrário guardamos os candidatos e perguntamos na confirmação do áudio.
+ */
+export interface BreakdownPersonLink {
+  person_id: string | null;
+  candidates: BreakdownPersonCandidate[];
+}
+
 export interface AudioBreakdown {
   items: BreakdownItem[];
   /** Assunto geral do áudio, para dar contexto à proposta. */
   subject?: string | null;
+  /** Uma entrada por item, na mesma ordem. */
+  links?: BreakdownPersonLink[];
 }
 
 const MAX_ITEMS = 8;
+
+export function emptyPersonLink(): BreakdownPersonLink {
+  return { person_id: null, candidates: [] };
+}
+
+function coerceLink(raw: any): BreakdownPersonLink {
+  const list = Array.isArray(raw?.candidates) ? raw.candidates : [];
+  return {
+    person_id: raw?.person_id ? String(raw.person_id) : null,
+    candidates: list
+      .filter((c: any) => c?.id && c?.name)
+      .slice(0, 4)
+      .map((c: any) => ({
+        id: String(c.id),
+        name: String(c.name),
+        phone: c?.phone ? String(c.phone) : null,
+        relationship_type: c?.relationship_type ? String(c.relationship_type) : null,
+      })),
+  };
+}
 
 export function coerceBreakdown(raw: any): AudioBreakdown {
   const list = Array.isArray(raw?.items) ? raw.items : [];
@@ -48,10 +93,40 @@ export function coerceBreakdown(raw: any): AudioBreakdown {
       confidential: kind === "note" ? it?.confidential === true : false,
     });
   }
+  const rawLinks = Array.isArray(raw?.links) ? raw.links : [];
+  const links = items.map((_, i) => coerceLink(rawLinks[i]));
   return {
     items,
     subject: raw?.subject ? String(raw.subject).slice(0, 160) : null,
+    links,
   };
+}
+
+/** Itens com nome falado que ficaram por decidir — nunca se adivinha. */
+export function pendingPersonAmbiguities(
+  breakdown: AudioBreakdown,
+): { index: number; name: string; candidates: BreakdownPersonCandidate[] }[] {
+  const links = breakdown.links ?? [];
+  const out: { index: number; name: string; candidates: BreakdownPersonCandidate[] }[] = [];
+  breakdown.items.forEach((it, i) => {
+    const link = links[i] ?? emptyPersonLink();
+    const name = String(it.person_name ?? "").trim();
+    if (!name || link.person_id || !link.candidates.length) return;
+    out.push({ index: i, name, candidates: link.candidates });
+  });
+  return out;
+}
+
+/** Mesmo padrão de escolha usado nos outros caminhos: índice, nome, telefone. */
+export function formatPersonAmbiguityQuestion(
+  a: { index: number; name: string; candidates: BreakdownPersonCandidate[] },
+): string {
+  const labels = describeCandidates(a.candidates.slice(0, 4) as any);
+  const list = labels.map((l, i) => `${i + 1}. ${l}`).join("\n");
+  const head = a.candidates.length === 1
+    ? `No ponto ${a.index + 1}, o "${a.name}" é este contacto?`
+    : `No ponto ${a.index + 1}, tenho mais do que um contacto parecido com "${a.name}". Qual deles é?`;
+  return `${head}\n${list}\n(ou diz "sem contacto" para eu guardar sem associar)`;
 }
 
 function labelFor(item: BreakdownItem): string {
@@ -73,10 +148,13 @@ export function formatBreakdownProposal(breakdown: AudioBreakdown): string {
   const head = breakdown.subject
     ? `Ouvi o áudio sobre ${breakdown.subject}. Separei em ${breakdown.items.length} coisas:`
     : `Ouvi o áudio. Separei em ${breakdown.items.length} coisas:`;
+  const amb = pendingPersonAmbiguities(breakdown);
   const confidential = breakdown.items.some((i) => i.kind === "note" && i.confidential);
-  const tail = confidential
+  const base = confidential
     ? "A nota confidencial fica só para ti — nunca sai em nada que eu prepare para outra pessoa.\n\nSe algum ponto estiver errado, diz-me qual (ex.: 'o 2 é amanhã às 10h'). Guardo tudo assim?"
     : "Se algum ponto estiver errado, diz-me qual (ex.: 'o 2 é amanhã às 10h'). Guardo tudo assim?";
+  // A dúvida de contacto sai na mesma confirmação — nunca numa segunda conversa.
+  const tail = amb.length ? formatPersonAmbiguityQuestion(amb[0]!) : base;
   return `${head}\n\n${lines.join("\n")}\n\n${tail}`;
 }
 
