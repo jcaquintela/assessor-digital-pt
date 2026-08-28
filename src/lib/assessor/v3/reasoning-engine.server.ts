@@ -7,132 +7,30 @@ import { search } from "./search.server";
 import { decide } from "./decide.server";
 import { executeToolCalls, applyMemoryWrites } from "./act.server";
 import { isolateUnrelatedPending, stripInheritedMotive } from "../context-isolation";
-import { sanitizeReply, enforceHumanTone, enforceSingleQuestion, NATURAL_FALLBACKS } from "../culture/sanitize";
-import { computeQualitySignals, persistQualityScore } from "./quality.server";
-import { runShadow, shouldRunShadow } from "./shadow.server";
-import {
-  computeATS, computeContextPreservation, computeSafeDecisions, computeTaskSuccess,
-  persistTrustScore, type TrustSignals,
-} from "./trust.server";
-import { captureCorrection, looksLikeCorrection } from "./corrections.server";
-import { suppressRejectedQuestion } from "./rejected-question";
-import { reflect, type ReflectionTrigger } from "./reflection.server";
+import { sanitizeReply, NATURAL_FALLBACKS } from "../culture/sanitize";
+import { looksLikeCorrection } from "./corrections.server";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
-import { lisbonYmd } from "../lisbon-day";
 import { blockedChannelReason } from "../channel-guard";
 import type { DomainContext } from "../v2/domain.server";
-import { TOOL_REGISTRY } from "../v2/domain.server";
-import {
-  findActivePendingAction,
-  markPendingActionStatus,
-  createPendingAction,
-} from "../memory.server";
-import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from "../culture/short-answers";
+import { findActivePendingAction, createPendingAction } from "../memory.server";
 export { personChoiceIsNone } from "./pending-resolvers/agenda-person.server";
-import { personChoiceIsNone } from "./pending-resolvers/agenda-person.server";
 
-import {
-  detectAgendaQuery,
-  detectMiscQuery,
-  detectDayStateQuery,
-  composeDayStateReply,
-  formatAgendaReply,
-  detectAgendaDateQuery,
-  formatAgendaDateReply,
-  detectEventNameQuery,
-  rankEventsByTitle,
-  formatEventFoundReply,
-  BARE_CONFIRMATION_REPLY,
-  ACKNOWLEDGED_REPLY,
-  isBareAcknowledgement,
-  hasValidPendingContext,
-  type AgendaItem,
-} from "./deterministic.server";
-import { applySafetyNet, buildArchiveContent, archiveToMiscellaneous } from "./safety-net.server";
-import { isRegisterOnly, isAnswerablePending } from "../pending-answerable";
-import { formatQueryResults, isQueryTool } from "./query-results";
-import { detectContactReadQuery, detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
-import { resolveEllipticRead } from "./elliptic-read";
-import { readLastRead, recordLastRead } from "./last-read.server";
-import { isDiscardCommand } from "../culture/discard";
-import { enforceTransparentConfirmation } from "./write-receipt";
-import {
-  detectCompletionInstructions,
-  formatCompletionReply,
-  recurrenceQuestion,
-  remainingRequest,
-  remainderNeedsWork,
-  ambiguousCompletionQuestion,
-  claimsCompletion,
-  unverifiedCompletionReply,
-} from "./completion-intent";
-import { anchorFromBriefing, isEllipticCompletion } from "./briefing-anchor";
-
-import {
-  detectPersonBriefQuery,
-  formatPersonBrief,
-  personNotFoundReply,
-  ambiguousPersonReply,
-} from "./person-brief";
-import { buildPersonBrief } from "./person-brief.server";
-import { detectWhatsNewQuery, formatWhatsNewReply, noRecentUpdatesReply, NO_UPDATES_REPLY } from "./whats-new";
-import { detectEllipticEntity, ellipticConfirmQuestion } from "./elliptic";
-import { lastProductUpdate, listRecentProductUpdates } from "./whats-new.server";
-import {
-  detectFeedbackTarget,
-  feedbackConfirmQuestion,
-  feedbackClarifyQuestion,
-  detectFeedbackAnnouncement,
-  feedbackAskBody,
-  isEmptyFeedbackBody,
-  FEEDBACK_BODY_RETRY,
-  readClarifyAnswer,
-  FEEDBACK_CLARIFY_RETRY,
-  FEEDBACK_NOT_PRODUCT_REPLY,
-  FEEDBACK_CANCELLED_REPLY,
-  FEEDBACK_FAILED_REPLY,
-  feedbackSavedReply,
-  type FeedbackKind,
-} from "./feedback";
-import { saveProductFeedback } from "./feedback.server";
-import {
-  appendOffer,
-  GOALS_QUESTION,
-  GOALS_SAVED_REPLY,
-  NAME_KEPT_REPLY,
-  NAME_QUESTION,
-  NAME_SET_REPLY,
-  nextOnboardingOffer,
-  readGoalsAnswer,
-  readNameAnswer,
-  type OnboardingState,
-} from "./onboarding";
-import {
-  loadOnboardingState,
-  markOnboardingOffered,
-  saveAssessorName,
-  saveOnboardingGoals,
-  setOnboardingStage,
-} from "./onboarding.server";
-import { validateAssessorName } from "../assessor-name";
+import { isQueryTool } from "./query-results";
+import { detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
+import type { OnboardingState } from "./onboarding";
 import { logSparringSuppression } from "./sparring-audit.server";
 import { assertNoSparringLeak } from "./sparring-assert.server";
-import { logAiTurn, recordEngineTurn } from "./telemetry-repo.server";
 import { runEngineTail } from "./engine-tail.server";
 import { runDeterministicRouter } from "./deterministic-router.server";
-
-
-
 import { HISTORY_LIMIT, nowLisbonHuman, nowLisbonYmd, toHistoryPreview } from "./engine-shared";
 import { shapeExecutionOutcome, shapeAgendaAsks, shapeToolReplies } from "./post-act-reply.server";
+// Blocos extraídos no Lote 8 — o motor apenas os orquestra por ordem.
+import { runCompletionPass } from "./completion-pass.server";
+import { runTurnOpeners } from "./turn-openers.server";
+import { runScriptOfferPending, runRecurrenceAndCancelChoice } from "./pre-pending.server";
+import { resolveStalePending } from "./stale-pending.server";
+import { resolveBareConfirmation } from "./bare-confirmation.server";
 
-// Padrão de linguagem de incompreensão. Usado (a) para nunca comunicar
-// falha depois de uma execução bem sucedida e (b) para reclassificar o
-// outcome apenas quando nada foi executado.
-const NOT_UNDERSTOOD_RE = /n[ãa]o\s+(percebi|entendi|compreendi)|podes\s+explicar\s+de\s+outra\s+forma/i;
-// Linguagem que afirma conclusão. Só pode sair depois de escrita real.
-const CLAIMS_COMPLETION_RE =
-  /\b(feito|combinado|tratado|resolvido|est[áa]\s+feito|j[áa]\s+est[áa]|desmarquei|desmarcado|cancelei|cancelado|apaguei|limpei|registei|guardei|marquei|actualizei|atualizei)\b/i;
 
 import type { PendingResolver } from "./pending-resolvers/types";
 import {
@@ -274,118 +172,15 @@ async function runReasoningEngineInner(
 
 
   // ── Instruções de conclusão ("o estudo de mercado já está tratado") ──
-  //
-  // Cada instrução de uma mensagem composta vive por si: uma ambiguidade
-  // noutra parte (que compromisso desmarcar) nunca pode deixar esta por
-  // processar — foi assim que um estudo de mercado dado como feito voltou a
-  // aparecer nos briefings dias depois.
+  // Extraído para `completion-pass.server.ts` (Lote 8) — mesma ordem.
   if (!opts?.skipCompletionPass) {
-    const done = detectCompletionInstructions(trimmed);
-    let handledAny = false;
-    if (done.length) {
-      const lines: string[] = [];
-      const handled: typeof done = [];
-      let recurringAsk: { id: string; title: string } | null = null;
-      let ambiguousAsk: string | null = null;
-      for (const instruction of done) {
-        try {
-          const res = await TOOL_REGISTRY.complete_follow_up!(ctx, {
-            subject_hint: instruction.subjectHint,
-          });
-          const d = (res.data ?? {}) as any;
-          // Ambíguo NÃO pode seguir em silêncio: o caminho do modelo já
-          // confirmou conclusões que nunca chegaram a ser escritas (20/08).
-          if (res.ok && d?.ambiguous) {
-            handled.push(instruction);
-            if (!ambiguousAsk) ambiguousAsk = ambiguousCompletionQuestion(d.candidates ?? []);
-            continue;
-          }
-          if (!res.ok) continue;
-          handled.push(instruction);
-          lines.push(formatCompletionReply(d.items ?? [], instruction.subjectHint));
-          if (d?.recurring?.title && !recurringAsk) {
-            recurringAsk = { id: String(d.recurring.id), title: String(d.recurring.title) };
-            lines.push(recurrenceQuestion(d.recurring.title));
-          }
-        } catch { /* noop */ }
-      }
-      if (ambiguousAsk) return { reply: [lines.join(" "), ambiguousAsk].filter(Boolean).join(" ").trim() };
-      if (handled.length) {
-        handledAny = true;
-        // A pergunta fica em memória na sua ranhura: o "sim"/"não" que vier a
-        // seguir decide mesmo a recorrência, em vez de se perder.
-        if (recurringAsk) {
-          try {
-            await createPendingAction(supabase, {
-              userId, channel,
-              intent: "confirm_recurrence_continue",
-              originalContent: trimmed,
-              payload: { routine_id: recurringAsk.id, routine_title: recurringAsk.title },
-              pendingQuestion: recurrenceQuestion(recurringAsk.title),
-              currentQuestion: recurrenceQuestion(recurringAsk.title),
-            });
-          } catch { /* noop */ }
-        }
-        const rest = remainingRequest(trimmed, handled);
-        if (remainderNeedsWork(rest)) {
-          const out = await runReasoningEngine({ ...input, content: rest }, { skipCompletionPass: true });
-          return { ...out, reply: [lines.join(" "), out.reply].filter(Boolean).join(" ").trim() };
-        }
-        return { reply: lines.join(" ") };
-      }
-    }
-
-    // Confirmação elíptica ancorada ao briefing: "Já está concluída", "Podes
-    // dar como concluída" logo a seguir a um "Bom dia" com UM único item.
-    if (!handledAny && isEllipticCompletion(trimmed)) {
-      try {
-        const { data: lastMsgs } = await supabase
-          .from("assessor_messages")
-          .select("content, message_type, created_at")
-          .eq("user_id", userId).eq("channel", channel).eq("role", "assistant")
-          .is("archived_at", null)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        const anchor = anchorFromBriefing(((lastMsgs as any[]) ?? [])[0] ?? null);
-        if (anchor) {
-          const res = await TOOL_REGISTRY.complete_follow_up!(ctx, {
-            subject_hint: anchor.subjectHint,
-          });
-          const d = (res.data ?? {}) as any;
-          if (res.ok && d?.ambiguous) {
-            return { reply: ambiguousCompletionQuestion(d.candidates ?? []) };
-          }
-          if (res.ok && (d?.items ?? []).length) {
-            const out = [formatCompletionReply(d.items)];
-            if (d?.recurring?.title) out.push(recurrenceQuestion(String(d.recurring.title)));
-            return { reply: out.join(" ") };
-          }
-        }
-      } catch { /* segue o caminho normal */ }
-    }
-
-
-    // Rede de segurança para a confirmação escrita que não nomeia assunto
-    // ("já tratei disso", "fica sem efeito", "não atendeu"): fecha o
-    // seguimento de que o Afonso falou há pouco. Vivia num atalho próprio no
-    // gateway de canais, que cortava a mensagem antes do passe multi-item.
-    if (!handledAny) {
-      const { detectOutcomeFromText } = await import("@/lib/assessor/outcome-intent");
-      const detected = detectOutcomeFromText(trimmed);
-      if (detected) {
-        const { resolveOutcomeTargetFromText, applyFollowUpOutcome, outcomeAck } =
-          await import("@/lib/assessor/proactive/outcomes.server");
-        const { askWhichTarget } = await import("@/lib/assessor/outcome-target");
-        const decision = await resolveOutcomeTargetFromText(supabase, userId, trimmed);
-        if (decision.kind === "apply") {
-          const r = await applyFollowUpOutcome(supabase, userId, decision.target.id, detected);
-          if (r.ok) return { reply: outcomeAck(detected, r.title) };
-        } else if (decision.kind === "ask") {
-          return { reply: askWhichTarget(decision.options) };
-        }
-      }
-    }
+    const completed = await runCompletionPass({
+      ctx, supabase, userId, channel, trimmed,
+      rerun: (content: string) => runReasoningEngine({ ...input, content }, { skipCompletionPass: true }),
+    });
+    if (completed) return completed;
   }
+
 
   const [{ data: prof }, { data: recentRows }] = await Promise.all([
     supabase.from("profiles").select("name, assessor_name").eq("id", userId).maybeSingle(),
@@ -414,87 +209,15 @@ async function runReasoningEngineInner(
     !!lastAssistantAt0 &&
     (Date.now() - lastAssistantAt0.getTime()) < 10 * 60_000;
 
-  // Respostas curtas às perguntas proativas de documentação têm memória
-  // própria. Sem isto, "sim"/"não" seguia para o motor geral e o mesmo
-  // nudge voltava no dia seguinte apesar de já ter sido respondido.
-  if (lastAssistantAskedQuestion && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
-    try {
-      const { resolveLatestDocumentNudgeAnswer } = await import("./proactivity.server");
-      const resolved = await resolveLatestDocumentNudgeAnswer(supabase, {
-        userId,
-        channel,
-        answer: saIsConfirmation(trimmed) ? "yes" : "no",
-        lastAssistantContent: lastAssistantContent0,
-      });
-      if (resolved.resolved && resolved.reply) return { reply: resolved.reply };
-    } catch (error) {
-      console.error("[v3] falha a registar resposta ao nudge documental", error);
-    }
-  }
+  // ── Aberturas do turno: nudge documental → perfil por gotas → arranque
+  // leve. Extraído para `turn-openers.server.ts` (Lote 8) — mesma ordem.
+  const openers = await runTurnOpeners({
+    supabase, userId, channel, trimmed, assessorName,
+    lastAssistantContent0, lastAssistantAskedQuestion,
+  });
+  if (openers.kind === "reply") return openers.outcome;
+  const onboarding: OnboardingState = openers.onboarding;
 
-  // ── Resposta a uma pergunta de perfil ("por gotas") ─────────────────
-  try {
-    const {
-      findProfileQuestion, closeProfileQuestion, loadProfileDripState,
-      saveProfileAnswer, registerProfileRefusal,
-    } = await import("./profile-drip.server");
-    const openProfile = await findProfileQuestion(supabase, { userId, channel });
-    if (openProfile) {
-      const { readProfileAnswer, WORK_AREA_SAVED_REPLY, TEAM_SAVED_REPLY } =
-        await import("./profile-drip");
-      const answer = readProfileAnswer(openProfile.key, trimmed);
-      if (answer.kind === "value") {
-        await saveProfileAnswer(supabase, userId, openProfile.key, answer.text);
-        await closeProfileQuestion(supabase, openProfile.id, "executed");
-        return {
-          reply: openProfile.key === "work_area"
-            ? WORK_AREA_SAVED_REPLY(answer.text)
-            : TEAM_SAVED_REPLY,
-        };
-      }
-      // Recusa ou trabalho real: fecha sem insistir.
-      const state = await loadProfileDripState(supabase, userId);
-      await registerProfileRefusal(supabase, userId, state);
-      await closeProfileQuestion(supabase, openProfile.id, "cancelled");
-    }
-  } catch { /* noop */ }
-
-  // ── Arranque leve (2 perguntas, nunca obrigatórias) ──────────────────
-
-  let onboarding: OnboardingState = {
-    stage: "not_started", offers: 0, lastOfferAt: null, goals: null,
-  };
-  try { onboarding = await loadOnboardingState(supabase, userId); } catch { /* noop */ }
-
-  const askedName = /como preferes chamar-me/i.test(lastAssistantContent0);
-  const askedGoals = /o que procuras mais em mim/i.test(lastAssistantContent0);
-
-  if (onboarding.stage === "name_asked" && askedName) {
-    const answer = readNameAnswer(trimmed);
-    if (answer.kind === "rename") {
-      const v = validateAssessorName(answer.name);
-      if (v.ok) {
-        try { await saveAssessorName(supabase, userId, v.value); } catch { /* noop */ }
-        try { await markOnboardingOffered(supabase, userId, "goals_asked", onboarding.offers); } catch { /* noop */ }
-        return { reply: `${NAME_SET_REPLY(v.value)} ${GOALS_QUESTION}` };
-      }
-    }
-    if (answer.kind === "keep") {
-      try { await markOnboardingOffered(supabase, userId, "goals_asked", onboarding.offers); } catch { /* noop */ }
-      return { reply: `${NAME_KEPT_REPLY(assessorName)} ${GOALS_QUESTION}` };
-    }
-    // Ignorou ou trouxe trabalho real: cai fora sem insistir.
-    try { await setOnboardingStage(supabase, userId, "skipped"); } catch { /* noop */ }
-    onboarding = { ...onboarding, stage: "skipped" };
-  } else if (onboarding.stage === "goals_asked" && askedGoals) {
-    const answer = readGoalsAnswer(trimmed);
-    if (answer.kind === "goals") {
-      try { await saveOnboardingGoals(supabase, userId, answer.text); } catch { /* noop */ }
-      return { reply: GOALS_SAVED_REPLY };
-    }
-    try { await setOnboardingStage(supabase, userId, "skipped"); } catch { /* noop */ }
-    onboarding = { ...onboarding, stage: "skipped" };
-  }
 
   // Contexto acumulado para a rede de segurança: guardar só "09:30" perde
   // o pedido real ("bloco de agenda amanhã para chamadas à rede").
@@ -502,93 +225,21 @@ async function runReasoningEngineInner(
 
   // Guião de abordagem a uma placa de particular: só responde a uma escolha
   // explícita ("chamada"/"mensagem"), para não roubar o "sim" ao lembrete.
-  try {
-    const { resolveScriptPending } = await import("@/lib/prospecting/script-offer.server");
-    const scriptReply = await resolveScriptPending({ supabase, userId, channel }, trimmed);
-    if (scriptReply) return { reply: scriptReply };
-  } catch { /* noop */ }
+  {
+    const scripted = await runScriptOfferPending({ supabase, userId, channel, trimmed });
+    if (scripted) return scripted;
+  }
 
-  // Escolha de qual (ou quais) compromisso desmarcar. "As duas" desmarca as
-  // duas — e a confirmação lista cada uma com o respectivo resultado.
-  try {
-    // Resposta à pergunta de recorrência ("queres que continue a repetir?").
-    // Sem isto, a pergunta era feita e a resposta caía no vazio.
-    const recPending = await findActivePendingAction(supabase, userId, channel, "recurrence");
-    if (recPending && recPending.intent === "confirm_recurrence_continue") {
-      const payload = (recPending.structured_payload ?? {}) as Record<string, any>;
-      const routineId = payload.routine_id ? String(payload.routine_id) : null;
-      const routineTitle = String(payload.routine_title ?? "");
-      const { readRecurrenceAnswer, recurrenceKeptReply, recurrenceStoppedReply } =
-        await import("./recurrence-answer");
-      const answer = readRecurrenceAnswer(trimmed);
-      if (answer === "stop" && routineId) {
-        const res = await TOOL_REGISTRY.set_routine_active!(ctx, { routine_id: routineId, active: false });
-        await markPendingActionStatus(supabase, recPending.id, res.ok ? "executed" : "failed", {
-          error_message: res.ok ? null : (res.error ?? "not_updated"),
-        });
-        if (res.ok) return { reply: recurrenceStoppedReply(routineTitle) };
-      } else if (answer === "continue") {
-        await markPendingActionStatus(supabase, recPending.id, "executed");
-        return { reply: recurrenceKeptReply(routineTitle) };
-      }
-    }
+  // Recorrência + escolha de qual (ou quais) compromisso desmarcar.
+  // Extraído para `pre-pending.server.ts` (Lote 8) — mesma ordem.
+  {
+    const chosen = await runRecurrenceAndCancelChoice({
+      ctx, supabase, userId, channel, trimmed,
+      sourceMessageId: sourceMessageId ?? null,
+    });
+    if (chosen) return chosen;
+  }
 
-    const choicePending = await findActivePendingAction(supabase, userId, channel, "cancel");
-    if (choicePending && choicePending.intent === "choosing_cancel_target") {
-      const payload = (choicePending.structured_payload ?? {}) as Record<string, any>;
-      const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
-      const { pickCancelChoiceMulti, formatMultiCancelReply } = await import("./cancel-choice");
-      let choiceText = trimmed;
-      let chosen = pickCancelChoiceMulti(candidates as any[], choiceText);
-      // Rajada: a escolha só cobre parte dos candidatos. Antes de fechar,
-      // damos uma janela curta às mensagens que ainda vêm a caminho ("Ambas").
-      if (chosen.length && chosen.length < candidates.length) {
-        const { collectChoiceBurstFollowUps, markChoiceBurstConsumed } =
-          await import("./choice-burst.server");
-        const extra = await collectChoiceBurstFollowUps(supabase, {
-          userId, channel, sourceMessageId: sourceMessageId ?? null,
-        });
-        if (extra.length) {
-          choiceText = [choiceText, ...extra.map((e) => e.content)].join("\n");
-          const merged = pickCancelChoiceMulti(candidates as any[], choiceText);
-          if (merged.length > chosen.length) {
-            chosen = merged;
-            await markChoiceBurstConsumed(
-              supabase, extra.map((e) => e.id), choicePending.id,
-            );
-          }
-        }
-      }
-      if (chosen.length) {
-        const exec = TOOL_REGISTRY.cancel_follow_up;
-        const result = await exec(ctx, { follow_up_ids: chosen.map((c) => c.id) });
-        const cancelledIds = new Set(
-          (((result.data as any)?.items ?? []) as any[]).map((i) => String(i.id)),
-        );
-        const outcomes = chosen.map((item) => ({
-          item,
-          ok: !!result.ok && cancelledIds.has(String(item.id)),
-        }));
-        await markPendingActionStatus(
-          supabase,
-          choicePending.id,
-          outcomes.some((o) => o.ok) ? "executed" : "failed",
-          { error_message: result.ok ? null : (result.error ?? "not_cancelled") },
-        );
-        const { ensureAllPartsAnswered } = await import("./composite-request");
-        return {
-          reply: ensureAllPartsAnswered(
-            formatMultiCancelReply(outcomes),
-            String(choicePending.original_content ?? ""),
-          ),
-        };
-      }
-      if (saIsRejection(trimmed) || isDiscardCommand(trimmed)) {
-        await markPendingActionStatus(supabase, choicePending.id, "cancelled");
-        return { reply: "Certo — não desmarquei nada." };
-      }
-    }
-  } catch { /* noop */ }
 
   // Fast-path prospeção — se existe uma proposta pendente de placa e o
   // consultor confirma/cancela, resolvemos sem passar por THINK/DECIDE.
@@ -605,89 +256,19 @@ async function runReasoningEngineInner(
     }
 
 
-    // Um pendente antigo, cuja pergunta já não é a que está em aberto, não
-    // pode ser resolvido por uma resposta destinada a outro assunto.
-    if (
-      pending &&
-      !isAnswerablePending(pending, {
-        lastAssistantContent: lastAssistantContent0,
+    // Higiene do rascunho vivo (pendente caducado → reabertura de
+    // confirmação velha → "só registar"). Extraído para
+    // `stale-pending.server.ts` (Lote 8) — mesma ordem.
+    {
+      const stale = await resolveStalePending({
+        ctx, supabase, userId, channel, trimmed, pending,
+        lastAssistantContent0, lastAssistantAskedQuestion,
         quotedText: input.quotedText ?? null,
-      })
-    ) {
-      await markPendingActionStatus(supabase, pending.id, "expired", {
-        error_message: "stale: pergunta já não estava em aberto",
       });
-      // Uma resposta objetiva nunca cai no vazio: dizemos que caducou e
-      // reperguntamos, em vez de responder "a que te referes?". Mas só quando
-      // a pergunta era mesmo a última coisa dita pelo Afonso — se a conversa
-      // já seguiu para outro assunto, um "ok" solto é conversa normal.
-      const { pendingIsLastQuestion, quotedMatchesPending } = await import("../pending-answerable");
-      const wasOnScreen =
-        pendingIsLastQuestion(pending, lastAssistantContent0) ||
-        quotedMatchesPending(pending, input.quotedText ?? null);
-      if (wasOnScreen && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
-        const { expiredConfirmationReply, isDestructiveConfirmation } =
-          await import("../expired-confirmation");
-        const reply = expiredConfirmationReply(
-          pending.current_question ?? pending.pending_question,
-          {
-            destructive: isDestructiveConfirmation(
-              pending.intent,
-              pending.structured_payload as Record<string, unknown>,
-            ),
-          },
-        );
-        pending = null;
-        return { reply };
-      }
-      pending = null;
+      if (stale.kind === "reply") return stale.outcome;
+      pending = stale.pending;
     }
 
-    // Sem rascunho vivo, mas o consultor respondeu "sim"/"não": se houve uma
-    // confirmação a caducar há pouco, assumimos que era essa e reperguntamos.
-    if (!pending && !lastAssistantAskedQuestion && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
-      const { findRecentExpiredConfirmation } = await import("../memory.server");
-      const stale = await findRecentExpiredConfirmation(supabase, userId, channel);
-      const { pendingIsLastQuestion: staleOnScreen, quotedMatchesPending: staleQuoted } =
-        await import("../pending-answerable");
-      // Só reabrimos o assunto se a pergunta caducada ainda era a última coisa
-      // dita, ou se o consultor citou mesmo essa mensagem.
-      const staleRelevant =
-        !!stale &&
-        (staleOnScreen(stale, lastAssistantContent0) ||
-          staleQuoted(stale, input.quotedText ?? null));
-      if (stale && staleRelevant) {
-        const { expiredConfirmationReply, isDestructiveConfirmation } =
-          await import("../expired-confirmation");
-        // Fecha o assunto: o aviso é dado uma vez, não a cada "sim" solto.
-        await markPendingActionStatus(supabase, stale.id, "cancelled", {
-          error_message: "confirmação caducada — avisado o consultor",
-        });
-        return {
-          reply: expiredConfirmationReply(stale.current_question ?? stale.pending_question, {
-            destructive: isDestructiveConfirmation(
-              stale.intent,
-              stale.structured_payload as Record<string, unknown>,
-            ),
-          }),
-        };
-      }
-    }
-
-    // "Só registar" / "sem lembrete": recusa explícita de agendar. Fecha já o
-    // rascunho e guarda o assunto em Diversos, em vez de o deixar vivo.
-    if (pending && isRegisterOnly(trimmed)) {
-      const content = String(pending.original_content ?? "").trim() || trimmed;
-      await markPendingActionStatus(supabase, pending.id, "cancelled", {
-        error_message: "consultor pediu só registo, sem lembrete",
-      });
-      const saved = await archiveToMiscellaneous(ctx, content, "ficou só registado, sem lembrete");
-      return {
-        reply: saved
-          ? "Certo — fica só registado, sem lembrete. Deixei em Diversos."
-          : "Certo — fica só registado, sem lembrete.",
-      };
-    }
 
     pendingForArchive = pending ?? null;
     // Escolha de contacto: o consultor escolheu (por botão no painel ou por
@@ -737,51 +318,16 @@ async function runReasoningEngineInner(
     }
 
     // (b) Confirmação curta sem contexto pendente → pede referência.
-    if (
-      saIsConfirmation(trimmed) &&
-      !hasValidPendingContext(pending) &&
-      !lastAssistantAskedQuestion
-    ) {
-      // O Assessor acabou de afirmar algo ("Marcada a visita amanhã às 14:30.")
-      // e o consultor responde "Ok": é reconhecimento, não uma confirmação
-      // órfã. Perguntar "A que te referes?" aqui soa a software partido.
-      const recentStatement =
-        !!lastAssistantContent0 &&
-        !/\?\s*$/.test(lastAssistantContent0) &&
-        !!lastAssistantAt0 &&
-        (Date.now() - lastAssistantAt0.getTime()) < 30 * 60_000;
-      let reply =
-        recentStatement && isBareAcknowledgement(trimmed)
-          ? ACKNOWLEDGED_REPLY
-          : BARE_CONFIRMATION_REPLY;
-      // Rajada: o "não" da mensagem anterior fechou o pendente há 2s e este
-      // "sim" ficou órfão. A pergunta passa a nomear o assunto — e fica
-      // gravada como pergunta em aberto (caso "Casa Final B", 30/07).
-      let openSubject: string | null = null;
-      if (reply === BARE_CONFIRMATION_REPLY) {
-        const { findJustClosedPending, subjectOfPending, orphanBurstReply } =
-          await import("./open-question.server");
-        const justClosed = await findJustClosedPending(supabase, { userId, channel });
-        const subject = subjectOfPending(justClosed);
-        const anchored = orphanBurstReply(subject);
-        if (anchored) { reply = anchored; openSubject = subject; }
-      }
-      await logAiTurn(supabase, {
-        userId, channel, intent: reply === ACKNOWLEDGED_REPLY ? "bare_acknowledgement" : "bare_confirmation_no_context", route: "v3-deterministic",
-        latencyMs: 0, success: true, error: null,
-        toolName: null, toolSuccess: null, fallbackUsed: false,
+    // Extraído para `bare-confirmation.server.ts` (Lote 8).
+    {
+      const bare = await resolveBareConfirmation({
+        supabase, userId, channel, trimmed, pending,
+        lastAssistantContent0, lastAssistantAt0, lastAssistantAskedQuestion,
+        sourceMessageId: sourceMessageId ?? null,
       });
-      if (reply !== ACKNOWLEDGED_REPLY) {
-        try {
-          const { recordOpenQuestion } = await import("./open-question.server");
-          await recordOpenQuestion(supabase, {
-            userId, channel, question: reply, subject: openSubject,
-            sourceMessageId: sourceMessageId ?? null, toolsExecuted: 0,
-          });
-        } catch { /* noop */ }
-      }
-      return { reply };
+      if (bare) return bare;
     }
+
   } catch { /* noop — cai no fluxo normal */ }
 
   // Detecção de correção precoce — antes de gastar OBSERVE/THINK/DECIDE.
