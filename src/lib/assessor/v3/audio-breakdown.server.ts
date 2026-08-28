@@ -85,24 +85,48 @@ export async function proposeAudioBreakdown(
   return formatBreakdownProposal(breakdown);
 }
 
-async function resolvePersonId(ctx: DomainContext, name: string | null | undefined): Promise<string | null> {
-  const q = String(name ?? "").trim();
-  if (q.length < 2) return null;
-  const { data } = await ctx.supabase
-    .from("people")
-    .select("id")
-    .eq("user_id", ctx.userId)
-    .ilike("name_norm", `%${foldLike(q)}%`)
-    .order("updated_at", { ascending: false })
-    .limit(1);
-  return ((data as any[]) ?? [])[0]?.id ?? null;
+/**
+ * Resolução de contacto de cada item — mesma regra de confiança do resto do
+ * produto (`resolvePersonForWrite`): só liga sozinho quando é inequívoco.
+ *
+ * Caso real: um áudio que diz "Manuel", havendo "Manuel Silva" e "Manuela
+ * Dias" na conta, ligava à Manuela por pesquisa de substring. Agora a dúvida
+ * sobe à confirmação do áudio e é o consultor que escolhe.
+ */
+export async function resolveBreakdownPeople(
+  ctx: DomainContext,
+  breakdown: AudioBreakdown,
+): Promise<BreakdownPersonLink[]> {
+  const { resolvePersonForWrite } = await import("@/lib/people/resolve-person.server");
+  const cache = new Map<string, BreakdownPersonLink>();
+  const out: BreakdownPersonLink[] = [];
+  for (const item of breakdown.items) {
+    const name = String(item.person_name ?? "").trim();
+    if (name.length < 2) { out.push(emptyPersonLink()); continue; }
+    const key = name.toLowerCase();
+    const cached = cache.get(key);
+    if (cached) { out.push(cached); continue; }
+    let link: BreakdownPersonLink = emptyPersonLink();
+    try {
+      const res = await resolvePersonForWrite(ctx as any, "", { nameOverride: name });
+      if ((res.status === "linked" || res.status === "confirm_exact") && res.personId) {
+        link = { person_id: res.personId, candidates: [] };
+      } else if (res.status !== "none") {
+        link = { person_id: null, candidates: (res.candidates ?? []).slice(0, 4) as BreakdownPersonCandidate[] };
+      }
+    } catch { /* sem resolução, fica por associar */ }
+    cache.set(key, link);
+    out.push(link);
+  }
+  return out;
 }
 
 async function execItem(
   ctx: DomainContext,
   item: BreakdownItem,
+  link: BreakdownPersonLink,
 ): Promise<{ kind: "fact" | "follow_up" | "note"; record: { table: string; id: string } | null } | null> {
-  const personId = await resolvePersonId(ctx, item.person_name);
+  const personId = link.person_id;
   const propertyId = item.property_hint
     ? await resolvePropertyFromText(ctx, item.property_hint)
     : null;
