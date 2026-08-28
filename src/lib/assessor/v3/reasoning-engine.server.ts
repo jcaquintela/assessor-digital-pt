@@ -151,6 +151,19 @@ const NOT_UNDERSTOOD_RE = /n[ãa]o\s+(percebi|entendi|compreendi)|podes\s+explic
 const CLAIMS_COMPLETION_RE =
   /\b(feito|combinado|tratado|resolvido|est[áa]\s+feito|j[áa]\s+est[áa]|desmarquei|desmarcado|cancelei|cancelado|apaguei|limpei|registei|guardei|marquei|actualizei|atualizei)\b/i;
 
+import type { PendingResolver } from "./pending-resolvers/types";
+import {
+  suggestFileLinkPending,
+  keepPhotoPending,
+  bulkArchivePending,
+} from "./pending-resolvers/drive-files.server";
+import {
+  collectingFeedbackPending,
+  clarifyFeedbackTargetPending,
+  recordProductFeedbackPending,
+} from "./pending-resolvers/feedback.server";
+import { financeCommissionShortcut } from "./pending-resolvers/finance-commission.server";
+
 // Pendentes de baixo acoplamento (Drive, feedback) + atalho de comissão.
 // A ORDEM desta lista é comportamento: mantém-se a mesma do código inline.
 const LOW_COUPLING_PENDING_RESOLVERS: PendingResolver[] = [
