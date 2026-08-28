@@ -28,6 +28,21 @@ function addDaysYmd(ymd: string, delta: number): string {
   return `${base.getUTCFullYear()}-${String(base.getUTCMonth() + 1).padStart(2, "0")}-${String(base.getUTCDate()).padStart(2, "0")}`;
 }
 
+/** Próxima data (>= hoje) com este dia do mês. Salta meses sem esse dia. */
+function nextDayOfMonth(todayYmd: string, dia: number): string | null {
+  const [y, m, d] = todayYmd.split("-").map((n) => parseInt(n, 10));
+  for (let i = 0; i < 13; i++) {
+    const base = new Date(Date.UTC(y, m - 1 + i, 1));
+    const yy = base.getUTCFullYear();
+    const mm = base.getUTCMonth();
+    const lastDay = new Date(Date.UTC(yy, mm + 1, 0)).getUTCDate();
+    if (dia > lastDay) continue;
+    if (i === 0 && dia < d) continue;
+    return `${yy}-${String(mm + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  }
+  return null;
+}
+
 function dayOfWeekYmd(ymd: string): number {
   const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
@@ -95,6 +110,18 @@ export function resolveDateTimeFromText(
         date = `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
         expression = m[0];
       }
+    }
+  }
+
+  // "dia 31" solto (sem mês): o dia do mês mais próximo à frente. Explícito
+  // ganha ao nome do dia da semana quando os dois aparecem e não coincidem
+  // ("segunda-feira dia 31").
+  const bare = t.match(/(?:^|[^\p{L}\d])dia\s+(\d{1,2})(?![\d\p{L}\/\-.])/u);
+  if (bare) {
+    const dia = parseInt(bare[1], 10);
+    if (dia >= 1 && dia <= 31 && (!date || parseInt(date.slice(8), 10) !== dia)) {
+      const next = nextDayOfMonth(todayYmd, dia);
+      if (next) { date = next; expression = `dia ${dia}`; }
     }
   }
 

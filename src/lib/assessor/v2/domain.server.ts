@@ -81,6 +81,14 @@ import {
 // "hoje às 12:10" ficaria guardado como 13:10 de Lisboa.
 import { lisbonLocalToUtcIso, lisbonHhMm, lisbonYmd } from "@/lib/assessor/lisbon-day";
 
+/** "segunda-feira, 31/08" — rótulo humano de um dia concreto. */
+function dayLabelPt(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
+  const names = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+  const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return `${names[wd]}, ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
+}
+
 function agendaRange(period: "today" | "tomorrow" | "week" | "next_week"): { startIso: string; endIso: string; label: string } {
   const now = new Date();
   const { ymd, weekday } = lisbonParts(now);
@@ -536,7 +544,10 @@ async function execSetPropertyCategory(ctx: DomainContext, args: unknown): Promi
 
 async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(SearchAgendaArgs, args); if (!p.ok) return fail(p.error);
-  const range = agendaRange(p.value.period);
+  // Dia concreto ganha ao período: "dia 31" é o dia 31, não a semana que o contém.
+  const range = p.value.date
+    ? { startIso: p.value.date, endIso: p.value.date, label: dayLabelPt(p.value.date) }
+    : agendaRange(p.value.period ?? "today");
   // `due_date` é timestamptz. Comparar com "YYYY-MM-DD" faz o Postgres ler
   // meia-noite, pelo que um compromisso das 09:30 de hoje ficava FORA do
   // `lte`. Usamos o intervalo real do dia em Lisboa [00:00, dia+1 00:00).

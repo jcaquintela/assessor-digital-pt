@@ -124,7 +124,7 @@ export function takeApiCallCounts(): Record<string, number> {
   return snapshot;
 }
 
-async function callProvider(
+export async function callProvider(
   supabaseAdmin: any, userId: string, provider: CalendarProvider,
   path: string, init?: RequestInit,
 ): Promise<{ ok: boolean; status: number; body: any; text: string }> {
@@ -465,6 +465,38 @@ export async function pullFromProvider(
     return { applied, skipped: 0, error };
   }
 
+  const counts = await applyExternalEvents(supabaseAdmin, userId, provider, events);
+  let applied = counts.applied;
+  const skipped = counts.skipped;
+
+  await saveSyncState(supabaseAdmin, userId, provider, {
+    sync_token: nextToken ?? undefined,
+    delta_link: nextDelta ?? undefined,
+    last_error: null,
+  });
+  // Séries recorrentes do Outlook importadas antes da correção de recorrência
+  // ficaram só com o master (1ª ocorrência, no passado) e nunca mais
+  // apareceram no delta. Auto-cura: apaga o master e reimporta a janela.
+  if (provider === "microsoft_outlook") {
+    const { backfillOrphanSeries } = await import("./backfill-series.server");
+    applied += (await backfillOrphanSeries(supabaseAdmin, userId)).repaired;
+  }
+  // Limpa pares duplicados que já estavam na agenda (importações repetidas).
+  applied += await dedupeImportedEvents(supabaseAdmin, userId, provider);
+  if (verify !== false) {
+    applied += await verifyLinkedEvents(supabaseAdmin, userId, provider, verify);
+  }
+  return { applied, skipped };
+}
+
+/**
+ * Aplica uma lista de eventos externos na agenda local (criar/actualizar/
+ * cancelar). Partilhado pelo delta e pelo backfill por `calendarView`, para
+ * que a protecção contra duplicados seja exactamente a mesma nos dois.
+ */
+export async function applyExternalEvents(
+  supabaseAdmin: any, userId: string, provider: CalendarProvider, events: ExternalEvent[],
+): Promise<{ applied: number; skipped: number }> {
   let applied = 0;
   let skipped = 0;
 
@@ -606,16 +638,6 @@ export async function pullFromProvider(
     applied++;
   }
 
-  await saveSyncState(supabaseAdmin, userId, provider, {
-    sync_token: nextToken ?? undefined,
-    delta_link: nextDelta ?? undefined,
-    last_error: null,
-  });
-  // Limpa pares duplicados que já estavam na agenda (importações repetidas).
-  applied += await dedupeImportedEvents(supabaseAdmin, userId, provider);
-  if (verify !== false) {
-    applied += await verifyLinkedEvents(supabaseAdmin, userId, provider, verify);
-  }
   return { applied, skipped };
 }
 

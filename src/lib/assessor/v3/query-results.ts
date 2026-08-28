@@ -53,6 +53,16 @@ const LEAD_STATUS_LABEL: Record<string, string> = {
   archived: "arquivada",
 };
 
+/** "31/08" no calendário de Lisboa. */
+function dayDdMm(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-PT", {
+    timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit",
+  }).format(d);
+}
+
 function joinParts(parts: Array<string | null | undefined>, sep = " · "): string {
   return parts.map((p) => s(p)).filter(Boolean).join(sep);
 }
@@ -93,7 +103,14 @@ function lineFor(tool: string, row: Record<string, unknown>): string {
   }
   if (tool === "search_agenda") {
     const t = s(row.due_time).slice(0, 5);
-    return joinParts([t ? boldWa(t.replace(":", "h")) : null, boldWa(s(row.title) || "compromisso")], " — ");
+    // Numa lista de vários dias, a hora sozinha faz parecer que é tudo no
+    // mesmo dia (bug real de 31/08). O dia entra sempre que há mais que um.
+    const day = row.__showDay ? dayDdMm(s(row.due_date)) : "";
+    return joinParts([
+      day ? boldWa(day) : null,
+      t ? boldWa(t.replace(":", "h")) : null,
+      boldWa(s(row.title) || "compromisso"),
+    ], " — ");
   }
   if (tool === "search_files") {
     return joinParts([
@@ -260,14 +277,23 @@ export function formatQueryResults(toolResults: ToolExecResult[]): string | null
       empty: "Não encontrei nada com esses critérios.",
     };
     if (!rows.length) {
-      blocks.push(head.empty);
+      const label = r.name === "search_agenda" ? s(d?.range?.label) : "";
+      blocks.push(label ? `Não tens compromissos para ${label}.` : head.empty);
       continue;
     }
     const shown = rows.slice(0, MAX_ITEMS);
+    // Agenda de vários dias: cada linha leva o dia, senão parece tudo do mesmo.
+    if (r.name === "search_agenda") {
+      const days = new Set(shown.map((row) => dayDdMm(s(row.due_date))).filter(Boolean));
+      if (days.size > 1) for (const row of shown) row.__showDay = true;
+    }
     const lines = shown.map((row) => `- ${lineFor(r.name, row)}`.trim());
     const total = Number((r.data as any)?.total);
     const count = Number.isFinite(total) && total > rows.length ? total : rows.length;
-    const header = count === 1 ? head.one : head.many(count);
+    const rangeLabel = r.name === "search_agenda" ? s(d?.range?.label) : "";
+    const header = rangeLabel
+      ? (count === 1 ? `Para ${rangeLabel} tens 1 compromisso:` : `Para ${rangeLabel} tens ${count} compromissos:`)
+      : count === 1 ? head.one : head.many(count);
     // Quando a lista é grande, mostramos os mais recentes mas nunca trocamos
     // silenciosamente o pedido de "todos" por uma pergunta fechada: a opção de
     // ver tudo tem de estar sempre na resposta.

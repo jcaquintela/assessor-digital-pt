@@ -262,13 +262,24 @@ export function detectAgendaDateQuery(
   if (!afterTomorrow && (TODAY_RE.test(t) || TOMORROW_RE.test(t))) return null;
 
   const hasIntent =
-    HAVE_Q_RE.test(t) || HAVE_ANY_RE.test(t) || (AGENDA_WORD_RE.test(t) && /\?\s*$/.test(t));
+    HAVE_Q_RE.test(t) || HAVE_ANY_RE.test(t) || (AGENDA_WORD_RE.test(t) && /\?\s*$/.test(t))
+    // "Quero de segunda-feira dia 31 apenas", "só o dia 31", "e no dia 31?" —
+    // pedido de restringir a resposta anterior a um dia concreto.
+    || (EXPLICIT_DATE_RE.test(t) && NARROW_SCOPE_RE.test(t));
   if (!hasIntent) return null;
 
   const r = resolveDateTimeFromText(t, now);
   if (!r.date || r.time) return null;
   return { date: r.date, label: formatDayLabel(r.date) };
 }
+
+/** Data explícita na mensagem: "dia 31", "31/08", "31 de agosto". */
+const EXPLICIT_DATE_RE =
+  /(?:\bdia\s+\d{1,2}\b|\b\d{1,2}[\/\-.]\d{1,2}(?:[\/\-.]\d{2,4})?\b|\b\d{1,2}\s+de\s+[a-zç]+)/i;
+
+/** Pedido de restringir/apontar a um dia: "apenas", "só", "quero", "e no ...". */
+const NARROW_SCOPE_RE =
+  /(?:\bapenas\b|\bs[óo]\b|\bquero\b|\bmostra\b|\bdá?-?me\b|\bdiz-me\b|^e\b|\bnesse dia\b)/i;
 
 export function formatAgendaDateReply(label: string, items: AgendaItem[]): string {
   if (!items.length) return `Não tens compromissos para ${label}.`;

@@ -118,8 +118,12 @@ export const CreatePropertyArgs = z.object({
 export type CreatePropertyArgs = z.infer<typeof CreatePropertyArgs>;
 
 export const SearchAgendaArgs = z.object({
-  period: z.enum(["today", "tomorrow", "week", "next_week"]),
-});
+  period: z.enum(["today", "tomorrow", "week", "next_week"]).optional().nullable(),
+  // Dia concreto (calendário de Lisboa). Tem precedência sobre `period`: sem
+  // isto, "e no dia 31 apenas?" forçava o modelo a escolher `next_week` e a
+  // resposta trazia a semana inteira.
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+}).refine((v) => !!(v.period || v.date), { message: "indica period ou date" });
 export type SearchAgendaArgs = z.infer<typeof SearchAgendaArgs>;
 
 // ---- Categorias de imóveis (mesmo mecanismo das categorias do Drive) ----
@@ -621,16 +625,17 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
     function: {
       name: "search_agenda",
       description:
-        "Devolve os compromissos e seguimentos do consultor num período (hoje, amanhã, esta semana, próxima semana), agrupados por dia.",
+        "Devolve os compromissos e seguimentos do consultor. Usa `date` (YYYY-MM-DD) sempre que ele indica um dia concreto ('dia 31', '31 de agosto', 'na segunda dia 31'); só usa `period` quando ele fala de hoje, amanhã, esta semana ou a próxima. Nunca respondas a um dia concreto com um período.",
       parameters: {
         type: "object",
         properties: {
           period: {
-            type: "string",
-            enum: ["today", "tomorrow", "week", "next_week"],
+            type: ["string", "null"],
+            enum: ["today", "tomorrow", "week", "next_week", null],
           },
+          date: { type: ["string", "null"], description: "Dia concreto YYYY-MM-DD" },
         },
-        required: ["period"],
+        required: [],
       },
     },
   },
