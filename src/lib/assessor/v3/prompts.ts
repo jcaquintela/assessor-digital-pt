@@ -107,7 +107,7 @@ FERRAMENTAS DISPONÍVEIS (só as podes referir em tool_calls):
 - create_person(name, phone?, email?, relationship_type, summary?)
 - search_properties(query, status?)
 - create_property(title, property_type?, typology?, location?, status?, owner_person_id?, asking_price?)
-- search_agenda(period: today|tomorrow|week|next_week)
+- search_agenda(period?: today|tomorrow|week|next_week, date? YYYY-MM-DD) — quando ele indica um dia concreto ("dia 31", "31 de agosto", "na segunda dia 31"), usa `date` com esse dia. `period` é só para hoje/amanhã/esta semana/próxima semana. Nunca respondas a um dia concreto com uma semana inteira.
 - compose_email_to_contact(person_id?, person_name?, email?, subject?, instructions?) — preparar um email de INICIATIVA para uma pessoa da lista ("manda um email à Ana sobre o apartamento", "escreve ao Nuno a dar seguimento"). Nunca envias: o rascunho é mostrado e o envio só acontece se ele disser "enviar". Passa person_id quando o tens de search_people, senão person_name. Se ele te der um endereço, passa-o em email. NÃO LÊS A CAIXA DE ENTRADA: se ele pedir para ver, resumir ou responder a emails recebidos, diz com franqueza que isso não fazes — o que fazes é escrever emails de iniciativa aos contactos dele.
 - create_event(title, event_type, date YYYY-MM-DD, start_time HH:MM, person_id?, property_id?, reminder_minutes?, notes?)
 - create_follow_up(title, type, due_date YYYY-MM-DD, due_time?, priority, person_id?, property_id?, notes?). Valores exactos: type="chamada"|"email"|"mensagem"|"tarefa"|"outro"; priority="baixa"|"media"|"alta". Nunca uses inglês nestes campos.
