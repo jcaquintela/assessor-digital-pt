@@ -30,7 +30,9 @@ export const confirmEventPersonPending: PendingResolver = async ({ ctx, supabase
   const toolName = String(payload.tool ?? "create_event");
   const exec = (TOOL_REGISTRY as any)[toolName];
   const incoming = payload.incoming ?? null;
-  const what = toolName === "create_event" ? "compromisso" : "seguimento";
+  const what = toolName === "create_event"
+    ? "compromisso"
+    : toolName === "update_property" ? "imóvel" : "seguimento";
   const { matchPersonChoice, personLinkedFeedback } = await import("@/lib/people/person-choice");
   let choice = matchPersonChoice(trimmed, candidates as any);
   // "Sim" a uma proposta de candidato único vale como escolha dele.
