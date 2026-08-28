@@ -24,7 +24,7 @@ import { assertNoSparringLeak } from "./sparring-assert.server";
 import { runEngineTail } from "./engine-tail.server";
 import { runDeterministicRouter } from "./deterministic-router.server";
 import { HISTORY_LIMIT, nowLisbonHuman, nowLisbonYmd, toHistoryPreview } from "./engine-shared";
-import { shapeExecutionOutcome, shapeAgendaAsks, shapeToolReplies } from "./post-act-reply.server";
+import { shapeExecutionOutcome, shapeAgendaAsks, shapePersonAsk, shapeToolReplies } from "./post-act-reply.server";
 // Blocos extraídos no Lote 8 — o motor apenas os orquestra por ordem.
 import { runCompletionPass } from "./completion-pass.server";
 import { runTurnOpeners } from "./turn-openers.server";
@@ -495,7 +495,7 @@ async function runReasoningEngineInner(
   const propertyAskTool = toolResults.find(
     (t) => t.ok && (t.data as any)?.needsPropertyConfirmation === true,
   );
-  if (propertyAskTool && !personAsk && !followUpPersonAsk && !ownerPersonAsk) {
+  if (propertyAskTool && !personAskShape.asked) {
     const d = propertyAskTool.data as any;
     const question = String(d.question ?? "De que imóvel se trata?");
     try {
