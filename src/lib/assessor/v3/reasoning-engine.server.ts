@@ -7,138 +7,30 @@ import { search } from "./search.server";
 import { decide } from "./decide.server";
 import { executeToolCalls, applyMemoryWrites } from "./act.server";
 import { isolateUnrelatedPending, stripInheritedMotive } from "../context-isolation";
-import { sanitizeReply, enforceHumanTone, enforceSingleQuestion, NATURAL_FALLBACKS } from "../culture/sanitize";
-import { computeQualitySignals, persistQualityScore } from "./quality.server";
-import { runShadow, shouldRunShadow } from "./shadow.server";
-import {
-  computeATS, computeContextPreservation, computeSafeDecisions, computeTaskSuccess,
-  persistTrustScore, type TrustSignals,
-} from "./trust.server";
-import { captureCorrection, looksLikeCorrection } from "./corrections.server";
-import { suppressRejectedQuestion } from "./rejected-question";
-import { reflect, type ReflectionTrigger } from "./reflection.server";
+import { sanitizeReply, NATURAL_FALLBACKS } from "../culture/sanitize";
+import { looksLikeCorrection } from "./corrections.server";
 import { sanitizeAssessorName, ASSESSOR_NAME_DEFAULT } from "../assessor-name";
-import { lisbonYmd } from "../lisbon-day";
 import { blockedChannelReason } from "../channel-guard";
 import type { DomainContext } from "../v2/domain.server";
-import { TOOL_REGISTRY } from "../v2/domain.server";
-import {
-  findActivePendingAction,
-  markPendingActionStatus,
-  createPendingAction,
-} from "../memory.server";
-import { isConfirmation as saIsConfirmation, isRejection as saIsRejection } from "../culture/short-answers";
+import { findActivePendingAction, createPendingAction } from "../memory.server";
 export { personChoiceIsNone } from "./pending-resolvers/agenda-person.server";
-import { personChoiceIsNone } from "./pending-resolvers/agenda-person.server";
 
-import {
-  detectAgendaQuery,
-  detectMiscQuery,
-  detectDayStateQuery,
-  composeDayStateReply,
-  formatAgendaReply,
-  detectAgendaDateQuery,
-  formatAgendaDateReply,
-  detectEventNameQuery,
-  rankEventsByTitle,
-  formatEventFoundReply,
-  BARE_CONFIRMATION_REPLY,
-  ACKNOWLEDGED_REPLY,
-  isBareAcknowledgement,
-  hasValidPendingContext,
-  type AgendaItem,
-} from "./deterministic.server";
-import { applySafetyNet, buildArchiveContent, archiveToMiscellaneous } from "./safety-net.server";
-import { isRegisterOnly, isAnswerablePending } from "../pending-answerable";
-import { formatQueryResults, isQueryTool } from "./query-results";
-import { detectContactReadQuery, detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
-import { resolveEllipticRead } from "./elliptic-read";
-import { readLastRead, recordLastRead } from "./last-read.server";
-import { isDiscardCommand } from "../culture/discard";
-import { enforceTransparentConfirmation } from "./write-receipt";
-import {
-  detectCompletionInstructions,
-  formatCompletionReply,
-  recurrenceQuestion,
-  remainingRequest,
-  remainderNeedsWork,
-  ambiguousCompletionQuestion,
-  claimsCompletion,
-  unverifiedCompletionReply,
-} from "./completion-intent";
-import { anchorFromBriefing, isEllipticCompletion } from "./briefing-anchor";
-
-import {
-  detectPersonBriefQuery,
-  formatPersonBrief,
-  personNotFoundReply,
-  ambiguousPersonReply,
-} from "./person-brief";
-import { buildPersonBrief } from "./person-brief.server";
-import { detectWhatsNewQuery, formatWhatsNewReply, noRecentUpdatesReply, NO_UPDATES_REPLY } from "./whats-new";
-import { detectEllipticEntity, ellipticConfirmQuestion } from "./elliptic";
-import { lastProductUpdate, listRecentProductUpdates } from "./whats-new.server";
-import {
-  detectFeedbackTarget,
-  feedbackConfirmQuestion,
-  feedbackClarifyQuestion,
-  detectFeedbackAnnouncement,
-  feedbackAskBody,
-  isEmptyFeedbackBody,
-  FEEDBACK_BODY_RETRY,
-  readClarifyAnswer,
-  FEEDBACK_CLARIFY_RETRY,
-  FEEDBACK_NOT_PRODUCT_REPLY,
-  FEEDBACK_CANCELLED_REPLY,
-  FEEDBACK_FAILED_REPLY,
-  feedbackSavedReply,
-  type FeedbackKind,
-} from "./feedback";
-import { saveProductFeedback } from "./feedback.server";
-import {
-  appendOffer,
-  GOALS_QUESTION,
-  GOALS_SAVED_REPLY,
-  NAME_KEPT_REPLY,
-  NAME_QUESTION,
-  NAME_SET_REPLY,
-  nextOnboardingOffer,
-  readGoalsAnswer,
-  readNameAnswer,
-  type OnboardingState,
-} from "./onboarding";
-import {
-  loadOnboardingState,
-  markOnboardingOffered,
-  saveAssessorName,
-  saveOnboardingGoals,
-  setOnboardingStage,
-} from "./onboarding.server";
-import { validateAssessorName } from "../assessor-name";
+import { isQueryTool } from "./query-results";
+import { detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
+import type { OnboardingState } from "./onboarding";
 import { logSparringSuppression } from "./sparring-audit.server";
 import { assertNoSparringLeak } from "./sparring-assert.server";
-import { logAiTurn, recordEngineTurn } from "./telemetry-repo.server";
 import { runEngineTail } from "./engine-tail.server";
 import { runDeterministicRouter } from "./deterministic-router.server";
-
-
-
 import { HISTORY_LIMIT, nowLisbonHuman, nowLisbonYmd, toHistoryPreview } from "./engine-shared";
 import { shapeExecutionOutcome, shapeAgendaAsks, shapeToolReplies } from "./post-act-reply.server";
+// Blocos extraídos no Lote 8 — o motor apenas os orquestra por ordem.
 import { runCompletionPass } from "./completion-pass.server";
 import { runTurnOpeners } from "./turn-openers.server";
 import { runScriptOfferPending, runRecurrenceAndCancelChoice } from "./pre-pending.server";
 import { resolveStalePending } from "./stale-pending.server";
 import { resolveBareConfirmation } from "./bare-confirmation.server";
 
-
-// Padrão de linguagem de incompreensão. Usado (a) para nunca comunicar
-// falha depois de uma execução bem sucedida e (b) para reclassificar o
-// outcome apenas quando nada foi executado.
-const NOT_UNDERSTOOD_RE = /n[ãa]o\s+(percebi|entendi|compreendi)|podes\s+explicar\s+de\s+outra\s+forma/i;
-// Linguagem que afirma conclusão. Só pode sair depois de escrita real.
-const CLAIMS_COMPLETION_RE =
-  /\b(feito|combinado|tratado|resolvido|est[áa]\s+feito|j[áa]\s+est[áa]|desmarquei|desmarcado|cancelei|cancelado|apaguei|limpei|registei|guardei|marquei|actualizei|atualizei)\b/i;
 
 import type { PendingResolver } from "./pending-resolvers/types";
 import {
