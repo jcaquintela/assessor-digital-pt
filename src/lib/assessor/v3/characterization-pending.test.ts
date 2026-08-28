@@ -826,7 +826,7 @@ describe("confirmação de contacto — caminho único", () => {
     decideMock.mockResolvedValue({
       ok: true,
       decision: {
-        confidence: 0.9, action: "execute", memory_writes: [],
+        confidence: 0.9, action: "act", memory_writes: [],
         tool_calls: [{ name: "create_event", arguments: {} }, { name: "create_follow_up", arguments: {} }],
         natural_reply: "Certo.",
       },
@@ -835,7 +835,6 @@ describe("confirmação de contacto — caminho único", () => {
     executeToolCallsMock.mockResolvedValue([ask("create_event"), ask("create_follow_up")]);
     await turn(db, "marca visita e liga à Ana amanhã");
     const created = pendings.filter((p) => p.intent === "confirm_event_person");
-    console.log("PENDINGS", JSON.stringify(pendings.map((p) => p.intent)));
     expect(created).toHaveLength(1);
     expect(created[0].structured_payload.tool).toBe("create_event");
   });
