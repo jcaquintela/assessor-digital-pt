@@ -2583,58 +2583,27 @@ async function runReasoningEngineInner(
   const outputTokens = thinkR.usage.outputTokens + decideR.usage.outputTokens;
   const success = allOk && !decideR.error && !thinkR.error;
 
-  let traceId: string | null = null;
-  try {
-    const { data: traceRow } = await supabase.from("assessor_reasoning_traces").insert({
-      user_id: userId,
-      channel,
-      source_message_id: sourceMessageId ?? null,
-      input_content: trimmed,
-      observations: observations as unknown,
-      hypotheses: thinkR.output.hypotheses as unknown,
-      searches: searches as unknown,
-      decision: decideR.decision as unknown,
-      tool_calls: toolResults as unknown,
-      memory_writes: decideR.decision.memory_writes as unknown,
-      reply,
-      think_latency_ms: thinkR.latencyMs,
-      decide_latency_ms: decideR.latencyMs,
-      total_latency_ms: totalLatencyMs,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      success,
-      error: (decideR.error ?? thinkR.error) ?? null,
-    } as never).select("id").maybeSingle();
-    traceId = (traceRow as any)?.id ?? null;
-
-    await supabase.from("assessor_ai_logs").insert({
-      user_id: userId,
-      channel,
-      model: "reasoning-engine-v3",
-      billed_model: "google/gemini-3.6-flash",
-      modality: "texto",
-      intent: "reasoning_engine_v3",
-      confidence: decideR.decision.confidence,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      total_tokens: inputTokens + outputTokens,
-      latency_ms: totalLatencyMs,
-      success,
-      // Sem isto, uma ferramenta que falha (ex.: `reschedule_reminder` →
-      // `reminder_not_found`) deixava `error` e `tool_name` vazios e a
-      // falha real ficava invisível no diagnóstico.
-      tool_name: toolResults.find((r) => !r.ok)?.name
-        ?? toolResults[0]?.name ?? null,
-      tool_success: toolResults.length ? toolResults.every((r) => r.ok) : null,
-      error: (decideR.error ?? thinkR.error)
-        ?? (toolResults.some((r) => !r.ok)
-          ? toolResults.filter((r) => !r.ok).map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ")
-          : null),
-      domain: "assessor",
-      route: "v3",
-      fallback_used: !success || toolResults.some((r) => !r.ok),
-    } as never);
-  } catch { /* noop */ }
+  const traceId: string | null = await recordEngineTurn(supabase, {
+    userId,
+    channel,
+    sourceMessageId: sourceMessageId ?? null,
+    inputContent: trimmed,
+    observations: observations as unknown,
+    hypotheses: thinkR.output.hypotheses as unknown,
+    searches: searches as unknown,
+    decision: decideR.decision as unknown,
+    toolCalls: toolResults as any,
+    memoryWrites: decideR.decision.memory_writes as unknown,
+    reply,
+    thinkLatencyMs: thinkR.latencyMs,
+    decideLatencyMs: decideR.latencyMs,
+    totalLatencyMs,
+    inputTokens,
+    outputTokens,
+    success,
+    error: (decideR.error ?? thinkR.error) ?? null,
+    confidence: decideR.decision.confidence,
+  });
 
   // AQS — Assistant Quality Score.
   let aqsScore: number | null = null;
