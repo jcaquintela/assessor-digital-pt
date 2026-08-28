@@ -124,6 +124,7 @@ import { runDeterministicRouter } from "./deterministic-router.server";
 
 
 import { HISTORY_LIMIT, nowLisbonHuman, nowLisbonYmd, toHistoryPreview } from "./engine-shared";
+import { shapeExecutionOutcome, shapeAgendaAsks, shapeToolReplies } from "./post-act-reply.server";
 
 // Padrão de linguagem de incompreensão. Usado (a) para nunca comunicar
 // falha depois de uma execução bem sucedida e (b) para reclassificar o
@@ -897,92 +898,38 @@ async function runReasoningEngineInner(
   if (isolation.isolated) {
     reply = stripInheritedMotive(reply, { message: trimmed, pendingText: isolation.pendingText });
   }
-  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" | "service_down" = "executed_ok";
-  let archiveReason: string | null = null;
   // A IA esteve em baixo (créditos, rate limit, timeout, erro do provedor).
   // Isto NÃO é incompreensão: o consultor tem de perceber a diferença.
   const aiUnavailable = thinkR.unavailable === true || decideR.unavailable === true;
-  // Executou e mesmo assim perguntou ("Marco a ação ... ?") — a pergunta faz o
-  // consultor responder "Sim" e o turno seguinte volta a executar o mesmo.
-  // Se a acção já foi feita, a resposta tem de ser afirmativa, nunca uma
-  // proposta.
-  if (shouldAct && allOk && /\?\s*$/.test(reply)) {
-    reply = "Feito.";
-  }
-  if (shouldAct && !allOk) {
-    archiveOutcome = "tool_failed";
-    archiveReason = toolResults.filter((r) => !r.ok)
-      .map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ") || "tool_failed";
-    reply = readReq.pure
-      ? READ_FAILED_REPLY
-      : "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
-  }
-  if (actedWithoutTools && !readReq.pure) {
-    archiveOutcome = "not_understood";
-    // Motivo interno: sem capacidade. O texto visível vem do formatter PT.
-    archiveReason = "no_tool";
-    if (!reply || CLAIMS_COMPLETION_RE.test(reply)) {
-      reply = "Não cheguei a mexer em nada. Diz-me exactamente o que queres que faça?";
-    }
-  }
 
-  // Idempotência: se `create_follow_up`/`create_event` devolveu um recurso
-  // pré-existente para a mesma pending_action, respondemos de forma explícita
-  // em vez de fingir que criámos algo novo.
-  const idemHit = toolResults.find(
-    (t) => (t.name === "create_follow_up" || t.name === "create_event")
-      && t.ok && (t.data as any)?.idempotent === true,
-  );
-  if (idemHit) {
-    const d = idemHit.data as any;
-    if (d?.typeCorrected) {
-      reply = d?.rescheduled
-        ? "Já tinhas isso como lembrete, não como compromisso. Corrigi e passei para o novo horário — já aparece na agenda."
-        : "Já tinhas isso como lembrete, não como compromisso. Corrigi — já aparece na agenda.";
-    } else {
-      reply = d?.rescheduled
-        ? "Já tinhas esse seguimento. Passei-o para o novo horário."
-        : "Já estava registado.";
-    }
-  }
+  // Pós-ACT (parte 1): resultado da execução e idempotência.
+  const outcome = shapeExecutionOutcome({
+    reply,
+    toolResults: toolResults as any,
+    shouldAct,
+    allOk,
+    actedWithoutTools,
+    pureRead: readReq.pure,
+    readFailedReply: READ_FAILED_REPLY,
+  });
+  reply = outcome.reply;
+  let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" | "service_down" = outcome.archiveOutcome;
+  let archiveReason: string | null = outcome.archiveReason;
 
   // Override natural para prospeção executada dentro do DECIDE (turno único).
   const leadTool = toolResults.find((t) => t.name === "create_prospecting_lead");
 
-  // Compromisso provavelmente já existente com outra hora: perguntar sempre,
-  // nunca duplicar em silêncio (caso real da consulta às 09:00 → 10:30).
-  const rescheduleAsk = toolResults.find(
-    (t) => t.name === "create_event" && t.ok
-      && (t.data as any)?.needsRescheduleConfirmation === true,
-  );
-  if (rescheduleAsk) {
-    const d = rescheduleAsk.data as any;
-    const { rescheduleQuestion } = await import("../event-subject");
-    const question = rescheduleQuestion(d.candidate, d.incoming);
-    try {
-      await createPendingAction(supabase, {
-        userId, channel,
-        intent: "confirm_event_reschedule",
-        originalContent: trimmed,
-        payload: { candidate: d.candidate, incoming: d.incoming },
-        currentQuestion: question,
-        pendingQuestion: question,
-        sourceMessageId: sourceMessageId ?? null,
-      });
-    } catch { /* noop */ }
-    reply = question;
-  }
+  // Pós-ACT (parte 2): perguntas de agenda (reagendamento, calendário).
+  const agendaAsks = await shapeAgendaAsks({
+    supabase, userId, channel,
+    sourceMessageId: sourceMessageId ?? null,
+    trimmed,
+    reply,
+    toolResults: toolResults as any,
+  });
+  reply = agendaAsks.reply;
+  const rescheduleAsk = agendaAsks.rescheduleAsk;
 
-  // Compromisso agendado por nome sem contacto na base: perguntar antes de
-  // gravar, para o evento nunca ficar "solto" com um nome só em texto.
-  const calendarChoiceAsk = toolResults.find(
-    (t) => t.name === "create_event" && t.ok
-      && (t.data as any)?.needsCalendarProviderChoice === true,
-  );
-  if (calendarChoiceAsk) {
-    const { CALENDAR_PROVIDER_CHOICE_REPLY } = await import("@/lib/providers/active");
-    reply = CALENDAR_PROVIDER_CHOICE_REPLY;
-  }
 
   const personAsk = toolResults.find(
     (t) => t.name === "create_event" && t.ok
@@ -1089,177 +1036,17 @@ async function runReasoningEngineInner(
     } catch { /* noop */ }
     reply = question;
   }
-  if (leadTool) {
-    const dup = (leadTool.data as any)?.duplicate === true;
-    const leadId = (leadTool.data as any)?.lead?.id ?? (leadTool.data as any)?.existing?.id ?? null;
-    if (leadTool.ok && !dup) {
-      reply = "Feito. Registei a placa para contactares. Queres que te lembre de ligar?";
-      if (leadId) {
-        try {
-          await supabase.from("conversation_states").upsert({
-            user_id: userId, channel, external_conversation_id: channel,
-            last_entity_type: "prospecting_lead",
-            last_entity_id: leadId,
-            last_intent: "create_prospecting_lead",
-          } as never, { onConflict: "user_id,channel,external_conversation_id" });
-        } catch { /* noop */ }
-      }
-      {
-        const { appendScriptOffer } = await import("@/lib/prospecting/script-offer.server");
-        reply = await appendScriptOffer(
-          { supabase, userId, channel },
-          {
-            reply,
-            leadId,
-            payload: (((leadTool.data as any)?.lead ?? {}) as Record<string, any>),
-            originalContent: trimmed,
-          },
-        );
-      }
-    } else if (leadTool.ok && dup) {
-      reply = "Já tens uma placa registada com esse número. É a mesma?";
-    }
-  }
-
-  // Desmarcações: a frase é construída a partir do que foi mesmo escrito na
-  // base de dados. Zero linhas afectadas → nunca "Feito.".
-  const cancelTool = toolResults.find((t) => t.name === "cancel_follow_up" && t.ok);
-  if (cancelTool) {
-    const d = (cancelTool.data ?? {}) as any;
-    const { formatCancelReply, ambiguousCancelReply } = await import("./cancel-agenda");
-    reply = d?.ambiguous
-      ? ambiguousCancelReply(d.candidates ?? [])
-      : formatCancelReply(d.items ?? [], d.period_label ?? null);
-    // A pergunta de desambiguação guarda os candidatos na sua ranhura: a
-    // resposta ("as duas", "a primeira") passa a ser resolvida de forma
-    // determinística, sem depender do modelo escolher os ids certos.
-    if (d?.ambiguous && Array.isArray(d.candidates) && d.candidates.length > 1) {
-      try {
-        await createPendingAction(supabase, {
-          userId, channel,
-          intent: "choosing_cancel_target",
-          originalContent: trimmed,
-          payload: {
-            candidates: d.candidates.map((c: any) => ({
-              id: c.id, title: c.title ?? null, due_time: c.due_time ?? null,
-            })),
-          },
-          pendingQuestion: reply,
-          currentQuestion: reply,
-        });
-      } catch { /* noop */ }
-    } else if (!d?.ambiguous) {
-      const { ensureAllPartsAnswered } = await import("./composite-request");
-      reply = ensureAllPartsAnswered(reply, trimmed);
-    }
-  }
-
-  // Conclusão feita pelo caminho do modelo: se o assunto se repete, a
-  // pergunta de recorrência é feita na mesma e fica em memória à espera de
-  // resposta — desligar a repetição nunca é decisão nossa.
-  const completeTool = toolResults.find((t) => t.name === "complete_follow_up" && t.ok);
-  if (completeTool) {
-    const d = (completeTool.data ?? {}) as any;
-    const rec = d?.recurring;
-    if (!d?.ambiguous && rec?.id && rec?.title) {
-      const question = recurrenceQuestion(String(rec.title));
-      if (!reply.includes(question)) reply = [reply, question].filter(Boolean).join(" ").trim();
-      try {
-        await createPendingAction(supabase, {
-          userId, channel,
-          intent: "confirm_recurrence_continue",
-          originalContent: trimmed,
-          payload: { routine_id: String(rec.id), routine_title: String(rec.title) },
-          pendingQuestion: question,
-          currentQuestion: question,
-        });
-      } catch { /* noop */ }
-    }
-  }
-
-  // Falsa confirmação positiva (caso real 20/08): o modelo escreveu "Dei o
-  // lembrete da marcação das unhas como concluído" sem nenhuma escrita na
-  // base de dados. Confirmar conclusão exige um fecho verificado.
-  if (claimsCompletion(reply)) {
-    const wrote = toolResults.some(
-      (t) => t.name === "complete_follow_up" && t.ok && (((t.data as any)?.items ?? []).length > 0),
-    );
-    if (!wrote) reply = unverifiedCompletionReply();
-  }
-
-
-  // Ajustes culturais finais: sem "Feito" pré-execução, sem vocabulário
-  // Financeiro: duplicado do mesmo dia — pergunta antes de assumir novo registo.
-  // Dinheiro registado sem negócio: é aqui que o ciclo se fechava sozinho no
-  // vazio. O Afonso propõe abrir o negócio que une pessoa, imóvel e comissão.
-  const finOk = toolResults.find(
-    (t) => t.name === "create_financial_movement" && t.ok && !(t.data as any)?.duplicate,
-  );
-  if (finOk) {
-    try {
-      const mv = (finOk.data as any)?.movement ?? {};
-      const finArgs = (decideR.decision.tool_calls.find(
-        (t) => t.name === "create_financial_movement",
-      )?.arguments ?? {}) as Record<string, any>;
-      const hasDeal = !!(mv.opportunity_id ?? (finOk.data as any)?.opportunity_id);
-      let propertyId: string | null = finArgs.property_id ?? null;
-      let personId: string | null = (convState as any)?.active_person_id ?? null;
-
-      // O imóvel pode existir só nas palavras ("comissão do terreno"). Nesse
-      // caso procuramos o registo que corresponde à descrição e as visitas
-      // que falam do mesmo imóvel — é isso que revela o processo comercial.
-      const { extractPropertyHint } = await import("@/lib/deals/property-hint");
-      const hint = extractPropertyHint(
-        `${trimmed} ${String(finArgs.property_reference ?? "")} ${String(finArgs.description ?? "")}`,
-      );
-      let visitHits: Array<{ personId: string | null; propertyId: string | null }> = [];
-      if (hint) {
-        const { findPropertyByHint, findVisitsForHint } = await import("@/lib/deals/property-hint.server");
-        if (!propertyId) {
-          const found = await findPropertyByHint(supabase, userId, hint);
-          if (found) propertyId = found.id;
-        }
-        visitHits = await findVisitsForHint(supabase, userId, hint);
-        if (!propertyId) propertyId = visitHits.find((v) => v.propertyId)?.propertyId ?? null;
-        if (!personId) personId = visitHits.find((v) => v.personId)?.personId ?? null;
-      }
-
-      if (!hasDeal && (propertyId || personId || hint)) {
-        const label = String(finArgs.opportunity_title ?? finArgs.description ?? "").trim();
-        const { dealTitleFromHint } = await import("@/lib/deals/property-hint");
-        const title = label.length > 3
-          ? label.slice(0, 120)
-          : hint ? dealTitleFromHint(hint) : "Novo negócio";
-        const { createPendingAction: createPending } = await import("../memory.server");
-        await createPending(supabase, {
-          userId, channel, intent: "create_deal",
-          originalContent: trimmed,
-          payload: {
-            title,
-            kind: "venda",
-            person_id: personId,
-            property_id: propertyId,
-            property_hint: !propertyId && hint ? hint.label : null,
-            value: Number(finArgs.deal_value ?? 0) || 0,
-            link_movement_ids: mv.id ? [mv.id] : [],
-          } as Record<string, unknown>,
-          sourceMessageId: ctx.sourceMessageId ?? null,
-        });
-        const visitNote = visitHits.length
-          ? ` Já tinhas ${visitHits.length === 1 ? "uma visita" : `${visitHits.length} visitas`} ao mesmo ${hint?.label ?? "imóvel"}.`
-          : "";
-        const propNote = !propertyId && hint ? ` Crio também a ficha do ${hint.label}.` : "";
-        reply = `${reply}${visitNote} Isto ainda não está ligado a nenhum negócio.${propNote} Queres que abra "${title}" para juntar tudo?`.trim();
-      }
-    } catch { /* a sugestão nunca pode estragar o registo */ }
-  }
-
-  const finTool = toolResults.find((t) => t.name === "create_financial_movement");
-  if (finTool?.ok && (finTool.data as any)?.duplicate === true) {
-    const existing = (finTool.data as any)?.existing ?? {};
-    const kind = existing.type === "expense" ? "despesa" : "comissão";
-    reply = `Já tinha uma ${kind} desse valor registada hoje. É a mesma ou queres registar outra?`;
-  }
+  // Pós-ACT (parte 3): prospeção, desmarcação, conclusão e financeiro.
+  const shaped = await shapeToolReplies({
+    ctx, supabase, userId, channel, trimmed,
+    reply,
+    toolResults: toolResults as any,
+    leadTool: leadTool as any,
+    convState,
+    decideR,
+  });
+  reply = shaped.reply;
+  const cancelTool = shaped.cancelTool;
 
   // Cauda do turno (finalização, rede de segurança, métricas, ofertas):
   // extraída para engine-tail.server.ts sem alteração de ordem nem de lógica.
