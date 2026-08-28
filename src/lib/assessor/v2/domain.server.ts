@@ -536,7 +536,10 @@ async function execSetPropertyCategory(ctx: DomainContext, args: unknown): Promi
 
 async function execSearchAgenda(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(SearchAgendaArgs, args); if (!p.ok) return fail(p.error);
-  const range = agendaRange(p.value.period);
+  // Dia concreto ganha ao período: "dia 31" é o dia 31, não a semana que o contém.
+  const range = p.value.date
+    ? { startIso: p.value.date, endIso: p.value.date, label: dayLabelPt(p.value.date) }
+    : agendaRange(p.value.period ?? "today");
   // `due_date` é timestamptz. Comparar com "YYYY-MM-DD" faz o Postgres ler
   // meia-noite, pelo que um compromisso das 09:30 de hoje ficava FORA do
   // `lte`. Usamos o intervalo real do dia em Lisboa [00:00, dia+1 00:00).
