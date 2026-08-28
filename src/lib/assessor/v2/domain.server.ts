@@ -714,9 +714,14 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
   const v = { ...p.value, title: ensureTitle(p.value.title, "Compromisso") };
   // O imóvel é muitas vezes falado ("visita à Alameda da República") sem que o
   // motor devolva o id. Sem ligação, a visita não aparece na ficha do imóvel.
+  // Só ligamos quando a morada é a mesma; "provável" pergunta-se sempre.
+  let propertyAsk: PropertyAsk | null = null;
   if (!v.property_id) {
-    v.property_id = await resolvePropertyFromText(ctx, [v.title, v.notes].filter(Boolean).join(" "));
+    const r = await resolvePropertyOrAsk(ctx, [v.title, v.notes].filter(Boolean).join(" "));
+    if (r.id) v.property_id = r.id;
+    else propertyAsk = r.ask;
   }
+
   // Um compromisso "com o Manuel" nunca pode ficar só como texto. Ou ligamos
   // ao contacto certo, ou perguntamos — nunca inventamos nem deixamos solto.
   //
