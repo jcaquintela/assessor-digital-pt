@@ -1144,6 +1144,23 @@ TOOL_SPECS.push(
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_similar_listings",
+      description:
+        "Procura na web anúncios de imóveis SEMELHANTES a um imóvel do consultor ('imóveis parecidos ao T3 de Gaia', 'o que há no mercado como este', 'comparáveis'). Só a pedido explícito. NÃO é avaliação nem estimativa de valor: devolve anúncios publicados como referência rápida. Passa property_id se o tiveres do search_properties, senão property_query com a morada/título dito.",
+      parameters: {
+        type: "object",
+        properties: {
+          property_id: { type: ["string", "null"], format: "uuid" },
+          property_query: { type: ["string", "null"], description: "Morada ou título dito pelo consultor." },
+          typology: { type: ["string", "null"], description: "T2, T3, moradia… se o consultor disser." },
+          location: { type: ["string", "null"], description: "Zona, se o consultor disser." },
+        },
+      },
+    },
+  },
 );
 
 export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
