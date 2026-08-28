@@ -426,51 +426,16 @@ async function runReasoningEngineInner(
     }
 
     // (b) Confirmação curta sem contexto pendente → pede referência.
-    if (
-      saIsConfirmation(trimmed) &&
-      !hasValidPendingContext(pending) &&
-      !lastAssistantAskedQuestion
-    ) {
-      // O Assessor acabou de afirmar algo ("Marcada a visita amanhã às 14:30.")
-      // e o consultor responde "Ok": é reconhecimento, não uma confirmação
-      // órfã. Perguntar "A que te referes?" aqui soa a software partido.
-      const recentStatement =
-        !!lastAssistantContent0 &&
-        !/\?\s*$/.test(lastAssistantContent0) &&
-        !!lastAssistantAt0 &&
-        (Date.now() - lastAssistantAt0.getTime()) < 30 * 60_000;
-      let reply =
-        recentStatement && isBareAcknowledgement(trimmed)
-          ? ACKNOWLEDGED_REPLY
-          : BARE_CONFIRMATION_REPLY;
-      // Rajada: o "não" da mensagem anterior fechou o pendente há 2s e este
-      // "sim" ficou órfão. A pergunta passa a nomear o assunto — e fica
-      // gravada como pergunta em aberto (caso "Casa Final B", 30/07).
-      let openSubject: string | null = null;
-      if (reply === BARE_CONFIRMATION_REPLY) {
-        const { findJustClosedPending, subjectOfPending, orphanBurstReply } =
-          await import("./open-question.server");
-        const justClosed = await findJustClosedPending(supabase, { userId, channel });
-        const subject = subjectOfPending(justClosed);
-        const anchored = orphanBurstReply(subject);
-        if (anchored) { reply = anchored; openSubject = subject; }
-      }
-      await logAiTurn(supabase, {
-        userId, channel, intent: reply === ACKNOWLEDGED_REPLY ? "bare_acknowledgement" : "bare_confirmation_no_context", route: "v3-deterministic",
-        latencyMs: 0, success: true, error: null,
-        toolName: null, toolSuccess: null, fallbackUsed: false,
+    // Extraído para `bare-confirmation.server.ts` (Lote 8).
+    {
+      const bare = await resolveBareConfirmation({
+        supabase, userId, channel, trimmed, pending,
+        lastAssistantContent0, lastAssistantAt0, lastAssistantAskedQuestion,
+        sourceMessageId: sourceMessageId ?? null,
       });
-      if (reply !== ACKNOWLEDGED_REPLY) {
-        try {
-          const { recordOpenQuestion } = await import("./open-question.server");
-          await recordOpenQuestion(supabase, {
-            userId, channel, question: reply, subject: openSubject,
-            sourceMessageId: sourceMessageId ?? null, toolsExecuted: 0,
-          });
-        } catch { /* noop */ }
-      }
-      return { reply };
+      if (bare) return bare;
     }
+
   } catch { /* noop — cai no fluxo normal */ }
 
   // Detecção de correção precoce — antes de gastar OBSERVE/THINK/DECIDE.
