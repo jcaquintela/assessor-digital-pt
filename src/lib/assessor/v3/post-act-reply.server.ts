@@ -131,6 +131,58 @@ export async function shapeAgendaAsks(params: {
   return { reply, rescheduleAsk: !!rescheduleAsk };
 }
 
+/**
+ * Confirmação de contacto (`confirm_event_person`) — um único caminho para as
+ * três escritas que resolvem pessoa antes de gravar. A ordem é a histórica
+ * (compromisso → seguimento → proprietário) e o primeiro match ganha: nunca
+ * abrimos duas perguntas de contacto no mesmo turno.
+ */
+const PERSON_ASK_TOOLS = ["create_event", "create_follow_up", "update_property"] as const;
+
+export async function shapePersonAsk(params: {
+  supabase: any;
+  userId: string;
+  channel: string;
+  sourceMessageId?: string | null;
+  trimmed: string;
+  reply: string;
+  toolResults: ToolResult[];
+}): Promise<{ reply: string; asked: boolean }> {
+  for (const toolName of PERSON_ASK_TOOLS) {
+    const hit = params.toolResults.find(
+      (t) => t.name === toolName && t.ok
+        && (t.data as any)?.needsPersonConfirmation === true,
+    );
+    if (!hit) continue;
+    const d = hit.data as any;
+    const { personResolutionQuestion } = await import("@/lib/people/resolve-person.server");
+    const question = personResolutionQuestion({
+      status: d.mode, personId: null, name: d.personName ?? null,
+      candidates: d.suggestions ?? [],
+    });
+    try {
+      await createPendingAction(params.supabase, {
+        userId: params.userId, channel: params.channel,
+        intent: "confirm_event_person",
+        originalContent: params.trimmed,
+        payload: {
+          personName: d.personName,
+          mode: d.mode,
+          suggestions: d.suggestions ?? [],
+          candidate_ids: d.candidateIds ?? [],
+          tool: toolName,
+          incoming: d.incoming,
+        },
+        currentQuestion: question,
+        pendingQuestion: question,
+        sourceMessageId: params.sourceMessageId ?? null,
+      });
+    } catch { /* noop */ }
+    return { reply: question, asked: true };
+  }
+  return { reply: params.reply, asked: false };
+}
+
 /** Prospeção, desmarcações, conclusões e movimentos financeiros. */
 export async function shapeToolReplies(params: {
   ctx: any;
