@@ -364,19 +364,13 @@ async function runSparringTurn(args: {
     reply = `${reply}\n\n${SPARRING_CONTINUE_QUESTION}`.trim();
   }
 
-  try {
-    await supabase.from("assessor_ai_logs").insert({
-      user_id: userId, channel, model: "reasoning-engine-v3",
-      intent: "sparring_turn", confidence: 1,
-      input_tokens: decideR.usage?.inputTokens ?? 0,
-      output_tokens: decideR.usage?.outputTokens ?? 0,
-      total_tokens: (decideR.usage?.inputTokens ?? 0) + (decideR.usage?.outputTokens ?? 0),
-      latency_ms: Date.now() - started, success: decideR.ok,
-      error: decideR.error ?? null,
-      domain: "assessor", route: "v3-sparring", fallback_used: !decideR.ok,
-      tool_name: null, tool_success: null,
-    } as never);
-  } catch { /* noop */ }
+  await logAiTurn(supabase, {
+    userId, channel, intent: "sparring_turn", route: "v3-sparring",
+    inputTokens: decideR.usage?.inputTokens ?? 0,
+    outputTokens: decideR.usage?.outputTokens ?? 0,
+    latencyMs: Date.now() - started, success: decideR.ok,
+    error: decideR.error ?? null, fallbackUsed: !decideR.ok,
+  });
 
   return { reply };
 }
@@ -1132,16 +1126,11 @@ async function runReasoningEngineInner(
             },
           );
         }
-        try {
-          await supabase.from("assessor_ai_logs").insert({
-            user_id: userId, channel, model: "reasoning-engine-v3",
-            intent: "prospecting_confirm_fast_path", confidence: 1,
-            input_tokens: 0, output_tokens: 0, total_tokens: 0,
-            latency_ms: Date.now() - t0, success: okOk, error: okOk ? null : (result.error ?? "not_created"),
-            domain: "assessor", route: "v3", fallback_used: false,
-            tool_name: "create_prospecting_lead", tool_success: okOk,
-          } as never);
-        } catch { /* noop */ }
+        await logAiTurn(supabase, {
+          userId, channel, intent: "prospecting_confirm_fast_path", route: "v3",
+          latencyMs: Date.now() - t0, success: okOk, error: okOk ? null : (result.error ?? "not_created"),
+          toolName: "create_prospecting_lead", toolSuccess: okOk, fallbackUsed: false,
+        });
         return { reply };
       }
       if (saIsRejection(trimmed)) {
@@ -1565,16 +1554,12 @@ async function runReasoningEngineInner(
     if (commissionArgs) {
       const t0 = Date.now();
       const result = await TOOL_REGISTRY.create_financial_movement(ctx, commissionArgs);
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "create_financial_movement_fast_path", confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: Date.now() - t0, success: !!result.ok, error: result.ok ? null : (result.error ?? null),
-          domain: "financial", route: "v3-deterministic", fallback_used: !result.ok,
-          tool_name: "create_financial_movement", tool_success: !!result.ok,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: "create_financial_movement_fast_path", route: "v3-deterministic",
+        domain: "financial",
+        latencyMs: Date.now() - t0, success: !!result.ok, error: result.ok ? null : (result.error ?? null),
+        toolName: "create_financial_movement", toolSuccess: !!result.ok, fallbackUsed: !result.ok,
+      });
       const amount = Number((commissionArgs as any).amount ?? 0);
       const reference = String((commissionArgs as any).property_reference ?? "negócio");
       if (result.ok && (result.data as any)?.duplicate === true) {
@@ -1665,16 +1650,11 @@ async function runReasoningEngineInner(
       await recordLastRead(supabase, {
         userId, channel, tool: "search_people", arguments: { query: briefName },
       });
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "person_brief_fast_path", confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: Date.now() - t0, success: okBrief, error: okBrief ? null : "person_brief_failed",
-          domain: "assessor", route: "v3-deterministic", fallback_used: !okBrief,
-          tool_name: "person_brief", tool_success: okBrief,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: "person_brief_fast_path", route: "v3-deterministic",
+        latencyMs: Date.now() - t0, success: okBrief, error: okBrief ? null : "person_brief_failed",
+        toolName: "person_brief", toolSuccess: okBrief, fallbackUsed: !okBrief,
+      });
       return { reply };
     }
 
@@ -1760,16 +1740,11 @@ async function runReasoningEngineInner(
         okNews = false;
         reply = NATURAL_FALLBACKS.aiDown;
       }
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "whats_new_fast_path", confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: Date.now() - t0, success: okNews, error: okNews ? null : "product_updates_failed",
-          domain: "assessor", route: "v3-deterministic", fallback_used: !okNews,
-          tool_name: "product_updates", tool_success: okNews,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: "whats_new_fast_path", route: "v3-deterministic",
+        latencyMs: Date.now() - t0, success: okNews, error: okNews ? null : "product_updates_failed",
+        toolName: "product_updates", toolSuccess: okNews, fallbackUsed: !okNews,
+      });
       return { reply };
     }
 
@@ -1778,16 +1753,11 @@ async function runReasoningEngineInner(
       const t0 = Date.now();
       const { queryMisc } = await import("../engine.server");
       const reply = await queryMisc(supabase, userId, trimmed);
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "misc_query_fast_path", confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: Date.now() - t0, success: true, error: null,
-          domain: "assessor", route: "v3-deterministic", fallback_used: false,
-          tool_name: "query_miscellaneous", tool_success: true,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: "misc_query_fast_path", route: "v3-deterministic",
+        latencyMs: Date.now() - t0, success: true, error: null,
+        toolName: "query_miscellaneous", toolSuccess: true, fallbackUsed: false,
+      });
       return { reply };
     }
 
@@ -1809,16 +1779,11 @@ async function runReasoningEngineInner(
         okEv = false;
         reply = READ_FAILED_REPLY;
       }
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "event_lookup_fast_path", confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: Date.now() - t0, success: okEv, error: okEv ? null : "event_lookup_failed",
-          domain: "assessor", route: "v3-deterministic", fallback_used: !okEv,
-          tool_name: "search_agenda", tool_success: okEv,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: "event_lookup_fast_path", route: "v3-deterministic",
+        latencyMs: Date.now() - t0, success: okEv, error: okEv ? null : "event_lookup_failed",
+        toolName: "search_agenda", toolSuccess: okEv, fallbackUsed: !okEv,
+      });
       return { reply };
     }
 
@@ -1836,16 +1801,11 @@ async function runReasoningEngineInner(
         okDay = false;
         reply = READ_FAILED_REPLY;
       }
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "agenda_date_fast_path", confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: Date.now() - t0, success: okDay, error: okDay ? null : "agenda_date_failed",
-          domain: "assessor", route: "v3-deterministic", fallback_used: !okDay,
-          tool_name: "search_agenda", tool_success: okDay,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: "agenda_date_fast_path", route: "v3-deterministic",
+        latencyMs: Date.now() - t0, success: okDay, error: okDay ? null : "agenda_date_failed",
+        toolName: "search_agenda", toolSuccess: okDay, fallbackUsed: !okDay,
+      });
       return { reply };
     }
 
@@ -1862,16 +1822,11 @@ async function runReasoningEngineInner(
         priorities = (await computePriorities(supabase, userId, { limit: 3 })) as never;
       } catch { /* agenda sozinha já responde */ }
       const reply = composeDayStateReply(items, priorities);
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "day_state_fast_path", confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
-          domain: "assessor", route: "v3-deterministic", fallback_used: false,
-          tool_name: "search_agenda", tool_success: !!r.ok,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: "day_state_fast_path", route: "v3-deterministic",
+        latencyMs: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
+        toolName: "search_agenda", toolSuccess: !!r.ok, fallbackUsed: false,
+      });
       return { reply };
     }
 
@@ -1883,16 +1838,11 @@ async function runReasoningEngineInner(
       await recordLastRead(supabase, {
         userId, channel, tool: "search_agenda", arguments: { period: agendaPeriod },
       });
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "agenda_query_fast_path", confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
-          domain: "assessor", route: "v3-deterministic", fallback_used: false,
-          tool_name: "search_agenda", tool_success: !!r.ok,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: "agenda_query_fast_path", route: "v3-deterministic",
+        latencyMs: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
+        toolName: "search_agenda", toolSuccess: !!r.ok, fallbackUsed: false,
+      });
       return { reply };
     }
 
@@ -1935,16 +1885,11 @@ async function runReasoningEngineInner(
         await recordLastRead(supabase, {
           userId, channel, tool: elliptic.tool, arguments: elliptic.arguments,
         });
-        try {
-          await supabase.from("assessor_ai_logs").insert({
-            user_id: userId, channel, model: "reasoning-engine-v3",
-            intent: "elliptic_read_fast_path", confidence: 1,
-            input_tokens: 0, output_tokens: 0, total_tokens: 0,
-            latency_ms: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
-            domain: "assessor", route: "v3-deterministic", fallback_used: false,
-            tool_name: elliptic.tool, tool_success: !!r.ok,
-          } as never);
-        } catch { /* noop */ }
+        await logAiTurn(supabase, {
+          userId, channel, intent: "elliptic_read_fast_path", route: "v3-deterministic",
+          latencyMs: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
+          toolName: elliptic.tool, toolSuccess: !!r.ok, fallbackUsed: false,
+        });
         return { reply };
       }
     }
@@ -1960,16 +1905,11 @@ async function runReasoningEngineInner(
         ? (formatQueryResults([{ name: "search_files", ok: true, data: r.data } as any]) ?? READ_FAILED_REPLY)
         : READ_FAILED_REPLY;
       await recordLastRead(supabase, { userId, channel, tool: "search_files", arguments: args });
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: "drive_query_fast_path", confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
-          domain: "assessor", route: "v3-deterministic", fallback_used: false,
-          tool_name: "search_files", tool_success: !!r.ok,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: "drive_query_fast_path", route: "v3-deterministic",
+        latencyMs: Date.now() - t0, success: !!r.ok, error: r.ok ? null : (r.error ?? null),
+        toolName: "search_files", toolSuccess: !!r.ok, fallbackUsed: false,
+      });
       return { reply };
     }
 
@@ -1983,16 +1923,11 @@ async function runReasoningEngineInner(
           (TOOL_REGISTRY as any)[tool](ctx, toolArgs as any),
       });
       if (answered) {
-        try {
-          await supabase.from("assessor_ai_logs").insert({
-            user_id: userId, channel, model: "reasoning-engine-v3",
-            intent: "open_question_answer", confidence: 1,
-            input_tokens: 0, output_tokens: 0, total_tokens: 0,
-            latency_ms: 0, success: true, error: null,
-            domain: "assessor", route: "v3-deterministic", fallback_used: false,
-            tool_name: answered.tool, tool_success: true,
-          } as never);
-        } catch { /* noop */ }
+        await logAiTurn(supabase, {
+          userId, channel, intent: "open_question_answer", route: "v3-deterministic",
+          latencyMs: 0, success: true, error: null,
+          toolName: answered.tool, toolSuccess: true, fallbackUsed: false,
+        });
         return { reply: answered.reply };
       }
     }
@@ -2027,17 +1962,11 @@ async function runReasoningEngineInner(
         const anchored = orphanBurstReply(subject);
         if (anchored) { reply = anchored; openSubject = subject; }
       }
-      try {
-        await supabase.from("assessor_ai_logs").insert({
-          user_id: userId, channel, model: "reasoning-engine-v3",
-          intent: reply === ACKNOWLEDGED_REPLY ? "bare_acknowledgement" : "bare_confirmation_no_context",
-          confidence: 1,
-          input_tokens: 0, output_tokens: 0, total_tokens: 0,
-          latency_ms: 0, success: true, error: null,
-          domain: "assessor", route: "v3-deterministic", fallback_used: false,
-          tool_name: null, tool_success: null,
-        } as never);
-      } catch { /* noop */ }
+      await logAiTurn(supabase, {
+        userId, channel, intent: reply === ACKNOWLEDGED_REPLY ? "bare_acknowledgement" : "bare_confirmation_no_context", route: "v3-deterministic",
+        latencyMs: 0, success: true, error: null,
+        toolName: null, toolSuccess: null, fallbackUsed: false,
+      });
       if (reply !== ACKNOWLEDGED_REPLY) {
         try {
           const { recordOpenQuestion } = await import("./open-question.server");
