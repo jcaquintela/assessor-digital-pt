@@ -772,6 +772,19 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
       });
     }
   }
+  // Imóvel "provável" nunca liga em silêncio: perguntamos antes de gravar.
+  if (propertyAsk) {
+    return ok({
+      needsPropertyConfirmation: true,
+      tool: "create_event",
+      mode: propertyAsk.mode,
+      propertyQuery: propertyAsk.propertyQuery,
+      question: propertyAsk.question,
+      suggestions: propertyAsk.suggestions,
+      candidateIds: propertyAsk.candidateIds,
+      incoming: { ...v, property_id: null, date: v.date, time: v.start_time },
+    });
+  }
   const dueIsoDate = lisbonLocalToUtcIso(v.date, v.start_time);
   // Idempotência: um pending_action só pode criar um recurso.
   if (ctx.pendingActionId && !ctx.sameTurnSeparateDates) {
@@ -1018,6 +1031,19 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
     }
   } else if (!v.person_id && ctx.skipPersonResolution) {
     personDeliberatelyUnlinked = true;
+  }
+  // Imóvel "provável" nunca liga em silêncio: perguntamos antes de gravar.
+  if (propertyAsk) {
+    return ok({
+      needsPropertyConfirmation: true,
+      tool: "create_follow_up",
+      mode: propertyAsk.mode,
+      propertyQuery: propertyAsk.propertyQuery,
+      question: propertyAsk.question,
+      suggestions: propertyAsk.suggestions,
+      candidateIds: propertyAsk.candidateIds,
+      incoming: { ...v, property_id: null },
+    });
   }
   const dueIsoDate = lisbonLocalToUtcIso(v.due_date, v.due_time ?? "09:00");
   // Idempotência: se já existe um follow_up para esta pending_action, devolve-o.
