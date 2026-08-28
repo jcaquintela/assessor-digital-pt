@@ -38,6 +38,7 @@ const tool = {
   update_property: vi.fn(async (..._a: any[]) => ({ ok: true, data: { property: { id: "imo-1" } } })),
   create_financial_movement: vi.fn(async (..._a: any[]) => ({ ok: true, data: {} })),
 };
+const executeToolCallsMock = vi.fn(async (..._a: any[]) => [] as any[]);
 const keepAudioFile = vi.fn(async () => undefined);
 const discardAudioFile = vi.fn(async () => undefined);
 const discardLastInput = vi.fn(async () => undefined);
@@ -59,7 +60,7 @@ vi.mock("./think.server", () => ({
 vi.mock("./search.server", () => ({ search: vi.fn(async () => ({})) }));
 vi.mock("./decide.server", () => ({ decide: (...a: any[]) => decideMock(...a) }));
 vi.mock("./act.server", () => ({
-  executeToolCalls: vi.fn(async () => []),
+  executeToolCalls: (...a: any[]) => executeToolCallsMock(...(a as [])),
   applyMemoryWrites: vi.fn(async () => undefined),
 }));
 vi.mock("./safety-net.server", () => ({
@@ -281,6 +282,7 @@ beforeEach(() => {
   archiveFilesBulk.mockResolvedValue(3);
   deleteFilesBulk.mockResolvedValue(3);
   saveProductFeedback.mockResolvedValue(true);
+  executeToolCallsMock.mockResolvedValue([]);
   decideMock.mockResolvedValue({
     ok: true,
     decision: {
