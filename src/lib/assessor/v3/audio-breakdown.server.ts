@@ -75,16 +75,20 @@ export async function proposeAudioBreakdown(
   breakdown: AudioBreakdown,
   audioFileId?: string | null,
 ): Promise<string> {
+  // A resolução de contactos acontece ANTES da proposta: o que ficar em
+  // dúvida vai perguntado na mesma confirmação.
+  const links = await resolveBreakdownPeople(ctx, breakdown);
+  const withLinks: AudioBreakdown = { ...breakdown, links };
   await createPendingAction(ctx.supabase, {
     userId: ctx.userId,
     channel: ctx.channel,
     intent: AUDIO_BREAKDOWN_INTENT,
     originalContent: transcript.slice(0, 4000),
-    payload: { ...(breakdown as unknown as Record<string, any>), audio_file_id: audioFileId ?? null },
+    payload: { ...(withLinks as unknown as Record<string, any>), audio_file_id: audioFileId ?? null },
     confidence: 0.8,
     sourceMessageId: ctx.sourceMessageId ?? null,
   });
-  return formatBreakdownProposal(breakdown);
+  return formatBreakdownProposal(withLinks);
 }
 
 /**
@@ -175,13 +179,14 @@ export async function executeAudioBreakdown(
   const separateDates = breakdownHasSeparateDates(breakdown.items as any[]);
   const created = { facts: 0, followUps: 0, notes: 0 };
   const records: { table: string; id: string }[] = [];
-  for (const item of breakdown.items) {
+  const links = breakdown.links ?? [];
+  for (const [index, item] of breakdown.items.entries()) {
     try {
       const out = await execItem({
         ...ctx,
         pendingActionId: pending.id,
         sameTurnSeparateDates: separateDates || ctx.sameTurnSeparateDates,
-      } as DomainContext, item);
+      } as DomainContext, item, links[index] ?? emptyPersonLink());
       if (!out) continue;
       if (out.record) records.push(out.record);
       if (out.kind === "fact") created.facts += 1;
