@@ -4067,6 +4067,36 @@ export type Database = {
         }
         Relationships: []
       }
+      similar_listing_searches: {
+        Row: {
+          cache_hit: boolean
+          cache_key: string
+          created_at: string
+          id: string
+          query: string
+          results: Json
+          user_id: string
+        }
+        Insert: {
+          cache_hit?: boolean
+          cache_key: string
+          created_at?: string
+          id?: string
+          query: string
+          results?: Json
+          user_id: string
+        }
+        Update: {
+          cache_hit?: boolean
+          cache_key?: string
+          created_at?: string
+          id?: string
+          query?: string
+          results?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       stripe_webhook_events: {
         Row: {
           created_at: string
