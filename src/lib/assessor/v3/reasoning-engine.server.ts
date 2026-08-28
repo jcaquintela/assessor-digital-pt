@@ -140,6 +140,7 @@ import {
 import { resolveSparringTurn, type SparringTurn } from "./sparring-turn";
 import { readSparringState, setSparringTopic, stopSparring } from "./sparring-state.server";
 import { logSparringSuppression } from "./sparring-audit.server";
+import { assertNoSparringLeak } from "./sparring-assert.server";
 
 
 
@@ -2169,9 +2170,6 @@ async function runReasoningEngineInner(
   let reply = sanitizeReply(decideR.decision.natural_reply);
   if (isolation.isolated) {
     reply = stripInheritedMotive(reply, { message: trimmed, pendingText: isolation.pendingText });
-  }
-  if (autoPause && !reply.includes("continuar o treino")) {
-    reply = `${reply}\n\n${SPARRING_CONTINUE_QUESTION}`.trim();
   }
   let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" | "service_down" = "executed_ok";
   let archiveReason: string | null = null;
