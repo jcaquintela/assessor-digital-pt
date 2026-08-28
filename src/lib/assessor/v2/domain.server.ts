@@ -81,6 +81,14 @@ import {
 // "hoje às 12:10" ficaria guardado como 13:10 de Lisboa.
 import { lisbonLocalToUtcIso, lisbonHhMm, lisbonYmd } from "@/lib/assessor/lisbon-day";
 
+/** "segunda-feira, 31/08" — rótulo humano de um dia concreto. */
+function dayLabelPt(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
+  const names = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+  const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return `${names[wd]}, ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
+}
+
 function agendaRange(period: "today" | "tomorrow" | "week" | "next_week"): { startIso: string; endIso: string; label: string } {
   const now = new Date();
   const { ymd, weekday } = lisbonParts(now);
