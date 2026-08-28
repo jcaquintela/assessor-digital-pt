@@ -124,7 +124,7 @@ export function takeApiCallCounts(): Record<string, number> {
   return snapshot;
 }
 
-async function callProvider(
+export async function callProvider(
   supabaseAdmin: any, userId: string, provider: CalendarProvider,
   path: string, init?: RequestInit,
 ): Promise<{ ok: boolean; status: number; body: any; text: string }> {
