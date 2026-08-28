@@ -14,6 +14,7 @@ import { blockedChannelReason } from "../channel-guard";
 import type { DomainContext } from "../v2/domain.server";
 import { findActivePendingAction, createPendingAction } from "../memory.server";
 export { personChoiceIsNone } from "./pending-resolvers/agenda-person.server";
+import { confirmEventPropertyPending } from "./pending-resolvers/agenda-property.server";
 
 import { isQueryTool } from "./query-results";
 import { detectReadRequest, READ_FAILED_REPLY } from "./read-intent";
@@ -66,6 +67,7 @@ const INTENT_PENDING_RESOLVERS: PendingResolver[] = [
   confirmEventPersonPending,
   rejectEventPersonPending,
   confirmEventReschedulePending,
+  confirmEventPropertyPending,
   createProspectingLeadPending,
   createPersonEllipticPending,
   createDealPending,
@@ -582,6 +584,35 @@ async function runReasoningEngineInner(
     } catch { /* noop */ }
     reply = question;
   }
+  // Imóvel por confirmar: "provável" nunca liga em silêncio. A escrita fica
+  // em espera até o consultor dizer qual é o imóvel (ou avançar sem ele).
+  const propertyAskTool = toolResults.find(
+    (t) => t.ok && (t.data as any)?.needsPropertyConfirmation === true,
+  );
+  if (propertyAskTool && !personAsk && !followUpPersonAsk && !ownerPersonAsk) {
+    const d = propertyAskTool.data as any;
+    const question = String(d.question ?? "De que imóvel se trata?");
+    try {
+      await createPendingAction(supabase, {
+        userId, channel,
+        intent: "confirm_event_property",
+        originalContent: trimmed,
+        payload: {
+          propertyQuery: d.propertyQuery ?? null,
+          mode: d.mode ?? null,
+          suggestions: d.suggestions ?? [],
+          candidate_ids: d.candidateIds ?? [],
+          tool: d.tool ?? propertyAskTool.name,
+          incoming: d.incoming,
+        },
+        currentQuestion: question,
+        pendingQuestion: question,
+        sourceMessageId: sourceMessageId ?? null,
+      });
+    } catch { /* noop */ }
+    reply = question;
+  }
+
   // Pós-ACT (parte 3): prospeção, desmarcação, conclusão e financeiro.
   const shaped = await shapeToolReplies({
     ctx, supabase, userId, channel, trimmed,
