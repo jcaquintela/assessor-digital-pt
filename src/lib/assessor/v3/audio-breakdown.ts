@@ -121,7 +121,7 @@ export function pendingPersonAmbiguities(
 export function formatPersonAmbiguityQuestion(
   a: { index: number; name: string; candidates: BreakdownPersonCandidate[] },
 ): string {
-  const labels = describeCandidates(a.candidates.slice(0, 4));
+  const labels = describeCandidates(a.candidates.slice(0, 4) as any);
   const list = labels.map((l, i) => `${i + 1}. ${l}`).join("\n");
   const head = a.candidates.length === 1
     ? `No ponto ${a.index + 1}, o "${a.name}" é este contacto?`

@@ -7,13 +7,15 @@ import { callGateway, V2_MODEL_DEFAULT } from "../v2/gateway.server";
 import { TOOL_REGISTRY, type DomainContext, resolvePropertyFromText } from "../v2/domain.server";
 import { createPendingAction, markPendingActionStatus, type PendingActionRow } from "../memory.server";
 import { looksConfidential } from "../culture/confidential";
-import { foldLike } from "@/lib/search/normalize";
 import {
   coerceBreakdown,
+  emptyPersonLink,
   formatBreakdownDone,
   formatBreakdownProposal,
   type AudioBreakdown,
   type BreakdownItem,
+  type BreakdownPersonCandidate,
+  type BreakdownPersonLink,
 } from "./audio-breakdown";
 import { lisbonYmd } from "../lisbon-day";
 
