@@ -16,7 +16,10 @@ describe("Golden 1 — rejeição explícita de candidato não é falha", () => 
     expect(matchPersonChoice("Não, é outra pessoa", candidatos as any).kind).toBe("none");
   });
   it("o motor trata-a como rejeição e por isso não arquiva em Diversos", async () => {
-    const { personChoiceIsNone } = await import("@/lib/assessor/v3/reasoning-engine.server");
+    // Fonte da lógica (o motor re-exporta daqui) — evita importar o motor inteiro.
+    const { personChoiceIsNone } = await import(
+      "@/lib/assessor/v3/pending-resolvers/agenda-person.server"
+    );
     const pending = { structured_payload: { suggestions: candidatos } };
     expect(personChoiceIsNone("Não, é outra pessoa", pending)).toBe(true);
     expect(personChoiceIsNone("Marca visita amanhã às 10h", pending)).toBe(false);
