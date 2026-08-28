@@ -479,111 +479,17 @@ async function runReasoningEngineInner(
   const rescheduleAsk = agendaAsks.rescheduleAsk;
 
 
-  const personAsk = toolResults.find(
-    (t) => t.name === "create_event" && t.ok
-      && (t.data as any)?.needsPersonConfirmation === true,
-  );
-  if (personAsk) {
-    const d = personAsk.data as any;
-    let question: string;
-    if (d.mode) {
-      const { personResolutionQuestion } = await import("@/lib/people/resolve-person.server");
-      question = personResolutionQuestion({
-        status: d.mode, personId: null, name: d.personName ?? null,
-        candidates: d.suggestions ?? [],
-      });
-    } else {
-      const { askLinkPersonQuestion } = await import("@/lib/people/name-match");
-      question = askLinkPersonQuestion(String(d.personName ?? ""), d.suggestions ?? []);
-    }
-    try {
-      await createPendingAction(supabase, {
-        userId, channel,
-        intent: "confirm_event_person",
-        originalContent: trimmed,
-        payload: {
-          personName: d.personName,
-          mode: d.mode ?? null,
-          suggestions: d.suggestions ?? [],
-          candidate_ids: d.candidateIds ?? [],
-          tool: "create_event",
-          incoming: d.incoming,
-        },
-        currentQuestion: question,
-        pendingQuestion: question,
-        sourceMessageId: sourceMessageId ?? null,
-      });
-    } catch { /* noop */ }
-    reply = question;
-  }
+  // Confirmação de contacto: caminho único para compromisso, seguimento e
+  // proprietário — primeiro match ganha, nunca duas perguntas no mesmo turno.
+  const personAskShape = await shapePersonAsk({
+    supabase, userId, channel,
+    sourceMessageId: sourceMessageId ?? null,
+    trimmed,
+    reply,
+    toolResults: toolResults as any,
+  });
+  reply = personAskShape.reply;
 
-  // Seguimento agendado por nome: a resolução acontece antes da escrita, por
-  // isso aqui só falta fazer a pergunta certa para cada caso.
-  const followUpPersonAsk = toolResults.find(
-    (t) => t.name === "create_follow_up" && t.ok
-      && (t.data as any)?.needsPersonConfirmation === true,
-  );
-  if (followUpPersonAsk) {
-    const d = followUpPersonAsk.data as any;
-    const { personResolutionQuestion } = await import("@/lib/people/resolve-person.server");
-    const question = personResolutionQuestion({
-      status: d.mode, personId: null, name: d.personName ?? null,
-      candidates: d.suggestions ?? [],
-    });
-    try {
-      await createPendingAction(supabase, {
-        userId, channel,
-        intent: "confirm_event_person",
-        originalContent: trimmed,
-        payload: {
-          personName: d.personName,
-          mode: d.mode,
-          suggestions: d.suggestions ?? [],
-          candidate_ids: d.candidateIds ?? [],
-          tool: "create_follow_up",
-          incoming: d.incoming,
-        },
-        currentQuestion: question,
-        pendingQuestion: question,
-        sourceMessageId: sourceMessageId ?? null,
-      });
-    } catch { /* noop */ }
-    reply = question;
-  }
-
-  // Associar proprietário a um imóvel existente: mesma regra das outras
-  // escritas — ou é inequívoco, ou perguntamos antes de gravar.
-  const ownerPersonAsk = toolResults.find(
-    (t) => t.name === "update_property" && t.ok
-      && (t.data as any)?.needsPersonConfirmation === true,
-  );
-  if (ownerPersonAsk) {
-    const d = ownerPersonAsk.data as any;
-    const { personResolutionQuestion } = await import("@/lib/people/resolve-person.server");
-    const question = personResolutionQuestion({
-      status: d.mode, personId: null, name: d.personName ?? null,
-      candidates: d.suggestions ?? [],
-    });
-    try {
-      await createPendingAction(supabase, {
-        userId, channel,
-        intent: "confirm_event_person",
-        originalContent: trimmed,
-        payload: {
-          personName: d.personName,
-          mode: d.mode,
-          suggestions: d.suggestions ?? [],
-          candidate_ids: d.candidateIds ?? [],
-          tool: "update_property",
-          incoming: d.incoming,
-        },
-        currentQuestion: question,
-        pendingQuestion: question,
-        sourceMessageId: sourceMessageId ?? null,
-      });
-    } catch { /* noop */ }
-    reply = question;
-  }
   // Imóvel por confirmar: "provável" nunca liga em silêncio. A escrita fica
   // em espera até o consultor dizer qual é o imóvel (ou avançar sem ele).
   const propertyAskTool = toolResults.find(
