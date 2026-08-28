@@ -126,16 +126,10 @@ import {
 } from "./onboarding.server";
 import { validateAssessorName } from "../assessor-name";
 import {
-  detectSparringContinue,
-  detectSparringEnd,
-  detectSparringStart,
-  isSparringActive,
-  isSparringPaused,
-  sparringTurns,
   SPARRING_CONTINUE_QUESTION,
-  SPARRING_MAX_TURNS,
   SPARRING_PAUSED_TOPIC,
   SPARRING_TOPIC,
+
 } from "./sparring";
 import { resolveSparringTurn, type SparringTurn } from "./sparring-turn";
 import { readSparringState, setSparringTopic, stopSparring } from "./sparring-state.server";
