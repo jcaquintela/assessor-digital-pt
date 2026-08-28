@@ -91,6 +91,48 @@ export const audioBreakdownPending: PendingResolver = async ({ ctx, supabase, us
     });
     return question ? appendKeepQuestion(reply, question) : reply;
   };
+  // Dúvida de contacto levantada na proposta: resolve-se aqui, na mesma
+  // conversa, antes de qualquer escrita.
+  {
+    const { coerceBreakdown, pendingPersonAmbiguities, formatPersonAmbiguityQuestion } =
+      await import("../audio-breakdown");
+    const current = coerceBreakdown(pending.structured_payload ?? {});
+    const amb = pendingPersonAmbiguities(current);
+    if (amb.length) {
+      const { matchPersonChoice } = await import("@/lib/people/person-choice");
+      let choice = matchPersonChoice(trimmed, amb[0]!.candidates as any);
+      if (choice.kind === "unknown" && saIsConfirmation(trimmed) && amb[0]!.candidates.length === 1) {
+        const only = amb[0]!.candidates[0]!;
+        choice = { kind: "candidate", id: only.id, name: only.name };
+      }
+      if (choice.kind === "candidate" || choice.kind === "skip" || choice.kind === "none") {
+        const links = (current.links ?? []).map((l, i) =>
+          i === amb[0]!.index
+            ? {
+                person_id: choice.kind === "candidate" ? choice.id : null,
+                candidates: choice.kind === "candidate" ? [] : [],
+              }
+            : l);
+        const next = { ...current, links };
+        const { updatePendingActionPayload } = await import("../../memory.server");
+        await updatePendingActionPayload(
+          supabase,
+          pending.id,
+          {
+            ...(next as unknown as Record<string, any>),
+            audio_file_id: (pending.structured_payload as any)?.audio_file_id ?? null,
+          },
+          { status: "pending_confirmation" },
+        );
+        const rest = pendingPersonAmbiguities(next);
+        if (rest.length) return { reply: formatPersonAmbiguityQuestion(rest[0]!) };
+        const head = choice.kind === "candidate"
+          ? `Certo — o ponto ${amb[0]!.index + 1} fica ligado a ${choice.name}.`
+          : `Certo — o ponto ${amb[0]!.index + 1} fica sem contacto associado.`;
+        return { reply: `${head} Guardo tudo assim?` };
+      }
+    }
+  }
   if (saIsConfirmation(trimmed)) {
     const { executeAudioBreakdown } = await import("../audio-breakdown.server");
     const reply = await executeAudioBreakdown(ctx, pending);
