@@ -98,6 +98,18 @@ export function resolveDateTimeFromText(
     }
   }
 
+  // "dia 31" solto (sem mês): o dia do mês mais próximo à frente. Explícito
+  // ganha ao nome do dia da semana quando os dois aparecem e não coincidem
+  // ("segunda-feira dia 31").
+  const bare = t.match(/(?:^|[^\p{L}\d])dia\s+(\d{1,2})(?![\d\p{L}\/\-.])/u);
+  if (bare) {
+    const dia = parseInt(bare[1], 10);
+    if (dia >= 1 && dia <= 31 && (!date || parseInt(date.slice(8), 10) !== dia)) {
+      const next = nextDayOfMonth(todayYmd, dia);
+      if (next) { date = next; expression = `dia ${dia}`; }
+    }
+  }
+
   // hora: "10h", "10:30", "10h30", "às 11h", "às 15h00", "pelas 10h"
   let time: string | null = null;
   const mh = t.match(/\b(?:(?:às|as|pelas|pelas as)\s+)?(\d{1,2})\s*(?:h|:)\s*(\d{2})?\b/);
