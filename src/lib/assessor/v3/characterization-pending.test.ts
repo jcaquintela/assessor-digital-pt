@@ -274,6 +274,7 @@ beforeEach(() => {
   tool.create_follow_up.mockResolvedValue({ ok: true, data: { follow_up: { id: "f9" } } } as any);
   tool.create_prospecting_lead.mockResolvedValue({ ok: true, data: { lead: { id: "lead-1" } } } as any);
   tool.create_deal.mockResolvedValue({ ok: true, data: { id: "d1", title: "Venda do T3", linkedMovements: 0 } } as any);
+  tool.update_property.mockResolvedValue({ ok: true, data: { property: { id: "imo-1" } } } as any);
   executeAudioBreakdown.mockResolvedValue("Feito. Guardei os pontos do áudio.");
   executeAudioThemes.mockResolvedValue("Feito. Guardei os temas do áudio.");
   applyLinkSuggestion.mockResolvedValue("Liguei o documento ao imóvel.");
