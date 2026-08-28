@@ -135,6 +135,15 @@ export const ListUncategorizedPropertiesArgs = z.object({
 });
 export type ListUncategorizedPropertiesArgs = z.infer<typeof ListUncategorizedPropertiesArgs>;
 
+// Comparáveis de mercado (pesquisa web dirigida). LEITURA — nunca escreve.
+export const SearchSimilarListingsArgs = z.object({
+  property_id: z.string().uuid().optional().nullable(),
+  property_query: z.string().min(2).optional().nullable(),
+  typology: z.string().min(1).max(20).optional().nullable(),
+  location: z.string().min(2).max(80).optional().nullable(),
+});
+export type SearchSimilarListingsArgs = z.infer<typeof SearchSimilarListingsArgs>;
+
 export const SetPropertyCategoryArgs = z.object({
   property_id: z.string().uuid().optional().nullable(),
   // O modelo nem sempre traz o id do search — aceitamos também a morada/título
