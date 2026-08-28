@@ -118,8 +118,12 @@ export const CreatePropertyArgs = z.object({
 export type CreatePropertyArgs = z.infer<typeof CreatePropertyArgs>;
 
 export const SearchAgendaArgs = z.object({
-  period: z.enum(["today", "tomorrow", "week", "next_week"]),
-});
+  period: z.enum(["today", "tomorrow", "week", "next_week"]).optional().nullable(),
+  // Dia concreto (calendário de Lisboa). Tem precedência sobre `period`: sem
+  // isto, "e no dia 31 apenas?" forçava o modelo a escolher `next_week` e a
+  // resposta trazia a semana inteira.
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+}).refine((v) => !!(v.period || v.date), { message: "indica period ou date" });
 export type SearchAgendaArgs = z.infer<typeof SearchAgendaArgs>;
 
 // ---- Categorias de imóveis (mesmo mecanismo das categorias do Drive) ----
