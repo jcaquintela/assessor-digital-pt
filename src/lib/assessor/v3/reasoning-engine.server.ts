@@ -69,11 +69,6 @@ import {
 import { anchorFromBriefing, isEllipticCompletion } from "./briefing-anchor";
 
 import {
-  isDiscardAudioRequest,
-  UNDO_KEEP_WINDOW_MS,
-  UNDO_KEEP_TOO_LATE_REPLY,
-} from "./audio-undo";
-import {
   detectPersonBriefQuery,
   formatPersonBrief,
   personNotFoundReply,
