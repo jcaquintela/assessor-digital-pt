@@ -93,7 +93,14 @@ function lineFor(tool: string, row: Record<string, unknown>): string {
   }
   if (tool === "search_agenda") {
     const t = s(row.due_time).slice(0, 5);
-    return joinParts([t ? boldWa(t.replace(":", "h")) : null, boldWa(s(row.title) || "compromisso")], " — ");
+    // Numa lista de vários dias, a hora sozinha faz parecer que é tudo no
+    // mesmo dia (bug real de 31/08). O dia entra sempre que há mais que um.
+    const day = row.__showDay ? dayDdMm(s(row.due_date)) : "";
+    return joinParts([
+      day ? boldWa(day) : null,
+      t ? boldWa(t.replace(":", "h")) : null,
+      boldWa(s(row.title) || "compromisso"),
+    ], " — ");
   }
   if (tool === "search_files") {
     return joinParts([
