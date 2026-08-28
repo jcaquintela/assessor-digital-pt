@@ -26,7 +26,8 @@ export type NudgeKind =
   | "person_silence"       // pessoa com oportunidade sem contacto há N dias
   | "property_missing_docs" // imóvel activo sem documentos essenciais
   | "followup_overdue"     // follow-up vencido há > 2 dias
-  | "consultant_silence";  // consultor calado há > 3 dias úteis
+  | "consultant_silence"   // consultor calado há > 3 dias úteis
+  | "schedule_conflict";   // dois compromissos sobrepostos
 
 export interface NudgeDraft {
   kind: NudgeKind;
