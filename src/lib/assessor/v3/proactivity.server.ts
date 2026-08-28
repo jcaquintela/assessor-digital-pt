@@ -26,7 +26,8 @@ export type NudgeKind =
   | "person_silence"       // pessoa com oportunidade sem contacto há N dias
   | "property_missing_docs" // imóvel activo sem documentos essenciais
   | "followup_overdue"     // follow-up vencido há > 2 dias
-  | "consultant_silence";  // consultor calado há > 3 dias úteis
+  | "consultant_silence"   // consultor calado há > 3 dias úteis
+  | "schedule_conflict";   // dois compromissos sobrepostos
 
 export interface NudgeDraft {
   kind: NudgeKind;
@@ -296,6 +297,13 @@ export async function generateNudgesForUser(
         });
       }
     }
+  }
+
+  // 3b) Conflitos de horário na agenda (próximos 14 dias). Mesmo caminho
+  // proativo — só muda a origem do draft.
+  const { generateConflictNudges } = await import("@/lib/agenda/conflicts.server");
+  for (const c of await generateConflictNudges(supabase, userId, { max: 2 })) {
+    drafts.push({ ...c, kind: c.kind as NudgeKind });
   }
 
   // 4) Silêncio do consultor há ≥ 3 dias.
