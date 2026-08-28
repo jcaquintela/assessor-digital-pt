@@ -120,14 +120,6 @@ import {
   setOnboardingStage,
 } from "./onboarding.server";
 import { validateAssessorName } from "../assessor-name";
-import {
-  SPARRING_CONTINUE_QUESTION,
-  SPARRING_PAUSED_TOPIC,
-  SPARRING_TOPIC,
-
-} from "./sparring";
-import { resolveSparringTurn, type SparringTurn } from "./sparring-turn";
-import { readSparringState, setSparringTopic, stopSparring } from "./sparring-state.server";
 import { logSparringSuppression } from "./sparring-audit.server";
 import { assertNoSparringLeak } from "./sparring-assert.server";
 import { logAiTurn, recordEngineTurn } from "./telemetry-repo.server";
