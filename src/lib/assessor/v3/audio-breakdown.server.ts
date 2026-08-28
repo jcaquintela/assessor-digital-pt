@@ -4,7 +4,7 @@
 // (TOOL_REGISTRY), e só depois do consultor confirmar a proposta inteira.
 
 import { callGateway, V2_MODEL_DEFAULT } from "../v2/gateway.server";
-import { TOOL_REGISTRY, type DomainContext, resolvePropertyFromText } from "../v2/domain.server";
+import { TOOL_REGISTRY, type DomainContext, resolvePropertyOrAsk } from "../v2/domain.server";
 import { createPendingAction, markPendingActionStatus, type PendingActionRow } from "../memory.server";
 import { looksConfidential } from "../culture/confidential";
 import {
@@ -133,8 +133,11 @@ async function execItem(
   link: BreakdownPersonLink,
 ): Promise<{ kind: "fact" | "follow_up" | "note"; record: { table: string; id: string } | null } | null> {
   const personId = link.person_id;
+  // Mesma disciplina da resolução de pessoa em áudio: só ligamos ao imóvel
+  // quando a morada é a mesma. "Provável" ("Boavista 120" vs "Boavista 12")
+  // fica por associar em vez de escrever no imóvel errado.
   const propertyId = item.property_hint
-    ? await resolvePropertyFromText(ctx, item.property_hint)
+    ? (await resolvePropertyOrAsk({ ...ctx, sourceMessageId: null }, item.property_hint)).id
     : null;
 
   if (item.kind === "follow_up") {
