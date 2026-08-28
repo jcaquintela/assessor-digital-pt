@@ -317,87 +317,15 @@ async function runReasoningEngineInner(
     !!lastAssistantAt0 &&
     (Date.now() - lastAssistantAt0.getTime()) < 10 * 60_000;
 
-  // Respostas curtas às perguntas proativas de documentação têm memória
-  // própria. Sem isto, "sim"/"não" seguia para o motor geral e o mesmo
-  // nudge voltava no dia seguinte apesar de já ter sido respondido.
-  if (lastAssistantAskedQuestion && (saIsConfirmation(trimmed) || saIsRejection(trimmed))) {
-    try {
-      const { resolveLatestDocumentNudgeAnswer } = await import("./proactivity.server");
-      const resolved = await resolveLatestDocumentNudgeAnswer(supabase, {
-        userId,
-        channel,
-        answer: saIsConfirmation(trimmed) ? "yes" : "no",
-        lastAssistantContent: lastAssistantContent0,
-      });
-      if (resolved.resolved && resolved.reply) return { reply: resolved.reply };
-    } catch (error) {
-      console.error("[v3] falha a registar resposta ao nudge documental", error);
-    }
-  }
+  // ── Aberturas do turno: nudge documental → perfil por gotas → arranque
+  // leve. Extraído para `turn-openers.server.ts` (Lote 8) — mesma ordem.
+  const openers = await runTurnOpeners({
+    supabase, userId, channel, trimmed, assessorName,
+    lastAssistantContent0, lastAssistantAskedQuestion,
+  });
+  if (openers.kind === "reply") return openers.outcome;
+  const onboarding: OnboardingState = openers.onboarding;
 
-  // ── Resposta a uma pergunta de perfil ("por gotas") ─────────────────
-  try {
-    const {
-      findProfileQuestion, closeProfileQuestion, loadProfileDripState,
-      saveProfileAnswer, registerProfileRefusal,
-    } = await import("./profile-drip.server");
-    const openProfile = await findProfileQuestion(supabase, { userId, channel });
-    if (openProfile) {
-      const { readProfileAnswer, WORK_AREA_SAVED_REPLY, TEAM_SAVED_REPLY } =
-        await import("./profile-drip");
-      const answer = readProfileAnswer(openProfile.key, trimmed);
-      if (answer.kind === "value") {
-        await saveProfileAnswer(supabase, userId, openProfile.key, answer.text);
-        await closeProfileQuestion(supabase, openProfile.id, "executed");
-        return {
-          reply: openProfile.key === "work_area"
-            ? WORK_AREA_SAVED_REPLY(answer.text)
-            : TEAM_SAVED_REPLY,
-        };
-      }
-      // Recusa ou trabalho real: fecha sem insistir.
-      const state = await loadProfileDripState(supabase, userId);
-      await registerProfileRefusal(supabase, userId, state);
-      await closeProfileQuestion(supabase, openProfile.id, "cancelled");
-    }
-  } catch { /* noop */ }
-
-  // ── Arranque leve (2 perguntas, nunca obrigatórias) ──────────────────
-
-  let onboarding: OnboardingState = {
-    stage: "not_started", offers: 0, lastOfferAt: null, goals: null,
-  };
-  try { onboarding = await loadOnboardingState(supabase, userId); } catch { /* noop */ }
-
-  const askedName = /como preferes chamar-me/i.test(lastAssistantContent0);
-  const askedGoals = /o que procuras mais em mim/i.test(lastAssistantContent0);
-
-  if (onboarding.stage === "name_asked" && askedName) {
-    const answer = readNameAnswer(trimmed);
-    if (answer.kind === "rename") {
-      const v = validateAssessorName(answer.name);
-      if (v.ok) {
-        try { await saveAssessorName(supabase, userId, v.value); } catch { /* noop */ }
-        try { await markOnboardingOffered(supabase, userId, "goals_asked", onboarding.offers); } catch { /* noop */ }
-        return { reply: `${NAME_SET_REPLY(v.value)} ${GOALS_QUESTION}` };
-      }
-    }
-    if (answer.kind === "keep") {
-      try { await markOnboardingOffered(supabase, userId, "goals_asked", onboarding.offers); } catch { /* noop */ }
-      return { reply: `${NAME_KEPT_REPLY(assessorName)} ${GOALS_QUESTION}` };
-    }
-    // Ignorou ou trouxe trabalho real: cai fora sem insistir.
-    try { await setOnboardingStage(supabase, userId, "skipped"); } catch { /* noop */ }
-    onboarding = { ...onboarding, stage: "skipped" };
-  } else if (onboarding.stage === "goals_asked" && askedGoals) {
-    const answer = readGoalsAnswer(trimmed);
-    if (answer.kind === "goals") {
-      try { await saveOnboardingGoals(supabase, userId, answer.text); } catch { /* noop */ }
-      return { reply: GOALS_SAVED_REPLY };
-    }
-    try { await setOnboardingStage(supabase, userId, "skipped"); } catch { /* noop */ }
-    onboarding = { ...onboarding, stage: "skipped" };
-  }
 
   // Contexto acumulado para a rede de segurança: guardar só "09:30" perde
   // o pedido real ("bloco de agenda amanhã para chamadas à rede").
