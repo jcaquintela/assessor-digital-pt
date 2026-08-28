@@ -8,7 +8,6 @@ import { conflictMessage, conflictReason } from "./conflict-message";
 import { isFollowUpOpen } from "@/lib/follow-ups/state";
 import { belongsInDailyAgenda } from "@/lib/assessor/agenda-leisure";
 import { lisbonYmd } from "@/lib/assessor/lisbon-day";
-import { effectiveEventCategory } from "./event-category";
 
 /** Quantos dias à frente se procuram colisões. */
 export const CONFLICT_HORIZON_DAYS = 14;
