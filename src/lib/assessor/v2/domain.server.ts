@@ -118,6 +118,9 @@ export interface DomainContext {
   // O consultor já decidiu (nesta conversa) que o seguimento fica sem pessoa
   // associada, ou já respondeu à pergunta de ligação.
   skipPersonResolution?: boolean;
+  // O consultor já respondeu à pergunta "que imóvel é?" (ou decidiu avançar
+  // sem imóvel): não voltamos a resolver nem a perguntar.
+  skipPropertyResolution?: boolean;
   // Candidatos rejeitados nesta conversa — nunca voltam a ser propostos.
   rejectedPersonIds?: string[];
   // A instrução original deste turno traz 2+ datas distintas para o mesmo
@@ -531,7 +534,22 @@ async function execSetPropertyCategory(ctx: DomainContext, args: unknown): Promi
 
   let propertyId = p.value.property_id ?? null;
   if (!propertyId && p.value.property_query) {
-    propertyId = await resolvePropertyFromText(ctx, p.value.property_query);
+    // Reclassificar o imóvel errado é destrutivo: em correspondência
+    // "provável" bloqueamos sempre e perguntamos, sem fallback silencioso.
+    const r = await resolvePropertyOrAsk(ctx, p.value.property_query);
+    if (r.id) propertyId = r.id;
+    else if (r.ask) {
+      return ok({
+        needsPropertyConfirmation: true,
+        tool: "set_property_category",
+        mode: r.ask.mode,
+        propertyQuery: r.ask.propertyQuery,
+        question: r.ask.question,
+        suggestions: r.ask.suggestions,
+        candidateIds: r.ask.candidateIds,
+        incoming: { ...p.value, property_id: null },
+      });
+    }
   }
   if (!propertyId) return fail("property_not_found");
 
@@ -663,7 +681,7 @@ export async function resolvePropertyOrAsk(
   return {
     id: null,
     ask: {
-      mode: res.status,
+      mode: res.status as "confirm_partial" | "choose",
       propertyQuery: res.said,
       suggestions: res.candidates,
       candidateIds: res.candidates.map((c) => String(c.id)),
@@ -960,8 +978,11 @@ async function findActiveProspectingLead(ctx: DomainContext): Promise<{ id: stri
 async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(CreateFollowUpArgs, args); if (!p.ok) return fail(p.error);
   const v = { ...p.value, title: ensureTitle(p.value.title, "Lembrete") };
+  let propertyAsk: PropertyAsk | null = null;
   if (!v.property_id) {
-    v.property_id = await resolvePropertyFromText(ctx, [v.title, (v as any).notes].filter(Boolean).join(" "));
+    const r = await resolvePropertyOrAsk(ctx, [v.title, (v as any).notes].filter(Boolean).join(" "));
+    if (r.id) v.property_id = r.id;
+    else propertyAsk = r.ask;
   }
   // Resolução obrigatória de pessoa ANTES de escrever: um seguimento falado
   // "com o Manuel" nunca pode ficar com o nome preso em texto livre e
