@@ -91,10 +91,41 @@ export function coerceBreakdown(raw: any): AudioBreakdown {
       confidential: kind === "note" ? it?.confidential === true : false,
     });
   }
+  const rawLinks = Array.isArray(raw?.links) ? raw.links : [];
+  const links = items.map((_, i) => coerceLink(rawLinks[i]));
   return {
     items,
     subject: raw?.subject ? String(raw.subject).slice(0, 160) : null,
+    links,
   };
+}
+
+/** Itens com nome falado que ficaram por decidir — nunca se adivinha. */
+export function pendingPersonAmbiguities(
+  breakdown: AudioBreakdown,
+): { index: number; name: string; candidates: BreakdownPersonCandidate[] }[] {
+  const links = breakdown.links ?? [];
+  const out: { index: number; name: string; candidates: BreakdownPersonCandidate[] }[] = [];
+  breakdown.items.forEach((it, i) => {
+    const link = links[i] ?? emptyPersonLink();
+    const name = String(it.person_name ?? "").trim();
+    if (!name || link.person_id || !link.candidates.length) return;
+    out.push({ index: i, name, candidates: link.candidates });
+  });
+  return out;
+}
+
+/** Mesmo padrão de escolha usado nos outros caminhos: índice, nome, telefone. */
+export function formatPersonAmbiguityQuestion(
+  a: { index: number; name: string; candidates: BreakdownPersonCandidate[] },
+  describe: (rows: BreakdownPersonCandidate[]) => string[],
+): string {
+  const labels = describe(a.candidates.slice(0, 4));
+  const list = labels.map((l, i) => `${i + 1}. ${l}`).join("\n");
+  const head = a.candidates.length === 1
+    ? `No ponto ${a.index + 1}, o "${a.name}" é este contacto?`
+    : `No ponto ${a.index + 1}, tenho mais do que um contacto parecido com "${a.name}". Qual deles é?`;
+  return `${head}\n${list}\n(ou diz "sem contacto" para eu guardar sem associar)`;
 }
 
 function labelFor(item: BreakdownItem): string {
