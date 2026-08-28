@@ -16,7 +16,7 @@ export async function fetchProfileDripMetrics(supabaseAdmin: any) {
   const { data, error } = await supabaseAdmin
     .from("profiles")
     .select(
-      "id, full_name, email, created_at, work_area, team_context, profile_questions_asked, profile_notice_sent_at, profile_paused_until",
+      "id, name, email, created_at, work_area, team_context, profile_questions_asked, profile_notice_sent_at, profile_paused_until",
     )
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
@@ -29,7 +29,7 @@ export async function fetchProfileDripMetrics(supabaseAdmin: any) {
     const zona = asked.find((a: any) => a?.key === "work_area");
     return {
       id: String(r.id),
-      nome: r.full_name ?? null,
+      nome: r.name ?? null,
       email: r.email ?? null,
       criadoEm: r.created_at ?? null,
       avisoEm: r.profile_notice_sent_at ?? null,
