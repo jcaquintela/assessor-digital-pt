@@ -742,46 +742,10 @@ async function runReasoningEngineInner(
     // Só é resolvida quando não há outro assunto principal em aberto, para
     // um "não" nunca cair no rascunho errado.
     if (!pending) {
-      const mediaPending = await findActivePendingAction(supabase, userId, channel, "media");
-      if (mediaPending && mediaPending.intent === "confirm_keep_audio") {
-        const payload = (mediaPending.structured_payload ?? {}) as Record<string, any>;
-        const fileId = payload.file_id ? String(payload.file_id) : null;
-        const { discardAudioFile, keepAudioFile } = await import("./audio-keep.server");
-        if (saIsConfirmation(trimmed)) {
-          if (fileId) await keepAudioFile(supabase, fileId, userId);
-          await markPendingActionStatus(supabase, mediaPending.id, "executed", {
-            created_resource_type: "uploaded_file",
-            created_resource_id: fileId,
-          });
-          return { reply: "Guardei o áudio no Drive Inteligente." };
-        }
-        if (saIsRejection(trimmed) || isDiscardCommand(trimmed)) {
-          if (fileId) await discardAudioFile(supabase, fileId, userId);
-          await markPendingActionStatus(supabase, mediaPending.id, "cancelled");
-          // Descartar é descartar: sai o ficheiro E tudo o que dele saiu.
-          const { discardLastInput } = await import("./discard.server");
-          const { DISCARD_DONE_REPLY } = await import("../culture/discard");
-          await discardLastInput(supabase, userId, channel);
-          return { reply: DISCARD_DONE_REPLY };
-        }
-      }
-
-      // "Descarta" dito DEPOIS de já ter confirmado o guardar: ou desfazemos
-      // mesmo, ou dizemos claramente que o ficheiro ficou guardado e como
-      // removê-lo. Nunca "fica sem efeito" sem dizer que efeito.
-      if (!mediaPending && isDiscardAudioRequest(trimmed)) {
-        const { findRecentlyKeptAudio } = await import("./audio-keep.server");
-        const { discardLastInput } = await import("./discard.server");
-        const { DISCARD_DONE_REPLY } = await import("../culture/discard");
-        const kept = await findRecentlyKeptAudio(supabase, userId, channel, UNDO_KEEP_WINDOW_MS);
-        if (kept) {
-          await discardLastInput(supabase, userId, channel);
-          return { reply: DISCARD_DONE_REPLY };
-        }
-        const older = await findRecentlyKeptAudio(supabase, userId, channel, 7 * 24 * 60 * 60 * 1000);
-        if (older) return { reply: UNDO_KEEP_TOO_LATE_REPLY };
-      }
+      const media = await resolveAudioMediaSlot({ supabase, userId, channel, trimmed });
+      if (media) return media;
     }
+
 
     // Um pendente antigo, cuja pergunta já não é a que está em aberto, não
     // pode ser resolvido por uma resposta destinada a outro assunto.
