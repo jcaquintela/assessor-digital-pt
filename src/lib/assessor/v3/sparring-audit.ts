@@ -10,7 +10,8 @@ export type SparringSuppressionReason =
   | "sparring_active"
   | "sparring_starting"
   | "sparring_ending"
-  | "sparring_paused";
+  | "sparring_paused"
+  | "sparring_leak";
 
 export type SparringSuppressionInput = {
   userId: string;
@@ -41,6 +42,7 @@ const REASON_PT: Record<SparringSuppressionReason, string> = {
   sparring_active: "Modo treino activo",
   sparring_starting: "Modo treino a começar neste turno",
   sparring_ending: "Modo treino a terminar neste turno",
+  sparring_leak: "Anomalia: estado de treino detectado a meio do turno",
   sparring_paused: "Modo treino em pausa",
 };
 

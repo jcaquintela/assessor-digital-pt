@@ -126,20 +126,15 @@ import {
 } from "./onboarding.server";
 import { validateAssessorName } from "../assessor-name";
 import {
-  detectSparringContinue,
-  detectSparringEnd,
-  detectSparringStart,
-  isSparringActive,
-  isSparringPaused,
-  sparringTurns,
   SPARRING_CONTINUE_QUESTION,
-  SPARRING_MAX_TURNS,
   SPARRING_PAUSED_TOPIC,
   SPARRING_TOPIC,
+
 } from "./sparring";
 import { resolveSparringTurn, type SparringTurn } from "./sparring-turn";
 import { readSparringState, setSparringTopic, stopSparring } from "./sparring-state.server";
 import { logSparringSuppression } from "./sparring-audit.server";
+import { assertNoSparringLeak } from "./sparring-assert.server";
 
 
 
@@ -2081,56 +2076,16 @@ async function runReasoningEngineInner(
   const isolation = isolateUnrelatedPending(searchesRaw as any, trimmed);
   const searches = isolation.searches as typeof searchesRaw;
 
-  // Modo Sparring — treino de conversas. Nada vira registo enquanto estiver
-  // activo: as tool_calls são descartadas antes do ACT.
+  // Modo Sparring — assert defensivo, NÃO uma 2ª máquina de estados.
+  // A decisão de treino já foi tomada no arranque do turno (readSparringState
+  // + resolveSparringTurn), que devolve sem chegar aqui. Se mesmo assim o
+  // estado de treino aparecer, é anomalia: regista-se e continua a suprimir.
   const convState = (searches as any).conversation_state ?? null;
-  const sparringWasActive = isSparringActive(convState);
-  const sparringWasPaused = isSparringPaused(convState);
-  const resumed = sparringWasPaused && detectSparringContinue(trimmed);
-  const sparringEnding = sparringWasActive && detectSparringEnd(trimmed);
-  const startedNow = !sparringWasActive && (resumed || detectSparringStart(trimmed));
-  // Enquanto activo (ou a fechar) nada vira registo.
-  const sparringActive = sparringEnding || sparringWasActive || startedNow;
-  const prevTurns = sparringWasActive ? sparringTurns(convState) : 0;
-  const turns = sparringActive ? prevTurns + 1 : 0;
-  // Fim automático ao fim de algumas trocas: pergunta se quer continuar.
-  const autoPause = sparringActive && !sparringEnding && turns >= SPARRING_MAX_TURNS;
-  const sparringClosing = sparringEnding || autoPause;
+  const sparringActive = await assertNoSparringLeak({
+    conversationState: convState,
+    userId, channel, message: trimmed,
+  });
 
-  if (sparringActive || sparringWasActive || sparringWasPaused) {
-    try {
-      await supabase.from("conversation_states").upsert({
-        user_id: userId, channel, external_conversation_id: channel,
-        active_topic: sparringEnding ? null : autoPause ? SPARRING_PAUSED_TOPIC : sparringActive ? SPARRING_TOPIC : null,
-        sparring_turns: sparringClosing ? 0 : turns,
-      } as never, { onConflict: "user_id,channel,external_conversation_id" });
-    } catch { /* noop */ }
-  }
-
-  // Auditoria: início/fim do treino ficam visíveis nas ações autónomas.
-  if (startedNow || sparringClosing) {
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const rows: any[] = [];
-      if (startedNow) {
-        rows.push({
-          admin_user_id: null, action: "sparring_started", target_user_id: userId,
-          resource_type: "conversation", resource_id: channel,
-          reason: "Modo treino (sparring) iniciado — escrita bloqueada.",
-          metadata: { channel, resumed, source: "reasoning-engine-v3" },
-        });
-      }
-      if (sparringClosing) {
-        rows.push({
-          admin_user_id: null, action: "sparring_ended", target_user_id: userId,
-          resource_type: "conversation", resource_id: channel,
-          reason: autoPause ? "Modo treino em pausa automática após várias trocas." : "Modo treino terminado pelo consultor.",
-          metadata: { channel, turns, auto: autoPause, source: "reasoning-engine-v3" },
-        });
-      }
-      await supabaseAdmin.from("admin_audit_logs").insert(rows as never);
-    } catch { /* noop */ }
-  }
 
   // 4) DECIDE
   const decideR = await decide({
@@ -2154,8 +2109,9 @@ async function runReasoningEngineInner(
       toolCalls: decideR.decision.tool_calls,
       memoryWrites: decideR.decision.memory_writes?.length ?? 0,
       action: decideR.decision.action,
-      reason: sparringEnding ? "sparring_ending" : startedNow ? "sparring_starting" : "sparring_active",
-      turns, route: "v3",
+      reason: "sparring_leak",
+      turns: 0, route: "v3",
+
     });
     decideR.decision.tool_calls = [];
     decideR.decision.memory_writes = [];
@@ -2208,9 +2164,6 @@ async function runReasoningEngineInner(
   let reply = sanitizeReply(decideR.decision.natural_reply);
   if (isolation.isolated) {
     reply = stripInheritedMotive(reply, { message: trimmed, pendingText: isolation.pendingText });
-  }
-  if (autoPause && !reply.includes("continuar o treino")) {
-    reply = `${reply}\n\n${SPARRING_CONTINUE_QUESTION}`.trim();
   }
   let archiveOutcome: "executed_ok" | "tool_failed" | "not_understood" | "service_down" = "executed_ok";
   let archiveReason: string | null = null;
