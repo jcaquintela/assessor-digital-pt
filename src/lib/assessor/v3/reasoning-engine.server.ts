@@ -168,6 +168,11 @@ import {
   createPersonEllipticPending,
   createDealPending,
 } from "./pending-resolvers/create-entities.server";
+import {
+  AUDIO_PENDING_RESOLVERS,
+  resolveAudioMediaSlot,
+} from "./pending-resolvers/audio.server";
+import { runSparringGuard } from "./sparring-runner.server";
 
 // Tabela de despacho por intent. A ORDEM é comportamento: replica
 // exactamente a cascata de `if` que existia no motor.
