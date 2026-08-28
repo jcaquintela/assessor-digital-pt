@@ -835,6 +835,7 @@ describe("confirmação de contacto — caminho único", () => {
     executeToolCallsMock.mockResolvedValue([ask("create_event"), ask("create_follow_up")]);
     await turn(db, "marca visita e liga à Ana amanhã");
     const created = pendings.filter((p) => p.intent === "confirm_event_person");
+    console.log("PENDINGS", JSON.stringify(pendings.map((p) => p.intent)));
     expect(created).toHaveLength(1);
     expect(created[0].structured_payload.tool).toBe("create_event");
   });
@@ -852,7 +853,7 @@ describe("confirmação de contacto — caminho único", () => {
       },
       question: "É a Ana Silva?",
     });
-    const reply = await turn(db, "salta");
+    const reply = await turn(db, "avança sem associar");
     expect(reply).toContain("imóvel");
     expect(reply).not.toContain("seguimento");
   });
