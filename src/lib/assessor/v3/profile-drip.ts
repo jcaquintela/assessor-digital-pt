@@ -48,6 +48,8 @@ export interface DripContext {
   onboardingPending?: boolean;
   /** Já saiu uma pergunta de perfil nesta conversa. */
   askedInThisConversation?: boolean;
+  /** A resposta base traz resultados (lista, links, texto longo) → adia a gota. */
+  replyHasResults?: boolean;
 }
 
 export const MAX_QUESTIONS_30D = 6;
@@ -73,6 +75,30 @@ export const TEAM_QUESTION =
 export const WORK_AREA_SAVED_REPLY = (area: string) =>
   `Fica anotado: ${area}. Vou ter isso em conta.`;
 export const TEAM_SAVED_REPLY = "Fica anotado — vou ter isso em conta.";
+
+/** Confirmação leve — só na primeira captura de perfil deste consultor. */
+export const CONFIRM_ANSWER_QUESTION = (key: ProfileQuestionKey, value: string) =>
+  key === "work_area"
+    ? `Percebi "${value}" como a tua zona, certo?`
+    : `Percebi "${value}" sobre a tua equipa, certo?`;
+
+export const CONFIRM_DISCARDED_REPLY = "Sem problema, deixo isso de lado.";
+
+/**
+ * A resposta base traz resultados (lista, links, blocos longos)? Nesse caso a
+ * pergunta de perfil não vai colada — o consultor reage ao conteúdo, não à
+ * pergunta pendurada, e a resposta seguinte fica ambígua.
+ */
+export function replyHasResults(reply: string): boolean {
+  const text = String(reply ?? "");
+  if (!text.trim()) return false;
+  if (text.length > 400) return true;
+  if (/https?:\/\//i.test(text)) return true;
+  const lines = text.split("\n").map((l) => l.trim());
+  const bullets = lines.filter((l) => /^([-•*–]|\d+[.)])\s+/.test(l)).length;
+  return bullets >= 2;
+}
+
 
 export function questionText(key: ProfileQuestionKey, anchored = false): string {
   if (key === "work_area") return anchored ? WORK_AREA_ANCHOR_QUESTION : WORK_AREA_QUESTION;
@@ -120,6 +146,8 @@ export function nextProfileQuestion(
   if (ctx.onboardingPending) return null;
   if (ctx.askedInThisConversation) return null;
   if (ctx.replyIsQuestion) return null;
+  // Nunca colada a um turno com resultados: a resposta seguinte seria ambígua.
+  if (ctx.replyHasResults) return null;
 
   const anchor = ctx.anchor ?? null;
   // A âncora relaxa a trava de "trabalho em curso": é exactamente logo a
@@ -167,15 +195,42 @@ export type DripAnswer =
   | { kind: "skip" }
   | { kind: "not_an_answer" };
 
+// Dêiticos de continuação: sinal de comentário ao turno anterior, não resposta.
+const DEICTIC_RE =
+  /\b(esse|essa|esses|essas|isso|isto|este|esta|estes|estas|aquele|aquela|o\s+meu|a\s+minha|os\s+meus|as\s+minhas)\b/i;
+
+const YEAR_RE = /\b(19|20)\d{2}\b/;
+
+/**
+ * Validação de forma: uma resposta de perfil parece uma etiqueta curta, não
+ * uma frase de conversa. Fora disso não grava nem conta como recusa — a
+ * mensagem segue para o motor responder ao que o consultor disse mesmo.
+ */
+export function looksLikeProfileAnswer(key: ProfileQuestionKey, text: string): boolean {
+  if (DEICTIC_RE.test(text)) return false;
+  if (YEAR_RE.test(text)) return false;
+  const words = text.split(/\s+/).filter(Boolean).length;
+  if (key === "work_area") {
+    if (words > 6) return false;
+    // Vírgula/ponto interno → frase composta, não etiqueta de zona.
+    if (/[,;:!?]/.test(text)) return false;
+    if (/\.\S|\.\s+\S/.test(text)) return false;
+    return true;
+  }
+  return words <= 12;
+}
+
 export function readProfileAnswer(key: ProfileQuestionKey, raw: string): DripAnswer {
   const text = String(raw ?? "").trim();
   if (!text) return { kind: "not_an_answer" };
   if (REFUSAL_RE.test(text) && text.length < 40) return { kind: "skip" };
   if (TASK_RE.test(text)) return { kind: "not_an_answer" };
   if (text.length < 2) return { kind: "not_an_answer" };
+  if (!looksLikeProfileAnswer(key, text)) return { kind: "not_an_answer" };
   const limit = key === "work_area" ? 120 : 200;
   return { kind: "value", text: text.slice(0, limit) };
 }
+
 
 // ── Consumo: zona de atuação enviesa a pesquisa de imóveis ────────────────
 

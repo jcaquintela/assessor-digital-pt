@@ -415,7 +415,7 @@ export async function maybeOfferProfileDrip(supabase: any, params: {
     const {
       loadProfileDripState, markProfileQuestionAsked, recordProfileQuestion, isCalmDay,
     } = await import("./profile-drip.server");
-    const { composeDripReply, nextProfileQuestion } = await import("./profile-drip");
+    const { composeDripReply, nextProfileQuestion, replyHasResults } = await import("./profile-drip");
     const dripState = await loadProfileDripState(supabase, params.userId);
     const anchor =
       params.toolResults.some(
@@ -427,6 +427,7 @@ export async function maybeOfferProfileDrip(supabase: any, params: {
       params.decisionAction === "ask" || params.hasPending || params.toolResults.some((t) => !t.ok);
     const offer = nextProfileQuestion(dripState, {
       replyIsQuestion: reply.includes("?"),
+      replyHasResults: replyHasResults(reply),
       busyWithTask,
       anchor,
       calmDay: anchor ? true : await isCalmDay(supabase, params.userId),

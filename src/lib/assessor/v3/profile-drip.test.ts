@@ -4,6 +4,9 @@ import {
   nextProfileQuestion,
   rankByWorkArea,
   readProfileAnswer,
+  replyHasResults,
+  CONFIRM_ANSWER_QUESTION,
+  type DripContext,
   MAX_QUESTIONS_30D,
   PAUSE_DAYS,
   REFUSALS_BEFORE_PAUSE,
@@ -123,5 +126,50 @@ describe("perfil por gotas — fase 1", () => {
     expect(teamTone({ ...emptyFacts(), teamContext: "sozinho" })).toMatch(/sozinho/i);
     expect(teamTone({ ...emptyFacts(), teamContext: "tenho equipa de 3" })).toMatch(/equipa/i);
     expect(teamTone(emptyFacts())).toBe("");
+  });
+});
+
+// ── Golden tests: contaminação do perfil "por gotas" (fix 29/08/2026) ──────
+describe("perfil por gotas — contaminação", () => {
+  const base: ProfileDripState = {
+    workArea: null,
+    teamContext: null,
+    asked: [],
+    lastQuestionAt: null,
+    refusalStreak: 0,
+    pausedUntil: null,
+    noticeSentAt: null,
+    isExistingConsultant: false,
+  };
+  const calm: DripContext = { replyIsQuestion: false, busyWithTask: false, calmDay: true };
+
+  it("G1) comentário sobre a pesquisa não é gravado como zona", () => {
+    expect(readProfileAnswer("work_area", "São novos esses imóveis, o meu é de 1999")).toEqual({
+      kind: "not_an_answer",
+    });
+  });
+
+  it("G2) resposta curta válida é aceite como valor", () => {
+    expect(readProfileAnswer("work_area", "Gaia").kind).toBe("value");
+    expect(readProfileAnswer("work_area", "Porto e arredores").kind).toBe("value");
+    expect(CONFIRM_ANSWER_QUESTION("work_area", "Gaia")).toMatch(/Gaia/);
+  });
+
+  it("G3) pergunta de perfil não sai colada a um turno com resultados", () => {
+    const results = [
+      "Encontrei estes anúncios semelhantes:",
+      "- T3 em Gaia — https://exemplo.pt/1",
+      "- T3 em Gaia — https://exemplo.pt/2",
+    ].join("\n");
+    expect(replyHasResults(results)).toBe(true);
+    expect(nextProfileQuestion(base, { ...calm, replyHasResults: true })).toBe(null);
+    // No turno calmo seguinte a gota volta a estar disponível.
+    expect(nextProfileQuestion(base, calm)?.key).toBe("work_area");
+    expect(replyHasResults("Fica registado.")).toBe(false);
+  });
+
+  it("G4) recusa explícita continua a ser recusa", () => {
+    expect(readProfileAnswer("work_area", "agora não").kind).toBe("skip");
+    expect(readProfileAnswer("work_area", "depois").kind).toBe("skip");
   });
 });
