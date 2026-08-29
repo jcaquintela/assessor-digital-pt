@@ -461,6 +461,9 @@ async function runReasoningEngineInner(
   await applyMemoryWrites(ctx, decideR.decision.memory_writes);
 
   let reply = sanitizeReply(decideR.decision.natural_reply);
+  // Travámos uma remarcação que vinha de um esclarecimento: a resposta não
+  // pode afirmar mudança nenhuma.
+  if (clarificationHold && !toolResults.length) reply = clarificationHoldReply();
   if (isolation.isolated) {
     reply = stripInheritedMotive(reply, { message: trimmed, pendingText: isolation.pendingText });
   }
