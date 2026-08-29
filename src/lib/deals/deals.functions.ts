@@ -33,6 +33,21 @@ export const listDeals = createServerFn({ method: "GET" })
       supabase.from("opportunity_events").select("opportunity_id, occurred_at").eq("user_id", userId).order("occurred_at", { ascending: false }).limit(2000),
     ]);
 
+    // Prazos do negócio vivem agora em `deal_deadlines` (label livre + data).
+    // O alerta do quadro passa a ler o prazo aberto mais próximo.
+    const { data: deadlineRows } = await supabase
+      .from("deal_deadlines")
+      .select("opportunity_id, due_date, status, archived_at")
+      .eq("user_id", userId)
+      .eq("status", "aberto")
+      .is("archived_at", null)
+      .order("due_date", { ascending: true })
+      .limit(1000);
+    const nextDeadline = new Map<string, string>();
+    for (const r of ((deadlineRows ?? []) as Row[])) {
+      if (!nextDeadline.has(r.opportunity_id)) nextDeadline.set(r.opportunity_id, String(r.due_date).slice(0, 10));
+    }
+
     const people = new Map<string, string>();
     for (const p of (peopleRes.data ?? []) as Row[]) people.set(p.id, p.name ?? "Sem nome");
     const props = new Map<string, Row>();
@@ -97,10 +112,10 @@ export const listDeals = createServerFn({ method: "GET" })
         properties: linked.map((p) => ({ id: p.id, title: p.title, location: p.location, role: p.role })),
         nextAction: next ? { id: next.id, title: next.title, dueAt: next.due_date } :
           o.next_action ? { id: null, title: o.next_action, dueAt: o.next_action_date ?? null } : null,
-        deadline: o.deadline ?? null,
+        deadline: nextDeadline.get(o.id) ?? null,
         commission: money,
         lastActivityAt,
-        alert: dealAlert({ lastActivityAt, deadline: o.deadline, nextActionAt, stage: o.stage }),
+        alert: dealAlert({ lastActivityAt, deadline: nextDeadline.get(o.id) ?? null, nextActionAt, stage: o.stage }),
       };
     });
 
@@ -157,6 +172,19 @@ export const getDeal = createServerFn({ method: "GET" })
     const nextActionAt = pendentes[0]?.due_date ?? o.next_action_date ?? null;
     const lastActivityAt = ((evRes.data ?? []) as Row[])[0]?.occurred_at ?? o.updated_at ?? o.created_at;
 
+    const { data: dlRows } = await supabase
+      .from("deal_deadlines")
+      .select("due_date")
+      .eq("user_id", userId)
+      .eq("opportunity_id", o.id)
+      .eq("status", "aberto")
+      .is("archived_at", null)
+      .order("due_date", { ascending: true })
+      .limit(1);
+    const nextDeadlineOfDeal = ((dlRows ?? []) as Row[])[0]?.due_date
+      ? String(((dlRows ?? []) as Row[])[0]!.due_date).slice(0, 10)
+      : null;
+
     return {
       id: o.id,
       title: titleFor(o, personName, properties[0]?.title),
@@ -166,7 +194,7 @@ export const getDeal = createServerFn({ method: "GET" })
       kind: normalizeKind(o.deal_kind ?? o.type),
       value: Number(o.value ?? 0),
       notes: o.notes ?? "",
-      deadline: o.deadline ?? null,
+      deadline: nextDeadlineOfDeal,
       archivedAt: o.archived_at ?? null,
       createdAt: o.created_at,
       person: (personRes as any)?.data
@@ -194,7 +222,7 @@ export const getDeal = createServerFn({ method: "GET" })
         createdAt: f.created_at,
         via: f.via?.label ?? null,
       })),
-      alert: dealAlert({ lastActivityAt, deadline: o.deadline, nextActionAt, stage: o.stage }),
+      alert: dealAlert({ lastActivityAt, deadline: nextDeadlineOfDeal, nextActionAt, stage: o.stage }),
       lastActivityAt,
     };
   });
@@ -305,7 +333,7 @@ export const updateDeal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: {
     id: string; title?: string; kind?: string; value?: number; notes?: string | null;
-    personId?: string | null; deadline?: string | null;
+    personId?: string | null;
   }) => data)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
@@ -315,7 +343,6 @@ export const updateDeal = createServerFn({ method: "POST" })
     if (data.value !== undefined) patch.value = data.value;
     if (data.notes !== undefined) patch.notes = data.notes || null;
     if (data.personId !== undefined) patch.person_id = data.personId || null;
-    if (data.deadline !== undefined) patch.deadline = data.deadline || null;
     const { error } = await supabase.from("opportunities").update(patch as never).eq("id", data.id).eq("user_id", userId);
     if (error) throw new Error(error.message);
     return { ok: true };
