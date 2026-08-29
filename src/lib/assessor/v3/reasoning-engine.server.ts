@@ -60,6 +60,7 @@ import {
   resolveAudioMediaSlot,
 } from "./pending-resolvers/audio.server";
 import { runSparringGuard } from "./sparring-runner.server";
+import { isScheduleClarification, clarificationHoldReply } from "@/lib/agenda/reschedule-intent";
 
 // Tabela de despacho por intent. A ORDEM é comportamento: replica
 // exactamente a cascata de `if` que existia no motor.
