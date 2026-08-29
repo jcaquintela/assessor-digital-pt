@@ -137,7 +137,7 @@ export async function recordProfileQuestion(
 export async function findProfileQuestion(
   supabase: any,
   args: { userId: string; channel: string },
-): Promise<{ id: string; key: ProfileQuestionKey } | null> {
+): Promise<{ id: string; key: ProfileQuestionKey; pendingValue: string | null } | null> {
   try {
     const { data } = await supabase
       .from("pending_actions")
@@ -157,10 +157,27 @@ export async function findProfileQuestion(
     }
     const key = (row.structured_payload ?? {}).key as ProfileQuestionKey | undefined;
     if (key !== "work_area" && key !== "team_context") return null;
-    return { id: String(row.id), key };
+    const pendingValue = ((row.structured_payload ?? {}).pending_value as string | undefined) ?? null;
+    return { id: String(row.id), key, pendingValue };
   } catch {
     return null;
   }
+}
+
+/** Guarda o valor à espera de confirmação leve (primeira captura). */
+export async function setProfileQuestionPendingValue(
+  supabase: any,
+  id: string,
+  key: ProfileQuestionKey,
+  question: string,
+  value: string,
+): Promise<void> {
+  try {
+    await supabase
+      .from("pending_actions")
+      .update({ structured_payload: { key, question, pending_value: value } } as never)
+      .eq("id", id);
+  } catch { /* noop */ }
 }
 
 export async function closeProfileQuestion(

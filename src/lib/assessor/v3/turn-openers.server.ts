@@ -64,31 +64,63 @@ export async function runTurnOpeners(args: {
   try {
     const {
       findProfileQuestion, closeProfileQuestion, loadProfileDripState,
-      saveProfileAnswer, registerProfileRefusal,
+      saveProfileAnswer, registerProfileRefusal, setProfileQuestionPendingValue,
     } = await import("./profile-drip.server");
     const openProfile = await findProfileQuestion(supabase, { userId, channel });
     if (openProfile) {
-      const { readProfileAnswer, WORK_AREA_SAVED_REPLY, TEAM_SAVED_REPLY } =
-        await import("./profile-drip");
-      const answer = readProfileAnswer(openProfile.key, trimmed);
-      if (answer.kind === "value") {
-        await saveProfileAnswer(supabase, userId, openProfile.key, answer.text);
-        await closeProfileQuestion(supabase, openProfile.id, "executed");
-        return {
-          kind: "reply",
-          outcome: {
-            reply: openProfile.key === "work_area"
-              ? WORK_AREA_SAVED_REPLY(answer.text)
-              : TEAM_SAVED_REPLY,
-          },
-        };
+      const {
+        readProfileAnswer, WORK_AREA_SAVED_REPLY, TEAM_SAVED_REPLY,
+        CONFIRM_ANSWER_QUESTION, CONFIRM_DISCARDED_REPLY,
+      } = await import("./profile-drip");
+
+      const savedReply = (value: string) =>
+        openProfile.key === "work_area" ? WORK_AREA_SAVED_REPLY(value) : TEAM_SAVED_REPLY;
+
+      // Confirmação leve pendente: só grava depois de um "sim".
+      if (openProfile.pendingValue) {
+        if (saIsConfirmation(trimmed)) {
+          await saveProfileAnswer(supabase, userId, openProfile.key, openProfile.pendingValue);
+          await closeProfileQuestion(supabase, openProfile.id, "executed");
+          return { kind: "reply", outcome: { reply: savedReply(openProfile.pendingValue) } };
+        }
+        if (saIsRejection(trimmed)) {
+          await closeProfileQuestion(supabase, openProfile.id, "cancelled");
+          return { kind: "reply", outcome: { reply: CONFIRM_DISCARDED_REPLY } };
+        }
+        // Nem sim nem não: não insiste, deixa o motor responder ao que veio.
+        await closeProfileQuestion(supabase, openProfile.id, "cancelled");
+      } else {
+        const answer = readProfileAnswer(openProfile.key, trimmed);
+        if (answer.kind === "value") {
+          const state = await loadProfileDripState(supabase, userId);
+          const firstCapture = !state.workArea && !state.teamContext;
+          if (firstCapture) {
+            // Primeira captura por consultor: confirma antes de gravar.
+            await setProfileQuestionPendingValue(
+              supabase, openProfile.id, openProfile.key,
+              CONFIRM_ANSWER_QUESTION(openProfile.key, answer.text), answer.text,
+            );
+            return {
+              kind: "reply",
+              outcome: { reply: CONFIRM_ANSWER_QUESTION(openProfile.key, answer.text) },
+            };
+          }
+          await saveProfileAnswer(supabase, userId, openProfile.key, answer.text);
+          await closeProfileQuestion(supabase, openProfile.id, "executed");
+          return { kind: "reply", outcome: { reply: savedReply(answer.text) } };
+        }
+        if (answer.kind === "skip") {
+          // Recusa explícita: fecha sem insistir.
+          const state = await loadProfileDripState(supabase, userId);
+          await registerProfileRefusal(supabase, userId, state);
+          await closeProfileQuestion(supabase, openProfile.id, "cancelled");
+        }
+        // not_an_answer: pendente continua vivo (expira sozinho) e a mensagem
+        // segue para o motor responder ao que o consultor realmente disse.
       }
-      // Recusa ou trabalho real: fecha sem insistir.
-      const state = await loadProfileDripState(supabase, userId);
-      await registerProfileRefusal(supabase, userId, state);
-      await closeProfileQuestion(supabase, openProfile.id, "cancelled");
     }
   } catch { /* noop */ }
+
 
   // ── Arranque leve (2 perguntas, nunca obrigatórias) ──────────────────
 
