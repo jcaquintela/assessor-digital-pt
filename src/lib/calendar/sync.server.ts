@@ -40,6 +40,7 @@ export interface LocalEvent {
   notes: string | null;
   due_date: string; // instante ISO
   due_time: string | null;
+  duration_minutes?: number | null;
   status: string | null;
   type: string | null;
   updated_at: string | null;
@@ -98,7 +99,7 @@ export function toOutlookBody(ev: LocalEvent) {
 async function fetchLocalEvent(supabaseAdmin: any, userId: string, followUpId: string): Promise<LocalEvent | null> {
   const { data } = await supabaseAdmin
     .from("follow_ups")
-    .select("id, title, notes, due_date, due_time, status, type, updated_at, archived_at")
+    .select("id, title, notes, due_date, due_time, duration_minutes, status, type, updated_at, archived_at")
     .eq("id", followUpId)
     .eq("user_id", userId)
     .maybeSingle();

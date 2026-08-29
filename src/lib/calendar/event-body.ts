@@ -12,6 +12,8 @@ import { eventWindow, DEFAULT_EVENT_MINUTES } from "@/lib/assessor/supreme/event
 export interface EventTimes {
   due_date: string;
   due_time?: string | null;
+  /** Duração real, quando conhecida — evita reescrever 15 min como 1 hora. */
+  duration_minutes?: number | null;
 }
 
 /** Início e fim (ISO em UTC) coerentes com a hora local de Lisboa. */
@@ -20,12 +22,15 @@ export function outboundWindow(
   minutes = DEFAULT_EVENT_MINUTES,
 ): { startIso: string; endIso: string } {
   const w = eventWindow(ev, minutes);
+  const mins = Number.isFinite(Number(ev.duration_minutes)) && Number(ev.duration_minutes) > 0
+    ? Number(ev.duration_minutes)
+    : minutes;
   if (w.startIso && w.endIso) return { startIso: w.startIso, endIso: w.endIso };
   const base = new Date(ev.due_date);
   const ms = base.getTime();
   if (!Number.isFinite(ms)) throw new Error("due_date inválido");
   return {
     startIso: base.toISOString(),
-    endIso: new Date(ms + minutes * 60_000).toISOString(),
+    endIso: new Date(ms + mins * 60_000).toISOString(),
   };
 }
