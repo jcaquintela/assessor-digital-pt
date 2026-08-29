@@ -21,6 +21,7 @@ export const QUERY_TOOLS = new Set([
   "search_emails",
   "summarize_email",
   "search_similar_listings",
+  "list_deal_deadlines",
 ]);
 
 export function isQueryTool(name: string): boolean {

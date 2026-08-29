@@ -2127,6 +2127,15 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
     import("@/lib/imoveis/similar-listings.server").then((m) =>
       m.execSearchSimilarListings(ctx as any, args),
     ),
+  // Prazos de negócio — marcos com consequência, antecipados pelo Afonso.
+  add_deal_deadline: (ctx, args) =>
+    import("@/lib/deals/deadline-tools.server").then((m) => m.execAddDealDeadline(ctx as any, args)),
+  list_deal_deadlines: (ctx, args) =>
+    import("@/lib/deals/deadline-tools.server").then((m) => m.execListDealDeadlines(ctx as any, args)),
+  complete_deal_deadline: (ctx, args) =>
+    import("@/lib/deals/deadline-tools.server").then((m) => m.execCompleteDealDeadline(ctx as any, args)),
+  cancel_deal_deadline: (ctx, args) =>
+    import("@/lib/deals/deadline-tools.server").then((m) => m.execCancelDealDeadline(ctx as any, args)),
 };
 
 export async function dispatchToolCall(

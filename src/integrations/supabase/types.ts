@@ -1679,6 +1679,56 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_deadlines: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          due_date: string
+          id: string
+          label: string
+          notes: string | null
+          notice_days: number | null
+          opportunity_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          due_date: string
+          id?: string
+          label: string
+          notes?: string | null
+          notice_days?: number | null
+          opportunity_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          label?: string
+          notes?: string | null
+          notice_days?: number | null
+          opportunity_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_deadlines_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_connections: {
         Row: {
           connected_at: string

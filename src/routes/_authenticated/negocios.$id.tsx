@@ -32,6 +32,7 @@ import {
   DEAL_KINDS, KIND_LABEL, PROPERTY_ROLE_LABEL, STAGE_LABEL,
 } from "@/lib/deals/stages";
 import { StagePath } from "@/components/negocios/stage-path";
+import { DeadlinesCard } from "@/components/negocio/deadlines-card";
 
 export const Route = createFileRoute("/_authenticated/negocios/$id")({
   // Deep link: /negocios/<id>?destaque=seguimento:<uuid>
@@ -77,7 +78,6 @@ function DealDetail() {
   const [titulo, setTitulo] = useState("");
   const [kind, setKind] = useState("venda");
   const [valor, setValor] = useState("0");
-  const [prazo, setPrazo] = useState("");
   const [pessoaId, setPessoaId] = useState("");
   const [notas, setNotas] = useState("");
   const [nota, setNota] = useState("");
@@ -125,7 +125,6 @@ function DealDetail() {
     setTitulo(d.rawTitle || d.title);
     setKind(d.kind);
     setValor(String(d.value ?? 0));
-    setPrazo((d.deadline ?? "").slice(0, 10));
     setPessoaId(d.person?.id ?? "");
     setNotas(d.notes ?? "");
   }, [d?.id]);
@@ -140,7 +139,7 @@ function DealDetail() {
     mutationFn: () => updateFn({
       data: {
         id, title: titulo, kind, value: Number(valor) || 0,
-        notes: notas, personId: pessoaId || null, deadline: prazo || null,
+        notes: notas, personId: pessoaId || null,
       },
     }),
     onSuccess: () => { refresh(); toast.success("Alterações guardadas."); },
@@ -305,10 +304,6 @@ function DealDetail() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="prazo">Prazo importante</Label>
-              <Input id="prazo" type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
               <Label htmlFor="notas">Notas</Label>
               <Textarea id="notas" rows={4} value={notas} onChange={(e) => setNotas(e.target.value)} />
             </div>
@@ -316,6 +311,7 @@ function DealDetail() {
         </Card>
 
         <div className="space-y-4">
+          <DeadlinesCard dealId={d.id} />
           <Card>
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold">Imóveis ({d.properties.length})</h3>

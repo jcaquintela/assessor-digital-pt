@@ -407,6 +407,35 @@ export const CancelFollowUpArgs = z.object({
 });
 export type CancelFollowUpArgs = z.infer<typeof CancelFollowUpArgs>;
 
+
+// ---- Prazos de negócio ------------------------------------------------
+export const AddDealDeadlineArgs = z.object({
+  opportunity_id: z.string().uuid().optional().nullable(),
+  deal_hint: z.string().max(200).optional().nullable(),
+  label: z.string().min(2).max(120),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notice_days: z.number().int().min(0).max(180).optional().nullable(),
+  notes: z.string().max(300).optional().nullable(),
+});
+export type AddDealDeadlineArgs = z.infer<typeof AddDealDeadlineArgs>;
+
+export const ListDealDeadlinesArgs = z.object({
+  opportunity_id: z.string().uuid().optional().nullable(),
+  include_closed: z.boolean().optional().nullable(),
+});
+export type ListDealDeadlinesArgs = z.infer<typeof ListDealDeadlinesArgs>;
+
+export const CompleteDealDeadlineArgs = z.object({
+  deadline_id: z.string().uuid(),
+});
+export type CompleteDealDeadlineArgs = z.infer<typeof CompleteDealDeadlineArgs>;
+
+export const CancelDealDeadlineArgs = z.object({
+  deadline_id: z.string().uuid(),
+  reason: z.string().max(300).optional().nullable(),
+});
+export type CancelDealDeadlineArgs = z.infer<typeof CancelDealDeadlineArgs>;
+
 export const CompleteFollowUpArgs = z.object({
   follow_up_ids: z.array(z.string().uuid()).max(50).optional().nullable(),
   subject_hint: z.string().min(2).max(160).optional().nullable(),
@@ -1147,6 +1176,60 @@ TOOL_SPECS.push(
   {
     type: "function",
     function: {
+      name: "add_deal_deadline",
+      description:
+        "Regista um PRAZO com consequência dentro de um negócio ('escritura dia 15 de outubro', 'prazo de financiamento até 20 de setembro', 'fim do período de exclusividade'). Não é compromisso de agenda nem tarefa: é um marco que o Afonso passa a antecipar. Passa opportunity_id se o souberes; senão deal_hint com o que o consultor disse (pessoa, imóvel ou nome do negócio). Só depois de o consultor confirmar.",
+      parameters: {
+        type: "object",
+        properties: {
+          opportunity_id: { type: ["string", "null"], format: "uuid" },
+          deal_hint: { type: ["string", "null"], description: "O que o consultor disse para identificar o negócio." },
+          label: { type: "string", description: "Nome livre do prazo: 'Escritura', 'Financiamento', 'Exclusividade'." },
+          due_date: { type: "string", description: "YYYY-MM-DD." },
+          notice_days: { type: ["number", "null"], description: "Antecedência pedida, em dias ('avisa-me com duas semanas' = 14)." },
+          notes: { type: ["string", "null"] },
+        },
+        required: ["label", "due_date"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_deal_deadlines",
+      description: "Mostra os prazos registados — de um negócio (opportunity_id) ou de todos ('que prazos tenho?').",
+      parameters: {
+        type: "object",
+        properties: {
+          opportunity_id: { type: ["string", "null"], format: "uuid" },
+          include_closed: { type: ["boolean", "null"] },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "complete_deal_deadline",
+      description: "Marca um prazo de negócio como cumprido ('a escritura já foi feita'). Exige o deadline_id vindo de list_deal_deadlines.",
+      parameters: { type: "object", properties: { deadline_id: { type: "string", format: "uuid" } }, required: ["deadline_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cancel_deal_deadline",
+      description: "Cancela um prazo de negócio que deixou de fazer sentido. Exige o deadline_id vindo de list_deal_deadlines.",
+      parameters: {
+        type: "object",
+        properties: { deadline_id: { type: "string", format: "uuid" }, reason: { type: ["string", "null"] } },
+        required: ["deadline_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "search_similar_listings",
       description:
         "Procura na web anúncios de imóveis SEMELHANTES a um imóvel do consultor ('imóveis parecidos ao T3 de Gaia', 'o que há no mercado como este', 'comparáveis'). Só a pedido explícito. NÃO é avaliação nem estimativa de valor: devolve anúncios publicados como referência rápida. Passa property_id se o tiveres do search_properties, senão property_query com a morada/título dito.",
@@ -1199,6 +1282,10 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   list_uncategorized_properties: ListUncategorizedPropertiesArgs,
   set_property_category: SetPropertyCategoryArgs,
   search_similar_listings: SearchSimilarListingsArgs,
+  add_deal_deadline: AddDealDeadlineArgs,
+  list_deal_deadlines: ListDealDeadlinesArgs,
+  complete_deal_deadline: CompleteDealDeadlineArgs,
+  cancel_deal_deadline: CancelDealDeadlineArgs,
 };
 
 export const TOOL_NAMES = Object.keys(ZOD_BY_TOOL);
