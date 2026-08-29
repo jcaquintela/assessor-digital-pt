@@ -417,6 +417,23 @@ async function runReasoningEngineInner(
     if (decideR.decision.tool_calls.length) decideR.decision.action = "act";
     else if (decideR.decision.action === "act") decideR.decision.action = "acknowledge";
   }
+  // Esclarecimento de horas não é pedido de remarcação. "Um é às 10 e o outro
+  // às 10:45" descreve o que já está marcado — travamos a escrita e devolvemos
+  // a decisão ao consultor em vez de mexer na agenda por conta própria.
+  let clarificationHold = false;
+  if (
+    !sparringActive &&
+    decideR.decision.tool_calls.some((t) => t.name === "reschedule_reminder") &&
+    isScheduleClarification(trimmed)
+  ) {
+    decideR.decision.tool_calls = decideR.decision.tool_calls.filter(
+      (t) => t.name !== "reschedule_reminder",
+    );
+    clarificationHold = true;
+    if (!decideR.decision.tool_calls.length && decideR.decision.action === "act") {
+      decideR.decision.action = "acknowledge";
+    }
+  }
   const shouldAct = decideR.decision.action === "act" && decideR.decision.tool_calls.length > 0;
   // Guarda simétrica à do "executou e mesmo assim perguntou": decidiu agir mas
   // não indicou ferramenta nenhuma. Caso real: "Desmarca tudo." → action=act,
