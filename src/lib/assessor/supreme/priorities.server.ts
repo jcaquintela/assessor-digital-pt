@@ -12,7 +12,7 @@ import { eventWindow, isEventOver } from "./event-window";
 export type PriorityOrigin = "calendario" | "compromisso" | "tarefa" | "negocio";
 
 export interface PriorityItem {
-  subject_type: "follow_up" | "opportunity" | "property";
+  subject_type: "follow_up" | "opportunity" | "property" | "deal_deadline";
   subject_id: string;
   action: string;
   reasons: string[];
@@ -275,6 +275,30 @@ export async function computePriorities(
       event_end_at: null,
     });
   }
+
+  // Prazos de negócio — marcos com consequência, dentro da janela de aviso.
+  // Mesma fonte única: quem avisa é sempre esta lista.
+  try {
+    const { deadlinesInNoticeWindow } = await import("@/lib/deals/deadlines.server");
+    for (const d of await deadlinesInNoticeWindow(supabase, userId, now)) {
+      items.push({
+        subject_type: "deal_deadline",
+        subject_id: d.id,
+        action: d.action,
+        reasons: [`${d.when} (${String(d.due_date).slice(0, 10)})`, `negócio ${d.deal_label}`],
+        priority_score: d.score,
+        due_at: String(d.due_date).slice(0, 10),
+        entity_label: null,
+        deal_id: d.opportunity_id,
+        deal_label: d.deal_label,
+        origin: "negocio",
+        origin_label: "Prazo do negócio",
+        state_label: null,
+        event_start_at: null,
+        event_end_at: null,
+      });
+    }
+  } catch { /* prazos são complemento: nunca partem as prioridades */ }
 
   items.sort((a, b) => b.priority_score - a.priority_score);
   return items.slice(0, limit);

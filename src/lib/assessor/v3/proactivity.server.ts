@@ -27,7 +27,8 @@ export type NudgeKind =
   | "property_missing_docs" // imóvel activo sem documentos essenciais
   | "followup_overdue"     // follow-up vencido há > 2 dias
   | "consultant_silence"   // consultor calado há > 3 dias úteis
-  | "schedule_conflict";   // dois compromissos sobrepostos
+  | "schedule_conflict"    // dois compromissos sobrepostos
+  | "deal_deadline";       // prazo de negócio a aproximar-se (ou já passado)
 
 export interface NudgeDraft {
   kind: NudgeKind;
@@ -305,6 +306,16 @@ export async function generateNudgesForUser(
   for (const c of await generateConflictNudges(supabase, userId, { max: 2 })) {
     drafts.push({ ...c, kind: c.kind as NudgeKind });
   }
+
+  // 3c) Prazos de negócio na janela de antecipação. Antes disso, os prazos
+  // vencidos há demasiado tempo fecham-se sozinhos e caem em Diversos.
+  try {
+    const { closeStaleDeadlines, generateDeadlineNudges } = await import("@/lib/deals/deadlines.server");
+    await closeStaleDeadlines(supabase, userId);
+    for (const d of await generateDeadlineNudges(supabase, userId, { max: 2 })) {
+      drafts.push({ ...d, kind: d.kind as NudgeKind });
+    }
+  } catch { /* nunca bloquear o ciclo proativo por causa dos prazos */ }
 
   // 4) Silêncio do consultor há ≥ 3 dias.
   const { data: lastMsg } = await supabase
