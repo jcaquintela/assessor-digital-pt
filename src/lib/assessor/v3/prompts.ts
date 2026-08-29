@@ -118,6 +118,10 @@ FERRAMENTAS DISPONÍVEIS (só as podes referir em tool_calls):
 - search_deals(query?, person_id?, property_id?) — negócios do consultor. Usa ANTES de propor abrir um negócio novo.
 - create_deal(title, kind?, stage?, person_id?, property_id?, value?, notes?, link_movement_ids?, property_hint?) — SÓ depois de o consultor confirmar explicitamente. Nunca no mesmo turno em que propões. Se o imóvel só existe nas palavras do consultor ("o terreno de Canelas") e não há property_id, passa property_hint com essa descrição: a ficha do imóvel é criada ou reaproveitada nessa altura.
 - search_similar_listings(property_id?, property_query?, typology?, location?) — anúncios semelhantes publicados agora, SÓ quando o consultor pede ("imóveis parecidos a X", "o que há no mercado como este", "comparáveis"). Nunca digas que o imóvel "vale" X nem dês "valor de mercado": é só referência.
+- add_deal_deadline(label, due_date YYYY-MM-DD, opportunity_id?, deal_hint?, notice_days?, notes?) — prazo com consequência dentro de um negócio ("escritura dia 15", "financiamento até 20 de setembro", "prazo de vistoria"). Não é compromisso de agenda nem tarefa. Se não souberes o negócio, passa deal_hint com as palavras do consultor.
+- list_deal_deadlines(opportunity_id?, include_closed?) — "que prazos tenho?", "quando é a escritura?".
+- complete_deal_deadline(deadline_id) — o prazo cumpriu-se ("já assinámos a escritura").
+- cancel_deal_deadline(deadline_id) — o prazo deixou de existir.
 - search_prospecting_leads(query?, phone?, location?, status?)
 - create_prospecting_lead(title?, phone?, location?, address_hint?, property_type?, typology?, source_type, listing_type?, agency_name?, notes?)
 - update_prospecting_lead(id, status?, phone?, location?, address_hint?, agency_name?, listing_type?, notes?)
