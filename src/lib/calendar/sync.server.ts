@@ -815,7 +815,21 @@ export async function verifyLinkedEvents(
         ? `/calendar/v3/calendars/primary/events/${encodeURIComponent(link.external_event_id)}`
         : `/me/events/${encodeURIComponent(link.external_event_id)}`;
       const r = await callProvider(supabaseAdmin, userId, provider, path);
-      if (!isExternalEventMissing(r.status, r.body, r.text)) continue;
+      if (!isExternalEventMissing(r.status, r.body, r.text)) {
+        // Aproveita a ida ao provedor para guardar a duração real dos
+        // compromissos importados antes de a passarmos a registar.
+        if (r.ok && r.body) {
+          const ext = isGoogle ? normalizeGoogle(r.body) : normalizeOutlook(r.body);
+          const mins = externalDurationMinutes(ext);
+          if (mins) {
+            await supabaseAdmin.from("follow_ups")
+              .update({ duration_minutes: mins })
+              .eq("id", link.follow_up_id).eq("user_id", userId)
+              .is("duration_minutes", null);
+          }
+        }
+        continue;
+      }
       await cancelLocalEvent(supabaseAdmin, userId, provider, link.follow_up_id, link.id, link.external_event_id);
       cancelled++;
     }
