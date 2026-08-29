@@ -2260,6 +2260,7 @@ export type Database = {
           created_by_assessor: boolean
           due_date: string
           due_time: string | null
+          duration_minutes: number | null
           event_category: string | null
           event_category_id: string | null
           event_class: string | null
@@ -2295,6 +2296,7 @@ export type Database = {
           created_by_assessor?: boolean
           due_date?: string
           due_time?: string | null
+          duration_minutes?: number | null
           event_category?: string | null
           event_category_id?: string | null
           event_class?: string | null
@@ -2330,6 +2332,7 @@ export type Database = {
           created_by_assessor?: boolean
           due_date?: string
           due_time?: string | null
+          duration_minutes?: number | null
           event_category?: string | null
           event_category_id?: string | null
           event_class?: string | null
