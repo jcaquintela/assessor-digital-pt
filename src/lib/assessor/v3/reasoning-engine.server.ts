@@ -60,6 +60,7 @@ import {
   resolveAudioMediaSlot,
 } from "./pending-resolvers/audio.server";
 import { runSparringGuard } from "./sparring-runner.server";
+import { isScheduleClarification, clarificationHoldReply } from "@/lib/agenda/reschedule-intent";
 
 // Tabela de despacho por intent. A ORDEM é comportamento: replica
 // exactamente a cascata de `if` que existia no motor.
@@ -417,6 +418,23 @@ async function runReasoningEngineInner(
     if (decideR.decision.tool_calls.length) decideR.decision.action = "act";
     else if (decideR.decision.action === "act") decideR.decision.action = "acknowledge";
   }
+  // Esclarecimento de horas não é pedido de remarcação. "Um é às 10 e o outro
+  // às 10:45" descreve o que já está marcado — travamos a escrita e devolvemos
+  // a decisão ao consultor em vez de mexer na agenda por conta própria.
+  let clarificationHold = false;
+  if (
+    !sparringActive &&
+    decideR.decision.tool_calls.some((t) => t.name === "reschedule_reminder") &&
+    isScheduleClarification(trimmed)
+  ) {
+    decideR.decision.tool_calls = decideR.decision.tool_calls.filter(
+      (t) => t.name !== "reschedule_reminder",
+    );
+    clarificationHold = true;
+    if (!decideR.decision.tool_calls.length && decideR.decision.action === "act") {
+      decideR.decision.action = "acknowledge";
+    }
+  }
   const shouldAct = decideR.decision.action === "act" && decideR.decision.tool_calls.length > 0;
   // Guarda simétrica à do "executou e mesmo assim perguntou": decidiu agir mas
   // não indicou ferramenta nenhuma. Caso real: "Desmarca tudo." → action=act,
@@ -443,6 +461,9 @@ async function runReasoningEngineInner(
   await applyMemoryWrites(ctx, decideR.decision.memory_writes);
 
   let reply = sanitizeReply(decideR.decision.natural_reply);
+  // Travámos uma remarcação que vinha de um esclarecimento: a resposta não
+  // pode afirmar mudança nenhuma.
+  if (clarificationHold && !toolResults.length) reply = clarificationHoldReply();
   if (isolation.isolated) {
     reply = stripInheritedMotive(reply, { message: trimmed, pendingText: isolation.pendingText });
   }

@@ -83,7 +83,7 @@ export async function generateConflictNudges(
 
   const { data: follows } = await supabase
     .from("follow_ups")
-    .select("id, title, type, due_date, due_time, status, outcome, archived_at, event_class, person_id, opportunity_id, related_property_id, event_category, notes")
+    .select("id, title, type, due_date, due_time, duration_minutes, status, outcome, archived_at, event_class, person_id, opportunity_id, related_property_id, event_category, notes")
     .eq("user_id", userId)
     .is("archived_at", null)
     .gte("due_date", new Date(now.getTime() - 6 * 3600_000).toISOString())
@@ -116,6 +116,7 @@ export async function generateConflictNudges(
     title: String(f.title ?? ""),
     due_date: f.due_date,
     due_time: f.due_time,
+    duration_minutes: f.duration_minutes ?? null,
     series_id: links.get(f.id) ?? null,
   }));
 

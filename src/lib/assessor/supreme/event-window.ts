@@ -12,6 +12,19 @@ export const DEFAULT_EVENT_MINUTES = 60;
 export interface EventTiming {
   due_date?: unknown;
   due_time?: unknown;
+  /**
+   * Duração real do compromisso, vinda do Google/Outlook. Quando existe, manda
+   * sobre os 60 minutos por omissão — sem isto uma reunião de 15 minutos
+   * ocupava uma hora e criava conflitos de agenda que não existem.
+   */
+  duration_minutes?: unknown;
+}
+
+/** Duração real do compromisso, se o calendário a trouxe. */
+export function eventMinutes(row: EventTiming, fallback = DEFAULT_EVENT_MINUTES): number {
+  const n = Number(row?.duration_minutes);
+  if (Number.isFinite(n) && n > 0 && n <= 24 * 60) return Math.round(n);
+  return fallback;
 }
 
 function ymdOf(value: unknown): string {
@@ -32,16 +45,17 @@ function parseHhmm(value: unknown): { hh: number; mm: number } | null {
 /** Início e fim do compromisso em ISO, quando há hora marcada. */
 export function eventWindow(
   row: EventTiming,
-  minutes = DEFAULT_EVENT_MINUTES,
+  minutes?: number,
 ): { startIso: string | null; endIso: string | null } {
   const ymd = ymdOf(row.due_date);
   const hm = parseHhmm(row.due_time);
   if (!ymd || !hm) return { startIso: null, endIso: null };
   const start = lisbonInstant(ymd, hm.hh, hm.mm);
   if (!Number.isFinite(start)) return { startIso: null, endIso: null };
+  const mins = eventMinutes(row, minutes ?? DEFAULT_EVENT_MINUTES);
   return {
     startIso: new Date(start).toISOString(),
-    endIso: new Date(start + minutes * 60_000).toISOString(),
+    endIso: new Date(start + mins * 60_000).toISOString(),
   };
 }
 

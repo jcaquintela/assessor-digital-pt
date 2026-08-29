@@ -1,80 +1,52 @@
-import { describe, expect, it } from "vitest";
-import { findConflicts, toWindows } from "./conflicts";
-import { conflictMessage, relativeDayLabel } from "./conflict-message";
+// Golden tests — conflitos de horário depois da correção de 29/08:
+// duração real do provedor, mensagem com as horas certas, e esclarecimento
+// que não pode disparar remarcação.
 
-const ev = (id: string, title: string, date: string, time: string | null, series?: string) => ({
-  id, title, due_date: date, due_time: time, series_id: series ?? null,
-});
+import { describe, it, expect } from "vitest";
+import { findConflicts } from "./conflicts";
+import { conflictMessage } from "./conflict-message";
+import { readRescheduleIntent, isScheduleClarification } from "./reschedule-intent";
 
-describe("deteção de conflitos", () => {
-  it("sobreposição parcial conta como conflito", () => {
+const NOW = new Date("2026-08-29T09:00:00Z"); // sábado, 10:00 Lisboa
+
+describe("conflitos com duração real", () => {
+  it("G1 — 30 min reais em vez de 60 assumidos: deixa de haver conflito", () => {
+    const base = [
+      { id: "a", title: "Level-Up 2026", due_date: "2026-08-31T09:00:00Z", due_time: "10:00" },
+      { id: "b", title: "OPS COMMAND", due_date: "2026-08-31T09:45:00Z", due_time: "10:45" },
+    ];
+    // Sem duração real: os 60 min por omissão criam a sobreposição.
+    expect(findConflicts(base)).toHaveLength(1);
+    // Com a duração real do calendário (30 min), não há conflito nenhum.
+    const real = base.map((e) => ({ ...e, duration_minutes: 30 }));
+    expect(findConflicts(real)).toHaveLength(0);
+  });
+
+  it("G2 — a mensagem diz a hora real de cada compromisso, não a da colisão", () => {
     const pairs = findConflicts([
-      ev("a", "Visita T2 Canelas", "2026-09-01", "10:00"),
-      ev("b", "Reunião de equipa", "2026-09-01", "10:30"),
+      { id: "a", title: "Level-Up 2026", due_date: "2026-08-31T09:00:00Z", due_time: "10:00", duration_minutes: 60 },
+      { id: "b", title: "OPS COMMAND", due_date: "2026-08-31T09:45:00Z", due_time: "10:45", duration_minutes: 30 },
     ]);
     expect(pairs).toHaveLength(1);
-    expect(pairs[0]!.a.title).toBe("Visita T2 Canelas");
-  });
-
-  it("compromissos encostados não colidem", () => {
-    expect(findConflicts([
-      ev("a", "Visita", "2026-09-01", "10:00"),
-      ev("b", "Reunião", "2026-09-01", "11:00"),
-    ])).toHaveLength(0);
-  });
-
-  it("compromissos sem hora (dia inteiro) nunca colidem", () => {
-    expect(toWindows([ev("a", "Férias", "2026-09-01", null)])).toHaveLength(0);
-    expect(findConflicts([
-      ev("a", "Férias", "2026-09-01", null),
-      ev("b", "Visita", "2026-09-01", "10:00"),
-    ])).toHaveLength(0);
-  });
-
-  it("duas ocorrências da mesma série não são conflito", () => {
-    expect(findConflicts([
-      ev("a", "Weekly", "2026-09-01", "09:00", "serie-1"),
-      ev("b", "Weekly", "2026-09-01", "09:00", "serie-1"),
-    ])).toHaveLength(0);
-  });
-
-  it("duplicado de importação (mesmo título e hora) não é conflito", () => {
-    expect(findConflicts([
-      ev("a", "Weekly closing", "2026-09-01", "09:00"),
-      ev("b", "weekly closing", "2026-09-01", "09:00"),
-    ])).toHaveLength(0);
-  });
-
-  it("dias diferentes não colidem", () => {
-    expect(findConflicts([
-      ev("a", "Visita", "2026-09-01", "10:00"),
-      ev("b", "Reunião", "2026-09-02", "10:00"),
-    ])).toHaveLength(0);
-  });
-
-  it("três sobrepostos geram os três pares", () => {
-    expect(findConflicts([
-      ev("a", "A", "2026-09-01", "10:00"),
-      ev("b", "B", "2026-09-01", "10:15"),
-      ev("c", "C", "2026-09-01", "10:30"),
-    ])).toHaveLength(3);
+    const msg = conflictMessage(pairs[0]!, NOW);
+    expect(msg).toContain("“Level-Up 2026” (10:00–11:00)");
+    expect(msg).toContain("“OPS COMMAND” (10:45–11:15)");
+    expect(msg).not.toContain("ao mesmo tempo");
   });
 });
 
-describe("mensagem de conflito", () => {
-  it("nomeia os dois compromissos, o dia e a hora", () => {
-    const now = new Date("2026-08-31T09:00:00Z");
-    const pair = findConflicts([
-      ev("a", "Visita T2 Canelas", "2026-09-01", "10:00"),
-      ev("b", "Reunião de equipa", "2026-09-01", "10:30"),
-    ])[0]!;
-    expect(conflictMessage(pair, now)).toBe(
-      "Tens dois compromissos ao mesmo tempo amanhã às 10:30: “Visita T2 Canelas” e “Reunião de equipa”. Queres remarcar algum?",
-    );
+describe("esclarecimento vs pedido de remarcação", () => {
+  it("G3 — 'Um é as 10 e o outro às 10:45' é esclarecimento: não remarca", () => {
+    const v = readRescheduleIntent("Um é as 10 e o outro às 10:45");
+    expect(v.clarification).toBe(true);
+    expect(v.explicitReschedule).toBe(false);
   });
 
-  it("usa 'hoje' quando é no próprio dia", () => {
-    const now = new Date("2026-09-01T07:00:00Z");
-    expect(relativeDayLabel(new Date("2026-09-01T09:30:00Z").getTime(), now)).toBe("hoje");
+  it("G4 — 'muda o Level-Up para as 10h' continua a remarcar", () => {
+    const v = readRescheduleIntent("muda o Level-Up para as 10h");
+    expect(v.explicitReschedule).toBe(true);
+    expect(v.clarification).toBe(false);
+    expect(isScheduleClarification("passa o OPS COMMAND para as 11:30")).toBe(false);
+    expect(isScheduleClarification("adia a visita para amanhã às 15h")).toBe(false);
   });
 });

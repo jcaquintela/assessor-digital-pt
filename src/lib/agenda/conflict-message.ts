@@ -24,14 +24,19 @@ export function relativeDayLabel(whenMs: number, now: Date = new Date()): string
   return `a ${d}/${m}${diff > 300 ? `/${y}` : ""}`;
 }
 
+/** "Level-Up 2026 (10:00–11:00)" — a hora real do compromisso, não a da colisão. */
+export function eventLabel(ev: { title: string; startMs: number; endMs: number }): string {
+  return `“${ev.title}” (${lisbonHhMm(ev.startMs)}–${lisbonHhMm(ev.endMs)})`;
+}
+
 export function conflictMessage(pair: ConflictPair, now: Date = new Date()): string {
-  const dia = relativeDayLabel(pair.overlapStartMs, now);
-  const hora = lisbonHhMm(pair.overlapStartMs);
-  return `Tens dois compromissos ao mesmo tempo ${dia} às ${hora}: “${pair.a.title}” e “${pair.b.title}”. Queres remarcar algum?`;
+  const dia = relativeDayLabel(pair.a.startMs, now);
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} tens ${eventLabel(pair.a)} e ${eventLabel(
+    pair.b,
+  )} — sobrepõem-se. Queres remarcar algum?`;
 }
 
 export function conflictReason(pair: ConflictPair, now: Date = new Date()): string {
-  const dia = relativeDayLabel(pair.overlapStartMs, now);
-  const hora = lisbonHhMm(pair.overlapStartMs);
-  return `“${pair.a.title}” e “${pair.b.title}” sobrepõem-se ${dia} às ${hora}.`;
+  const dia = relativeDayLabel(pair.a.startMs, now);
+  return `${eventLabel(pair.a)} e ${eventLabel(pair.b)} sobrepõem-se ${dia}.`;
 }

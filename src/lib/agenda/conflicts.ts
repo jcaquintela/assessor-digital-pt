@@ -15,6 +15,8 @@ export interface ConflictCandidate {
   title: string;
   due_date?: unknown;
   due_time?: unknown;
+  /** Duração real vinda do calendário externo (minutos). */
+  duration_minutes?: unknown;
   /** Série recorrente de origem, quando existe — evita par master/ocorrência. */
   series_id?: string | null;
 }

@@ -40,6 +40,7 @@ export interface LocalEvent {
   notes: string | null;
   due_date: string; // instante ISO
   due_time: string | null;
+  duration_minutes?: number | null;
   status: string | null;
   type: string | null;
   updated_at: string | null;
@@ -98,7 +99,7 @@ export function toOutlookBody(ev: LocalEvent) {
 async function fetchLocalEvent(supabaseAdmin: any, userId: string, followUpId: string): Promise<LocalEvent | null> {
   const { data } = await supabaseAdmin
     .from("follow_ups")
-    .select("id, title, notes, due_date, due_time, status, type, updated_at, archived_at")
+    .select("id, title, notes, due_date, due_time, duration_minutes, status, type, updated_at, archived_at")
     .eq("id", followUpId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -292,11 +293,29 @@ async function pushOne(
 
 /* ====================== Calendar -> Afonso ========================== */
 
+/**
+ * Duração real do evento externo, em minutos. Sem fim conhecido devolve null:
+ * o consumidor volta ao valor por omissão em vez de inventar uma duração.
+ */
+export function externalDurationMinutes(
+  ext: { startIso?: string | null; endIso?: string | null },
+): number | null {
+  if (!ext?.startIso || !ext?.endIso) return null;
+  const start = new Date(ext.startIso).getTime();
+  const end = new Date(ext.endIso).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  const mins = Math.round((end - start) / 60_000);
+  if (mins <= 0 || mins > 24 * 60) return null;
+  return mins;
+}
+
 export interface ExternalEvent {
   id: string;
   title: string | null;
   notes: string | null;
   startIso: string | null;
+  /** Fim real do evento no calendário externo (quando o provedor o dá). */
+  endIso?: string | null;
   updatedIso: string | null;
   cancelled: boolean;
   /** Outlook: tipo de recorrência do item devolvido pelo delta. */
@@ -322,7 +341,9 @@ function appendQuery(path: string, params: Record<string, string | null | undefi
 
 function normalizeGoogle(item: any): ExternalEvent {
   const start = item?.start?.dateTime ?? (item?.start?.date ? `${item.start.date}T09:00:00Z` : null);
+  const end = item?.end?.dateTime ?? null;
   return {
+    endIso: end ? new Date(end).toISOString() : null,
     id: String(item?.id ?? ""),
     title: item?.summary ?? null,
     notes: item?.description ?? null,
@@ -341,9 +362,17 @@ export function normalizeOutlook(item: any): ExternalEvent {
     const d = new Date(withZone);
     startIso = Number.isNaN(d.getTime()) ? null : d.toISOString();
   }
+  const rawEnd = item?.end?.dateTime as string | undefined;
+  let endIso: string | null = null;
+  if (rawEnd) {
+    const withZone = /[zZ]|[+-]\d{2}:\d{2}$/.test(rawEnd) ? rawEnd : `${rawEnd}Z`;
+    const d = new Date(withZone);
+    endIso = Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
   return {
     id: String(item?.id ?? ""),
     title: item?.subject ?? null,
+    endIso,
     notes: item?.bodyPreview ?? null,
     startIso,
     updatedIso: item?.lastModifiedDateTime ? new Date(item.lastModifiedDateTime).toISOString() : null,
@@ -566,6 +595,7 @@ export async function applyExternalEvents(
         notes: ext.notes ?? local?.notes ?? null,
         due_date: ext.startIso,
         due_time: lisbonHhMm(ext.startIso),
+        duration_minutes: externalDurationMinutes(ext),
         status: "agendado",
       }).eq("id", link.follow_up_id).eq("user_id", userId);
       await supabaseAdmin.from("calendar_event_links").update({
@@ -594,6 +624,7 @@ export async function applyExternalEvents(
         type: "evento",
         due_date: ext.startIso,
         due_time: lisbonHhMm(ext.startIso),
+        duration_minutes: externalDurationMinutes(ext),
         status: "agendado",
         priority: "media",
         notes: ext.notes ?? null,
@@ -784,7 +815,21 @@ export async function verifyLinkedEvents(
         ? `/calendar/v3/calendars/primary/events/${encodeURIComponent(link.external_event_id)}`
         : `/me/events/${encodeURIComponent(link.external_event_id)}`;
       const r = await callProvider(supabaseAdmin, userId, provider, path);
-      if (!isExternalEventMissing(r.status, r.body, r.text)) continue;
+      if (!isExternalEventMissing(r.status, r.body, r.text)) {
+        // Aproveita a ida ao provedor para guardar a duração real dos
+        // compromissos importados antes de a passarmos a registar.
+        if (r.ok && r.body) {
+          const ext = isGoogle ? normalizeGoogle(r.body) : normalizeOutlook(r.body);
+          const mins = externalDurationMinutes(ext);
+          if (mins) {
+            await supabaseAdmin.from("follow_ups")
+              .update({ duration_minutes: mins })
+              .eq("id", link.follow_up_id).eq("user_id", userId)
+              .is("duration_minutes", null);
+          }
+        }
+        continue;
+      }
       await cancelLocalEvent(supabaseAdmin, userId, provider, link.follow_up_id, link.id, link.external_event_id);
       cancelled++;
     }
