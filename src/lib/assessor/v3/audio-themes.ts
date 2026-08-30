@@ -42,6 +42,17 @@ export interface ThemeNextAction {
   time: string | null;
 }
 
+/**
+ * O que ficou de uma visita: a reação do cliente, a objeção que levantou e a
+ * zona/imóvel com que ele disse que estava a comparar. É isto que distingue
+ * um "correu bem" vazio de um áudio que dá para escrever um seguimento útil.
+ */
+export interface ThemeVisit {
+  reaction: string | null;
+  objection: string | null;
+  comparison_zone: string | null;
+}
+
 export interface AudioTheme {
   kind: ThemeKind;
   /** Frase curta que descreve o tema, em PT-PT. */
@@ -50,11 +61,14 @@ export interface AudioTheme {
   property: ThemeProperty | null;
   opportunity: ThemeOpportunity | null;
   next_action: ThemeNextAction | null;
+  /** Só preenchido em temas de visita. */
+  visit: ThemeVisit | null;
   note: string | null;
   confidential: boolean;
   /** Confiança da extração (0-1). */
   confidence: number;
 }
+
 
 /** Candidato de deduplicação encontrado na base de dados. */
 export interface ThemeCandidate {
