@@ -498,6 +498,8 @@ function SupremeSection() {
     morning_briefing_enabled?: boolean; morning_time?: string;
     autonomy_level?: string; max_daily_nudges?: number;
     reminder_lead_minutes?: number | null;
+    evening_wrap_enabled?: boolean; evening_time?: string;
+    evening_review_detail?: string;
   };
   const level = (data as any).effectiveAutonomy ?? prefs.autonomy_level ?? "conservador";
   const allowed = new Set<string>(((data as any).autonomyAllowed as string[]) ?? ["conservador"]);
