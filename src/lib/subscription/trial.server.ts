@@ -56,6 +56,47 @@ async function audit(
   } as never);
 }
 
+/** Estados de subscrição que significam "conta a pagar" (ou a pagar em breve). */
+const PAID_BILLING_STATUS = new Set(["active", "past_due", "trialing"]);
+
+/**
+ * Uma conta já paga nunca deve receber período experimental: se receber,
+ * o fim do trial acaba por descer um plano que já estava comprado.
+ * Paga = plano Pro/Team no perfil, ou subscrição ativa no sistema de pagamentos.
+ */
+export function isPaidAccount(
+  profile: Record<string, any> | null | undefined,
+  fallbackTier?: string | null,
+): boolean {
+  const tier = normalizeTier(profile?.["subscription_tier"] ?? fallbackTier);
+  if (tierAtLeast(tier, "pro")) return true;
+  const status = String(profile?.["billing_status"] ?? "none");
+  return Boolean(profile?.["stripe_subscription_id"]) && PAID_BILLING_STATUS.has(status);
+}
+
+/**
+ * Plano que a conta tinha imediatamente antes do trial (registado na auditoria
+ * em `trial_started`). Serve de piso: a expiração sem escolha explícita nunca
+ * desce abaixo deste valor.
+ */
+export async function loadTrialTierBefore(
+  supabaseAdmin: any,
+  userId: string,
+): Promise<SubscriptionTier | null> {
+  const { data } = await supabaseAdmin
+    .from("admin_audit_logs")
+    .select("metadata, created_at")
+    .eq("target_user_id", userId)
+    .eq("action", "trial_started")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const raw = (data as any)?.metadata?.tier_before;
+  return raw ? normalizeTier(raw) : null;
+}
+
+
+
 /**
  * Arranca o período experimental assim que a conta tem WhatsApp ligado,
  * seja qual for o plano actual, e desde que ainda não tenha havido trial.
