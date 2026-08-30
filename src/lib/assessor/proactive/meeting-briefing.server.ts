@@ -304,13 +304,22 @@ export async function sendMeetingBriefing(
       // o que estiver escolhido no admin; sem escolha activa, silêncio.
       const { resolveUsableBinding } = await import("@/lib/whatsapp/template-binding.server");
       const binding = await resolveUsableBinding(supabase, "meeting_briefing");
-      if (!binding) return abort("no_approved_template");
+      if (!binding) {
+        // Falha segura: nunca silêncio. Telegram ligado na mesma conta →
+        // entrega por lá; sem Telegram → o problema fica visível no admin.
+        const fb = await deliverBriefingFallback(supabase, event.user_id, text);
+        if (!fb.delivered) return abort("no_approved_template");
+        if (opts.markSent !== false) await markBriefingSent(supabase, event, "telegram", text, nowMs);
+        return { sent: true, via: "text" };
+      }
 
       const { data: prof } = await supabase
         .from("profiles").select("name").eq("id", event.user_id).maybeSingle();
       const firstName = String((prof as any)?.name ?? "").split(" ")[0] ?? "";
-      const params = briefingTemplateParams(event, brief, firstName, eventCtx, pendings)
-        .slice(0, Math.max(0, binding.param_count));
+      const params = briefingTemplateParams(
+        event, brief, firstName, eventCtx, pendings, parts.slice(1),
+      ).slice(0, Math.max(0, binding.param_count));
+
 
       const { meetingBriefingTemplatePayload } = await import("./templates");
       const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
