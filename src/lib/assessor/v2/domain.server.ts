@@ -1625,7 +1625,7 @@ async function execUpdateProperty(ctx: DomainContext, args: unknown): Promise<Do
   if (v.asking_price !== undefined) patch.asking_price = v.asking_price ?? null;
   if (v.status !== undefined && v.status) patch.status = v.status;
   if (v.notes !== undefined) patch.notes = v.notes?.slice(0, 2000) ?? null;
-  }
+
   if (!Object.keys(patch).length) return fail("nada_para_actualizar");
 
   const { data: before } = await ctx.supabase
