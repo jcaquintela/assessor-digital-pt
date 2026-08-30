@@ -14,6 +14,7 @@ describe("router determinístico — precedência", () => {
       "misc_query",
       "event_name",
       "agenda_date",
+      "evening_review",
       "day_state",
       "agenda_period",
       "email_draft_confirmation",
