@@ -1271,6 +1271,7 @@ export type Database = {
           created_at: string
           evening_checkin_enabled: boolean
           evening_checkin_time: string
+          evening_review_detail: string
           evening_time: string
           evening_wrap_enabled: boolean
           max_daily_nudges: number
@@ -1294,6 +1295,7 @@ export type Database = {
           created_at?: string
           evening_checkin_enabled?: boolean
           evening_checkin_time?: string
+          evening_review_detail?: string
           evening_time?: string
           evening_wrap_enabled?: boolean
           max_daily_nudges?: number
@@ -1317,6 +1319,7 @@ export type Database = {
           created_at?: string
           evening_checkin_enabled?: boolean
           evening_checkin_time?: string
+          evening_review_detail?: string
           evening_time?: string
           evening_wrap_enabled?: boolean
           max_daily_nudges?: number
