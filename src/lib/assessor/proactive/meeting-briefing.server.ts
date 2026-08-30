@@ -64,6 +64,84 @@ async function loadEventContext(
   return ctx;
 }
 
+/**
+ * Pendências do mesmo compromisso: rascunho de email por enviar (pessoa),
+ * documento essencial em falta (imóvel) e prazo próximo (negócio). Tudo
+ * reaproveitado de mecanismos já existentes — nada de novo a inventar.
+ * Falhar aqui nunca pode impedir a cartela.
+ */
+export async function loadBriefingPendings(
+  supabase: any,
+  event: BriefingEvent & { user_id: string },
+  nowMs: number,
+): Promise<BriefingPendings> {
+  const out: BriefingPendings = {};
+
+  if (event.person_id) {
+    try {
+      const { data } = await supabase
+        .from("email_drafts")
+        .select("subject, status, sent_at, person_id")
+        .eq("user_id", event.user_id)
+        .eq("person_id", event.person_id)
+        .eq("status", "pending")
+        .is("sent_at", null)
+        .limit(3);
+      const rows = ((data as any[]) ?? []).filter((r) => !r?.sent_at);
+      if (rows.length) {
+        out.emailDrafts = rows.map((r) => String(r.subject ?? "").trim() || "rascunho sem assunto");
+      }
+    } catch { /* sem rascunhos, a cartela segue */ }
+  }
+
+  if (event.related_property_id) {
+    try {
+      const { data } = await supabase
+        .from("uploaded_files")
+        .select("document_type")
+        .eq("user_id", event.user_id)
+        .eq("related_resource_type", "property")
+        .eq("related_resource_id", event.related_property_id)
+        .limit(100);
+      const kinds = ((data as any[]) ?? [])
+        .map((f) => String(f?.document_type ?? "").toLowerCase())
+        .filter(Boolean);
+      const missing: string[] = [];
+      if (!kinds.some((k) => k.includes("caderneta"))) missing.push("caderneta predial");
+      if (!kinds.some((k) => k.includes("energ"))) missing.push("certificado energético");
+      if (missing.length) out.missingDocs = missing;
+    } catch { /* sem ficheiros, não se afirma nada */ }
+  }
+
+  if (event.opportunity_id) {
+    try {
+      const { lisbonYmd } = await import("@/lib/assessor/lisbon-day");
+      const { daysUntilDeadline, deadlineWhen, isDeadlineOpen, isInNoticeWindow, noticeDaysOf } =
+        await import("@/lib/deals/deadlines");
+      const { data } = await supabase
+        .from("deal_deadlines")
+        .select("label, due_date, status, notice_days, archived_at")
+        .eq("user_id", event.user_id)
+        .eq("opportunity_id", event.opportunity_id)
+        .is("archived_at", null)
+        .order("due_date", { ascending: true })
+        .limit(10);
+      const today = lisbonYmd(nowMs);
+      const lines: string[] = [];
+      for (const row of ((data as any[]) ?? [])) {
+        if (!isDeadlineOpen(row)) continue;
+        const left = daysUntilDeadline(String(row.due_date), today);
+        if (!isInNoticeWindow(left, noticeDaysOf(row))) continue;
+        lines.push(`${String(row.label ?? "prazo").trim()} — ${deadlineWhen(left)}`);
+      }
+      if (lines.length) out.deadlines = lines.slice(0, 3);
+    } catch { /* prazos são bónus */ }
+  }
+
+  return out;
+}
+
+
 export interface BriefingRunResult {
   sent: number;
   skipped: Array<{ id: string; reason: string }>;
