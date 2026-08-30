@@ -12,6 +12,9 @@ import { getWhatsAppLink, startWhatsAppLink } from "@/lib/whatsapp/link.function
 import { startWhatsAppTrial } from "@/lib/subscription/trial.functions";
 import { CalendarStep, EmailStep } from "@/components/canais/onboarding-setup";
 import { nextOnboardingStep, type OnboardingStep } from "@/lib/onboarding/steps";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { canUseWhatsApp, tierLabel } from "@/lib/subscription/tiers";
+
 
 export const Route = createFileRoute("/_authenticated/ligar-canal")({
   head: () => ({
@@ -31,6 +34,10 @@ function LigarCanalPage() {
   const navigate = useNavigate();
   const [choice, setChoice] = useState<"whatsapp" | "telegram" | null>(null);
   const [step, setStep] = useState<OnboardingStep>("canal");
+  // Conta já paga (WhatsApp incluído) nunca vê a oferta de 14 dias.
+  const tier = useEffectiveTier().data?.tier ?? null;
+  const planoPago = canUseWhatsApp(tier);
+
   const goto = (from: OnboardingStep) => {
     const next = nextOnboardingStep(from);
     if (next === "fim") { navigate({ to: "/", replace: true }); return; }
@@ -78,7 +85,14 @@ function LigarCanalPage() {
           capacidades. Podes mudar depois nas Definições.
         </p>
 
-        {choice === null && <ChannelChoice onChoose={setChoice} />}
+        {choice === null && (
+          <ChannelChoice
+            onChoose={setChoice}
+            planoPago={planoPago}
+            nomePlano={planoPago ? tierLabel(tier) : undefined}
+          />
+        )}
+
         {choice === "whatsapp" && (
           <WhatsAppFlow onBack={() => setChoice(null)} onDone={() => goto("canal")} />
         )}

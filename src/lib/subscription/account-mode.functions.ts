@@ -9,6 +9,6 @@ export const getAccountMode = createServerFn({ method: "GET" })
     const mode = await loadAccountMode(context.supabase, context.userId);
     return {
       ...mode,
-      notice: mode.readOnlyArchive ? readOnlyArchiveNotice(mode.daysLeft) : null,
+      notice: mode.readOnlyArchive ? readOnlyArchiveNotice(mode.daysLeft, mode.tier) : null,
     };
   });

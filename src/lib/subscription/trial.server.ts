@@ -14,7 +14,7 @@
 // Ao descer de plano, a conta entra em arquivo acessível em modo leitura
 // durante 90 dias; registos estruturados não expiram nunca.
 
-import { normalizeTier } from "./tiers";
+import { normalizeTier, tierAtLeast, tierLabel, type SubscriptionTier } from "./tiers";
 import { recordSubscriptionEvent, trialOutcomeEvent } from "./events.server";
 
 export const TRIAL_DAYS = 14;
@@ -56,6 +56,47 @@ async function audit(
   } as never);
 }
 
+/** Estados de subscrição que significam "conta a pagar" (ou a pagar em breve). */
+const PAID_BILLING_STATUS = new Set(["active", "past_due", "trialing"]);
+
+/**
+ * Uma conta já paga nunca deve receber período experimental: se receber,
+ * o fim do trial acaba por descer um plano que já estava comprado.
+ * Paga = plano Pro/Team no perfil, ou subscrição ativa no sistema de pagamentos.
+ */
+export function isPaidAccount(
+  profile: Record<string, any> | null | undefined,
+  fallbackTier?: string | null,
+): boolean {
+  const tier = normalizeTier(profile?.["subscription_tier"] ?? fallbackTier);
+  if (tierAtLeast(tier, "pro")) return true;
+  const status = String(profile?.["billing_status"] ?? "none");
+  return Boolean(profile?.["stripe_subscription_id"]) && PAID_BILLING_STATUS.has(status);
+}
+
+/**
+ * Plano que a conta tinha imediatamente antes do trial (registado na auditoria
+ * em `trial_started`). Serve de piso: a expiração sem escolha explícita nunca
+ * desce abaixo deste valor.
+ */
+export async function loadTrialTierBefore(
+  supabaseAdmin: any,
+  userId: string,
+): Promise<SubscriptionTier | null> {
+  const { data } = await supabaseAdmin
+    .from("admin_audit_logs")
+    .select("metadata, created_at")
+    .eq("target_user_id", userId)
+    .eq("action", "trial_started")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const raw = (data as any)?.metadata?.tier_before;
+  return raw ? normalizeTier(raw) : null;
+}
+
+
+
 /**
  * Arranca o período experimental assim que a conta tem WhatsApp ligado,
  * seja qual for o plano actual, e desde que ainda não tenha havido trial.
@@ -71,14 +112,16 @@ export async function startWhatsAppTrialIfEligible(
 
   const { data: prof } = await supabaseAdmin
     .from("profiles")
-    .select("trial_status, whatsapp_link_status")
+    .select("trial_status, whatsapp_link_status, subscription_tier, billing_status, stripe_subscription_id")
     .eq("id", userId)
     .maybeSingle();
   if ((prof as any)?.trial_status) return { started: false, reason: "trial_already_used" };
+  if (isPaidAccount(prof, plan)) return { started: false, reason: "already_paid" };
 
   const { loadChannelAvailability } = await import("@/lib/assessor/primary-channel.server");
   const av = await loadChannelAvailability(supabaseAdmin, userId);
   if (!av.whatsapp) return { started: false, reason: "whatsapp_not_linked" };
+
 
   const expiresAt = new Date(now.getTime() + TRIAL_DAYS * DAY).toISOString();
   const patch: Record<string, unknown> = {
@@ -383,14 +426,22 @@ export async function expireDueTrials(
   for (const r of rows) {
     if (new Date(r.trial_expires_at).getTime() > now.getTime()) continue;
     const fromTier = normalizeTier(r.subscription_tier);
+    const explicit = Boolean(r.trial_choice && readTrialChoice(r.trial_choice));
     const choice = (readTrialChoice(r.trial_choice ?? "") ?? TRIAL_DEFAULT_CHOICE) as TrialChoice;
-    const downgrade = choice === "base";
+
+    // Piso de expiração: sem escolha explícita, nunca descer abaixo do plano
+    // que a conta já tinha antes do trial (ex.: conta Team que recebeu trial
+    // por engano não pode acabar em Base).
+    const tierBefore = explicit ? null : await loadTrialTierBefore(supabaseAdmin, r.id);
+    const floored = Boolean(tierBefore && tierAtLeast(tierBefore, choice) && tierBefore !== choice);
+    const applied: SubscriptionTier = floored ? (tierBefore as SubscriptionTier) : choice;
+    const downgrade = applied === "base";
 
     const { error } = await supabaseAdmin
       .from("profiles")
       .update({
-        subscription_tier: choice,
-        trial_status: choice === "base" ? "expired" : "converted",
+        subscription_tier: applied,
+        trial_status: downgrade ? "expired" : "converted",
         readonly_until: downgrade
           ? new Date(now.getTime() + READONLY_ARCHIVE_DAYS * DAY).toISOString()
           : null,
@@ -411,22 +462,24 @@ export async function expireDueTrials(
       r.id,
       downgrade
         ? "Período experimental terminado; plano Base aplicado. Dados mantidos."
-        : `Período experimental terminado; plano ${choice} aplicado.`,
+        : `Período experimental terminado; plano ${tierLabel(applied)} aplicado.`,
       {
         before: { subscription_tier: fromTier, trial_status: "active" },
-        after: { subscription_tier: choice },
+        after: { subscription_tier: applied },
         choice,
-        explicit_choice: Boolean(r.trial_choice),
+        applied_tier: applied,
+        tier_before_floor: floored ? tierBefore : null,
+        explicit_choice: explicit,
         readonly_archive_days: downgrade ? READONLY_ARCHIVE_DAYS : null,
         primary_channel: primary,
       },
     );
     await recordSubscriptionEvent(supabaseAdmin, {
       userId: r.id,
-      event: trialOutcomeEvent(choice),
+      event: trialOutcomeEvent(applied),
       fromTier,
-      toTier: choice,
-      source: r.trial_choice ? "trial_choice" : "trial_default",
+      toTier: applied,
+      source: explicit ? "trial_choice" : floored ? "trial_tier_floor" : "trial_default",
     });
 
     // Aviso curto — nada do que ficou organizado se perde.
@@ -435,15 +488,16 @@ export async function expireDueTrials(
       const name = firstName(r.name);
       const text = downgrade
         ? trialExpiredText(name)
-        : planActivatedText(name || "Olá", choice === "pro" ? "Pro" : "Consultor");
+        : planActivatedText(name || "Olá", tierLabel(applied));
       const { sendOutbound } = await import("@/lib/assessor/primary-channel.server");
       await sendOutbound(supabaseAdmin, r.id, text);
     } catch (err) {
       console.error("[trial] aviso de fim falhou:", err);
     }
 
-    expired.push({ userId: r.id, fromTier, toTier: choice, primaryChannel: primary });
+    expired.push({ userId: r.id, fromTier, toTier: applied, primaryChannel: primary });
   }
+
 
   return { expired };
 }
@@ -478,7 +532,7 @@ export async function startTrialForChannelChoice(
   const now = opts.now ?? new Date();
   const { data: prof } = await supabaseAdmin
     .from("profiles")
-    .select("trial_status, trial_expires_at, subscription_tier")
+    .select("trial_status, trial_expires_at, subscription_tier, billing_status, stripe_subscription_id")
     .eq("id", userId)
     .maybeSingle();
   const status = (prof as any)?.trial_status as string | null;
@@ -486,8 +540,11 @@ export async function startTrialForChannelChoice(
     return { started: false, alreadyActive: true, expiresAt: (prof as any)?.trial_expires_at ?? undefined };
   }
   if (status) return { started: false, alreadyActive: false, reason: "trial_already_used" };
+  // Conta já paga não recebe trial: no fim acabaria por descer um plano comprado.
+  if (isPaidAccount(prof)) return { started: false, alreadyActive: false, reason: "already_paid" };
 
   const plan = normalizeTier((prof as any)?.subscription_tier);
+
   const expiresAt = new Date(now.getTime() + TRIAL_DAYS * DAY).toISOString();
   const patch: Record<string, unknown> = {
     trial_started_at: now.toISOString(),
