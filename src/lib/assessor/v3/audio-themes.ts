@@ -172,6 +172,16 @@ function coerceNextAction(raw: any): ThemeNextAction | null {
   };
 }
 
+
+function coerceVisit(raw: any): ThemeVisit | null {
+  const v: ThemeVisit = {
+    reaction: str(raw?.reaction, 300),
+    objection: str(raw?.objection, 300),
+    comparison_zone: str(raw?.comparison_zone, 120),
+  };
+  return v.reaction || v.objection || v.comparison_zone ? v : null;
+}
+
 export function coerceThemes(raw: any): AudioTheme[] {
   const list = Array.isArray(raw?.themes) ? raw.themes : Array.isArray(raw) ? raw : [];
   const out: AudioTheme[] = [];
@@ -187,7 +197,9 @@ export function coerceThemes(raw: any): AudioTheme[] {
       property: coerceProperty(t?.property),
       opportunity: coerceOpportunity(t?.opportunity),
       next_action: coerceNextAction(t?.next_action),
+      visit: coerceVisit(t?.visit),
       note: str(t?.note, 400),
+
       confidential: t?.confidential === true,
       confidence: Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0.7,
     });
