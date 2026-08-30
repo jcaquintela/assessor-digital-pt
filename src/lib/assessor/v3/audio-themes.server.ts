@@ -461,7 +461,8 @@ async function execTheme(
         summary,
         person_id: personId,
         property_id: propertyId,
-        interaction_type: theme.confidential ? "nota" : "facto",
+        interaction_type: theme.confidential ? "nota" : "visita",
+
         is_confidential: theme.confidential === true,
       });
       if (res.ok) {
