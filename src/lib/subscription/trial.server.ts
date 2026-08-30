@@ -426,14 +426,22 @@ export async function expireDueTrials(
   for (const r of rows) {
     if (new Date(r.trial_expires_at).getTime() > now.getTime()) continue;
     const fromTier = normalizeTier(r.subscription_tier);
+    const explicit = Boolean(r.trial_choice && readTrialChoice(r.trial_choice));
     const choice = (readTrialChoice(r.trial_choice ?? "") ?? TRIAL_DEFAULT_CHOICE) as TrialChoice;
-    const downgrade = choice === "base";
+
+    // Piso de expiração: sem escolha explícita, nunca descer abaixo do plano
+    // que a conta já tinha antes do trial (ex.: conta Team que recebeu trial
+    // por engano não pode acabar em Base).
+    const tierBefore = explicit ? null : await loadTrialTierBefore(supabaseAdmin, r.id);
+    const floored = Boolean(tierBefore && tierAtLeast(tierBefore, choice) && tierBefore !== choice);
+    const applied: SubscriptionTier = floored ? (tierBefore as SubscriptionTier) : choice;
+    const downgrade = applied === "base";
 
     const { error } = await supabaseAdmin
       .from("profiles")
       .update({
-        subscription_tier: choice,
-        trial_status: choice === "base" ? "expired" : "converted",
+        subscription_tier: applied,
+        trial_status: downgrade ? "expired" : "converted",
         readonly_until: downgrade
           ? new Date(now.getTime() + READONLY_ARCHIVE_DAYS * DAY).toISOString()
           : null,
@@ -454,22 +462,24 @@ export async function expireDueTrials(
       r.id,
       downgrade
         ? "Período experimental terminado; plano Base aplicado. Dados mantidos."
-        : `Período experimental terminado; plano ${choice} aplicado.`,
+        : `Período experimental terminado; plano ${tierLabel(applied)} aplicado.`,
       {
         before: { subscription_tier: fromTier, trial_status: "active" },
-        after: { subscription_tier: choice },
+        after: { subscription_tier: applied },
         choice,
-        explicit_choice: Boolean(r.trial_choice),
+        applied_tier: applied,
+        tier_before_floor: floored ? tierBefore : null,
+        explicit_choice: explicit,
         readonly_archive_days: downgrade ? READONLY_ARCHIVE_DAYS : null,
         primary_channel: primary,
       },
     );
     await recordSubscriptionEvent(supabaseAdmin, {
       userId: r.id,
-      event: trialOutcomeEvent(choice),
+      event: trialOutcomeEvent(applied),
       fromTier,
-      toTier: choice,
-      source: r.trial_choice ? "trial_choice" : "trial_default",
+      toTier: applied,
+      source: explicit ? "trial_choice" : floored ? "trial_tier_floor" : "trial_default",
     });
 
     // Aviso curto — nada do que ficou organizado se perde.
@@ -478,15 +488,16 @@ export async function expireDueTrials(
       const name = firstName(r.name);
       const text = downgrade
         ? trialExpiredText(name)
-        : planActivatedText(name || "Olá", choice === "pro" ? "Pro" : "Consultor");
+        : planActivatedText(name || "Olá", tierLabel(applied));
       const { sendOutbound } = await import("@/lib/assessor/primary-channel.server");
       await sendOutbound(supabaseAdmin, r.id, text);
     } catch (err) {
       console.error("[trial] aviso de fim falhou:", err);
     }
 
-    expired.push({ userId: r.id, fromTier, toTier: choice, primaryChannel: primary });
+    expired.push({ userId: r.id, fromTier, toTier: applied, primaryChannel: primary });
   }
+
 
   return { expired };
 }
