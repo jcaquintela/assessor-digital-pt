@@ -12,6 +12,7 @@ import {
   BRIEFING_GRACE_MINUTES,
   BRIEFING_LEAD_MINUTES,
   briefingTemplateParams,
+  briefingTemplateParamsV2,
   formatJointBriefing,
   groupNearbyEvents,
   hasAnyBriefingContent,
@@ -318,7 +319,8 @@ export async function sendMeetingBriefing(
       const { data: prof } = await supabase
         .from("profiles").select("name").eq("id", event.user_id).maybeSingle();
       const firstName = String((prof as any)?.name ?? "").split(" ")[0] ?? "";
-      const params = briefingTemplateParams(
+      const build = binding.param_count >= 5 ? briefingTemplateParamsV2 : briefingTemplateParams;
+      const params = build(
         event, brief, firstName, eventCtx, pendings, parts.slice(1),
       ).slice(0, Math.max(0, binding.param_count));
 

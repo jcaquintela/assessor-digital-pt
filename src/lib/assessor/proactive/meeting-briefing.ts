@@ -357,3 +357,32 @@ export function briefingTemplateParams(
   ];
 }
 
+
+/**
+ * Parâmetros do template v2 (5 variáveis): nome, compromisso (+ seguintes),
+ * resumo, pendências, fecho com referência ao painel (e aviso de corte).
+ */
+export function briefingTemplateParamsV2(
+  ev: BriefingEvent,
+  brief: PersonBrief | null,
+  consultantFirstName: string,
+  ctx?: EventBriefContext | null,
+  pendings?: BriefingPendings | null,
+  companions: BriefingPart[] = [],
+): string[] {
+  const [name, meeting] = briefingTemplateParams(
+    ev, brief, consultantFirstName, ctx, pendings, companions,
+  );
+  const summary = [
+    brief ? formatPersonBrief(brief).replace(/^.*?\n/, "") : "",
+    formatEventContext(ctx),
+  ].filter((s) => s.trim()).join("\n");
+  const pend = [
+    formatPendings(pendings),
+    ...companions.map((p) => formatPendings(p.pendings)),
+  ].filter((s) => s.trim()).join("\n");
+
+  const third = flattenForTemplate(summary, 700) || "sem notas relevantes";
+  const fourth = flattenForTemplate(pend, 500) || "nada por resolver";
+  return [name!, meeting!, third, fourth, TEMPLATE_PANEL_HINT];
+}
