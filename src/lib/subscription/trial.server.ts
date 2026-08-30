@@ -14,7 +14,7 @@
 // Ao descer de plano, a conta entra em arquivo acessível em modo leitura
 // durante 90 dias; registos estruturados não expiram nunca.
 
-import { normalizeTier } from "./tiers";
+import { normalizeTier, tierAtLeast, tierLabel, type SubscriptionTier } from "./tiers";
 import { recordSubscriptionEvent, trialOutcomeEvent } from "./events.server";
 
 export const TRIAL_DAYS = 14;
