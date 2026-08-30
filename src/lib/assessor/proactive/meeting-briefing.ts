@@ -1,4 +1,4 @@
-// Cartela de Briefing: 15 minutos antes de um compromisso com pessoa
+// Cartela de Briefing: 30 minutos antes de um compromisso com pessoa
 // associada, o Afonso manda sozinho o que interessa saber sobre ela.
 //
 // Este ficheiro é puro (sem I/O): decide o que é um compromisso elegível e
@@ -10,9 +10,20 @@ import { formatPersonBrief, type PersonBrief } from "../v3/person-brief";
 import { classifyEvent } from "../event-class";
 import { STAGE_LABEL, type DealStage } from "@/lib/deals/stages";
 
-export const BRIEFING_LEAD_MINUTES = 15;
-/** Tolerância para trás: cobre corridas atrasadas sem mandar tarde demais. */
-export const BRIEFING_GRACE_MINUTES = 5;
+/** Meia hora antes: dá tempo de ler e ainda de agir antes de entrar. */
+export const BRIEFING_LEAD_MINUTES = 30;
+/**
+ * Tolerância para trás: o cron corre de 5 em 5 minutos, por isso 8 minutos
+ * cobrem uma corrida falhada (5) mais o atraso normal do agendador, sem
+ * mandar a cartela já com o compromisso a decorrer.
+ */
+export const BRIEFING_GRACE_MINUTES = 8;
+/**
+ * Dois compromissos elegíveis a menos disto um do outro tratam-se numa só
+ * cartela conjunta — senão a preparação do segundo chega durante o primeiro.
+ */
+export const BRIEFING_OVERLAP_MINUTES = 45;
+
 
 export interface BriefingEvent {
   id: string;
