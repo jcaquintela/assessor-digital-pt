@@ -12,6 +12,7 @@ import { formatPreEventNudge, isPreEventDue } from "./pre-event";
 import { lisbonYmd, lisbonHhMm } from "../lisbon-day";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
+export const EVENING_REVIEW_PREFIX = "supreme_evening_review:";
 
 /**
  * O briefing da manhã tem de ser ÚNICO por dia. Existem dois emissores
@@ -117,6 +118,7 @@ export async function generateSupremeNudges(
     morning_briefing_enabled: true, morning_time: "08:00",
     morning_days: [1, 2, 3, 4, 5],
     quiet_hours_start: "22:00", quiet_hours_end: "07:30",
+    evening_wrap_enabled: true, evening_time: "19:00",
     max_daily_nudges: 6,
   };
 
