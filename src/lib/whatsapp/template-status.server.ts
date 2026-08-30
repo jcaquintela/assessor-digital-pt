@@ -198,3 +198,48 @@ export async function submitCheckinTemplateV2(): Promise<{
     ],
   });
 }
+/**
+ * Submete o template de briefing v2 (5 variáveis + botão para o painel).
+ *
+ * Corpo aprovado pelo produto (Utility, pt_PT):
+ * "Olá {{1}}. Daqui a pouco: {{2}}. O que interessa saber: {{3}}.
+ *  Por resolver: {{4}}. {{5}} Bom trabalho."
+ *
+ * {{1}} nome · {{2}} compromisso (+ compromissos seguintes) · {{3}} resumo
+ * {{4}} pendências · {{5}} fecho/aviso de corte.
+ */
+export async function submitMeetingBriefingTemplateV2(): Promise<{
+  ok: boolean;
+  name: string;
+  error?: string;
+  meta?: any;
+}> {
+  return submitTemplateToMeta({
+    name: "afonso_briefing_compromisso_v2",
+    language: "pt_PT",
+    category: "UTILITY",
+    components: [
+      {
+        type: "BODY",
+        text:
+          "Olá {{1}}. Daqui a pouco: {{2}}. O que interessa saber: {{3}}. " +
+          "Por resolver: {{4}}. {{5}} Bom trabalho.",
+        example: {
+          body_text: [[
+            "Júlio",
+            "visita ao T3 da Boavista, com Ana Silva (e mais 1 logo a seguir: reunião com João Pires)",
+            "Comprador · orçamento até 320.000 EUR · última nota: quer estacionamento",
+            "rascunho de email por enviar · falta a caderneta predial",
+            "Mais detalhe no painel: app.meuafonso.com/hoje",
+          ]],
+        },
+      },
+      {
+        type: "BUTTONS",
+        buttons: [
+          { type: "URL", text: "Abrir painel", url: "https://app.meuafonso.com/hoje" },
+        ],
+      },
+    ],
+  });
+}

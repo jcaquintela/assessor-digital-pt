@@ -1,0 +1,2 @@
+insert into public.product_updates (released_on, title, description, category, is_published)
+values (current_date, 'Cartela de briefing mais completa', 'Quando tens compromissos seguidos, o aviso passa a mencionar também o que vem logo a seguir, indica sempre que há mais detalhe no painel e avisa quando o texto foi cortado. Se o WhatsApp não puder entregar o aviso, ele segue pelo Telegram em vez de se perder.', 'melhoria', true);

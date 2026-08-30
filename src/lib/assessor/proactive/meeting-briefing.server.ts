@@ -12,6 +12,7 @@ import {
   BRIEFING_GRACE_MINUTES,
   BRIEFING_LEAD_MINUTES,
   briefingTemplateParams,
+  briefingTemplateParamsV2,
   formatJointBriefing,
   groupNearbyEvents,
   hasAnyBriefingContent,
@@ -184,6 +185,7 @@ async function loadDueEvents(
   // sobrepor-se à hora de `due_date`; o filtro fino é feito em memória.
   const from = new Date(nowMs - 26 * 3600_000).toISOString();
   const to = new Date(nowMs + 26 * 3600_000).toISOString();
+
   let q = supabase
     .from("follow_ups")
     .select(
@@ -289,6 +291,7 @@ export async function sendMeetingBriefing(
   const anyContent = parts.some((p) => hasAnyBriefingContent(p.brief, p.ctx, p.pendings));
   if (!anyContent) return abort("nothing_to_say");
 
+
   const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
   const target = await resolveOutboundTarget(supabase, event.user_id);
   if (!target) return abort("no_channel");
@@ -304,13 +307,23 @@ export async function sendMeetingBriefing(
       // o que estiver escolhido no admin; sem escolha activa, silêncio.
       const { resolveUsableBinding } = await import("@/lib/whatsapp/template-binding.server");
       const binding = await resolveUsableBinding(supabase, "meeting_briefing");
-      if (!binding) return abort("no_approved_template");
+      if (!binding) {
+        // Falha segura: nunca silêncio. Telegram ligado na mesma conta →
+        // entrega por lá; sem Telegram → o problema fica visível no admin.
+        const fb = await deliverBriefingFallback(supabase, event.user_id, text);
+        if (!fb.delivered) return abort("no_approved_template");
+        if (opts.markSent !== false) await markBriefingSent(supabase, event, "telegram", text, nowMs);
+        return { sent: true, via: "text" };
+      }
 
       const { data: prof } = await supabase
         .from("profiles").select("name").eq("id", event.user_id).maybeSingle();
       const firstName = String((prof as any)?.name ?? "").split(" ")[0] ?? "";
-      const params = briefingTemplateParams(event, brief, firstName, eventCtx, pendings)
-        .slice(0, Math.max(0, binding.param_count));
+      const build = binding.param_count >= 5 ? briefingTemplateParamsV2 : briefingTemplateParams;
+      const params = build(
+        event, brief, firstName, eventCtx, pendings, parts.slice(1),
+      ).slice(0, Math.max(0, binding.param_count));
+
 
       const { meetingBriefingTemplatePayload } = await import("./templates");
       const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
@@ -435,3 +448,47 @@ export async function runMeetingBriefingTick(
 
 
 export { BRIEFING_LEAD_MINUTES, BRIEFING_GRACE_MINUTES };
+/**
+ * Falha segura de canal: o template de briefing não está aprovado/activo.
+ * Nunca cair em silêncio — se a mesma conta tiver Telegram ligado, entrega
+ * por lá; caso contrário, regista o problema em `admin_audit_logs` para
+ * ficar visível no admin.
+ */
+export async function deliverBriefingFallback(
+  supabase: any,
+  userId: string,
+  text: string,
+): Promise<{ delivered: boolean; via?: "telegram" }> {
+  let telegramId: string | null = null;
+  try {
+    const { loadChannelAvailability } = await import("@/lib/assessor/primary-channel.server");
+    const av = await loadChannelAvailability(supabase, userId);
+    telegramId = av.telegram ?? null;
+  } catch { telegramId = null; }
+
+  if (telegramId) {
+    try {
+      const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+      const r = await sendReplyForChannel("telegram", telegramId, text);
+      if (r?.ok) return { delivered: true, via: "telegram" };
+    } catch { /* cai no registo abaixo */ }
+  }
+
+  try {
+    await supabase.from("admin_audit_logs").insert({
+      admin_user_id: null,
+      action: "briefing.template_unavailable",
+      target_user_id: userId,
+      resource_type: "profile",
+      resource_id: userId,
+      reason: "Cartela de briefing fora da janela de 24h sem template WhatsApp aprovado/activo.",
+      metadata: {
+        source: "meeting-briefing",
+        had_telegram_fallback: Boolean(telegramId),
+        preview: String(text ?? "").slice(0, 300),
+      },
+    } as never);
+  } catch { /* registo é bónus, nunca rebenta o runner */ }
+
+  return { delivered: false };
+}

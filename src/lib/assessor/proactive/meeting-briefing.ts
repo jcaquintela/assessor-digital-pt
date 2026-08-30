@@ -281,20 +281,41 @@ export function groupNearbyEvents<T extends BriefingEvent & { user_id?: string }
   return groups;
 }
 
+/** Painel do consultor — referência sempre presente nos parâmetros. */
+export const BRIEFING_PANEL_URL = "app.meuafonso.com/hoje";
+/** Aviso de corte: a truncagem nunca é silenciosa. */
+export const TEMPLATE_TRUNCATION_NOTE = `… (resto no painel: ${BRIEFING_PANEL_URL})`;
+/** Sufixo do último parâmetro: há sempre mais detalhe no painel. */
+export const TEMPLATE_PANEL_HINT = `Mais detalhe no painel: ${BRIEFING_PANEL_URL}`;
+
 /** Uma linha só, sem quebras nem marcações — exigência da Meta nos params. */
-export function flattenForTemplate(text: string): string {
-  return String(text ?? "")
+export function flattenForTemplate(text: string, limit = 900): string {
+  const flat = String(text ?? "")
     .replace(/[*_~`]/g, "")
     .replace(/\s*\n+\s*/g, " · ")
     .replace(/\s{2,}/g, " ")
     .replace(/^[-·\s]+/, "")
-    .trim()
-    .slice(0, 900);
+    .trim();
+  if (flat.length <= limit) return flat;
+  const budget = Math.max(0, limit - TEMPLATE_TRUNCATION_NOTE.length - 1);
+  return `${flat.slice(0, budget).replace(/[\s·-]+$/, "")} ${TEMPLATE_TRUNCATION_NOTE}`.trim();
+}
+
+/** "(e mais 1 logo a seguir: reunião com João Pires)" */
+export function companionsMention(companions: BriefingPart[]): string {
+  const list = companions.filter(Boolean);
+  if (!list.length) return "";
+  const labels = list.map((p) =>
+    `${String(p.event.title ?? "").trim()}${p.brief ? ` com ${p.brief.name}` : ""}`.trim(),
+  ).filter(Boolean);
+  if (!labels.length) return "";
+  return `(e mais ${labels.length} logo a seguir: ${labels.join("; ")})`;
 }
 
 /**
  * Parâmetros do template de briefing, pela ordem {{1}}, {{2}}, {{3}}:
- * nome do consultor, compromisso (título + pessoa), resumo numa linha.
+ * nome do consultor, compromisso (título + pessoa + compromissos seguintes),
+ * resumo numa linha terminado sempre com a referência ao painel.
  */
 export function briefingTemplateParams(
   ev: BriefingEvent,
@@ -302,20 +323,66 @@ export function briefingTemplateParams(
   consultantFirstName: string,
   ctx?: EventBriefContext | null,
   pendings?: BriefingPendings | null,
+  companions: BriefingPart[] = [],
 ): string[] {
-  const meeting = `${String(ev.title).trim()}${brief ? `, com ${brief.name}` : ""}`;
+  const mention = companionsMention(companions);
+  const meeting =
+    `${String(ev.title).trim()}${brief ? `, com ${brief.name}` : ""}` +
+    (mention ? ` ${mention}` : "");
   const summary = [
     brief ? formatPersonBrief(brief).replace(/^.*?\n/, "") : "",
     formatEventContext(ctx),
     formatPendings(pendings),
+    ...companions.map((p) => {
+      const block = [
+        p.brief ? formatPersonBrief(p.brief) : "",
+        formatEventContext(p.ctx),
+        formatPendings(p.pendings),
+      ].filter((s) => s.trim()).join("\n");
+      return block ? `${String(p.event.title ?? "").trim()}: ${block}` : "";
+    }),
   ]
     .filter((s) => s.trim())
     .join("\n");
 
+  const budget = 900 - TEMPLATE_PANEL_HINT.length - 2;
+  const third =
+    flattenForTemplate(summary, budget) ||
+    flattenForTemplate(brief ? formatPersonBrief(brief) : String(ev.title ?? ""), budget);
+
   return [
     flattenForTemplate(consultantFirstName) || "Olá",
     flattenForTemplate(meeting),
-    flattenForTemplate(summary) ||
-      flattenForTemplate(brief ? formatPersonBrief(brief) : String(ev.title ?? "")),
+    `${third}${third ? " " : ""}${TEMPLATE_PANEL_HINT}`.trim(),
   ];
+}
+
+
+/**
+ * Parâmetros do template v2 (5 variáveis): nome, compromisso (+ seguintes),
+ * resumo, pendências, fecho com referência ao painel (e aviso de corte).
+ */
+export function briefingTemplateParamsV2(
+  ev: BriefingEvent,
+  brief: PersonBrief | null,
+  consultantFirstName: string,
+  ctx?: EventBriefContext | null,
+  pendings?: BriefingPendings | null,
+  companions: BriefingPart[] = [],
+): string[] {
+  const [name, meeting] = briefingTemplateParams(
+    ev, brief, consultantFirstName, ctx, pendings, companions,
+  );
+  const summary = [
+    brief ? formatPersonBrief(brief).replace(/^.*?\n/, "") : "",
+    formatEventContext(ctx),
+  ].filter((s) => s.trim()).join("\n");
+  const pend = [
+    formatPendings(pendings),
+    ...companions.map((p) => formatPendings(p.pendings)),
+  ].filter((s) => s.trim()).join("\n");
+
+  const third = flattenForTemplate(summary, 700) || "sem notas relevantes";
+  const fourth = flattenForTemplate(pend, 500) || "nada por resolver";
+  return [name!, meeting!, third, fourth, TEMPLATE_PANEL_HINT];
 }
