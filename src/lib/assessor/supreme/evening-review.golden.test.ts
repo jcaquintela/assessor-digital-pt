@@ -13,6 +13,7 @@ import {
   detectEveningReviewQuery,
   hasEveningSignal,
   CALM_DAY_REPLY,
+  normalizeEveningDetail,
 } from "./evening-review";
 import { generateSupremeNudges, EVENING_REVIEW_PREFIX } from "./briefing.server";
 import { detectDayStateQuery } from "../v3/deterministic.server";
@@ -143,6 +144,24 @@ describe("resumo de fim de dia", () => {
 
     const hoje = await computePriorities(sup as any, USER, { limit: 5, now: NOW });
     expect(hoje.map((p) => p.subject_id)).not.toContain("f3");
+  });
+
+  it("7) nível de detalhe escolhido pelo consultor muda o tamanho do resumo", async () => {
+    const sup = makeFakeSupabase(activeDaySeed());
+    const snap = await buildDaySnapshot(sup as any, USER, { lens: "fim_de_dia", now: NOW });
+
+    const curto = composeEveningReview(snap, { detail: "curto" });
+    const normal = composeEveningReview(snap, { detail: "normal" });
+    const detalhado = composeEveningReview(snap, { detail: "detalhado" });
+
+    expect(curto.split("\n")).toHaveLength(1);
+    expect(normal.length).toBeGreaterThan(curto.length);
+    expect(detalhado).toContain("Visitas:");
+    expect(detalhado.length).toBeGreaterThanOrEqual(normal.length);
+    // Valor inválido ou ausente cai em "normal" — nada muda para quem não escolheu.
+    expect(normalizeEveningDetail(undefined)).toBe("normal");
+    expect(normalizeEveningDetail("gigante")).toBe("normal");
+    expect(composeEveningReview(snap)).toBe(normal);
   });
 
   it("6) respeita quiet hours e cap diário — sem caminho paralelo", async () => {
