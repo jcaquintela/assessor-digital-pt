@@ -68,6 +68,7 @@ export const NAV_MOBILE: NavEntry[] = [
   { to: "/pessoas", label: "Pessoas", icon: Users },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/calendario", label: "Agenda", icon: CalendarDays },
+  { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
   NAV_MORE_ENTRY,
 ];
 
@@ -77,7 +78,7 @@ export const NAV_MORE_V2: NavEntry[] = [
   { to: "/rotinas", label: "Rotinas", icon: Repeat },
   { to: "/interacoes", label: "Interações", icon: MessagesSquare },
   { to: "/comunicacao", label: "Comunicação", icon: Mail },
-  { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
+  // Drive Inteligente saiu daqui: está na barra principal (sem duplicação).
 
   { to: "/negocio", label: "Faturação", icon: Wallet },
   { to: "/diversos", label: "Diversos", icon: Inbox },
