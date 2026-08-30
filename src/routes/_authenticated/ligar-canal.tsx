@@ -12,6 +12,9 @@ import { getWhatsAppLink, startWhatsAppLink } from "@/lib/whatsapp/link.function
 import { startWhatsAppTrial } from "@/lib/subscription/trial.functions";
 import { CalendarStep, EmailStep } from "@/components/canais/onboarding-setup";
 import { nextOnboardingStep, type OnboardingStep } from "@/lib/onboarding/steps";
+import { useEffectiveTier } from "@/lib/subscription/use-effective-tier";
+import { canUseWhatsApp, tierLabel } from "@/lib/subscription/tiers";
+
 
 export const Route = createFileRoute("/_authenticated/ligar-canal")({
   head: () => ({
