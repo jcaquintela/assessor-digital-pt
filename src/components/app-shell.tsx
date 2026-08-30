@@ -174,13 +174,16 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
                 key={to}
                 to={to}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-2.5 text-[11px]",
+                  "flex min-w-0 flex-col items-center gap-1 px-0.5 py-2.5 text-[11px]",
                   active ? "font-semibold" : "c-muted",
                 )}
                 style={active ? { color: "var(--brass-dark)" } : undefined}
+                title={label}
               >
-                <Icon className="h-5 w-5" />
-                <span>{label}</span>
+                <Icon className="h-5 w-5 shrink-0" />
+                {/* Com 6 áreas, rótulos longos ("Drive Inteligente") têm de
+                    encolher em vez de empurrar a barra para fora do ecrã. */}
+                <span className="w-full truncate text-center">{label}</span>
               </Link>
             );
           })}
