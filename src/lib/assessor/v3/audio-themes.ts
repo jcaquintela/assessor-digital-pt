@@ -321,7 +321,16 @@ export interface ThemeWriteResult {
   opportunityLinked?: boolean;
   followUpTitle?: string | null;
   noteSaved?: boolean;
+  /** Visita registada no histórico (resumo do que o cliente disse). */
+  visitSaved?: boolean;
+  /** Rascunho de seguimento pós-visita, para o consultor copiar. */
+  visitDraft?: string | null;
+  /** Bloco de comparáveis, já com o enquadramento obrigatório. */
+  visitComparables?: string | null;
+  /** Visita sem substância: em vez de rascunho genérico, pergunta-se. */
+  visitAsk?: boolean;
 }
+
 
 /** Diz o quê + onde, sem prometer envios. */
 export function formatThemesDone(results: ThemeWriteResult[]): string {
