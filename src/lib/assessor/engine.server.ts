@@ -739,6 +739,9 @@ async function processAssessorMessageInner(input: EngineInput): Promise<EngineOu
         const updateData: any = {};
         if (correction.date) updateData.due_date = correction.date;
         if (correction.time) updateData.due_time = correction.time;
+        // Hora corrigida → preparação volta a ficar por fazer.
+        if (correction.date || correction.time) updateData.briefing_sent_at = null;
+
         const { data: updated, error } = await supabase
           .from("follow_ups")
           .update(updateData)
