@@ -212,7 +212,10 @@ export async function sendMeetingBriefing(
     forceTemplate?: boolean;
     markSent?: boolean;
     testId?: string | null;
+    /** Compromissos seguidos (<45 min) que entram na mesma cartela. */
+    companions?: Array<BriefingEvent & { user_id: string }>;
   } = {},
+
 ): Promise<{
   sent: boolean;
   reason?: string;
