@@ -163,7 +163,7 @@ export function formatPendings(p?: BriefingPendings | null): string {
     ...(p!.emailDrafts ?? []).map((t) => `- Email por enviar: ${t}`),
     ...(p!.missingDocs ?? []).map((t) => `- Documento em falta: ${t}`),
     ...(p!.deadlines ?? []).map((t) => `- Prazo: ${t}`),
-  ].filter((l) => l.trim().length > 22);
+  ].filter((l) => l.split(":").slice(1).join(":").trim().length > 0);
   if (!lines.length) return "";
   return `Pendências:\n${lines.slice(0, 5).join("\n")}`;
 }
