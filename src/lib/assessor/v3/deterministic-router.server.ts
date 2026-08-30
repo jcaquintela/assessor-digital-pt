@@ -302,11 +302,19 @@ const eveningReviewCase: RouterCase = async ({ supabase, userId, channel, trimme
   let okReview = true;
   try {
     const { buildDaySnapshot } = await import("../supreme/day-snapshot.server");
-    const { composeEveningReview } = await import("../supreme/evening-review");
+    const { composeEveningReview, normalizeEveningDetail } = await import("../supreme/evening-review");
     const snapshot = await buildDaySnapshot(supabase, userId, { lens: "fim_de_dia" });
     const { data: prof } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
+    const { data: prefs } = await supabase
+      .from("consultant_preferences")
+      .select("evening_review_detail")
+      .eq("user_id", userId)
+      .maybeSingle();
     const firstName = String((prof as any)?.name ?? "").split(" ")[0] ?? "";
-    reply = composeEveningReview(snapshot, { firstName });
+    reply = composeEveningReview(snapshot, {
+      firstName,
+      detail: normalizeEveningDetail((prefs as any)?.evening_review_detail),
+    });
   } catch {
     okReview = false;
     reply = READ_FAILED_REPLY;
