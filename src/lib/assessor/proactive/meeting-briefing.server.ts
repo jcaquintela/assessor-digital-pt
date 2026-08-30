@@ -310,7 +310,7 @@ export async function sendMeetingBriefing(
       const { data: prof } = await supabase
         .from("profiles").select("name").eq("id", event.user_id).maybeSingle();
       const firstName = String((prof as any)?.name ?? "").split(" ")[0] ?? "";
-      const params = briefingTemplateParams(event, brief, firstName, eventCtx)
+      const params = briefingTemplateParams(event, brief, firstName, eventCtx, pendings)
         .slice(0, Math.max(0, binding.param_count));
 
       const { meetingBriefingTemplatePayload } = await import("./templates");
