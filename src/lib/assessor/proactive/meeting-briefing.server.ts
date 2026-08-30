@@ -13,7 +13,6 @@ import {
   BRIEFING_LEAD_MINUTES,
   briefingTemplateParams,
   formatJointBriefing,
-  formatMeetingBriefing,
   groupNearbyEvents,
   hasAnyBriefingContent,
   isBriefingEligible,
