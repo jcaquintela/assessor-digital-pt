@@ -448,6 +448,51 @@ async function execTheme(
     }
   }
 
+  // 6) Visita — regista o que ficou e prepara o seguimento para copiar.
+  //    O rascunho só nasce AQUI, depois do "sim": antes disso não se escreve
+  //    texto em nome do consultor.
+  if (theme.kind === "visit") {
+    const { visitHasSubstance, visitSummaryText } = await import("./visit-followup");
+    const summary = visitSummaryText(theme);
+    if (summary && summary !== theme.note) {
+      const res = await TOOL_REGISTRY.save_interaction(ctx, {
+        summary,
+        person_id: personId,
+        property_id: propertyId,
+        interaction_type: theme.confidential ? "nota" : "facto",
+        is_confidential: theme.confidential === true,
+      });
+      if (res.ok) {
+        const id = (res.data as any)?.interaction?.id ?? null;
+        if (id) records.push({ table: "interactions", id: String(id) });
+        result.visitSaved = true;
+      }
+    }
+    // Estado do lead: só quando há conteúdo real para guardar.
+    if (personId && (visitHasSubstance(theme) || theme.next_action?.text)) {
+      try {
+        await TOOL_REGISTRY.update_person(ctx, {
+          id: personId,
+          summary,
+          next_action: theme.next_action?.text ?? null,
+          next_action_date: theme.next_action?.date ?? null,
+        });
+      } catch { /* o registo da visita já está feito */ }
+    }
+    if (visitHasSubstance(theme)) {
+      const { buildVisitFollowUp } = await import("./visit-followup.server");
+      const out = await buildVisitFollowUp(ctx, theme, {
+        personId,
+        personName: result.personName ?? theme.person?.name ?? null,
+        propertyId,
+      });
+      result.visitDraft = out.draft;
+      result.visitComparables = out.comparables;
+    } else {
+      result.visitAsk = true;
+    }
+  }
+
   return result;
 }
 
@@ -482,5 +527,19 @@ export async function executeAudioThemes(
   await markPendingActionStatus(ctx.supabase, pending.id, anything ? "executed" : "failed", {
     error_message: anything ? null : "audio_themes_no_records",
   });
-  return formatThemesDone(results);
+
+  const base = formatThemesDone(results);
+  // Um áudio traz no máximo uma visita relevante — é essa que ganha bolhas.
+  const visitIndex = payload.themes.findIndex((t) => t?.kind === "visit");
+  const visit = visitIndex >= 0 ? results[visitIndex] : undefined;
+  if (!visit || (!visit.visitDraft && !visit.visitAsk)) return base;
+  const { composeVisitReply, visitReceiptLine } = await import("./visit-followup");
+  return composeVisitReply({
+    base,
+    receipt: visitReceiptLine(payload.themes[visitIndex]!, visit.personName ?? null),
+    draft: visit.visitDraft ?? null,
+    comparables: visit.visitComparables ?? null,
+    ask: visit.visitAsk === true,
+  });
 }
+
