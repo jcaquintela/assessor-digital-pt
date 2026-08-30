@@ -27,6 +27,9 @@ const ROTAS = [
   { nome: "Seguimentos", url: "/seguimentos" },
   { nome: "Imóveis", url: "/imoveis" },
   { nome: "Agenda", url: "/calendario" },
+  // Drive Inteligente voltou à barra principal (6 itens): a barra mais cheia
+  // tem de aguentar os mesmos ecrãs estreitos.
+  { nome: "Drive Inteligente", url: "/drive" },
 ];
 
 async function autenticar(page: Page) {
