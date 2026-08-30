@@ -41,6 +41,8 @@ import { useDesignV2 } from "@/lib/design/use-design-v2";
 import { Lightbulb, ArrowRight, MapPin } from "lucide-react";
 import { HojeSumGrid } from "@/components/hoje/sum-grid";
 import { OpportunityAlertsCard } from "@/components/hoje/opportunity-alerts";
+import { VisitFollowUpsCard } from "@/components/hoje/visit-followups";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { isDealActive } from "@/lib/deals/stages";
