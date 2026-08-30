@@ -75,11 +75,13 @@ describe("trial ao escolher WhatsApp no arranque", () => {
     expect(s.state.profiles[0].subscription_tier).toBe("base");
   });
 
-  it("mantém o plano pago de quem já é Consultor/Pro", async () => {
+  it("não inicia trial em conta já paga (Pro/Team) — mantém o plano intacto", async () => {
     const s = db({ subscription_tier: "pro" });
     const r = await startTrialForChannelChoice(s as any, USER, { now: NOW });
-    expect(r.started).toBe(true);
+    expect(r.started).toBe(false);
+    expect(r.reason).toBe("already_paid");
     expect(s.state.profiles[0].subscription_tier).toBe("pro");
-    expect(s.state.profiles[0].trial_tier).toBe("consultor");
+    expect(s.state.profiles[0].trial_status ?? null).toBeNull();
   });
+
 });
