@@ -81,7 +81,14 @@ function LigarCanalPage() {
           capacidades. Podes mudar depois nas Definições.
         </p>
 
-        {choice === null && <ChannelChoice onChoose={setChoice} />}
+        {choice === null && (
+          <ChannelChoice
+            onChoose={setChoice}
+            planoPago={planoPago}
+            nomePlano={planoPago ? tierLabel(tier) : undefined}
+          />
+        )}
+
         {choice === "whatsapp" && (
           <WhatsAppFlow onBack={() => setChoice(null)} onDone={() => goto("canal")} />
         )}
