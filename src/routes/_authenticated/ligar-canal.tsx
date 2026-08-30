@@ -34,6 +34,10 @@ function LigarCanalPage() {
   const navigate = useNavigate();
   const [choice, setChoice] = useState<"whatsapp" | "telegram" | null>(null);
   const [step, setStep] = useState<OnboardingStep>("canal");
+  // Conta já paga (WhatsApp incluído) nunca vê a oferta de 14 dias.
+  const tier = useEffectiveTier().data?.tier ?? null;
+  const planoPago = canUseWhatsApp(tier);
+
   const goto = (from: OnboardingStep) => {
     const next = nextOnboardingStep(from);
     if (next === "fim") { navigate({ to: "/", replace: true }); return; }
