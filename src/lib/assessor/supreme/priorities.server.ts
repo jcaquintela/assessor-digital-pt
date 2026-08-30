@@ -258,8 +258,10 @@ export async function computePriorities(
     });
   }
 
-  // Oportunidades sem próxima acção OU com next_action_date passada
-  for (const o of ((opps as any[]) ?? [])) {
+  // Oportunidades sem próxima acção OU com next_action_date passada.
+  // Numa janela explícita (ex.: amanhã) não entram: não são itens de um dia
+  // de calendário e duplicariam o que já apareceu hoje.
+  for (const o of (windowStartYmd ? [] : ((opps as any[]) ?? []))) {
     // A fase manda: negócio concluído nunca é prioridade de hoje.
     if (!isDealActive(o)) continue;
     const noAction = !o.next_action;
@@ -299,6 +301,8 @@ export async function computePriorities(
   try {
     const { deadlinesInNoticeWindow } = await import("@/lib/deals/deadlines.server");
     for (const d of await deadlinesInNoticeWindow(supabase, userId, now)) {
+      const dYmd = String(d.due_date).slice(0, 10);
+      if (windowStartYmd && (dYmd < windowStartYmd || dYmd > windowEndYmd)) continue;
       items.push({
         subject_type: "deal_deadline",
         subject_id: d.id,
