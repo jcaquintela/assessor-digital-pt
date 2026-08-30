@@ -108,6 +108,7 @@ import { Route as ApiPublicHooksWhatsappDisplayNameRouteImport } from './routes/
 import { Route as ApiPublicHooksTrialLifecycleRouteImport } from './routes/api/public/hooks/trial-lifecycle'
 import { Route as ApiPublicHooksTelegramRetentionRouteImport } from './routes/api/public/hooks/telegram-retention'
 import { Route as ApiPublicHooksSubmitCheckinTemplateRouteImport } from './routes/api/public/hooks/submit-checkin-template'
+import { Route as ApiPublicHooksSubmitBriefingTemplateV2RouteImport } from './routes/api/public/hooks/submit-briefing-template-v2'
 import { Route as ApiPublicHooksProactiveTickRouteImport } from './routes/api/public/hooks/proactive-tick'
 import { Route as ApiPublicHooksProactivePushRouteImport } from './routes/api/public/hooks/proactive-push'
 import { Route as ApiPublicHooksObjectionGuideRouteImport } from './routes/api/public/hooks/objection-guide'
@@ -643,6 +644,12 @@ const ApiPublicHooksSubmitCheckinTemplateRoute =
     path: '/api/public/hooks/submit-checkin-template',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSubmitBriefingTemplateV2Route =
+  ApiPublicHooksSubmitBriefingTemplateV2RouteImport.update({
+    id: '/api/public/hooks/submit-briefing-template-v2',
+    path: '/api/public/hooks/submit-briefing-template-v2',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksProactiveTickRoute =
   ApiPublicHooksProactiveTickRouteImport.update({
     id: '/api/public/hooks/proactive-tick',
@@ -819,6 +826,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
+  '/api/public/hooks/submit-briefing-template-v2': typeof ApiPublicHooksSubmitBriefingTemplateV2Route
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
   '/api/public/hooks/telegram-retention': typeof ApiPublicHooksTelegramRetentionRoute
   '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
@@ -930,6 +938,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
+  '/api/public/hooks/submit-briefing-template-v2': typeof ApiPublicHooksSubmitBriefingTemplateV2Route
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
   '/api/public/hooks/telegram-retention': typeof ApiPublicHooksTelegramRetentionRoute
   '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
@@ -1044,6 +1053,7 @@ export interface FileRoutesById {
   '/api/public/hooks/objection-guide': typeof ApiPublicHooksObjectionGuideRoute
   '/api/public/hooks/proactive-push': typeof ApiPublicHooksProactivePushRoute
   '/api/public/hooks/proactive-tick': typeof ApiPublicHooksProactiveTickRoute
+  '/api/public/hooks/submit-briefing-template-v2': typeof ApiPublicHooksSubmitBriefingTemplateV2Route
   '/api/public/hooks/submit-checkin-template': typeof ApiPublicHooksSubmitCheckinTemplateRoute
   '/api/public/hooks/telegram-retention': typeof ApiPublicHooksTelegramRetentionRoute
   '/api/public/hooks/trial-lifecycle': typeof ApiPublicHooksTrialLifecycleRoute
@@ -1158,6 +1168,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
+    | '/api/public/hooks/submit-briefing-template-v2'
     | '/api/public/hooks/submit-checkin-template'
     | '/api/public/hooks/telegram-retention'
     | '/api/public/hooks/trial-lifecycle'
@@ -1269,6 +1280,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
+    | '/api/public/hooks/submit-briefing-template-v2'
     | '/api/public/hooks/submit-checkin-template'
     | '/api/public/hooks/telegram-retention'
     | '/api/public/hooks/trial-lifecycle'
@@ -1382,6 +1394,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/objection-guide'
     | '/api/public/hooks/proactive-push'
     | '/api/public/hooks/proactive-tick'
+    | '/api/public/hooks/submit-briefing-template-v2'
     | '/api/public/hooks/submit-checkin-template'
     | '/api/public/hooks/telegram-retention'
     | '/api/public/hooks/trial-lifecycle'
@@ -1422,6 +1435,7 @@ export interface RootRouteChildren {
   ApiPublicHooksObjectionGuideRoute: typeof ApiPublicHooksObjectionGuideRoute
   ApiPublicHooksProactivePushRoute: typeof ApiPublicHooksProactivePushRoute
   ApiPublicHooksProactiveTickRoute: typeof ApiPublicHooksProactiveTickRoute
+  ApiPublicHooksSubmitBriefingTemplateV2Route: typeof ApiPublicHooksSubmitBriefingTemplateV2Route
   ApiPublicHooksSubmitCheckinTemplateRoute: typeof ApiPublicHooksSubmitCheckinTemplateRoute
   ApiPublicHooksTelegramRetentionRoute: typeof ApiPublicHooksTelegramRetentionRoute
   ApiPublicHooksTrialLifecycleRoute: typeof ApiPublicHooksTrialLifecycleRoute
@@ -2126,6 +2140,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSubmitCheckinTemplateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/submit-briefing-template-v2': {
+      id: '/api/public/hooks/submit-briefing-template-v2'
+      path: '/api/public/hooks/submit-briefing-template-v2'
+      fullPath: '/api/public/hooks/submit-briefing-template-v2'
+      preLoaderRoute: typeof ApiPublicHooksSubmitBriefingTemplateV2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/proactive-tick': {
       id: '/api/public/hooks/proactive-tick'
       path: '/api/public/hooks/proactive-tick'
@@ -2483,6 +2504,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksObjectionGuideRoute: ApiPublicHooksObjectionGuideRoute,
   ApiPublicHooksProactivePushRoute: ApiPublicHooksProactivePushRoute,
   ApiPublicHooksProactiveTickRoute: ApiPublicHooksProactiveTickRoute,
+  ApiPublicHooksSubmitBriefingTemplateV2Route:
+    ApiPublicHooksSubmitBriefingTemplateV2Route,
   ApiPublicHooksSubmitCheckinTemplateRoute:
     ApiPublicHooksSubmitCheckinTemplateRoute,
   ApiPublicHooksTelegramRetentionRoute: ApiPublicHooksTelegramRetentionRoute,
