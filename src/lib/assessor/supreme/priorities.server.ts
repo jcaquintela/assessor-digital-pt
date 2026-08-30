@@ -1,7 +1,7 @@
 // Motor de priorização — "o que devo fazer agora?".
 // Determinístico. Cada item traz razões legíveis para o Assessor verbalizar.
 import { isDealActive } from "@/lib/deals/stages";
-import { lisbonYmd, ymdDiffDays, endOfLisbonDayIso } from "@/lib/assessor/lisbon-day";
+import { lisbonYmd, ymdDiffDays, endOfLisbonDayIso, lisbonInstant } from "@/lib/assessor/lisbon-day";
 import { hasCommercialOutcomeContext } from "@/lib/assessor/outcome-eligibility";
 import { belongsInDailyAgenda } from "@/lib/assessor/agenda-leisure";
 import { isFollowUpClosed, isFollowUpEvent, followUpStateLabel as canonicalStateLabel } from "@/lib/follow-ups/state";
