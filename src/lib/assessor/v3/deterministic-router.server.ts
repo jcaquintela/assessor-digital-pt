@@ -290,6 +290,35 @@ const agendaDateCase: RouterCase = async ({ ctx, supabase, userId, channel, trim
   return { reply };
 };
 
+// (a0b) "Como correu o dia?" / "Resumo do dia" → resumo retrospetivo com o
+// mesmo agregador do briefing (buildDaySnapshot, lente "fim_de_dia"). Vem
+// ANTES do estado do dia, que é prospetivo.
+const eveningReviewCase: RouterCase = async ({ supabase, userId, channel, trimmed, pending }) => {
+  if (pending) return null;
+  const { detectEveningReviewQuery } = await import("../supreme/evening-review");
+  if (!detectEveningReviewQuery(trimmed)) return null;
+  const t0 = Date.now();
+  let reply: string;
+  let okReview = true;
+  try {
+    const { buildDaySnapshot } = await import("../supreme/day-snapshot.server");
+    const { composeEveningReview } = await import("../supreme/evening-review");
+    const snapshot = await buildDaySnapshot(supabase, userId, { lens: "fim_de_dia" });
+    const { data: prof } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
+    const firstName = String((prof as any)?.name ?? "").split(" ")[0] ?? "";
+    reply = composeEveningReview(snapshot, { firstName });
+  } catch {
+    okReview = false;
+    reply = READ_FAILED_REPLY;
+  }
+  await logAiTurn(supabase, {
+    userId, channel, intent: "evening_review_fast_path", route: "v3-deterministic",
+    latencyMs: Date.now() - t0, success: okReview, error: okReview ? null : "evening_review_failed",
+    toolName: "day_snapshot", toolSuccess: okReview, fallbackUsed: !okReview,
+  });
+  return { reply };
+};
+
 // (a1) "Como está o meu dia?" / "Como estou hoje?" → estado do dia com dados
 // reais (agenda + prioridades), a qualquer hora. Leitura pura: nunca pede
 // confirmação nem cai em Diversos.
@@ -428,6 +457,7 @@ export const DETERMINISTIC_ROUTER: Array<{ name: string; run: RouterCase }> = [
   { name: "misc_query", run: miscQueryCase },
   { name: "event_name", run: eventNameCase },
   { name: "agenda_date", run: agendaDateCase },
+  { name: "evening_review", run: eveningReviewCase },
   { name: "day_state", run: dayStateCase },
   { name: "agenda_period", run: agendaPeriodCase },
   { name: "email_draft_confirmation", run: emailDraftConfirmationCase },
@@ -457,6 +487,7 @@ export const ROUTER_CASES = {
   miscQueryCase,
   eventNameCase,
   agendaDateCase,
+  eveningReviewCase,
   dayStateCase,
   agendaPeriodCase,
   emailDraftConfirmationCase,

@@ -12,6 +12,7 @@ import { formatPreEventNudge, isPreEventDue } from "./pre-event";
 import { lisbonYmd, lisbonHhMm } from "../lisbon-day";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
+export const EVENING_REVIEW_PREFIX = "supreme_evening_review:";
 
 /**
  * O briefing da manhã tem de ser ÚNICO por dia. Existem dois emissores
@@ -117,6 +118,7 @@ export async function generateSupremeNudges(
     morning_briefing_enabled: true, morning_time: "08:00",
     morning_days: [1, 2, 3, 4, 5],
     quiet_hours_start: "22:00", quiet_hours_end: "07:30",
+    evening_wrap_enabled: true, evening_time: "19:00",
     max_daily_nudges: 6,
   };
 
@@ -229,6 +231,31 @@ export async function generateSupremeNudges(
     });
   }
 
+  // ------------ Resumo de fim de dia ------------
+  // Mesmo caminho de aviso (assessor_nudges), mesmas quiet hours e mesmo cap.
+  // Silêncio é sinal: dia sem rasto não gera mensagem nenhuma.
+  const eveningDays: number[] = Array.isArray(p.morning_days) ? p.morning_days : [1, 2, 3, 4, 5];
+  if (
+    (p as any).evening_wrap_enabled !== false &&
+    eveningDays.includes(nowP.isoDay) &&
+    withinWindow(String((p as any).evening_time ?? "19:00").slice(0, 5), nowP, 15)
+  ) {
+    const { buildDaySnapshot } = await import("./day-snapshot.server");
+    const { composeEveningReview, hasEveningSignal } = await import("./evening-review");
+    const snapshot = await buildDaySnapshot(supabase, userId, { lens: "fim_de_dia", now });
+    if (hasEveningSignal(snapshot)) {
+      drafts.push({
+        kind: "consultant_silence" as any,
+        subject_type: null,
+        subject_id: null,
+        reason: "Resumo de fim de dia",
+        suggested_reply: sanitizeReply(composeEveningReview(snapshot)),
+        dedupe_key: `${EVENING_REVIEW_PREFIX}${nowP.ymd}`,
+      });
+    }
+  }
+
   const room = (p.max_daily_nudges ?? 6) - (sentToday ?? 0);
   return drafts.slice(0, Math.max(0, room));
 }
+

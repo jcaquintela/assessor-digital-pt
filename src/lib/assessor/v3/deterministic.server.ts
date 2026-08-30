@@ -13,6 +13,7 @@
 
 import { displayTitle } from "../titles";
 import { resolveDateTimeFromText } from "../date-resolver";
+import { EVENING_REVIEW_RE } from "../supreme/evening-review";
 
 export type AgendaPeriod = "today" | "tomorrow" | "week";
 
@@ -93,6 +94,9 @@ export function detectDayStateQuery(text: string): boolean {
   const t = (text ?? "").trim();
   if (!t || t.length > 160) return false;
   if (NEGATION_RE.test(t)) return false;
+  // "Resumo do dia" é retrospetivo: pertence ao resumo de fim de dia, não ao
+  // estado prospetivo do dia. Sem esta exclusão o prospetivo capturava-o.
+  if (EVENING_REVIEW_RE.test(t)) return false;
   if (MISC_MODULE_RE.test(t)) return false;
   if (CREATE_INTENT_RE.test(t) || EXPLICIT_TIME_RE.test(t)) return false;
   return DAY_STATE_RE.test(t);
