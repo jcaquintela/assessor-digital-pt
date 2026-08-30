@@ -44,13 +44,17 @@ export const NAV_DESKTOP_V1: NavEntry[] = [
   { to: "/definicoes", label: "Definições", icon: Settings },
 ];
 
-/** Barra principal do redesenho (v2): só o que se usa todos os dias. */
+/**
+ * Barra principal do redesenho (v2): só o que se usa todos os dias.
+ * O Drive Inteligente voltou à barra (decisão revista): 6 áreas + "Mais".
+ */
 export const NAV_PRIMARY_V2: NavEntry[] = [
   { to: "/hoje", label: "Hoje", icon: Home },
   { to: "/pessoas", label: "Pessoas", icon: Users },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/negocios", label: "Negócios", icon: Handshake },
   { to: "/calendario", label: "Agenda", icon: CalendarDays },
+  { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
 ];
 
 export const NAV_MORE_ENTRY: NavEntry = { to: "/mais", label: "Mais", icon: MoreHorizontal };
