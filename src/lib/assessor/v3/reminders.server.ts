@@ -237,7 +237,10 @@ export async function rescheduleReminder(
           due_date: newScheduled,
           due_time: input.new_time,
           timezone: tz,
+          // Nova hora = nova preparação: a cartela volta a poder sair.
+          briefing_sent_at: null,
         } as never)
+
         .in("id", fallbackIds)
         .eq("user_id", input.userId)
         .select("id");
