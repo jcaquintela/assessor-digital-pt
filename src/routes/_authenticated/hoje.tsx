@@ -782,6 +782,14 @@ function HojePage() {
         </section>
       )}
 
+      {/* D.2 Visitas concluídas — o que ficou por seguir depois de cada visita. */}
+      {!filtroAtivo && (
+        <section className="mb-8">
+          <VisitFollowUpsCard />
+        </section>
+      )}
+
+
       {/* E. Sugestão do mentor — conselho, não urgência. */}
       {!filtroAtivo && mentor && tipOff !== mentor.key && (
         <section className="c-mentor mb-8">
