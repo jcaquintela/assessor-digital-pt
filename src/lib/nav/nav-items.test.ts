@@ -29,6 +29,10 @@ describe("consolidação da barra lateral (v2)", () => {
     expect(rotas(NAV_MORE_V2)).not.toContain("/drive");
   });
 
+  it("a barra mobile tem as mesmas 6 áreas da barra principal + Mais", () => {
+    expect(rotas(NAV_MOBILE)).toEqual([...rotas(NAV_PRIMARY_V2), "/mais"]);
+  });
+
   it("nenhuma área do v1 desaparece: ou fica na barra, ou está em Mais", () => {
     const cobertas = new Set([...rotas(NAV_PRIMARY_V2), ...rotas(NAV_MORE_V2)]);
     for (const r of rotas(NAV_DESKTOP_V1)) expect(cobertas.has(r)).toBe(true);
