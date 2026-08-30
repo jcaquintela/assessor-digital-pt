@@ -45,8 +45,11 @@ describe("Cartela de Briefing — janela de 30 minutos", () => {
     expect(isBriefingDue(ev, Date.parse("2026-08-13T14:07:00Z"))).toBe(true);
     // Cedo demais (45 min antes): fora.
     expect(isBriefingDue(ev, Date.parse("2026-08-13T13:45:00Z"))).toBe(false);
-    // Tarde demais (12 min antes): fora.
-    expect(isBriefingDue(ev, Date.parse("2026-08-13T14:18:00Z"))).toBe(false);
+    // Corrida falhada apanhada logo depois do início: ainda dentro da graça.
+    expect(isBriefingDue(ev, Date.parse("2026-08-13T14:36:00Z"))).toBe(true);
+    // Passada a graça: já não se manda preparação de algo a decorrer.
+    expect(isBriefingDue(ev, Date.parse("2026-08-13T14:40:00Z"))).toBe(false);
+
   });
 
   it("2. dois compromissos a <45 min um do outro entram numa só cartela", () => {
