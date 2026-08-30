@@ -280,9 +280,11 @@ export async function rescheduleReminder(
           due_time: input.new_time,
           status: "pendente",
           timezone: tz,
+          briefing_sent_at: null,
         } as never)
         .eq("id", target.related_resource_id)
         .eq("user_id", input.userId);
+
     } catch { /* noop */ }
   }
 
