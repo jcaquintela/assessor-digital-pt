@@ -1,23 +1,28 @@
 // Runner da Cartela de Briefing. Corre de poucos em poucos minutos: procura
-// compromissos com pessoa associada a começar nos próximos 15 minutos, monta
+// compromissos com pessoa associada a começar nos próximos 30 minutos, monta
 // o resumo rápido dessa pessoa e envia pelo canal principal.
 //
 // Regras não negociáveis:
 // - Sem pessoa associada → não envia.
 // - Sem nada relevante para dizer → não envia (nunca cartela vazia).
 // - Marca `follow_ups.briefing_sent_at` → nunca duplica.
+// - Compromissos a menos de 45 min uns dos outros → UMA cartela conjunta.
 
 import {
   BRIEFING_GRACE_MINUTES,
   BRIEFING_LEAD_MINUTES,
   briefingTemplateParams,
-  formatMeetingBriefing,
+  formatJointBriefing,
+  groupNearbyEvents,
   hasAnyBriefingContent,
   isBriefingEligible,
   isBriefingDue,
   type BriefingEvent,
+  type BriefingPart,
+  type BriefingPendings,
   type EventBriefContext,
 } from "./meeting-briefing";
+
 
 /** Imóvel e negócio ligados ao próprio compromisso (não à pessoa). */
 async function loadEventContext(
@@ -57,6 +62,84 @@ async function loadEventContext(
   }
   return ctx;
 }
+
+/**
+ * Pendências do mesmo compromisso: rascunho de email por enviar (pessoa),
+ * documento essencial em falta (imóvel) e prazo próximo (negócio). Tudo
+ * reaproveitado de mecanismos já existentes — nada de novo a inventar.
+ * Falhar aqui nunca pode impedir a cartela.
+ */
+export async function loadBriefingPendings(
+  supabase: any,
+  event: BriefingEvent & { user_id: string },
+  nowMs: number,
+): Promise<BriefingPendings> {
+  const out: BriefingPendings = {};
+
+  if (event.person_id) {
+    try {
+      const { data } = await supabase
+        .from("email_drafts")
+        .select("subject, status, sent_at, person_id")
+        .eq("user_id", event.user_id)
+        .eq("person_id", event.person_id)
+        .eq("status", "pending")
+        .is("sent_at", null)
+        .limit(3);
+      const rows = ((data as any[]) ?? []).filter((r) => !r?.sent_at);
+      if (rows.length) {
+        out.emailDrafts = rows.map((r) => String(r.subject ?? "").trim() || "rascunho sem assunto");
+      }
+    } catch { /* sem rascunhos, a cartela segue */ }
+  }
+
+  if (event.related_property_id) {
+    try {
+      const { data } = await supabase
+        .from("uploaded_files")
+        .select("document_type")
+        .eq("user_id", event.user_id)
+        .eq("related_resource_type", "property")
+        .eq("related_resource_id", event.related_property_id)
+        .limit(100);
+      const kinds = ((data as any[]) ?? [])
+        .map((f) => String(f?.document_type ?? "").toLowerCase())
+        .filter(Boolean);
+      const missing: string[] = [];
+      if (!kinds.some((k) => k.includes("caderneta"))) missing.push("caderneta predial");
+      if (!kinds.some((k) => k.includes("energ"))) missing.push("certificado energético");
+      if (missing.length) out.missingDocs = missing;
+    } catch { /* sem ficheiros, não se afirma nada */ }
+  }
+
+  if (event.opportunity_id) {
+    try {
+      const { lisbonYmd } = await import("@/lib/assessor/lisbon-day");
+      const { daysUntilDeadline, deadlineWhen, isDeadlineOpen, isInNoticeWindow, noticeDaysOf } =
+        await import("@/lib/deals/deadlines");
+      const { data } = await supabase
+        .from("deal_deadlines")
+        .select("label, due_date, status, notice_days, archived_at")
+        .eq("user_id", event.user_id)
+        .eq("opportunity_id", event.opportunity_id)
+        .is("archived_at", null)
+        .order("due_date", { ascending: true })
+        .limit(10);
+      const today = lisbonYmd(nowMs);
+      const lines: string[] = [];
+      for (const row of ((data as any[]) ?? [])) {
+        if (!isDeadlineOpen(row)) continue;
+        const left = daysUntilDeadline(String(row.due_date), today);
+        if (!isInNoticeWindow(left, noticeDaysOf(row))) continue;
+        lines.push(`${String(row.label ?? "prazo").trim()} — ${deadlineWhen(left)}`);
+      }
+      if (lines.length) out.deadlines = lines.slice(0, 3);
+    } catch { /* prazos são bónus */ }
+  }
+
+  return out;
+}
+
 
 export interface BriefingRunResult {
   sent: number;
@@ -128,7 +211,10 @@ export async function sendMeetingBriefing(
     forceTemplate?: boolean;
     markSent?: boolean;
     testId?: string | null;
+    /** Compromissos seguidos (<45 min) que entram na mesma cartela. */
+    companions?: Array<BriefingEvent & { user_id: string }>;
   } = {},
+
 ): Promise<{
   sent: boolean;
   reason?: string;
@@ -150,38 +236,65 @@ export async function sendMeetingBriefing(
   // Idempotência: reserva antes de qualquer envio. Testes do admin
   // (`markSent: false`) e disparos forçados não reservam.
   const claims = opts.markSent !== false && !opts.force;
+  const claimedIds: string[] = [];
   if (claims) {
     const claimed = await claimBriefing(supabase, event.id, nowMs);
     if (!claimed) return { sent: false, reason: "already_sent" };
+    claimedIds.push(event.id);
+  }
+  const companions: Array<BriefingEvent & { user_id: string }> = [];
+  for (const c of opts.companions ?? []) {
+    if (claims) {
+      const ok = await claimBriefing(supabase, c.id, nowMs);
+      if (!ok) continue;
+      claimedIds.push(c.id);
+    }
+    companions.push(c);
   }
   const abort = async (reason: string, extra: Record<string, unknown> = {}) => {
-    if (claims) await releaseBriefingClaim(supabase, event.id);
+    for (const id of claimedIds) await releaseBriefingClaim(supabase, id);
     return { sent: false as const, reason, ...extra };
   };
 
-  let brief: any = null;
-  if (event.person_id) {
-    const { buildPersonBrief } = await import("@/lib/assessor/v3/person-brief.server");
-    const { data: person } = await supabase
-      .from("people")
-      .select("name")
-      .eq("id", event.person_id)
-      .maybeSingle();
-    const personName = String((person as any)?.name ?? "").trim();
-    if (personName) {
-      const lookup = await buildPersonBrief({ supabase, userId: event.user_id } as any, personName);
-      if (lookup.kind === "ok") brief = lookup.brief;
+  const buildPart = async (
+    ev: BriefingEvent & { user_id: string },
+  ): Promise<BriefingPart> => {
+    let b: any = null;
+    if (ev.person_id) {
+      const { buildPersonBrief } = await import("@/lib/assessor/v3/person-brief.server");
+      const { data: person } = await supabase
+        .from("people")
+        .select("name")
+        .eq("id", ev.person_id)
+        .maybeSingle();
+      const personName = String((person as any)?.name ?? "").trim();
+      if (personName) {
+        const lookup = await buildPersonBrief({ supabase, userId: ev.user_id } as any, personName);
+        if (lookup.kind === "ok") b = lookup.brief;
+      }
     }
-  }
+    const ctx = await loadEventContext(supabase, ev);
+    let pendings: BriefingPendings = {};
+    try { pendings = await loadBriefingPendings(supabase, ev, nowMs); } catch { /* bónus */ }
+    return { event: ev, brief: b, ctx, pendings };
+  };
 
-  const eventCtx = await loadEventContext(supabase, event);
-  if (!hasAnyBriefingContent(brief, eventCtx)) return abort("nothing_to_say");
+  const mainPart = await buildPart(event);
+  const brief = mainPart.brief;
+  const eventCtx = mainPart.ctx as EventBriefContext | null;
+  const pendings = mainPart.pendings ?? null;
+  const parts: BriefingPart[] = [mainPart];
+  for (const c of companions) parts.push(await buildPart(c));
+
+  const anyContent = parts.some((p) => hasAnyBriefingContent(p.brief, p.ctx, p.pendings));
+  if (!anyContent) return abort("nothing_to_say");
 
   const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
   const target = await resolveOutboundTarget(supabase, event.user_id);
   if (!target) return abort("no_channel");
 
-  const text = formatMeetingBriefing(event, brief, nowMs, eventCtx);
+  const text = formatJointBriefing(parts, nowMs);
+
 
   if (target.channel === "whatsapp") {
     const { isWithin24hWindow } = await import("./push.server");
@@ -196,7 +309,7 @@ export async function sendMeetingBriefing(
       const { data: prof } = await supabase
         .from("profiles").select("name").eq("id", event.user_id).maybeSingle();
       const firstName = String((prof as any)?.name ?? "").split(" ")[0] ?? "";
-      const params = briefingTemplateParams(event, brief, firstName, eventCtx)
+      const params = briefingTemplateParams(event, brief, firstName, eventCtx, pendings)
         .slice(0, Math.max(0, binding.param_count));
 
       const { meetingBriefingTemplatePayload } = await import("./templates");
@@ -288,17 +401,37 @@ export async function runMeetingBriefingTick(
   const allowed = new Set(((prefs as any[]) ?? []).map((p) => p.user_id));
 
   const result: BriefingRunResult = { sent: 0, skipped: [] };
-  for (const ev of due) {
-    const uid = (ev as any).user_id as string;
+
+  // Anti-sobreposição: compromissos elegíveis a menos de 45 min uns dos
+  // outros formam UMA cartela conjunta — a preparação do segundo nunca
+  // chega a meio do primeiro. Só entram no grupo eventos ainda elegíveis.
+  const dueIds = new Set(due.map((e) => e.id));
+  const groupable = events.filter(
+    (e) => dueIds.has(e.id) || (isBriefingEligible(e) && !(e as any).briefing_sent_at),
+  );
+  const groups = groupNearbyEvents(groupable as any[])
+    .map((g) => g.filter((e) => dueIds.has(e.id) || g.some((x) => dueIds.has(x.id))))
+    .filter((g) => g.some((e) => dueIds.has(e.id)));
+
+  for (const group of groups) {
+    const [head, ...rest] = group;
+    if (!head) continue;
+    const uid = (head as any).user_id as string;
     if (!allowed.has(uid)) {
-      result.skipped.push({ id: ev.id, reason: "push_disabled" });
+      for (const ev of group) result.skipped.push({ id: ev.id, reason: "push_disabled" });
       continue;
     }
-    const r = await sendMeetingBriefing(supabase, { ...ev, user_id: uid }, { now });
+    const companions = rest.map((e) => ({ ...(e as any), user_id: uid }));
+    const r = await sendMeetingBriefing(
+      supabase,
+      { ...(head as any), user_id: uid },
+      { now, companions },
+    );
     if (r.sent) result.sent++;
-    else result.skipped.push({ id: ev.id, reason: r.reason ?? "unknown" });
+    else result.skipped.push({ id: head.id, reason: r.reason ?? "unknown" });
   }
   return result;
 }
+
 
 export { BRIEFING_LEAD_MINUTES, BRIEFING_GRACE_MINUTES };

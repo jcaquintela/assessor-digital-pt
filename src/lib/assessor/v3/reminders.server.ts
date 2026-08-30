@@ -237,7 +237,10 @@ export async function rescheduleReminder(
           due_date: newScheduled,
           due_time: input.new_time,
           timezone: tz,
+          // Nova hora = nova preparação: a cartela volta a poder sair.
+          briefing_sent_at: null,
         } as never)
+
         .in("id", fallbackIds)
         .eq("user_id", input.userId)
         .select("id");
@@ -277,9 +280,11 @@ export async function rescheduleReminder(
           due_time: input.new_time,
           status: "pendente",
           timezone: tz,
+          briefing_sent_at: null,
         } as never)
         .eq("id", target.related_resource_id)
         .eq("user_id", input.userId);
+
     } catch { /* noop */ }
   }
 

@@ -590,6 +590,10 @@ export async function applyExternalEvents(
         skipped++;
         continue;
       }
+      // Se a hora mudou lá fora, é um reagendamento: a cartela de preparação
+      // volta a ficar por enviar para a nova hora.
+      const movedInTime = lisbonHhMm(ext.startIso) !== (local?.due_time ?? null)
+        || String(ext.startIso) !== String(local?.due_date ?? "");
       await supabaseAdmin.from("follow_ups").update({
         title: ext.title,
         notes: ext.notes ?? local?.notes ?? null,
@@ -597,7 +601,9 @@ export async function applyExternalEvents(
         due_time: lisbonHhMm(ext.startIso),
         duration_minutes: externalDurationMinutes(ext),
         status: "agendado",
+        ...(movedInTime ? { briefing_sent_at: null } : {}),
       }).eq("id", link.follow_up_id).eq("user_id", userId);
+
       await supabaseAdmin.from("calendar_event_links").update({
         external_updated_at: ext.updatedIso,
         last_origin: provider,
