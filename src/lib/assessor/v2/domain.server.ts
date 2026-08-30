@@ -1416,7 +1416,7 @@ async function execUpdateProspectingLead(ctx: DomainContext, args: unknown): Pro
   if (v.source_type) patch.source_type = v.source_type;
   if (v.status) patch.status = v.status;
   if (v.notes !== undefined) patch.notes = v.notes?.slice(0, 2000) ?? null;
-  }
+
 
   if (!Object.keys(patch).length) return fail("nada_para_actualizar");
 
