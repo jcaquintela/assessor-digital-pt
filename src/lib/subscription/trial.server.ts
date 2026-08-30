@@ -71,14 +71,16 @@ export async function startWhatsAppTrialIfEligible(
 
   const { data: prof } = await supabaseAdmin
     .from("profiles")
-    .select("trial_status, whatsapp_link_status")
+    .select("trial_status, whatsapp_link_status, subscription_tier, billing_status, stripe_subscription_id")
     .eq("id", userId)
     .maybeSingle();
   if ((prof as any)?.trial_status) return { started: false, reason: "trial_already_used" };
+  if (isPaidAccount(prof, plan)) return { started: false, reason: "already_paid" };
 
   const { loadChannelAvailability } = await import("@/lib/assessor/primary-channel.server");
   const av = await loadChannelAvailability(supabaseAdmin, userId);
   if (!av.whatsapp) return { started: false, reason: "whatsapp_not_linked" };
+
 
   const expiresAt = new Date(now.getTime() + TRIAL_DAYS * DAY).toISOString();
   const patch: Record<string, unknown> = {
