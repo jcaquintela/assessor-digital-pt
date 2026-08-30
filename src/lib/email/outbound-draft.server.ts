@@ -60,14 +60,39 @@ export async function composeOutboundBody(args: {
   contextLines: string[];
   instructions?: string | null;
   consultantName?: string | null;
+  /**
+   * `short_message`: mensagem curta para o consultor copiar (seguimento
+   * pós-visita), sem assunto nem assinatura formal de email.
+   */
+  style?: "email" | "short_message";
 }): Promise<string> {
   const key = process.env['LOVABLE_API_KEY'];
-  const signature = args.consultantName
+  const short = args.style === "short_message";
+  const signature = args.consultantName && !short
     ? `\n\nCom os melhores cumprimentos,\n${args.consultantName}`
     : "";
   if (!key) {
-    return `Olá ${args.toName},\n\nEspero que esteja tudo bem. Volto a contactar-te para retomarmos o assunto que ficou pendente.${signature}`;
+    return short
+      ? `Olá ${args.toName}, obrigado pelo tempo de hoje. Fiquei com uma ideia clara do que procura — digo-me se quer que avance com o próximo passo.`
+      : `Olá ${args.toName},\n\nEspero que esteja tudo bem. Volto a contactar-te para retomarmos o assunto que ficou pendente.${signature}`;
   }
+  const system = short
+    ? [
+        "Escreves mensagens curtas em português de Portugal, em nome de um consultor imobiliário.",
+        "É um seguimento enviado logo a seguir a uma visita a um imóvel, do consultor para o cliente.",
+        "Só o texto da mensagem: sem assunto, sem assinatura formal, sem markdown, sem comentários.",
+        "Tom próximo e directo, 2 a 5 linhas, uma única pergunta no fim.",
+        "Não inventes valores, datas, descontos nem compromissos que não estejam no contexto ou nas instruções.",
+      ].join(" ")
+    : [
+        "Escreves emails profissionais em português de Portugal para um consultor imobiliário.",
+        "Escreves um email de INICIATIVA do consultor para o contacto (não é resposta a nada).",
+        "Só o corpo do email: sem assunto, sem markdown, sem comentários.",
+        "Tom cordial e directo, 3 a 8 linhas. Usa o contexto dado, mas não inventes valores, datas nem compromissos que não estejam nesse contexto ou nas instruções.",
+        args.consultantName
+          ? `Assina como ${args.consultantName}.`
+          : "Termina com uma despedida simples.",
+      ].join(" ");
   const res = await fetch(GATEWAY, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -75,18 +100,8 @@ export async function composeOutboundBody(args: {
       model: MODEL,
       max_tokens: 700,
       messages: [
-        {
-          role: "system",
-          content: [
-            "Escreves emails profissionais em português de Portugal para um consultor imobiliário.",
-            "Escreves um email de INICIATIVA do consultor para o contacto (não é resposta a nada).",
-            "Só o corpo do email: sem assunto, sem markdown, sem comentários.",
-            "Tom cordial e directo, 3 a 8 linhas. Usa o contexto dado, mas não inventes valores, datas nem compromissos que não estejam nesse contexto ou nas instruções.",
-            args.consultantName
-              ? `Assina como ${args.consultantName}.`
-              : "Termina com uma despedida simples.",
-          ].join(" "),
-        },
+        { role: "system", content: system },
+
         {
           role: "user",
           content: [

@@ -44,12 +44,14 @@ Devolve APENAS JSON válido:
  "property":{"typology":"T3 ou null","location":"zona ou null","address":"ou null","features":"ou null","price":null},
  "opportunity":{"intent":"vender|comprar|arrendar|avaliar|null","motivation":"ou null","urgency":"alta|media|baixa|null","deadline":"YYYY-MM-DD ou null"},
  "next_action":{"type":"ligar|visitar|enviar|outro","text":"...","date":"YYYY-MM-DD ou null","time":"HH:MM ou null"},
+ "visit":{"reaction":"o que o cliente disse/sentiu, ou null","objection":"a objeção levantada, ou null","comparison_zone":"zona ou imóvel com que compara, ou null"},
  "note":"ou null","confidential":true|false,"confidence":0.0
 }]}
 
 Regras:
 - Hoje é {{TODAY}} (Europa/Lisboa). Converte "quarta", "amanhã" em datas absolutas.
 - "quer vender/comprar/arrendar" é sempre kind="lead" com person + property + opportunity preenchidos.
+- Um resumo dito logo a seguir a uma visita ("acabei de sair da visita", "correu bem, mas achou caro") é kind="visit": preenche person, property quando os houver, e SEMPRE o objecto "visit" com o que foi dito. Não inventes reação nem objeção: se ele só disse "correu bem", deixa reaction/objection a null.
 - Um lembrete solto ("marca-me lembrete para ligar à Dra. Maria") é kind="task" com next_action e, quando muito, person.
 - Não inventes nada. Campos ausentes ficam null. Máximo 6 temas.
 - confidential=true quando é opinião crua, fragilidade do cliente, ou o consultor diz "isto é só para mim".
@@ -448,6 +450,51 @@ async function execTheme(
     }
   }
 
+  // 6) Visita — regista o que ficou e prepara o seguimento para copiar.
+  //    O rascunho só nasce AQUI, depois do "sim": antes disso não se escreve
+  //    texto em nome do consultor.
+  if (theme.kind === "visit") {
+    const { visitHasSubstance, visitSummaryText } = await import("./visit-followup");
+    const summary = visitSummaryText(theme);
+    if (summary && summary !== theme.note) {
+      const res = await TOOL_REGISTRY.save_interaction(ctx, {
+        summary,
+        person_id: personId,
+        property_id: propertyId,
+        interaction_type: theme.confidential ? "nota" : "facto",
+        is_confidential: theme.confidential === true,
+      });
+      if (res.ok) {
+        const id = (res.data as any)?.interaction?.id ?? null;
+        if (id) records.push({ table: "interactions", id: String(id) });
+        result.visitSaved = true;
+      }
+    }
+    // Estado do lead: só quando há conteúdo real para guardar.
+    if (personId && (visitHasSubstance(theme) || theme.next_action?.text)) {
+      try {
+        await TOOL_REGISTRY.update_person(ctx, {
+          id: personId,
+          summary,
+          next_action: theme.next_action?.text ?? null,
+          next_action_date: theme.next_action?.date ?? null,
+        });
+      } catch { /* o registo da visita já está feito */ }
+    }
+    if (visitHasSubstance(theme)) {
+      const { buildVisitFollowUp } = await import("./visit-followup.server");
+      const out = await buildVisitFollowUp(ctx, theme, {
+        personId,
+        personName: result.personName ?? theme.person?.name ?? null,
+        propertyId,
+      });
+      result.visitDraft = out.draft;
+      result.visitComparables = out.comparables;
+    } else {
+      result.visitAsk = true;
+    }
+  }
+
   return result;
 }
 
@@ -472,7 +519,11 @@ export async function executeAudioThemes(
         records,
       );
       results.push(out);
-    } catch { /* um tema falhado não trava os restantes */ }
+    } catch {
+      // Um tema falhado não trava os restantes — mas o índice tem de bater
+      // certo com o dos temas, senão a visita ganha o recibo errado.
+      results.push({});
+    }
   }
   try {
     const { recordCreatedRecords } = await import("./discard.server");
@@ -482,5 +533,19 @@ export async function executeAudioThemes(
   await markPendingActionStatus(ctx.supabase, pending.id, anything ? "executed" : "failed", {
     error_message: anything ? null : "audio_themes_no_records",
   });
-  return formatThemesDone(results);
+
+  const base = formatThemesDone(results);
+  // Um áudio traz no máximo uma visita relevante — é essa que ganha bolhas.
+  const visitIndex = payload.themes.findIndex((t) => t?.kind === "visit");
+  const visit = visitIndex >= 0 ? results[visitIndex] : undefined;
+  if (!visit || (!visit.visitDraft && !visit.visitAsk)) return base;
+  const { composeVisitReply, visitReceiptLine } = await import("./visit-followup");
+  return composeVisitReply({
+    base,
+    receipt: visitReceiptLine(payload.themes[visitIndex]!, visit.personName ?? null),
+    draft: visit.visitDraft ?? null,
+    comparables: visit.visitComparables ?? null,
+    ask: visit.visitAsk === true,
+  });
 }
+

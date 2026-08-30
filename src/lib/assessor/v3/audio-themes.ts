@@ -42,6 +42,17 @@ export interface ThemeNextAction {
   time: string | null;
 }
 
+/**
+ * O que ficou de uma visita: a reação do cliente, a objeção que levantou e a
+ * zona/imóvel com que ele disse que estava a comparar. É isto que distingue
+ * um "correu bem" vazio de um áudio que dá para escrever um seguimento útil.
+ */
+export interface ThemeVisit {
+  reaction: string | null;
+  objection: string | null;
+  comparison_zone: string | null;
+}
+
 export interface AudioTheme {
   kind: ThemeKind;
   /** Frase curta que descreve o tema, em PT-PT. */
@@ -50,11 +61,14 @@ export interface AudioTheme {
   property: ThemeProperty | null;
   opportunity: ThemeOpportunity | null;
   next_action: ThemeNextAction | null;
+  /** Só preenchido em temas de visita. */
+  visit: ThemeVisit | null;
   note: string | null;
   confidential: boolean;
   /** Confiança da extração (0-1). */
   confidence: number;
 }
+
 
 /** Candidato de deduplicação encontrado na base de dados. */
 export interface ThemeCandidate {
@@ -158,6 +172,16 @@ function coerceNextAction(raw: any): ThemeNextAction | null {
   };
 }
 
+
+function coerceVisit(raw: any): ThemeVisit | null {
+  const v: ThemeVisit = {
+    reaction: str(raw?.reaction, 300),
+    objection: str(raw?.objection, 300),
+    comparison_zone: str(raw?.comparison_zone, 120),
+  };
+  return v.reaction || v.objection || v.comparison_zone ? v : null;
+}
+
 export function coerceThemes(raw: any): AudioTheme[] {
   const list = Array.isArray(raw?.themes) ? raw.themes : Array.isArray(raw) ? raw : [];
   const out: AudioTheme[] = [];
@@ -173,7 +197,9 @@ export function coerceThemes(raw: any): AudioTheme[] {
       property: coerceProperty(t?.property),
       opportunity: coerceOpportunity(t?.opportunity),
       next_action: coerceNextAction(t?.next_action),
+      visit: coerceVisit(t?.visit),
       note: str(t?.note, 400),
+
       confidential: t?.confidential === true,
       confidence: Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0.7,
     });
@@ -295,7 +321,16 @@ export interface ThemeWriteResult {
   opportunityLinked?: boolean;
   followUpTitle?: string | null;
   noteSaved?: boolean;
+  /** Visita registada no histórico (resumo do que o cliente disse). */
+  visitSaved?: boolean;
+  /** Rascunho de seguimento pós-visita, para o consultor copiar. */
+  visitDraft?: string | null;
+  /** Bloco de comparáveis, já com o enquadramento obrigatório. */
+  visitComparables?: string | null;
+  /** Visita sem substância: em vez de rascunho genérico, pergunta-se. */
+  visitAsk?: boolean;
 }
+
 
 /** Diz o quê + onde, sem prometer envios. */
 export function formatThemesDone(results: ThemeWriteResult[]): string {
