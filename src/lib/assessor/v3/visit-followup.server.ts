@@ -56,14 +56,22 @@ export async function buildVisitFollowUp(
     } catch { /* sem ficha, escreve-se só com o que veio do áudio */ }
   }
 
+  let consultantName: string | null = null;
+  try {
+    const { data: prof } = await ctx.supabase
+      .from("profiles").select("name").eq("id", ctx.userId).maybeSingle();
+    consultantName = (prof as any)?.name ?? null;
+  } catch { /* sem nome, a mensagem sai na mesma */ }
+
   const draft = name
     ? await composeVisitFollowUp({
         toName: name,
         contextLines,
         instructions: visitDraftInstructions(theme),
-        consultantName: ctx.consultantName ?? null,
+        consultantName,
       })
     : null;
+
 
   let comparables: string | null = null;
   const zone = String(theme.visit?.comparison_zone ?? "").trim();
