@@ -401,17 +401,37 @@ export async function runMeetingBriefingTick(
   const allowed = new Set(((prefs as any[]) ?? []).map((p) => p.user_id));
 
   const result: BriefingRunResult = { sent: 0, skipped: [] };
-  for (const ev of due) {
-    const uid = (ev as any).user_id as string;
+
+  // Anti-sobreposição: compromissos elegíveis a menos de 45 min uns dos
+  // outros formam UMA cartela conjunta — a preparação do segundo nunca
+  // chega a meio do primeiro. Só entram no grupo eventos ainda elegíveis.
+  const dueIds = new Set(due.map((e) => e.id));
+  const groupable = events.filter(
+    (e) => dueIds.has(e.id) || (isBriefingEligible(e) && !(e as any).briefing_sent_at),
+  );
+  const groups = groupNearbyEvents(groupable as any[])
+    .map((g) => g.filter((e) => dueIds.has(e.id) || g.some((x) => dueIds.has(x.id))))
+    .filter((g) => g.some((e) => dueIds.has(e.id)));
+
+  for (const group of groups) {
+    const [head, ...rest] = group;
+    if (!head) continue;
+    const uid = (head as any).user_id as string;
     if (!allowed.has(uid)) {
-      result.skipped.push({ id: ev.id, reason: "push_disabled" });
+      for (const ev of group) result.skipped.push({ id: ev.id, reason: "push_disabled" });
       continue;
     }
-    const r = await sendMeetingBriefing(supabase, { ...ev, user_id: uid }, { now });
+    const companions = rest.map((e) => ({ ...(e as any), user_id: uid }));
+    const r = await sendMeetingBriefing(
+      supabase,
+      { ...(head as any), user_id: uid },
+      { now, companions },
+    );
     if (r.sent) result.sent++;
-    else result.skipped.push({ id: ev.id, reason: r.reason ?? "unknown" });
+    else result.skipped.push({ id: head.id, reason: r.reason ?? "unknown" });
   }
   return result;
 }
+
 
 export { BRIEFING_LEAD_MINUTES, BRIEFING_GRACE_MINUTES };
