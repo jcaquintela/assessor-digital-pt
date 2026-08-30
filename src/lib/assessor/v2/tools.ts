@@ -517,6 +517,10 @@ export const UpdatePersonArgs = z.object({
   email: z.string().optional().nullable(),
   relationship_type: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  // Estado do lead — usado pelo registo de visitas, não exposto ao modelo.
+  summary: z.string().optional().nullable(),
+  next_action: z.string().optional().nullable(),
+  next_action_date: z.string().optional().nullable(),
 });
 export type UpdatePersonArgs = z.infer<typeof UpdatePersonArgs>;
 
