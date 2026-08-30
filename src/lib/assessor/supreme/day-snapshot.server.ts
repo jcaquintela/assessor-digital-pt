@@ -63,7 +63,7 @@ function tomorrowBounds(now: Date): { start: Date; end: Date } {
   const ymd = new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10);
   return {
     start: new Date(lisbonInstant(ymd, 0, 0, 0)),
-    end: new Date(lisbonInstant(ymd, 12, 0, 0)),
+    end: new Date(lisbonInstant(ymd, 23, 59, 59)),
   };
 }
 
