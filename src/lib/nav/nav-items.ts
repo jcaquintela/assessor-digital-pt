@@ -69,9 +69,10 @@ export const NAV_MOBILE: NavEntry[] = [
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
   { to: "/negocios", label: "Negócios", icon: Handshake },
   { to: "/calendario", label: "Agenda", icon: CalendarDays },
-  // Em ecrã estreito o rótulo curto "Drive" evita três linhas de texto; o
-  // nome completo continua na barra lateral e na página /mais.
-  { to: "/drive", label: "Drive", icon: FolderOpen },
+  // Nome completo em todo o lado (regra de produto); no mobile quebra em
+  // duas linhas, já validado a 390px e 320px sem corte nem scroll.
+  { to: "/drive", label: MODULE_NAME.drive, icon: FolderOpen },
+
   NAV_MORE_ENTRY,
 ];
 
