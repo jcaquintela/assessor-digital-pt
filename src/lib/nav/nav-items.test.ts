@@ -12,14 +12,21 @@ import {
 const rotas = (items: { to: string }[]) => items.map((i) => i.to);
 
 describe("consolidação da barra lateral (v2)", () => {
-  it("a barra principal tem exactamente as 5 áreas de uso diário", () => {
+  it("a barra principal tem exactamente as 6 áreas de uso diário", () => {
     expect(rotas(NAV_PRIMARY_V2)).toEqual([
       "/hoje",
       "/pessoas",
       "/imoveis",
       "/negocios",
       "/calendario",
+      "/drive",
     ]);
+  });
+
+  it("o Drive Inteligente está na barra e não repetido dentro de 'Mais'", () => {
+    expect(rotas(NAV_PRIMARY_V2)).toContain("/drive");
+    expect(rotas(NAV_MOBILE)).toContain("/drive");
+    expect(rotas(NAV_MORE_V2)).not.toContain("/drive");
   });
 
   it("nenhuma área do v1 desaparece: ou fica na barra, ou está em Mais", () => {
