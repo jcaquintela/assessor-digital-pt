@@ -446,3 +446,47 @@ export async function runMeetingBriefingTick(
 
 
 export { BRIEFING_LEAD_MINUTES, BRIEFING_GRACE_MINUTES };
+/**
+ * Falha segura de canal: o template de briefing não está aprovado/activo.
+ * Nunca cair em silêncio — se a mesma conta tiver Telegram ligado, entrega
+ * por lá; caso contrário, regista o problema em `admin_audit_logs` para
+ * ficar visível no admin.
+ */
+export async function deliverBriefingFallback(
+  supabase: any,
+  userId: string,
+  text: string,
+): Promise<{ delivered: boolean; via?: "telegram" }> {
+  let telegramId: string | null = null;
+  try {
+    const { loadChannelAvailability } = await import("@/lib/assessor/primary-channel.server");
+    const av = await loadChannelAvailability(supabase, userId);
+    telegramId = av.telegram ?? null;
+  } catch { telegramId = null; }
+
+  if (telegramId) {
+    try {
+      const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+      const r = await sendReplyForChannel("telegram", telegramId, text);
+      if (r?.ok) return { delivered: true, via: "telegram" };
+    } catch { /* cai no registo abaixo */ }
+  }
+
+  try {
+    await supabase.from("admin_audit_logs").insert({
+      admin_user_id: null,
+      action: "briefing.template_unavailable",
+      target_user_id: userId,
+      resource_type: "profile",
+      resource_id: userId,
+      reason: "Cartela de briefing fora da janela de 24h sem template WhatsApp aprovado/activo.",
+      metadata: {
+        source: "meeting-briefing",
+        had_telegram_fallback: Boolean(telegramId),
+        preview: String(text ?? "").slice(0, 300),
+      },
+    } as never);
+  } catch { /* registo é bónus, nunca rebenta o runner */ }
+
+  return { delivered: false };
+}
