@@ -237,38 +237,65 @@ export async function sendMeetingBriefing(
   // Idempotência: reserva antes de qualquer envio. Testes do admin
   // (`markSent: false`) e disparos forçados não reservam.
   const claims = opts.markSent !== false && !opts.force;
+  const claimedIds: string[] = [];
   if (claims) {
     const claimed = await claimBriefing(supabase, event.id, nowMs);
     if (!claimed) return { sent: false, reason: "already_sent" };
+    claimedIds.push(event.id);
+  }
+  const companions: Array<BriefingEvent & { user_id: string }> = [];
+  for (const c of opts.companions ?? []) {
+    if (claims) {
+      const ok = await claimBriefing(supabase, c.id, nowMs);
+      if (!ok) continue;
+      claimedIds.push(c.id);
+    }
+    companions.push(c);
   }
   const abort = async (reason: string, extra: Record<string, unknown> = {}) => {
-    if (claims) await releaseBriefingClaim(supabase, event.id);
+    for (const id of claimedIds) await releaseBriefingClaim(supabase, id);
     return { sent: false as const, reason, ...extra };
   };
 
-  let brief: any = null;
-  if (event.person_id) {
-    const { buildPersonBrief } = await import("@/lib/assessor/v3/person-brief.server");
-    const { data: person } = await supabase
-      .from("people")
-      .select("name")
-      .eq("id", event.person_id)
-      .maybeSingle();
-    const personName = String((person as any)?.name ?? "").trim();
-    if (personName) {
-      const lookup = await buildPersonBrief({ supabase, userId: event.user_id } as any, personName);
-      if (lookup.kind === "ok") brief = lookup.brief;
+  const buildPart = async (
+    ev: BriefingEvent & { user_id: string },
+  ): Promise<BriefingPart> => {
+    let b: any = null;
+    if (ev.person_id) {
+      const { buildPersonBrief } = await import("@/lib/assessor/v3/person-brief.server");
+      const { data: person } = await supabase
+        .from("people")
+        .select("name")
+        .eq("id", ev.person_id)
+        .maybeSingle();
+      const personName = String((person as any)?.name ?? "").trim();
+      if (personName) {
+        const lookup = await buildPersonBrief({ supabase, userId: ev.user_id } as any, personName);
+        if (lookup.kind === "ok") b = lookup.brief;
+      }
     }
-  }
+    const ctx = await loadEventContext(supabase, ev);
+    let pendings: BriefingPendings = {};
+    try { pendings = await loadBriefingPendings(supabase, ev, nowMs); } catch { /* bónus */ }
+    return { event: ev, brief: b, ctx, pendings };
+  };
 
-  const eventCtx = await loadEventContext(supabase, event);
-  if (!hasAnyBriefingContent(brief, eventCtx)) return abort("nothing_to_say");
+  const mainPart = await buildPart(event);
+  const brief = mainPart.brief;
+  const eventCtx = mainPart.ctx as EventBriefContext | null;
+  const pendings = mainPart.pendings ?? null;
+  const parts: BriefingPart[] = [mainPart];
+  for (const c of companions) parts.push(await buildPart(c));
+
+  const anyContent = parts.some((p) => hasAnyBriefingContent(p.brief, p.ctx, p.pendings));
+  if (!anyContent) return abort("nothing_to_say");
 
   const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
   const target = await resolveOutboundTarget(supabase, event.user_id);
   if (!target) return abort("no_channel");
 
-  const text = formatMeetingBriefing(event, brief, nowMs, eventCtx);
+  const text = formatJointBriefing(parts, nowMs);
+
 
   if (target.channel === "whatsapp") {
     const { isWithin24hWindow } = await import("./push.server");
