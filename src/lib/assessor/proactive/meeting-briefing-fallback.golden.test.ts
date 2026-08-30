@@ -25,7 +25,7 @@ describe("briefing — fallback imediato", () => {
     ];
     const params = briefingTemplateParams(
       ev("visita ao T3 da Boavista"),
-      { name: "Ana Silva" } as any,
+      { name: "Ana Silva", properties: [], followUps: [], notes: [] } as any,
       "Júlio",
       null,
       null,
@@ -42,7 +42,7 @@ describe("briefing — fallback imediato", () => {
     const long = "detalhe importante ".repeat(120);
     const params = briefingTemplateParams(
       ev("visita"),
-      { name: "Ana", notes: long } as any,
+      { name: "Ana", properties: [], followUps: [], notes: [long] } as any,
       "Júlio",
       { deal: { label: long, stage: null } } as any,
       { deadlines: [long] } as any,
