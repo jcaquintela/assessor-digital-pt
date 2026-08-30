@@ -301,11 +301,17 @@ export function briefingTemplateParams(
   brief: PersonBrief | null,
   consultantFirstName: string,
   ctx?: EventBriefContext | null,
+  pendings?: BriefingPendings | null,
 ): string[] {
   const meeting = `${String(ev.title).trim()}${brief ? `, com ${brief.name}` : ""}`;
-  const summary = [brief ? formatPersonBrief(brief).replace(/^.*?\n/, "") : "", formatEventContext(ctx)]
+  const summary = [
+    brief ? formatPersonBrief(brief).replace(/^.*?\n/, "") : "",
+    formatEventContext(ctx),
+    formatPendings(pendings),
+  ]
     .filter((s) => s.trim())
     .join("\n");
+
   return [
     flattenForTemplate(consultantFirstName) || "Olá",
     flattenForTemplate(meeting),
