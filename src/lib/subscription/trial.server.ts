@@ -532,7 +532,7 @@ export async function startTrialForChannelChoice(
   const now = opts.now ?? new Date();
   const { data: prof } = await supabaseAdmin
     .from("profiles")
-    .select("trial_status, trial_expires_at, subscription_tier")
+    .select("trial_status, trial_expires_at, subscription_tier, billing_status, stripe_subscription_id")
     .eq("id", userId)
     .maybeSingle();
   const status = (prof as any)?.trial_status as string | null;
@@ -540,8 +540,11 @@ export async function startTrialForChannelChoice(
     return { started: false, alreadyActive: true, expiresAt: (prof as any)?.trial_expires_at ?? undefined };
   }
   if (status) return { started: false, alreadyActive: false, reason: "trial_already_used" };
+  // Conta já paga não recebe trial: no fim acabaria por descer um plano comprado.
+  if (isPaidAccount(prof)) return { started: false, alreadyActive: false, reason: "already_paid" };
 
   const plan = normalizeTier((prof as any)?.subscription_tier);
+
   const expiresAt = new Date(now.getTime() + TRIAL_DAYS * DAY).toISOString();
   const patch: Record<string, unknown> = {
     trial_started_at: now.toISOString(),
