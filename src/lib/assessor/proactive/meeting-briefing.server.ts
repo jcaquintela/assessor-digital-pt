@@ -184,6 +184,7 @@ async function loadDueEvents(
   // sobrepor-se à hora de `due_date`; o filtro fino é feito em memória.
   const from = new Date(nowMs - 26 * 3600_000).toISOString();
   const to = new Date(nowMs + 26 * 3600_000).toISOString();
+
   let q = supabase
     .from("follow_ups")
     .select(
