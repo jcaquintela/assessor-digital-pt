@@ -138,12 +138,44 @@ export function formatEventContext(ctx: EventBriefContext | null | undefined): s
   return lines.join("\n");
 }
 
-/** Há mesmo alguma coisa para mostrar (pessoa ou contexto do evento)? */
+/**
+ * Pendências do mesmo negócio/pessoa que valem a pena ver antes de entrar:
+ * rascunho de email por enviar, documento em falta no imóvel e prazo do
+ * negócio a chegar. Vazio = a cartela fica exatamente como era.
+ */
+export interface BriefingPendings {
+  emailDrafts?: string[];
+  missingDocs?: string[];
+  deadlines?: string[];
+}
+
+export function hasPendings(p?: BriefingPendings | null): boolean {
+  if (!p) return false;
+  return Boolean(
+    (p.emailDrafts?.length ?? 0) || (p.missingDocs?.length ?? 0) || (p.deadlines?.length ?? 0),
+  );
+}
+
+/** Bloco "Pendências:" — só existe quando há mesmo alguma. */
+export function formatPendings(p?: BriefingPendings | null): string {
+  if (!hasPendings(p)) return "";
+  const lines = [
+    ...(p!.emailDrafts ?? []).map((t) => `- Email por enviar: ${t}`),
+    ...(p!.missingDocs ?? []).map((t) => `- Documento em falta: ${t}`),
+    ...(p!.deadlines ?? []).map((t) => `- Prazo: ${t}`),
+  ].filter((l) => l.trim().length > 22);
+  if (!lines.length) return "";
+  return `Pendências:\n${lines.slice(0, 5).join("\n")}`;
+}
+
+/** Há mesmo alguma coisa para mostrar (pessoa, contexto do evento ou pendências)? */
 export function hasAnyBriefingContent(
   brief: PersonBrief | null | undefined,
   ctx?: EventBriefContext | null,
+  pendings?: BriefingPendings | null,
 ): boolean {
   if (brief && hasBriefContent(brief)) return true;
+  if (formatPendings(pendings)) return true;
   return Boolean(formatEventContext(ctx));
 }
 
@@ -166,6 +198,7 @@ export function formatMeetingBriefing(
   brief: PersonBrief | null,
   nowMs: number,
   ctx?: EventBriefContext | null,
+  pendings?: BriefingPendings | null,
 ): string {
   const start = eventStartMs(ev);
   const minutes = Math.max(1, Math.round((start - nowMs) / 60_000));
@@ -173,11 +206,81 @@ export function formatMeetingBriefing(
     `Daqui a ${minutes} min: ${boldWa(String(ev.title).trim())}` +
     (brief ? `, com ${boldWa(brief.name)}` : "") +
     (Number.isFinite(start) ? ` (${timePt(start)}).` : ".");
-  const body = [brief ? formatPersonBrief(brief) : "", formatEventContext(ctx)]
+  const body = [
+    brief ? formatPersonBrief(brief) : "",
+    formatEventContext(ctx),
+    formatPendings(pendings),
+  ]
     .filter((s) => s.trim())
     .join("\n");
   return `${head}\n\n${body}`.trimEnd();
 }
+
+export interface BriefingPart {
+  event: BriefingEvent;
+  brief: PersonBrief | null;
+  ctx?: EventBriefContext | null;
+  pendings?: BriefingPendings | null;
+}
+
+/**
+ * Cartela conjunta: dois (ou mais) compromissos demasiado próximos entram
+ * numa só mensagem. Sem isto, a preparação do segundo chegava a meio do
+ * primeiro — pior do que não chegar.
+ */
+export function formatJointBriefing(parts: BriefingPart[], nowMs: number): string {
+  if (parts.length === 1) {
+    const p = parts[0]!;
+    return formatMeetingBriefing(p.event, p.brief, nowMs, p.ctx, p.pendings);
+  }
+  const first = eventStartMs(parts[0]!.event);
+  const minutes = Math.max(1, Math.round((first - nowMs) / 60_000));
+  const head = `Daqui a ${minutes} min tens ${parts.length} compromissos seguidos:`;
+  const blocks = parts.map((p) => {
+    const start = eventStartMs(p.event);
+    const when = Number.isFinite(start) ? `${timePt(start)} — ` : "";
+    const title = `${when}${boldWa(String(p.event.title).trim())}` +
+      (p.brief ? `, com ${boldWa(p.brief.name)}` : "");
+    const body = [
+      p.brief ? formatPersonBrief(p.brief) : "",
+      formatEventContext(p.ctx),
+      formatPendings(p.pendings),
+    ].filter((s) => s.trim()).join("\n");
+    return `${title}\n${body}`.trimEnd();
+  });
+  return `${head}\n\n${blocks.join("\n\n")}`.trimEnd();
+}
+
+/**
+ * Agrupa, por consultor, compromissos elegíveis que começam a menos de
+ * `BRIEFING_OVERLAP_MINUTES` uns dos outros. Cada grupo dá UMA cartela.
+ */
+export function groupNearbyEvents<T extends BriefingEvent & { user_id?: string }>(
+  events: T[],
+): T[][] {
+  const byUser = new Map<string, T[]>();
+  for (const ev of events) {
+    const key = String((ev as any).user_id ?? "");
+    const list = byUser.get(key) ?? [];
+    list.push(ev);
+    byUser.set(key, list);
+  }
+  const groups: T[][] = [];
+  for (const list of byUser.values()) {
+    const sorted = [...list].sort((a, b) => eventStartMs(a) - eventStartMs(b));
+    let current: T[] = [];
+    for (const ev of sorted) {
+      if (!current.length) { current = [ev]; continue; }
+      const prev = eventStartMs(current[current.length - 1]!);
+      const gap = eventStartMs(ev) - prev;
+      if (Number.isFinite(gap) && gap < BRIEFING_OVERLAP_MINUTES * 60_000) current.push(ev);
+      else { groups.push(current); current = [ev]; }
+    }
+    if (current.length) groups.push(current);
+  }
+  return groups;
+}
+
 /** Uma linha só, sem quebras nem marcações — exigência da Meta nos params. */
 export function flattenForTemplate(text: string): string {
   return String(text ?? "")
