@@ -65,6 +65,9 @@ export const updateSupremePreferences = createServerFn({ method: "POST" })
       evening_checkin_time?: string;
       confirm_document_send?: boolean;
       reminder_lead_minutes?: number | null;
+      evening_wrap_enabled?: boolean;
+      evening_time?: string;
+      evening_review_detail?: string;
     };
     const patch: Record<string, unknown> = {};
     if (typeof o.morning_briefing_enabled === "boolean") patch.morning_briefing_enabled = o.morning_briefing_enabled;
@@ -73,6 +76,11 @@ export const updateSupremePreferences = createServerFn({ method: "POST" })
     if (typeof o.evening_checkin_enabled === "boolean") patch.evening_checkin_enabled = o.evening_checkin_enabled;
     if (typeof o.evening_checkin_time === "string" && /^\d{2}:\d{2}$/.test(o.evening_checkin_time)) {
       patch.evening_checkin_time = o.evening_checkin_time;
+    }
+    if (typeof o.evening_wrap_enabled === "boolean") patch.evening_wrap_enabled = o.evening_wrap_enabled;
+    if (typeof o.evening_time === "string" && /^\d{2}:\d{2}$/.test(o.evening_time)) patch.evening_time = o.evening_time;
+    if (["curto", "normal", "detalhado"].includes(String(o.evening_review_detail))) {
+      patch.evening_review_detail = o.evening_review_detail;
     }
     if (typeof o.confirm_document_send === "boolean") patch.confirm_document_send = o.confirm_document_send;
     if (isAutonomyLevel(o.autonomy_level)) patch.autonomy_level = o.autonomy_level;

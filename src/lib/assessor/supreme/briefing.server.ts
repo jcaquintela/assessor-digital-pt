@@ -241,7 +241,7 @@ export async function generateSupremeNudges(
     withinWindow(String((p as any).evening_time ?? "19:00").slice(0, 5), nowP, 15)
   ) {
     const { buildDaySnapshot } = await import("./day-snapshot.server");
-    const { composeEveningReview, hasEveningSignal } = await import("./evening-review");
+    const { composeEveningReview, hasEveningSignal, normalizeEveningDetail } = await import("./evening-review");
     const snapshot = await buildDaySnapshot(supabase, userId, { lens: "fim_de_dia", now });
     if (hasEveningSignal(snapshot)) {
       drafts.push({
@@ -249,7 +249,9 @@ export async function generateSupremeNudges(
         subject_type: null,
         subject_id: null,
         reason: "Resumo de fim de dia",
-        suggested_reply: sanitizeReply(composeEveningReview(snapshot)),
+        suggested_reply: sanitizeReply(
+          composeEveningReview(snapshot, { detail: normalizeEveningDetail((p as any).evening_review_detail) }),
+        ),
         dedupe_key: `${EVENING_REVIEW_PREFIX}${nowP.ymd}`,
       });
     }

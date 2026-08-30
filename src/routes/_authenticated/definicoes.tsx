@@ -498,6 +498,8 @@ function SupremeSection() {
     morning_briefing_enabled?: boolean; morning_time?: string;
     autonomy_level?: string; max_daily_nudges?: number;
     reminder_lead_minutes?: number | null;
+    evening_wrap_enabled?: boolean; evening_time?: string;
+    evening_review_detail?: string;
   };
   const level = (data as any).effectiveAutonomy ?? prefs.autonomy_level ?? "conservador";
   const allowed = new Set<string>(((data as any).autonomyAllowed as string[]) ?? ["conservador"]);
@@ -599,6 +601,34 @@ function SupremeSection() {
             <option value="60">1 hora antes</option>
           </select>
           <p className="c-muted mt-2 text-[12px]">Aplica-se aos lembretes de tarefas e compromissos novos.</p>
+        </div>
+        <div>
+          <label htmlFor="evening-time" className="c-eyebrow">Hora do resumo de fim de dia</label>
+          <input
+            id="evening-time" type="time" defaultValue={(prefs.evening_time ?? "19:00").slice(0, 5)}
+            onBlur={(e) => save.mutate({ evening_time: e.target.value })}
+            className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
+          />
+          <button
+            className="c-btn mt-2"
+            onClick={() => save.mutate({ evening_wrap_enabled: !(prefs.evening_wrap_enabled ?? true) })}
+          >
+            {prefs.evening_wrap_enabled === false ? "Ativar resumo" : "Desativar resumo"}
+          </button>
+        </div>
+        <div>
+          <label htmlFor="evening-detail" className="c-eyebrow">Detalhe do resumo</label>
+          <select
+            id="evening-detail"
+            defaultValue={prefs.evening_review_detail ?? "normal"}
+            onChange={(e) => save.mutate({ evening_review_detail: e.target.value })}
+            className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
+          >
+            <option value="curto">Curto — uma linha com os números</option>
+            <option value="normal">Normal — o essencial em três blocos</option>
+            <option value="detalhado">Detalhado — visitas nomeadas e lista completa</option>
+          </select>
+          <p className="c-muted mt-2 text-[12px]">Vale para o resumo automático e para quando o pedes na conversa.</p>
         </div>
       </div>
     </Section>
