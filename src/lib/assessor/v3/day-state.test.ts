@@ -19,7 +19,9 @@ describe("consulta do estado do dia", () => {
     "Bom dia Afonso. Como estou hoje?",
     "Como vai o meu dia?",
     "como corre o dia?",
-    "Resumo do dia",
+    // "Resumo do dia" passou a ser retrospetivo (resumo de fim de dia) —
+    // ver supreme/evening-review.golden.test.ts.
+
     "ponto de situação de hoje",
     "E o meu dia?",
   ]) it(`reconhece: ${t}`, () => expect(detectDayStateQuery(t)).toBe(true));
