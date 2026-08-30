@@ -75,29 +75,47 @@ function endOfDayLisbonIso(now = new Date()): string {
 }
 
 // Computa (em memória) as prioridades top-N para um utilizador.
+//
+// `windowStart`/`windowEnd` permitem olhar para uma janela que não é "hoje"
+// (ex.: [amanhã 00:00, amanhã 23:59] usado pelo resumo de fim de dia) sem
+// duplicar a query nem criar um segundo motor de prioridades.
 export async function computePriorities(
   supabase: any,
   userId: string,
-  opts: { limit?: number; now?: Date } = {},
+  opts: { limit?: number; now?: Date; windowStart?: Date; windowEnd?: Date } = {},
 ): Promise<PriorityItem[]> {
   const limit = opts.limit ?? 5;
   const now = opts.now ?? new Date();
   const items: PriorityItem[] = [];
 
-  const [{ data: follows }, { data: opps }] = await Promise.all([
-    supabase
+  const windowStartYmd = opts.windowStart ? lisbonYmd(opts.windowStart) : null;
+  const windowStartIso = windowStartYmd
+    ? new Date(lisbonInstant(windowStartYmd, 0, 0, 0)).toISOString()
+    : null;
+  const upperIso = endOfDayLisbonIso(opts.windowEnd ?? opts.windowStart ?? now);
+  const windowEndYmd = lisbonYmd(opts.windowEnd ?? opts.windowStart ?? now);
+
+  const followQuery = (() => {
+    let q = supabase
       .from("follow_ups")
       .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, related_property_id, related_prospecting_lead_id, outcome, created_at, notes, archived_at, event_class")
       .eq("user_id", userId)
       // O filtro de "aberto/fechado" é aplicado em memória pela regra
       // canónica: `precisa_nova_acao` e `adiado` continuam abertos e têm de
       // voltar às Prioridades.
-      .is("archived_at", null)
-      // Só o que está em atraso ou é para hoje. Compromissos futuros
-      // (ex.: amanhã à noite) não são prioridades de hoje.
-      .lte("due_date", endOfDayLisbonIso(now))
+      .is("archived_at", null);
+    // Só o que está em atraso ou é para hoje. Compromissos futuros
+    // (ex.: amanhã à noite) não são prioridades de hoje.
+    if (windowStartIso) q = q.gte("due_date", windowStartIso);
+    return q
+      .lte("due_date", upperIso)
       .order("due_date", { ascending: true })
-      .limit(50),
+      .limit(50);
+  })();
+
+  const [{ data: follows }, { data: opps }] = await Promise.all([
+    followQuery,
+
     supabase
       .from("opportunities")
       .select("id, type, status, stage, archived_at, value, next_action, next_action_date, person_id, updated_at")
