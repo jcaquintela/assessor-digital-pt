@@ -1416,10 +1416,6 @@ async function execUpdateProspectingLead(ctx: DomainContext, args: unknown): Pro
   if (v.source_type) patch.source_type = v.source_type;
   if (v.status) patch.status = v.status;
   if (v.notes !== undefined) patch.notes = v.notes?.slice(0, 2000) ?? null;
-  if (v.summary !== undefined && v.summary) patch.summary = v.summary.slice(0, 1000);
-  if (v.next_action !== undefined) patch.next_action = v.next_action?.slice(0, 300) ?? null;
-  if (v.next_action_date !== undefined) {
-    patch.next_action_date = /^\d{4}-\d{2}-\d{2}$/.test(String(v.next_action_date ?? "")) ? v.next_action_date : null;
   }
 
   if (!Object.keys(patch).length) return fail("nada_para_actualizar");
@@ -1629,10 +1625,6 @@ async function execUpdateProperty(ctx: DomainContext, args: unknown): Promise<Do
   if (v.asking_price !== undefined) patch.asking_price = v.asking_price ?? null;
   if (v.status !== undefined && v.status) patch.status = v.status;
   if (v.notes !== undefined) patch.notes = v.notes?.slice(0, 2000) ?? null;
-  if (v.summary !== undefined && v.summary) patch.summary = v.summary.slice(0, 1000);
-  if (v.next_action !== undefined) patch.next_action = v.next_action?.slice(0, 300) ?? null;
-  if (v.next_action_date !== undefined) {
-    patch.next_action_date = /^\d{4}-\d{2}-\d{2}$/.test(String(v.next_action_date ?? "")) ? v.next_action_date : null;
   }
   if (!Object.keys(patch).length) return fail("nada_para_actualizar");
 
