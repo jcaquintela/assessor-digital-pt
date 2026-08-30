@@ -1,23 +1,29 @@
 // Runner da Cartela de Briefing. Corre de poucos em poucos minutos: procura
-// compromissos com pessoa associada a começar nos próximos 15 minutos, monta
+// compromissos com pessoa associada a começar nos próximos 30 minutos, monta
 // o resumo rápido dessa pessoa e envia pelo canal principal.
 //
 // Regras não negociáveis:
 // - Sem pessoa associada → não envia.
 // - Sem nada relevante para dizer → não envia (nunca cartela vazia).
 // - Marca `follow_ups.briefing_sent_at` → nunca duplica.
+// - Compromissos a menos de 45 min uns dos outros → UMA cartela conjunta.
 
 import {
   BRIEFING_GRACE_MINUTES,
   BRIEFING_LEAD_MINUTES,
   briefingTemplateParams,
+  formatJointBriefing,
   formatMeetingBriefing,
+  groupNearbyEvents,
   hasAnyBriefingContent,
   isBriefingEligible,
   isBriefingDue,
   type BriefingEvent,
+  type BriefingPart,
+  type BriefingPendings,
   type EventBriefContext,
 } from "./meeting-briefing";
+
 
 /** Imóvel e negócio ligados ao próprio compromisso (não à pessoa). */
 async function loadEventContext(
