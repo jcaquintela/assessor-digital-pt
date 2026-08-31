@@ -72,14 +72,18 @@ async function parkInMiscellaneous(
  * Gera avisos de conflito para um consultor.
  * Também fecha (resolved) os avisos cujo par já não colide — sem intervenção.
  */
-export async function generateConflictNudges(
+/**
+ * Conflitos vivos de um consultor numa janela de dias. Fonte única: tanto o
+ * briefing da manhã como o nudge autónomo leem daqui.
+ */
+export async function loadConflictPairs(
   supabase: any,
   userId: string,
-  opts: { now?: Date; max?: number } = {},
-): Promise<ConflictNudgeDraft[]> {
+  opts: { now?: Date; horizonDays?: number } = {},
+): Promise<ReturnType<typeof findConflicts>> {
   const now = opts.now ?? new Date();
-  const max = opts.max ?? 2;
-  const horizonEnd = new Date(now.getTime() + CONFLICT_HORIZON_DAYS * 864e5);
+  const horizonDays = opts.horizonDays ?? CONFLICT_HORIZON_DAYS;
+  const horizonEnd = new Date(now.getTime() + horizonDays * 864e5);
 
   const { data: follows } = await supabase
     .from("follow_ups")
@@ -120,8 +124,26 @@ export async function generateConflictNudges(
     series_id: links.get(f.id) ?? null,
   }));
 
-  const pairs = findConflicts(candidates);
-  const livePairKeys = new Set(pairs.map((p) => p.pairKey));
+  return findConflicts(candidates);
+}
+
+/**
+ * Gera avisos de conflito para um consultor.
+ * Também fecha (resolved) os avisos cujo par já não colide — sem intervenção.
+ *
+ * Os conflitos dentro do horizonte do briefing matinal (7 dias) já são ditos
+ * lá; aqui só se cobre o que fica de fora (8–14 dias).
+ */
+export async function generateConflictNudges(
+  supabase: any,
+  userId: string,
+  opts: { now?: Date; max?: number } = {},
+): Promise<ConflictNudgeDraft[]> {
+  const now = opts.now ?? new Date();
+  const max = opts.max ?? 2;
+
+  const pairs = await loadConflictPairs(supabase, userId, { now });
+
 
   // Histórico dos avisos deste tipo — serve para contar tentativas e para
   // fechar os que já não fazem sentido.
