@@ -147,3 +147,22 @@ export function findTightGapsInWindows(
   }
   return gaps.sort((x, y) => x.a.startMs - y.a.startMs);
 }
+
+// ---------------------------------------------------------------------------
+// Horizonte do briefing matinal.
+//
+// Os conflitos dos próximos 7 dias são ditos no briefing da manhã (secção
+// "Conflitos a resolver"); os de 8–14 dias continuam a sair como aviso
+// autónomo. Assim o consultor nunca lê o mesmo conflito duas vezes no mesmo dia.
+
+export const BRIEFING_CONFLICT_DAYS = 7;
+
+/** Pares cuja colisão começa dentro dos próximos `days` dias. */
+export function conflictsWithinDays(
+  pairs: ConflictPair[],
+  days: number = BRIEFING_CONFLICT_DAYS,
+  now: Date = new Date(),
+): ConflictPair[] {
+  const limit = now.getTime() + days * 864e5;
+  return pairs.filter((p) => p.overlapStartMs <= limit);
+}
