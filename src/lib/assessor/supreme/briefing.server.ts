@@ -8,6 +8,8 @@ import { belongsInDailyAgenda } from "../agenda-leisure";
 import { isFollowUpOpen, isFollowUpEvent } from "@/lib/follow-ups/state";
 import { computePriorities } from "./priorities.server";
 import { composeEmptyDayBriefing } from "../proactive/empty-day";
+import { composeNoPrioritiesBriefing, type AgendaFactEvent } from "../proactive/day-agenda-facts";
+import { loadDayAgendaFacts } from "../proactive/day-agenda-facts.server";
 import { formatPreEventNudge, isPreEventDue } from "./pre-event";
 import { lisbonYmd, lisbonHhMm } from "../lisbon-day";
 
@@ -43,9 +45,18 @@ export async function morningBriefingAlreadySent(supabase: any, userId: string):
 /** Texto do briefing a partir das prioridades actuais (nunca de cache). */
 export function composeBriefingText(
   priorities: Array<{ action: string; entity_label: string | null; reasons: string[] }>,
-  opts: { firstName?: string; now?: Date } = {},
+  opts: {
+    firstName?: string;
+    now?: Date;
+    /** Agenda real do dia — obrigatória para poder dizer "livre" (ver day-agenda-facts). */
+    dayEvents?: AgendaFactEvent[] | null;
+  } = {},
 ): string {
-  if (!priorities.length) return composeEmptyDayBriefing(opts.firstName ?? "", opts.now ?? new Date());
+  if (!priorities.length) {
+    const now = opts.now ?? new Date();
+    if (opts.dayEvents) return composeNoPrioritiesBriefing(opts.firstName ?? "", opts.dayEvents, now);
+    return composeEmptyDayBriefing(opts.firstName ?? "", now);
+  }
   const top = priorities[0]!;
   const rest = priorities.length - 1;
   return `Bom dia. Prioridade de hoje: ${top.action}${top.entity_label ? ` (${top.entity_label})` : ""}. ${top.reasons[0] ?? ""}.${rest > 0 ? ` Tens mais ${rest} para tratar.` : ""}`;
@@ -64,8 +75,10 @@ export async function resolveBriefingAtDispatch(
   const priorities = await computePriorities(supabase, userId, { limit: 3 });
   const { data: prof } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
   const firstName = ((prof as any)?.name ?? "").split(" ")[0] ?? "";
-  return { send: true, text: sanitizeReply(composeBriefingText(priorities, { firstName })) };
+  const dayEvents = priorities.length ? null : await loadDayAgendaFacts(supabase, userId);
+  return { send: true, text: sanitizeReply(composeBriefingText(priorities, { firstName, dayEvents })) };
 }
+
 
 // Dia e hora de Lisboa vêm da fonte única (lisbon-day.ts); o dia-da-semana é
 // derivado desse mesmo dia de calendário, para não haver dois cálculos de fuso.
@@ -145,12 +158,13 @@ export async function generateSupremeNudges(
   ) {
     if (!(await morningBriefingAlreadySent(supabase, userId))) {
       const priorities = await computePriorities(supabase, userId, { limit: 3, now });
+      const dayEvents = priorities.length ? null : await loadDayAgendaFacts(supabase, userId, now);
       drafts.push({
         kind: "consultant_silence" as any, // reutiliza kind existente para respeitar tipos actuais
         subject_type: null,
         subject_id: null,
         reason: "Briefing diário do Assessor Supremo",
-        suggested_reply: sanitizeReply(composeBriefingText(priorities)),
+        suggested_reply: sanitizeReply(composeBriefingText(priorities, { now, dayEvents })),
         dedupe_key: `${DAILY_BRIEFING_PREFIX}${nowP.ymd}`,
       });
     }
