@@ -74,6 +74,7 @@ function makeDb() {
       },
       gte: (c: string, v: any) => { filters.push((r) => new Date(valueOf(r, c)) >= new Date(v)); return api; },
       lte: (c: string, v: any) => { filters.push((r) => new Date(valueOf(r, c)) <= new Date(v)); return api; },
+      lt: (c: string, v: any) => { filters.push((r) => new Date(valueOf(r, c)) < new Date(v)); return api; },
       ilike: () => api,
       or: () => api,
       order: () => api,
