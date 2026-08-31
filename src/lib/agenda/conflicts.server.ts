@@ -192,6 +192,20 @@ export async function generateConflictNudges(
       .in("id", staleIds);
   }
 
+  // 1b) Conflitos que o briefing da manhã já diz: o aviso separado cala-se.
+  const mentionedIds: string[] = [];
+  for (const [pair, ids] of openIdsByPair) {
+    if (briefingKeys.has(pair)) mentionedIds.push(...ids);
+  }
+  if (mentionedIds.length) {
+    await supabase
+      .from("assessor_nudges")
+      .update({ status: "dismissed", outcome: "mencionado_no_briefing", outcome_at: now.toISOString() } as never)
+      .in("id", mentionedIds);
+  }
+
+
+
   // 2) Novos avisos.
   const drafts: ConflictNudgeDraft[] = [];
   for (const pair of pairs) {
