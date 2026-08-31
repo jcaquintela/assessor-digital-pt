@@ -6,8 +6,15 @@
 // só agrupa, ordena e escreve.
 
 import { entityUrl } from "@/lib/nav/entity-url";
-import { tightGapMessage } from "@/lib/agenda/conflict-message";
-import { findTightGapsInWindows, type TightGap } from "@/lib/agenda/conflicts";
+import { tightGapMessage, conflictReason } from "@/lib/agenda/conflict-message";
+import {
+  findTightGapsInWindows,
+  conflictsWithinDays,
+  BRIEFING_CONFLICT_DAYS,
+  type TightGap,
+  type ConflictPair,
+} from "@/lib/agenda/conflicts";
+
 import type { AgendaFactEvent } from "./day-agenda-facts";
 import { lisbonYmd } from "../lisbon-day";
 
@@ -109,10 +116,16 @@ export interface EnrichedBriefingOptions {
   firstName?: string;
   now?: Date;
   tightGaps?: TightGap[];
+  /** Conflitos dos próximos 7 dias — o aviso separado cobre 8–14. */
+  conflicts?: ConflictPair[];
   /** Base absoluta dos links (canal); vazio no painel. */
   base?: string | null;
   maxChars?: number;
 }
+
+/** Máximo de conflitos escritos por extenso no briefing. */
+export const MAX_BRIEFING_CONFLICTS = 3;
+
 
 /**
  * Briefing curto para o canal: máx. 3 P1 + 2 P2 explícitos, P3 só como
@@ -149,6 +162,19 @@ export function composeEnrichedBriefing(
   for (const gap of opts.tightGaps ?? []) {
     blocks.push({ text: tightGapMessage(gap), removable: true });
   }
+  const conflicts = conflictsWithinDays(opts.conflicts ?? [], BRIEFING_CONFLICT_DAYS, now).slice(
+    0,
+    MAX_BRIEFING_CONFLICTS,
+  );
+  if (conflicts.length) {
+    blocks.push({
+      text: `⚠️ Conflitos a resolver\n${conflicts
+        .map((c) => `• ${conflictReason(c, now)}`)
+        .join("\n")}`,
+      removable: true,
+    });
+  }
+
   const steps = nextThreeActions([...shownP1, ...shownP2, ...p3]);
   if (steps.length) {
     blocks.push({
