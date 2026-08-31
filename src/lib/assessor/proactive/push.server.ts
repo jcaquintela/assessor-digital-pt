@@ -118,7 +118,7 @@ export async function listPushUsers(supabase: any): Promise<PushUser[]> {
 function formatPriorities(
   name: string,
   items: any[],
-  opts: { now?: Date; dayEvents?: any[] | null } = {},
+  opts: { now?: Date; dayEvents?: any[] | null; conflicts?: any[] } = {},
 ): string {
   const now = opts.now ?? new Date();
   return sanitizeReply(
@@ -126,6 +126,7 @@ function formatPriorities(
       firstName: name,
       now,
       tightGaps: opts.dayEvents ? tightGapsFromAgenda(opts.dayEvents as any, now) : [],
+      conflicts: (opts.conflicts ?? []) as any,
       base: "https://app.meuafonso.com",
     }),
   );
@@ -158,11 +159,13 @@ export async function sendMorningPush(
   const { composeNoPrioritiesBriefing } = await import("./day-agenda-facts");
   const { loadDayAgendaFacts } = await import("./day-agenda-facts.server");
   const dayEvents = await loadDayAgendaFacts(supabase, userId);
+  const { loadConflictPairs } = await import("@/lib/agenda/conflicts.server");
+  const conflicts = await loadConflictPairs(supabase, userId).catch(() => []);
   const noPrioritiesText = priorities.length
     ? ""
     : sanitizeReply(composeNoPrioritiesBriefing(firstName, dayEvents));
   const text = priorities.length
-    ? formatPriorities(firstName, priorities, { dayEvents })
+    ? formatPriorities(firstName, priorities, { dayEvents, conflicts })
     : noPrioritiesText;
 
   const inWindow = await isWithin24hWindow(supabase, userId, target.channel);

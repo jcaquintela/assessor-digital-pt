@@ -60,6 +60,8 @@ export function composeBriefingText(
     now?: Date;
     /** Agenda real do dia — obrigatória para poder dizer "livre" (ver day-agenda-facts). */
     dayEvents?: AgendaFactEvent[] | null;
+    /** Conflitos vivos (7 dias) — secção "Conflitos a resolver". */
+    conflicts?: import("@/lib/agenda/conflicts").ConflictPair[];
   } = {},
 ): string {
   const now = opts.now ?? new Date();
@@ -71,6 +73,7 @@ export function composeBriefingText(
     firstName: opts.firstName ?? "",
     now,
     tightGaps: opts.dayEvents ? tightGapsFromAgenda(opts.dayEvents, now) : [],
+    conflicts: opts.conflicts ?? [],
   });
 }
 
@@ -88,7 +91,12 @@ export async function resolveBriefingAtDispatch(
   const { data: prof } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
   const firstName = ((prof as any)?.name ?? "").split(" ")[0] ?? "";
   const dayEvents = await loadDayAgendaFacts(supabase, userId);
-  return { send: true, text: sanitizeReply(composeBriefingText(priorities, { firstName, dayEvents })) };
+  const { loadConflictPairs } = await import("@/lib/agenda/conflicts.server");
+  const conflicts = await loadConflictPairs(supabase, userId).catch(() => []);
+  return {
+    send: true,
+    text: sanitizeReply(composeBriefingText(priorities, { firstName, dayEvents, conflicts })),
+  };
 }
 
 
