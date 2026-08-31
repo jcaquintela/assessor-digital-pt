@@ -11,8 +11,10 @@ import { Button } from "@/components/ui/button";
 import {
   AlertTriangle, CheckCircle2, Clock, MessageSquare,
   FileText, Briefcase, ChevronRight, MoreHorizontal, StickyNote, Archive,
-  Home, X,
+  Home, X, Pencil,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { bucketOf, type BriefingPriority } from "@/lib/assessor/proactive/briefing-enriched";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -68,6 +70,17 @@ export const Route = createFileRoute("/_authenticated/hoje")({
   },
   component: HojePage,
 });
+
+const NIVEL_COR: Record<"P1" | "P2" | "P3", string> = {
+  P1: "#b3261e",
+  P2: "#b26a00",
+  P3: "#5f6b7a",
+};
+const NIVEL_TITULO: Record<"P1" | "P2" | "P3", string> = {
+  P1: "Trata hoje",
+  P2: "Importante, não urgente",
+  P3: "Pode esperar",
+};
 
 function greeting(now: Date) {
   const h = now.getHours();
@@ -128,7 +141,7 @@ function HojePage() {
     });
   };
 
-  const { seguimentos, oportunidades, pessoas, imoveis, concluirSeguimento, reagendarSeguimento, arquivarSeguimento } = useStore();
+  const { seguimentos, oportunidades, pessoas, imoveis, concluirSeguimento, reagendarSeguimento, arquivarSeguimento, atualizarSeguimento } = useStore();
   void oportunidades;
   const { name: assessorName } = useAssessorName();
   // Relógio partilhado: reavalia de 5 em 5 minutos e ao voltar à página,
@@ -279,6 +292,13 @@ function HojePage() {
   });
   const [noteFor, setNoteFor] = useState<Awaiting | null>(null);
   const [noteText, setNoteText] = useState("");
+  // Confirmar / editar a ação sem sair do briefing.
+  const [confirmFor, setConfirmFor] = useState<Priority | null>(null);
+  const [confirmNota, setConfirmNota] = useState("");
+  const [editFor, setEditFor] = useState<Priority | null>(null);
+  const [editTitulo, setEditTitulo] = useState("");
+  const [editData, setEditData] = useState("");
+  const [editHora, setEditHora] = useState("");
 
   const nomePessoa = (id?: string) => pessoas.find((p) => p.id === id)?.nome ?? "";
   const tituloImovel = (id?: string) => imoveis.find((i) => i.id === id)?.titulo ?? "";
@@ -463,12 +483,50 @@ function HojePage() {
     // oportunidade e imóvel são navegações diretas via Link nas ações
   };
 
-  const savePriorityDone = (p: Priority) => {
+
+  // Confirmar a partir do cartão: nota curta opcional, registo de conclusão.
+  const abrirConfirmacao = (p: Priority) => {
+    setConfirmNota("");
+    setConfirmFor(p);
+  };
+
+  const confirmarAcao = () => {
+    const p = confirmFor;
+    if (!p) return;
+    const nota = confirmNota.trim();
     if (p.subject_type === "follow_up") {
-      outcome.mutate({ id: p.subject_id, outcome: "concluido" });
+      outcome.mutate({ id: p.subject_id, outcome: "concluido", ...(nota ? { notes: nota } : {}) });
       concluirSeguimento(p.subject_id).catch(() => {/* já tratado via outcome */});
     } else {
       dismiss.mutate({ id: p.subject_id });
+    }
+    setConfirmFor(null);
+    setConfirmNota("");
+  };
+
+  // Editar rapidamente o seguimento sem sair do briefing.
+  const abrirEdicao = (p: Priority) => {
+    const s = seguimentos.find((x) => x.id === p.subject_id);
+    setEditTitulo(s?.titulo ?? assuntoDe(p));
+    setEditData(s?.data ? lisbonYmd(s.data) : p.due_at ? lisbonYmd(p.due_at) : "");
+    setEditHora(s?.hora ?? "");
+    setEditFor(p);
+  };
+
+  const guardarEdicao = async () => {
+    const p = editFor;
+    if (!p) return;
+    try {
+      await atualizarSeguimento(p.subject_id, {
+        titulo: editTitulo.trim() || undefined,
+        ...(editData ? { data: editData } : {}),
+        hora: editHora || null,
+      } as any);
+      qc.invalidateQueries({ queryKey: ["supreme", "hoje"] });
+      toast.success("Seguimento atualizado.");
+      setEditFor(null);
+    } catch (e) {
+      toast.error((e as Error).message);
     }
   };
 
@@ -519,9 +577,19 @@ function HojePage() {
 
   const cartaoAcao = (p: Priority, principal: boolean) => {
     const tom = tomDe(p);
+    // Mesma regra do briefing enviado no canal: nada de score novo aqui.
+    const nivel = bucketOf(p as unknown as BriefingPriority, now);
     return (
       <article key={`${p.subject_type}:${p.subject_id}`} className={`c-act ${tom.tone}${principal ? " principal" : ""}`}>
         <span className="c-act-kicker">
+          <span
+            className="rounded-full px-1.5 py-0.5 text-[11px] font-bold"
+            title={NIVEL_TITULO[nivel]}
+            aria-label={`Prioridade ${nivel}: ${NIVEL_TITULO[nivel]}`}
+            style={{ background: NIVEL_COR[nivel], color: "#fff" }}
+          >
+            {nivel}
+          </span>
           <AlertTriangle className="h-3.5 w-3.5" /> {tom.label}
         </span>
         <h3 className="c-act-title">{assuntoDe(p)}</h3>
@@ -548,9 +616,14 @@ function HojePage() {
               <ArrowRight className="h-3.5 w-3.5" /> Tratar agora
             </Link>
           )}
-          <button type="button" className="c-act-second" onClick={() => savePriorityDone(p)}>
+          <button type="button" className="c-act-second" onClick={() => abrirConfirmacao(p)}>
             <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
           </button>
+          {p.subject_type === "follow_up" && (
+            <button type="button" className="c-act-second" onClick={() => abrirEdicao(p)}>
+              <Pencil className="h-3.5 w-3.5" /> Editar
+            </button>
+          )}
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" className="c-act-second">Adiar</button>
@@ -1037,6 +1110,42 @@ function HojePage() {
             >
               Guardar
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!confirmFor} onOpenChange={(o) => { if (!o) setConfirmFor(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Concluir “{confirmFor ? assuntoDe(confirmFor) : ""}”?</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={confirmNota}
+            onChange={(e) => setConfirmNota(e.target.value)}
+            placeholder="Nota curta (opcional): o que ficou combinado?"
+            rows={3}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmFor(null)}>Cancelar</Button>
+            <Button onClick={confirmarAcao}>Confirmar conclusão</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editFor} onOpenChange={(o) => { if (!o) setEditFor(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar seguimento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input value={editTitulo} onChange={(e) => setEditTitulo(e.target.value)} placeholder="O que tens de fazer" />
+            <div className="grid grid-cols-2 gap-3">
+              <Input type="date" value={editData} onChange={(e) => setEditData(e.target.value)} />
+              <Input type="time" value={editHora} onChange={(e) => setEditHora(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditFor(null)}>Cancelar</Button>
+            <Button onClick={() => void guardarEdicao()}>Guardar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
