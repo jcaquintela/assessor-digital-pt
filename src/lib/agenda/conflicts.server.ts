@@ -3,7 +3,14 @@
 // Reutiliza o único caminho proativo existente (assessor_nudges + dispatch);
 // aqui só se decide QUE pares merecem aviso hoje.
 
-import { findConflicts, pairKeyOf, type ConflictCandidate } from "./conflicts";
+import {
+  findConflicts,
+  pairKeyOf,
+  conflictsWithinDays,
+  BRIEFING_CONFLICT_DAYS,
+  type ConflictCandidate,
+} from "./conflicts";
+
 import { conflictMessage, conflictReason } from "./conflict-message";
 import { isFollowUpOpen } from "@/lib/follow-ups/state";
 import { belongsInDailyAgenda } from "@/lib/assessor/agenda-leisure";
