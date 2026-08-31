@@ -142,7 +142,14 @@ export async function generateConflictNudges(
   const now = opts.now ?? new Date();
   const max = opts.max ?? 2;
 
-  const pairs = await loadConflictPairs(supabase, userId, { now });
+  const allPairs = await loadConflictPairs(supabase, userId, { now });
+  const livePairKeys = new Set(allPairs.map((p) => p.pairKey));
+  // Dentro de 7 dias fala o briefing matinal; aqui só o que fica de fora.
+  const briefingKeys = new Set(
+    conflictsWithinDays(allPairs, BRIEFING_CONFLICT_DAYS, now).map((p) => p.pairKey),
+  );
+  const pairs = allPairs.filter((p) => !briefingKeys.has(p.pairKey));
+
 
 
   // Histórico dos avisos deste tipo — serve para contar tentativas e para
