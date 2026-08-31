@@ -6,8 +6,15 @@
 // só agrupa, ordena e escreve.
 
 import { entityUrl } from "@/lib/nav/entity-url";
-import { tightGapMessage } from "@/lib/agenda/conflict-message";
-import { findTightGapsInWindows, type TightGap } from "@/lib/agenda/conflicts";
+import { tightGapMessage, conflictReason } from "@/lib/agenda/conflict-message";
+import {
+  findTightGapsInWindows,
+  conflictsWithinDays,
+  BRIEFING_CONFLICT_DAYS,
+  type TightGap,
+  type ConflictPair,
+} from "@/lib/agenda/conflicts";
+
 import type { AgendaFactEvent } from "./day-agenda-facts";
 import { lisbonYmd } from "../lisbon-day";
 
