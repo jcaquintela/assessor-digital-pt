@@ -10,6 +10,7 @@ import { computePriorities, findAwaitingOutcome } from "@/lib/assessor/supreme/p
 import { buildOutcomeCheckinPrompt } from "@/lib/assessor/interactive";
 import { sanitizeReply } from "@/lib/assessor/culture/sanitize";
 import { morningTemplatePayload, resolveCheckinTemplatePayload } from "./templates";
+import { composeEnrichedBriefing, tightGapsFromAgenda } from "./briefing-enriched";
 import { lisbonYmd, lisbonHhMm } from "@/lib/assessor/lisbon-day";
 
 /**
@@ -114,9 +115,20 @@ export async function listPushUsers(supabase: any): Promise<PushUser[]> {
   return ((data as any[]) ?? []) as PushUser[];
 }
 
-function formatPriorities(name: string, items: Array<{ action: string; entity_label: string | null }>): string {
-  const lines = items.map((it) => `- ${it.action}${it.entity_label ? ` — ${it.entity_label}` : ""}`);
-  return sanitizeReply(`Bom dia${name ? `, ${name}` : ""}. Hoje o que interessa é isto:\n${lines.join("\n")}`);
+function formatPriorities(
+  name: string,
+  items: any[],
+  opts: { now?: Date; dayEvents?: any[] | null } = {},
+): string {
+  const now = opts.now ?? new Date();
+  return sanitizeReply(
+    composeEnrichedBriefing(items as any, {
+      firstName: name,
+      now,
+      tightGaps: opts.dayEvents ? tightGapsFromAgenda(opts.dayEvents as any, now) : [],
+      base: "https://app.meuafonso.com",
+    }),
+  );
 }
 
 /** Push da manhã para um consultor. Devolve o que aconteceu (para logs/testes). */
@@ -145,11 +157,13 @@ export async function sendMorningPush(
   const { emptyDaySuggestion } = await import("./empty-day");
   const { composeNoPrioritiesBriefing } = await import("./day-agenda-facts");
   const { loadDayAgendaFacts } = await import("./day-agenda-facts.server");
-  const dayEvents = priorities.length ? [] : await loadDayAgendaFacts(supabase, userId);
+  const dayEvents = await loadDayAgendaFacts(supabase, userId);
   const noPrioritiesText = priorities.length
     ? ""
     : sanitizeReply(composeNoPrioritiesBriefing(firstName, dayEvents));
-  const text = priorities.length ? formatPriorities(firstName, priorities) : noPrioritiesText;
+  const text = priorities.length
+    ? formatPriorities(firstName, priorities, { dayEvents })
+    : noPrioritiesText;
 
   const inWindow = await isWithin24hWindow(supabase, userId, target.channel);
   if (target.channel === "whatsapp" && !inWindow) {
