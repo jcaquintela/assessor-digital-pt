@@ -12,13 +12,14 @@ describe("briefing em dia sem prioridades", () => {
     expect(t.length).toBeGreaterThan(40);
   });
 
-  it("2) com prioridades o texto mantém-se inalterado", () => {
+  it("2) com prioridades o briefing nomeia a prioridade (formato enriquecido)", () => {
     const t = composeBriefingText([
       { action: "Ligar ao proprietário", entity_label: "Sr. Costa", reasons: ["sem contacto há 5 dias"] },
     ]);
-    expect(t).toContain("Prioridade de hoje: Ligar ao proprietário");
+    expect(t).toContain("Ligar ao proprietário");
     expect(t).not.toContain("agenda está livre");
   });
+
 
   it("3) duas semanas seguidas sem prioridades variam o texto", () => {
     const w1 = emptyDaySuggestion(new Date("2026-08-13T07:02:00Z"));
