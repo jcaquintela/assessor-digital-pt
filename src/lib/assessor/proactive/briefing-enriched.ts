@@ -109,10 +109,16 @@ export interface EnrichedBriefingOptions {
   firstName?: string;
   now?: Date;
   tightGaps?: TightGap[];
+  /** Conflitos dos próximos 7 dias — o aviso separado cobre 8–14. */
+  conflicts?: ConflictPair[];
   /** Base absoluta dos links (canal); vazio no painel. */
   base?: string | null;
   maxChars?: number;
 }
+
+/** Máximo de conflitos escritos por extenso no briefing. */
+export const MAX_BRIEFING_CONFLICTS = 3;
+
 
 /**
  * Briefing curto para o canal: máx. 3 P1 + 2 P2 explícitos, P3 só como
