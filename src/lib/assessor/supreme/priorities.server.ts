@@ -95,26 +95,44 @@ export async function computePriorities(
   const upperIso = endOfDayLisbonIso(opts.windowEnd ?? opts.windowStart ?? now);
   const windowEndYmd = lisbonYmd(opts.windowEnd ?? opts.windowStart ?? now);
 
-  const followQuery = (() => {
-    let q = supabase
-      .from("follow_ups")
-      .select("id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, related_property_id, related_prospecting_lead_id, outcome, created_at, notes, archived_at, event_class")
-      .eq("user_id", userId)
-      // O filtro de "aberto/fechado" é aplicado em memória pela regra
-      // canónica: `precisa_nova_acao` e `adiado` continuam abertos e têm de
-      // voltar às Prioridades.
-      .is("archived_at", null);
-    // Só o que está em atraso ou é para hoje. Compromissos futuros
-    // (ex.: amanhã à noite) não são prioridades de hoje.
-    if (windowStartIso) q = q.gte("due_date", windowStartIso);
-    return q
-      .lte("due_date", upperIso)
-      .order("due_date", { ascending: true })
-      .limit(50);
-  })();
+  const FOLLOW_FIELDS =
+    "id, title, type, due_date, due_time, status, priority, person_id, opportunity_id, " +
+    "related_property_id, related_prospecting_lead_id, outcome, created_at, notes, archived_at, event_class";
 
-  const [{ data: follows }, { data: opps }] = await Promise.all([
-    followQuery,
+  // O filtro de "aberto/fechado" é aplicado em memória pela regra canónica:
+  // `precisa_nova_acao` e `adiado` continuam abertos e têm de voltar às
+  // Prioridades. Por isso a query não pode filtrar estado — o que obriga a
+  // ter cuidado com o limite (ver abaixo).
+  const baseQuery = () =>
+    supabase.from("follow_ups").select(FOLLOW_FIELDS).eq("user_id", userId).is("archived_at", null);
+
+  // Início do dia da janela (Lisboa) — MESMA fronteira usada pela consulta
+  // directa de agenda. Fonte única de "hoje".
+  const dayStartYmd = windowStartYmd ?? lisbonYmd(now);
+  const dayStartIso = new Date(lisbonInstant(dayStartYmd, 0, 0)).toISOString();
+
+  // BUG CORRIGIDO: antes existia UMA query [.. até fim do dia] ordenada por
+  // data ascendente com limite 50. Numa conta com muito histórico por fechar,
+  // as 50 linhas eram todas de meses atrás e os compromissos de HOJE nunca
+  // chegavam ao motor — o briefing dizia "agenda livre" com o dia cheio.
+  // Agora o dia tem query própria (nunca truncada pelo passado) e o atraso
+  // vem à parte, do mais recente para o mais antigo.
+  const dayQuery = baseQuery()
+    .gte("due_date", dayStartIso)
+    .lte("due_date", upperIso)
+    .order("due_date", { ascending: true })
+    .limit(100);
+
+  const backlogQuery = windowStartIso
+    ? null
+    : baseQuery()
+        .lt("due_date", dayStartIso)
+        .order("due_date", { ascending: false })
+        .limit(50);
+
+  const [{ data: dayRows }, backlogRes, { data: opps }] = await Promise.all([
+    dayQuery,
+    backlogQuery ?? Promise.resolve({ data: [] as any[] }),
 
     supabase
       .from("opportunities")
@@ -123,6 +141,15 @@ export async function computePriorities(
       .is("archived_at", null)
       .limit(50),
   ]);
+
+  const seenFollow = new Set<string>();
+  const follows: any[] = [];
+  for (const row of [...(((dayRows as any[]) ?? [])), ...(((backlogRes as any)?.data as any[]) ?? [])]) {
+    if (!row?.id || seenFollow.has(row.id)) continue;
+    seenFollow.add(row.id);
+    follows.push(row);
+  }
+
 
   const dealIds = new Set<string>();
   for (const f of ((follows as any[]) ?? [])) if (f.opportunity_id) dealIds.add(f.opportunity_id);
@@ -322,7 +349,19 @@ export async function computePriorities(
     }
   } catch { /* prazos são complemento: nunca partem as prioridades */ }
 
-  items.sort((a, b) => b.priority_score - a.priority_score);
+  // Um compromisso de hoje que ainda VAI acontecer vem sempre à frente de
+  // tarefas atrasadas: é a única coisa com hora marcada e sem hipótese de
+  // adiamento. Sem isto, um histórico grande de atrasos empurrava os
+  // compromissos do dia para fora do briefing (que só mostra os primeiros).
+  const isTodayUpcoming = (it: PriorityItem): number => {
+    if (!it.event_start_at) return 0;
+    const t = new Date(it.event_start_at).getTime();
+    if (!Number.isFinite(t) || t < now.getTime()) return 0;
+    return lisbonYmd(it.event_start_at) === todayYmd ? 1 : 0;
+  };
+  items.sort(
+    (a, b) => isTodayUpcoming(b) - isTodayUpcoming(a) || b.priority_score - a.priority_score,
+  );
   return items.slice(0, limit);
 }
 

@@ -16,6 +16,7 @@ function makeSupabase(rows: Record<string, any[]>) {
       not: () => api,
       in: (col: string, vals: any[]) => { data = data.filter((r) => vals.includes(r[col])); return api; },
       lte: (col: string, val: any) => { data = data.filter((r) => new Date(r[col]) <= new Date(val)); return api; },
+      gte: (col: string, val: any) => { data = data.filter((r) => new Date(r[col]) >= new Date(val)); return api; },
       lt: (col: string, val: any) => { data = data.filter((r) => new Date(r[col]) < new Date(val)); return api; },
       order: () => api,
       limit: () => api,

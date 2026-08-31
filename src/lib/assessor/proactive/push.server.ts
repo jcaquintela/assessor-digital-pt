@@ -140,11 +140,16 @@ export async function sendMorningPush(
   const priorities = await computePriorities(supabase, userId, { limit: 5 });
   const { data: prof } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
   const firstName = ((prof as any)?.name ?? "").split(" ")[0] ?? "";
-  // Dia útil sem prioridades: enviamos na mesma (sinal de vida + sugestão).
-  const { composeEmptyDayBriefing, emptyDaySuggestion } = await import("./empty-day");
-  const text = priorities.length
-    ? formatPriorities(firstName, priorities)
-    : sanitizeReply(composeEmptyDayBriefing(firstName));
+  // Dia sem prioridades: enviamos na mesma (sinal de vida + sugestão), mas
+  // "agenda livre" só sai depois de confirmar a agenda real do dia.
+  const { emptyDaySuggestion } = await import("./empty-day");
+  const { composeNoPrioritiesBriefing } = await import("./day-agenda-facts");
+  const { loadDayAgendaFacts } = await import("./day-agenda-facts.server");
+  const dayEvents = priorities.length ? [] : await loadDayAgendaFacts(supabase, userId);
+  const noPrioritiesText = priorities.length
+    ? ""
+    : sanitizeReply(composeNoPrioritiesBriefing(firstName, dayEvents));
+  const text = priorities.length ? formatPriorities(firstName, priorities) : noPrioritiesText;
 
   const inWindow = await isWithin24hWindow(supabase, userId, target.channel);
   if (target.channel === "whatsapp" && !inWindow) {
@@ -152,7 +157,9 @@ export async function sendMorningPush(
     const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
     const lines = priorities.length
       ? priorities.map((p) => `${p.action}${p.entity_label ? ` — ${p.entity_label}` : ""}`).join("; ")
-      : `Agenda livre. ${emptyDaySuggestion()}`;
+      : dayEvents.length
+        ? noPrioritiesText.replace(/^Bom dia[^.]*\.\s*/, "")
+        : `Agenda livre. ${emptyDaySuggestion()}`;
     const r = await sendWhatsAppPayload(
       target.externalId,
       morningTemplatePayload(firstName || "Olá", lines),

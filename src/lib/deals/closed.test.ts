@@ -39,7 +39,7 @@ describe("negócio concluído", () => {
         eq: (c: string, v: any) => { data = data.filter((r) => r[c] === v); return api; },
         neq: () => api, not: () => api,
         is: (c: string, v: any) => { data = data.filter((r) => (r[c] ?? null) === v); return api; },
-        in: () => api, lte: () => api, order: () => api, limit: () => api,
+        in: () => api, lte: () => api, gte: () => api, lt: () => api, order: () => api, limit: () => api,
         then: (res: any, rej: any) => Promise.resolve({ data }).then(res, rej),
       };
       return api;
