@@ -11,6 +11,7 @@ import { composeEmptyDayBriefing } from "../proactive/empty-day";
 import { composeNoPrioritiesBriefing, type AgendaFactEvent } from "../proactive/day-agenda-facts";
 import { loadDayAgendaFacts } from "../proactive/day-agenda-facts.server";
 import { formatPreEventNudge, isPreEventDue } from "./pre-event";
+import { composeEnrichedBriefing, tightGapsFromAgenda } from "../proactive/briefing-enriched";
 import { lisbonYmd, lisbonHhMm } from "../lisbon-day";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
@@ -44,7 +45,16 @@ export async function morningBriefingAlreadySent(supabase: any, userId: string):
 
 /** Texto do briefing a partir das prioridades actuais (nunca de cache). */
 export function composeBriefingText(
-  priorities: Array<{ action: string; entity_label: string | null; reasons: string[] }>,
+  priorities: Array<{
+    action: string;
+    entity_label: string | null;
+    reasons: string[];
+    subject_type?: string;
+    subject_id?: string;
+    priority_score?: number;
+    deal_id?: string | null;
+    event_start_at?: string | null;
+  }>,
   opts: {
     firstName?: string;
     now?: Date;
@@ -52,14 +62,16 @@ export function composeBriefingText(
     dayEvents?: AgendaFactEvent[] | null;
   } = {},
 ): string {
+  const now = opts.now ?? new Date();
   if (!priorities.length) {
-    const now = opts.now ?? new Date();
     if (opts.dayEvents) return composeNoPrioritiesBriefing(opts.firstName ?? "", opts.dayEvents, now);
     return composeEmptyDayBriefing(opts.firstName ?? "", now);
   }
-  const top = priorities[0]!;
-  const rest = priorities.length - 1;
-  return `Bom dia. Prioridade de hoje: ${top.action}${top.entity_label ? ` (${top.entity_label})` : ""}. ${top.reasons[0] ?? ""}.${rest > 0 ? ` Tens mais ${rest} para tratar.` : ""}`;
+  return composeEnrichedBriefing(priorities as any, {
+    firstName: opts.firstName ?? "",
+    now,
+    tightGaps: opts.dayEvents ? tightGapsFromAgenda(opts.dayEvents, now) : [],
+  });
 }
 
 /**
@@ -75,7 +87,7 @@ export async function resolveBriefingAtDispatch(
   const priorities = await computePriorities(supabase, userId, { limit: 3 });
   const { data: prof } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
   const firstName = ((prof as any)?.name ?? "").split(" ")[0] ?? "";
-  const dayEvents = priorities.length ? null : await loadDayAgendaFacts(supabase, userId);
+  const dayEvents = await loadDayAgendaFacts(supabase, userId);
   return { send: true, text: sanitizeReply(composeBriefingText(priorities, { firstName, dayEvents })) };
 }
 
@@ -158,7 +170,7 @@ export async function generateSupremeNudges(
   ) {
     if (!(await morningBriefingAlreadySent(supabase, userId))) {
       const priorities = await computePriorities(supabase, userId, { limit: 3, now });
-      const dayEvents = priorities.length ? null : await loadDayAgendaFacts(supabase, userId, now);
+      const dayEvents = await loadDayAgendaFacts(supabase, userId, now);
       drafts.push({
         kind: "consultant_silence" as any, // reutiliza kind existente para respeitar tipos actuais
         subject_type: null,

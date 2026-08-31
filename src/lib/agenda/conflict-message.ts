@@ -40,3 +40,12 @@ export function conflictReason(pair: ConflictPair, now: Date = new Date()): stri
   const dia = relativeDayLabel(pair.a.startMs, now);
   return `${eventLabel(pair.a)} e ${eventLabel(pair.b)} sobrepõem-se ${dia}.`;
 }
+
+/** Aviso informativo de folga curta — nunca vira nudge de conflito. */
+export function tightGapMessage(gap: { a: { title: string; startMs: number; endMs: number }; b: { title: string; startMs: number; endMs: number }; gapMinutes: number }): string {
+  const folga =
+    gap.gapMinutes <= 0
+      ? "ficam encostados, sem folga nenhuma"
+      : `só tens ${gap.gapMinutes} min entre um e outro`;
+  return `Atenção: ${eventLabel(gap.a)} e ${eventLabel(gap.b)} — ${folga}.`;
+}

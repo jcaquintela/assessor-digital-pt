@@ -98,3 +98,52 @@ export function findConflicts(items: ConflictCandidate[]): ConflictPair[] {
   }
   return pairs.sort((x, y) => x.overlapStartMs - y.overlapStartMs);
 }
+
+// ---------------------------------------------------------------------------
+// Intervalo apertado: não é conflito, é falta de folga.
+//
+// Dois compromissos encostados (10:00–11:00 e 11:05–12:00) não colidem, mas na
+// prática não dá para respirar nem para andar de um sítio para o outro. Isto
+// entra no briefing como aviso informativo — NUNCA gera nudge de conflito,
+// para não duplicar o aviso que já existe para sobreposições reais.
+
+/** Folga mínima (minutos) abaixo da qual dois compromissos ficam "colados". */
+export const TIGHT_GAP_MINUTES = 15;
+
+export interface TightGap {
+  a: ConflictWindow;
+  b: ConflictWindow;
+  /** Minutos livres entre o fim de A e o início de B (0 quando encostados). */
+  gapMinutes: number;
+  pairKey: string;
+}
+
+/** Pares consecutivos sem sobreposição mas com folga inferior ao mínimo. */
+export function findTightGaps(
+  items: ConflictCandidate[],
+  maxGapMinutes: number = TIGHT_GAP_MINUTES,
+): TightGap[] {
+  return findTightGapsInWindows(toWindows(items), maxGapMinutes);
+}
+
+/** Mesma regra, a partir de janelas já calculadas (evita recalcular durações). */
+export function findTightGapsInWindows(
+  input: ConflictWindow[],
+  maxGapMinutes: number = TIGHT_GAP_MINUTES,
+): TightGap[] {
+  const windows = [...input].sort((a, b) => a.startMs - b.startMs);
+  const gaps: TightGap[] = [];
+  for (let i = 0; i < windows.length; i++) {
+    for (let j = i + 1; j < windows.length; j++) {
+      const a = windows[i]!;
+      const b = windows[j]!;
+      if (b.startMs < a.endMs) continue; // sobreposição → é conflito, não folga
+      const gapMinutes = Math.round((b.startMs - a.endMs) / 60_000);
+      if (gapMinutes >= maxGapMinutes) break; // ordenados: os seguintes ainda mais longe
+      if (sameSeries(a, b)) continue;
+      gaps.push({ a, b, gapMinutes, pairKey: pairKeyOf(a.id, b.id) });
+      break; // só interessa o par consecutivo
+    }
+  }
+  return gaps.sort((x, y) => x.a.startMs - y.a.startMs);
+}
