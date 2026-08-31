@@ -169,8 +169,11 @@ export async function sendMorningPush(
   if (target.channel === "whatsapp" && !inWindow) {
     if (!(await templatesApproved(supabase))) return { sent: false, reason: "template_pending" };
     const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
+    const { flattenForTemplate } = await import("./meeting-briefing");
+    // Fora da janela de 24h vai o MESMO conteúdo, achatado numa linha e com
+    // corte honesto (nunca silencioso) quando não cabe no parâmetro.
     const lines = priorities.length
-      ? priorities.map((p) => `${p.action}${p.entity_label ? ` — ${p.entity_label}` : ""}`).join("; ")
+      ? flattenForTemplate(text.replace(/^Bom dia[^\n]*\n?/, ""))
       : dayEvents.length
         ? noPrioritiesText.replace(/^Bom dia[^.]*\.\s*/, "")
         : `Agenda livre. ${emptyDaySuggestion()}`;
