@@ -162,6 +162,19 @@ export function composeEnrichedBriefing(
   for (const gap of opts.tightGaps ?? []) {
     blocks.push({ text: tightGapMessage(gap), removable: true });
   }
+  const conflicts = conflictsWithinDays(opts.conflicts ?? [], BRIEFING_CONFLICT_DAYS, now).slice(
+    0,
+    MAX_BRIEFING_CONFLICTS,
+  );
+  if (conflicts.length) {
+    blocks.push({
+      text: `⚠️ Conflitos a resolver\n${conflicts
+        .map((c) => `• ${conflictReason(c, now)}`)
+        .join("\n")}`,
+      removable: true,
+    });
+  }
+
   const steps = nextThreeActions([...shownP1, ...shownP2, ...p3]);
   if (steps.length) {
     blocks.push({
