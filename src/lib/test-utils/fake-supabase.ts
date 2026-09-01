@@ -77,6 +77,16 @@ export function makeFakeSupabase(seed: Record<string, Row[]> = {}) {
       lte(c: string, v: any) { filters.push((r) => r[c] != null && String(r[c]) <= String(v)); return api; },
       gt(c: string, v: any) { filters.push((r) => r[c] != null && String(r[c]) > String(v)); return api; },
       gte(c: string, v: any) { filters.push((r) => r[c] != null && String(r[c]) >= String(v)); return api; },
+      ilike(c: string, v: any) {
+        const rx = new RegExp("^" + String(v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*") + "$", "i");
+        filters.push((r) => r[c] != null && rx.test(String(r[c])));
+        return api;
+      },
+      like(c: string, v: any) {
+        const rx = new RegExp("^" + String(v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*") + "$");
+        filters.push((r) => r[c] != null && rx.test(String(r[c])));
+        return api;
+      },
       order(c: string, o?: { ascending?: boolean }) { orderKey = c; orderAsc = o?.ascending !== false; return api; },
       limit(n: number) { limitN = n; return api; },
       maybeSingle() { const r = run(); return Promise.resolve({ data: (r.data as Row[])[0] ?? null, error: null }); },
