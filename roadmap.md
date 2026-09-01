@@ -1,8 +1,11 @@
 
 ## CMI via WhatsApp (01/09/2026)
-- [ ] **BLOQUEADO** — decisões legais/RGPD antes de qualquer código
-- [ ] Viável tecnicamente; guardrails desenhados (MINUTA, versionamento, confirmação humana)
-- [ ] Próximo passo: decisão de negócio/jurídica fora deste canal
+- [ ] **BLOQUEADO (agravado)** — âmbito corrigido: produto para o mercado (N clientes), não interno à Zome
+- [ ] Sem DPA único: cada cliente é responsável pelo tratamento; exige Termos de Serviço multi-tenant
+- [ ] Minuta é do cliente; erro de extração continua sem resposta de responsabilidade
+- [ ] Decidir modelo: ferramenta neutra vs. papel ativo com estrutura legal própria
+- [ ] Próximo passo: advogado SaaS B2B/RGPD multi-tenant (jurídico próprio, não da Zome)
+
 
 ## Briefing matinal enriquecido (31/08/2026)
 - [x] Bucketing P1/P2/P3 (evento de hoje sempre P1)
