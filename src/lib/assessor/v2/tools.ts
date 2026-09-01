@@ -260,6 +260,8 @@ export type SaveInteractionArgs = z.infer<typeof SaveInteractionArgs>;
 
 // Lembrete recorrente ("todos os dias às 9:45", "todas as segundas às 10h").
 // Sem esta ferramenta o pedido de recorrência perdia-se em silêncio.
+export const RoutineKind = z.enum(["follow_up", "digest"]);
+
 export const CreateRoutineArgs = z.object({
   title: z.string().min(1),
   frequency: z.enum(["daily", "weekly", "monthly"]).default("daily"),
@@ -270,6 +272,9 @@ export const CreateRoutineArgs = z.object({
   priority: FollowUpPriority.optional().nullable(),
   person_id: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
+  kind: RoutineKind.optional().nullable(),
+  /** O que resumir/ler no disparo (só kind=digest). */
+  digest_query: z.string().optional().nullable(),
 });
 export type CreateRoutineArgs = z.infer<typeof CreateRoutineArgs>;
 
@@ -280,6 +285,34 @@ export const SetRoutineActiveArgs = z.object({
   active: z.boolean(),
 });
 export type SetRoutineActiveArgs = z.infer<typeof SetRoutineActiveArgs>;
+
+export const ListRoutinesArgs = z.object({
+  only_active: z.boolean().optional().nullable(),
+});
+export type ListRoutinesArgs = z.infer<typeof ListRoutinesArgs>;
+
+export const UpdateRoutineArgs = z.object({
+  routine_id: z.string().uuid().optional().nullable(),
+  /** Título aproximado quando o consultor não dá identificador. */
+  subject_hint: z.string().optional().nullable(),
+  title: z.string().min(1).optional().nullable(),
+  frequency: z.enum(["daily", "weekly", "monthly"]).optional().nullable(),
+  time_of_day: HhMm.optional().nullable(),
+  interval_n: z.number().int().positive().max(52).optional().nullable(),
+  weekday: z.number().int().min(0).max(6).optional().nullable(),
+  day_of_month: z.number().int().min(1).max(31).optional().nullable(),
+  kind: RoutineKind.optional().nullable(),
+  digest_query: z.string().optional().nullable(),
+  active: z.boolean().optional().nullable(),
+});
+export type UpdateRoutineArgs = z.infer<typeof UpdateRoutineArgs>;
+
+export const DeleteRoutineArgs = z.object({
+  routine_id: z.string().uuid().optional().nullable(),
+  subject_hint: z.string().optional().nullable(),
+});
+export type DeleteRoutineArgs = z.infer<typeof DeleteRoutineArgs>;
+
 
 export const SaveMiscellaneousArgs = z.object({
   title: z.string().min(1),
