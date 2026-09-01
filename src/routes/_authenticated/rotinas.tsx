@@ -136,7 +136,7 @@ function RotinasPage() {
     <AppShell>
       <PageHeader
         title="Rotinas"
-        subtitle="Lembretes recorrentes que criam automaticamente seguimentos."
+        subtitle="Lembretes recorrentes que criam seguimentos — ou resumos que o Afonso te envia à hora certa."
         action={
           <Button variant="outline" onClick={() => runNow.mutate()} disabled={runNow.isPending}>
             <RefreshCw className="mr-1 h-4 w-4" /> Gerar agora
@@ -231,6 +231,9 @@ function RotinasPage() {
                   <Link to="/rotinas/$id" params={{ id: r.id }} className="text-sm font-medium hover:underline">
                     {r.title}
                   </Link>
+                  {r.kind === "digest" && (
+                    <Badge variant="secondary" className="text-[10px]">Resumo</Badge>
+                  )}
                   <Badge variant="secondary" className="text-[10px]">{FREQ_LABEL[r.frequency]}</Badge>
                   {r.frequency === "weekly" && r.weekday !== null && (
                     <Badge variant="outline" className="text-[10px]">{WEEKDAY_LABELS[r.weekday]}</Badge>
@@ -244,6 +247,9 @@ function RotinasPage() {
                     <Switch checked={r.active} onCheckedChange={(v) => toggleActive.mutate({ id: r.id, active: v })} />
                   </div>
                 </div>
+                {r.kind === "digest" && r.digest_query && (
+                  <div className="text-xs text-muted-foreground">Resume: {r.digest_query}</div>
+                )}
                 <div className="text-xs text-muted-foreground">
                   Próxima: <strong className="text-foreground">{formatWhen(r.next_run_at)}</strong>
                   {r.last_run_at ? ` · Última: ${formatWhen(r.last_run_at)}` : ""}
