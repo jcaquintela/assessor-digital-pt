@@ -7,7 +7,7 @@ import {
 import { ZOD_BY_TOOL, CreateProspectingLeadArgs, CreateDealArgs } from "../v2/tools";
 import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
 import { cleanTitle } from "../titles";
-import { fillMissingDate } from "./tool-args";
+import { fillMissingDate, normalizeRoutineTime } from "./tool-args";
 import { createdResourceFrom } from "./created-memory";
 import { getConversationState } from "../memory.server";
 import type { DecisionToolCall, MemoryWrite } from "./types";
@@ -72,7 +72,7 @@ function normalizeToolArgs(name: string, args: unknown): unknown {
     a.title = cleanTitle(a.title) ?? fallback;
     // "09:30" como resposta a "para quando?" — hora sem data. Completa-se
     // com hoje (ou amanhã, se já passou) em vez de rebentar na validação.
-    return fillMissingDate(name, a);
+    return fillMissingDate(name, normalizeRoutineTime(name, a));
   }
   if (name === "create_person") {
     const a = { ...(args as Record<string, unknown>) };
