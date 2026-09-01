@@ -3,6 +3,8 @@ import { appSourceColumns } from "@/lib/assessor/follow-ups-source";
 
 export type Frequency = "daily" | "weekly" | "monthly";
 
+export type RoutineKind = "follow_up" | "digest";
+
 export interface Routine {
   id: string;
   user_id: string;
@@ -19,9 +21,12 @@ export interface Routine {
   person_id: string | null;
   opportunity_id: string | null;
   active: boolean;
+  kind: RoutineKind;
+  digest_query: string | null;
   created_at: string;
   updated_at: string;
 }
+
 
 export const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
