@@ -5,10 +5,12 @@ import { materializeDueRoutinesServer } from "./routines-run.server";
 import { buildDigestText } from "./routines-digest.server";
 import { classifyDigestQuery } from "./routines-digest";
 import { isClientMaterializable } from "@/lib/routines";
-import { runDomainTool } from "./v2/domain.server";
+import { dispatchToolCall } from "./v2/domain.server";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const ctx = (supabase: any) => ({ supabase, userId: USER } as any);
+const runDomainTool = (c: any, name: string, args: unknown) =>
+  dispatchToolCall(c, name, JSON.stringify(args));
 
 function routine(over: Record<string, any> = {}) {
   return {
