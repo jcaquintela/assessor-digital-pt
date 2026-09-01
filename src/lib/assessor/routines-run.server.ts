@@ -176,5 +176,5 @@ export async function materializeDueRoutinesServer(
       .update({ last_run_at: now.toISOString(), next_run_at: next.toISOString() } as never)
       .eq("id", r.id);
   }
-  return { created, skipped };
+  return { created, skipped, digests };
 }
