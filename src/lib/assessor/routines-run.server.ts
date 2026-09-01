@@ -21,7 +21,11 @@ export interface RoutineRow {
   person_id: string | null;
   opportunity_id: string | null;
   priority: string | null;
+  /** "follow_up" cria um seguimento; "digest" faz uma leitura e envia o resultado. */
+  kind?: string | null;
+  digest_query?: string | null;
 }
+
 
 /** Próxima ocorrência estritamente depois de `from` (hora local do servidor UTC + hora guardada). */
 export function nextRunAfter(r: RoutineRow, from: Date): Date {
