@@ -806,7 +806,7 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
     function: {
       name: "create_routine",
       description:
-        "Cria um lembrete RECORRENTE ('todos os dias às 9:45', 'todas as segundas às 10h', 'no dia 1 de cada mês'). Usa sempre que o pedido se repete no tempo — create_follow_up é só para uma vez.",
+        "Cria um lembrete RECORRENTE ('todos os dias às 9:45', 'todas as segundas às 10h', 'no dia 1 de cada mês'). Usa sempre que o pedido se repete no tempo — create_follow_up é só para uma vez. Dois tipos: kind='follow_up' (cria um seguimento a fazer) e kind='digest' (o Afonso faz a leitura na hora e envia o resumo, ex.: 'resume-me os leads sem resposta às 18h' → kind='digest', digest_query='leads sem resposta').",
       parameters: {
         type: "object",
         properties: {
@@ -819,8 +819,61 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
           priority: { type: ["string", "null"], enum: ["baixa", "media", "alta", null] },
           person_id: { type: ["string", "null"], format: "uuid" },
           notes: { type: ["string", "null"] },
+          kind: { type: ["string", "null"], enum: ["follow_up", "digest", null] },
+          digest_query: { type: ["string", "null"], description: "O que resumir (só kind=digest)." },
         },
         required: ["title", "frequency", "time_of_day"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_routines",
+      description: "Lista as rotinas do consultor (recorrências). Usa quando ele pergunta 'que rotinas tenho?'.",
+      parameters: {
+        type: "object",
+        properties: { only_active: { type: ["boolean", "null"] } },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_routine",
+      description: "Altera uma rotina existente (hora, frequência, tipo, título, activa/inactiva). Nunca cria uma nova.",
+      parameters: {
+        type: "object",
+        properties: {
+          routine_id: { type: ["string", "null"], format: "uuid" },
+          subject_hint: { type: ["string", "null"], description: "Título aproximado quando não há identificador." },
+          title: { type: ["string", "null"] },
+          frequency: { type: ["string", "null"], enum: ["daily", "weekly", "monthly", null] },
+          time_of_day: { type: ["string", "null"], description: "HH:MM" },
+          interval_n: { type: ["integer", "null"] },
+          weekday: { type: ["integer", "null"] },
+          day_of_month: { type: ["integer", "null"] },
+          kind: { type: ["string", "null"], enum: ["follow_up", "digest", null] },
+          digest_query: { type: ["string", "null"] },
+          active: { type: ["boolean", "null"] },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_routine",
+      description: "Apaga definitivamente uma rotina — deixa de disparar. Usa quando o consultor diz 'apaga a rotina X'.",
+      parameters: {
+        type: "object",
+        properties: {
+          routine_id: { type: ["string", "null"], format: "uuid" },
+          subject_hint: { type: ["string", "null"] },
+        },
+        required: [],
       },
     },
   },
@@ -1299,6 +1352,9 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   save_interaction: SaveInteractionArgs,
   create_routine: CreateRoutineArgs,
   set_routine_active: SetRoutineActiveArgs,
+  list_routines: ListRoutinesArgs,
+  update_routine: UpdateRoutineArgs,
+  delete_routine: DeleteRoutineArgs,
   save_miscellaneous: SaveMiscellaneousArgs,
   create_financial_movement: CreateFinancialMovementArgs,
   create_deal: CreateDealArgs,
