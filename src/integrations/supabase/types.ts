@@ -4068,9 +4068,11 @@ export type Database = {
           active: boolean
           created_at: string
           day_of_month: number | null
+          digest_query: string | null
           frequency: string
           id: string
           interval_n: number
+          kind: string
           last_run_at: string | null
           next_run_at: string
           notes: string | null
@@ -4087,9 +4089,11 @@ export type Database = {
           active?: boolean
           created_at?: string
           day_of_month?: number | null
+          digest_query?: string | null
           frequency?: string
           id?: string
           interval_n?: number
+          kind?: string
           last_run_at?: string | null
           next_run_at?: string
           notes?: string | null
@@ -4106,9 +4110,11 @@ export type Database = {
           active?: boolean
           created_at?: string
           day_of_month?: number | null
+          digest_query?: string | null
           frequency?: string
           id?: string
           interval_n?: number
+          kind?: string
           last_run_at?: string | null
           next_run_at?: string
           notes?: string | null
