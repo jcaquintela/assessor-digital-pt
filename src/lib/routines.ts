@@ -79,7 +79,16 @@ export function computeNextRun(
   return d;
 }
 
-/** For each due routine, insert a follow_up and advance next_run_at. */
+/**
+ * Materializa no cliente as rotinas vencidas do tipo `follow_up`.
+ * Rotinas de resumo (`digest`) NUNCA correm aqui: quem faz a leitura e envia a
+ * mensagem pelo canal é o servidor (cron), senão o resumo saía duplicado ou
+ * fora de contexto (com o dashboard aberto).
+ */
+export function isClientMaterializable(r: Pick<Routine, "kind">): boolean {
+  return (r.kind ?? "follow_up") !== "digest";
+}
+
 export async function materializeDueRoutines(): Promise<number> {
   const { data: userData } = await supabase.auth.getUser();
   const uid = userData.user?.id;
@@ -95,7 +104,8 @@ export async function materializeDueRoutines(): Promise<number> {
   if (error) throw error;
 
   let created = 0;
-  for (const r of (due ?? []) as Routine[]) {
+  for (const r of ((due ?? []) as Routine[]).filter(isClientMaterializable)) {
+
     const runAt = new Date(r.next_run_at);
     const time = r.time_of_day || (runAt.toISOString().slice(11, 16));
     const { error: insErr } = await supabase.from("follow_ups").insert({
