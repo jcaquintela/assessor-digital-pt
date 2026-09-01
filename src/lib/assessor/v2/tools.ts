@@ -260,6 +260,8 @@ export type SaveInteractionArgs = z.infer<typeof SaveInteractionArgs>;
 
 // Lembrete recorrente ("todos os dias às 9:45", "todas as segundas às 10h").
 // Sem esta ferramenta o pedido de recorrência perdia-se em silêncio.
+export const RoutineKind = z.enum(["follow_up", "digest"]);
+
 export const CreateRoutineArgs = z.object({
   title: z.string().min(1),
   frequency: z.enum(["daily", "weekly", "monthly"]).default("daily"),
@@ -270,6 +272,9 @@ export const CreateRoutineArgs = z.object({
   priority: FollowUpPriority.optional().nullable(),
   person_id: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
+  kind: RoutineKind.optional().nullable(),
+  /** O que resumir/ler no disparo (só kind=digest). */
+  digest_query: z.string().optional().nullable(),
 });
 export type CreateRoutineArgs = z.infer<typeof CreateRoutineArgs>;
 
@@ -280,6 +285,34 @@ export const SetRoutineActiveArgs = z.object({
   active: z.boolean(),
 });
 export type SetRoutineActiveArgs = z.infer<typeof SetRoutineActiveArgs>;
+
+export const ListRoutinesArgs = z.object({
+  only_active: z.boolean().optional().nullable(),
+});
+export type ListRoutinesArgs = z.infer<typeof ListRoutinesArgs>;
+
+export const UpdateRoutineArgs = z.object({
+  routine_id: z.string().uuid().optional().nullable(),
+  /** Título aproximado quando o consultor não dá identificador. */
+  subject_hint: z.string().optional().nullable(),
+  title: z.string().min(1).optional().nullable(),
+  frequency: z.enum(["daily", "weekly", "monthly"]).optional().nullable(),
+  time_of_day: HhMm.optional().nullable(),
+  interval_n: z.number().int().positive().max(52).optional().nullable(),
+  weekday: z.number().int().min(0).max(6).optional().nullable(),
+  day_of_month: z.number().int().min(1).max(31).optional().nullable(),
+  kind: RoutineKind.optional().nullable(),
+  digest_query: z.string().optional().nullable(),
+  active: z.boolean().optional().nullable(),
+});
+export type UpdateRoutineArgs = z.infer<typeof UpdateRoutineArgs>;
+
+export const DeleteRoutineArgs = z.object({
+  routine_id: z.string().uuid().optional().nullable(),
+  subject_hint: z.string().optional().nullable(),
+});
+export type DeleteRoutineArgs = z.infer<typeof DeleteRoutineArgs>;
+
 
 export const SaveMiscellaneousArgs = z.object({
   title: z.string().min(1),
@@ -773,7 +806,7 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
     function: {
       name: "create_routine",
       description:
-        "Cria um lembrete RECORRENTE ('todos os dias às 9:45', 'todas as segundas às 10h', 'no dia 1 de cada mês'). Usa sempre que o pedido se repete no tempo — create_follow_up é só para uma vez.",
+        "Cria um lembrete RECORRENTE ('todos os dias às 9:45', 'todas as segundas às 10h', 'no dia 1 de cada mês'). Usa sempre que o pedido se repete no tempo — create_follow_up é só para uma vez. Dois tipos: kind='follow_up' (cria um seguimento a fazer) e kind='digest' (o Afonso faz a leitura na hora e envia o resumo, ex.: 'resume-me os leads sem resposta às 18h' → kind='digest', digest_query='leads sem resposta').",
       parameters: {
         type: "object",
         properties: {
@@ -786,8 +819,61 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
           priority: { type: ["string", "null"], enum: ["baixa", "media", "alta", null] },
           person_id: { type: ["string", "null"], format: "uuid" },
           notes: { type: ["string", "null"] },
+          kind: { type: ["string", "null"], enum: ["follow_up", "digest", null] },
+          digest_query: { type: ["string", "null"], description: "O que resumir (só kind=digest)." },
         },
         required: ["title", "frequency", "time_of_day"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_routines",
+      description: "Lista as rotinas do consultor (recorrências). Usa quando ele pergunta 'que rotinas tenho?'.",
+      parameters: {
+        type: "object",
+        properties: { only_active: { type: ["boolean", "null"] } },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_routine",
+      description: "Altera uma rotina existente (hora, frequência, tipo, título, activa/inactiva). Nunca cria uma nova.",
+      parameters: {
+        type: "object",
+        properties: {
+          routine_id: { type: ["string", "null"], format: "uuid" },
+          subject_hint: { type: ["string", "null"], description: "Título aproximado quando não há identificador." },
+          title: { type: ["string", "null"] },
+          frequency: { type: ["string", "null"], enum: ["daily", "weekly", "monthly", null] },
+          time_of_day: { type: ["string", "null"], description: "HH:MM" },
+          interval_n: { type: ["integer", "null"] },
+          weekday: { type: ["integer", "null"] },
+          day_of_month: { type: ["integer", "null"] },
+          kind: { type: ["string", "null"], enum: ["follow_up", "digest", null] },
+          digest_query: { type: ["string", "null"] },
+          active: { type: ["boolean", "null"] },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_routine",
+      description: "Apaga definitivamente uma rotina — deixa de disparar. Usa quando o consultor diz 'apaga a rotina X'.",
+      parameters: {
+        type: "object",
+        properties: {
+          routine_id: { type: ["string", "null"], format: "uuid" },
+          subject_hint: { type: ["string", "null"] },
+        },
+        required: [],
       },
     },
   },
@@ -1266,6 +1352,9 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   save_interaction: SaveInteractionArgs,
   create_routine: CreateRoutineArgs,
   set_routine_active: SetRoutineActiveArgs,
+  list_routines: ListRoutinesArgs,
+  update_routine: UpdateRoutineArgs,
+  delete_routine: DeleteRoutineArgs,
   save_miscellaneous: SaveMiscellaneousArgs,
   create_financial_movement: CreateFinancialMovementArgs,
   create_deal: CreateDealArgs,

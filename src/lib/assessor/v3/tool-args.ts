@@ -54,6 +54,18 @@ const DATE_FIELD: Record<string, { date: string; time: string }> = {
  * A proposta é sempre confirmada pelo consultor, por isso assumir hoje é
  * seguro e muito melhor do que perder o pedido.
  */
+/** Rotinas: "18h", "18h30" → "18:00"/"18:30" antes do schema HH:MM. */
+const TIME_ONLY_TOOLS = new Set(["create_routine", "update_routine"]);
+
+export function normalizeRoutineTime(
+  name: string,
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!TIME_ONLY_TOOLS.has(name)) return args;
+  const t = normalizeTime(args["time_of_day"]);
+  return t ? { ...args, time_of_day: t } : args;
+}
+
 export function fillMissingDate(
   name: string,
   args: Record<string, unknown>,

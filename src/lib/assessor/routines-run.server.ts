@@ -21,7 +21,11 @@ export interface RoutineRow {
   person_id: string | null;
   opportunity_id: string | null;
   priority: string | null;
+  /** "follow_up" cria um seguimento; "digest" faz uma leitura e envia o resultado. */
+  kind?: string | null;
+  digest_query?: string | null;
 }
+
 
 /** Próxima ocorrência estritamente depois de `from` (hora local do servidor UTC + hora guardada). */
 export function nextRunAfter(r: RoutineRow, from: Date): Date {
@@ -59,13 +63,14 @@ export function nextRunAfter(r: RoutineRow, from: Date): Date {
 }
 
 /**
- * Para cada rotina vencida: cria o seguimento do dia, agenda o aviso no canal
- * e avança `next_run_at`. Idempotente por `external_reference`.
+ * Para cada rotina vencida: cria o seguimento do dia (tipo `follow_up`) ou
+ * executa a leitura e agenda o envio do resumo (tipo `digest`), e avança
+ * `next_run_at`. Idempotente por `external_reference` / `dedupe_key`.
  */
 export async function materializeDueRoutinesServer(
   supabase: any,
   opts: { now?: Date } = {},
-): Promise<{ created: number; skipped: number }> {
+): Promise<{ created: number; skipped: number; digests: number }> {
   const now = opts.now ?? new Date();
   const { data: due } = await supabase
     .from("routines")
@@ -76,9 +81,49 @@ export async function materializeDueRoutinesServer(
 
   let created = 0;
   let skipped = 0;
+  let digests = 0;
   for (const r of ((due as RoutineRow[]) ?? [])) {
     const runAt = new Date(r.next_run_at);
     const ref = `routine:${r.id}:${runAt.toISOString().slice(0, 10)}`;
+
+    if (r.kind === "digest") {
+      // O resumo é lido AGORA e entregue pelo caminho único dos avisos.
+      const { data: dupe } = await supabase
+        .from("assessor_nudges")
+        .select("id")
+        .eq("user_id", r.user_id)
+        .eq("dedupe_key", ref)
+        .limit(1);
+      if (((dupe as any[]) ?? []).length) {
+        skipped += 1;
+      } else {
+        try {
+          const { buildDigestText } = await import("./routines-digest.server");
+          const text = await buildDigestText(supabase, r.user_id, {
+            query: r.digest_query ?? null,
+            title: r.title,
+            now,
+          });
+          await supabase.from("assessor_nudges").insert({
+            user_id: r.user_id,
+            kind: "routine_digest",
+            subject_type: "routine",
+            subject_id: r.id,
+            reason: `Rotina de resumo: ${r.title}`,
+            suggested_reply: text,
+            dedupe_key: ref,
+            status: "pending",
+          } as never);
+          digests += 1;
+        } catch { /* a rotina avança na mesma; tenta outra vez no próximo disparo */ }
+      }
+      const nextDigest = nextRunAfter(r, new Date(Math.max(now.getTime(), runAt.getTime())));
+      await supabase
+        .from("routines")
+        .update({ last_run_at: now.toISOString(), next_run_at: nextDigest.toISOString() } as never)
+        .eq("id", r.id);
+      continue;
+    }
 
     const { data: already } = await supabase
       .from("follow_ups")
@@ -89,6 +134,7 @@ export async function materializeDueRoutinesServer(
     if (((already as any[]) ?? []).length) {
       skipped += 1;
     } else {
+
       const { data: inserted } = await supabase
         .from("follow_ups")
         .insert({
@@ -130,5 +176,5 @@ export async function materializeDueRoutinesServer(
       .update({ last_run_at: now.toISOString(), next_run_at: next.toISOString() } as never)
       .eq("id", r.id);
   }
-  return { created, skipped };
+  return { created, skipped, digests };
 }

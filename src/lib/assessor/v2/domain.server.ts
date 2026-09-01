@@ -30,6 +30,9 @@ import {
   CreateFollowUpArgs,
   CreateRoutineArgs,
   SetRoutineActiveArgs,
+  ListRoutinesArgs,
+  UpdateRoutineArgs,
+  DeleteRoutineArgs,
   SaveInteractionArgs,
   SaveMiscellaneousArgs,
   CreateFinancialMovementArgs,
@@ -2022,14 +2025,131 @@ async function execCreateRoutine(ctx: DomainContext, args: unknown): Promise<Dom
       next_run_at: nextRunIso,
       priority: PRIORITY_PT[String(v.priority ?? "media").toLowerCase()] ?? "Média",
       person_id: v.person_id ?? null,
+      kind: v.kind ?? "follow_up",
+      digest_query: v.digest_query ?? null,
       active: true,
     } as never)
-    .select("id, title, frequency, time_of_day, next_run_at")
+    .select("id, title, frequency, time_of_day, next_run_at, kind, digest_query")
     .maybeSingle();
   if (error) return fail(error.message);
   return ok({ routine: data });
 }
 
+
+// ---------- rotinas: listar, alterar, apagar ----------
+
+const ROUTINE_FIELDS = "id, title, frequency, time_of_day, interval_n, weekday, day_of_month, next_run_at, active, kind, digest_query";
+
+async function findRoutine(
+  ctx: DomainContext,
+  v: { routine_id?: string | null; subject_hint?: string | null },
+): Promise<{ id: string } | { ambiguous: Array<{ routine_id: string; title: string }> } | null> {
+  if (v.routine_id) return { id: v.routine_id };
+  const hint = (v.subject_hint ?? "").trim();
+  if (!hint) return null;
+  const { data } = await ctx.supabase
+    .from("routines")
+    .select("id, title")
+    .eq("user_id", ctx.userId)
+    .limit(50);
+  const hits = matchByHint((data as any[]) ?? [], hint);
+  if (hits.length === 1) return { id: String(hits[0].id) };
+  if (hits.length > 1) {
+    return { ambiguous: hits.slice(0, 5).map((h: any) => ({ routine_id: String(h.id), title: String(h.title ?? "") })) };
+  }
+  return null;
+}
+
+async function execListRoutines(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(ListRoutinesArgs, args); if (!p.ok) return fail(p.error);
+  let q = ctx.supabase
+    .from("routines")
+    .select(ROUTINE_FIELDS)
+    .eq("user_id", ctx.userId)
+    .order("next_run_at", { ascending: true })
+    .limit(50);
+  if (p.value.only_active !== false) q = q.eq("active", true);
+  const { data, error } = await q;
+  if (error) return fail(String((error as any)?.message ?? "erro_ao_ler"));
+  const rows = ((data as any[]) ?? []).map((r) => ({
+    routine_id: String(r.id),
+    title: String(r.title ?? ""),
+    frequency: r.frequency,
+    time_of_day: r.time_of_day,
+    kind: r.kind ?? "follow_up",
+    active: r.active !== false,
+    next_run_at: r.next_run_at ?? null,
+  }));
+  return ok({ routines: rows, count: rows.length });
+}
+
+async function execUpdateRoutine(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(UpdateRoutineArgs, args); if (!p.ok) return fail(p.error);
+  const v = p.value;
+  const found = await findRoutine(ctx, v);
+  if (!found) return fail("rotina_nao_encontrada");
+  if ("ambiguous" in found) return ok({ ambiguous: true, candidates: found.ambiguous });
+
+  const { data: currentRows } = await ctx.supabase
+    .from("routines")
+    .select(ROUTINE_FIELDS)
+    .eq("user_id", ctx.userId)
+    .eq("id", found.id)
+    .limit(1);
+  const current = ((currentRows as any[]) ?? [])[0];
+  if (!current) return fail("rotina_nao_encontrada");
+
+  const patch: Record<string, unknown> = {};
+  if (v.title) patch.title = v.title.trim();
+  if (v.frequency) patch.frequency = v.frequency;
+  if (v.time_of_day) patch.time_of_day = v.time_of_day;
+  if (v.interval_n != null) patch.interval_n = v.interval_n;
+  if (v.weekday != null) patch.weekday = v.weekday;
+  if (v.day_of_month != null) patch.day_of_month = v.day_of_month;
+  if (v.kind) patch.kind = v.kind;
+  if (v.digest_query != null) patch.digest_query = v.digest_query;
+  if (v.active != null) patch.active = v.active;
+  if (!Object.keys(patch).length) return fail("nada_a_alterar");
+
+  // Mudar hora/frequência obriga a recalcular o próximo disparo.
+  if (v.time_of_day || v.frequency || v.interval_n != null || v.weekday != null || v.day_of_month != null) {
+    patch.next_run_at = nextRoutineRunIso({
+      frequency: (patch.frequency as any) ?? current.frequency,
+      time_of_day: String(patch.time_of_day ?? current.time_of_day ?? "09:00"),
+      interval_n: (patch.interval_n as number | null) ?? current.interval_n,
+      weekday: (patch.weekday as number | null) ?? current.weekday,
+      day_of_month: (patch.day_of_month as number | null) ?? current.day_of_month,
+    });
+  }
+
+  const { data, error } = await ctx.supabase
+    .from("routines")
+    .update(patch as never)
+    .eq("user_id", ctx.userId)
+    .eq("id", found.id)
+    .select(ROUTINE_FIELDS);
+  if (error) return fail(String((error as any)?.message ?? "erro_ao_gravar"));
+  const row = (Array.isArray(data) ? (data as any[])[0] : null) ?? null;
+  if (!row) return fail("rotina_nao_encontrada");
+  return ok({ routine: row, updated: true });
+}
+
+async function execDeleteRoutine(ctx: DomainContext, args: unknown): Promise<DomainResult> {
+  const p = parse(DeleteRoutineArgs, args); if (!p.ok) return fail(p.error);
+  const found = await findRoutine(ctx, p.value);
+  if (!found) return fail("rotina_nao_encontrada");
+  if ("ambiguous" in found) return ok({ ambiguous: true, candidates: found.ambiguous });
+  const { data, error } = await ctx.supabase
+    .from("routines")
+    .delete()
+    .eq("user_id", ctx.userId)
+    .eq("id", found.id)
+    .select("id, title");
+  if (error) return fail(String((error as any)?.message ?? "erro_ao_apagar"));
+  const row = (Array.isArray(data) ? (data as any[])[0] : null) ?? null;
+  if (!row) return fail("rotina_nao_encontrada");
+  return ok({ deleted: true, routine: row });
+}
 
 // ---------- Negócio (deal) ----------
 
@@ -2128,6 +2248,9 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   cancel_follow_up: execCancelFollowUp,
   complete_follow_up: execCompleteFollowUp,
   set_routine_active: execSetRoutineActive,
+  list_routines: execListRoutines,
+  update_routine: execUpdateRoutine,
+  delete_routine: execDeleteRoutine,
   send_reminder_now: execSendReminderNow,
   // Comparáveis de mercado — pesquisa web dirigida (connector Firecrawl).
   search_similar_listings: (ctx, args) =>

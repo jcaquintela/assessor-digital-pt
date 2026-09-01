@@ -7,7 +7,7 @@ import {
 import { ZOD_BY_TOOL, CreateProspectingLeadArgs, CreateDealArgs } from "../v2/tools";
 import { createPendingAction, findActivePendingAction, markPendingActionStatus } from "../memory.server";
 import { cleanTitle } from "../titles";
-import { fillMissingDate } from "./tool-args";
+import { fillMissingDate, normalizeRoutineTime } from "./tool-args";
 import { createdResourceFrom } from "./created-memory";
 import { getConversationState } from "../memory.server";
 import type { DecisionToolCall, MemoryWrite } from "./types";
@@ -64,6 +64,9 @@ function normalizeRelationshipType(value: unknown): string {
 
 function normalizeToolArgs(name: string, args: unknown): unknown {
   if (!args || typeof args !== "object") return args;
+  if (name === "create_routine" || name === "update_routine") {
+    return normalizeRoutineTime(name, { ...(args as Record<string, unknown>) });
+  }
   // O modelo escreve por vezes a string "null" (ou "sem título") no campo
   // título. Isso passava o `min(1)` do Zod e chegava à BD como texto.
   if (name === "create_follow_up" || name === "create_event" || name === "create_reminder") {
@@ -72,8 +75,9 @@ function normalizeToolArgs(name: string, args: unknown): unknown {
     a.title = cleanTitle(a.title) ?? fallback;
     // "09:30" como resposta a "para quando?" — hora sem data. Completa-se
     // com hoje (ou amanhã, se já passou) em vez de rebentar na validação.
-    return fillMissingDate(name, a);
+    return fillMissingDate(name, normalizeRoutineTime(name, a));
   }
+
   if (name === "create_person") {
     const a = { ...(args as Record<string, unknown>) };
     a.relationship_type = normalizeRelationshipType(a.relationship_type);
