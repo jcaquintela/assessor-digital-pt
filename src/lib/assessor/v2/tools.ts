@@ -307,6 +307,20 @@ export const UpdateRoutineArgs = z.object({
 });
 export type UpdateRoutineArgs = z.infer<typeof UpdateRoutineArgs>;
 
+export const ReadSettingsArgs = z.object({});
+export type ReadSettingsArgs = z.infer<typeof ReadSettingsArgs>;
+
+// Escrita de definições por conversa. A lista branca vive em
+// settings-conversa.ts — aqui o schema é deliberadamente aberto para o
+// Afonso poder passar a forma natural ("resumo", "plano") e receber a
+// explicação certa em vez de um erro de validação.
+export const UpdateSettingArgs = z.object({
+  setting: z.string().min(1),
+  value: z.unknown().optional(),
+  confirmed: z.boolean().optional().nullable(),
+});
+export type UpdateSettingArgs = z.infer<typeof UpdateSettingArgs>;
+
 export const DeleteRoutineArgs = z.object({
   routine_id: z.string().uuid().optional().nullable(),
   subject_hint: z.string().optional().nullable(),
@@ -823,6 +837,32 @@ export const TOOL_SPECS: GatewayToolSpec[] = [
           digest_query: { type: ["string", "null"], description: "O que resumir (só kind=digest)." },
         },
         required: ["title", "frequency", "time_of_day"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_settings",
+      description:
+        "Lê as definições do consultor (plano, briefing, resumo de fim de dia, check-in, avisos, silêncio, lembretes, autonomia, canais). Usa para 'que plano tenho?', 'como está o meu briefing/resumo configurado?'.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_setting",
+      description:
+        "Altera uma definição reversível (hora/dias do briefing, hora e detalhe do resumo, hora do check-in, teto de avisos, horas de silêncio, antecedência dos lembretes, autonomia). Plano, pagamentos, ligações de contas e fusão de contas NÃO se mudam por aqui. Chama primeiro sem confirmed para propor, e só com confirmed=true depois do consultor confirmar.",
+      parameters: {
+        type: "object",
+        properties: {
+          setting: { type: "string", description: "Definição a mudar (chave técnica ou como o consultor a disse)." },
+          value: { description: "Novo valor (hora HH:MM, número, 'curto'|'normal'|'detalhado', nível de autonomia, dias)." },
+          confirmed: { type: ["boolean", "null"], description: "true só depois de o consultor confirmar." },
+        },
+        required: ["setting"],
       },
     },
   },
@@ -1353,6 +1393,8 @@ export const ZOD_BY_TOOL: Record<string, z.ZodTypeAny> = {
   create_routine: CreateRoutineArgs,
   set_routine_active: SetRoutineActiveArgs,
   list_routines: ListRoutinesArgs,
+  read_settings: ReadSettingsArgs,
+  update_setting: UpdateSettingArgs,
   update_routine: UpdateRoutineArgs,
   delete_routine: DeleteRoutineArgs,
   save_miscellaneous: SaveMiscellaneousArgs,

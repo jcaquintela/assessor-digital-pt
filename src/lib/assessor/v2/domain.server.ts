@@ -2249,6 +2249,11 @@ export const TOOL_REGISTRY: Record<string, ToolExecutor> = {
   complete_follow_up: execCompleteFollowUp,
   set_routine_active: execSetRoutineActive,
   list_routines: execListRoutines,
+  // Definições por conversa — leitura de tudo, escrita só da lista branca.
+  read_settings: (ctx) =>
+    import("@/lib/assessor/settings-conversa.server").then((m) => m.execReadSettings(ctx as any) as any),
+  update_setting: (ctx, args) =>
+    import("@/lib/assessor/settings-conversa.server").then((m) => m.execUpdateSetting(ctx as any, args) as any),
   update_routine: execUpdateRoutine,
   delete_routine: execDeleteRoutine,
   send_reminder_now: execSendReminderNow,
