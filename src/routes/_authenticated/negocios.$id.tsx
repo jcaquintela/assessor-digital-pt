@@ -181,10 +181,7 @@ function DealDetail() {
   if (!d) {
     return (
       <AppShell>
-        <PageHeader title="Negócio não encontrado" subtitle="Pode ter sido apagado." />
-        <Button variant="ghost" onClick={() => navigate({ to: "/negocios" })}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
-        </Button>
+        <RecordNotFound kind="opportunity" id={id} label="negócio" backTo="/negocios" />
       </AppShell>
     );
   }

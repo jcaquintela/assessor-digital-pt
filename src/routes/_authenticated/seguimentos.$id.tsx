@@ -87,10 +87,7 @@ function SeguimentoDetail() {
   if (!item) {
     return (
       <AppShell>
-        <PageHeader title="Seguimento não encontrado" subtitle="Pode ter sido apagado." />
-        <Button variant="ghost" onClick={() => navigate({ to: "/seguimentos" })}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
-        </Button>
+        <RecordNotFound kind="follow_up" id={id} label="seguimento" backTo="/seguimentos" />
       </AppShell>
     );
   }
