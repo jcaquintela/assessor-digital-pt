@@ -1,3 +1,4 @@
+import { RecordNotFound } from "@/components/record-not-found";
 import { appTitle } from "@/lib/brand";
 // Ficha do Negócio: a história completa numa página — quem, que imóveis,
 // em que fase, o que já aconteceu e o que vem a seguir.

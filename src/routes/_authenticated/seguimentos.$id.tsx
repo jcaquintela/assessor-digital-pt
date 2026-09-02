@@ -1,3 +1,4 @@
+import { RecordNotFound } from "@/components/record-not-found";
 import { appTitle } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { isOpenFollowUpStatus } from "@/lib/assessor/outcome-status";
