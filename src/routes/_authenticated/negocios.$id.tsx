@@ -1,3 +1,4 @@
+import { RecordNotFound } from "@/components/record-not-found";
 import { appTitle } from "@/lib/brand";
 // Ficha do Negócio: a história completa numa página — quem, que imóveis,
 // em que fase, o que já aconteceu e o que vem a seguir.
@@ -181,10 +182,7 @@ function DealDetail() {
   if (!d) {
     return (
       <AppShell>
-        <PageHeader title="Negócio não encontrado" subtitle="Pode ter sido apagado." />
-        <Button variant="ghost" onClick={() => navigate({ to: "/negocios" })}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
-        </Button>
+        <RecordNotFound kind="opportunity" id={id} label="negócio" backTo="/negocios" />
       </AppShell>
     );
   }

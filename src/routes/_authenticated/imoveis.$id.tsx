@@ -1,3 +1,4 @@
+import { RecordNotFound } from "@/components/record-not-found";
 import { appTitle } from "@/lib/brand";
 // Ficha completa do imóvel: absorve o que existe no Negócio ligado para o
 // consultor não ter de saltar de página. Conversa e dashboard escrevem nos
@@ -147,10 +148,7 @@ function PropertyDetail() {
   if (!data) {
     return (
       <AppShell>
-        <PageHeader title="Imóvel não encontrado" />
-        <div className="text-sm text-muted-foreground">
-          Este imóvel não existe ou não tens acesso. <Link to="/imoveis" className="underline">Voltar à lista</Link>.
-        </div>
+        <RecordNotFound kind="property" id={id} label="imóvel" backTo="/imoveis" backLabel="Voltar à lista" />
       </AppShell>
     );
   }
