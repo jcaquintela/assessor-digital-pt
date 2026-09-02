@@ -45,7 +45,7 @@ export function RecordNotFound({
   const trocarConta = async () => {
     const back = typeof window !== "undefined" ? window.location.pathname : backTo;
     await supabase.auth.signOut();
-    navigate({ to: "/auth", search: { redirect: back } as never, replace: true });
+    navigate({ to: "/auth", search: { next: back }, replace: true });
   };
 
   return (
