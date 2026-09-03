@@ -4129,6 +4129,30 @@ export type Database = {
         }
         Relationships: []
       }
+      short_links: {
+        Row: {
+          code: string
+          created_at: string
+          last_used_at: string | null
+          target_path: string
+          user_id: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          last_used_at?: string | null
+          target_path: string
+          user_id?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          last_used_at?: string | null
+          target_path?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       similar_listing_searches: {
         Row: {
           cache_hit: boolean
