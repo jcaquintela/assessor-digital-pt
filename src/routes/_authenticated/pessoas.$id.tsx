@@ -71,7 +71,7 @@ function PessoaDetail() {
   };
   const {
     pessoasTodas, seguimentos, interacoes,
-    arquivarPessoa, desarquivarPessoa, apagarPessoaDefinitivo,
+    arquivarPessoa, desarquivarPessoa,
     addInteracao, addSeguimento, loading,
   } = useStore();
   const { name: assessorName } = useAssessorName();
@@ -79,6 +79,14 @@ function PessoaDetail() {
   // A ficha continua acessível depois de arquivada: é aqui que se repõe
   // ou, em último caso, se apaga definitivamente.
   const pessoa = useMemo(() => pessoasTodas.find((p) => p.id === id), [pessoasTodas, id]);
+
+  // Diagnóstico de dependências antes de mostrar qualquer opção destrutiva.
+  const destrutivo = useEntityDelete({
+    type: "person",
+    id,
+    enabled: !!pessoa?.arquivadoEm,
+    onDone: () => navigate({ to: "/pessoas" }),
+  });
 
   const [editar, setEditar] = useState(false);
   const [interacao, setInteracao] = useState("");
@@ -97,6 +105,7 @@ function PessoaDetail() {
       .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()),
     [interacoes, id],
   );
+
 
   if (loading && !pessoa) {
     return <AppShell><PageHeader title="A carregar…" /></AppShell>;
