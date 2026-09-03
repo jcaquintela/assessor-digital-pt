@@ -6,6 +6,7 @@
 // Agora o cron proativo trata disso.
 
 import { appSourceColumns } from "./follow-ups-source";
+import { isFollowUpOpen } from "@/lib/follow-ups/state";
 
 export interface RoutineRow {
   id: string;
