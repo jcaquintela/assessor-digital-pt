@@ -1060,6 +1060,24 @@ function DrivePage() {
         onOpenChange={(v) => { if (!v) setFixTarget(null); }}
       />
 
+      <PermanentDeleteDialog
+        open={!!purgeTarget}
+        onOpenChange={(v) => { if (!v) setPurgeTarget(null); }}
+        alvo={purgeTarget?.name ?? ""}
+        detalhes={[
+          "O ficheiro é apagado do armazenamento e não há forma de o recuperar.",
+          purgeTarget?.links
+            ? `${purgeTarget.links} ${purgeTarget.links === 1 ? "ligação" : "ligações"} a pessoas, imóveis ou negócios ${purgeTarget.links === 1 ? "desaparece" : "desaparecem"}.`
+            : "Não há ligações a pessoas, imóveis ou negócios.",
+        ]}
+        aExecutar={purgeMut.isPending}
+        onConfirm={(reason) => {
+          if (!purgeTarget) return;
+          purgeMut.mutate({ id: purgeTarget.id, reason });
+        }}
+      />
+
+
       <ShareWhatsAppDialog
         fileId={shareTarget?.id ?? null}
         fileName={shareTarget?.name}
