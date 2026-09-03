@@ -16,6 +16,27 @@ import { lisbonYmd, lisbonHhMm } from "../lisbon-day";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
 export const EVENING_REVIEW_PREFIX = "supreme_evening_review:";
+export const CAP_NOTICE_PREFIX = "supreme_cap_notice:";
+
+/** Aviso (uma vez por dia) de que o teto de avisos/dia está a travar lembretes. */
+export function composeCapNotice(cap: number): string {
+  return (
+    `Hoje já te enviei os ${cap} avisos que definiste como máximo por dia, ` +
+    `por isso vou guardar os lembretes seguintes em silêncio. ` +
+    `Se quiseres receber mais, diz-me "muda o teto de avisos para 10" ou ajusta em /definicoes.`
+  );
+}
+
+/** Já avisámos hoje que o teto está atingido? */
+async function capNoticeAlreadySent(supabase: any, userId: string, ymd: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("assessor_nudges")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("dedupe_key", `${CAP_NOTICE_PREFIX}${ymd}`)
+    .limit(1);
+  return Boolean(((data as any[]) ?? []).length);
+}
 
 /**
  * O briefing da manhã tem de ser ÚNICO por dia. Existem dois emissores
