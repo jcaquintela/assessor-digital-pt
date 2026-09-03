@@ -1,0 +1,2 @@
+INSERT INTO public.product_updates (released_on, title, description, category, is_published)
+VALUES (current_date, 'Links do briefing mais curtos', 'Os links das prioridades no briefing matinal passam a ser curtos e legíveis, em vez de endereços longos. Abrem exatamente a mesma ficha de sempre.', 'melhoria', true);
