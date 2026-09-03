@@ -20,6 +20,7 @@ import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as SCodeRouteImport } from './routes/s.$code'
 import { Route as DevLigarCanalRouteImport } from './routes/dev.ligar-canal'
 import { Route as AdminWhatsappNomeRouteImport } from './routes/admin/whatsapp-nome'
 import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizadores'
@@ -175,6 +176,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const SCodeRoute = SCodeRouteImport.update({
+  id: '/s/$code',
+  path: '/s/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DevLigarCanalRoute = DevLigarCanalRouteImport.update({
   id: '/dev/ligar-canal',
@@ -783,6 +789,7 @@ export interface FileRoutesByFullPath {
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/whatsapp-nome': typeof AdminWhatsappNomeRoute
   '/dev/ligar-canal': typeof DevLigarCanalRoute
+  '/s/$code': typeof SCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -895,6 +902,7 @@ export interface FileRoutesByTo {
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/whatsapp-nome': typeof AdminWhatsappNomeRoute
   '/dev/ligar-canal': typeof DevLigarCanalRoute
+  '/s/$code': typeof SCodeRoute
   '/admin': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -1010,6 +1018,7 @@ export interface FileRoutesById {
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
   '/admin/whatsapp-nome': typeof AdminWhatsappNomeRoute
   '/dev/ligar-canal': typeof DevLigarCanalRoute
+  '/s/$code': typeof SCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -1125,6 +1134,7 @@ export interface FileRouteTypes {
     | '/admin/utilizadores'
     | '/admin/whatsapp-nome'
     | '/dev/ligar-canal'
+    | '/s/$code'
     | '/admin/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -1237,6 +1247,7 @@ export interface FileRouteTypes {
     | '/admin/utilizadores'
     | '/admin/whatsapp-nome'
     | '/dev/ligar-canal'
+    | '/s/$code'
     | '/admin'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -1351,6 +1362,7 @@ export interface FileRouteTypes {
     | '/admin/utilizadores'
     | '/admin/whatsapp-nome'
     | '/dev/ligar-canal'
+    | '/s/$code'
     | '/admin/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -1419,6 +1431,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DevLigarCanalRoute: typeof DevLigarCanalRoute
+  SCodeRoute: typeof SCodeRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicBeaconRoute: typeof ApiPublicBeaconRoute
@@ -1523,6 +1536,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/s/$code': {
+      id: '/s/$code'
+      path: '/s/$code'
+      fullPath: '/s/$code'
+      preLoaderRoute: typeof SCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dev/ligar-canal': {
       id: '/dev/ligar-canal'
@@ -2488,6 +2508,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DevLigarCanalRoute: DevLigarCanalRoute,
+  SCodeRoute: SCodeRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicBeaconRoute: ApiPublicBeaconRoute,
