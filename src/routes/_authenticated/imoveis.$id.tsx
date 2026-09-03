@@ -1,3 +1,4 @@
+import { useEntityDelete } from "@/components/records/use-entity-delete";
 import { RecordNotFound } from "@/components/record-not-found";
 import { appTitle } from "@/lib/brand";
 // Ficha completa do imóvel: absorve o que existe no Negócio ligado para o
@@ -133,6 +134,16 @@ function PropertyDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Diagnóstico de dependências (negócios em curso, comissões) antes de sequer
+  // mostrar a opção de eliminar.
+  const arquivadoAgora = String((data as any)?.property?.status ?? "") === "arquivado";
+  const destrutivo = useEntityDelete({
+    type: "property",
+    id,
+    enabled: arquivadoAgora,
+    onDone: () => navigate({ to: "/imoveis" }),
+  });
+
   const [draft, setDraft] = useState<Record<string, any> | null>(null);
   const [novoInteressado, setNovoInteressado] = useState({ name: "", contact: "", source: "" });
   const [novaVisita, setNovaVisita] = useState({ who: "", date: "", time: "" });
@@ -184,15 +195,6 @@ function PropertyDetail() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  const eliminar = async () => {
-    if (!confirm(`Apagar definitivamente "${p.title}"? Isto não tem volta.`)) return;
-    try {
-      await remove({ data: { id } });
-      qc.invalidateQueries({ queryKey: ["properties"] });
-      toast.success("Imóvel apagado definitivamente.");
-      navigate({ to: "/imoveis" });
-    } catch (e) { toast.error((e as Error).message); }
-  };
 
   const caracteristicas = [p.typology, p.area_useful ? `${p.area_useful} m²` : p.area_gross ? `${p.area_gross} m²` : null]
     .filter(Boolean).join(" · ");
@@ -286,18 +288,27 @@ function PropertyDetail() {
                   <RotateCcw className="mr-2 h-3.5 w-3.5" /> Repor
                 </DropdownMenuItem>
               )}
-              {p.status === "arquivado" && (
+              {p.status === "arquivado" && destrutivo.podeEliminar && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive" onSelect={() => void eliminar()}>
-                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Apagar definitivamente
+                  <DropdownMenuItem className="text-destructive" onSelect={() => destrutivo.abrirEliminar()}>
+                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar para sempre
                   </DropdownMenuItem>
+                </>
+              )}
+              {p.status === "arquivado" && destrutivo.bloqueio.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Não pode ser eliminado: {destrutivo.bloqueio.join(" ")}
+                  </div>
                 </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+      {destrutivo.dialogos}
 
       {/* ===== Percurso do negócio ===== */}
       <Section
