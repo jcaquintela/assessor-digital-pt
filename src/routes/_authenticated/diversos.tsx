@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { UploadedFilesList } from "@/components/uploaded-files-list";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
 import { matchesMiscTab, type MiscTab } from "@/lib/misc/archived";
+import { PermanentDeleteDialog } from "@/components/records/permanent-delete-dialog";
+import { permanentlyDeleteRecordFn } from "@/lib/records/permanent-delete.functions";
 import {
   isTeamSuggestion,
   teamStateLabel,
@@ -72,6 +74,18 @@ function DiversosPage() {
     "recentes" | "tratar" | "classificados" | "arquivados" | "ficheiros"
   >("recentes");
   const [selected, setSelected] = useState<string[]>([]);
+  // Eliminação permanente: só existe dentro do separador "Arquivados".
+  const [alvoEliminar, setAlvoEliminar] = useState<{ id: string; title: string } | null>(null);
+  const eliminarSempre = useMutation({
+    mutationFn: async (vars: { id: string; reason: string }) =>
+      permanentlyDeleteRecordFn({ data: { type: "miscellaneous", id: vars.id, reason: vars.reason } }),
+    onSuccess: () => {
+      toast.success("Nota eliminada para sempre.");
+      setAlvoEliminar(null);
+      qc.invalidateQueries({ queryKey: ["misc"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível eliminar."),
+  });
 
   const items = useQuery({
     queryKey: ["misc"],
@@ -320,6 +334,15 @@ function DiversosPage() {
                     >
                       <Trash2 className="h-3 w-3" /> Eliminar
                     </button>
+                    {r.status === "archived" ? (
+                      <button
+                        type="button"
+                        className="c-badge text-destructive"
+                        onClick={() => setAlvoEliminar({ id: r.id, title: r.title })}
+                      >
+                        <Trash2 className="h-3 w-3" /> Eliminar para sempre
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -327,6 +350,16 @@ function DiversosPage() {
           </div>
         )}
       </div>
+      <PermanentDeleteDialog
+        open={!!alvoEliminar}
+        onOpenChange={(v) => (!v ? setAlvoEliminar(null) : undefined)}
+        alvo={alvoEliminar?.title ?? "esta nota"}
+        detalhes={["A nota desaparece do histórico e das pesquisas."]}
+        aExecutar={eliminarSempre.isPending}
+        onConfirm={(reason) => {
+          if (alvoEliminar) eliminarSempre.mutate({ id: alvoEliminar.id, reason });
+        }}
+      />
     </AppShell>
   );
 }

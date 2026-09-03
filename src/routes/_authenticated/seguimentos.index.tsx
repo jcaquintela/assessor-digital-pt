@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatData, formatDataHora, type Seguimento } from "@/lib/demo-data";
 import { AlertTriangle, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { ArchivedFollowUps } from "@/components/seguimentos/archived-list";
 
 type SeguimentosSearch = { status?: "overdue" | "hoje" | "semana" | "concluidos" };
 
@@ -141,12 +142,14 @@ function SeguimentosPage() {
               <span className={`c-tabcount ${grupos.atrasados.length > 0 ? "alerta" : ""}`}>{grupos.atrasados.length}</span>
             </TabsTrigger>
             <TabsTrigger value="concluidos">Concluídos<span className="c-tabcount">{grupos.concluidos.length}</span></TabsTrigger>
+            <TabsTrigger value="arquivados">Arquivados</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="hoje" className="mt-4"><Lista items={grupos.hoje} /></TabsContent>
         <TabsContent value="semana" className="mt-4"><Lista items={grupos.semana} /></TabsContent>
         <TabsContent value="atrasados" className="mt-4"><Lista items={grupos.atrasados} /></TabsContent>
         <TabsContent value="concluidos" className="mt-4"><Lista items={grupos.concluidos} /></TabsContent>
+        <TabsContent value="arquivados" className="mt-4"><ArchivedFollowUps /></TabsContent>
       </Tabs>
     </AppShell>
   );
