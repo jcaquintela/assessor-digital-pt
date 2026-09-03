@@ -31,6 +31,8 @@ export function DriveFileMenu({
   onShare,
   onRestore,
   onDelete,
+  podeEliminarSempre,
+  onPermanentDelete,
 }: {
   label: string;
   naReciclagem: boolean;
@@ -43,6 +45,9 @@ export function DriveFileMenu({
   onShare: () => void;
   onRestore: () => void;
   onDelete: () => void;
+  /** Só na vista de arquivados/reciclagem: eliminação sem recuperação. */
+  podeEliminarSempre?: boolean;
+  onPermanentDelete?: () => void;
 }) {
   return (
     <DropdownMenu>
@@ -90,6 +95,11 @@ export function DriveFileMenu({
         ) : (
           <DropdownMenuItem className="text-destructive" onSelect={() => onDelete()}>
             <Trash2 className="h-4 w-4" /> Eliminar
+          </DropdownMenuItem>
+        )}
+        {podeEliminarSempre && onPermanentDelete && (
+          <DropdownMenuItem className="text-destructive" onSelect={() => onPermanentDelete()}>
+            <Trash2 className="h-4 w-4" /> Eliminar para sempre
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
