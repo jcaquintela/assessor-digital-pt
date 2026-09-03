@@ -21,7 +21,7 @@ export const CAP_NOTICE_PREFIX = "supreme_cap_notice:";
 /** Aviso (uma vez por dia) de que o teto de avisos/dia está a travar lembretes. */
 export function composeCapNotice(cap: number): string {
   return (
-    `Hoje já te enviei os ${cap} avisos que definiste como máximo por dia, ` +
+    `Hoje já te enviei ${cap === 1 ? "o aviso que definiste" : `os ${cap} avisos que definiste`} como máximo por dia, ` +
     `por isso vou guardar os lembretes seguintes em silêncio. ` +
     `Se quiseres receber mais, diz-me "muda o teto de avisos para 10" ou ajusta em /definicoes.`
   );

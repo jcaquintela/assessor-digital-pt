@@ -65,7 +65,7 @@ describe("golden — aviso de teto de avisos atingido", () => {
   it("aviso é uma vez por dia — não repete", async () => {
     const nudges = [
       sentNudge(0),
-      { id: "c", user_id: USER, status: "sent", sent_at: NOW.toISOString(), dedupe_key: `${CAP_NOTICE_PREFIX}2026-09-03` },
+      { id: "c", user_id: USER, status: "sent", sent_at: NOW.toISOString(), dedupe_key: `${CAP_NOTICE_PREFIX}20260903` },
     ];
     const drafts = await generateSupremeNudges(setup({ cap: 1, sent: 0, nudges }), USER, NOW);
     expect(drafts).toEqual([]);
