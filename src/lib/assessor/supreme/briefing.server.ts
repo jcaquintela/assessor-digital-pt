@@ -315,7 +315,25 @@ export async function generateSupremeNudges(
     }
   }
 
-  const room = (p.max_daily_nudges ?? 6) - (sentToday ?? 0);
-  return drafts.slice(0, Math.max(0, room));
+  const capNotice: NudgeDraft = {
+    kind: "consultant_silence" as any,
+    subject_type: null,
+    subject_id: null,
+    reason: "Teto de avisos por dia atingido",
+    suggested_reply: sanitizeReply(composeCapNotice(cap)),
+    dedupe_key: `${CAP_NOTICE_PREFIX}${nowP.ymd}`,
+  };
+
+  if (capReached) {
+    if (!drafts.length) return [];
+    if (await capNoticeAlreadySent(supabase, userId, nowP.ymd)) return [];
+    return [capNotice];
+  }
+
+  const room = cap - (sentToday ?? 0);
+  if (drafts.length <= room) return drafts;
+  // Vai ficar coisa por dizer: o último lugar é para explicar porquê.
+  if (await capNoticeAlreadySent(supabase, userId, nowP.ymd)) return drafts.slice(0, Math.max(0, room));
+  return [...drafts.slice(0, Math.max(0, room - 1)), capNotice];
 }
 
