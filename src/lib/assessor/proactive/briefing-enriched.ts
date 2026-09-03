@@ -126,6 +126,8 @@ export interface EnrichedBriefingOptions {
   /** Base absoluta dos links (canal); vazio no painel. */
   base?: string | null;
   maxChars?: number;
+  /** Mapa url_completo → link curto (ver short-link.server.ts). */
+  shortUrls?: Record<string, string>;
 }
 
 /** Máximo de conflitos escritos por extenso no briefing. */
@@ -153,10 +155,10 @@ export function composeEnrichedBriefing(
   const blocks: Array<{ text: string; removable: boolean }> = [{ text: head, removable: false }];
 
   if (shownP1.length) {
-    blocks.push({ text: `🔴 P1\n${shownP1.map((i) => line(i, base)).join("\n")}`, removable: false });
+    blocks.push({ text: `🔴 P1\n${shownP1.map((i) => line(i, base, opts.shortUrls)).join("\n")}`, removable: false });
   }
   if (shownP2.length) {
-    blocks.push({ text: `🟠 P2\n${shownP2.map((i) => line(i, base)).join("\n")}`, removable: false });
+    blocks.push({ text: `🟠 P2\n${shownP2.map((i) => line(i, base, opts.shortUrls)).join("\n")}`, removable: false });
   }
   if (restCount > 0) {
     blocks.push({
