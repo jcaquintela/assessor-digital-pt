@@ -29,6 +29,8 @@ import { ShareWhatsAppDialog } from "@/components/drive/share-whatsapp-dialog";
 import { ReorderPagesDialog } from "@/components/drive/reorder-pages-dialog";
 import { QuotaUpgradeDialog } from "@/components/drive/quota-upgrade-dialog";
 import { DriveFileMenu } from "@/components/drive/file-actions-menu";
+import { PermanentDeleteDialog } from "@/components/records/permanent-delete-dialog";
+import { permanentlyDeleteDriveFileFn } from "@/lib/drive/permanent-delete.functions";
 import { useQuotaRevalidate } from "@/lib/drive/use-quota-revalidate";
 import {
   pendingUploadCount,
@@ -390,6 +392,22 @@ function DrivePage() {
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string | null } | null>(null);
   const [orderTarget, setOrderTarget] = useState<string | null>(null);
   const naReciclagem = tab === "reciclagem";
+  // Eliminação permanente: só a partir de arquivados ou da reciclagem.
+  const podeEliminarSempre = naReciclagem || tab === "arquivados";
+  const purgeFile = useServerFn(permanentlyDeleteDriveFileFn);
+  const [purgeTarget, setPurgeTarget] = useState<{ id: string; name: string; links: number } | null>(
+    null,
+  );
+  const purgeMut = useMutation({
+    mutationFn: (v: { id: string; reason: string }) => purgeFile({ data: v }),
+    onSuccess: () => {
+      setPurgeTarget(null);
+      toast.success("Ficheiro eliminado para sempre.");
+      listQ.refetch();
+      countsQ.refetch();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível eliminar."),
+  });
 
   // Agrupamento da vista principal: por categoria (defeito), por negócio ou lista plana.
   const [groupBy, setGroupBy] = useState<GroupBy>("categoria");
@@ -649,6 +667,14 @@ function DrivePage() {
                         onRestore={() => recuperar([f.id])}
                         onDelete={() =>
                           eliminar([f.id], `"${f.original_file_name ?? "este ficheiro"}"`)
+                        }
+                        podeEliminarSempre={podeEliminarSempre}
+                        onPermanentDelete={() =>
+                          setPurgeTarget({
+                            id: f.id,
+                            name: f.original_file_name ?? "este ficheiro",
+                            links: links.length,
+                          })
                         }
                       />
                     </div>
@@ -1033,6 +1059,24 @@ function DrivePage() {
         open={!!fixTarget}
         onOpenChange={(v) => { if (!v) setFixTarget(null); }}
       />
+
+      <PermanentDeleteDialog
+        open={!!purgeTarget}
+        onOpenChange={(v) => { if (!v) setPurgeTarget(null); }}
+        alvo={purgeTarget?.name ?? ""}
+        detalhes={[
+          "O ficheiro é apagado do armazenamento e não há forma de o recuperar.",
+          purgeTarget?.links
+            ? `${purgeTarget.links} ${purgeTarget.links === 1 ? "ligação" : "ligações"} a pessoas, imóveis ou negócios ${purgeTarget.links === 1 ? "desaparece" : "desaparecem"}.`
+            : "Não há ligações a pessoas, imóveis ou negócios.",
+        ]}
+        aExecutar={purgeMut.isPending}
+        onConfirm={(reason) => {
+          if (!purgeTarget) return;
+          purgeMut.mutate({ id: purgeTarget.id, reason });
+        }}
+      />
+
 
       <ShareWhatsAppDialog
         fileId={shareTarget?.id ?? null}
