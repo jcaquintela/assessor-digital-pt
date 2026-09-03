@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { archiveProperty, deleteProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
+import { archiveProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
 import {
   addMarketingActivity, addPropertyCost, addPropertyInterest, addPropertyNote,
   addPropertyOffer, addPropertyVisit, createDealForProperty, deleteInterest,
@@ -93,7 +93,6 @@ function PropertyDetail() {
 
   const fetchDossier = useServerFn(getPropertyDossier);
   const update = useServerFn(updatePropertyFields);
-  const remove = useServerFn(deleteProperty);
   const arquivar = useServerFn(archiveProperty);
   const values = useServerFn(setPropertyValues);
   const commercial = useServerFn(setPropertyCommercialState);
