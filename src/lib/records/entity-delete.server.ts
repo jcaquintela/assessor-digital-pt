@@ -211,7 +211,7 @@ async function audit(
     reason: input.reason,
     metadata: {
       source: "app:entity-delete",
-      snapshot: input.snapshot,
+      snapshot: JSON.parse(JSON.stringify(input.snapshot ?? null)),
       ...(input.extra ?? {}),
     },
   } as never);
