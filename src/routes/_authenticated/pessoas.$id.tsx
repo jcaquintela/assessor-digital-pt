@@ -21,7 +21,7 @@ import {
 import { formatData } from "@/lib/demo-data";
 import {
   ChevronLeft, Mail, Phone, Trash2, MessageSquare, MoreHorizontal,
-  CalendarPlus, Pencil, MessageSquarePlus, Archive, RotateCcw,
+  CalendarPlus, Pencil, MessageSquarePlus, Archive, RotateCcw, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PersonExtrasCard } from "@/components/pessoas/person-extras-card";
@@ -29,6 +29,7 @@ import { PersonLinkedCard } from "@/components/pessoas/person-linked-card";
 import { DealsOf } from "@/components/negocios/deals-of";
 import { EditPersonDialog } from "@/components/pessoas/edit-person-dialog";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { useEntityDelete } from "@/components/records/use-entity-delete";
 
 export const Route = createFileRoute("/_authenticated/pessoas/$id")({
   head: () => ({
@@ -254,8 +255,15 @@ function PessoaDetail() {
             Arquivada em {new Date(pessoa.arquivadoEm).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}. Não aparece nas listas.
           </span>
           <Button size="sm" variant="outline" onClick={() => void repor()}>Repor</Button>
+          {destrutivo.bloqueio.length > 0 && (
+            <p className="w-full text-xs text-muted-foreground">
+              Não pode ser eliminada: {destrutivo.bloqueio.join(" ")} Podes anonimizar os dados
+              pessoais e manter o histórico.
+            </p>
+          )}
         </div>
       )}
+      {destrutivo.dialogos}
 
       {/* Identidade e contacto, em leitura */}
       <div className="c-muted mb-4 flex flex-wrap items-center gap-3 text-xs">
