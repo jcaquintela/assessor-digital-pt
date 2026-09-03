@@ -177,6 +177,9 @@ describe("resumo de fim de dia", () => {
       id: "n1", user_id: USER, status: "sent",
       sent_at: new Date().toISOString(), dedupe_key: "x",
     }];
-    expect(await generateSupremeNudges(makeFakeSupabase(capped) as any, USER, NOW)).toEqual([]);
+    // Cap atingido: o resumo não sai; sai apenas o aviso a explicar o silêncio.
+    const out = await generateSupremeNudges(makeFakeSupabase(capped) as any, USER, NOW);
+    expect(out.filter((d) => d.dedupe_key?.startsWith(EVENING_REVIEW_PREFIX))).toEqual([]);
+    expect(out.every((d) => d.dedupe_key?.startsWith("supreme_cap_notice:"))).toBe(true);
   });
 });

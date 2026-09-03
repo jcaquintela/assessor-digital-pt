@@ -16,6 +16,27 @@ import { lisbonYmd, lisbonHhMm } from "../lisbon-day";
 
 export const DAILY_BRIEFING_PREFIX = "supreme_daily_briefing:";
 export const EVENING_REVIEW_PREFIX = "supreme_evening_review:";
+export const CAP_NOTICE_PREFIX = "supreme_cap_notice:";
+
+/** Aviso (uma vez por dia) de que o teto de avisos/dia está a travar lembretes. */
+export function composeCapNotice(cap: number): string {
+  return (
+    `Hoje já te enviei ${cap === 1 ? "o aviso que definiste" : `os ${cap} avisos que definiste`} como máximo por dia, ` +
+    `por isso vou guardar os lembretes seguintes em silêncio. ` +
+    `Se quiseres receber mais, diz-me "muda o teto de avisos para 10" ou ajusta em /definicoes.`
+  );
+}
+
+/** Já avisámos hoje que o teto está atingido? */
+async function capNoticeAlreadySent(supabase: any, userId: string, ymd: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("assessor_nudges")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("dedupe_key", `${CAP_NOTICE_PREFIX}${ymd}`)
+    .limit(1);
+  return Boolean(((data as any[]) ?? []).length);
+}
 
 /**
  * O briefing da manhã tem de ser ÚNICO por dia. Existem dois emissores
@@ -167,7 +188,10 @@ export async function generateSupremeNudges(
     .eq("user_id", userId)
     .eq("status", "sent")
     .gte("sent_at", startOfDay.toISOString());
-  if ((sentToday ?? 0) >= (p.max_daily_nudges ?? 6)) return [];
+  const cap = p.max_daily_nudges ?? 6;
+  // Teto atingido: não silenciamos sem explicar — continuamos a calcular para
+  // saber se havia mesmo algo a dizer e, se havia, mandamos UM aviso por dia.
+  const capReached = (sentToday ?? 0) >= cap;
 
   // ------------ Briefing da manhã ------------
   const morningDays: number[] = Array.isArray(p.morning_days) ? p.morning_days : [1, 2, 3, 4, 5];
@@ -291,7 +315,25 @@ export async function generateSupremeNudges(
     }
   }
 
-  const room = (p.max_daily_nudges ?? 6) - (sentToday ?? 0);
-  return drafts.slice(0, Math.max(0, room));
+  const capNotice: NudgeDraft = {
+    kind: "consultant_silence" as any,
+    subject_type: null,
+    subject_id: null,
+    reason: "Teto de avisos por dia atingido",
+    suggested_reply: sanitizeReply(composeCapNotice(cap)),
+    dedupe_key: `${CAP_NOTICE_PREFIX}${nowP.ymd}`,
+  };
+
+  if (capReached) {
+    if (!drafts.length) return [];
+    if (await capNoticeAlreadySent(supabase, userId, nowP.ymd)) return [];
+    return [capNotice];
+  }
+
+  const room = cap - (sentToday ?? 0);
+  if (drafts.length <= room) return drafts;
+  // Vai ficar coisa por dizer: o último lugar é para explicar porquê.
+  if (await capNoticeAlreadySent(supabase, userId, nowP.ymd)) return drafts.slice(0, Math.max(0, room));
+  return [...drafts.slice(0, Math.max(0, room - 1)), capNotice];
 }
 
