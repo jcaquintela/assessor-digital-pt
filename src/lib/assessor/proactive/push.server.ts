@@ -115,10 +115,17 @@ export async function listPushUsers(supabase: any): Promise<PushUser[]> {
   return ((data as any[]) ?? []) as PushUser[];
 }
 
+const APP_BASE = "https://app.meuafonso.com";
+
 function formatPriorities(
   name: string,
   items: any[],
-  opts: { now?: Date; dayEvents?: any[] | null; conflicts?: any[] } = {},
+  opts: {
+    now?: Date;
+    dayEvents?: any[] | null;
+    conflicts?: any[];
+    shortUrls?: Record<string, string>;
+  } = {},
 ): string {
   const now = opts.now ?? new Date();
   return sanitizeReply(
@@ -127,9 +134,32 @@ function formatPriorities(
       now,
       tightGaps: opts.dayEvents ? tightGapsFromAgenda(opts.dayEvents as any, now) : [],
       conflicts: (opts.conflicts ?? []) as any,
-      base: "https://app.meuafonso.com",
+      base: APP_BASE,
+      shortUrls: opts.shortUrls,
     }),
   );
+}
+
+/**
+ * Links curtos para os itens do briefing. Uma escrita por destino novo; se o
+ * encurtador falhar, o briefing sai com o link completo (nunca fica sem link).
+ */
+export async function briefingShortUrls(
+  supabase: any,
+  userId: string,
+  priorities: any[],
+): Promise<Record<string, string>> {
+  try {
+    const { priorityUrl } = await import("./briefing-enriched");
+    const { shortenUrls } = await import("@/lib/nav/short-link.server");
+    const urls = priorities
+      .map((p) => priorityUrl(p as any, APP_BASE))
+      .filter((u): u is string => Boolean(u));
+    if (!urls.length) return {};
+    return await shortenUrls(supabase, userId, urls, APP_BASE);
+  } catch {
+    return {};
+  }
 }
 
 /** Push da manhã para um consultor. Devolve o que aconteceu (para logs/testes). */
@@ -165,7 +195,11 @@ export async function sendMorningPush(
     ? ""
     : sanitizeReply(composeNoPrioritiesBriefing(firstName, dayEvents));
   const text = priorities.length
-    ? formatPriorities(firstName, priorities, { dayEvents, conflicts })
+    ? formatPriorities(firstName, priorities, {
+        dayEvents,
+        conflicts,
+        shortUrls: await briefingShortUrls(supabase, userId, priorities),
+      })
     : noPrioritiesText;
 
   const inWindow = await isWithin24hWindow(supabase, userId, target.channel);

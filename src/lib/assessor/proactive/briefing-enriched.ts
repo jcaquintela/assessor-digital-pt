@@ -106,8 +106,13 @@ export function nextThreeActions(items: BriefingPriority[]): string[] {
   return items.slice(0, 3).map((it) => it.action);
 }
 
-function line(item: BriefingPriority, base?: string | null): string {
-  const url = priorityUrl(item, base);
+function line(
+  item: BriefingPriority,
+  base?: string | null,
+  shortUrls?: Record<string, string>,
+): string {
+  const raw = priorityUrl(item, base);
+  const url = raw ? (shortUrls?.[raw] ?? raw) : null;
   const who = item.entity_label ? ` — ${item.entity_label}` : "";
   return `• ${item.action}${who}${url ? ` ${url}` : ""}`;
 }
@@ -121,6 +126,8 @@ export interface EnrichedBriefingOptions {
   /** Base absoluta dos links (canal); vazio no painel. */
   base?: string | null;
   maxChars?: number;
+  /** Mapa url_completo → link curto (ver short-link.server.ts). */
+  shortUrls?: Record<string, string>;
 }
 
 /** Máximo de conflitos escritos por extenso no briefing. */
@@ -148,10 +155,10 @@ export function composeEnrichedBriefing(
   const blocks: Array<{ text: string; removable: boolean }> = [{ text: head, removable: false }];
 
   if (shownP1.length) {
-    blocks.push({ text: `🔴 P1\n${shownP1.map((i) => line(i, base)).join("\n")}`, removable: false });
+    blocks.push({ text: `🔴 P1\n${shownP1.map((i) => line(i, base, opts.shortUrls)).join("\n")}`, removable: false });
   }
   if (shownP2.length) {
-    blocks.push({ text: `🟠 P2\n${shownP2.map((i) => line(i, base)).join("\n")}`, removable: false });
+    blocks.push({ text: `🟠 P2\n${shownP2.map((i) => line(i, base, opts.shortUrls)).join("\n")}`, removable: false });
   }
   if (restCount > 0) {
     blocks.push({
