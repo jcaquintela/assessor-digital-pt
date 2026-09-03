@@ -195,7 +195,11 @@ export async function sendMorningPush(
     ? ""
     : sanitizeReply(composeNoPrioritiesBriefing(firstName, dayEvents));
   const text = priorities.length
-    ? formatPriorities(firstName, priorities, { dayEvents, conflicts })
+    ? formatPriorities(firstName, priorities, {
+        dayEvents,
+        conflicts,
+        shortUrls: await briefingShortUrls(supabase, userId, priorities),
+      })
     : noPrioritiesText;
 
   const inWindow = await isWithin24hWindow(supabase, userId, target.channel);
