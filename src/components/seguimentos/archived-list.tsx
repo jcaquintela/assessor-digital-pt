@@ -75,7 +75,9 @@ export function ArchivedFollowUps() {
           "Os lembretes associados desaparecem.",
         ]}
         aExecutar={eliminar.isPending}
-        onConfirm={(reason) => alvo && eliminar.mutate({ id: alvo.id, reason })}
+        onConfirm={(reason) => {
+          if (alvo) eliminar.mutate({ id: alvo.id, reason });
+        }}
       />
     </div>
   );
