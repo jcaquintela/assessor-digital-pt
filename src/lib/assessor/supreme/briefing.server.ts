@@ -188,7 +188,10 @@ export async function generateSupremeNudges(
     .eq("user_id", userId)
     .eq("status", "sent")
     .gte("sent_at", startOfDay.toISOString());
-  if ((sentToday ?? 0) >= (p.max_daily_nudges ?? 6)) return [];
+  const cap = p.max_daily_nudges ?? 6;
+  // Teto atingido: não silenciamos sem explicar — continuamos a calcular para
+  // saber se havia mesmo algo a dizer e, se havia, mandamos UM aviso por dia.
+  const capReached = (sentToday ?? 0) >= cap;
 
   // ------------ Briefing da manhã ------------
   const morningDays: number[] = Array.isArray(p.morning_days) ? p.morning_days : [1, 2, 3, 4, 5];
