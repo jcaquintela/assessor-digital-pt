@@ -184,17 +184,9 @@ function PessoaDetail() {
     }
   };
 
-  // Único sítio da app onde se apaga mesmo — e só sobre um registo arquivado.
-  const apagarDefinitivo = async () => {
-    if (!confirm(`Apagar definitivamente ${pessoa.nome}${pessoa.telefone ? `, ${pessoa.telefone}` : ""}? Isto não tem volta.`)) return;
-    try {
-      await apagarPessoaDefinitivo(pessoa.id);
-      toast.success("Pessoa apagada definitivamente.");
-      navigate({ to: "/pessoas" });
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  };
+  // A eliminação definitiva vive agora no fluxo reforçado (motivo + checkbox +
+  // 3s) e só depois do diagnóstico de dependências legais.
+
 
   return (
     <AppShell>
