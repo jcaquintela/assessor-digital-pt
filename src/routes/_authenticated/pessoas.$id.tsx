@@ -21,7 +21,7 @@ import {
 import { formatData } from "@/lib/demo-data";
 import {
   ChevronLeft, Mail, Phone, Trash2, MessageSquare, MoreHorizontal,
-  CalendarPlus, Pencil, MessageSquarePlus, Archive, RotateCcw,
+  CalendarPlus, Pencil, MessageSquarePlus, Archive, RotateCcw, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PersonExtrasCard } from "@/components/pessoas/person-extras-card";
@@ -29,6 +29,7 @@ import { PersonLinkedCard } from "@/components/pessoas/person-linked-card";
 import { DealsOf } from "@/components/negocios/deals-of";
 import { EditPersonDialog } from "@/components/pessoas/edit-person-dialog";
 import { useAssessorName } from "@/lib/assessor/assessor-name";
+import { useEntityDelete } from "@/components/records/use-entity-delete";
 
 export const Route = createFileRoute("/_authenticated/pessoas/$id")({
   head: () => ({
@@ -71,7 +72,7 @@ function PessoaDetail() {
   };
   const {
     pessoasTodas, seguimentos, interacoes,
-    arquivarPessoa, desarquivarPessoa, apagarPessoaDefinitivo,
+    arquivarPessoa, desarquivarPessoa,
     addInteracao, addSeguimento, loading,
   } = useStore();
   const { name: assessorName } = useAssessorName();
@@ -79,6 +80,14 @@ function PessoaDetail() {
   // A ficha continua acessível depois de arquivada: é aqui que se repõe
   // ou, em último caso, se apaga definitivamente.
   const pessoa = useMemo(() => pessoasTodas.find((p) => p.id === id), [pessoasTodas, id]);
+
+  // Diagnóstico de dependências antes de mostrar qualquer opção destrutiva.
+  const destrutivo = useEntityDelete({
+    type: "person",
+    id,
+    enabled: !!pessoa?.arquivadoEm,
+    onDone: () => navigate({ to: "/pessoas" }),
+  });
 
   const [editar, setEditar] = useState(false);
   const [interacao, setInteracao] = useState("");
@@ -97,6 +106,7 @@ function PessoaDetail() {
       .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()),
     [interacoes, id],
   );
+
 
   if (loading && !pessoa) {
     return <AppShell><PageHeader title="A carregar…" /></AppShell>;
@@ -175,17 +185,9 @@ function PessoaDetail() {
     }
   };
 
-  // Único sítio da app onde se apaga mesmo — e só sobre um registo arquivado.
-  const apagarDefinitivo = async () => {
-    if (!confirm(`Apagar definitivamente ${pessoa.nome}${pessoa.telefone ? `, ${pessoa.telefone}` : ""}? Isto não tem volta.`)) return;
-    try {
-      await apagarPessoaDefinitivo(pessoa.id);
-      toast.success("Pessoa apagada definitivamente.");
-      navigate({ to: "/pessoas" });
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  };
+  // A eliminação definitiva vive agora no fluxo reforçado (motivo + checkbox +
+  // 3s) e só depois do diagnóstico de dependências legais.
+
 
   return (
     <AppShell>
@@ -224,15 +226,23 @@ function PessoaDetail() {
                   <DropdownMenuItem onSelect={() => void repor()}>
                     <RotateCcw className="mr-2 h-3.5 w-3.5" /> Repor
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive" onSelect={() => void apagarDefinitivo()}>
-                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Apagar definitivamente
-                  </DropdownMenuItem>
+                  {destrutivo.podeEliminar && (
+                    <DropdownMenuItem className="text-destructive" onSelect={() => destrutivo.abrirEliminar()}>
+                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar para sempre
+                    </DropdownMenuItem>
+                  )}
+                  {destrutivo.podeAnonimizar && (
+                    <DropdownMenuItem className="text-destructive" onSelect={() => destrutivo.abrirAnonimizar()}>
+                      <UserX className="mr-2 h-3.5 w-3.5" /> Anonimizar
+                    </DropdownMenuItem>
+                  )}
                 </>
               ) : (
                 <DropdownMenuItem onSelect={() => void arquivar()}>
                   <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
                 </DropdownMenuItem>
               )}
+
             </DropdownMenuContent>
           </DropdownMenu>
         }
@@ -245,8 +255,15 @@ function PessoaDetail() {
             Arquivada em {new Date(pessoa.arquivadoEm).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}. Não aparece nas listas.
           </span>
           <Button size="sm" variant="outline" onClick={() => void repor()}>Repor</Button>
+          {destrutivo.bloqueio.length > 0 && (
+            <p className="w-full text-xs text-muted-foreground">
+              Não pode ser eliminada: {destrutivo.bloqueio.join(" ")} Podes anonimizar os dados
+              pessoais e manter o histórico.
+            </p>
+          )}
         </div>
       )}
+      {destrutivo.dialogos}
 
       {/* Identidade e contacto, em leitura */}
       <div className="c-muted mb-4 flex flex-wrap items-center gap-3 text-xs">

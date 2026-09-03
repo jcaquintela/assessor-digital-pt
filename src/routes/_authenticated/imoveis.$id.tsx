@@ -1,3 +1,4 @@
+import { useEntityDelete } from "@/components/records/use-entity-delete";
 import { RecordNotFound } from "@/components/record-not-found";
 import { appTitle } from "@/lib/brand";
 // Ficha completa do imóvel: absorve o que existe no Negócio ligado para o
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { archiveProperty, deleteProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
+import { archiveProperty, updatePropertyFields } from "@/lib/assessor/properties.functions";
 import {
   addMarketingActivity, addPropertyCost, addPropertyInterest, addPropertyNote,
   addPropertyOffer, addPropertyVisit, createDealForProperty, deleteInterest,
@@ -92,7 +93,6 @@ function PropertyDetail() {
 
   const fetchDossier = useServerFn(getPropertyDossier);
   const update = useServerFn(updatePropertyFields);
-  const remove = useServerFn(deleteProperty);
   const arquivar = useServerFn(archiveProperty);
   const values = useServerFn(setPropertyValues);
   const commercial = useServerFn(setPropertyCommercialState);
@@ -131,6 +131,16 @@ function PropertyDetail() {
     mutationFn: (patch: Record<string, unknown>) => update({ data: { id, patch } }),
     onSuccess: () => { refresh(); toast.success("Alterações guardadas."); },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Diagnóstico de dependências (negócios em curso, comissões) antes de sequer
+  // mostrar a opção de eliminar.
+  const arquivadoAgora = String((data as any)?.property?.status ?? "") === "arquivado";
+  const destrutivo = useEntityDelete({
+    type: "property",
+    id,
+    enabled: arquivadoAgora,
+    onDone: () => navigate({ to: "/imoveis" }),
   });
 
   const [draft, setDraft] = useState<Record<string, any> | null>(null);
@@ -184,15 +194,6 @@ function PropertyDetail() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  const eliminar = async () => {
-    if (!confirm(`Apagar definitivamente "${p.title}"? Isto não tem volta.`)) return;
-    try {
-      await remove({ data: { id } });
-      qc.invalidateQueries({ queryKey: ["properties"] });
-      toast.success("Imóvel apagado definitivamente.");
-      navigate({ to: "/imoveis" });
-    } catch (e) { toast.error((e as Error).message); }
-  };
 
   const caracteristicas = [p.typology, p.area_useful ? `${p.area_useful} m²` : p.area_gross ? `${p.area_gross} m²` : null]
     .filter(Boolean).join(" · ");
@@ -286,18 +287,27 @@ function PropertyDetail() {
                   <RotateCcw className="mr-2 h-3.5 w-3.5" /> Repor
                 </DropdownMenuItem>
               )}
-              {p.status === "arquivado" && (
+              {p.status === "arquivado" && destrutivo.podeEliminar && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive" onSelect={() => void eliminar()}>
-                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Apagar definitivamente
+                  <DropdownMenuItem className="text-destructive" onSelect={() => destrutivo.abrirEliminar()}>
+                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar para sempre
                   </DropdownMenuItem>
+                </>
+              )}
+              {p.status === "arquivado" && destrutivo.bloqueio.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Não pode ser eliminado: {destrutivo.bloqueio.join(" ")}
+                  </div>
                 </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+      {destrutivo.dialogos}
 
       {/* ===== Percurso do negócio ===== */}
       <Section

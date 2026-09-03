@@ -171,12 +171,10 @@ interface AppStore {
   updatePessoa: (id: string, patch: Partial<Omit<Pessoa, "id">>) => Promise<void>;
   arquivarPessoa: (id: string) => Promise<void>;
   desarquivarPessoa: (id: string) => Promise<void>;
-  apagarPessoaDefinitivo: (id: string) => Promise<void>;
   addOportunidade: (o: Omit<Oportunidade, "id">) => Promise<Oportunidade | null>;
   updateOportunidade: (id: string, patch: Partial<Omit<Oportunidade, "id">>) => Promise<void>;
   arquivarOportunidade: (id: string) => Promise<void>;
   desarquivarOportunidade: (id: string) => Promise<void>;
-  apagarOportunidadeDefinitivo: (id: string) => Promise<void>;
   updateInteracao: (id: string, patch: Partial<Omit<Interacao, "id">>) => Promise<void>;
   arquivarInteracao: (id: string) => Promise<void>;
   desarquivarInteracao: (id: string) => Promise<void>;
@@ -533,12 +531,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invalidate("people");
   }, [qc]);
 
-  const apagarPessoaDefinitivo = useCallback(async (id: string) => {
-    const { error } = await supabase.from("people").delete().eq("id", id);
-    if (error) throw error;
-    invalidate("people");
-  }, [qc]);
-
   const addOportunidade = useCallback(async (o: Omit<Oportunidade, "id">) => {
     const uid = await currentUserId();
     const { data, error } = await supabase.from("opportunities").insert({
@@ -584,12 +576,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const desarquivarOportunidade = useCallback(async (id: string) => {
     const { error } = await supabase.from("opportunities").update({ archived_at: null } as never).eq("id", id);
-    if (error) throw error;
-    invalidate("opportunities");
-  }, [qc]);
-
-  const apagarOportunidadeDefinitivo = useCallback(async (id: string) => {
-    const { error } = await supabase.from("opportunities").delete().eq("id", id);
     if (error) throw error;
     invalidate("opportunities");
   }, [qc]);
@@ -680,19 +666,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       updatePessoa,
       arquivarPessoa,
       desarquivarPessoa,
-      apagarPessoaDefinitivo,
       addOportunidade,
       updateOportunidade,
       arquivarOportunidade,
       desarquivarOportunidade,
-      apagarOportunidadeDefinitivo,
       updateInteracao,
       arquivarInteracao,
       desarquivarInteracao,
       apagarInteracaoDefinitivo,
       refresh,
     };
-  }, [people.data, opps.data, props.data, followups.data, movements.data, interactions.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, interactions.isLoading, addSeguimento, addSeguimentoReturning, concluirSeguimento, reagendarSeguimento, atualizarSeguimento, arquivarSeguimento, desarquivarSeguimento, apagarSeguimentoDefinitivo, addDespesa, addDespesaReturning, atualizarMovimento, arquivarMovimento, desarquivarMovimento, apagarMovimentoDefinitivo, addComissao, addComissaoReturning, addEntrada, addInteracao, addPessoa, updatePessoa, arquivarPessoa, desarquivarPessoa, apagarPessoaDefinitivo, addOportunidade, updateOportunidade, arquivarOportunidade, desarquivarOportunidade, apagarOportunidadeDefinitivo, updateInteracao, arquivarInteracao, desarquivarInteracao, apagarInteracaoDefinitivo, refresh]);
+  }, [people.data, opps.data, props.data, followups.data, movements.data, interactions.data, people.isLoading, opps.isLoading, props.isLoading, followups.isLoading, movements.isLoading, interactions.isLoading, addSeguimento, addSeguimentoReturning, concluirSeguimento, reagendarSeguimento, atualizarSeguimento, arquivarSeguimento, desarquivarSeguimento, apagarSeguimentoDefinitivo, addDespesa, addDespesaReturning, atualizarMovimento, arquivarMovimento, desarquivarMovimento, apagarMovimentoDefinitivo, addComissao, addComissaoReturning, addEntrada, addInteracao, addPessoa, updatePessoa, arquivarPessoa, desarquivarPessoa, addOportunidade, updateOportunidade, arquivarOportunidade, desarquivarOportunidade, updateInteracao, arquivarInteracao, desarquivarInteracao, apagarInteracaoDefinitivo, refresh]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
