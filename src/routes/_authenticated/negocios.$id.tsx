@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
+import { useEntityDelete } from "@/components/records/use-entity-delete";
 import { assuntoDe } from "@/lib/assessor/assunto";
 import { formatData, formatDataHora, formatEUR } from "@/lib/demo-data";
 import {
@@ -63,7 +64,7 @@ function DealDetail() {
   const { destaque } = Route.useSearch();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { pessoas, imoveis, apagarOportunidadeDefinitivo } = useStore();
+  const { pessoas, imoveis } = useStore();
 
   const getFn = useServerFn(getDeal);
   const updateFn = useServerFn(updateDeal);
@@ -83,7 +84,6 @@ function DealDetail() {
   const [notas, setNotas] = useState("");
   const [nota, setNota] = useState("");
   const [novoImovel, setNovoImovel] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [destacado, setDestacado] = useState(false);
   const [alvo, setAlvo] = useState<string | null>(null);
@@ -177,6 +177,15 @@ function DealDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Diagnóstico legal antes de mostrar qualquer opção destrutiva: um negócio com
+  // movimentos financeiros nunca pode ser eliminado.
+  const destrutivo = useEntityDelete({
+    type: "opportunity",
+    id,
+    enabled: !!d?.archivedAt,
+    onDone: () => navigate({ to: "/negocios" }),
+  });
+
   if (deal.isLoading) return <AppShell><PageHeader title="A carregar…" /></AppShell>;
 
   if (!d) {
@@ -187,20 +196,6 @@ function DealDetail() {
     );
   }
 
-  // Só chega aqui um negócio já arquivado: apagar definitivo vive só na ficha.
-  const apagar = async () => {
-    try {
-      await supabase.from("financial_movements").delete().eq("opportunity_id", d.id);
-      await supabase.from("file_links").delete().eq("entity_type", "opportunity").eq("entity_id", d.id);
-      await apagarOportunidadeDefinitivo(d.id);
-      toast.success("Negócio e registos ligados apagados.");
-      navigate({ to: "/negocios" });
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setConfirmDelete(false);
-    }
-  };
 
   const comissaoPrevista = d.movements.filter((m) => m.type === "commission").reduce((s, m) => s + m.amount, 0);
   const comissaoRecebida = d.movements
@@ -231,9 +226,9 @@ function DealDetail() {
             <Button variant="ghost" onClick={() => arquivar.mutate(!d.archivedAt)}>
               <Archive className="mr-1 h-4 w-4" /> {d.archivedAt ? "Reabrir" : "Arquivar"}
             </Button>
-            {d.archivedAt && (
-              <Button variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)}>
-                <Trash2 className="mr-1 h-4 w-4" /> Apagar definitivamente
+            {d.archivedAt && destrutivo.podeEliminar && (
+              <Button variant="ghost" className="text-destructive" onClick={() => destrutivo.abrirEliminar()}>
+                <Trash2 className="mr-1 h-4 w-4" /> Eliminar para sempre
               </Button>
             )}
             <Button onClick={() => guardar.mutate()} disabled={guardar.isPending}>
@@ -512,22 +507,13 @@ function DealDetail() {
         </Card>
       )}
 
-      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Apagar definitivamente este negócio?</DialogTitle>
-            <DialogDescription>
-              Apaga também {d.movements.length} movimento{d.movements.length === 1 ? "" : "s"} financeiro
-              {d.movements.length === 1 ? "" : "s"} e as ligações de ficheiros. Não há forma de recuperar.
-              Se só queres tirar isto da frente, deixa-o arquivado.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={apagar}>Apagar tudo</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {d.archivedAt && destrutivo.bloqueio.length > 0 && (
+        <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+          <strong>Este negócio não pode ser eliminado.</strong>{" "}
+          {destrutivo.bloqueio.join(" ")} Podes deixá-lo arquivado.
+        </div>
+      )}
+      {destrutivo.dialogos}
     </AppShell>
   );
 }
