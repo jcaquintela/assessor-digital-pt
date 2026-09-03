@@ -106,8 +106,13 @@ export function nextThreeActions(items: BriefingPriority[]): string[] {
   return items.slice(0, 3).map((it) => it.action);
 }
 
-function line(item: BriefingPriority, base?: string | null): string {
-  const url = priorityUrl(item, base);
+function line(
+  item: BriefingPriority,
+  base?: string | null,
+  shortUrls?: Record<string, string>,
+): string {
+  const raw = priorityUrl(item, base);
+  const url = raw ? (shortUrls?.[raw] ?? raw) : null;
   const who = item.entity_label ? ` — ${item.entity_label}` : "";
   return `• ${item.action}${who}${url ? ` ${url}` : ""}`;
 }
