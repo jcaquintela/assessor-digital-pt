@@ -6,6 +6,7 @@
 // Agora o cron proativo trata disso.
 
 import { appSourceColumns } from "./follow-ups-source";
+import { isFollowUpOpen } from "@/lib/follow-ups/state";
 
 export interface RoutineRow {
   id: string;
@@ -125,15 +126,23 @@ export async function materializeDueRoutinesServer(
       continue;
     }
 
-    const { data: already } = await supabase
+    // Ocorrências anteriores desta MESMA rotina. Duas razões para não criar:
+    //   a) já existe a ocorrência de hoje (idempotência do cron);
+    //   b) uma ocorrência anterior continua por fechar — nesse caso a tarefa
+    //      que já existe é que vale, fica em atraso, e não se acumulam cópias.
+    const { data: prior } = await supabase
       .from("follow_ups")
-      .select("id")
+      .select("id, status, outcome, archived_at, external_reference")
       .eq("user_id", r.user_id)
-      .eq("external_reference", ref)
-      .limit(1);
-    if (((already as any[]) ?? []).length) {
+      .like("external_reference", `routine:${r.id}:%`)
+      .limit(200);
+    const priorRows = ((prior as any[]) ?? []);
+    const hasToday = priorRows.some((f) => f.external_reference === ref);
+    const hasOpen = priorRows.some((f) => isFollowUpOpen(f));
+    if (hasToday || hasOpen) {
       skipped += 1;
     } else {
+
 
       const { data: inserted } = await supabase
         .from("follow_ups")
