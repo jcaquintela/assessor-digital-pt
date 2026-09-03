@@ -22,6 +22,7 @@ function routine(over: Record<string, any> = {}): RoutineRow {
     person_id: null,
     opportunity_id: null,
     priority: "Média",
+    active: true,
     kind: "follow_up",
     digest_query: null,
     ...over,
