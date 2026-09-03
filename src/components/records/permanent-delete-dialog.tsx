@@ -25,6 +25,7 @@ export function PermanentDeleteDialog({
   alvo,
   detalhes,
   aExecutar,
+  modo = "eliminar",
   onConfirm,
 }: {
   open: boolean;
@@ -34,8 +35,11 @@ export function PermanentDeleteDialog({
   /** O que mais desaparece com ele. */
   detalhes?: string[];
   aExecutar?: boolean;
+  /** "anonimizar" troca a linguagem: os dados pessoais saem, o histórico fica. */
+  modo?: "eliminar" | "anonimizar";
   onConfirm: (reason: string) => void | Promise<void>;
 }) {
+  const anon = modo === "anonimizar";
   const [ack, setAck] = useState(false);
   const [reason, setReason] = useState("");
   const [elapsed, setElapsed] = useState(0);
@@ -65,13 +69,22 @@ export function PermanentDeleteDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-4.5 w-4.5" />
-            Eliminar para sempre
+            {anon ? "Anonimizar para sempre" : "Eliminar para sempre"}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3 text-left">
               <p>
-                Vais eliminar <strong>{alvo}</strong>. Isto não vai para a Reciclagem e não há
-                forma de recuperar depois de confirmares.
+                {anon ? (
+                  <>
+                    Vais anonimizar <strong>{alvo}</strong>. O nome, telefone e email desaparecem
+                    para sempre; o histórico de negócio e as comissões ficam, como a lei obriga.
+                  </>
+                ) : (
+                  <>
+                    Vais eliminar <strong>{alvo}</strong>. Isto não vai para a Reciclagem e não há
+                    forma de recuperar depois de confirmares.
+                  </>
+                )}
               </p>
               {detalhes?.length ? (
                 <ul className="list-disc space-y-1 rounded-lg border border-destructive/30 bg-destructive/5 p-3 pl-6 text-[12.5px]">
@@ -115,7 +128,11 @@ export function PermanentDeleteDialog({
               void onConfirm(reason.trim());
             }}
           >
-            {aExecutar ? "A eliminar…" : espera > 0 ? `Eliminar (${espera}s)` : "Eliminar para sempre"}
+            {aExecutar
+              ? anon ? "A anonimizar…" : "A eliminar…"
+              : espera > 0
+                ? `${anon ? "Anonimizar" : "Eliminar"} (${espera}s)`
+                : anon ? "Anonimizar para sempre" : "Eliminar para sempre"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
