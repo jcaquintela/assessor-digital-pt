@@ -225,15 +225,23 @@ function PessoaDetail() {
                   <DropdownMenuItem onSelect={() => void repor()}>
                     <RotateCcw className="mr-2 h-3.5 w-3.5" /> Repor
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive" onSelect={() => void apagarDefinitivo()}>
-                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Apagar definitivamente
-                  </DropdownMenuItem>
+                  {destrutivo.podeEliminar && (
+                    <DropdownMenuItem className="text-destructive" onSelect={() => destrutivo.abrirEliminar()}>
+                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar para sempre
+                    </DropdownMenuItem>
+                  )}
+                  {destrutivo.podeAnonimizar && (
+                    <DropdownMenuItem className="text-destructive" onSelect={() => destrutivo.abrirAnonimizar()}>
+                      <UserX className="mr-2 h-3.5 w-3.5" /> Anonimizar
+                    </DropdownMenuItem>
+                  )}
                 </>
               ) : (
                 <DropdownMenuItem onSelect={() => void arquivar()}>
                   <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
                 </DropdownMenuItem>
               )}
+
             </DropdownMenuContent>
           </DropdownMenu>
         }
