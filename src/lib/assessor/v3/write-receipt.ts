@@ -96,10 +96,14 @@ export function promisesFutureWrite(text: string | null | undefined): boolean {
 export function enforceTransparentConfirmation(
   reply: string,
   tools: ToolOutcome[],
-  opts: { executedOk: boolean },
+  opts: { executedOk: boolean; pendingAsk?: boolean },
 ): string {
   const receipt = describeWrites(tools);
   let out = reply;
+  // Prioridade absoluta: uma pergunta por responder nunca é substituída por um
+  // recibo. "Crio um contacto novo...?" bate no padrão de escrita no presente,
+  // mas é uma pergunta ao consultor — trocá-la apaga o pedido em aberto.
+  if (opts.pendingAsk) return withProspectingHint(out, tools);
   if (claimsDelivery(reply)) out = receipt ?? "Guardei o registo no dashboard. Não enviei nada a ninguém.";
   else if (opts.executedOk && isBareAck(reply) && receipt) out = receipt;
   // Escrita feita, mas contada no presente/futuro: substituímos pelo recibo
@@ -107,6 +111,7 @@ export function enforceTransparentConfirmation(
   else if (opts.executedOk && promisesFutureWrite(reply) && receipt) out = receipt;
   return withProspectingHint(out, tools);
 }
+
 
 // Nota leve: onde é que o consultor vê as placas. Não é aviso de limitação,
 // é orientação — vale para qualquer plano.
