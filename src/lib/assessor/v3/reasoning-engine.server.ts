@@ -25,6 +25,8 @@ import { runEngineTail } from "./engine-tail.server";
 import { runDeterministicRouter } from "./deterministic-router.server";
 import { HISTORY_LIMIT, nowLisbonHuman, nowLisbonYmd, toHistoryPreview } from "./engine-shared";
 import { shapeExecutionOutcome, shapeAgendaAsks, shapePersonAsk, shapeToolReplies } from "./post-act-reply.server";
+import { askLabel, type PendingAskItem } from "./pending-asks";
+
 // Blocos extraídos no Lote 8 — o motor apenas os orquestra por ordem.
 import { runCompletionPass } from "./completion-pass.server";
 import { runTurnOpeners } from "./turn-openers.server";
@@ -501,7 +503,8 @@ async function runReasoningEngineInner(
 
 
   // Confirmação de contacto: caminho único para compromisso, seguimento e
-  // proprietário — primeiro match ganha, nunca duas perguntas no mesmo turno.
+  // proprietário. Abre uma acção pendente (a primeira), mas devolve TODOS os
+  // itens por resolver para a resposta os enumerar.
   const personAskShape = await shapePersonAsk({
     supabase, userId, channel,
     sourceMessageId: sourceMessageId ?? null,
@@ -510,15 +513,23 @@ async function runReasoningEngineInner(
     toolResults: toolResults as any,
   });
   reply = personAskShape.reply;
+  const pendingAsks: PendingAskItem[] = [...personAskShape.asks];
 
   // Imóvel por confirmar: "provável" nunca liga em silêncio. A escrita fica
   // em espera até o consultor dizer qual é o imóvel (ou avançar sem ele).
-  const propertyAskTool = toolResults.find(
+  const propertyAskTools = toolResults.filter(
     (t) => t.ok && (t.data as any)?.needsPropertyConfirmation === true,
   );
-  if (propertyAskTool && !personAskShape.asked) {
+  for (const [index, propertyAskTool] of propertyAskTools.entries()) {
     const d = propertyAskTool.data as any;
     const question = String(d.question ?? "De que imóvel se trata?");
+    pendingAsks.push({
+      kind: "property",
+      label: askLabel(propertyAskTool.name, d),
+      question,
+    });
+    // Só a primeira pergunta do turno ocupa a ranhura de acção pendente.
+    if (personAskShape.asked || index > 0) continue;
     try {
       await createPendingAction(supabase, {
         userId, channel,
@@ -539,6 +550,7 @@ async function runReasoningEngineInner(
     } catch { /* noop */ }
     reply = question;
   }
+
 
   // Pós-ACT (parte 3): prospeção, desmarcação, conclusão e financeiro.
   const shaped = await shapeToolReplies({
@@ -563,7 +575,9 @@ async function runReasoningEngineInner(
     trimmed,
     reply,
     toolResults: toolResults as any,
+    pendingAsks,
     cancelTool,
+
     leadTool: leadTool as any,
     decideR,
     thinkR,

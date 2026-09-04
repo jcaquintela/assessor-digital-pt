@@ -8,7 +8,8 @@
 
 import { enforceHumanTone, enforceSingleQuestion, NATURAL_FALLBACKS } from "../culture/sanitize";
 import { suppressRejectedQuestion } from "./rejected-question";
-import { enforceTransparentConfirmation } from "./write-receipt";
+import { describeWrites, enforceTransparentConfirmation } from "./write-receipt";
+import { composeAsksReply, type PendingAskItem } from "./pending-asks";
 import { applySafetyNet, buildArchiveContent } from "./safety-net.server";
 import { formatQueryResults, isQueryTool } from "./query-results";
 import { computeQualitySignals, persistQualityScore } from "./quality.server";
@@ -48,8 +49,13 @@ export async function finalizeReplyText(params: {
   isCorrection: boolean;
   lastAssistantReply: string;
   aiUnavailable: boolean;
+  /** Itens do turno que ficaram à espera de confirmação (pessoa/imóvel). */
+  pendingAsks?: PendingAskItem[];
 }): Promise<{ reply: string; executedOk: boolean }> {
   const { toolResults, cancelTool, shouldAct, allOk, prospectingActed, rescheduleAsk } = params;
+  // Uma pergunta por responder não é uma acção concluída: se o tom humano
+  // achar que está tudo feito, transforma a pergunta em "Feito.".
+  const hasPendingAsks = (params.pendingAsks ?? []).length > 0;
   let reply = params.reply;
 
   const queryReply = toolResults.some((t) => t.ok && isQueryTool(t.name))
@@ -99,7 +105,7 @@ export async function finalizeReplyText(params: {
     reply = enforceHumanTone(reply, {
       // Uma pergunta de desambiguação não é uma acção executada: se dissermos
       // que sim, o tom humano transforma a pergunta em "Feito.".
-      actionExecutedOk: ((shouldAct && allOk) || prospectingActed) && !rescheduleAsk,
+      actionExecutedOk: ((shouldAct && allOk) || prospectingActed) && !rescheduleAsk && !hasPendingAsks,
     });
     if (params.decideAction === "ask") {
       reply = enforceSingleQuestion(reply);
@@ -107,7 +113,7 @@ export async function finalizeReplyText(params: {
   }
   // Ordem correcta: o outcome real (execução) manda sobre a frase gerada.
   const executedOk = ((shouldAct && allOk) || prospectingActed) && !rescheduleAsk;
-  if (executedOk) {
+  if (executedOk && !hasPendingAsks) {
     const soundsLikeFailure =
       !reply ||
       reply === NATURAL_FALLBACKS.didNotUnderstand ||
@@ -491,6 +497,7 @@ export interface EngineTailInput {
   trimmed: string;
   reply: string;
   toolResults: ToolResult[];
+  pendingAsks?: PendingAskItem[];
   cancelTool: unknown;
   leadTool: ToolResult | undefined;
   decideR: any;
@@ -537,9 +544,17 @@ export async function runEngineTail(input: EngineTailInput): Promise<{ reply: st
     isCorrection: input.isCorrection,
     lastAssistantReply: input.lastAssistantReply,
     aiUnavailable: input.aiUnavailable,
+    pendingAsks: input.pendingAsks,
   });
   let reply = finalized.reply;
   const executedOk = finalized.executedOk;
+
+  // Itens por resolver: a resposta diz o que foi mesmo escrito E enumera
+  // TODOS os que ficaram à espera. Nunca se escolhe um e calam-se os outros.
+  const pendingAsks = input.pendingAsks ?? [];
+  if (pendingAsks.length) {
+    reply = composeAsksReply(describeWrites(toolResults as any), pendingAsks);
+  }
 
   const archive = resolveArchiveOutcome({
     archiveOutcome: input.archiveOutcome,
@@ -568,7 +583,10 @@ export async function runEngineTail(input: EngineTailInput): Promise<{ reply: st
 
   const totalLatencyMs = Date.now() - input.started;
   // Confirmação transparente: o quê + onde, sem prometer envios.
-  reply = enforceTransparentConfirmation(reply, toolResults as any, { executedOk });
+  reply = enforceTransparentConfirmation(reply, toolResults as any, {
+    executedOk,
+    pendingAsk: pendingAsks.length > 0,
+  });
   const inputTokens = thinkR.usage.inputTokens + decideR.usage.inputTokens;
   const outputTokens = thinkR.usage.outputTokens + decideR.usage.outputTokens;
   const success = input.allOk && !decideR.error && !thinkR.error;

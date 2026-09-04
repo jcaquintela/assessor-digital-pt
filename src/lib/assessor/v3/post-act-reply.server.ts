@@ -13,6 +13,8 @@
 
 import { claimsCompletion, unverifiedCompletionReply, recurrenceQuestion } from "./completion-intent";
 import { createPendingAction } from "../memory.server";
+import { askLabel, type PendingAskItem } from "./pending-asks";
+
 
 export type ToolResult = { name: string; ok: boolean; data?: unknown; error?: string | null };
 export type ArchiveOutcome = "executed_ok" | "tool_failed" | "not_understood" | "service_down";
@@ -134,8 +136,9 @@ export async function shapeAgendaAsks(params: {
 /**
  * Confirmação de contacto (`confirm_event_person`) — um único caminho para as
  * três escritas que resolvem pessoa antes de gravar. A ordem é a histórica
- * (compromisso → seguimento → proprietário) e o primeiro match ganha: nunca
- * abrimos duas perguntas de contacto no mesmo turno.
+ * (compromisso → seguimento → proprietário). Só o PRIMEIRO abre acção pendente
+ * (a ranhura "main" é única), mas todos os pendentes são devolvidos em `asks`
+ * para a resposta os enumerar — nunca se cala um item por resolver.
  */
 const PERSON_ASK_TOOLS = ["create_event", "create_follow_up", "update_property"] as const;
 
@@ -147,19 +150,27 @@ export async function shapePersonAsk(params: {
   trimmed: string;
   reply: string;
   toolResults: ToolResult[];
-}): Promise<{ reply: string; asked: boolean }> {
+}): Promise<{ reply: string; asked: boolean; asks: PendingAskItem[] }> {
+  const hits: Array<{ toolName: string; data: any }> = [];
   for (const toolName of PERSON_ASK_TOOLS) {
-    const hit = params.toolResults.find(
-      (t) => t.name === toolName && t.ok
-        && (t.data as any)?.needsPersonConfirmation === true,
-    );
-    if (!hit) continue;
-    const d = hit.data as any;
-    const { personResolutionQuestion } = await import("@/lib/people/resolve-person.server");
+    for (const t of params.toolResults) {
+      if (t.name !== toolName || !t.ok) continue;
+      if ((t.data as any)?.needsPersonConfirmation !== true) continue;
+      hits.push({ toolName, data: t.data as any });
+    }
+  }
+  if (!hits.length) return { reply: params.reply, asked: false, asks: [] };
+
+  const { personResolutionQuestion } = await import("@/lib/people/resolve-person.server");
+  const asks: PendingAskItem[] = [];
+  for (const [index, hit] of hits.entries()) {
+    const d = hit.data;
     const question = personResolutionQuestion({
       status: d.mode, personId: null, name: d.personName ?? null,
       candidates: d.suggestions ?? [],
     });
+    asks.push({ kind: "person", label: askLabel(hit.toolName, d), question });
+    if (index > 0) continue; // uma acção pendente de cada vez (ranhura "main")
     try {
       await createPendingAction(params.supabase, {
         userId: params.userId, channel: params.channel,
@@ -170,7 +181,7 @@ export async function shapePersonAsk(params: {
           mode: d.mode,
           suggestions: d.suggestions ?? [],
           candidate_ids: d.candidateIds ?? [],
-          tool: toolName,
+          tool: hit.toolName,
           incoming: d.incoming,
         },
         currentQuestion: question,
@@ -178,10 +189,10 @@ export async function shapePersonAsk(params: {
         sourceMessageId: params.sourceMessageId ?? null,
       });
     } catch { /* noop */ }
-    return { reply: question, asked: true };
   }
-  return { reply: params.reply, asked: false };
+  return { reply: asks[0]!.question, asked: true, asks };
 }
+
 
 /** Prospeção, desmarcações, conclusões e movimentos financeiros. */
 export async function shapeToolReplies(params: {

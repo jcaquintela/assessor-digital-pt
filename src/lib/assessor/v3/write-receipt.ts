@@ -35,11 +35,32 @@ function pick(data: unknown, path?: string[]): string | null {
   return typeof cur === "string" && cur.trim() ? cur.trim() : null;
 }
 
+/**
+ * A ferramenta correu bem, mas escreveu mesmo alguma coisa?
+ *
+ * Um resultado `ok: true` pode ser apenas "preciso que confirmes quem/qual é"
+ * — nesse caso NÃO há registo na base de dados e dizer "Guardei o seguimento"
+ * é mentira (caso real de 4/9: proposta à Joana e call de Matosinhos ficaram
+ * por confirmar e o consultor leu que estavam guardadas).
+ */
+export function isRealWrite(t: ToolOutcome): boolean {
+  if (!t.ok) return false;
+  const d = (t.data ?? {}) as Record<string, unknown>;
+  if (d.created === false || d.pending === true) return false;
+  for (const [key, value] of Object.entries(d)) {
+    if (value !== true) continue;
+    // needsPersonConfirmation, needsPropertyConfirmation, needsRescheduleConfirmation,
+    // needsCalendarProviderChoice, needs_person_choice, needs_email_address, ...
+    if (/^needs[_A-Z]/.test(key)) return false;
+  }
+  return true;
+}
+
 /** Constrói "Guardei X 'título' em Y." a partir das ferramentas executadas. */
 export function describeWrites(tools: ToolOutcome[]): string | null {
   const parts: string[] = [];
   for (const t of tools) {
-    if (!t.ok) continue;
+    if (!isRealWrite(t)) continue;
     const spec = MAP[t.name];
     if (!spec) continue;
     parts.push(
@@ -50,10 +71,12 @@ export function describeWrites(tools: ToolOutcome[]): string | null {
         localOnly: false,
       }),
     );
-    if (parts.length >= 2) break;
+    // Tecto generoso: com 2 perdia-se o 3.º item em silêncio.
+    if (parts.length >= 4) break;
   }
   return parts.length ? parts.join(" ") : null;
 }
+
 
 /**
  * Última linha de defesa antes de responder: sem "Feito." isolado e sem
@@ -73,10 +96,14 @@ export function promisesFutureWrite(text: string | null | undefined): boolean {
 export function enforceTransparentConfirmation(
   reply: string,
   tools: ToolOutcome[],
-  opts: { executedOk: boolean },
+  opts: { executedOk: boolean; pendingAsk?: boolean },
 ): string {
   const receipt = describeWrites(tools);
   let out = reply;
+  // Prioridade absoluta: uma pergunta por responder nunca é substituída por um
+  // recibo. "Crio um contacto novo...?" bate no padrão de escrita no presente,
+  // mas é uma pergunta ao consultor — trocá-la apaga o pedido em aberto.
+  if (opts.pendingAsk) return withProspectingHint(out, tools);
   if (claimsDelivery(reply)) out = receipt ?? "Guardei o registo no dashboard. Não enviei nada a ninguém.";
   else if (opts.executedOk && isBareAck(reply) && receipt) out = receipt;
   // Escrita feita, mas contada no presente/futuro: substituímos pelo recibo
@@ -84,6 +111,7 @@ export function enforceTransparentConfirmation(
   else if (opts.executedOk && promisesFutureWrite(reply) && receipt) out = receipt;
   return withProspectingHint(out, tools);
 }
+
 
 // Nota leve: onde é que o consultor vê as placas. Não é aviso de limitação,
 // é orientação — vale para qualquer plano.
