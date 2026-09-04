@@ -25,6 +25,8 @@ import { runEngineTail } from "./engine-tail.server";
 import { runDeterministicRouter } from "./deterministic-router.server";
 import { HISTORY_LIMIT, nowLisbonHuman, nowLisbonYmd, toHistoryPreview } from "./engine-shared";
 import { shapeExecutionOutcome, shapeAgendaAsks, shapePersonAsk, shapeToolReplies } from "./post-act-reply.server";
+import { askLabel, type PendingAskItem } from "./pending-asks";
+
 // Blocos extraídos no Lote 8 — o motor apenas os orquestra por ordem.
 import { runCompletionPass } from "./completion-pass.server";
 import { runTurnOpeners } from "./turn-openers.server";
