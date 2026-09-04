@@ -575,7 +575,9 @@ async function runReasoningEngineInner(
     trimmed,
     reply,
     toolResults: toolResults as any,
+    pendingAsks,
     cancelTool,
+
     leadTool: leadTool as any,
     decideR,
     thinkR,
