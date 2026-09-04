@@ -40,7 +40,6 @@ type ToolResult = { name: string; ok: boolean; data?: unknown; error?: string; l
 export async function finalizeReplyText(params: {
   reply: string;
   toolResults: ToolResult[];
-  pendingAsks?: PendingAskItem[];
   cancelTool: unknown;
   decideAction: string;
   shouldAct: boolean;
@@ -498,6 +497,7 @@ export interface EngineTailInput {
   trimmed: string;
   reply: string;
   toolResults: ToolResult[];
+  pendingAsks?: PendingAskItem[];
   cancelTool: unknown;
   leadTool: ToolResult | undefined;
   decideR: any;
