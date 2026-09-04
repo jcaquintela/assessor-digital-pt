@@ -13,6 +13,8 @@
 
 import { claimsCompletion, unverifiedCompletionReply, recurrenceQuestion } from "./completion-intent";
 import { createPendingAction } from "../memory.server";
+import { askLabel, type PendingAskItem } from "./pending-asks";
+
 
 export type ToolResult = { name: string; ok: boolean; data?: unknown; error?: string | null };
 export type ArchiveOutcome = "executed_ok" | "tool_failed" | "not_understood" | "service_down";
