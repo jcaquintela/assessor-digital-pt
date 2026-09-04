@@ -501,7 +501,8 @@ async function runReasoningEngineInner(
 
 
   // Confirmação de contacto: caminho único para compromisso, seguimento e
-  // proprietário — primeiro match ganha, nunca duas perguntas no mesmo turno.
+  // proprietário. Abre uma acção pendente (a primeira), mas devolve TODOS os
+  // itens por resolver para a resposta os enumerar.
   const personAskShape = await shapePersonAsk({
     supabase, userId, channel,
     sourceMessageId: sourceMessageId ?? null,
@@ -510,15 +511,23 @@ async function runReasoningEngineInner(
     toolResults: toolResults as any,
   });
   reply = personAskShape.reply;
+  const pendingAsks: PendingAskItem[] = [...personAskShape.asks];
 
   // Imóvel por confirmar: "provável" nunca liga em silêncio. A escrita fica
   // em espera até o consultor dizer qual é o imóvel (ou avançar sem ele).
-  const propertyAskTool = toolResults.find(
+  const propertyAskTools = toolResults.filter(
     (t) => t.ok && (t.data as any)?.needsPropertyConfirmation === true,
   );
-  if (propertyAskTool && !personAskShape.asked) {
+  for (const [index, propertyAskTool] of propertyAskTools.entries()) {
     const d = propertyAskTool.data as any;
     const question = String(d.question ?? "De que imóvel se trata?");
+    pendingAsks.push({
+      kind: "property",
+      label: askLabel(propertyAskTool.name, d),
+      question,
+    });
+    // Só a primeira pergunta do turno ocupa a ranhura de acção pendente.
+    if (personAskShape.asked || index > 0) continue;
     try {
       await createPendingAction(supabase, {
         userId, channel,
@@ -539,6 +548,7 @@ async function runReasoningEngineInner(
     } catch { /* noop */ }
     reply = question;
   }
+
 
   // Pós-ACT (parte 3): prospeção, desmarcação, conclusão e financeiro.
   const shaped = await shapeToolReplies({
