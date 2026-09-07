@@ -39,7 +39,10 @@ export async function loadVisitSources(
     supabase.from("properties").select("id, title, address").eq("user_id", userId).limit(1000),
   ]);
 
-  const followUps = ((fus?.data as any[]) ?? []) as FollowUpSourceRow[];
+  const followUps = ((fus?.data as any[]) ?? []).map((f) => ({
+    ...f,
+    property_id: f.related_property_id ?? null,
+  })) as FollowUpSourceRow[];
 
   const visits: VisitSourceRow[] = ((inter?.data as any[]) ?? [])
     .filter((i) => VISIT_TYPES.has(norm(i.interaction_type)))
