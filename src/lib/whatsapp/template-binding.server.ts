@@ -18,7 +18,10 @@ export interface TemplateBinding {
   updated_at?: string | null;
   /** Categoria na Meta (utility/marketing/...): define o preço fora das 24h. */
   category?: string | null;
+  /** Modelo alternativo usado se o principal deixar de estar aprovado. */
+  fallback_template_name?: string | null;
 }
+
 
 export interface MetaTemplate {
   name: string;
@@ -68,7 +71,7 @@ export async function getTemplateBinding(
 ): Promise<TemplateBinding | null> {
   const { data } = await supabase
     .from("whatsapp_template_bindings")
-    .select("purpose, template_name, language, param_count, enabled, updated_at")
+    .select("purpose, template_name, language, param_count, enabled, updated_at, fallback_template_name")
     .eq("purpose", purpose)
     .maybeSingle();
   return (data as TemplateBinding) ?? null;
@@ -84,13 +87,14 @@ export async function setTemplateBinding(
     language: input.language || TEMPLATE_LANG,
     param_count: Math.max(0, Math.min(10, input.param_count ?? 3)),
     enabled: !!input.enabled,
+    fallback_template_name: input.fallback_template_name ?? null,
     updated_by: input.updated_by ?? null,
     updated_at: new Date().toISOString(),
   };
   const { data, error } = await supabase
     .from("whatsapp_template_bindings")
     .upsert(row, { onConflict: "purpose" })
-    .select("purpose, template_name, language, param_count, enabled, updated_at")
+    .select("purpose, template_name, language, param_count, enabled, updated_at, fallback_template_name")
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data as TemplateBinding;
@@ -107,12 +111,16 @@ export async function resolveUsableBinding(
   const binding = await getTemplateBinding(supabase, purpose);
   if (!binding?.enabled || !binding.template_name) return null;
   const all = await listMetaTemplates();
-  const match = all.find(
-    (t) => t.name === binding.template_name && t.status === "APPROVED",
-  );
+  const approved = (name?: string | null) =>
+    name ? all.find((t) => t.name === name && t.status === "APPROVED") ?? null : null;
+  // Principal escolhido no admin; se deixar de estar aprovado, cai no
+  // modelo alternativo (o anterior) em vez de ficar em silêncio.
+  const match = approved(binding.template_name) ?? approved(binding.fallback_template_name);
   if (!match) return null;
   return {
     ...binding,
+    template_name: match.name,
+    language: match.language || binding.language,
     param_count: match.paramCount || binding.param_count,
     category: match.category ?? null,
   };
