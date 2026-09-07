@@ -122,14 +122,19 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
               <span className="truncate">Sobre a IA</span>
             </Link>
           )}
+          <p className="mt-2 text-[10px] leading-tight c-muted">
+            Uma marca da{" "}
+            <span className="c-muted">Saguii Digital Labs</span>
+          </p>
         </div>
 
       </aside>
 
       {/* Main */}
       {fullBleed ? (
-        <main className="mobile-nav-pad min-h-0 min-w-0 overflow-hidden md:ml-64 md:overflow-visible md:pb-8">
+        <main className="mobile-nav-pad relative min-h-0 min-w-0 overflow-hidden md:ml-64 md:overflow-visible md:pb-8">
           <div className="h-full min-w-0 md:mx-auto md:h-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
+          <BrandFooter className="absolute bottom-[calc(56px+0.5rem+env(safe-area-inset-bottom))] left-0 right-0 md:hidden" />
         </main>
       ) : (
         <main className="mobile-nav-pad min-h-0 min-w-0 md:ml-64 md:pb-8">
@@ -154,6 +159,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
             <AnnouncementBanner />
             <TierAuthNotice />
             {children}
+            <BrandFooter className="mt-8 pb-2 md:hidden" />
           </div>
         </main>
       )}
@@ -191,6 +197,17 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
       </nav>
     </div>
     </>
+  );
+}
+
+function BrandFooter({ className }: { className?: string }) {
+  return (
+    <footer className={cn("text-center", className)}>
+      <p className="text-[10px] leading-tight c-muted">
+        Uma marca da{" "}
+        <span className="c-muted">Saguii Digital Labs</span>
+      </p>
+    </footer>
   );
 }
 
