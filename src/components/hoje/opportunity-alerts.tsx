@@ -13,6 +13,7 @@ import {
   listOpportunityAlerts, muteOpportunityAlert,
 } from "@/lib/opportunities/opportunities.functions";
 import type { AlertEngine, OpportunityAlert } from "@/lib/opportunities/detector";
+import { useHasSession } from "@/hooks/use-has-session";
 
 const ENGINE_LABEL: Record<AlertEngine, string> = {
   imovel_parado: "Imóvel parado",
