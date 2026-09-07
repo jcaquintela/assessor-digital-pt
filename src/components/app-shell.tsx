@@ -134,7 +134,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
       {fullBleed ? (
         <main className="mobile-nav-pad relative min-h-0 min-w-0 overflow-hidden md:ml-64 md:overflow-visible md:pb-8">
           <div className="h-full min-w-0 md:mx-auto md:h-auto md:max-w-6xl md:px-8 md:py-10">{children}</div>
-          <BrandFooter className="absolute bottom-[env(safe-area-inset-bottom)] left-0 right-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden" />
+          <BrandFooter className="absolute bottom-[calc(56px+0.5rem+env(safe-area-inset-bottom))] left-0 right-0 md:hidden" />
         </main>
       ) : (
         <main className="mobile-nav-pad min-h-0 min-w-0 md:ml-64 md:pb-8">
