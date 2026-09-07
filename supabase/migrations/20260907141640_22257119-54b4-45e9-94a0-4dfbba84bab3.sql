@@ -1,0 +1,2 @@
+CREATE POLICY "own daily_priorities insert" ON public.daily_priorities FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "own daily_priorities delete" ON public.daily_priorities FOR DELETE TO authenticated USING (auth.uid() = user_id);

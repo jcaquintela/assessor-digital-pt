@@ -8,11 +8,11 @@ import { classifyDigestQuery, composeDigestText, agendaLine, type DigestFacts } 
 async function leadsFacts(supabase: any, userId: string): Promise<DigestFacts> {
   const { data } = await supabase
     .from("prospecting_leads")
-    .select("id, title, status, location, last_contact_attempt_at, archived_at")
+    .select("id, title, status, location, last_contact_attempt_at")
     .eq("user_id", userId)
     .in("status", ["to_contact", "contact_attempted"])
     .limit(50);
-  const rows = ((data as any[]) ?? []).filter((r) => !r.archived_at);
+  const rows = ((data as any[]) ?? []);
   return {
     topic: "leads",
     total: rows.length,

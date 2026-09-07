@@ -32,14 +32,17 @@ export async function loadVisitSources(
       .limit(200),
     supabase
       .from("follow_ups")
-      .select("id, title, type, status, outcome, archived_at, due_date, due_time, person_id, property_id")
+      .select("id, title, type, status, outcome, archived_at, due_date, due_time, person_id, related_property_id")
       .eq("user_id", userId)
       .limit(500),
     supabase.from("people").select("id, name").eq("user_id", userId).limit(1000),
     supabase.from("properties").select("id, title, address").eq("user_id", userId).limit(1000),
   ]);
 
-  const followUps = ((fus?.data as any[]) ?? []) as FollowUpSourceRow[];
+  const followUps = ((fus?.data as any[]) ?? []).map((f) => ({
+    ...f,
+    property_id: f.related_property_id ?? null,
+  })) as FollowUpSourceRow[];
 
   const visits: VisitSourceRow[] = ((inter?.data as any[]) ?? [])
     .filter((i) => VISIT_TYPES.has(norm(i.interaction_type)))
