@@ -13,6 +13,7 @@ import {
   listOpportunityAlerts, muteOpportunityAlert,
 } from "@/lib/opportunities/opportunities.functions";
 import type { AlertEngine, OpportunityAlert } from "@/lib/opportunities/detector";
+import { useHasSession } from "@/hooks/use-has-session";
 
 const ENGINE_LABEL: Record<AlertEngine, string> = {
   imovel_parado: "Imóvel parado",
@@ -71,10 +72,13 @@ function MuteButton({ alert, onDone }: { alert: OpportunityAlert; onDone: () => 
 /** Resumo diário das oportunidades detetadas. Cada alerta traz ação sugerida. */
 export function OpportunityAlertsCard() {
   const listFn = useServerFn(listOpportunityAlerts);
+  const hasSession = useHasSession();
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["oportunidades-detetadas"],
     queryFn: () => listFn(),
+    enabled: hasSession === true,
+    retry: false,
     staleTime: 5 * 60_000,
   });
   const alerts = data?.alerts ?? [];
