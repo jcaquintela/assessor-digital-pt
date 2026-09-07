@@ -199,6 +199,17 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
   );
 }
 
+function BrandFooter({ className }: { className?: string }) {
+  return (
+    <footer className={cn("text-center", className)}>
+      <p className="text-[10px] leading-tight c-muted">
+        Uma marca da{" "}
+        <span className="c-muted">Saguii Digital Labs</span>
+      </p>
+    </footer>
+  );
+}
+
 export function PageHeader({
   title,
   subtitle,
