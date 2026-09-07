@@ -84,5 +84,7 @@ export function contagem(count: number, singular: string, plural: string): Casca
 export const NOT_ARCHIVED_ENTITY_MESSAGE =
   "Só podes eliminar definitivamente um registo já arquivado. Arquiva primeiro.";
 
-export const BLOCKED_MESSAGE_DEAL =
-  "Este negócio tem movimentos financeiros associados. Por obrigação legal de retenção, não pode ser eliminado.";
+/**
+ * Negócios já não têm bloqueio: qualquer negócio pode ser eliminado, com
+ * comissões e despesas incluídas (guardadas antes no registo de auditoria).
+ */

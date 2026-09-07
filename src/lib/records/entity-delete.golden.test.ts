@@ -43,25 +43,42 @@ const negocioBase = {
 
 /* 1 */
 describe("1. negócio com movimento financeiro", () => {
-  it("bloqueia em absoluto e a opção de eliminar não fica disponível", async () => {
+  it("pode ser eliminado, leva as comissões e despesas e guarda-as na auditoria", async () => {
     const sb = db({
       opportunities: [negocioBase],
       financial_movements: [
         { id: "mov-1", user_id: USER, opportunity_id: NEGOCIO, type: "commission", amount: 4200 },
+        { id: "mov-2", user_id: USER, opportunity_id: NEGOCIO, type: "expense", amount: 120 },
       ],
     });
     const a = await assessEntityDeletion(sb as any, { userId: USER, type: "opportunity", id: NEGOCIO });
-    expect(a.blocked).toBe(true);
-    expect(a.canDelete).toBe(false);
-    expect(a.canAnonymize).toBe(false);
-    expect(a.blockReasons.join(" ")).toMatch(/movimentos financeiros/i);
+    expect(a.blocked).toBe(false);
+    expect(a.canDelete).toBe(true);
+    expect(a.cascade.map((c) => c.label).join(", ")).toMatch(/1 comissão.*1 despesa/);
 
-    await expect(
-      permanentlyDeleteEntity(sb as any, {
-        userId: USER, type: "opportunity", id: NEGOCIO, reason: "engano",
-      }),
-    ).rejects.toThrow(/movimentos financeiros/i);
-    expect(sb.state.opportunities).toHaveLength(1);
+    const res = await permanentlyDeleteEntity(sb as any, {
+      userId: USER, type: "opportunity", id: NEGOCIO, reason: "engano",
+    });
+    expect(res.deleted).toBe(true);
+    expect(sb.state.opportunities).toHaveLength(0);
+    expect(sb.state.financial_movements).toHaveLength(0);
+    const log = sb.state.admin_audit_logs.at(-1) as any;
+    expect(log?.metadata?.financial_movements).toHaveLength(2);
+  });
+
+  it("não exige arquivar primeiro", async () => {
+    const sb = db({
+      opportunities: [{ ...negocioBase, stage: "proposta", archived_at: null }],
+      financial_movements: [],
+    });
+    const a = await assessEntityDeletion(sb as any, { userId: USER, type: "opportunity", id: NEGOCIO });
+    expect(a.archived).toBe(false);
+    expect(a.canDelete).toBe(true);
+    const res = await permanentlyDeleteEntity(sb as any, {
+      userId: USER, type: "opportunity", id: NEGOCIO, reason: "criado por engano",
+    });
+    expect(res.deleted).toBe(true);
+    expect(sb.state.opportunities).toHaveLength(0);
   });
 });
 
