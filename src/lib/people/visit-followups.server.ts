@@ -32,7 +32,7 @@ export async function loadVisitSources(
       .limit(200),
     supabase
       .from("follow_ups")
-      .select("id, title, type, status, outcome, archived_at, due_date, due_time, person_id, property_id")
+      .select("id, title, type, status, outcome, archived_at, due_date, due_time, person_id, related_property_id")
       .eq("user_id", userId)
       .limit(500),
     supabase.from("people").select("id, name").eq("user_id", userId).limit(1000),
