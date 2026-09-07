@@ -159,6 +159,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
             <AnnouncementBanner />
             <TierAuthNotice />
             {children}
+            <BrandFooter className="mt-8 pb-2 md:hidden" />
           </div>
         </main>
       )}
