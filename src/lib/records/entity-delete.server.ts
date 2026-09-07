@@ -16,7 +16,7 @@ import {
   isDealOpen,
   isEntityArchived,
   NOT_ARCHIVED_ENTITY_MESSAGE,
-  BLOCKED_MESSAGE_DEAL,
+  
   type CascadeCount,
   type EntityDeleteAssessment,
   type EntityDeleteType,
@@ -88,7 +88,15 @@ export async function assessEntityDeletion(
     const movimentos = await rowsOf(supabase, "financial_movements", userId, [
       ["opportunity_id", id],
     ]);
-    if (movimentos.length) blockReasons.push(BLOCKED_MESSAGE_DEAL);
+    // Um negócio pode sempre ser eliminado, mesmo com dinheiro lançado: o que
+    // garante a reconstituição é o retrato gravado na auditoria antes de apagar.
+    const comissoes = movimentos.filter((m) =>
+      /^comiss|^commission/i.test(String(m["type"] ?? "")),
+    );
+    const despesas = movimentos.length - comissoes.length;
+    if (comissoes.length) cascade.push(contagem(comissoes.length, "comissão", "comissões"));
+    if (despesas) cascade.push(contagem(despesas, "despesa", "despesas"));
+
 
     const prazos = await rowsOf(supabase, "deal_deadlines", userId, [["opportunity_id", id]]);
     const eventos = await rowsOf(supabase, "opportunity_events", userId, [["opportunity_id", id]]);
@@ -180,7 +188,8 @@ export async function assessEntityDeletion(
     alvo: String(row["name"] ?? row["title"] ?? ENTITY_LABEL[type]),
     archived,
     blocked,
-    canDelete: !blocked && archived,
+    // Negócios não precisam de estar arquivados: qualquer negócio pode ser eliminado.
+    canDelete: !blocked && (archived || type === "opportunity"),
     blockReasons,
     canAnonymize,
     anonymized: type === "person" && isAnonymizedPerson(row),
@@ -241,10 +250,19 @@ export async function permanentlyDeleteEntity(
   const { userId, type, id } = input;
 
   const assessment = await assessEntityDeletion(supabase, { userId, type, id });
-  if (!assessment.archived) throw new Error(NOT_ARCHIVED_ENTITY_MESSAGE);
+  if (!assessment.archived && type !== "opportunity") {
+    throw new Error(NOT_ARCHIVED_ENTITY_MESSAGE);
+  }
   if (assessment.blocked) throw new Error(assessment.blockReasons.join(" "));
 
   const snapshot = await loadEntity(supabase, userId, type, id);
+
+  // Comissões e despesas do negócio desaparecem com ele — ficam guardadas
+  // linha a linha na auditoria, para a eliminação continuar reconstituível.
+  const movimentos =
+    type === "opportunity"
+      ? await rowsOf(supabase, "financial_movements", userId, [["opportunity_id", id]])
+      : [];
 
   // Retrato antes de tocar em nada.
   await audit(deps.auditClient ?? supabase, {
@@ -254,7 +272,10 @@ export async function permanentlyDeleteEntity(
     id,
     reason,
     snapshot,
-    extra: { cascade: assessment.cascade },
+    extra: {
+      cascade: assessment.cascade,
+      ...(movimentos.length ? { financial_movements: movimentos } : {}),
+    },
   });
 
   const del = async (table: string, col: string) => {
@@ -279,6 +300,7 @@ export async function permanentlyDeleteEntity(
   };
 
   if (type === "opportunity") {
+    await del("financial_movements", "opportunity_id");
     await del("deal_deadlines", "opportunity_id");
     await del("opportunity_events", "opportunity_id");
     await del("opportunity_properties", "opportunity_id");

@@ -173,12 +173,12 @@ function DealDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Diagnóstico legal antes de mostrar qualquer opção destrutiva: um negócio com
-  // movimentos financeiros nunca pode ser eliminado.
+  // Qualquer negócio pode ser eliminado, arquivado ou não. O diagnóstico serve
+  // para avisar, em números, o que desaparece com ele (comissões incluídas).
   const destrutivo = useEntityDelete({
     type: "opportunity",
     id,
-    enabled: !!d?.archivedAt,
+    enabled: !!d,
     onDone: () => navigate({ to: "/negocios" }),
   });
 
@@ -222,7 +222,7 @@ function DealDetail() {
             <Button variant="ghost" onClick={() => arquivar.mutate(!d.archivedAt)}>
               <Archive className="mr-1 h-4 w-4" /> {d.archivedAt ? "Reabrir" : "Arquivar"}
             </Button>
-            {d.archivedAt && destrutivo.podeEliminar && (
+            {destrutivo.podeEliminar && (
               <Button variant="ghost" className="text-destructive" onClick={() => destrutivo.abrirEliminar()}>
                 <Trash2 className="mr-1 h-4 w-4" /> Eliminar para sempre
               </Button>
@@ -503,12 +503,6 @@ function DealDetail() {
         </Card>
       )}
 
-      {d.archivedAt && destrutivo.bloqueio.length > 0 && (
-        <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-          <strong>Este negócio não pode ser eliminado.</strong>{" "}
-          {destrutivo.bloqueio.join(" ")} Podes deixá-lo arquivado.
-        </div>
-      )}
       {destrutivo.dialogos}
     </AppShell>
   );
