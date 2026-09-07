@@ -123,7 +123,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
             </Link>
           )}
           <p className="mt-2 text-[10px] leading-tight c-muted">
-            Uma marca da{" "}
+             Um produto da{" "}
             <span className="c-muted">Saguii Digital Labs</span>
           </p>
         </div>
