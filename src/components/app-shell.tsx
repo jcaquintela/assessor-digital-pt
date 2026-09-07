@@ -122,6 +122,10 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
               <span className="truncate">Sobre a IA</span>
             </Link>
           )}
+          <p className="mt-2 text-[10px] leading-tight c-muted">
+            Uma marca da{" "}
+            <span className="c-muted">Saguii Digital Labs</span>
+          </p>
         </div>
 
       </aside>
