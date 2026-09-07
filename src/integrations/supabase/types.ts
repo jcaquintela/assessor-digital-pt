@@ -4823,6 +4823,7 @@ export type Database = {
       whatsapp_template_bindings: {
         Row: {
           enabled: boolean
+          fallback_template_name: string | null
           language: string
           param_count: number
           purpose: string
@@ -4832,6 +4833,7 @@ export type Database = {
         }
         Insert: {
           enabled?: boolean
+          fallback_template_name?: string | null
           language?: string
           param_count?: number
           purpose: string
@@ -4841,6 +4843,7 @@ export type Database = {
         }
         Update: {
           enabled?: boolean
+          fallback_template_name?: string | null
           language?: string
           param_count?: number
           purpose?: string
