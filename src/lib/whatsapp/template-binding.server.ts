@@ -18,7 +18,10 @@ export interface TemplateBinding {
   updated_at?: string | null;
   /** Categoria na Meta (utility/marketing/...): define o preço fora das 24h. */
   category?: string | null;
+  /** Modelo alternativo usado se o principal deixar de estar aprovado. */
+  fallback_template_name?: string | null;
 }
+
 
 export interface MetaTemplate {
   name: string;
