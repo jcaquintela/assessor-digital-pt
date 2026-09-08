@@ -102,9 +102,11 @@ describe("3. próximas 3 ações", () => {
       "Ligar à Maria",
       "Definir próxima ação com Rui",
     ]);
+    // Na composição, "Próximas ações" nunca repete o que já está em P1/P2:
+    // só entra o que ficou de fora das listas.
     const text = composeEnrichedBriefing(items, { now: NOW });
-    expect(text).toContain("1) Preparar o compromisso das 10:00: Visita");
-    expect(text).toContain("3) Definir próxima ação com Rui");
+    expect(text).toContain("Próximas ações\n1. Enviar documentos");
+    expect(text).not.toContain("2. Ligar à Maria");
   });
 });
 
