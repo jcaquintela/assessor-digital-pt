@@ -47,7 +47,9 @@ export function conflictReason(pair: ConflictPair, now: Date = new Date()): stri
  * Ex.: "12:00 — METHOD ALIGN vs ZI Update Mensal"
  */
 export function conflictCompact(pair: ConflictPair): string {
-  const overlap = Math.max(pair.a.startMs, pair.b.startMs);
+  const overlap = Number.isFinite(pair.overlapStartMs)
+    ? pair.overlapStartMs
+    : Math.max(pair.a.startMs, pair.b.startMs);
   return `${lisbonHhMm(overlap)} — ${pair.a.title} vs ${pair.b.title}`;
 }
 

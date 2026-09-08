@@ -34,6 +34,9 @@ const pair = {
     startMs: Date.parse("2026-09-08T11:00:00.000Z"),
     endMs: Date.parse("2026-09-08T11:30:00.000Z"),
   },
+  overlapStartMs: Date.parse("2026-09-08T11:00:00.000Z"),
+  overlapEndMs: Date.parse("2026-09-08T11:30:00.000Z"),
+  pairKey: "e1|e2",
 } as any;
 
 const priorities = [

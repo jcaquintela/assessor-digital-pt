@@ -32,7 +32,8 @@ describe("conflitos no briefing matinal", () => {
     expect(inBriefing).toHaveLength(1);
     const text = composeEnrichedBriefing(PRIORITIES, { now: NOW, conflicts: pairs });
     expect(text).toContain("Conflitos a resolver");
-    expect(text).toContain("sobrepõem-se");
+    // Formato compacto: hora à frente, títulos separados por "vs".
+    expect(text).toMatch(/• \d{2}:\d{2} — .+ vs .+/);
   });
 
   it("2) conflito a 10 dias não entra no briefing e fica para o aviso autónomo", () => {

@@ -150,7 +150,7 @@ describe("5. limites de leitura", () => {
 
   it("nunca ultrapassa o limite de caracteres", () => {
     const gordo = Array.from({ length: 6 }, (_, i) =>
-      item({ subject_id: `y${i}`, action: "A".repeat(300), priority_score: 95 }),
+      item({ subject_id: `y${i}`, action: `${i} ${"A".repeat(300)}`, priority_score: i < 3 ? 95 : 40 }),
     );
     const text = composeEnrichedBriefing(gordo, { now: NOW, maxChars: 1200 });
     expect(text.length).toBeLessThanOrEqual(1200);
