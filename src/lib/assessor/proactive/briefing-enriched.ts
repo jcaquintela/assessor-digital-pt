@@ -6,7 +6,7 @@
 // só agrupa, ordena e escreve.
 
 import { entityUrl } from "@/lib/nav/entity-url";
-import { tightGapMessage, conflictReason } from "@/lib/agenda/conflict-message";
+import { tightGapMessage, conflictCompact } from "@/lib/agenda/conflict-message";
 import {
   findTightGapsInWindows,
   conflictsWithinDays,
@@ -106,6 +106,36 @@ export function nextThreeActions(items: BriefingPriority[]): string[] {
   return items.slice(0, 3).map((it) => it.action);
 }
 
+function normalizeAction(s: string): string {
+  return String(s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * "Próximas ações" só existe para dizer algo que ainda não foi dito: tudo o
+ * que já está listado em P1/P2 é retirado. Se sobrar nada, a secção não
+ * aparece (abordagem (a): omitir em vez de repetir).
+ */
+export function nextActionsWithoutRepeats(
+  candidates: BriefingPriority[],
+  alreadyShown: BriefingPriority[],
+): string[] {
+  const seen = new Set(alreadyShown.map((i) => normalizeAction(i.action)));
+  const out: string[] = [];
+  for (const it of candidates) {
+    const key = normalizeAction(it.action);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(it.action);
+    if (out.length === 3) break;
+  }
+  return out;
+}
+
 function line(
   item: BriefingPriority,
   base?: string | null,
@@ -176,21 +206,26 @@ export function composeEnrichedBriefing(
   if (conflicts.length) {
     blocks.push({
       text: `⚠️ Conflitos a resolver\n${conflicts
-        .map((c) => `• ${conflictReason(c, now)}`)
+        .map((c) => `• ${conflictCompact(c)}`)
         .join("\n")}`,
       removable: true,
     });
   }
 
-  const steps = nextThreeActions([...shownP1, ...shownP2, ...p3]);
+  const shown = [...shownP1, ...shownP2];
+  const steps = nextActionsWithoutRepeats(
+    [...p1.slice(shownP1.length), ...p2.slice(shownP2.length), ...p3],
+    shown,
+  );
   if (steps.length) {
     blocks.push({
-      text: `Próximas ações: ${steps.map((s, i) => `${i + 1}) ${s}`).join(" ")}`,
+      text: `Próximas ações\n${steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`,
       removable: true,
     });
   }
 
-  const join = (list: typeof blocks) => list.map((b) => b.text).join("\n");
+  // Linha em branco entre secções: separação visual real em texto simples.
+  const join = (list: typeof blocks) => list.map((b) => b.text).join("\n\n");
   let list = [...blocks];
   let cut = false;
   while (join(list).length > max) {

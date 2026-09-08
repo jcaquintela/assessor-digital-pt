@@ -41,6 +41,18 @@ export function conflictReason(pair: ConflictPair, now: Date = new Date()): stri
   return `${eventLabel(pair.a)} e ${eventLabel(pair.b)} sobrepõem-se ${dia}.`;
 }
 
+/**
+ * Formato compacto para listas (briefing): hora da sobreposição à frente e os
+ * dois títulos separados por "vs". Sem aspas nem frase.
+ * Ex.: "12:00 — METHOD ALIGN vs ZI Update Mensal"
+ */
+export function conflictCompact(pair: ConflictPair): string {
+  const overlap = Number.isFinite(pair.overlapStartMs)
+    ? pair.overlapStartMs
+    : Math.max(pair.a.startMs, pair.b.startMs);
+  return `${lisbonHhMm(overlap)} — ${pair.a.title} vs ${pair.b.title}`;
+}
+
 /** Aviso informativo de folga curta — nunca vira nudge de conflito. */
 export function tightGapMessage(gap: { a: { title: string; startMs: number; endMs: number }; b: { title: string; startMs: number; endMs: number }; gapMinutes: number }): string {
   const folga =
