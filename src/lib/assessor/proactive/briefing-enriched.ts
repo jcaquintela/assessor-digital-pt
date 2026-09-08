@@ -6,7 +6,7 @@
 // só agrupa, ordena e escreve.
 
 import { entityUrl } from "@/lib/nav/entity-url";
-import { tightGapMessage, conflictReason } from "@/lib/agenda/conflict-message";
+import { tightGapMessage, conflictCompact } from "@/lib/agenda/conflict-message";
 import {
   findTightGapsInWindows,
   conflictsWithinDays,
