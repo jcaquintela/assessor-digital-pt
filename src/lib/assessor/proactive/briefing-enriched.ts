@@ -206,21 +206,26 @@ export function composeEnrichedBriefing(
   if (conflicts.length) {
     blocks.push({
       text: `⚠️ Conflitos a resolver\n${conflicts
-        .map((c) => `• ${conflictReason(c, now)}`)
+        .map((c) => `• ${conflictCompact(c)}`)
         .join("\n")}`,
       removable: true,
     });
   }
 
-  const steps = nextThreeActions([...shownP1, ...shownP2, ...p3]);
+  const shown = [...shownP1, ...shownP2];
+  const steps = nextActionsWithoutRepeats(
+    [...p1.slice(shownP1.length), ...p2.slice(shownP2.length), ...p3],
+    shown,
+  );
   if (steps.length) {
     blocks.push({
-      text: `Próximas ações: ${steps.map((s, i) => `${i + 1}) ${s}`).join(" ")}`,
+      text: `Próximas ações\n${steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`,
       removable: true,
     });
   }
 
-  const join = (list: typeof blocks) => list.map((b) => b.text).join("\n");
+  // Linha em branco entre secções: separação visual real em texto simples.
+  const join = (list: typeof blocks) => list.map((b) => b.text).join("\n\n");
   let list = [...blocks];
   let cut = false;
   while (join(list).length > max) {
