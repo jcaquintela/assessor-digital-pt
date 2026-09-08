@@ -106,6 +106,36 @@ export function nextThreeActions(items: BriefingPriority[]): string[] {
   return items.slice(0, 3).map((it) => it.action);
 }
 
+function normalizeAction(s: string): string {
+  return String(s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * "Próximas ações" só existe para dizer algo que ainda não foi dito: tudo o
+ * que já está listado em P1/P2 é retirado. Se sobrar nada, a secção não
+ * aparece (abordagem (a): omitir em vez de repetir).
+ */
+export function nextActionsWithoutRepeats(
+  candidates: BriefingPriority[],
+  alreadyShown: BriefingPriority[],
+): string[] {
+  const seen = new Set(alreadyShown.map((i) => normalizeAction(i.action)));
+  const out: string[] = [];
+  for (const it of candidates) {
+    const key = normalizeAction(it.action);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(it.action);
+    if (out.length === 3) break;
+  }
+  return out;
+}
+
 function line(
   item: BriefingPriority,
   base?: string | null,
