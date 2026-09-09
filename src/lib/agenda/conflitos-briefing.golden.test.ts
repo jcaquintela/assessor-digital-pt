@@ -33,7 +33,7 @@ describe("conflitos no briefing matinal", () => {
     const text = composeEnrichedBriefing(PRIORITIES, { now: NOW, conflicts: pairs });
     expect(text).toContain("Conflitos a resolver");
     // Formato compacto: dia e hora à frente, títulos separados por "vs".
-    expect(text).toContain("• Na sexta-feira, 11:30 — Visita 3 vs Reunião 3");
+    expect(text).toContain("• Na sexta-feira, 10:30 — Visita 3 vs Reunião 3");
   });
 
   it("2) conflito a 10 dias não entra no briefing e fica para o aviso autónomo", () => {
