@@ -206,7 +206,7 @@ export function composeEnrichedBriefing(
   if (conflicts.length) {
     blocks.push({
       text: `⚠️ Conflitos a resolver\n${conflicts
-        .map((c) => `• ${conflictCompact(c)}`)
+        .map((c) => `• ${conflictCompact(c, now)}`)
         .join("\n")}`,
       removable: true,
     });
