@@ -44,13 +44,14 @@ export function conflictReason(pair: ConflictPair, now: Date = new Date()): stri
 /**
  * Formato compacto para listas (briefing): hora da sobreposição à frente e os
  * dois títulos separados por "vs". Sem aspas nem frase.
- * Ex.: "12:00 — METHOD ALIGN vs ZI Update Mensal"
+ * Ex.: "Hoje, 12:00 — METHOD ALIGN vs ZI Update Mensal"
  */
-export function conflictCompact(pair: ConflictPair): string {
+export function conflictCompact(pair: ConflictPair, now: Date = new Date()): string {
   const overlap = Number.isFinite(pair.overlapStartMs)
     ? pair.overlapStartMs
     : Math.max(pair.a.startMs, pair.b.startMs);
-  return `${lisbonHhMm(overlap)} — ${pair.a.title} vs ${pair.b.title}`;
+  const dia = relativeDayLabel(overlap, now);
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ${lisbonHhMm(overlap)} — ${pair.a.title} vs ${pair.b.title}`;
 }
 
 /** Aviso informativo de folga curta — nunca vira nudge de conflito. */

@@ -70,9 +70,9 @@ describe("briefing menos denso", () => {
     expect(so2).not.toContain("Próximas ações");
   });
 
-  it("G3 — conflito compacto com a hora em destaque", () => {
-    expect(conflictCompact(pair)).toBe("12:00 — METHOD ALIGN vs ZI Update Mensal");
-    expect(text).toContain("• 12:00 — METHOD ALIGN vs ZI Update Mensal");
+  it("G3 — conflito compacto com o dia e a hora em destaque", () => {
+    expect(conflictCompact(pair, NOW)).toBe("Hoje, 12:00 — METHOD ALIGN vs ZI Update Mensal");
+    expect(text).toContain("• Hoje, 12:00 — METHOD ALIGN vs ZI Update Mensal");
     expect(text).not.toContain("sobrepõem-se");
     expect(text).not.toContain("“METHOD ALIGN”");
   });
@@ -81,7 +81,7 @@ describe("briefing menos denso", () => {
     const corpo = text.replace(/^Bom dia[^\n]*\n+/, "");
     const template = flattenForTemplate(corpo);
     expect(template).not.toContain("\n");
-    expect(template).toContain("12:00 — METHOD ALIGN vs ZI Update Mensal");
+    expect(template).toContain("Hoje, 12:00 — METHOD ALIGN vs ZI Update Mensal");
     expect(template).toContain("Enviar a proposta ao Rui");
     // Sem repetição também no template.
     expect(template.match(/Enviar a proposta ao Rui/g)).toHaveLength(1);

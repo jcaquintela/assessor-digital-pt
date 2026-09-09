@@ -142,7 +142,7 @@ export const getDeal = createServerFn({ method: "GET" })
         ? supabase.from("people").select("id, name, phone, email, relationship_type").eq("id", o.person_id).maybeSingle()
         : Promise.resolve({ data: null } as any),
       supabase.from("opportunity_properties").select("property_id, role, notes").eq("opportunity_id", o.id).eq("user_id", userId),
-      supabase.from("follow_ups").select("id, title, due_date, status, notes, kind").eq("opportunity_id", o.id).eq("user_id", userId).order("due_date"),
+      supabase.from("follow_ups").select("id, title, due_date, status, notes").eq("opportunity_id", o.id).eq("user_id", userId).order("due_date"),
       supabase.from("financial_movements").select("id, type, description, amount, status, movement_date").eq("opportunity_id", o.id).eq("user_id", userId).order("movement_date", { ascending: false }),
       supabase.from("opportunity_events").select("id, kind, summary, source, occurred_at").eq("opportunity_id", o.id).eq("user_id", userId).order("occurred_at", { ascending: false }).limit(100),
       supabase.from("interactions").select("id, original_content, summary, occurred_at, source_channel, is_confidential").eq("opportunity_id", o.id).eq("user_id", userId).order("occurred_at", { ascending: false }).limit(50),
@@ -202,7 +202,7 @@ export const getDeal = createServerFn({ method: "GET" })
         : null,
       properties,
       followUps: ((fupsRes.data ?? []) as Row[]).map((f) => ({
-        id: f.id, title: f.title, dueAt: f.due_date, status: f.status, kind: f.kind ?? null,
+        id: f.id, title: f.title, dueAt: f.due_date, status: f.status,
       })),
       movements: ((movsRes.data ?? []) as Row[]).map((m) => ({
         id: m.id, type: m.type, description: m.description, amount: Number(m.amount ?? 0),
