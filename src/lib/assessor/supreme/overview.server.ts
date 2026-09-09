@@ -228,8 +228,8 @@ export async function computeMentor(
       linkLabel: parados.length === 1 ? "Ver o imóvel →" : `Ver os ${parados.length} imóveis →`,
       to: "/imoveis",
       reason: pior.temContacto
-        ? `limiar de 10 dias; o mais parado está há ${pior.dias} dias desde o último contacto real registado (interação ou seguimento com resultado, incluindo através de um negócio ligado ao imóvel).`
-        : `limiar de 10 dias; o mais parado nunca teve contacto registado — contam-se ${pior.dias} dias desde que criaste a ficha. Editar campos não conta como contacto.`,
+        ? `Considerámos imóveis sem movimento a partir de 10 dias; o mais parado está há ${pior.dias} dias desde o último contacto real registado (interação ou seguimento com resultado, incluindo através de um negócio ligado ao imóvel).`
+        : `Considerámos imóveis sem movimento a partir de 10 dias; o mais parado nunca teve contacto registado — contam-se ${pior.dias} dias desde que criaste a ficha. Editar campos não conta como contacto.`,
     };
     return { tip, facts };
   }
@@ -257,7 +257,7 @@ export async function computeMentor(
       text: `${presos.length === 1 ? "Há 1 negócio" : `Há ${presos.length} negócios`} na mesma fase há mais de três semanas. Ou avança, ou fecha — deixar parado só ocupa cabeça.`,
       linkLabel: "Ver negócios →",
       to: "/negocios",
-      reason: `limiar de 25 dias; o mais preso está na mesma fase há ${piorD.fase} dias e ${
+      reason: `Considerámos negócios parados na mesma fase a partir de 25 dias; o mais parado está na mesma fase há ${piorD.fase} dias e ${
         piorD.contacto === null
           ? "sem qualquer contacto real registado"
           : `com o último contacto real há ${piorD.contacto} dias`
@@ -282,7 +282,7 @@ export async function computeMentor(
         text: `Tens ${frias.length} pessoas sem contacto registado há mais de dois meses — ${frias.slice(0, 2).map((p) => String(p.name).split(" ")[0]).join(" e ")} entre elas. Um contacto curto agora vale mais do que uma campanha daqui a meio ano.`,
         linkLabel: "Ver pessoas →",
         to: "/pessoas",
-        reason: `limiar de 60 dias; a mais fria está há ${Math.max(
+        reason: `Considerámos pessoas sem contacto a partir de 60 dias; a que está há mais tempo sem contacto soma ${Math.max(
           ...frias.map((p) => days(lastByPerson.get(p.id) ?? p.created_at ?? null)),
         )} dias sem interação nem seguimento com resultado registado.`,
       };

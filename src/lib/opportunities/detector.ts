@@ -24,7 +24,7 @@ export interface OpportunityAlert {
   to: string;
 }
 
-// ---- Limiares (perfil "equilibrado", confirmado com o consultor) ------
+// ---- Tempos de referência (perfil "equilibrado", confirmado com o consultor) ------
 
 /** Imóvel parado: 30 dias até T2, 45 dias de T3 para cima. */
 export const PROPERTY_STALL_DAYS = { pequeno: 30, grande: 45 } as const;
@@ -81,7 +81,7 @@ export function propertyStalledAlerts(props: PropertyInput[], now = Date.now()):
         key: `imovel_parado:${p.id}`,
         engine: "imovel_parado" as const,
         title: nome,
-        detail: `Sem visita nem alteração de estado há ${dias} dias (régua: ${limite} dias${p.typology ? ` para ${p.typology}` : ""}).`,
+        detail: `Sem visita nem alteração de estado há ${dias} dias — já passou o tempo esperado sem movimento (${limite} dias${p.typology ? ` para ${p.typology}` : ""}).`,
         action: propertyAction(p, dias),
         urgency: (dias >= limite * 2 ? "alta" : "media") as AlertUrgency,
         to: `/imoveis/${p.id}`,
@@ -224,7 +224,7 @@ export function dealCoolingAlerts(deals: DealInput[], now = Date.now()): Opportu
         key: `negocio_arrefecer:${d.id}`,
         engine: "negocio_arrefecer" as const,
         title: d.label.trim() || "Negócio sem título",
-        detail: `Fase ${STAGE_LABEL[stage]} — sem contacto registado há ${dias} dias (régua: ${limite} dias).`,
+        detail: `Fase ${STAGE_LABEL[stage]} — sem contacto registado há ${dias} dias; já passou o tempo esperado nesta fase (${limite} dias).`,
         action: NEXT_STEP[stage],
         urgency: (avancado || dias >= limite * 2 ? "alta" : "media") as AlertUrgency,
         to: `/negocios/${d.id}`,
