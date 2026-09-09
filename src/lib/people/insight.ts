@@ -1,6 +1,6 @@
 // Análise proativa de Pessoas (plano Pro). Parte pura.
 //
-// Reaproveita a régua factual comum (`src/lib/insights/factual.ts`) e a
+// Reaproveita a referência factual comum (`src/lib/insights/factual.ts`) e a
 // definição única de contacto real (`src/lib/insights/last-contact.ts`).
 // Nunca prevê nada: só conta o que está na base.
 
@@ -12,7 +12,7 @@ import {
   type StalledItem,
 } from "@/lib/insights/factual";
 
-/** Régua das pessoas: mais de 30 dias sem contacto real. */
+/** Tempo de referência das pessoas: mais de 30 dias sem contacto real. */
 export const PESSOAS_MIN_DIAS = 30;
 /** Abaixo disto não vale a pena analisar — dizemos porquê, não ficamos calados. */
 export const PESSOAS_MIN_REGISTOS = 5;
@@ -67,7 +67,7 @@ export function peopleInsight(items: StalledItem[], extras: PeopleExtras): Factu
     text: `${texto.charAt(0).toUpperCase()}${texto.slice(1)} Queres tratar disso agora?`,
     linkLabel: "Ver pessoas →",
     to: "/pessoas",
-    reason: `contagem directa das tuas fichas: categoria, telefone e email. Régua de contacto: ${PESSOAS_MIN_DIAS} dias, sem previsões.`,
+    reason: `Contagem direta das tuas fichas: categoria, telefone e email. Considerámos sem contacto a partir de ${PESSOAS_MIN_DIAS} dias, sem previsões.`,
     facts: { ...emptyFactualFacts(PESSOAS_MIN_DIAS), total: items.length },
   };
 }
@@ -77,10 +77,10 @@ export function peopleInsight(items: StalledItem[], extras: PeopleExtras): Factu
  */
 export function peopleEmptyHint(total: number): string {
   if (total === 0) {
-    return `Sem registos: ainda não tens pessoas guardadas, por isso não há nada para analisar. A régua é de ${PESSOAS_MIN_DIAS} dias sem contacto real.`;
+    return `Sem registos: ainda não tens pessoas guardadas, por isso não há nada para analisar. A análise considera ${PESSOAS_MIN_DIAS} dias sem contacto real.`;
   }
   if (total < PESSOAS_MIN_REGISTOS) {
-    return `Poucos registos: só tens ${total} ${total === 1 ? "pessoa" : "pessoas"} e a análise só ganha sentido a partir de ${PESSOAS_MIN_REGISTOS}. A régua é de ${PESSOAS_MIN_DIAS} dias sem contacto real.`;
+    return `Poucos registos: só tens ${total} ${total === 1 ? "pessoa" : "pessoas"} e a análise só ganha sentido a partir de ${PESSOAS_MIN_REGISTOS}. A análise considera ${PESSOAS_MIN_DIAS} dias sem contacto real.`;
   }
-  return `Nada a assinalar: ninguém passou a régua de ${PESSOAS_MIN_DIAS} dias sem contacto real e as fichas têm categoria e contacto.`;
+  return `Nada a assinalar: ninguém está há mais de ${PESSOAS_MIN_DIAS} dias sem contacto real e as fichas têm categoria e contacto.`;
 }

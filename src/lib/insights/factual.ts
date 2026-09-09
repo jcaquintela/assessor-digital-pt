@@ -13,11 +13,11 @@ export type StalledItem = { id: string; label: string; days: number; since?: str
 export interface FactualFacts {
   /** Registos considerados (universo desta leitura). */
   total: number;
-  /** Quantos passaram a régua de dias sem movimento. */
+  /** Quantos passaram o tempo de referência sem movimento. */
   parados: number;
   /** Dias do mais parado de todos. */
   dias: number;
-  /** Régua usada, para o consultor poder confirmar de onde vem o número. */
+  /** Tempo de referência usado, para o consultor poder confirmar de onde vem o número. */
   minDias: number;
   /** O caso mais parado, para dar um exemplo concreto. */
   exemplo: StalledItem | null;
@@ -50,7 +50,7 @@ export interface FactualInsight {
   text: string;
   linkLabel: string;
   to: string;
-  /** "De onde vem isto?" — a régua, em português simples. */
+  /** "De onde vem isto?" — a referência temporal, em português simples. */
   reason: string;
   facts: FactualFacts;
 }
@@ -86,7 +86,7 @@ export function factualInsight(f: FactualFacts, cfg: InsightConfig): FactualInsi
     text: `${alvo.charAt(0).toUpperCase()}${alvo.slice(1)}, de ${f.total} no total.${exemplo}${convite}`,
     linkLabel: cfg.linkLabel,
     to: cfg.to,
-    reason: `contagem directa dos teus registos: ${cfg.movimento}. Régua de ${f.minDias} dias, sem previsões.`,
+    reason: `Contagem direta dos teus registos: ${cfg.movimento}. Considerámos sem movimento a partir de ${f.minDias} dias, sem previsões.`,
     facts: f,
   };
 }

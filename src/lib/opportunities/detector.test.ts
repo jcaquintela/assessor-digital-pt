@@ -7,14 +7,14 @@ import {
 const NOW = new Date("2026-08-17T12:00:00Z").getTime();
 const diasAtras = (n: number) => new Date(NOW - n * 864e5).toISOString();
 
-describe("limiares", () => {
+describe("tempos de referência", () => {
   it("usa 30 dias até T2 e 45 de T3 para cima", () => {
     expect(propertyThresholdDays("T1")).toBe(30);
     expect(propertyThresholdDays("T2")).toBe(30);
     expect(propertyThresholdDays("T3")).toBe(45);
     expect(propertyThresholdDays(null)).toBe(30);
   });
-  it("aperta a régua a partir da proposta", () => {
+  it("reduz o tempo esperado a partir da proposta", () => {
     expect(dealThresholdDays("visitas")).toBe(10);
     expect(dealThresholdDays("proposta")).toBe(5);
     expect(dealThresholdDays("cpcv")).toBe(5);
@@ -22,13 +22,24 @@ describe("limiares", () => {
 });
 
 describe("imóveis parados", () => {
-  it("só sinaliza acima da régua e sugere sempre ação", () => {
+  it("só sinaliza depois do tempo esperado e sugere sempre ação", () => {
     const alerts = propertyStalledAlerts([
       { id: "a", title: "Apartamento Benfica", typology: "T2", lastMovementAt: diasAtras(31) },
       { id: "b", title: "Moradia Sintra", typology: "T4", lastMovementAt: diasAtras(31) },
     ], NOW);
     expect(alerts.map((a) => a.key)).toEqual(["imovel_parado:a"]);
     expect(alerts[0].action.length).toBeGreaterThan(10);
+  });
+
+  it("mostra o caso do Terreno sem jargão e mantém os dois tempos", () => {
+    const [alert] = propertyStalledAlerts([
+      { id: "terreno", title: "Terreno", typology: null, lastMovementAt: diasAtras(36) },
+    ], NOW);
+
+    expect(`${alert.title}: ${alert.detail}`).toBe(
+      "Terreno: Sem visita nem alteração de estado há 36 dias — já passou o tempo esperado sem movimento (30 dias).",
+    );
+    expect(`${alert.title} ${alert.detail}`.toLowerCase()).not.toMatch(/régua|regua|limiar/);
   });
 });
 
@@ -60,6 +71,14 @@ describe("negócios a arrefecer", () => {
     ], NOW);
     expect(alerts.map((a) => a.key)).toEqual(["negocio_arrefecer:d1"]);
     expect(alerts[0].urgency).toBe("alta");
+  });
+
+  it("explica o tempo esperado sem linguagem interna", () => {
+    const [alert] = dealCoolingAlerts([
+      { id: "d1", label: "Proposta Ana", stage: "proposta", lastInteractionAt: diasAtras(6) },
+    ], NOW);
+    expect(alert.detail).toContain("já passou o tempo esperado nesta fase (5 dias)");
+    expect(alert.detail.toLowerCase()).not.toMatch(/régua|regua|limiar/);
   });
 });
 

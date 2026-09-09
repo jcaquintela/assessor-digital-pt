@@ -49,11 +49,11 @@ export function ProInsightCard({
       <div className="c-spot-tag mb-2 flex items-center gap-1.5">
         <Sparkles className="h-4 w-4" /> Análise do {assessorName}
       </div>
-      {/* Régua sempre à vista: cada superfície usa limiares diferentes de
+      {/* Referência sempre à vista: cada superfície usa tempos diferentes de
           propósito (Mentor, Imóveis, deteção Pro) e o consultor tem de saber
           qual está a olhar sem ter de abrir "Ver as contas". */}
       <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>
-        Régua: parado há mais de {insight.facts.minDias} dias
+        Referência: mais de {insight.facts.minDias} dias sem movimento
       </p>
       <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ink)" }}>{insight.text}</p>
       <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -75,11 +75,11 @@ export function ProInsightCard({
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
             <dt>Registos considerados</dt>
             <dd className="font-semibold" style={{ color: "var(--ink-soft)" }}>{insight.facts.total}</dd>
-            <dt>Limiar usado</dt>
+            <dt>Tempo de referência</dt>
             <dd className="font-semibold" style={{ color: "var(--ink-soft)" }}>
               sem movimento há {insight.facts.minDias} dias ou mais
             </dd>
-            <dt>Acima do limiar</dt>
+            <dt>Além do tempo esperado</dt>
             <dd className="font-semibold" style={{ color: "var(--ink-soft)" }}>{insight.facts.parados}</dd>
             <dt>Mais parado</dt>
             <dd className="font-semibold" style={{ color: "var(--ink-soft)" }}>{insight.facts.dias} dias</dd>
