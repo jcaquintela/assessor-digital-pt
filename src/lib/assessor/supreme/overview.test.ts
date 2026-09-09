@@ -68,7 +68,7 @@ describe("sugestão do mentor — conta pelo contacto real, não por edições",
     interactions: [], follow_ups: [], opportunity_properties: [],
   };
 
-  it("dispara com imóvel 'por angariar' sem contacto real acima do limiar (10 dias)", async () => {
+  it("dispara com imóvel 'por angariar' sem contacto real há mais de 10 dias", async () => {
     const tip = await computeMentorTip(fakeSupabase({
       ...vazio,
       properties: [{ id: "i1", status: "por_angariar", created_at: diasAtras(40) }],
@@ -77,6 +77,8 @@ describe("sugestão do mentor — conta pelo contacto real, não por edições",
     expect(tip?.key).toBe("imoveis-parados");
     expect(tip?.text).toContain("1 imóvel");
     expect(tip?.to).toBe("/imoveis");
+    expect(tip?.reason).toContain("a partir de 10 dias");
+    expect(tip?.reason.toLowerCase()).not.toMatch(/régua|regua|limiar/);
   });
 
   it("uma edição recente da ficha já não reinicia o contador", async () => {

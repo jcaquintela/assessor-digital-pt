@@ -12,7 +12,7 @@ const CFG: InsightConfig = {
 const item = (id: string, days: number) => ({ id, label: `Imóvel ${id}`, days });
 
 describe("factos de paragem", () => {
-  it("conta só o que passa a régua e guarda o mais parado", () => {
+  it("conta só o que passa o tempo de referência e guarda o mais parado", () => {
     const f = stalledFacts([item("a", 20), item("b", 3), item("c", 16)], 15);
     expect(f.parados).toBe(2);
     expect(f.total).toBe(3);
@@ -20,7 +20,7 @@ describe("factos de paragem", () => {
     expect(f.exemplo!.id).toBe("a");
   });
 
-  it("régua é inclusive", () => {
+  it("o tempo de referência é inclusivo", () => {
     expect(stalledFacts([item("a", 15)], 15).parados).toBe(1);
     expect(stalledFacts([item("a", 14)], 15).parados).toBe(0);
   });
@@ -44,6 +44,7 @@ describe("frase factual", () => {
     const i = factualInsight(stalledFacts([item("a", 30)], 15), CFG)!;
     expect(i.text.toLowerCase()).not.toMatch(/vais|provavel|risco de perder|devias|falhaste/);
     expect(i.reason).toContain("sem previsões");
+    expect(i.reason.toLowerCase()).not.toMatch(/régua|regua|limiar/);
   });
 
   it("singular e plural corretos", () => {
