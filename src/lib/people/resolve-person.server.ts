@@ -99,7 +99,7 @@ export async function resolvePersonForWrite(
    * o recebe como argumento da ferramenta) não passa pela extracção de nomes
    * de frases faladas — mas usa exactamente as mesmas regras de comparação.
    */
-  opts?: { excludeIds?: string[]; senderEmail?: string | null; nameOverride?: string | null },
+  opts?: { excludeIds?: string[]; senderEmail?: string | null; nameOverride?: string | null; now?: Date },
 ): Promise<PersonResolution> {
   const empty = (status: PersonResolutionStatus, name: string | null = null): PersonResolution =>
     ({ status, personId: null, name, candidates: [] });
