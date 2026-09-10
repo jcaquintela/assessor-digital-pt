@@ -220,13 +220,22 @@ function label(c: PersonCandidate): string {
 /** Pergunta em PT-PT para cada resultado da resolução. */
 export function personResolutionQuestion(res: PersonResolution): string {
   const who = String(res.name ?? "").trim();
+  const period = String(res.periodLabel ?? "").trim();
   switch (res.status) {
     case "confirm_exact":
-      return `É o ${label(res.candidates[0]!)} que já tens na lista? Confirmas para eu ligar o compromisso a ele.`;
+      return period
+        ? `A lead ${period} é a ${label(res.candidates[0]!)}? Confirmas para eu ligar isto a ela.`
+        : `É o ${label(res.candidates[0]!)} que já tens na lista? Confirmas para eu ligar o compromisso a ele.`;
     case "choose":
-      return `Tenho mais do que um ${who}: ${describeCandidates(res.candidates as any).join("; ")}. Qual deles é?`;
+      return period
+        ? `Registaste mais do que um contacto ${period}: ${describeCandidates(res.candidates as any).join("; ")}. Qual deles é?`
+        : `Tenho mais do que um ${who}: ${describeCandidates(res.candidates as any).join("; ")}. Qual deles é?`;
     case "confirm_partial":
       return `O ${who} é o ${label(res.candidates[0]!)}? Se não for, digo-me quem é ou crio um contacto novo.`;
+    case "period_none":
+      return `Não encontro nenhuma lead ${period || "desse período"}. Dizes-me o nome e o contacto dela, para eu poder ajudar-te depois?`;
+    case "lead_identity":
+      return "Quem é essa lead? Diz-me o nome e, se tiveres, o número — sem isso não consigo preparar mensagens nem fazer seguimento depois.";
     case "new":
       return res.candidates.length
         ? `Ainda não tenho ninguém chamado exatamente "${who}". Crio um contacto novo ou é ${joinOr(describeCandidates(res.candidates as any))}?`
@@ -235,6 +244,7 @@ export function personResolutionQuestion(res: PersonResolution): string {
       return "";
   }
 }
+
 
 /** Marca explicitamente que o compromisso ficou sem pessoa por decisão do consultor. */
 export const NO_PERSON_NOTE = "Sem contacto associado (decisão do consultor).";
