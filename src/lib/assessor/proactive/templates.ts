@@ -13,6 +13,26 @@ export const TEMPLATE_PLAN_TRIAL_START = "afonso_plano_trial";
 export const TEMPLATE_TRIAL_ENDING = "afonso_periodo_experimental";
 export const TEMPLATE_LANG = "pt_PT";
 
+const MORNING_TEMPLATE_LIMIT = 900;
+const MORNING_TEMPLATE_TRUNCATION_NOTE = "… (resto no painel: app.meuafonso.com/hoje)";
+
+/** Mantém cada item e secção legíveis no parâmetro do template matinal. */
+export function formatMorningTemplateList(text: string, limit = MORNING_TEMPLATE_LIMIT): string {
+  const spaced = String(text ?? "")
+    .replace(/[*_~`]/g, "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/(^|\n)(•[^\n]+)\n(?=•)/g, "$1$2\n\n")
+    .replace(/\n+(?=(?:⚠️\s*)?Conflitos a resolver\b)/g, "\n\n")
+    .trim();
+  if (spaced.length <= limit) return spaced;
+  const budget = Math.max(0, limit - MORNING_TEMPLATE_TRUNCATION_NOTE.length - 1);
+  return `${spaced.slice(0, budget).replace(/[\s•·-]+$/, "")} ${MORNING_TEMPLATE_TRUNCATION_NOTE}`.trim();
+}
+
 /**
  * Corpo do template da manhã: {{1}} = nome, {{2}} = lista de prioridades.
  *

@@ -9,7 +9,11 @@
 import { computePriorities, findAwaitingOutcome } from "@/lib/assessor/supreme/priorities.server";
 import { buildOutcomeCheckinPrompt } from "@/lib/assessor/interactive";
 import { sanitizeReply } from "@/lib/assessor/culture/sanitize";
-import { morningTemplatePayload, resolveCheckinTemplatePayload } from "./templates";
+import {
+  formatMorningTemplateList,
+  morningTemplatePayload,
+  resolveCheckinTemplatePayload,
+} from "./templates";
 import { composeEnrichedBriefing, tightGapsFromAgenda } from "./briefing-enriched";
 import { lisbonYmd, lisbonHhMm } from "@/lib/assessor/lisbon-day";
 
@@ -206,13 +210,12 @@ export async function sendMorningPush(
   if (target.channel === "whatsapp" && !inWindow) {
     if (!(await templatesApproved(supabase))) return { sent: false, reason: "template_pending" };
     const { sendWhatsAppPayload } = await import("@/lib/whatsapp/send.server");
-    const { flattenForTemplate } = await import("./meeting-briefing");
-    // Fora da janela de 24h vai o MESMO conteúdo, achatado numa linha e com
-    // corte honesto (nunca silencioso) quando não cabe no parâmetro.
+    // Fora da janela de 24h vai o MESMO conteúdo, mantendo cada compromisso
+    // e cada secção separados dentro do parâmetro do template.
     const lines = priorities.length
-      ? flattenForTemplate(text.replace(/^Bom dia[^\n]*\n?/, ""))
+      ? formatMorningTemplateList(text.replace(/^Bom dia[^\n]*\n?/, ""))
       : dayEvents.length
-        ? noPrioritiesText.replace(/^Bom dia[^.]*\.\s*/, "")
+        ? formatMorningTemplateList(noPrioritiesText.replace(/^Bom dia[^.]*\.\s*/, ""))
         : `Agenda livre. ${emptyDaySuggestion()}`;
     const r = await sendWhatsAppPayload(
       target.externalId,
