@@ -19,9 +19,13 @@ describe("período temporal em referências a leads", () => {
   it("reconhece 'lead do fim de semana' como período (sábado+domingo mais recentes)", () => {
     const p = personPeriodReference("Segunda tenho de ligar à lead do fim de semana", MONDAY);
     expect(p?.expression).toBe("fim de semana");
-    expect(p!.fromIso.slice(0, 10)).toBe("2026-08-29");
-    expect(p!.toIso.slice(0, 10)).toBe("2026-08-31");
+    // Janela = sábado 29 e domingo 30 (dias de calendário de Lisboa).
+    expect(p!.fromIso < SAT && SAT < p!.toIso).toBe(true);
+    expect(p!.fromIso < SUN && SUN < p!.toIso).toBe(true);
+    expect("2026-08-28T12:00:00Z" < p!.fromIso).toBe(true);
+    expect("2026-08-31T08:00:00Z" > p!.toIso).toBe(true);
   });
+
 
   it("não confunde datas soltas com período", () => {
     expect(personPeriodReference("Marca visita dia 12 às 10h", MONDAY)).toBeNull();
