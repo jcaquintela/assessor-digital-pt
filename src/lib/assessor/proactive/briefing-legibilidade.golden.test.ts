@@ -7,6 +7,7 @@ import { describe, it, expect } from "vitest";
 import { composeEnrichedBriefing, nextActionsWithoutRepeats, type BriefingPriority } from "./briefing-enriched";
 import { conflictCompact } from "@/lib/agenda/conflict-message";
 import { flattenForTemplate } from "./meeting-briefing";
+import { formatMorningTemplateList, morningTemplatePayload } from "./templates";
 
 const NOW = new Date("2026-09-08T07:00:00.000Z"); // 08:00 Lisboa
 
@@ -85,5 +86,29 @@ describe("briefing menos denso", () => {
     expect(template).toContain("Enviar a proposta ao Rui");
     // Sem repetição também no template.
     expect(template.match(/Enviar a proposta ao Rui/g)).toHaveLength(1);
+  });
+
+  it("G5 — template matinal separa compromissos e conflitos", () => {
+    const screenshotFormat = [
+      "• Preparar o compromisso das 10:15: Reunião A",
+      "• Preparar o compromisso das 13:00: Reunião B",
+      "Conflitos a resolver",
+      "• Hoje, 10:30 — Reunião A vs Reunião C",
+    ].join("\n");
+    const list = formatMorningTemplateList(screenshotFormat);
+    expect(list).toBe(
+      "• Preparar o compromisso das 10:15: Reunião A\n\n" +
+      "• Preparar o compromisso das 13:00: Reunião B\n\n" +
+      "Conflitos a resolver\n" +
+      "• Hoje, 10:30 — Reunião A vs Reunião C",
+    );
+    const payload = morningTemplatePayload("Julio", list) as any;
+    expect(payload.template.components[0].parameters[1].text).toBe(list);
+  });
+
+  it("G6 — o briefing enriquecido mantém o espaçamento já validado", () => {
+    expect(text).toContain("O que interessa hoje:\n\n🔴 P1");
+    expect(text).toContain("\n\n⚠️ Conflitos a resolver");
+    expect(text).toContain("Próximas ações\n1. Enviar a proposta ao Rui");
   });
 });
