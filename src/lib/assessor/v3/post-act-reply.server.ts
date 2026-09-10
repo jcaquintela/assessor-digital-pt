@@ -168,6 +168,7 @@ export async function shapePersonAsk(params: {
     const question = personResolutionQuestion({
       status: d.mode, personId: null, name: d.personName ?? null,
       candidates: d.suggestions ?? [],
+      periodLabel: d.periodLabel ?? null,
     });
     asks.push({ kind: "person", label: askLabel(hit.toolName, d), question });
     if (index > 0) continue; // uma acção pendente de cada vez (ranhura "main")
@@ -179,11 +180,13 @@ export async function shapePersonAsk(params: {
         payload: {
           personName: d.personName,
           mode: d.mode,
+          periodLabel: d.periodLabel ?? null,
           suggestions: d.suggestions ?? [],
           candidate_ids: d.candidateIds ?? [],
           tool: hit.toolName,
           incoming: d.incoming,
         },
+
         currentQuestion: question,
         pendingQuestion: question,
         sourceMessageId: params.sourceMessageId ?? null,
