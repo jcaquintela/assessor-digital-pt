@@ -1026,15 +1026,33 @@ async function execCreateFollowUp(ctx: DomainContext, args: unknown): Promise<Do
         needsPersonConfirmation: true,
         mode: res.status,
         personName: res.name,
+        periodLabel: res.periodLabel ?? null,
         suggestions: res.candidates,
         candidateIds: res.candidates.map((c) => c.id),
         proposedPersonId: v.person_id ?? null,
         incoming: { ...v, person_id: null },
       });
     }
+    // Lead sem nome nenhum ("ligar à lead"): pedir o essencial antes de criar
+    // uma tarefa órfã. Caso real (30/08): "ligar à lead do fim de semana"
+    // ficou só como título — no dia seguinte não havia a quem escrever.
+    if (!v.person_id && res.status === "none") {
+      const { mentionsUnnamedLead } = await import("@/lib/people/period-reference");
+      if (mentionsUnnamedLead(text)) {
+        return ok({
+          needsPersonConfirmation: true,
+          mode: "lead_identity",
+          personName: null,
+          suggestions: [],
+          candidateIds: [],
+          incoming: { ...v, person_id: null },
+        });
+      }
+    }
   } else if (!v.person_id && ctx.skipPersonResolution) {
     personDeliberatelyUnlinked = true;
   }
+
   // Imóvel "provável" nunca liga em silêncio: perguntamos antes de gravar.
   if (propertyAsk) {
     return ok({
