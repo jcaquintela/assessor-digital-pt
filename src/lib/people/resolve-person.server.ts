@@ -147,7 +147,41 @@ export async function resolvePersonForWrite(
 
   // 2) Nome mencionado na frase.
   const name = String(opts?.nameOverride ?? "").trim() || personNameFromEventText(text);
-  if (!name) return empty("none");
+  if (!name) {
+    // 2b) Sem nome, mas identificada por período: "a lead do fim de semana".
+    //     Procuramos por data de registo, não por nome.
+    const period = personPeriodReference(text, opts?.now ?? new Date());
+    if (period) {
+      const { data: periodRows } = await ctx.supabase
+        .from("people")
+        .select("id, name, phone, relationship_type, created_at")
+        .eq("user_id", ctx.userId)
+        .gte("created_at", period.fromIso)
+        .lt("created_at", period.toIso)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      const found = (((periodRows as any[]) ?? []) as PersonCandidate[])
+        .filter((r) => r?.id && !exclude.has(String(r.id)));
+      if (found.length === 1) {
+        return {
+          status: "confirm_exact",
+          personId: found[0]!.id,
+          name: found[0]!.name ?? null,
+          candidates: found,
+          periodLabel: period.label,
+        };
+      }
+      if (found.length > 1) {
+        return {
+          status: "choose", personId: null, name: null,
+          candidates: found.slice(0, 4), periodLabel: period.label,
+        };
+      }
+      return { status: "period_none", personId: null, name: null, candidates: [], periodLabel: period.label };
+    }
+    return empty("none");
+  }
+
 
   const { data } = await ctx.supabase
     .from("people")
