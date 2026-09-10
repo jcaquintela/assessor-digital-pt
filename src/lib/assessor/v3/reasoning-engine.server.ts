@@ -57,6 +57,7 @@ import {
   createPersonEllipticPending,
   createDealPending,
 } from "./pending-resolvers/create-entities.server";
+import { leadIdentityPending } from "./pending-resolvers/lead-identity.server";
 import {
   AUDIO_PENDING_RESOLVERS,
   resolveAudioMediaSlot,
@@ -67,6 +68,9 @@ import { isScheduleClarification, clarificationHoldReply } from "@/lib/agenda/re
 // Tabela de despacho por intent. A ORDEM é comportamento: replica
 // exactamente a cascata de `if` que existia no motor.
 const INTENT_PENDING_RESOLVERS: PendingResolver[] = [
+  // Identidade mínima da lead vem primeiro: partilha o intent
+  // `confirm_event_person`, mas não tem candidatos para escolher.
+  leadIdentityPending,
   confirmEventPersonPending,
   rejectEventPersonPending,
   confirmEventReschedulePending,
@@ -75,6 +79,7 @@ const INTENT_PENDING_RESOLVERS: PendingResolver[] = [
   createPersonEllipticPending,
   createDealPending,
 ];
+
 
 // Pendentes de baixo acoplamento (Drive, feedback) + atalho de comissão.
 // A ORDEM desta lista é comportamento: mantém-se a mesma do código inline.
