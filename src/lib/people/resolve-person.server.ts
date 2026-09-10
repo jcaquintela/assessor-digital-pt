@@ -9,6 +9,7 @@
 import { foldText } from "@/lib/search/normalize";
 import { classifyPeopleMatches, describeCandidates, joinOr, nameMatchQuality, personLabel, personNameFromEventText } from "./name-match";
 import { classifyPhoneInput } from "./phone-input";
+import { personPeriodReference } from "./period-reference";
 
 export interface PersonCandidate {
   id: string;
@@ -29,14 +30,21 @@ export type PersonResolutionStatus =
   /** Correspondência parcial ("Manuel" → "Manuel Silva"): perguntar. */
   | "confirm_partial"
   /** Ninguém com esse nome: perguntar se é pessoa nova. */
-  | "new";
+  | "new"
+  /** "A lead do fim de semana" sem ninguém registado nesse período. */
+  | "period_none"
+  /** Lead mencionada sem nome nenhum: pedir o essencial antes de escrever. */
+  | "lead_identity";
 
 export interface PersonResolution {
   status: PersonResolutionStatus;
   personId: string | null;
   name: string | null;
   candidates: PersonCandidate[];
+  /** "do fim de semana", "de ontem" — quando a pessoa foi referida por período. */
+  periodLabel?: string | null;
 }
+
 
 interface ResolveCtx {
   supabase: any;
