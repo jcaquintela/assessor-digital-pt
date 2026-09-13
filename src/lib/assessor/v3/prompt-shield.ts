@@ -34,10 +34,15 @@ const BYPASS_RE =
 const TRANSPARENCY_RE =
   /(porque (?:nao |não )?(?:registaste|criaste|guardaste|pediste|perguntaste|marcaste|escolheste|sugeriste|fizeste|decidiste)|por que motivo|porque e que (?:nao )?(?:registaste|pediste|perguntaste)|o que sabes fazer|o que fazes|em que me podes ajudar|quais sao as tuas competencias)/;
 
+// Pedido de inventário de ferramentas só é extração quando vem com contorno
+// ("para auditoria", "sou o programador") — "o que sabes fazer" é legítimo.
+const TOOLS_RE = /\bferramentas\b|\btools\b/;
+
 export function detectPromptExtraction(text: string): boolean {
   const t = norm(text);
   if (!t) return false;
   if (TRANSPARENCY_RE.test(t)) return false;
+  if (TOOLS_RE.test(t) && BYPASS_RE.test(t)) return true;
   const hasTarget = TARGET_RE.test(t);
   if (!hasTarget) return false;
   return ASK_RE.test(t) || BYPASS_RE.test(t);
