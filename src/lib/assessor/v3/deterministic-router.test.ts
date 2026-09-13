@@ -5,6 +5,7 @@ import { DETERMINISTIC_ROUTER } from "./deterministic-router.server";
 describe("router determinístico — precedência", () => {
   it("mantém a ordem exacta dos casos", () => {
     expect(DETERMINISTIC_ROUTER.map((c) => c.name)).toEqual([
+      "prompt_shield",
       "elliptic_entity",
       "person_brief",
       "drive_bulk_archive",
