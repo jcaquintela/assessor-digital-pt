@@ -58,6 +58,21 @@ export interface RouterCtx {
 export type RouterReply = { reply: string } | null;
 export type RouterCase = (rc: RouterCtx) => Promise<RouterReply>;
 
+// (0--) Tentativa de extração das instruções internas. Vem primeiro: nenhuma
+// outra leitura deve processar este pedido. Resposta de desvio, sem confirmar
+// nem negar que existem instruções.
+const promptShieldCase: RouterCase = async ({ supabase, userId, channel, trimmed, pending }) => {
+  if (pending) return null;
+  const { detectPromptExtraction, PROMPT_SHIELD_REPLY } = await import("./prompt-shield");
+  if (!detectPromptExtraction(trimmed)) return null;
+  await logAiTurn(supabase, {
+    userId, channel, intent: "prompt_shield", route: "v3-deterministic",
+    latencyMs: 0, success: true, error: null,
+    toolName: "prompt_shield", toolSuccess: true, fallbackUsed: false,
+  });
+  return { reply: PROMPT_SHIELD_REPLY };
+};
+
 // (0-) Frase elíptica sem verbo: "[intenção] à [entidade] [nome] [contacto]".
 // Quando a pessoa ainda não existe, isto falhava com "não percebi". Agora
 // propõe criação assistida — nunca cria sem confirmação.
@@ -456,6 +471,7 @@ const openQuestionCase: RouterCase = async ({ ctx, supabase, userId, channel, tr
 
 // A ordem é a precedência real do motor. Não reordenar sem testes.
 export const DETERMINISTIC_ROUTER: Array<{ name: string; run: RouterCase }> = [
+  { name: "prompt_shield", run: promptShieldCase },
   { name: "elliptic_entity", run: ellipticEntityCase },
   { name: "person_brief", run: personBriefCase },
   { name: "drive_bulk_archive", run: driveBulkArchiveCase },
@@ -486,6 +502,7 @@ export async function runDeterministicRouter(rc: RouterCtx): Promise<RouterReply
 // Rede de segurança do caso financeiro fica no motor; exposto aqui só para
 // testes caso a caso.
 export const ROUTER_CASES = {
+  promptShieldCase,
   ellipticEntityCase,
   personBriefCase,
   driveBulkArchiveCase,
