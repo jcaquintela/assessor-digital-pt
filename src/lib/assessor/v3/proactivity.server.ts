@@ -8,6 +8,8 @@ import { DAILY_BRIEFING_PREFIX } from "../supreme/briefing.server";
 import { isFollowUpClosed, isFollowUpOpen } from "@/lib/follow-ups/state";
 import { computePriorities } from "../supreme/priorities.server";
 import { lisbonYmd, ymdDiffDays, lisbonHhMm } from "@/lib/assessor/lisbon-day";
+import { isNudgeExpired, PRE_EVENT_DEDUPE_PREFIX } from "../proactive/nudge-expiry";
+import { resolvePreEventAtDispatch } from "../supreme/pre-event.server";
 
 /** O seguimento já foi tratado, desmarcado ou arquivado? */
 export async function isFollowUpSettled(supabase: any, followUpId: string): Promise<boolean> {
