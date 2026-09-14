@@ -424,7 +424,10 @@ export const RescheduleReminderArgs = z.object({
   related_resource_id: z.string().uuid().optional().nullable(),
   subject_hint: z.string().min(2).max(120).optional().nullable(),
   new_date: IsoDate,
-  new_time: HhMm,
+  // Hora é OPCIONAL: "passou para segunda-feira" é a forma natural de falar.
+  // Sem hora, mantém-se a hora que o item já tinha (ou fica sem hora, se não
+  // tinha). Exigir hora fazia a escrita falhar com invalid_args (bug 13/09).
+  new_time: HhMm.optional().nullable(),
   timezone: z.string().default("Europe/Lisbon"),
   reason: z.string().optional().nullable(),
 });
@@ -1161,11 +1164,15 @@ TOOL_SPECS.push(
             description: "Assunto do aviso em linguagem natural, ex.: 'ligar ao Paulo'.",
           },
           new_date: { type: "string", description: "YYYY-MM-DD (Europe/Lisbon)" },
-          new_time: { type: "string", description: "HH:MM (24h, Europe/Lisbon)" },
+          new_time: {
+            type: ["string", "null"],
+            description:
+              "HH:MM (24h, Europe/Lisbon). OPCIONAL: se o consultor não disser hora, deixa vazio — mantém-se a hora que o item já tinha.",
+          },
           timezone: { type: "string", enum: ["Europe/Lisbon"] },
           reason: { type: ["string", "null"] },
         },
-        required: ["new_date", "new_time", "timezone"],
+        required: ["new_date", "timezone"],
       },
     },
   },

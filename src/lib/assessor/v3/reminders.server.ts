@@ -125,7 +125,11 @@ export interface RescheduleInput {
   related_resource_id?: string | null;
   subject_hint?: string | null; // texto livre, ex: "ligar ao Paulo"
   new_date: string; // YYYY-MM-DD
-  new_time: string; // HH:MM
+  /**
+   * HH:MM. OPCIONAL — sem hora, mantém-se a hora que o item já tinha; se o
+   * item não tinha hora, fica na nova data também sem hora.
+   */
+  new_time?: string | null;
   timezone?: string;
   reason?: string;
 }
@@ -150,12 +154,16 @@ export async function rescheduleReminder(
   input: RescheduleInput,
 ): Promise<RescheduleResult> {
   const tz = input.timezone ?? "Europe/Lisbon";
-  const newScheduled = lisbonLocalToUtcIso(input.new_date, input.new_time);
+  // Hora pedida (pode não vir). Sem hora, mantém-se a que o item já tinha.
+  const askedTime = input.new_time ?? null;
+  const atTime = (hm: string | null) => lisbonLocalToUtcIso(input.new_date, hm ?? "00:00");
 
   // 1) Localizar o alvo.
   let target: ReminderRow | null = null;
   // Tarefas/compromissos que correspondem ao pedido mas podem não ter aviso.
   let fallbackFollowUpIds: string[] = [];
+  // Hora actual de cada tarefa candidata (pode ser null: tarefa sem hora).
+  const fallbackTimes = new Map<string, string | null>();
 
   if (input.reminder_id) {
     const { data } = await supabase
@@ -185,7 +193,7 @@ export async function rescheduleReminder(
     const hint = foldLike(input.subject_hint).slice(0, 60);
     const { data: fus } = await supabase
       .from("follow_ups")
-      .select("id, title, due_date")
+      .select("id, title, due_date, due_time")
       .eq("user_id", input.userId)
       .in("status", ["pendente", "em_progresso", "agendado", "aberto", "pending"])
       .ilike("title_norm", `%${hint}%`)
@@ -231,25 +239,59 @@ export async function rescheduleReminder(
         ? [input.related_resource_id]
         : []);
     if (fallbackIds.length) {
-      const { data: moved, error: moveErr } = await supabase
-        .from("follow_ups")
-        .update({
-          due_date: newScheduled,
-          due_time: input.new_time,
-          timezone: tz,
-          // Nova hora = nova preparação: a cartela volta a poder sair.
-          briefing_sent_at: null,
-        } as never)
-
-        .in("id", fallbackIds)
-        .eq("user_id", input.userId)
-        .select("id");
-      if (moveErr) return { ok: false, error: moveErr.message };
-      const ids = ((moved as any[]) ?? []).map((r) => String(r.id));
-      if (ids.length) return { ok: true, follow_up_ids: ids };
+      if (askedTime) {
+        const { data: moved, error: moveErr } = await supabase
+          .from("follow_ups")
+          .update({
+            due_date: atTime(askedTime),
+            due_time: askedTime,
+            timezone: tz,
+            // Nova hora = nova preparação: a cartela volta a poder sair.
+            briefing_sent_at: null,
+          } as never)
+          .in("id", fallbackIds)
+          .eq("user_id", input.userId)
+          .select("id");
+        if (moveErr) return { ok: false, error: moveErr.message };
+        const ids = ((moved as any[]) ?? []).map((r) => String(r.id));
+        if (ids.length) return { ok: true, follow_up_ids: ids };
+      } else {
+        // Sem hora pedida: cada tarefa muda de dia e guarda a hora que tinha
+        // (ou continua sem hora, como estava). Por isso é linha a linha.
+        let times = fallbackTimes;
+        if (!times.size) {
+          const { data: rows } = await supabase
+            .from("follow_ups")
+            .select("id, due_time")
+            .eq("user_id", input.userId)
+            .in("id", fallbackIds);
+          times = new Map(((rows as any[]) ?? []).map((r) => [String(r.id), r.due_time ?? null]));
+        }
+        const ids: string[] = [];
+        for (const id of fallbackIds) {
+          const hm = times.get(id) ?? null;
+          const { data: moved, error: moveErr } = await supabase
+            .from("follow_ups")
+            .update({
+              due_date: atTime(hm),
+              timezone: tz,
+              briefing_sent_at: null,
+            } as never)
+            .eq("id", id)
+            .eq("user_id", input.userId)
+            .select("id");
+          if (moveErr) return { ok: false, error: moveErr.message };
+          for (const r of ((moved as any[]) ?? [])) ids.push(String(r.id));
+        }
+        if (ids.length) return { ok: true, follow_up_ids: ids };
+      }
     }
     return { ok: false, error: "reminder_not_found" };
   }
+
+  // Sem hora pedida, mantém-se a hora que o aviso já tinha.
+  const keptTime = askedTime ?? lisbonHhMm(new Date(target.scheduled_for));
+  const newScheduled = atTime(keptTime);
 
   // 2) UPDATE atómico. Reset de estado + retry.
   const { data: updated, error } = await supabase
@@ -258,6 +300,7 @@ export async function rescheduleReminder(
       scheduled_for: newScheduled,
       timezone: tz,
       status: "scheduled",
+
       sent_at: null,
       failed_at: null,
       last_error: input.reason ? `reschedule:${input.reason}` : "rescheduled",

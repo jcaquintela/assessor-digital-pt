@@ -1716,8 +1716,10 @@ export type ToolExecutor = (ctx: DomainContext, args: unknown) => Promise<Domain
 async function execRescheduleReminder(ctx: DomainContext, args: unknown): Promise<DomainResult> {
   const p = parse(RescheduleReminderArgs, args); if (!p.ok) return fail(p.error);
   const v = p.value;
-  if (isTimeInPast(v.new_date, v.new_time)) {
-    return ok({ ok: false, past: true, requested_date: v.new_date, requested_time: v.new_time });
+  // Sem hora indicada, comparamos com o fim do dia: "passa para segunda" é
+  // válido mesmo que 00:00 de segunda já tenha passado.
+  if (isTimeInPast(v.new_date, v.new_time ?? "23:59")) {
+    return ok({ ok: false, past: true, requested_date: v.new_date, requested_time: v.new_time ?? null });
   }
   const r = await rescheduleReminder(ctx.supabase, {
     userId: ctx.userId,
