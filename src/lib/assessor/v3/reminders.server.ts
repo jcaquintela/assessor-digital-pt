@@ -201,6 +201,7 @@ export async function rescheduleReminder(
       .limit(5);
     const followUpIds = ((fus as any[]) ?? []).map((r) => r.id);
     fallbackFollowUpIds = followUpIds;
+    for (const f of ((fus as any[]) ?? [])) fallbackTimes.set(String(f.id), f.due_time ?? null);
     if (followUpIds.length) {
       const { data: rems } = await supabase
         .from("reminders")
