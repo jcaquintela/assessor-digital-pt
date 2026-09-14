@@ -321,7 +321,8 @@ export async function rescheduleReminder(
         .from("follow_ups")
         .update({
           due_date: newScheduled,
-          due_time: input.new_time,
+          // Sem hora pedida, não tocamos na hora da tarefa: fica como estava.
+          ...(askedTime ? { due_time: askedTime } : {}),
           status: "pendente",
           timezone: tz,
           briefing_sent_at: null,
