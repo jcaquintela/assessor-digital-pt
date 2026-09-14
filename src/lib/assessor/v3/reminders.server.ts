@@ -156,7 +156,10 @@ export async function rescheduleReminder(
   const tz = input.timezone ?? "Europe/Lisbon";
   // Hora pedida (pode não vir). Sem hora, mantém-se a que o item já tinha.
   const askedTime = input.new_time ?? null;
-  const atTime = (hm: string | null) => lisbonLocalToUtcIso(input.new_date, hm ?? "00:00");
+  // Sem hora, a data fica pura (YYYY-MM-DD): converter 00:00 para UTC puxava
+  // o item para o dia anterior no Verão de Lisboa.
+  const atTime = (hm: string | null) =>
+    hm ? lisbonLocalToUtcIso(input.new_date, hm) : input.new_date;
 
   // 1) Localizar o alvo.
   let target: ReminderRow | null = null;
