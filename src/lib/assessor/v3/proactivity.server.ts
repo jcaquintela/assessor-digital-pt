@@ -380,7 +380,7 @@ export async function dispatchPendingNudges(
 
   const { data: pending } = await supabase
     .from("assessor_nudges")
-    .select("id, user_id, suggested_reply, subject_type, subject_id, dedupe_key")
+    .select("id, user_id, suggested_reply, subject_type, subject_id, dedupe_key, created_at")
     .eq("status", "pending")
     .lte("scheduled_for", now.toISOString())
     .order("created_at", { ascending: true })
@@ -412,6 +412,14 @@ export async function dispatchPendingNudges(
       continue;
     }
     if (row.subject_id) seenSubjects.add(subjectKey);
+    // Avisos com prazo (briefing, resumo de fim de dia, conflitos, digest,
+    // pré-evento) morrem em silêncio quando o momento a que se referem já
+    // passou — o horário de silêncio não os deve despejar no dia seguinte.
+    if (isNudgeExpired(row, now)) {
+      await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
+      skipped++;
+      continue;
+    }
     const target = targets.get(row.user_id) ?? null;
     if (!target || !v3Set.has(row.user_id)) {
       await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
@@ -435,6 +443,16 @@ export async function dispatchPendingNudges(
         await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
         skipped++;
         continue;
+      }
+      if (String(row.dedupe_key ?? "").startsWith(PRE_EVENT_DEDUPE_PREFIX)) {
+        // "Daqui a X min" tem de ser a distância real no instante do envio.
+        const fresh = await resolvePreEventAtDispatch(supabase, row.subject_id, now);
+        if (!fresh.send) {
+          await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
+          skipped++;
+          continue;
+        }
+        text = fresh.text;
       }
     }
     const r = await sendReplyForChannel(target.channel, target.externalId, text);
