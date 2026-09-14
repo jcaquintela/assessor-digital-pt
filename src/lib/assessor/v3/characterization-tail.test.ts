@@ -214,7 +214,8 @@ describe("caracterização — rede de segurança no fim do turno", () => {
     const reply = await turn(makeDb());
     expect(applySafetyNetMock.mock.calls[0][1].outcome).toBe("tool_failed");
     expect(applySafetyNetMock.mock.calls[0][1].reason).toContain("create_follow_up");
-    expect(reply).toMatch(/não consegui/i);
+    // A resposta deixou de ser genérica: explica o que aconteceu (13/09).
+    expect(reply).toMatch(/não mexi em nada/i);
   });
 
   it("'act' sem ferramenta nenhuma nunca afirma conclusão", async () => {
