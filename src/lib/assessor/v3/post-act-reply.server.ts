@@ -14,6 +14,7 @@
 import { claimsCompletion, unverifiedCompletionReply, recurrenceQuestion } from "./completion-intent";
 import { createPendingAction } from "../memory.server";
 import { askLabel, type PendingAskItem } from "./pending-asks";
+import { explainToolFailure } from "./failure-reply";
 
 
 export type ToolResult = { name: string; ok: boolean; data?: unknown; error?: string | null };
