@@ -14,6 +14,7 @@
 import { claimsCompletion, unverifiedCompletionReply, recurrenceQuestion } from "./completion-intent";
 import { createPendingAction } from "../memory.server";
 import { askLabel, type PendingAskItem } from "./pending-asks";
+import { explainToolFailure } from "./failure-reply";
 
 
 export type ToolResult = { name: string; ok: boolean; data?: unknown; error?: string | null };
@@ -48,9 +49,12 @@ export function shapeExecutionOutcome(params: {
     archiveOutcome = "tool_failed";
     archiveReason = params.toolResults.filter((r) => !r.ok)
       .map((r) => `${r.name}:${r.error ?? "unknown"}`).join("; ") || "tool_failed";
+    // Explicação concreta em vez de "tenta outra vez": quando falta
+    // informação, perguntamos o que falta (bug 13/09, proposta à Joana).
     reply = params.pureRead
       ? params.readFailedReply
-      : "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?";
+      : (explainToolFailure(params.toolResults)
+        ?? "Tentei mas não consegui guardar isso agora. Podes tentar outra vez?");
   }
   if (params.actedWithoutTools && !params.pureRead) {
     archiveOutcome = "not_understood";
