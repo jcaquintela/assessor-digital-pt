@@ -62,7 +62,7 @@ describe("validade dos avisos proativos", () => {
       new Date("2026-09-14T07:30:00Z").getTime(),
     );
     expect(r.send).toBe(true);
-    expect(r.send && r.text).toContain("daqui a 30 min");
+    expect(r.send && r.text).toContain("Daqui a 30 min");
   });
 
   it("5. digest e conflito de outro dia também expiram", () => {
