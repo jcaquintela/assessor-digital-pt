@@ -15,7 +15,17 @@ export type NormalizedMessageType =
   | "audio"
   | "callback"
   | "reaction"
+  | "contact"
   | "unsupported";
+
+/** Cartão de contacto partilhado nativamente pelo canal (vCard). */
+export interface NormalizedContactCard {
+  name: string;
+  phones: string[];
+  emails: string[];
+  company: string | null;
+  jobTitle: string | null;
+}
 
 export interface NormalizedMedia {
   externalFileId: string;
@@ -45,6 +55,8 @@ export interface NormalizedInbound {
   text: string | null;
   media: NormalizedMedia | null;
   callback: NormalizedCallback | null;
+  /** Cartões de contacto partilhados (messageType === "contact"). */
+  contacts?: NormalizedContactCard[] | null;
   sender: NormalizedSender | null;
   metadata: Record<string, unknown>;
   receivedAt: Date;
