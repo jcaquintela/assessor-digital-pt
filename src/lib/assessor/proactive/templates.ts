@@ -69,8 +69,8 @@ export function morningTemplatePayload(name: string, list: string) {
       language: { code: TEMPLATE_LANG },
       components: [
         { type: "body", parameters: [
-          { type: "text", text: name },
-          { type: "text", text: list },
+          { type: "text", text: templateParam(name) },
+          { type: "text", text: templateParam(list) },
         ] },
       ],
     },
@@ -98,7 +98,7 @@ export function checkinTemplatePayload(title: string) {
       name: TEMPLATE_CHECKIN,
       language: { code: TEMPLATE_LANG },
       components: [
-        { type: "body", parameters: [{ type: "text", text: title }] },
+        { type: "body", parameters: [{ type: "text", text: templateParam(title) }] },
       ],
     },
   } as Record<string, unknown>;
@@ -116,7 +116,7 @@ export function checkinTemplatePayloadV2(title: string) {
       name: TEMPLATE_CHECKIN_V2,
       language: { code: TEMPLATE_LANG },
       components: [
-        { type: "body", parameters: [{ type: "text", text: title }] },
+        { type: "body", parameters: [{ type: "text", text: templateParam(title) }] },
       ],
     },
   } as Record<string, unknown>;
@@ -146,8 +146,8 @@ export function planActivatedTemplatePayload(name: string, plan: string) {
       language: { code: TEMPLATE_LANG },
       components: [
         { type: "body", parameters: [
-          { type: "text", text: name },
-          { type: "text", text: plan },
+          { type: "text", text: templateParam(name) },
+          { type: "text", text: templateParam(plan) },
         ] },
       ],
     },
@@ -183,7 +183,7 @@ export function planTrialStartTemplatePayload(plan: string) {
       name: TEMPLATE_PLAN_TRIAL_START,
       language: { code: TEMPLATE_LANG },
       components: [
-        { type: "body", parameters: [{ type: "text", text: plan }] },
+        { type: "body", parameters: [{ type: "text", text: templateParam(plan) }] },
       ],
     },
   } as Record<string, unknown>;
@@ -205,8 +205,8 @@ export function trialEndingTemplatePayload(name: string, days: number) {
       language: { code: TEMPLATE_LANG },
       components: [
         { type: "body", parameters: [
-          { type: "text", text: name },
-          { type: "text", text: String(days) },
+          { type: "text", text: templateParam(name) },
+          { type: "text", text: templateParam(days) },
         ] },
       ],
     },
