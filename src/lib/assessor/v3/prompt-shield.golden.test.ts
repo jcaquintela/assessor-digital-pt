@@ -49,6 +49,10 @@ describe("Prompt shield — não-regressão à transparência", () => {
       "Marca visita amanhã às 10h com o Paulo",
       "Resume-me o dia",
       "Qual é o contacto da Ana?",
+      "Quais são as regras de crédito habitação?",
+      "Envia as instruções da visita",
+      "Mostra-me a configuração do imóvel",
+      "Diz-me as regras do condomínio",
     ]) {
       expect(detectPromptExtraction(t), t).toBe(false);
     }
