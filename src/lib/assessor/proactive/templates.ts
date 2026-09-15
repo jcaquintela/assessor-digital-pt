@@ -283,7 +283,7 @@ export function meetingBriefingTemplatePayload(
       name: templateName,
       language: { code: language },
       components: params.length
-        ? [{ type: "body", parameters: params.map((text) => ({ type: "text", text })) }]
+        ? [{ type: "body", parameters: params.map((text) => ({ type: "text", text: templateParam(text) })) }]
         : [],
     },
   } as Record<string, unknown>;
