@@ -59,6 +59,8 @@ function classifyType(type: string | undefined): NormalizedMessageType {
     case "audio":
     case "voice":
       return "audio";
+    case "contacts":
+      return "contact";
     case "interactive":
     case "button":
       return "callback";
@@ -92,6 +94,33 @@ function extractCallback(msg: any): { text: string; id: string } | null {
   const text = resolveInteractiveReply(id, label);
   if (!text) return null;
   return { text, id: String(id ?? "") };
+}
+
+// Cartão(ões) de contacto partilhado(s) nativamente no WhatsApp.
+function parseWhatsappContacts(arr: any): NormalizedContactCard[] {
+  if (!Array.isArray(arr)) return [];
+  const out: NormalizedContactCard[] = [];
+  for (const c of arr) {
+    const name = String(
+      c?.name?.formatted_name ??
+        [c?.name?.first_name, c?.name?.last_name].filter(Boolean).join(" "),
+    ).trim();
+    const phones: string[] = (Array.isArray(c?.phones) ? c.phones : [])
+      .map((p: any) => String(p?.phone ?? p?.wa_id ?? "").trim())
+      .filter(Boolean);
+    const emails: string[] = (Array.isArray(c?.emails) ? c.emails : [])
+      .map((e: any) => String(e?.email ?? "").trim())
+      .filter(Boolean);
+    if (!name && phones.length === 0) continue;
+    out.push({
+      name,
+      phones,
+      emails,
+      company: c?.org?.company ? String(c.org.company) : null,
+      jobTitle: c?.org?.title ? String(c.org.title) : null,
+    });
+  }
+  return out;
 }
 
 function mediaNodeFor(msg: any, type: string): any {
@@ -133,6 +162,7 @@ export const whatsappAdapter: ChannelAdapter = {
             msg?.image?.caption ?? msg?.document?.caption ?? null;
           let text: string | null = null;
           let callback = null as NormalizedInbound["callback"];
+          let contacts: NormalizedContactCard[] | null = null;
           let media = null as NormalizedInbound["media"];
           if (kind === "text") {
             text = String(msg?.text?.body ?? "");
@@ -153,6 +183,10 @@ export const whatsappAdapter: ChannelAdapter = {
               caption: cap,
             };
             text = cap;
+          } else if (kind === "contact") {
+            contacts = parseWhatsappContacts(msg?.contacts);
+            if (contacts.length === 0) continue;
+            text = `[contacto] ${contacts[0]!.name}`.trim();
           } else if (kind === "reaction") {
             text = `[${type}]`;
           }
@@ -165,6 +199,7 @@ export const whatsappAdapter: ChannelAdapter = {
             text,
             media,
             callback,
+            contacts,
             sender: null,
             metadata: {
               rawType: type,
