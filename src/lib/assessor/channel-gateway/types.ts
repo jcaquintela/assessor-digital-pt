@@ -55,6 +55,8 @@ export interface NormalizedInbound {
   text: string | null;
   media: NormalizedMedia | null;
   callback: NormalizedCallback | null;
+  /** Cartões de contacto partilhados (messageType === "contact"). */
+  contacts?: NormalizedContactCard[] | null;
   sender: NormalizedSender | null;
   metadata: Record<string, unknown>;
   receivedAt: Date;
