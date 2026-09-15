@@ -72,15 +72,19 @@ export async function proposeBusinessCardContact(args: {
   card: BusinessCard;
   fileId: string | null;
   sourceMessageId: string | null;
+  /** Extras guardados no rascunho (ex.: números secundários, origem). */
+  extraPayload?: Record<string, unknown>;
+  /** Pergunta alternativa (ex.: cartão partilhado, sem foto). */
+  question?: string;
 }): Promise<string> {
   const { createPendingAction } = await import("./memory.server");
-  const question = businessCardQuestion(args.card);
+  const question = args.question ?? businessCardQuestion(args.card);
   await createPendingAction(args.supabase, {
     userId: args.userId,
     channel: args.channel,
     intent: BUSINESS_CARD_INTENT,
     originalContent: `[cartão de visita] ${args.card.name}`,
-    payload: { card: args.card, file_id: args.fileId },
+    payload: { card: args.card, file_id: args.fileId, ...(args.extraPayload ?? {}) },
     pendingQuestion: question,
     currentQuestion: "confirm_business_card",
     sourceMessageId: args.sourceMessageId,
