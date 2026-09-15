@@ -11,6 +11,7 @@ import type {
   AdapterMediaBytes,
   AdapterSendResult,
   ChannelAdapter,
+  NormalizedContactCard,
   NormalizedInbound,
   NormalizedMessageType,
 } from "./types";
@@ -54,8 +55,32 @@ function detectMessageType(msg: any): {
   if (msg?.video) return { kind: "unsupported", raw: "video" };
   if (msg?.sticker) return { kind: "unsupported", raw: "sticker" };
   if (msg?.location) return { kind: "unsupported", raw: "location" };
-  if (msg?.contact) return { kind: "unsupported", raw: "contact" };
+  if (msg?.contact) return { kind: "contact", raw: "contact" };
   return { kind: "unsupported", raw: "unknown" };
+}
+
+// Cartão de contacto nativo do Telegram (um por mensagem). O vCard, quando
+// existe, traz empresa/cargo/email que o objecto simples não tem.
+function parseTelegramContact(contact: any, vcardParsed: any): NormalizedContactCard[] {
+  if (!contact) return [];
+  const simpleName = [contact?.first_name, contact?.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const name = (vcardParsed?.fullName ?? simpleName ?? "").trim() || simpleName;
+  const phones: string[] = [];
+  if (contact?.phone_number) phones.push(String(contact.phone_number));
+  for (const p of vcardParsed?.phones ?? []) {
+    if (p && !phones.includes(String(p))) phones.push(String(p));
+  }
+  if (!name && phones.length === 0) return [];
+  return [{
+    name,
+    phones,
+    emails: (vcardParsed?.emails ?? []).map((e: string) => String(e)),
+    company: vcardParsed?.organization ?? null,
+    jobTitle: vcardParsed?.title ?? null,
+  }];
 }
 
 function fileIdFor(msg: any, raw: string): { fileId?: string; fileName?: string | null } {
@@ -129,6 +154,7 @@ export const telegramAdapter: ChannelAdapter = {
 
     let text: string | null = null;
     let media: NormalizedInbound["media"] = null;
+    let contacts: NormalizedContactCard[] | null = null;
     const caption: string | null = msg?.caption ?? msg?.document?.caption ?? null;
 
     if (kind === "text") {
@@ -154,6 +180,16 @@ export const telegramAdapter: ChannelAdapter = {
       }
       media = { externalFileId: fileId, fileName: fileName ?? null, mimeType: null, size: null, caption };
       text = caption;
+    } else if (kind === "contact") {
+      let vcardParsed: any = null;
+      if (typeof msg?.contact?.vcard === "string") {
+        try {
+          const { parseVCard } = require("@/lib/people/vcard") as typeof import("@/lib/people/vcard");
+          vcardParsed = parseVCard(msg.contact.vcard);
+        } catch { vcardParsed = null; }
+      }
+      contacts = parseTelegramContact(msg.contact, vcardParsed);
+      text = contacts.length ? `[contacto] ${contacts[0]!.name}`.trim() : "[contacto]";
     } else {
       text = `[${raw}]`;
     }
@@ -167,6 +203,7 @@ export const telegramAdapter: ChannelAdapter = {
       text,
       media,
       callback: null,
+      contacts,
       sender: msg?.from
         ? { firstName: msg.from.first_name ?? null, lastName: msg.from.last_name ?? null, username: msg.from.username ?? null }
         : null,

@@ -17,6 +17,7 @@ import type {
   AdapterMediaBytes,
   AdapterSendResult,
   ChannelAdapter,
+  NormalizedContactCard,
   NormalizedInbound,
   NormalizedMessageType,
 } from "./types";
