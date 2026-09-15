@@ -16,7 +16,25 @@ export const TEMPLATE_LANG = "pt_PT";
 const MORNING_TEMPLATE_LIMIT = 900;
 const MORNING_TEMPLATE_TRUNCATION_NOTE = "… (resto no painel: app.meuafonso.com/hoje)";
 
+/**
+ * A Cloud API rejeita parâmetros de template com quebras de linha, tabs ou
+ * espaços múltiplos (erro 132018). Qualquer texto que entre num parâmetro
+ * passa por aqui: as quebras viram " · " para manter a separação visual.
+ */
+export function templateParam(text: string | number | null | undefined): string {
+  return String(text ?? "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((l) => l.replace(/\t+/g, " ").trim())
+    .filter(Boolean)
+    .join(" · ")
+    .replace(/ {2,}/g, " ")
+    .replace(/(?: ·){2,}/g, " ·")
+    .trim();
+}
+
 /** Mantém cada item e secção legíveis no parâmetro do template matinal. */
+
 export function formatMorningTemplateList(text: string, limit = MORNING_TEMPLATE_LIMIT): string {
   const spaced = String(text ?? "")
     .replace(/[*_~`]/g, "")
