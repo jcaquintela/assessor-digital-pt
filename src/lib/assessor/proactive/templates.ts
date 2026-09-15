@@ -16,7 +16,25 @@ export const TEMPLATE_LANG = "pt_PT";
 const MORNING_TEMPLATE_LIMIT = 900;
 const MORNING_TEMPLATE_TRUNCATION_NOTE = "… (resto no painel: app.meuafonso.com/hoje)";
 
+/**
+ * A Cloud API rejeita parâmetros de template com quebras de linha, tabs ou
+ * espaços múltiplos (erro 132018). Qualquer texto que entre num parâmetro
+ * passa por aqui: as quebras viram " · " para manter a separação visual.
+ */
+export function templateParam(text: string | number | null | undefined): string {
+  return String(text ?? "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((l) => l.replace(/\t+/g, " ").trim())
+    .filter(Boolean)
+    .join(" · ")
+    .replace(/ {2,}/g, " ")
+    .replace(/(?: ·){2,}/g, " ·")
+    .trim();
+}
+
 /** Mantém cada item e secção legíveis no parâmetro do template matinal. */
+
 export function formatMorningTemplateList(text: string, limit = MORNING_TEMPLATE_LIMIT): string {
   const spaced = String(text ?? "")
     .replace(/[*_~`]/g, "")
@@ -51,8 +69,8 @@ export function morningTemplatePayload(name: string, list: string) {
       language: { code: TEMPLATE_LANG },
       components: [
         { type: "body", parameters: [
-          { type: "text", text: name },
-          { type: "text", text: list },
+          { type: "text", text: templateParam(name) },
+          { type: "text", text: templateParam(list) },
         ] },
       ],
     },
@@ -80,7 +98,7 @@ export function checkinTemplatePayload(title: string) {
       name: TEMPLATE_CHECKIN,
       language: { code: TEMPLATE_LANG },
       components: [
-        { type: "body", parameters: [{ type: "text", text: title }] },
+        { type: "body", parameters: [{ type: "text", text: templateParam(title) }] },
       ],
     },
   } as Record<string, unknown>;
@@ -98,7 +116,7 @@ export function checkinTemplatePayloadV2(title: string) {
       name: TEMPLATE_CHECKIN_V2,
       language: { code: TEMPLATE_LANG },
       components: [
-        { type: "body", parameters: [{ type: "text", text: title }] },
+        { type: "body", parameters: [{ type: "text", text: templateParam(title) }] },
       ],
     },
   } as Record<string, unknown>;
@@ -128,8 +146,8 @@ export function planActivatedTemplatePayload(name: string, plan: string) {
       language: { code: TEMPLATE_LANG },
       components: [
         { type: "body", parameters: [
-          { type: "text", text: name },
-          { type: "text", text: plan },
+          { type: "text", text: templateParam(name) },
+          { type: "text", text: templateParam(plan) },
         ] },
       ],
     },
@@ -165,7 +183,7 @@ export function planTrialStartTemplatePayload(plan: string) {
       name: TEMPLATE_PLAN_TRIAL_START,
       language: { code: TEMPLATE_LANG },
       components: [
-        { type: "body", parameters: [{ type: "text", text: plan }] },
+        { type: "body", parameters: [{ type: "text", text: templateParam(plan) }] },
       ],
     },
   } as Record<string, unknown>;
@@ -187,8 +205,8 @@ export function trialEndingTemplatePayload(name: string, days: number) {
       language: { code: TEMPLATE_LANG },
       components: [
         { type: "body", parameters: [
-          { type: "text", text: name },
-          { type: "text", text: String(days) },
+          { type: "text", text: templateParam(name) },
+          { type: "text", text: templateParam(days) },
         ] },
       ],
     },
@@ -265,7 +283,7 @@ export function meetingBriefingTemplatePayload(
       name: templateName,
       language: { code: language },
       components: params.length
-        ? [{ type: "body", parameters: params.map((text) => ({ type: "text", text })) }]
+        ? [{ type: "body", parameters: params.map((text) => ({ type: "text", text: templateParam(text) })) }]
         : [],
     },
   } as Record<string, unknown>;

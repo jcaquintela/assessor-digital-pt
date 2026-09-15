@@ -7,7 +7,7 @@ import { describe, it, expect } from "vitest";
 import { composeEnrichedBriefing, nextActionsWithoutRepeats, type BriefingPriority } from "./briefing-enriched";
 import { conflictCompact } from "@/lib/agenda/conflict-message";
 import { flattenForTemplate } from "./meeting-briefing";
-import { formatMorningTemplateList, morningTemplatePayload } from "./templates";
+import { formatMorningTemplateList, morningTemplatePayload, templateParam } from "./templates";
 
 const NOW = new Date("2026-09-08T07:00:00.000Z"); // 08:00 Lisboa
 
@@ -102,13 +102,34 @@ describe("briefing menos denso", () => {
       "Conflitos a resolver\n" +
       "• Hoje, 10:30 — Reunião A vs Reunião C",
     );
+    // No parâmetro do template a Meta não aceita quebras de linha (132018):
+    // o mesmo conteúdo segue numa linha só, separado por " · ".
     const payload = morningTemplatePayload("Julio", list) as any;
-    expect(payload.template.components[0].parameters[1].text).toBe(list);
+    const param = payload.template.components[0].parameters[1].text as string;
+    expect(param).not.toContain("\n");
+    expect(param).toBe(
+      "• Preparar o compromisso das 10:15: Reunião A · " +
+      "• Preparar o compromisso das 13:00: Reunião B · " +
+      "Conflitos a resolver · " +
+      "• Hoje, 10:30 — Reunião A vs Reunião C",
+    );
   });
 
   it("G6 — o briefing enriquecido mantém o espaçamento já validado", () => {
     expect(text).toContain("O que interessa hoje:\n\n🔴 P1");
     expect(text).toContain("\n\n⚠️ Conflitos a resolver");
     expect(text).toContain("Próximas ações\n1. Enviar a proposta ao Rui");
+  });
+});
+
+describe("parâmetros de template sem quebras de linha (erro 132018 da Meta)", () => {
+  it("achata quebras, tabs e espaços múltiplos", () => {
+    expect(templateParam("Linha 1\n\nLinha 2\n\tLinha  3")).toBe("Linha 1 · Linha 2 · Linha 3");
+  });
+  it("morningTemplatePayload nunca envia \\n num parâmetro", () => {
+    const payload = morningTemplatePayload("Júlio", "• A\n\n• B\nConflitos a resolver\n• C") as any;
+    for (const p of payload.template.components[0].parameters) {
+      expect(p.text).not.toMatch(/[\n\t]|  /);
+    }
   });
 });

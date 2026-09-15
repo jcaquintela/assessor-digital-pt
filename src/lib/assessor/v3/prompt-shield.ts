@@ -18,9 +18,15 @@ function norm(s: string): string {
     .trim();
 }
 
-// Aquilo que se tenta extrair.
+// Aquilo que se tenta extrair — inequivocamente interno.
 const TARGET_RE =
-  /(system ?prompt|\bprompt\b|instrucoes?|instrucao|configuracao(?:\s+interna)?|regras? (?:internas?|do sistema|de sistema|que (?:te |lhe )?(?:deram|definiram)|de \w+)|diretrizes|directrizes|guidelines|system message|texto (?:de )?sistema|tudo o que te (?:disseram|foi dito)|o que te programaram|lista de ferramentas|nomes das (?:tuas )?ferramentas)/;
+  /(system ?prompt|prompt (?:de |do )?(?:sistema|base)|(?:o |teu |teus |tua |tuas )prompt\b|(?:tuas?|suas?) instrucoes|instrucoes (?:internas?|do sistema|de sistema|que te (?:deram|definiram))|configuracao interna|regras? (?:internas?|do sistema|de sistema|que (?:te |lhe )?(?:deram|definiram))|diretrizes internas|directrizes internas|system message|texto (?:de )?sistema|tudo o que te (?:disseram|foi dito)|o que te programaram|nomes das (?:tuas )?ferramentas)/;
+
+// Alvos ambíguos: "regras de X", "instruções", "configuração", "prompt" soltos
+// aparecem em trabalho normal ("regras de crédito habitação", "instruções da
+// visita"). Só contam como extração quando vêm com um contorno explícito.
+const SOFT_TARGET_RE =
+  /(\bprompt\b|instrucoes?|instrucao|configuracao|regras? de \w+|diretrizes|directrizes|guidelines|lista de ferramentas)/;
 
 // Verbos/pedidos de exposição.
 const ASK_RE =
@@ -43,9 +49,9 @@ export function detectPromptExtraction(text: string): boolean {
   if (!t) return false;
   if (TRANSPARENCY_RE.test(t)) return false;
   if (TOOLS_RE.test(t) && BYPASS_RE.test(t)) return true;
-  const hasTarget = TARGET_RE.test(t);
-  if (!hasTarget) return false;
-  return ASK_RE.test(t) || BYPASS_RE.test(t);
+  const hasBypass = BYPASS_RE.test(t);
+  if (TARGET_RE.test(t)) return ASK_RE.test(t) || hasBypass;
+  return hasBypass && SOFT_TARGET_RE.test(t);
 }
 
 export const PROMPT_SHIELD_REPLY =

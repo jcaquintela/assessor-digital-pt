@@ -75,6 +75,20 @@ describe("período temporal em referências a leads", () => {
     expect(q).toMatch(/seguimento/);
   });
 
+  it("G4c — tarefas normais com palavras banais não pedem identidade da lead", () => {
+    for (const t of [
+      "Pedir contacto da imobiliária",
+      "Preparar documentos para o cliente",
+      "Levar chaves ao visitante da tarde",
+      "Ligar ao cliente hoje",
+    ]) {
+      expect(personPeriodReference(t, MONDAY), t).toBeNull();
+    }
+    expect(mentionsUnnamedLead("Pedir contacto da imobiliária")).toBe(false);
+    expect(mentionsUnnamedLead("Preparar documentos para o cliente")).toBe(false);
+    expect(mentionsUnnamedLead("Ligar ao cliente")).toBe(true);
+  });
+
   it("G4b — resposta com nome e número é lida como identidade da lead", () => {
     expect(leadNameFromAnswer("É a Maria Manuela, 912 345 678")).toBe("Maria Manuela");
     expect(leadNameFromAnswer("maria manuela")).toBe("Maria Manuela");
