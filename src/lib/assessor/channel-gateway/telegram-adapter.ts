@@ -7,6 +7,7 @@ import { AI_DISCLOSURE, aiDisclosureOpening } from "@/lib/assessor/ai-disclosure
 import { getTelegramProvider } from "@/lib/telegram/provider.server";
 import { resolveInteractiveReply } from "@/lib/assessor/interactive";
 import { linkChannelToUser } from "@/lib/assessor/channels.server";
+import { parseVCard } from "@/lib/people/vcard";
 import type {
   AdapterMediaBytes,
   AdapterSendResult,
@@ -183,10 +184,7 @@ export const telegramAdapter: ChannelAdapter = {
     } else if (kind === "contact") {
       let vcardParsed: any = null;
       if (typeof msg?.contact?.vcard === "string") {
-        try {
-          const { parseVCard } = require("@/lib/people/vcard") as typeof import("@/lib/people/vcard");
-          vcardParsed = parseVCard(msg.contact.vcard);
-        } catch { vcardParsed = null; }
+        try { vcardParsed = parseVCard(msg.contact.vcard); } catch { vcardParsed = null; }
       }
       contacts = parseTelegramContact(msg.contact, vcardParsed);
       text = contacts.length ? `[contacto] ${contacts[0]!.name}`.trim() : "[contacto]";
