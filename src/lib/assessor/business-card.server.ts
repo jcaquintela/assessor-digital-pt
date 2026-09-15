@@ -108,6 +108,8 @@ export async function confirmBusinessCardContact(args: {
   card: BusinessCard;
   fileId?: string | null;
   sourceMessageId?: string | null;
+  /** Números secundários vindos de um cartão partilhado. */
+  extraPhones?: string[];
 }): Promise<BusinessCardConfirmResult> {
   const { supabase, userId, card } = args;
 
@@ -158,6 +160,11 @@ export async function confirmBusinessCardContact(args: {
       };
     }
     personId = (data as { id: string }).id;
+  }
+
+  if (personId && args.extraPhones?.length) {
+    const { saveExtraPhones } = await import("./shared-contact.server");
+    await saveExtraPhones(supabase, userId, personId, args.extraPhones);
   }
 
   const vcf = buildContactVCard(card);
