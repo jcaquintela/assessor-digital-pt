@@ -12,6 +12,9 @@ import { lisbonYmd, lisbonLocalToUtcIso } from "@/lib/assessor/lisbon-day";
 /** Substantivos que, no discurso do consultor, designam uma pessoa. */
 const PERSON_NOUN = "(?:lead|leads|contacto|cliente|pessoa|senhora|senhor|comprador|compradora|propriet[aá]ri[oa]|interessad[oa]|visitante)";
 
+/** Substantivos ambíguos: só designam uma pessoa por identificar em contexto. */
+const OTHER_PERSON_NOUN = "(?:contacto|cliente|pessoa|senhora|senhor|comprador|compradora|propriet[aá]ri[oa]|interessad[oa]|visitante)";
+
 export interface PersonPeriodReference {
   /** Expressão tal como foi dita ("fim de semana"). */
   expression: string;
@@ -112,7 +115,9 @@ export function personPeriodReference(
     // O substantivo de pessoa tem de vir antes da expressão temporal, com no
     // máximo três palavras pelo meio ("a lead que entrou no fim de semana").
     const re = new RegExp(
-      `${PERSON_NOUN}\\s+(?:\\p{L}+\\s+){0,3}(?:do|da|de|no|na|em|desse|dessa|deste|desta)?\\s*(?:${e.re.source})`,
+      // A preposição é obrigatória: "a lead do fim de semana" é referência a
+      // um período; "ligar ao cliente hoje" é só uma tarefa para hoje.
+      `${PERSON_NOUN}\\s+(?:\\p{L}+\\s+){0,3}(?:do|da|de|no|na|em|desse|dessa|deste|desta)\\s+(?:${e.re.source})`,
       "u",
     );
     if (!re.test(t)) continue;
@@ -130,5 +135,15 @@ export function personPeriodReference(
 export function mentionsUnnamedLead(text: string | null | undefined): boolean {
   const t = foldText(text);
   if (!t) return false;
-  return new RegExp(`(?:^|[^\\p{L}])${PERSON_NOUN}(?![\\p{L}])`, "u").test(t);
+  // "lead" é sempre uma pessoa por identificar.
+  if (/(?:^|[^\p{L}])leads?(?![\p{L}])/u.test(t)) return true;
+  // Outros substantivos ("cliente", "pessoa", "proprietária") só contam
+  // quando são o destinatário directo de um contacto — "ligar ao cliente".
+  // "Pedir contacto da imobiliária" ou "documentos para o cliente" são
+  // tarefas normais e não devem bloquear a escrita.
+  const re = new RegExp(
+    `(?:ligar|telefonar|contactar|responder|escrever|falar|mensagem)\\s+(?:a|ao|as|aos|para|com|o)\\s+(?:a|o|as|os)?\\s*${OTHER_PERSON_NOUN}(?![\\p{L}])(?!\\s+(?:de|da|do|das|dos|para|com))`,
+    "u",
+  );
+  return re.test(t);
 }
