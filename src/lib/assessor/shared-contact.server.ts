@@ -34,17 +34,17 @@ export async function findExistingPersonForCard(
     } catch { /* best-effort */ }
   }
 
-  const filters: string[] = [];
-  if (card.phone) filters.push(`phone.eq.${card.phone}`);
-  if (digits && digits !== card.phone) filters.push(`phone.eq.${digits}`);
-  if (card.email) filters.push(`email.eq.${card.email}`);
-  if (filters.length) {
+  const lookups: Array<[string, string]> = [];
+  if (card.phone) lookups.push(["phone", card.phone]);
+  if (digits && digits !== card.phone) lookups.push(["phone", digits]);
+  if (card.email) lookups.push(["email", card.email]);
+  for (const [column, value] of lookups) {
     try {
       const { data } = await supabase
         .from("people")
         .select("id, name")
         .eq("user_id", userId)
-        .or(filters.join(","))
+        .eq(column, value)
         .limit(1);
       const hit = (data as any[])?.[0];
       if (hit?.id) return { id: String(hit.id), name: hit.name ?? null };
