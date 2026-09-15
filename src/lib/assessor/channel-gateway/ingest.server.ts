@@ -264,6 +264,11 @@ async function routeInbound(
     return;
   }
 
+  if (inbound.messageType === "contact") {
+    await handleInboundContact(adapter, supabaseAdmin, inbound, userId, persistedUuid);
+    return;
+  }
+
   await adapter.sendText(inbound.externalConversationId, adapter.replyUnsupported);
 }
 
@@ -515,6 +520,7 @@ async function handleBusinessCardAnswer(
       channel: adapter.channel,
       card,
       fileId: payload.file_id ?? null,
+      extraPhones: Array.isArray(payload.extra_phones) ? payload.extra_phones : [],
     });
     await markPendingActionStatus(supabaseAdmin, pending.id, res.ok ? "executed" : "failed");
 
@@ -529,7 +535,7 @@ async function handleBusinessCardAnswer(
       sender_phone: inbound.externalConversationId,
     } as never);
 
-    if (res.ok && res.vcard && res.card) {
+    if (res.ok && res.vcard && res.card && payload.source !== "shared_contact") {
       await deliverContactCard(adapter, inbound.externalConversationId, res.card, res.vcard);
     }
     return true;
@@ -539,6 +545,100 @@ async function handleBusinessCardAnswer(
       err instanceof Error ? err.message : err,
     );
     return false;
+  }
+}
+
+/**
+ * Cartão de contacto partilhado nativamente (WhatsApp/Telegram).
+ * Mesmo fluxo do cartão de visita fotografado: propor → confirmar → criar.
+ */
+async function handleInboundContact(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  persistedUuid: string | null,
+): Promise<void> {
+  const say = async (reply: string) => {
+    await deliverReply(adapter, supabaseAdmin, {
+      userId,
+      externalConversationId: inbound.externalConversationId,
+      outcome: { reply } as EngineOutcome,
+      replyTo: inbound.replyToMessageId ?? null,
+    });
+  };
+
+  try {
+    const first = (inbound.contacts ?? [])[0] ?? null;
+    if (!first) {
+      await adapter.sendText(inbound.externalConversationId, adapter.replyUnsupported);
+      return;
+    }
+
+    const { sharedContactToCard, missingContactReply, alreadyKnownReply } = await import(
+      "@/lib/assessor/shared-contact"
+    );
+    const parsed = sharedContactToCard(first);
+    if (!parsed.card) {
+      await say(missingContactReply(parsed));
+      return;
+    }
+    const card = parsed.card;
+
+    const { findExistingPersonForCard, hadRecentSaveRequest } = await import(
+      "@/lib/assessor/shared-contact.server"
+    );
+    const existing = await findExistingPersonForCard(supabaseAdmin, userId, card);
+    if (existing) {
+      if (parsed.extraPhones.length) {
+        const { saveExtraPhones } = await import("@/lib/assessor/shared-contact.server");
+        await saveExtraPhones(supabaseAdmin, userId, existing.id, parsed.extraPhones);
+      }
+      await say(alreadyKnownReply(existing.name ?? card.name));
+      return;
+    }
+
+    // O consultor já tinha pedido ("Guarda o contacto") — não repetimos a
+    // pergunta, gravamos já.
+    const asked = await hadRecentSaveRequest(
+      supabaseAdmin,
+      userId,
+      adapter.channel,
+      inbound.receivedAt,
+    );
+    if (asked) {
+      const { confirmBusinessCardContact } = await import("@/lib/assessor/business-card.server");
+      const res = await confirmBusinessCardContact({
+        supabase: supabaseAdmin,
+        userId,
+        channel: adapter.channel,
+        card,
+        sourceMessageId: persistedUuid,
+        extraPhones: parsed.extraPhones,
+      });
+      await say(res.reply);
+      return;
+    }
+
+    const { proposeBusinessCardContact } = await import("@/lib/assessor/business-card.server");
+    const bits = [card.name, card.company, card.phone ?? card.email].filter(Boolean).join(", ");
+    const question = await proposeBusinessCardContact({
+      supabase: supabaseAdmin,
+      userId,
+      channel: adapter.channel,
+      card,
+      fileId: null,
+      sourceMessageId: persistedUuid,
+      question: `Recebi o contacto de ${bits}. Registo nos contactos?`,
+      extraPayload: { extra_phones: parsed.extraPhones, source: "shared_contact" },
+    });
+    await say(question);
+  } catch (err) {
+    console.error(
+      `[channel-gateway/${adapter.channel}] shared-contact:`,
+      err instanceof Error ? err.message : err,
+    );
+    await adapter.sendText(inbound.externalConversationId, adapter.replyEngineError);
   }
 }
 
