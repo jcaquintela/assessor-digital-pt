@@ -535,7 +535,7 @@ async function handleBusinessCardAnswer(
       sender_phone: inbound.externalConversationId,
     } as never);
 
-    if (res.ok && res.vcard && res.card && payload.source !== "shared_contact") {
+    if (res.ok && res.vcard && res.card) {
       await deliverContactCard(adapter, inbound.externalConversationId, res.card, res.vcard);
     }
     return true;
@@ -617,6 +617,9 @@ async function handleInboundContact(
         extraPhones: parsed.extraPhones,
       });
       await say(res.reply);
+      if (res.ok && res.vcard && res.card) {
+        await deliverContactCard(adapter, inbound.externalConversationId, res.card, res.vcard);
+      }
       return;
     }
 
