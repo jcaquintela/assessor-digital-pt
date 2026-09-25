@@ -49,7 +49,7 @@ const openOnes = (sb: any) =>
   (sb.state.follow_ups as any[]).filter((f) => isFollowUpOpen(f));
 
 describe("1. ocorrência anterior ainda pendente", () => {
-  it("não cria nova ocorrência no dia seguinte", async () => {
+  it("é substituída pela do dia seguinte (fecha a antiga, cria a nova)", async () => {
     const sb = makeFakeSupabase({
       routines: [routine()],
       follow_ups: [occurrence("2026-08-11")],
@@ -57,9 +57,10 @@ describe("1. ocorrência anterior ainda pendente", () => {
     const res = await materializeDueRoutinesServer(sb as any, {
       now: new Date("2026-08-12T10:05:00.000Z"),
     });
-    expect(res.created).toBe(0);
-    expect(res.skipped).toBe(1);
-    expect(sb.state.follow_ups).toHaveLength(1);
+    expect(res.created).toBe(1);
+    expect(sb.state.follow_ups).toHaveLength(2);
+    expect(openOnes(sb)).toHaveLength(1);
+    expect(openOnes(sb)[0].external_reference).toBe(`routine:${RID}:2026-08-12`);
   });
 });
 
@@ -83,14 +84,13 @@ describe("2. ocorrência anterior concluída", () => {
 });
 
 describe("3. caso real do Pedro Cunha", () => {
-  it("3 dias consecutivos sem conclusão → 1 ocorrência, não 3", async () => {
+  it("3 dias consecutivos sem conclusão → só 1 aberta (a mais recente)", async () => {
     const sb = makeFakeSupabase({ routines: [routine({ next_run_at: "2026-08-11T10:00:00.000Z" })], follow_ups: [] });
     for (const dia of ["2026-08-11", "2026-08-12", "2026-08-13"]) {
       await materializeDueRoutinesServer(sb as any, { now: new Date(`${dia}T10:05:00.000Z`) });
     }
-    expect(sb.state.follow_ups).toHaveLength(1);
     expect(openOnes(sb)).toHaveLength(1);
-    expect(sb.state.follow_ups[0].external_reference).toBe(`routine:${RID}:2026-08-11`);
+    expect(openOnes(sb)[0].external_reference).toBe(`routine:${RID}:2026-08-13`);
   });
 });
 

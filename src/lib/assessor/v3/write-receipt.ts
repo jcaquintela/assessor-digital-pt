@@ -93,6 +93,20 @@ export function promisesFutureWrite(text: string | null | undefined): boolean {
   return PRESENT_WRITE_RE.test(String(text ?? ""));
 }
 
+// Frases que afirmam que uma alteração ficou feita/registada. Sem escrita real
+// por trás são mentira (caso real 19/09, Iolanda: "Fica anotado que a Lead Gen
+// é só às quintas-feiras" — nenhuma ferramenta correu e a rotina não mudou).
+const CLAIMS_SAVED_RE =
+  /\b(?:fica(?:\s+entao)?\s+(?:anotad[oa]|registad[oa]|guardad[oa]|alterad[oa]|atualizad[oa]|actualizad[oa]|combinad[oa])|anotei|registei|guardei|alterei|atualizei|actualizei|mudei|corrigi|ja\s+(?:esta|ficou)\s+(?:alterad[oa]|atualizad[oa]|corrigid[oa]))\b/i;
+
+export function claimsSavedChange(text: string | null | undefined): boolean {
+  const t = String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return CLAIMS_SAVED_RE.test(t);
+}
+
+export const NOT_SAVED_REPLY =
+  "Atenção: não consegui guardar essa alteração — ficou tudo como estava. Diz-me outra vez o que queres mudar e eu trato já.";
+
 export function enforceTransparentConfirmation(
   reply: string,
   tools: ToolOutcome[],
@@ -104,6 +118,9 @@ export function enforceTransparentConfirmation(
   // recibo. "Crio um contacto novo...?" bate no padrão de escrita no presente,
   // mas é uma pergunta ao consultor — trocá-la apaga o pedido em aberto.
   if (opts.pendingAsk) return withProspectingHint(out, tools);
+  // Nunca "fica anotado" sem nada gravado: diz claramente que não guardou.
+  const anyWrite = tools.some((t) => isRealWrite(t));
+  if (!anyWrite && claimsSavedChange(reply)) return NOT_SAVED_REPLY;
   if (claimsDelivery(reply)) out = receipt ?? "Guardei o registo no dashboard. Não enviei nada a ninguém.";
   else if (opts.executedOk && isBareAck(reply) && receipt) out = receipt;
   // Escrita feita, mas contada no presente/futuro: substituímos pelo recibo

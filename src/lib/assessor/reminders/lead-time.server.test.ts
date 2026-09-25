@@ -1,12 +1,15 @@
 // Garante que o instante do lembrete usa SEMPRE a antecedência configurada,
 // incluindo o caso 0 (aviso à hora do compromisso) e o fallback global.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+let currentSb: any = null;
+vi.mock("@/lib/security/settings-reader.server", () => ({ settingsClient: async () => currentSb }));
 import { getReminderLeadMinutes, reminderInstantFor } from "./lead-time.server";
 
 type Seed = { user?: number | null; global?: number | null; throws?: boolean };
 
 function fakeSupabase(seed: Seed) {
-  return {
+  return (currentSb = {
     from(table: string) {
       const api: any = {
         select: () => api,
@@ -21,7 +24,7 @@ function fakeSupabase(seed: Seed) {
       };
       return api;
     },
-  } as any;
+  } as any);
 }
 
 const EVENT = "2026-08-14T09:00:00.000Z";
