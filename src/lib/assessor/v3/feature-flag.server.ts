@@ -1,3 +1,4 @@
+import { settingsClient } from "@/lib/security/settings-reader.server";
 // Reasoning Engine v3 — feature flag gate.
 
 export const V3_FLAG_KEY = "assessor.engine.v3";
@@ -7,7 +8,7 @@ export async function isEngineV3Enabled(
   userId: string | null | undefined,
 ): Promise<boolean> {
   try {
-    const { data: flag } = await supabase
+    const { data: flag } = await (await settingsClient())
       .from("feature_flags")
       .select("enabled_globally")
       .eq("key", V3_FLAG_KEY)

@@ -1,3 +1,4 @@
+import { settingsClient } from "@/lib/security/settings-reader.server";
 // Notificações proativas: push da manhã (prioridades) e check-in da tarde
 // (resultado dos seguimentos). Canal: sempre o principal da conta
 // (WhatsApp > Telegram).
@@ -28,7 +29,7 @@ export async function templatesApproved(supabase?: any): Promise<boolean> {
   if (String(process.env.WHATSAPP_TEMPLATES_APPROVED ?? "").toLowerCase() === "true") return true;
   if (!supabase) return false;
   const { TEMPLATES_APPROVED_FLAG } = await import("@/lib/whatsapp/template-status.server");
-  const { data } = await supabase
+  const { data } = await (await settingsClient())
     .from("feature_flags")
     .select("enabled_globally")
     .eq("key", TEMPLATES_APPROVED_FLAG)

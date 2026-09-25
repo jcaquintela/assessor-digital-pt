@@ -1,3 +1,4 @@
+import { settingsClient } from "@/lib/security/settings-reader.server";
 import {
   DEFAULT_REMINDER_LEAD_MINUTES,
   applyLead,
@@ -18,7 +19,7 @@ export async function getReminderLeadMinutes(
         .select("reminder_lead_minutes")
         .eq("user_id", userId)
         .maybeSingle(),
-      supabase
+      (await settingsClient())
         .from("app_settings")
         .select("value_int")
         .eq("key", REMINDER_LEAD_SETTING_KEY)

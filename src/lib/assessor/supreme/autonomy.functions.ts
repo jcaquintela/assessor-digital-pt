@@ -1,3 +1,4 @@
+import { settingsClient } from "@/lib/security/settings-reader.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSupremeEnabled } from "./feature-flag.server";
@@ -31,7 +32,7 @@ export const getSupremePreferences = createServerFn({ method: "GET" })
         .select("action_type, requires_confirmation")
         .eq("user_id", context.userId),
       fetchEffectiveTier(context.supabase, context.userId),
-      context.supabase
+      (await settingsClient())
         .from("app_settings")
         .select("value_int")
         .eq("key", "reminder_lead_minutes")

@@ -1,3 +1,4 @@
+import { settingsClient } from "@/lib/security/settings-reader.server";
 // Feature flag da paleta operacional + sidebar consolidada (redesenho v2).
 // Regra: nunca activar globalmente sem aprovação; primeiro só por utilizador
 // via feature_flag_users. Kill switch: apagar a linha do utilizador (ou pôr
@@ -11,7 +12,7 @@ export async function isDesignV2Enabled(
 ): Promise<boolean> {
   if (!userId) return false;
   try {
-    const { data: flag } = await supabase
+    const { data: flag } = await (await settingsClient())
       .from("feature_flags")
       .select("enabled_globally")
       .eq("key", DESIGN_V2_FLAG_KEY)
