@@ -1,3 +1,4 @@
+import { settingsClient } from "@/lib/security/settings-reader.server";
 // Feature flag gate para o Assessor Supremo v1.
 // Regra: nunca activar globalmente sem aprovação; só por utilizador via feature_flag_users.
 
@@ -9,7 +10,7 @@ export async function isSupremeEnabled(
 ): Promise<boolean> {
   if (!userId) return false;
   try {
-    const { data: flag } = await supabase
+    const { data: flag } = await (await settingsClient())
       .from("feature_flags")
       .select("enabled_globally")
       .eq("key", SUPREME_FLAG_KEY)
@@ -29,7 +30,7 @@ export async function isSupremeEnabled(
 
 export async function listSupremeUsers(supabase: any): Promise<string[]> {
   try {
-    const { data: flag } = await supabase
+    const { data: flag } = await (await settingsClient())
       .from("feature_flags")
       .select("enabled_globally")
       .eq("key", SUPREME_FLAG_KEY)

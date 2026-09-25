@@ -1,3 +1,4 @@
+import { settingsClient } from "@/lib/security/settings-reader.server";
 // Assessor v2 — feature flag gate.
 //
 // Consulta `feature_flags(assessor.engine.v2)` para decidir se um utilizador
@@ -12,7 +13,7 @@ export async function isEngineV2Enabled(
   userId: string | null | undefined,
 ): Promise<boolean> {
   try {
-    const { data: flag } = await supabase
+    const { data: flag } = await (await settingsClient())
       .from("feature_flags")
       .select("enabled_globally, rollout_percentage")
       .eq("key", V2_FLAG_KEY)
