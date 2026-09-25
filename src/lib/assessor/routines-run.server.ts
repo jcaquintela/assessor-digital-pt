@@ -126,10 +126,9 @@ export async function materializeDueRoutinesServer(
       continue;
     }
 
-    // Ocorrências anteriores desta MESMA rotina. Duas razões para não criar:
-    //   a) já existe a ocorrência de hoje (idempotência do cron);
-    //   b) uma ocorrência anterior continua por fechar — nesse caso a tarefa
-    //      que já existe é que vale, fica em atraso, e não se acumulam cópias.
+    // Ocorrências anteriores desta MESMA rotina. Uma ocorrência vale só para o
+    // seu dia: se ficou por fechar, é substituída pela seguinte (fechada como
+    // cancelada) em vez de ficar presa em atraso e bloquear as próximas.
     const { data: prior } = await supabase
       .from("follow_ups")
       .select("id, status, outcome, archived_at, external_reference")
@@ -138,8 +137,14 @@ export async function materializeDueRoutinesServer(
       .limit(200);
     const priorRows = ((prior as any[]) ?? []);
     const hasToday = priorRows.some((f) => f.external_reference === ref);
-    const hasOpen = priorRows.some((f) => isFollowUpOpen(f));
-    if (hasToday || hasOpen) {
+    const stale = hasToday ? [] : priorRows.filter((f) => isFollowUpOpen(f) && f.external_reference !== ref);
+    if (stale.length) {
+      await supabase
+        .from("follow_ups")
+        .update({ status: "cancelado", outcome: "substituida_pela_seguinte" } as never)
+        .in("id", stale.map((f) => f.id));
+    }
+    if (hasToday) {
       skipped += 1;
     } else {
 
