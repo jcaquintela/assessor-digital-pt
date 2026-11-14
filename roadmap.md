@@ -104,3 +104,10 @@
 - [ ] Menu V2 nas páginas Subscrição/Canais/Definições
 - [ ] Ligar interruptores para Júlio (G1) — aguarda autorização expressa
 
+
+## Staging independente AFONSO 2.0 (14/11/2026, NÃO publicar)
+- [x] Inspeção de limites (projetos, rascunhos, segredos, tarefas agendadas, migrações)
+- [x] Verificação de isolamento + dados sintéticos + barreira na base (testes verdes)
+- [ ] Criar projeto separado (remix) — aguarda o proprietário
+- [ ] Bot Telegram de teste, número WhatsApp de teste, Stripe de teste próprio — aguarda o proprietário
+- [ ] Ligar a restrição de destinatários aos envios no staging e correr E2E — depende dos passos anteriores

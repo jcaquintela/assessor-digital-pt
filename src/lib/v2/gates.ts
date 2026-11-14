@@ -76,7 +76,7 @@ export const AFONSO_V2_GATES: readonly Gate[] = [
       { id: "rls_estatico", label: "RLS ligado e sem políticas abertas em todas as tabelas", status: "met", evidence: "auditoria de catálogo 14/11/2026: 105/105 tabelas com RLS" },
       { id: "isolamento_e2e", label: "Isolamento entre contas demonstrado E2E", status: "not_met", evidence: "falta backend de testes independente" },
       { id: "canais_e2e", label: "E2E reais WhatsApp e Telegram", status: "not_met", evidence: "não executado" },
-      { id: "ambiente_testes", label: "Ambiente de testes independente", status: "not_met", evidence: "faltam segredos TEST_SUPABASE_*" },
+      { id: "ambiente_testes", label: "Ambiente de testes independente", status: "not_met", evidence: "staging não criado: falta projeto separado e credenciais de teste (docs/v2/staging-ambiente.md)" },
       { id: "teto_1_dia", label: "Máx. 1 intervenção não solicitada/dia", status: "met", evidence: "daily-cap / intervention-gate (unitários, interruptor desligado)" },
       { id: "aprovacao_externa", label: "Nada sai para terceiros sem aprovação", status: "met", evidence: "testes action-first e confirmação de email" },
       { id: "portal_minimo", label: "Portal V2 sem áreas comerciais", status: "met", evidence: "portal-scope.test.ts (interruptor desligado)" },
