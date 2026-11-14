@@ -1,115 +1,156 @@
-# Adenda: lançamento por convite (Afonso 29 €/mês)
+# Adenda: early access por convites com registo aberto (Afonso 29 €/mês)
 
-Faz parte do plano de transição para o plano único. Este documento é só plano: não altera produção, código, base de dados, Stripe nem interruptores.
+Esta adenda substitui o modelo anterior em que tudo era só por convite. Integra-se no plano de transição para o plano único: 29 €/mês com WhatsApp e Telegram em simultâneo. É só plano: não altera código, base de dados, Stripe, interruptores nem produção.
 
 ## 1. Decisões fechadas vs sugestões
 
 | Tema | Estado |
 |---|---|
-| Entrada no lançamento só por convite individual de uso único | DECISÃO FECHADA |
-| Trial de 14 dias sem cartão, que começa na primeira mensagem válida depois de aceitar o convite | DECISÃO FECHADA (igual ao plano de billing) |
-| Beta testers e subscritores atuais continuam sem precisar de convite | DECISÃO FECHADA |
-| Página pública sem registo livre, com pedido de acesso / lista de espera | DECISÃO FECHADA |
-| Interruptor próprio com possibilidade de voltar atrás | DECISÃO FECHADA |
-| Preço de 29 €/mês | HIPÓTESE (não é decisão de preço) |
-| Convite válido 7 dias | SUGESTÃO |
-| Ritmo de entrada (ondas de 10, 25, 50 e depois semanal) | SUGESTÃO |
-| Limite de convites por administrador ou por dia (20/dia) | SUGESTÃO |
-| Convites por indicação de consultores | SUGESTÃO, fica fora da V1 |
+| O registo web fica aberto. Qualquer pessoa cria conta, liga o WhatsApp por QR (ou o Telegram) e escreve "Olá Afonso" | FECHADA |
+| Sem convite válido ou acesso beta, não há trial nem funções comerciais | FECHADA |
+| Os 14 dias de trial, sem cartão, começam na primeira mensagem válida DEPOIS de o acesso ser ativado | FECHADA |
+| Quem já tem acesso (beta testers e subscritores) mantém-no, sem convite retroativo | FECHADA |
+| Cada beta tester ativo pode gerar 3 convites de uso único, válidos 7 dias, partilhados através do Afonso | FECHADA (quota inicial) |
+| Não há recompensas em dinheiro por convidar | FECHADA |
+| Lista de espera com consentimento de contacto e opção de aviso | FECHADA |
+| Não revelar se um número ou email já tem conta | FECHADA |
+| Preço de 29 €/mês | HIPÓTESE |
+| Repor a quota de convites (por exemplo +3 por cada convidado que ative) | SUGESTÃO |
+| Subscritores pagos também poderem convidar | SUGESTÃO, decisão pendente |
 | Tempo de guarda da lista de espera (12 meses) | SUGESTÃO, precisa de validação jurídica |
 
 ## 2. O que já existe (lido no código)
 
-- Já existem convites só para Telegram, com página de administração (Convites). Mas o código é gerado com aleatoriedade fraca, fica guardado em texto legível, dura 30 dias por defeito e não serve para WhatsApp.
-- Há duas páginas abertas de registo livre: "registo" e "auth".
-- Uma conta Telegram é criada sozinha na primeira mensagem, no plano base.
-- Já há associação por código entre WhatsApp e Telegram e uma ligação segura entre contas, que ficou desligada na fase anterior.
+- Existem convites só para Telegram, com página de administração. O código é gerado com aleatoriedade fraca, fica guardado em texto legível e dura 30 dias por defeito.
+- As páginas "registo" e "auth" já permitem registo aberto.
+- O Telegram cria conta sozinho na primeira mensagem, no plano base. Isto vai passar a criar só uma conta em espera, sem acesso.
+- O plano de billing já tem trial único por pessoa. Hoje o trial pode arrancar na escolha do canal, o que tem de ser corrigido.
 
-## 3. Como funciona o convite
+## 3. Estados da conta
 
 ```text
-Admin emite → link/QR enviado ao convidado → convidado abre e escolhe o canal
-→ primeira mensagem com o código de uso único → conta criada e canal ligado
-→ trial de 14 dias começa nesta mensagem → convite fica "usado"
+registered_waiting ──(convite válido / promoção admin)──> invited
+invited ──(1.ª mensagem válida após ativação)──> activated → trialing (14 dias)
+trialing ──(pagamento)──> subscribed
+trialing ──(fim sem pagar)──> expired (os dados ficam guardados)
+contas antigas com acesso ──(migração)──> trialing ou subscribed conforme o estado atual
 ```
 
-- **Estados:** emitido, enviado, aberto, usado, expirado, revogado.
-- **Administração:** emitir (com nota, email ou telefone do destinatário, validade), revogar, reenviar (o código antigo deixa de valer), ver estado e histórico. Cada ação fica registada.
-- **Ligação:** cada convite fica preso a uma conta e ao primeiro canal. O segundo canal liga-se pela associação segura que já existe, nunca com um segundo convite.
+- Estes estados vivem só no servidor. Só `trialing` e `subscribed` dão acesso às funções comerciais.
+- O QR, a ligação do canal e o "Olá" em `registered_waiting` nunca criam trial.
+- `activated` existe para registar o momento exato da ativação. O trial arranca na primeira mensagem válida seguinte, como no plano de billing.
 
-## 4. Segurança
+## 4. Como funciona para o consultor
 
-- Código aleatório seguro com pelo menos 128 bits, dentro do link. Na base de dados só fica o resumo (hash) do código.
-- O código é usado uma única vez através de uma operação única na base de dados, por isso dois usos ao mesmo tempo dão no máximo um sucesso.
-- Respostas iguais para código inválido, expirado, usado ou revogado, para não revelar quais códigos existem. Há limite de tentativas por chat, número e endereço IP.
-- O trial é único por pessoa (telefone, Telegram e email), como no plano de billing. Um novo convite nunca reinicia um trial já gasto.
-- O convite não guarda dados pessoais no link.
+1. Regista-se na web, escolhe o canal, lê o QR (ou abre o link do Telegram) e escreve "Olá Afonso".
+2. Se não tiver acesso, recebe esta resposta (PT-PT):
+   > "Olá! Sou o Afonso 👋 Ainda estou em acesso antecipado, só por convite. Tens um código? Envia-mo aqui. Se não tiveres, posso pôr-te na lista de espera, ou podes pedir um convite a um colega que já me use."
+3. Se enviar um código válido:
+   > "Convite aceite. Bem-vindo! Tens 14 dias para me experimentar, sem cartão. Para começar, diz-me as 3 coisas mais importantes no teu negócio esta semana."
+   Esta mensagem conta como a primeira mensagem válida, ou seja, o trial começa aqui.
+4. Se o código for inválido, expirado ou já usado, a resposta é sempre a mesma:
+   > "Esse código não está válido. Confirma com quem to enviou, ou entra na lista de espera."
+5. Lista de espera:
+   > "Posso avisar-te quando houver lugar. Aceitas que te contacte por aqui e por email só para isso? (sim/não)"
+   Só fica registado depois de um "sim". Pode sair a qualquer momento escrevendo "sair da lista".
+6. Qualquer outro pedido em espera recebe uma resposta curta a lembrar as duas opções. Nada é gravado como dado comercial.
 
-## 5. Fechar todas as portas de entrada (com o interruptor ligado)
+## 5. Convites dados por beta testers
 
-- As páginas "registo" e "auth" deixam de criar contas novas sem convite. O login de quem já tem conta continua.
-- O Telegram deixa de criar conta sozinho: sem convite, recebe uma resposta neutra com o link da lista de espera.
-- No WhatsApp, um número desconhecido sem código recebe a mesma resposta neutra.
-- Também ficam fechados o Google, o "Sign in with Lovable", o MCP, as ligações entre contas, os convites Telegram antigos (que deixam de ser aceites, ou passam a valer só até expirarem) e as funções do servidor que criam perfis.
-- Uma verificação no servidor recusa criar qualquer conta sem convite válido ou sem estar na lista de exceções. Isto não depende só do ecrã.
+- O beta tester pede "dá-me um convite" e recebe um link ou código pronto a reencaminhar:
+  > "Aqui tens um convite pessoal, válido 7 dias: [link]. Restam-te 2."
+- O beta tester pode perguntar "os meus convites" para ver o estado de cada um e quantos lhe restam, e pode dizer "anula o convite X".
+- A quota é verificada no servidor de forma atómica, por isso pedidos ao mesmo tempo não ultrapassam os 3.
+- Cada convite guarda quem o deu e a sua origem (beta tester, admin ou lista de espera), para medir indicações.
+- O Afonso nunca envia o convite a terceiros sozinho. É o consultor que o partilha.
 
-## 6. Quem fica de fora da regra
+## 6. Segurança e antifraude
 
-- Contas que já existem quando o interruptor é ligado, beta testers e subscritores com ou sem pagamento: entram numa lista de exceções no dia de ativação e não precisam de convite.
-- A equipa interna fica numa lista de permissões própria.
+- Código aleatório seguro, com pelo menos 128 bits no link. Pode haver também uma versão curta para escrever à mão, com limite de tentativas. Na base de dados só fica guardado o resumo (hash) do código.
+- O código só pode ser usado uma vez, através de uma operação única na base de dados.
+- Respostas iguais em todos os casos de erro. Há limite de tentativas por chat, número e endereço IP.
+- O convite não serve para quem o deu, nem para outra conta da mesma pessoa. O trial é único por telefone, Telegram e email, e um convite novo nunca reinicia um trial já gasto.
+- Sinais de alerta: muitos convidados sem uso, padrões de contas em série. Nesses casos, a quota do beta tester congela e fica em revisão manual.
+- Respostas neutras: nunca dizer "este número já tem conta".
 
-## 7. Lista de espera (página pública)
+## 7. Fechar as portas alternativas
 
-- Pede nome, email, telefone opcional, agência ou zona opcional, e um consentimento explícito e separado. Diz para que servem os dados e por quanto tempo ficam guardados.
-- Tem proteção contra bots e limite de pedidos, e responde sempre o mesmo, mesmo que o email já esteja na lista.
-- Quem está na lista pode pedir para sair ou para apagar os dados. O admin promove pedidos a convite.
-- A página pública meuafonso.com não é alterada sem acesso e autorização. Aqui só se planeia o formulário e o destino dos dados.
+Todos os caminhos de entrada passam por uma única verificação de acesso no servidor:
 
-## 8. Limites e entrada progressiva
+- Web: registo e login, Google e "Sign in with Lovable".
+- WhatsApp e Telegram: o Telegram deixa de criar conta com acesso sozinho.
+- MCP e chat do painel.
+- Convites Telegram antigos.
+- Ligação de um segundo canal: herda o acesso da conta, só com prova de posse.
+- Funções de servidor que criam perfis.
 
-- Um teto global de convites ativos e um teto diário, ambos configuráveis (sugestão acima).
-- Avançar de onda só quando a ativação e a saúde técnica forem aceitáveis (critérios na secção 9).
+Sem acesso, o motor do Afonso não corre e só a resposta de early access é enviada.
 
-## 9. Métricas
+## 8. Administração
 
-Funil: convite emitido → aberto → usado (ativação) → primeiro resultado útil em menos de 2 minutos → uso no dia 7 e no dia 14 → conversão a pagante no fim do trial → retenção ao dia 28.
+- Emitir convites manuais, promover pessoas da lista de espera, revogar convites, ajustar ou congelar a quota de um beta tester.
+- Ver o funil e a árvore de indicações. Cada ação fica registada.
 
-- Medidas por onda e por canal, com o tempo entre cada passo.
-- É correlação, não prova de causa: comparar ondas, não pessoas.
-- Avisos de alerta: muitas tentativas inválidas, uso do mesmo convite em vários sítios, contas criadas fora do fluxo (o objetivo é zero).
+## 9. Casos-limite
 
-## 10. Interruptor e voltar atrás
+- Conta com os dois canais: um só convite e um só trial.
+- Código enviado no canal B quando a conta foi criada no canal A: ativa a mesma conta, se o canal já estiver associado.
+- Convite que expira enquanto está a ser usado: vale o momento em que é consumido.
+- Conta que é revogada depois de usar o convite: o acesso mantém-se. Retirá-lo é uma decisão do admin.
+- Beta tester que perde o acesso: os convites dele que ainda não foram usados são anulados.
+- Alguém que pediu para apagar os dados: sai da lista de espera e os convites ligados a essa pessoa são anulados.
+- Mensagens fora de horas ou ao domingo: a resposta de early access responde a uma mensagem do consultor, por isso é permitida.
 
-- Interruptor `access.invite_only.v1`, desligado por defeito. Com ele desligado, tudo funciona como hoje.
-- Ao ligar: criar primeiro a lista de exceções e só depois ligar.
-- Voltar atrás: desligar o interruptor. Convites, lista de espera e trials ficam guardados, e nada é apagado.
+## 10. Lançamento gradual e voltar atrás
 
-## 11. Testes de fuga (antes de ligar)
+- Interruptores, todos desligados até haver aprovação:
+  - `access.early_access_gate.v1`: a verificação de acesso.
+  - `access.referral_invites.v1`: os convites dados por beta testers, ativados por conta.
+  - `access.waitlist.v1`: a lista de espera.
+- Ordem: (1) migrar quem já tem acesso para os estados novos; (2) ligar a verificação para contas novas; (3) ligar os convites para 2–3 beta testers; (4) ligar para todos os beta testers.
+- Voltar atrás: desligar a verificação. As contas em espera passam a comportar-se como hoje, com trial no primeiro contacto válido. Convites, lista de espera e indicações ficam guardados.
 
-1. Criar conta direto nas páginas "registo" e "auth" e diretamente no sistema de contas, sem convite → recusado.
-2. Primeira mensagem no Telegram sem convite → nenhuma conta criada.
-3. Número de WhatsApp desconhecido → nenhuma conta criada.
-4. Google, Lovable e MCP com um email novo → recusado.
-5. Convite usado, expirado, revogado ou inventado → a mesma resposta neutra.
-6. Duas pessoas a usar o mesmo convite ao mesmo tempo → só uma conta.
-7. Ligação de um segundo canal sem prova de posse → recusada.
-8. Beta tester ou subscritor existente → entra normalmente.
-9. O trial começa na primeira mensagem válida e não no momento em que o convite é aceite.
-10. Desligar o interruptor → volta o comportamento atual.
+## 11. Métricas
 
-## 12. Checklist e decisões pendentes do proprietário
+- Funil: registo → canal ligado → "Olá" → convite validado → trial iniciado → primeiro resultado útil em menos de 2 minutos → uso no dia 7 e no dia 14 → subscrição → retenção ao dia 28.
+- Indicações: convites gerados, usados e convertidos por beta tester, e o fator viral (convidados ativos por cada consultor ativo).
+- Lista de espera: entradas, consentimentos dados e promoções a convite.
+- São correlações, não causas: comparar ondas de entrada.
 
-- [ ] Confirmar a validade de 7 dias.
-- [ ] Confirmar os tetos e as ondas de entrada.
-- [ ] Decidir se os convites Telegram antigos que ainda não foram usados se mantêm ou são revogados.
-- [ ] Rever com jurista o texto de consentimento e o tempo de guarda da lista de espera.
-- [ ] Decidir o canal de envio do convite (email ou manual pelo admin).
-- [ ] Autorizar o formulário na página pública meuafonso.com.
-- [ ] Rever a lista de exceções antes de ligar o interruptor.
-- [ ] Ter todos os testes de fuga verdes antes de qualquer ativação.
+## 12. Privacidade
+
+- O consentimento para a lista de espera é separado e explícito, com finalidade e prazo de guarda.
+- O convite não leva dados pessoais.
+- A origem do convite só é visível ao admin e, de forma agregada, ao próprio beta tester. O beta tester vê se o convite foi usado, mas não vê os dados do convidado.
+
+## 13. Testes antes de ligar
+
+1. Registo web, QR e "Olá" sem convite → estado `registered_waiting`, sem trial.
+2. Telegram ou WhatsApp sem convite → resposta de early access e nenhum dado comercial gravado.
+3. Código válido → trial começa nessa mensagem; o mesmo código usado uma segunda vez é recusado.
+4. Duas pessoas a usar o mesmo código ao mesmo tempo → só uma ativação.
+5. Quarto convite pedido por um beta tester → recusado; pedidos em paralelo também não passam de 3.
+6. Código expirado, revogado ou inventado → a mesma resposta neutra.
+7. MCP, chat do painel, Google ou ligação de um segundo canal sem acesso → bloqueado.
+8. Contas antigas → acesso mantido.
+9. Desligar os interruptores → volta o comportamento atual.
+
+## 14. Decisões pendentes (checklist)
+
+- [ ] Regra para repor a quota de convites.
+- [ ] Subscritores pagos podem convidar?
+- [ ] Revisão jurídica do texto de consentimento e do prazo de guarda.
+- [ ] Destino dos convites Telegram antigos.
+- [ ] Validar o texto final das mensagens.
+- [ ] Autorizar o formulário de lista de espera na página pública meuafonso.com.
 
 ## Detalhes técnicos
 
-- Planeado de forma aditiva: tabela `access_invites` (`token_hash`, `status`, `expires_at`, `revoked_at`, `used_by`, `used_channel`, `wave`), função de uso único atómica `consume_access_invite`, tabelas `access_allowlist` e `waitlist_requests`, gancho no momento de criação de conta e verificação na criação de perfil.
-- Reaproveita o padrão de `telegram_invites` e `admin/convites`, mas com hash e `crypto.getRandomValues`.
-- O início do trial usa o mesmo ponto já definido no plano de billing.
+- Planeado de forma aditiva:
+  - `account_access` (estado e momentos de cada mudança).
+  - `access_invites` (`token_hash`, `issuer_user_id`, `source`, `status`, `expires_at`, `used_by`, `used_channel`).
+  - `invite_quotas`.
+  - `waitlist_requests` (com consentimento).
+  - Funções atómicas `consume_access_invite` e `issue_referral_invite`.
+- A verificação de acesso entra no ponto único de mensagens recebidas, antes do motor.
+- O início do trial usa o ponto definido no plano de billing.
