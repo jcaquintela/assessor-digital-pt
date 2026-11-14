@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:briefing": "vitest run src/lib/assessor/briefing-cases.golden.test.ts src/lib/assessor/briefing-simulator.test.ts src/lib/assessor/agenda-leisure.test.ts src/lib/assessor/outcome-eligibility.test.ts",
     "test:isolation": "vitest run src/lib/assessor/storage-isolation.test.ts",
+    "test:pilot": "vitest run src/lib/pilot src/lib/access src/lib/subscription src/lib/assessor/pre-pilot src/lib/assessor/cross-channel src/lib/assessor/eval src/lib/assessor/qualification src/lib/assessor/listing src/lib/assessor/deal src/lib/assessor/commercial src/lib/assessor/proactive/daily-cap.golden.test.ts src/lib/assessor/proactive/nudge-expiry.golden.test.ts src/lib/messaging src/lib/assessor/channel-gateway/inbound-claim.test.ts src/lib/assessor/channel-gateway/delivery-idempotency.test.ts src/lib/assessor/channel-gateway/channel-parity.test.ts src/lib/assessor/storage-isolation.guard.test.ts",
     "test:e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {
@@ -75,7 +76,7 @@
     "vite-plugin-pwa": "^1.3.0",
     "vite-tsconfig-paths": "^6.0.2",
     "workbox-window": "^7.4.1",
-    "zod": "^4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

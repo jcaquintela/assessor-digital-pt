@@ -24,6 +24,12 @@ async function runInboundPipelineInner(
 ): Promise<void> {
   // 1. Dedupe.
   if (await adapter.isAlreadyProcessed(supabaseAdmin, inbound.externalMessageId)) return;
+  // 1a. Reserva atómica: duas entregas simultâneas da mesma mensagem → só uma corre.
+  {
+    const { claimInboundMessage } = await import("./inbound-claim.server");
+    const claim = await claimInboundMessage(supabaseAdmin, inbound.channel, inbound.externalMessageId);
+    if (claim === "duplicate") return;
+  }
 
   // 2. Reacções e afins: só regista, sem resposta.
   if (inbound.messageType === "reaction") {

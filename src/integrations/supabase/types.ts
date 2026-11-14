@@ -2632,6 +2632,27 @@ export type Database = {
           },
         ]
       }
+      inbound_message_claims: {
+        Row: {
+          attempts: number
+          channel: string
+          claimed_at: string
+          external_message_id: string
+        }
+        Insert: {
+          attempts?: number
+          channel: string
+          claimed_at?: string
+          external_message_id: string
+        }
+        Update: {
+          attempts?: number
+          channel?: string
+          claimed_at?: string
+          external_message_id?: string
+        }
+        Relationships: []
+      }
       interactions: {
         Row: {
           archived_at: string | null
@@ -5189,6 +5210,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_inbound_message: {
+        Args: {
+          _channel: string
+          _external_id: string
+          _stale_seconds?: number
+        }
+        Returns: boolean
+      }
       claim_pending_confirmation: {
         Args: {
           _ids: string[]

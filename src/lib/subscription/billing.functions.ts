@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createStripeClient, getStripeErrorMessage, type StripeEnv } from "@/lib/stripe.server";
+import { isAllowedReturnUrl, isCheckoutPriceAllowed, stripePriceProblem } from "./checkout-policy";
 
 type CheckoutSessionResult = { clientSecret: string } | { error: string };
 
@@ -42,9 +43,13 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { priceId: string; returnUrl: string; environment: StripeEnv }) => {
     if (!/^[a-zA-Z0-9_-]+$/.test(data.priceId)) throw new Error("Invalid priceId");
+    if (data.environment !== "sandbox" && data.environment !== "live") throw new Error("Invalid environment");
     return data;
   })
   .handler(async ({ data, context }): Promise<CheckoutSessionResult> => {
+    // Lista fechada no servidor: só os planos que vendemos e só regressos à app.
+    if (!isCheckoutPriceAllowed(data.priceId)) return { error: "Este plano não está disponível." };
+    if (!isAllowedReturnUrl(data.returnUrl)) return { error: "Endereço de regresso não permitido." };
     try {
       const { supabase, userId } = context;
       const {
@@ -53,8 +58,9 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
 
       const stripe = createStripeClient(data.environment);
       const prices = await stripe.prices.list({ lookup_keys: [data.priceId] });
-      if (!prices.data.length) throw new Error("Price not found");
       const stripePrice = prices.data[0];
+      const problem = stripePriceProblem(stripePrice as any, data.priceId);
+      if (problem) return { error: problem };
 
       const customerId = await resolveOrCreateCustomer(stripe, {
         email: user?.email ?? undefined,
@@ -82,8 +88,12 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
 // Portal do cliente (cancelar, mudar cartão, ver faturas).
 export const createBillingPortal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { returnUrl?: string; environment: StripeEnv }) => data)
+  .inputValidator((data: { returnUrl?: string; environment: StripeEnv }) => {
+    if (data.environment !== "sandbox" && data.environment !== "live") throw new Error("Invalid environment");
+    return data;
+  })
   .handler(async ({ data, context }): Promise<{ url: string } | { error: string }> => {
+    if (data.returnUrl && !isAllowedReturnUrl(data.returnUrl)) return { error: "Endereço de regresso não permitido." };
     const { supabase, userId } = context;
     const { data: profile } = await supabase
       .from("profiles")

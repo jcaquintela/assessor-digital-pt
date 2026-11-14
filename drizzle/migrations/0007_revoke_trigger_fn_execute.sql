@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.account_access_on_new_profile() FROM PUBLIC, anon, authenticated;
