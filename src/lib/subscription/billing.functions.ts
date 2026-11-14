@@ -1,7 +1,28 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createStripeClient, getStripeErrorMessage, type StripeEnv } from "@/lib/stripe.server";
-import { isAllowedReturnUrl, isCheckoutPriceAllowed, stripePriceProblem } from "./checkout-policy";
+import {
+  CHECKOUT_FLAG, checkoutGateProblem, isAllowedReturnUrl, isCheckoutPriceAllowed, onRequestTiers,
+  sellablePriceIds, stripePriceProblem, type PlanConfigRow,
+} from "./checkout-policy";
+import { checkoutEnvProblem } from "./billing-guard";
+
+// Contexto do servidor para decidir o que esta conta pode abrir (nunca o navegador).
+async function checkoutContext(userId: string) {
+  const { supabaseAdmin: sa } = await import("@/integrations/supabase/client.server");
+  const { isAccountFlagEnabled } = await import("@/lib/flags/account-flag.server");
+  const [t, plans, flagOn] = await Promise.all([
+    sa.from("billing_test_accounts").select("user_id").eq("user_id", userId).maybeSingle(),
+    sa.from("plan_configs").select("tier, status, pricing_mode"),
+    isAccountFlagEnabled(sa, CHECKOUT_FLAG, userId),
+  ]);
+  return {
+    isTestAccount: Boolean(t.data),
+    liveConfigured: Boolean(process.env.STRIPE_LIVE_API_KEY),
+    flagOn,
+    configs: (plans.data ?? []) as PlanConfigRow[],
+  };
+}
 
 type CheckoutSessionResult = { clientSecret: string } | { error: string };
 
@@ -50,6 +71,14 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
     // Lista fechada no servidor: só os planos que vendemos e só regressos à app.
     if (!isCheckoutPriceAllowed(data.priceId)) return { error: "Este plano não está disponível." };
     if (!isAllowedReturnUrl(data.returnUrl)) return { error: "Endereço de regresso não permitido." };
+    const ctx = await checkoutContext(context.userId);
+    const envProblem = checkoutEnvProblem(data.environment, ctx);
+    if (envProblem) return { error: envProblem };
+    const gate = checkoutGateProblem({ flagOn: ctx.flagOn, env: data.environment, isTestAccount: ctx.isTestAccount });
+    if (gate) return { error: gate };
+    if (!sellablePriceIds(ctx.configs).includes(data.priceId)) {
+      return { error: "Este plano não tem subscrição direta. Pede uma proposta." };
+    }
     try {
       const { supabase, userId } = context;
       const {
@@ -97,11 +126,14 @@ export const createBillingPortal = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, billing_environment")
       .eq("id", userId)
       .maybeSingle();
     const customerId = (profile as any)?.stripe_customer_id as string | null | undefined;
     if (!customerId) return { error: "Ainda não há subscrição associada a esta conta." };
+    // O portal abre no ambiente onde a subscrição existe, nunca noutro.
+    const profileEnv = (profile as any)?.billing_environment ?? "sandbox";
+    if (data.environment !== profileEnv) return { error: "Esta subscrição não está neste ambiente de pagamentos." };
     try {
       const stripe = createStripeClient(data.environment);
       const portal = await stripe.billingPortal.sessions.create({
@@ -138,5 +170,19 @@ export const getMyBilling = createServerFn({ method: "GET" })
       billingSource: p.billing_source ?? "manual",
       priceId: p.stripe_price_id ?? null,
       hasCustomer: Boolean(p.stripe_customer_id),
+    };
+  });
+export type CheckoutAvailability = { enabled: boolean; sellablePriceIds: string[]; onRequestTiers: string[] };
+
+// O que a página de subscrição pode mostrar a esta conta.
+export const getCheckoutAvailability = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CheckoutAvailability> => {
+    const ctx = await checkoutContext(context.userId);
+    const enabled = ctx.flagOn || ctx.isTestAccount;
+    return {
+      enabled,
+      sellablePriceIds: enabled ? sellablePriceIds(ctx.configs) : [],
+      onRequestTiers: onRequestTiers(ctx.configs),
     };
   });

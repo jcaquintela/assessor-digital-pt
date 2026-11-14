@@ -37,3 +37,24 @@ export function isAllowedReturnUrl(raw: string | null | undefined): boolean {
   if (host.includes(PROJECT_ID) && (host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com"))) return true;
   return false;
 }
+
+export const CHECKOUT_FLAG = "billing.checkout_enabled.v1";
+
+export type PlanConfigRow = { tier: string; status: string | null; pricing_mode: string | null };
+
+/** Só planos publicados e pagos têm checkout; "sob consulta" nunca. */
+export function sellablePriceIds(configs: PlanConfigRow[]): string[] {
+  const paid = new Set(configs.filter((c) => c.status === "published" && c.pricing_mode === "paid").map((c) => c.tier));
+  return PLAN_OFFERS.filter((o) => paid.has(o.tier)).map((o) => o.priceId);
+}
+
+export function onRequestTiers(configs: PlanConfigRow[]): string[] {
+  return configs.filter((c) => c.status === "published" && c.pricing_mode === "on_request").map((c) => c.tier);
+}
+
+/** Checkout novo só com o interruptor ligado — exceto testes em modo de teste. */
+export function checkoutGateProblem(ctx: { flagOn: boolean; env: string; isTestAccount: boolean }): string | null {
+  if (ctx.flagOn) return null;
+  if (ctx.env === "sandbox" && ctx.isTestAccount) return null;
+  return "As novas subscrições estão temporariamente indisponíveis.";
+}

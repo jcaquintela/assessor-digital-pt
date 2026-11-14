@@ -75,3 +75,11 @@
 - [x] Cenários A (Miguel), B (ZMPT593612) e C (385k/365k) com testes de aceitação e casos limite
 - [ ] P1: memória de negócio, prazos proativos, negociação, aprendizagem — aguarda autorização
 - [ ] Atualizar as tabelas de IMT/Selo quando sair o Orçamento de 2027
+
+## Correção pré-piloto pagamentos/checkout (14/11/2026, NÃO publicar)
+- [x] Pagamentos de teste só mexem em contas da lista de teste; nunca em contas reais
+- [x] Ordem dos eventos: evento antigo ignorado, empate relê a subscrição
+- [x] Checkout novo atrás de `billing.checkout_enabled.v1` (desligado); Team/Hub só sob consulta
+- [ ] Backend de testes isolado — BLOQUEADO: proprietário cria projeto de testes e adiciona os segredos TEST_SUPABASE_*
+- [ ] Lista de contas de teste de faturação — aguarda decisão do proprietário
+- [ ] Publicação e rollout de 3 — aguarda GO separado

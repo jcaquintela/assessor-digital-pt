@@ -1208,6 +1208,27 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_test_accounts: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_connections: {
         Row: {
           connected_at: string
@@ -3592,6 +3613,7 @@ export type Database = {
           assessor_name: string
           beta_expires_at: string | null
           billing_environment: string
+          billing_last_event_at: string | null
           billing_manual_lock: boolean
           billing_source: string
           billing_status: string
@@ -3640,6 +3662,7 @@ export type Database = {
           assessor_name?: string
           beta_expires_at?: string | null
           billing_environment?: string
+          billing_last_event_at?: string | null
           billing_manual_lock?: boolean
           billing_source?: string
           billing_status?: string
@@ -3688,6 +3711,7 @@ export type Database = {
           assessor_name?: string
           beta_expires_at?: string | null
           billing_environment?: string
+          billing_last_event_at?: string | null
           billing_manual_lock?: boolean
           billing_source?: string
           billing_status?: string
@@ -4501,6 +4525,7 @@ export type Database = {
           outcome: string
           processed_at: string
           profile_id: string | null
+          stripe_event_created: string | null
         }
         Insert: {
           created_at?: string
@@ -4512,6 +4537,7 @@ export type Database = {
           outcome?: string
           processed_at?: string
           profile_id?: string | null
+          stripe_event_created?: string | null
         }
         Update: {
           created_at?: string
@@ -4523,6 +4549,7 @@ export type Database = {
           outcome?: string
           processed_at?: string
           profile_id?: string | null
+          stripe_event_created?: string | null
         }
         Relationships: [
           {

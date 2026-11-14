@@ -57,6 +57,13 @@
       "when": 1794672749498,
       "tag": "0007_revoke_trigger_fn_execute",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794673166328,
+      "tag": "0008_billing_env_segregation",
+      "breakpoints": true
     }
   ]
 }

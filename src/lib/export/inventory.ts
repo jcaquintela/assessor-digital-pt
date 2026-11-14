@@ -3,6 +3,7 @@
 export type DataClass = "migrate" | "export" | "retain" | "exclude";
 
 export const TABLE_CLASS: Record<string, DataClass> = {
+  billing_test_accounts: "exclude",
   access_invite_attempts: "retain",
   access_invites: "exclude",
   access_waitlist: "retain",

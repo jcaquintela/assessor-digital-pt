@@ -9,7 +9,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { PaymentTestModeBanner } from "@/components/payment-test-banner";
 import { SubscriptionCheckout } from "@/components/subscricao/checkout";
-import { getMyBilling, createBillingPortal } from "@/lib/subscription/billing.functions";
+import { getMyBilling, createBillingPortal, getCheckoutAvailability } from "@/lib/subscription/billing.functions";
 import { PLAN_OFFERS, BILLING_STATUS_LABEL } from "@/lib/subscription/billing-plans";
 import { tierLabel } from "@/lib/subscription/tiers";
 import { getStripeEnvironment } from "@/lib/stripe";
@@ -34,6 +34,11 @@ function SubscricaoPage() {
   const fetchBilling = useServerFn(getMyBilling);
   const portalFn = useServerFn(createBillingPortal);
   const { data, isPending } = useQuery({ queryKey: ["my-billing"], queryFn: () => fetchBilling() });
+  const fetchAvailability = useServerFn(getCheckoutAvailability);
+  const { data: avail } = useQuery({ queryKey: ["checkout-availability"], queryFn: () => fetchAvailability() });
+  const sellable = new Set(avail?.sellablePriceIds ?? []);
+  const offers = PLAN_OFFERS.filter((o) => sellable.has(o.priceId));
+  const onRequest = (avail?.onRequestTiers ?? []).filter((t) => t !== "base");
   const [priceId, setPriceId] = useState<string | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
 
@@ -108,8 +113,23 @@ function SubscricaoPage() {
         </CardContent>
       </Card>
 
+      {avail && !avail.enabled && (
+        <p className="c-muted mt-4 text-[13px]">
+          As novas subscrições estão temporariamente indisponíveis. Quem já tem subscrição continua a poder
+          gerir cartão e faturas aqui em cima.
+        </p>
+      )}
+
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {PLAN_OFFERS.map((o) => (
+        {onRequest.map((t) => (
+          <Card key={`req-${t}`}>
+            <CardContent className="p-4">
+              <div className="text-sm font-medium">{tierLabel(t as any)}</div>
+              <div className="c-muted mt-1 text-[13px]">Preço sob consulta — pede uma proposta ao Afonso na conversa.</div>
+            </CardContent>
+          </Card>
+        ))}
+        {offers.map((o) => (
           <Card key={o.priceId}>
             <CardContent className="p-4">
               <div className="text-sm font-medium">

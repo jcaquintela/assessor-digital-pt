@@ -24,7 +24,10 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { processStripeEvent } = await import("@/lib/subscription/webhook-process.server");
-          const result = await processStripeEvent(supabaseAdmin, event as any, env);
+          const { createStripeClient } = await import("@/lib/stripe.server");
+          const result = await processStripeEvent(supabaseAdmin, event as any, env, Date.now(), {
+            retrieveSubscription: (id) => createStripeClient(env).subscriptions.retrieve(id) as any,
+          });
           return Response.json({ received: true, result });
         } catch (e) {
           if (e instanceof WebhookInFlightError) {

@@ -21,8 +21,13 @@ cross-channel, cenários A/B/C, avaliação de autonomia, Zome/orçamento, entre
 - [ ] Causa das falhas de entrega WhatsApp visível no log após publicação.
 
 ## Riscos restantes
-1. ALTO — pagamentos em modo de teste: a app publicada usa chave de teste e o webhook de teste atualiza o plano real; qualquer conta pode obter plano pago com cartão de teste.
-2. MÉDIO — eventos Stripe reprocessados fora de ordem podem repor estado antigo (sem comparação de `event.created`).
+1. CORRIGIDO EM DESENVOLVIMENTO (não publicado) — pagamentos de teste já não alteram planos de contas reais; checkout novo desligado por interruptor; Team/Hub só sob consulta.
+2. CORRIGIDO EM DESENVOLVIMENTO — evento mais antigo que o último aplicado é ignorado; empate relê a subscrição.
 3. MÉDIO — dependências transitivas com avisos (mcp-js, ferramentas de build); `zod` atualizado.
 4. MÉDIO — isolamento de armazenamento entre contas não provado contra backend real.
 5. BAIXO — tabela de reservas de mensagens cresce sem limpeza automática.
+
+## Antes de publicar (compatibilidade V1)
+- [ ] Suite completa verde com todos os interruptores desligados.
+- [ ] Na pré-visualização, conta interna: mensagem simples, lembrete, briefing, página de subscrição (sem botões de subscrever).
+- [ ] Rollback: desligar interruptores por conta; se o código falhar, repor a versão anterior no histórico Publish. Nada é apagado.
