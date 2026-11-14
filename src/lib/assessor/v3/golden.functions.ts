@@ -85,6 +85,9 @@ export const runGoldenSuite = createServerFn({ method: "POST" })
           autonomy: (result as any).autonomy
             ? { ...(result as any).autonomy, perTurn: undefined }
             : null,
+          // Controlo negativo: "passed" = o avaliador reprovou como devia.
+          negative_control: (result as any).negativeControl === true,
+          missing_expected_failures: (result as any).missingExpectedFailures ?? [],
         } as unknown,
       } as never);
       summaries.push({

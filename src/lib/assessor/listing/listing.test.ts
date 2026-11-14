@@ -5,7 +5,7 @@ import { runListingDiagnosis, type ListingDeps } from "./listing.server";
 import { extractListingBrief, isListingDiagnosis } from "./listing-brief";
 import { checkPrice, compareCompetitor, readFunnel } from "./diagnosis";
 import { formatActionStates } from "../commercial/action-states";
-import { scoreConversation, scoreTurn, type TurnInput } from "../eval/commercial-autonomy";
+import { scoreConversation, scoreTurn, type ToolRun, type TurnInput } from "../eval/commercial-autonomy";
 import { guardExternalClaims, guardSearchAndLinks, NO_MONITORING_NOTE, NOT_DONE_EXTERNAL_NOTE } from "../qualification/url-provenance";
 
 const NOW = new Date("2026-11-14T14:00:00Z");
@@ -19,13 +19,21 @@ type Row = { role: string; content: string; created_at: string };
 function conversation(opts: Partial<ListingDeps> = {}) {
   const rows: Row[] = [];
   const calls = { comparables: 0 };
+  // Evidência do turno: só as ferramentas que correram (executadas).
+  let evidence: ToolRun[] = [];
+  const own = opts.findOwnListing ?? (async () => ({ found: false, price: null, url: null }));
+  const comps = opts.searchComparables ?? (async () => {
+    calls.comparables++;
+    return { status: "ok" as const, results: [{ url: COMP_URL, title: "Moradia T3 em Serzedo, 430.000 €", host: "idealista.pt" }] };
+  });
   const deps: ListingDeps = {
     loadRecent: async () => rows.map((r) => ({ ...r })),
-    findOwnListing: opts.findOwnListing ?? (async () => ({ found: false, price: null, url: null })),
-    searchComparables: opts.searchComparables ?? (async () => {
-      calls.comparables++;
-      return { status: "ok", results: [{ url: COMP_URL, title: "Moradia T3 em Serzedo, 430.000 €", host: "idealista.pt" }] };
-    }),
+    findOwnListing: async (b) => { const r = await own(b); evidence.push({ name: "own_listing_lookup", ok: true, data: {} }); return r; },
+    searchComparables: async (b) => {
+      const r = await comps(b);
+      if (r.status === "ok") evidence.push({ name: "search_similar_listings", ok: true, data: { results: r.results } });
+      return r;
+    },
   };
   const scored: TurnInput[] = [];
   async function say(text: string) {
@@ -34,12 +42,13 @@ function conversation(opts: Partial<ListingDeps> = {}) {
   }
   async function sayRaw(text: string) {
     rows.push({ role: "user", content: text, created_at: NOW.toISOString() });
+    evidence = [];
     const t = await runListingDiagnosis({ supabase: {}, userId: "u", channel: "whatsapp", trimmed: text, now: NOW, deps, skipFlagCheck: true });
     if (t) {
       rows.push({ role: "assistant", content: t.reply, created_at: NOW.toISOString() });
       scored.push({
         user: text, reply: t.reply,
-        tools: t.acted ? [{ name: "listing_diagnosis", ok: true, data: { urls: [COMP_URL] } }] : [],
+        tools: t.acted ? [{ name: "listing_diagnosis", ok: true }, ...evidence] : [],
       });
     }
     return t;

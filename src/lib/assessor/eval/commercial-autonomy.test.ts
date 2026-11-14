@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  AUTONOMY_THRESHOLDS, countQuestions, hasConcreteNextStep, scoreConversation, scoreTurn, type TurnInput,
+  AUTONOMY_THRESHOLDS, countQuestions, hasConcreteNextStep, scoreConversation, scoreTurn, type ToolRun, type TurnInput,
 } from "./commercial-autonomy";
 import { computeAutonomyMetrics, SESSION_GAP_MS } from "./autonomy-metrics";
 import { runBuyerQualification, type QualificationDeps } from "../qualification/qualification.server";
@@ -13,24 +13,34 @@ const PORTAL_URL = "https://www.idealista.pt/imovel/33445566/";
 
 function qualificationConversation(portal?: QualificationDeps["searchPortals"]) {
   const rows: Array<{ role: string; content: string; created_at: string }> = [];
+  // Evidência real do turno: só o que as ferramentas devolveram (executado).
+  let evidence: ToolRun[] = [];
+  const basePortal: QualificationDeps["searchPortals"] = portal ?? (async () => ({ status: "ok", results: [{ url: PORTAL_URL, title: "Apartamento T1 em Gaia, 139.000 €", description: "Perto do metro", host: "idealista.pt" }] }));
   const deps: QualificationDeps = {
     loadRecent: async () => rows.map((r) => ({ ...r })),
-    loadProperties: async () => [
-      { id: "p1", title: "T1 Mafamude junto ao metro", typology: "T1", location: "Mafamude, Gaia", city: "Vila Nova de Gaia", asking_price: 148000, status: "disponivel" },
-    ],
-    searchPortals: portal ?? (async () => ({ status: "ok", results: [{ url: PORTAL_URL, title: "Apartamento T1 em Gaia, 139.000 €", description: "Perto do metro", host: "idealista.pt" }] })),
+    loadProperties: async () => {
+      const r = [{ id: "p1", title: "T1 Mafamude junto ao metro", typology: "T1", location: "Mafamude, Gaia", city: "Vila Nova de Gaia", asking_price: 148000, status: "disponivel" }];
+      evidence.push({ name: "search_properties", ok: true, data: { urls: ["https://app.meuafonso.com/imoveis/p1"] } });
+      return r;
+    },
+    searchPortals: async (b) => {
+      const r = await basePortal(b);
+      if (r.status === "ok") evidence.push({ name: "search_similar_listings", ok: true, data: { results: r.results } });
+      return r;
+    },
   };
   const scored: TurnInput[] = [];
   async function say(text: string, minute = scored.length) {
     const at = new Date(NOW.getTime() + minute * 60_000);
     rows.push({ role: "user", content: text, created_at: at.toISOString() });
+    evidence = [];
     const t = await runBuyerQualification({ supabase: {}, userId: "u", channel: "whatsapp", trimmed: text, now: at, deps, skipFlagCheck: true });
     if (!t) throw new Error("not a qualification turn");
     rows.push({ role: "assistant", content: t.reply, created_at: at.toISOString() });
-    // A pesquisa devolve os URLs que a resposta mostra — é a proveniência real.
+    // Rótulo do caso = preparado; as pesquisas que correram = executadas (proveniência real).
     scored.push({
       user: text, reply: t.reply, at,
-      tools: t.acted ? [{ name: "buyer_search", ok: true, data: { urls: [PORTAL_URL, "https://app.meuafonso.com/imoveis/p1"] } }] : [],
+      tools: t.acted ? [{ name: "buyer_search", ok: true }, ...evidence] : [],
     });
     return t;
   }

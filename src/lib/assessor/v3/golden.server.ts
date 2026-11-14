@@ -14,7 +14,12 @@ import {
   BARE_CONFIRMATION_REPLY,
 } from "./deterministic.server";
 import { isConfirmation as saIsConfirmation } from "../culture/short-answers";
-import { scoreConversation, type AutonomyExpect, type ConversationScore, type TurnInput } from "../eval/commercial-autonomy";
+import {
+  evaluateAutonomyExpectation, scoreConversation, type AutonomyExpect, type ConversationScore, type ToolRun, type TurnInput,
+} from "../eval/commercial-autonomy";
+import type { InternalPropertyRow, PortalListing } from "../qualification/proposal-format";
+import type { ZomeListing } from "@/lib/imoveis/zome-public";
+import type { Comparable } from "../listing/compose";
 
 export interface GoldenExpect {
   action?: "act" | "ask" | "acknowledge" | "do_nothing" | "search_more";
@@ -30,9 +35,30 @@ export interface GoldenExpect {
   autonomy?: AutonomyExpect;
 }
 
+/**
+ * Dados SINTÉTICOS para o replay: fazem as vezes das ferramentas de leitura.
+ * Uma chamada a uma ferramenta-fixture conta como EXECUTADA no replay (há
+ * resultado), marcada `fixture: true`; sem fixture a ferramenta não corre.
+ * Nunca toca na base de dados nem em serviços externos.
+ */
+export interface GoldenFixtures {
+  portal?: PortalListing[];
+  zome?: ZomeListing[];
+  properties?: InternalPropertyRow[];
+  comparables?: Comparable[];
+}
+
 export interface GoldenTurn {
   user: string;
   expect?: GoldenExpect;
+  /**
+   * Controlo negativo: resposta fixa do assistente (o motor não corre neste
+   * turno). Serve para provar que o avaliador reprova comportamentos errados.
+   */
+  assistant?: string;
+  /** Evidência de ferramentas da resposta fixa (sintética). */
+  tools?: ToolRun[];
+  fixtures?: GoldenFixtures;
 }
 
 export interface GoldenTurnResult {
@@ -41,6 +67,10 @@ export interface GoldenTurnResult {
   reply: string;
   action: string;
   tools: string[];
+  /** Evidência por nível: decidida / preparada / executada (só com comprovativo). */
+  evidence?: ToolRun[];
+  /** Turno com resposta fixa (controlo negativo). */
+  scripted?: boolean;
   passed: boolean;
   failures: string[];
   // Turno inconclusivo: a IA esteve indisponível (créditos, rate limit, rede).
@@ -58,6 +88,9 @@ export interface GoldenRunResult {
   unavailableReason?: string | null;
   /** Pontuação de autonomia comercial (sempre calculada; só reprova quando pedida). */
   autonomy?: ConversationScore;
+  /** Controlo negativo: passou = o avaliador reprovou como devia. */
+  negativeControl?: boolean;
+  missingExpectedFailures?: string[];
 }
 
 export interface GoldenRunOptions {
@@ -196,6 +229,7 @@ export async function runGolden(
   const historyLines: string[] = [];
   const rows: Array<{ role: string; content: string; created_at: string }> = [];
   const name = sanitizeAssessorName(assessorName ?? "") || ASSESSOR_NAME_DEFAULT;
+  const fx: GoldenFixtures = turns.find((x) => x.fixtures)?.fixtures ?? {};
   const ymd = nowLisbonYmd();
   const human = nowLisbonHuman();
 
@@ -205,7 +239,22 @@ export async function runGolden(
     // Router determinístico — replica o comportamento do runtime real
     // para agenda e "sim" sem contexto, sem depender da IA.
     rows.push({ role: "user", content: t.user, created_at: new Date().toISOString() });
+    if (typeof raw.assistant === "string") {
+      const reply = raw.assistant;
+      const evidence = (raw.tools ?? []).map((x) => ({ ...x }));
+      const tools = evidence.map((x) => x.name);
+      const failures = evaluateTurn(reply, evidence.length ? "act" : "ask", tools, t.expect);
+      results.push({ turn: i + 1, user: t.user, reply, action: evidence.length ? "act" : "ask", tools, evidence, scripted: true, passed: failures.length === 0, failures });
+      rows.push({ role: "assistant", content: reply, created_at: new Date().toISOString() });
+      historyLines.push(`consultor: ${t.user}`);
+      historyLines.push(`assessor: ${reply}`);
+      continue;
+    }
     if (opts.actionFirst) {
+      // Cada chamada a uma ferramenta-fixture fica registada como EXECUTADA
+      // (com o resultado, para a proveniência dos links). Sem fixture: não corre.
+      const evidence: ToolRun[] = [];
+      const ran = (name: string, data: unknown) => evidence.push({ name, ok: true, level: "executed", data: { fixture: true, ...(data as object) } });
       const { runBuyerQualification } = await import("../qualification/qualification.server");
       const { runListingDiagnosis } = await import("../listing/listing.server");
       const { runDealRisk } = await import("../deal/deal.server");
@@ -217,8 +266,12 @@ export async function runGolden(
         supabase: null, userId: "golden", channel: "whatsapp", trimmed: t.user, skipFlagCheck: true,
         deps: {
           loadRecent: async () => rows.slice(0, -1).map((r) => ({ ...r })),
-          findOwnListing: async () => ({ found: false, price: null, url: null }),
-          searchComparables: async () => ({ status: "not_run", results: [] }),
+          findOwnListing: async () => { ran("own_listing_lookup", { found: false }); return { found: false, price: null, url: null }; },
+          searchComparables: async () => {
+            if (!fx.comparables) return { status: "not_run", results: [] };
+            ran("search_similar_listings", { results: fx.comparables });
+            return { status: "ok", results: fx.comparables };
+          },
         },
       });
       const q = deal
@@ -229,14 +282,23 @@ export async function runGolden(
         supabase: null, userId: "golden", channel: "whatsapp", trimmed: t.user, skipFlagCheck: true,
         deps: {
           loadRecent: async () => rows.slice(0, -1).map((r) => ({ ...r })),
-          loadProperties: async () => [],
-          searchPortals: async () => ({ status: "not_run", results: [] }),
+          loadProperties: async () => { ran("search_properties", { rows: fx.properties ?? [] }); return fx.properties ?? []; },
+          searchPortals: async () => {
+            if (!fx.portal) return { status: "not_run", results: [] };
+            ran("search_similar_listings", { results: fx.portal });
+            return { status: "ok", results: fx.portal };
+          },
+          ...(fx.zome ? {
+            searchZome: async () => { ran("search_zome_public", { results: fx.zome }); return { status: "ok" as const, results: fx.zome! }; },
+          } : {}),
         },
       }).then((r) => (r ? { reply: r.reply, acted: r.acted, tool: r.acted ? "buyer_search" : "buyer_questions" } : null));
       if (q) {
         const tools = [q.tool];
+        // O rótulo do caso prova só preparação (ou pergunta), nunca execução.
+        const all: ToolRun[] = [{ name: q.tool, ok: true, level: q.acted ? "prepared" : "decided" }, ...evidence];
         const failures = evaluateTurn(q.reply, q.acted ? "act" : "ask", tools, t.expect);
-        results.push({ turn: i + 1, user: t.user, reply: q.reply, action: q.acted ? "act" : "ask", tools, passed: failures.length === 0, failures });
+        results.push({ turn: i + 1, user: t.user, reply: q.reply, action: q.acted ? "act" : "ask", tools, evidence: all, passed: failures.length === 0, failures });
         rows.push({ role: "assistant", content: q.reply, created_at: new Date().toISOString() });
         historyLines.push(`consultor: ${t.user}`);
         historyLines.push(`assessor: ${q.reply}`);
@@ -323,6 +385,8 @@ export async function runGolden(
     results.push({
       turn: i + 1, user: t.user, reply,
       action: decideR.decision.action, tools,
+      // O replay não executa (sem ACT): o que o modelo escolheu fica DECIDIDO.
+      evidence: tools.map((name) => ({ name, ok: true, level: "decided" as const })),
       passed: failures.length === 0, failures,
     });
 
@@ -335,18 +399,22 @@ export async function runGolden(
   const inconclusive = !!unavailableTurn;
   // Um guião com turnos inconclusivos não passa nem reprova por
   // comportamento — quem lê o resultado tem de ver que foi o serviço.
-  // O replay não executa ferramentas: uma ação decidida conta como feita
-  // (a execução real é coberta pelos testes do motor).
+  // Uma ação DECIDIDA pelo modelo não conta como executada: no replay só
+  // as ferramentas-fixture que correram têm comprovativo.
   const scored: TurnInput[] = results.map((r) => ({
-    user: r.user, reply: r.reply, tools: r.tools.map((name) => ({ name, ok: !r.unavailable, data: {} })),
+    user: r.user, reply: r.reply,
+    tools: r.unavailable ? [] : r.evidence ?? r.tools.map((name) => ({ name, ok: true, level: "decided" as const })),
   }));
   const autonomyExpect = turns.find((x) => x.expect?.autonomy)?.expect?.autonomy;
   const autonomy = scoreConversation(scored, autonomyExpect ?? {});
-  const autonomyOk = !autonomyExpect || autonomy.passed;
+  const autonomyEval = autonomyExpect ? evaluateAutonomyExpectation(autonomy, autonomyExpect) : { ok: true, missing: [] };
+  const autonomyOk = autonomyEval.ok;
   const passed = !inconclusive && results.every((r) => r.passed) && autonomyOk;
   return {
     passed,
     autonomy,
+    negativeControl: !!autonomyExpect?.mustFailWith?.length,
+    missingExpectedFailures: autonomyEval.missing,
     turns: results,
     aqsAvg: null,
     inconclusive,

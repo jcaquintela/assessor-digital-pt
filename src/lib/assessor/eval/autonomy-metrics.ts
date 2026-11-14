@@ -4,7 +4,10 @@
 // Definições (conservadoras, documentadas para não se lerem como causalidade):
 // - Conversa: mensagens da mesma conta com intervalos < 30 min entre si.
 // - Primeira ação útil: primeiro registo de ação comercial bem-sucedida
-//   (COMMERCIAL_ACTION_TOOLS) dentro da conversa.
+//   (COMMERCIAL_ACTION_TOOLS) dentro da conversa — EXECUTADA ou PREPARADA.
+// - Execução: só registos de ferramenta que correram com sucesso. Os rótulos
+//   dos casos action-first (buyer_search, listing_diagnosis, deal_risk_analysis)
+//   provam PREPARAÇÃO, nunca execução; tentativas falhadas ficam DECIDIDAS.
 // - Próxima ação concreta: alguma resposta do Afonso na conversa propõe um
 //   passo específico (hasConcreteNextStep).
 // - Sugestões aceites: confirmações pedidas pelo Afonso que o consultor
@@ -13,7 +16,7 @@
 // - Satisfação: não há avaliação direta; usa-se a média do índice de
 //   qualidade e as correções feitas pelo consultor (proxies, não satisfação).
 
-import { COMMERCIAL_ACTION_TOOLS, hasConcreteDelivery, hasConcreteNextStep } from "./commercial-autonomy";
+import { COMMERCIAL_ACTION_TOOLS, hasConcreteDelivery, hasConcreteNextStep, levelOf, type ActionLevel } from "./commercial-autonomy";
 import { LISTING_DOMAINS } from "@/lib/imoveis/similar-listings";
 
 const LINK_RE = /https?:\/\/[^\s<>()*_]+/g;
@@ -36,7 +39,12 @@ export interface DealRow { stage: string | null }
 export interface AutonomyMetrics {
   conversations: number;
   conversationsWithUsefulAction: number;
+  /** Conversas com pelo menos uma ferramenta comercial EXECUTADA (com comprovativo). */
+  conversationsWithExecutedAction: number;
   medianTurnsToFirstAction: number | null;
+  medianTurnsToFirstExecution: number | null;
+  /** Registos de ação por nível (decidida = tentada sem sucesso). */
+  actionLevels: Record<ActionLevel, number>;
   medianSecondsToFirstAction: number | null;
   nextStepRate: number | null;
   /** Conversas com entrega concreta (material preparado, propostas com link, ação feita). */
@@ -99,11 +107,20 @@ export function computeAutonomyMetrics(input: {
 }): AutonomyMetrics {
   const sessions = splitSessions(input.messages);
   const logsByUser = new Map<string, number[]>();
+  const execByUser = new Map<string, number[]>();
+  const actionLevels: Record<ActionLevel, number> = { decided: 0, prepared: 0, executed: 0 };
+  const push = (m: Map<string, number[]>, u: string, t: number) => { if (!m.has(u)) m.set(u, []); m.get(u)!.push(t); };
   for (const l of input.toolLogs) {
-    if (!l.tool_success || !l.tool_name || !COMMERCIAL_ACTION_TOOLS.has(l.tool_name)) continue;
-    if (!logsByUser.has(l.user_id)) logsByUser.set(l.user_id, []);
-    logsByUser.get(l.user_id)!.push(new Date(l.created_at).getTime());
+    if (!l.tool_name || !COMMERCIAL_ACTION_TOOLS.has(l.tool_name)) continue;
+    const level = levelOf({ name: l.tool_name, ok: l.tool_success === true })!;
+    actionLevels[level]++;
+    if (level === "decided") continue;
+    const t = new Date(l.created_at).getTime();
+    push(logsByUser, l.user_id, t);
+    if (level === "executed") push(execByUser, l.user_id, t);
   }
+  const execTurns: number[] = [];
+  let withExecuted = 0;
   const turns: number[] = [];
   const secs: number[] = [];
   let withAction = 0;
@@ -114,7 +131,10 @@ export function computeAutonomyMetrics(input: {
   for (const s of sessions) {
     if (s.assistant.some(hasConcreteNextStep)) withNext++;
     for (const a of s.assistant) for (const u of a.match(LINK_RE) ?? []) { links++; if (knownSource(u)) known++; }
-    const hits = (logsByUser.get(s.userId) ?? []).filter((t) => t >= s.start && t <= s.end + 120_000).sort((a, b) => a - b);
+    const inSession = (xs: number[]) => xs.filter((t) => t >= s.start && t <= s.end + 120_000).sort((a, b) => a - b);
+    const hits = inSession(logsByUser.get(s.userId) ?? []);
+    const ex = inSession(execByUser.get(s.userId) ?? []);
+    if (ex.length) { withExecuted++; execTurns.push(Math.max(1, s.userTurns.filter((t) => t <= ex[0]).length)); }
     if (hits.length || s.assistant.some(hasConcreteDelivery)) withDelivery++;
     if (!hits.length) continue;
     withAction++;
@@ -133,7 +153,10 @@ export function computeAutonomyMetrics(input: {
   return {
     conversations: sessions.length,
     conversationsWithUsefulAction: withAction,
+    conversationsWithExecutedAction: withExecuted,
     medianTurnsToFirstAction: median(turns),
+    medianTurnsToFirstExecution: median(execTurns),
+    actionLevels,
     medianSecondsToFirstAction: median(secs),
     nextStepRate: ratio(withNext, sessions.length),
     deliveryRate: ratio(withDelivery, sessions.length),
