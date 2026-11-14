@@ -18,10 +18,13 @@ export async function recordCreatedResource(
   },
 ): Promise<void> {
   try {
+    const { stateKey } = await import("@/lib/assessor/cross-channel/scope.server");
+    const k = await stateKey(supabase, args.userId, args.channel);
     const row: Record<string, unknown> = {
       user_id: args.userId,
-      channel: args.channel,
-      external_conversation_id: args.channel,
+      channel: k.channel,
+      external_conversation_id: k.externalId,
+      ...k.extra,
       last_created_resource_type: args.type,
       last_created_resource_id: args.id,
       last_entity_type: args.type,
@@ -43,12 +46,15 @@ export async function readCreatedResource(
   args: { userId: string; channel: string },
 ): Promise<{ type: string; id: string } | null> {
   try {
-    const { data } = await supabase
+    const { stateKey } = await import("@/lib/assessor/cross-channel/scope.server");
+    const k = await stateKey(supabase, args.userId, args.channel);
+    let q = supabase
       .from("conversation_states")
       .select("last_created_resource_type, last_created_resource_id")
       .eq("user_id", args.userId)
-      .eq("channel", args.channel)
-      .maybeSingle();
+      .eq("channel", k.channel);
+    if (k.shared) q = q.eq("external_conversation_id", k.externalId);
+    const { data } = await q.maybeSingle();
     if (!data?.last_created_resource_id) return null;
     return {
       type: String(data.last_created_resource_type ?? ""),

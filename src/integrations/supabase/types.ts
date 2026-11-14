@@ -1423,6 +1423,7 @@ export type Database = {
           factual_summary: string | null
           goal: string | null
           id: string
+          last_channel: string | null
           last_created_resource_id: string | null
           last_created_resource_type: string | null
           last_entity_id: string | null
@@ -1449,6 +1450,7 @@ export type Database = {
           factual_summary?: string | null
           goal?: string | null
           id?: string
+          last_channel?: string | null
           last_created_resource_id?: string | null
           last_created_resource_type?: string | null
           last_entity_id?: string | null
@@ -1475,6 +1477,7 @@ export type Database = {
           factual_summary?: string | null
           goal?: string | null
           id?: string
+          last_channel?: string | null
           last_created_resource_id?: string | null
           last_created_resource_type?: string | null
           last_entity_id?: string | null
@@ -2935,6 +2938,8 @@ export type Database = {
         Row: {
           channel: string
           confidence: number | null
+          confirm_token: string | null
+          confirm_token_at: string | null
           confirmed_fields: Json
           created_at: string
           created_resource_id: string | null
@@ -2948,6 +2953,8 @@ export type Database = {
           missing_fields: string[]
           original_content: string
           pending_question: string | null
+          presented_channels: string[]
+          resolved_channel: string | null
           source_message_id: string | null
           status: string
           structured_payload: Json
@@ -2957,6 +2964,8 @@ export type Database = {
         Insert: {
           channel: string
           confidence?: number | null
+          confirm_token?: string | null
+          confirm_token_at?: string | null
           confirmed_fields?: Json
           created_at?: string
           created_resource_id?: string | null
@@ -2970,6 +2979,8 @@ export type Database = {
           missing_fields?: string[]
           original_content: string
           pending_question?: string | null
+          presented_channels?: string[]
+          resolved_channel?: string | null
           source_message_id?: string | null
           status?: string
           structured_payload?: Json
@@ -2979,6 +2990,8 @@ export type Database = {
         Update: {
           channel?: string
           confidence?: number | null
+          confirm_token?: string | null
+          confirm_token_at?: string | null
           confirmed_fields?: Json
           created_at?: string
           created_resource_id?: string | null
@@ -2992,6 +3005,8 @@ export type Database = {
           missing_fields?: string[]
           original_content?: string
           pending_question?: string | null
+          presented_channels?: string[]
+          resolved_channel?: string | null
           source_message_id?: string | null
           status?: string
           structured_payload?: Json
@@ -4909,6 +4924,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_pending_confirmation: {
+        Args: {
+          _ids: string[]
+          _token: string
+          _ttl_seconds?: number
+          _user_id: string
+        }
+        Returns: number
+      }
       effective_tier: { Args: { _user_id: string }; Returns: string }
       expire_beta_testers: { Args: never; Returns: number }
       has_role: {
@@ -4919,6 +4943,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      mark_pending_presented: {
+        Args: { _channel: string; _ids: string[]; _user_id: string }
+        Returns: number
+      }
       merge_accounts_apply: {
         Args: { _source: string; _target: string }
         Returns: Json
@@ -4934,6 +4962,10 @@ export type Database = {
       release_conversation_lock: {
         Args: { _channel: string; _holder?: string; _user_id: string }
         Returns: undefined
+      }
+      release_pending_confirmation: {
+        Args: { _channel: string; _token: string; _user_id: string }
+        Returns: number
       }
       text_norm: { Args: { _t: string }; Returns: string }
       tier_at_least: {

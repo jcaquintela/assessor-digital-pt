@@ -10,11 +10,18 @@ const LOCK_TTL_SECONDS = 90;
 const POLL_MS = 300;
 const MAX_WAIT_MS = 45_000;
 
+// `channel` é a chave do âmbito: o canal (comportamento antigo) ou
+// "account" quando WhatsApp e Telegram partilham a conversa — aí um turno de
+// cada vez POR CONTA, seja qual for o canal de onde chega a mensagem.
+// `strict`: um erro passageiro do RPC volta a tentar até ao prazo, em vez de
+// seguir logo sem lock. Mesmo sem lock, a reserva atómica da confirmação
+// (cross-channel/turn.server.ts) impede uma segunda execução.
 export async function withConversationLock<T>(
   supabaseAdmin: any,
   userId: string,
   channel: string,
-  fn: () => Promise<T>,
+  fn: (acquired: boolean) => Promise<T>,
+  opts: { strict?: boolean } = {},
 ): Promise<T> {
   const holder = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const deadline = Date.now() + MAX_WAIT_MS;
@@ -28,16 +35,17 @@ export async function withConversationLock<T>(
         _ttl_seconds: LOCK_TTL_SECONDS,
         _holder: holder,
       });
-      if (error) break; // sem lock disponível (ex.: RPC indisponível) → não bloquear o turno
-      if (data === true) { acquired = true; break; }
+      if (error) {
+        if (!opts.strict) break; // sem lock disponível (ex.: RPC indisponível) → não bloquear o turno
+      } else if (data === true) { acquired = true; break; }
     } catch {
-      break;
+      if (!opts.strict) break;
     }
     await sleep(POLL_MS);
   }
 
   try {
-    return await fn();
+    return await fn(acquired);
   } finally {
     if (acquired) {
       try {

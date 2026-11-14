@@ -91,11 +91,15 @@ export async function findJustClosedPending(
 ): Promise<PendingActionRow | null> {
   const withinMs = args.withinMs ?? ORPHAN_BURST_MS;
   try {
-    const { data } = await supabase
-      .from("pending_actions")
-      .select("*")
-      .eq("user_id", args.userId)
-      .eq("channel", args.channel)
+    const { scopeChannels, applyChannelScope } = await import("@/lib/assessor/cross-channel/scope.server");
+    const channels = await scopeChannels(supabase, args.userId, args.channel);
+    const { data } = await applyChannelScope(
+      supabase
+        .from("pending_actions")
+        .select("*")
+        .eq("user_id", args.userId),
+      channels,
+    )
       .in("status", ["executed", "cancelled"])
       .order("updated_at", { ascending: false })
       .limit(5);

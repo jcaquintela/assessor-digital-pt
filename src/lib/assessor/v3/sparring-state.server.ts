@@ -7,6 +7,7 @@
 // Sem `upsert` de propósito: select → update/insert, para funcionar também com
 // o fake de testes.
 
+import { stateKey } from "@/lib/assessor/cross-channel/scope.server";
 import { SPARRING_PAUSED_TOPIC, SPARRING_TOPIC } from "./sparring";
 
 type Client = {
@@ -24,12 +25,14 @@ export async function readSparringState(
   userId: string,
   channel: string,
 ): Promise<SparringStateRow | null> {
-  const { data } = await supabase
+  const k = await stateKey(supabase, userId, channel);
+  let q = supabase
     .from("conversation_states")
     .select("active_topic, sparring_turns, updated_at")
     .eq("user_id", userId)
-    .eq("channel", channel)
-    .maybeSingle();
+    .eq("channel", k.channel);
+  if (k.shared) q = q.eq("external_conversation_id", k.externalId);
+  const { data } = await q.maybeSingle();
   return (data as SparringStateRow) ?? null;
 }
 
@@ -47,24 +50,29 @@ export async function setSparringTopic(
     sparring_turns: turns,
     updated_at: new Date().toISOString(),
   };
-  const { data } = await supabase
+  const k = await stateKey(supabase, userId, channel);
+  let sel = supabase
     .from("conversation_states")
     .select("id")
     .eq("user_id", userId)
-    .eq("channel", channel)
-    .maybeSingle();
+    .eq("channel", k.channel);
+  if (k.shared) sel = sel.eq("external_conversation_id", k.externalId);
+  const { data } = await sel.maybeSingle();
   if ((data as { id?: string } | null)?.id) {
-    await supabase
+    let up = supabase
       .from("conversation_states")
-      .update(patch as never)
+      .update({ ...patch, ...k.extra } as never)
       .eq("user_id", userId)
-      .eq("channel", channel);
+      .eq("channel", k.channel);
+    if (k.shared) up = up.eq("external_conversation_id", k.externalId);
+    await up;
     return;
   }
   await supabase.from("conversation_states").insert({
     user_id: userId,
-    channel,
-    external_conversation_id: channel,
+    channel: k.channel,
+    external_conversation_id: k.externalId,
+    ...k.extra,
     ...patch,
   } as never);
 }

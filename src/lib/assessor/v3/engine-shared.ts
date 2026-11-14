@@ -17,10 +17,21 @@ export function nowLisbonYmd(): string {
   return lisbonYmd(new Date());
 }
 
-export function toHistoryPreview(rows: Array<{ role: string; content: string }>): string {
+export function toHistoryPreview(
+  rows: Array<{ role: string; content: string; channel?: string | null }>,
+  currentChannel?: string,
+): string {
+  // Conversa partilhada: mensagens de OUTRO canal levam a origem, para o
+  // modelo saber onde cada coisa foi dita. Do canal atual: formato antigo.
+  const label = (c?: string | null) =>
+    c === "whatsapp" ? "WhatsApp" : c === "telegram" ? "Telegram" : c ?? "";
   return [...rows].reverse()
     .filter((r) => r?.content && (r.role === "user" || r.role === "assistant"))
     .slice(-HISTORY_LIMIT)
-    .map((r) => `${r.role === "user" ? "consultor" : "assessor"}: ${r.content}`)
+    .map((r) => {
+      const who = r.role === "user" ? "consultor" : "assessor";
+      const other = currentChannel && r.channel && r.channel !== currentChannel;
+      return `${who}${other ? ` (no ${label(r.channel)})` : ""}: ${r.content}`;
+    })
     .join("\n");
 }

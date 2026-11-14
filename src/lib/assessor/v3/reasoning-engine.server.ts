@@ -192,26 +192,37 @@ async function runReasoningEngineInner(
   }
 
 
+  // Conversa partilhada: o histórico junta WhatsApp e Telegram (cada linha
+  // mantém o seu canal). Desligado: exactamente o histórico deste canal.
+  const { scopeChannels, applyChannelScope } = await import("@/lib/assessor/cross-channel/scope.server");
+  const historyChannels = await scopeChannels(supabase, userId, channel);
   const [{ data: prof }, { data: recentRows }] = await Promise.all([
     supabase.from("profiles").select("name, assessor_name").eq("id", userId).maybeSingle(),
-    supabase
-      .from("assessor_messages")
-      .select("role, content, created_at, id")
-      .eq("user_id", userId).eq("channel", channel)
+    applyChannelScope(
+      supabase
+        .from("assessor_messages")
+        .select("role, content, created_at, id, channel")
+        .eq("user_id", userId),
+      historyChannels,
+    )
       .is("archived_at", null)
       .order("created_at", { ascending: false })
       .limit(HISTORY_LIMIT),
   ]);
   const assessorName = sanitizeAssessorName((prof as any)?.assessor_name ?? "") || ASSESSOR_NAME_DEFAULT;
   const userFirstName = String((prof as any)?.name ?? "").split(/\s+/)[0] || "";
-  const historyPreview = toHistoryPreview((recentRows as any[]) ?? []);
+  const historyPreview = toHistoryPreview((recentRows as any[]) ?? [], channel);
 
   // Heurística de contexto conversacional aberto: se a última mensagem do
   // Assessor terminou em "?" e foi há menos de 10 minutos, uma resposta
   // curta ("sim", "ok") DEVE ser tratada como continuação da pergunta e
   // NUNCA como confirmação órfã. Sem isto, o Assessor responderia
   // "Claro. A que te referes?" mesmo quando acabou de perguntar algo.
-  const lastAssistant0 = ((recentRows as any[]) ?? []).find((r) => r?.role === "assistant");
+  // A "pergunta acabada de fazer" é sempre a deste canal: um "sim" aqui
+  // nunca responde a uma pergunta que só apareceu no outro canal.
+  const lastAssistant0 = ((recentRows as any[]) ?? []).find(
+    (r) => r?.role === "assistant" && (!r?.channel || r.channel === channel),
+  );
   const lastAssistantContent0 = String(lastAssistant0?.content ?? "").trim();
   const lastAssistantAt0 = lastAssistant0?.created_at ? new Date(lastAssistant0.created_at) : null;
   const lastAssistantAskedQuestion =

@@ -8,6 +8,7 @@ import {
   findActivePendingAction,
   markPendingActionStatus,
 } from "../../memory.server";
+import { stateKey } from "@/lib/assessor/cross-channel/scope.server";
 
 export interface PendingStatusExtras {
   created_resource_type?: string | null;
@@ -60,11 +61,13 @@ export const PendingRepo = {
     },
   ): Promise<void> {
     try {
+      const k = await stateKey(supabase, args.userId, args.channel);
       await supabase.from("conversation_states").upsert(
         {
           user_id: args.userId,
-          channel: args.channel,
-          external_conversation_id: args.channel,
+          channel: k.channel,
+          external_conversation_id: k.externalId,
+          ...k.extra,
           last_entity_type: args.entityType,
           last_entity_id: args.entityId,
           last_intent: args.intent,

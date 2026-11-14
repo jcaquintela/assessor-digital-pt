@@ -74,21 +74,28 @@ export async function search(
   }
 
   if (wants.has("conversation_state")) {
-    const { data } = await ctx.supabase
+    const { stateKey } = await import("@/lib/assessor/cross-channel/scope.server");
+    const k = await stateKey(ctx.supabase, ctx.userId, ctx.channel);
+    let sq = ctx.supabase
       .from("conversation_states")
       .select("active_topic, state_summary, last_intent, last_entity_type, last_entity_id, last_created_resource_type, last_created_resource_id, last_property_id, active_person_id, goal, factual_summary, pending_action_id, sparring_turns")
       .eq("user_id", ctx.userId)
-      .eq("channel", ctx.channel)
-      .maybeSingle();
+      .eq("channel", k.channel);
+    if (k.shared) sq = sq.eq("external_conversation_id", k.externalId);
+    const { data } = await sq.maybeSingle();
     out.conversation_state = data ?? null;
   }
 
   if (wants.has("pending_action") || wants.has("conversation_state")) {
-    const { data } = await ctx.supabase
-      .from("pending_actions")
-      .select("id, intent, status, structured_payload, current_question, confirmed_fields, missing_fields, goal, expires_at")
-      .eq("user_id", ctx.userId)
-      .eq("channel", ctx.channel)
+    const { scopeChannels, applyChannelScope } = await import("@/lib/assessor/cross-channel/scope.server");
+    const channels = await scopeChannels(ctx.supabase, ctx.userId, ctx.channel);
+    const { data } = await applyChannelScope(
+      ctx.supabase
+        .from("pending_actions")
+        .select("id, intent, status, structured_payload, current_question, confirmed_fields, missing_fields, goal, expires_at")
+        .eq("user_id", ctx.userId),
+      channels,
+    )
       .in("status", ["collecting_information", "pending_confirmation", "correction_pending"])
       .order("created_at", { ascending: false })
       .limit(5);

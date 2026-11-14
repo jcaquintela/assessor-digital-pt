@@ -21,3 +21,13 @@
 ## Investigação pendente (31/08/2026)
 - [x] Rotinas: o que a secção /rotinas já faz e raio para expor por conversa
 - [x] Definições por conversa: inventário de campos, leitura vs. edição, guardrails
+
+## Fase 2 ACI V1 — conversa partilhada WhatsApp+Telegram (14/11/2026, NÃO publicar)
+- [x] Interruptor `assessor.cross_channel.v1` (desligado; só contas incluídas)
+- [x] Contexto, perguntas pendentes e confirmações por conta, com canal de origem preservado
+- [x] Turno único por conta (lock transversal) + reserva atómica da confirmação (no máximo uma execução)
+- [x] "Sim" no outro canal nunca confirma a ação errada (re-pergunta no canal atual)
+- [x] Testes unitários, integração simulada e concorrência cross-channel
+- [x] Análise (sem alterar) do teto de avisos e gating Pro → proposta
+- [ ] Ligar o interruptor para contas piloto — aguarda aprovação explícita do proprietário
+- [ ] Publicar Fase 1 + Fase 2 — aguarda aprovação explícita

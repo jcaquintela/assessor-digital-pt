@@ -315,11 +315,15 @@ export async function applyMemoryWrites(
       // Cancelamento explícito da proposta pendente.
       if (w.key === "cancel_pending_prospecting_lead" && w.value) {
         try {
-          const { data: pend } = await ctx.supabase
-            .from("pending_actions")
-            .select("id")
-            .eq("user_id", ctx.userId)
-            .eq("channel", ctx.channel)
+          const { scopeChannels, applyChannelScope } = await import("@/lib/assessor/cross-channel/scope.server");
+          const channels = await scopeChannels(ctx.supabase, ctx.userId, ctx.channel);
+          const { data: pend } = await applyChannelScope(
+            ctx.supabase
+              .from("pending_actions")
+              .select("id")
+              .eq("user_id", ctx.userId),
+            channels,
+          )
             .eq("intent", "create_prospecting_lead")
             .in("status", ["pending_confirmation", "collecting_information"])
             .order("created_at", { ascending: false })
@@ -343,10 +347,13 @@ export async function applyMemoryWrites(
 
   if (Object.keys(stateUpdate).length) {
     try {
+      const { stateKey } = await import("@/lib/assessor/cross-channel/scope.server");
+      const k = await stateKey(ctx.supabase, ctx.userId, ctx.channel);
       await ctx.supabase.from("conversation_states").upsert({
         user_id: ctx.userId,
-        channel: ctx.channel,
-        external_conversation_id: ctx.channel,
+        channel: k.channel,
+        external_conversation_id: k.externalId,
+        ...k.extra,
         ...stateUpdate,
       } as never, { onConflict: "user_id,channel,external_conversation_id" });
     } catch { /* noop */ }

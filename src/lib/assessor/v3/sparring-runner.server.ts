@@ -71,12 +71,17 @@ export async function runSparringTurn(args: {
     } catch { /* noop */ }
   }
 
+  const { scopeChannels, applyChannelScope } = await import("@/lib/assessor/cross-channel/scope.server");
+  const historyChannels = await scopeChannels(supabase, userId, channel);
   const [{ data: prof }, { data: recentRows }] = await Promise.all([
     supabase.from("profiles").select("name, assessor_name").eq("id", userId).maybeSingle(),
-    supabase
-      .from("assessor_messages")
-      .select("role, content, created_at, id")
-      .eq("user_id", userId).eq("channel", channel)
+    applyChannelScope(
+      supabase
+        .from("assessor_messages")
+        .select("role, content, created_at, id, channel")
+        .eq("user_id", userId),
+      historyChannels,
+    )
       .is("archived_at", null)
       .order("created_at", { ascending: false })
       .limit(HISTORY_LIMIT),
@@ -87,7 +92,7 @@ export async function runSparringTurn(args: {
     observations: [],
     hypotheses: [],
     searches: {},
-    historyPreview: toHistoryPreview((recentRows as any[]) ?? []),
+    historyPreview: toHistoryPreview((recentRows as any[]) ?? [], channel),
     assessorName:
       sanitizeAssessorName((prof as any)?.assessor_name ?? "") || ASSESSOR_NAME_DEFAULT,
     userFirstName: String((prof as any)?.name ?? "").split(/\s+/)[0] || "",

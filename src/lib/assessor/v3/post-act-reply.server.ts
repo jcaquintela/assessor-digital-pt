@@ -224,8 +224,10 @@ export async function shapeToolReplies(params: {
       reply = "Feito. Registei a placa para contactares. Queres que te lembre de ligar?";
       if (leadId) {
         try {
+          const { stateKey } = await import("@/lib/assessor/cross-channel/scope.server");
+          const k = await stateKey(supabase, userId, channel);
           await supabase.from("conversation_states").upsert({
-            user_id: userId, channel, external_conversation_id: channel,
+            user_id: userId, channel: k.channel, external_conversation_id: k.externalId, ...k.extra,
             last_entity_type: "prospecting_lead",
             last_entity_id: leadId,
             last_intent: "create_prospecting_lead",

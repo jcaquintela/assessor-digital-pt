@@ -88,10 +88,78 @@ async function runInboundPipelineInner(
 
   // Um turno de cada vez por consultor+canal — mensagens seguidas ficam em
   // fila em vez de correrem em paralelo sobre o mesmo rascunho.
-  await withConversationLock(supabaseAdmin, userId, inbound.channel, () =>
-    routeInbound(adapter, supabaseAdmin, inbound, userId as string, persistedUuid),
+  //
+  // Conversa partilhada (interruptor `assessor.cross_channel.v1` ligado para
+  // a conta): um turno de cada vez POR CONTA, o contexto é comum aos dois
+  // canais e uma resposta cega só confirma o que foi perguntado neste canal.
+  const uid = userId as string;
+  const { isCrossChannelEnabled } = await import("@/lib/assessor/cross-channel/scope.server");
+  const { scopeFor } = await import("@/lib/assessor/cross-channel/scope");
+  const scope = scopeFor(await isCrossChannelEnabled(supabaseAdmin, uid), inbound.channel);
+  if (!scope.shared) {
+    await withConversationLock(supabaseAdmin, uid, inbound.channel, () =>
+      routeInbound(adapter, supabaseAdmin, inbound, uid, persistedUuid),
+    );
+    return;
+  }
+  await withConversationLock(
+    supabaseAdmin,
+    uid,
+    scope.lockChannel,
+    () => runSharedTurn(adapter, supabaseAdmin, inbound, uid, persistedUuid),
+    { strict: true },
   );
 }
+
+/** Turno em conversa partilhada (já dentro do lock da conta). */
+async function runSharedTurn(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  persistedUuid: string | null,
+): Promise<void> {
+  const scopeMod = await import("@/lib/assessor/cross-channel/scope.server");
+  const turn = await import("@/lib/assessor/cross-channel/turn.server");
+  scopeMod.enterSharedTurn(userId);
+  const token = `${inbound.channel}:${inbound.externalMessageId ?? persistedUuid ?? Date.now()}`;
+  let claimed = false;
+  try {
+    await scopeMod.ensureAccountState(supabaseAdmin, userId);
+    const before = await turn.snapshotActive(supabaseAdmin, userId);
+    try {
+      // A guarda corre dentro do routeInbound, depois das respostas com
+      // estado próprio (pergunta da equipa, botões de resultado, promo,
+      // escolha de plano) e antes de qualquer confirmação de pendente.
+      const gate: SharedTurnGate = async (content) => {
+        const g = await turn.beginCrossChannelTurn(supabaseAdmin, {
+          userId, channel: inbound.channel, text: content, token,
+        });
+        if (g.kind === "proceed") {
+          claimed = g.claimed;
+          return false;
+        }
+        await deliverReply(adapter, supabaseAdmin, {
+          userId,
+          externalConversationId: inbound.externalConversationId,
+          outcome: { reply: g.text } as EngineOutcome,
+          replyTo: inbound.replyToMessageId ?? null,
+        });
+        return true;
+      };
+      await routeInbound(adapter, supabaseAdmin, inbound, userId, persistedUuid, gate);
+    } finally {
+      await turn.endCrossChannelTurn(supabaseAdmin, {
+        userId, channel: inbound.channel, token, claimed, before,
+      });
+    }
+  } finally {
+    scopeMod.exitSharedTurn(userId);
+  }
+}
+
+/** Devolve true quando a guarda da conversa partilhada já respondeu. */
+type SharedTurnGate = (content: string) => Promise<boolean>;
 
 async function routeInbound(
   adapter: ChannelAdapter,
@@ -99,6 +167,7 @@ async function routeInbound(
   inbound: NormalizedInbound,
   userId: string,
   persistedUuid: string | null,
+  sharedGate?: SharedTurnGate,
 ): Promise<void> {
   // 7c. Resposta a uma pergunta da equipa (canal admin → consultor). Se
   // existir uma pergunta pendente dentro da janela, o texto fica ligado a
@@ -166,6 +235,16 @@ async function routeInbound(
     // Escolha de plano no fim do período experimental (dia 12). Só corre se
     // a escolha tiver sido pedida e ainda não estiver registada.
     if (await handleTrialChoiceAnswer(adapter, supabaseAdmin, inbound, userId, content)) {
+      if (inbound.callback && adapter.answerInteraction) {
+        try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
+        catch { /* best-effort */ }
+      }
+      return;
+    }
+
+    // Conversa partilhada: uma resposta cega ("sim", "não") só resolve o que
+    // foi perguntado NESTE canal; o resto volta a ser perguntado aqui.
+    if (sharedGate && (await sharedGate(content))) {
       if (inbound.callback && adapter.answerInteraction) {
         try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
         catch { /* best-effort */ }
@@ -449,11 +528,15 @@ async function hasPendingConfirmation(
   channel: string,
 ): Promise<boolean> {
   try {
-    const { data } = await supabaseAdmin
-      .from("pending_actions")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("channel", channel)
+    const { scopeChannels, applyChannelScope } = await import("@/lib/assessor/cross-channel/scope.server");
+    const channels = await scopeChannels(supabaseAdmin, userId, channel);
+    const { data } = await applyChannelScope(
+      supabaseAdmin
+        .from("pending_actions")
+        .select("id")
+        .eq("user_id", userId),
+      channels,
+    )
       .eq("status", "pending_confirmation")
       .gt("expires_at", new Date().toISOString())
       .limit(1);

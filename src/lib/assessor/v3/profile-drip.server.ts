@@ -139,11 +139,15 @@ export async function findProfileQuestion(
   args: { userId: string; channel: string },
 ): Promise<{ id: string; key: ProfileQuestionKey; pendingValue: string | null } | null> {
   try {
-    const { data } = await supabase
-      .from("pending_actions")
-      .select("id, structured_payload, expires_at")
-      .eq("user_id", args.userId)
-      .eq("channel", args.channel)
+    const { scopeChannels, applyChannelScope } = await import("@/lib/assessor/cross-channel/scope.server");
+    const channels = await scopeChannels(supabase, args.userId, args.channel);
+    const { data } = await applyChannelScope(
+      supabase
+        .from("pending_actions")
+        .select("id, structured_payload, expires_at")
+        .eq("user_id", args.userId),
+      channels,
+    )
       .eq("intent", PROFILE_QUESTION_INTENT)
       .eq("status", "collecting_information")
       .order("created_at", { ascending: false })

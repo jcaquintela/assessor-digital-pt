@@ -13,11 +13,14 @@ export async function recordLastRead(
   },
 ): Promise<void> {
   try {
+    const { stateKey } = await import("@/lib/assessor/cross-channel/scope.server");
+    const k = await stateKey(supabase, args.userId, args.channel);
     await supabase.from("conversation_states").upsert(
       {
         user_id: args.userId,
-        channel: args.channel,
-        external_conversation_id: args.channel,
+        channel: k.channel,
+        external_conversation_id: k.externalId,
+        ...k.extra,
         last_read_tool: args.tool,
         last_read_args: args.arguments ?? {},
         last_read_axis: axisForTool(args.tool),
@@ -35,12 +38,15 @@ export async function readLastRead(
   args: { userId: string; channel: string },
 ): Promise<LastReadState | null> {
   try {
-    const { data } = await supabase
+    const { stateKey } = await import("@/lib/assessor/cross-channel/scope.server");
+    const k = await stateKey(supabase, args.userId, args.channel);
+    let q = supabase
       .from("conversation_states")
       .select("last_read_tool, last_read_args, last_read_axis, last_read_at")
       .eq("user_id", args.userId)
-      .eq("channel", args.channel)
-      .maybeSingle();
+      .eq("channel", k.channel);
+    if (k.shared) q = q.eq("external_conversation_id", k.externalId);
+    const { data } = await q.maybeSingle();
     if (!data?.last_read_tool) return null;
     return {
       tool: data.last_read_tool ?? null,

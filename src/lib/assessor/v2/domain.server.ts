@@ -970,11 +970,13 @@ async function execCreateEventInner(ctx: DomainContext, args: unknown): Promise<
 }
 
 async function findActiveProspectingLead(ctx: DomainContext): Promise<{ id: string; title?: string | null; location?: string | null; phone?: string | null } | null> {
+  const { stateKey } = await import("@/lib/assessor/cross-channel/scope.server");
+  const sk = await stateKey(ctx.supabase, ctx.userId, ctx.channel);
   const { data: state } = await ctx.supabase
     .from("conversation_states")
     .select("last_entity_type, last_entity_id")
     .eq("user_id", ctx.userId)
-    .eq("channel", ctx.channel)
+    .eq("channel", sk.channel)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();

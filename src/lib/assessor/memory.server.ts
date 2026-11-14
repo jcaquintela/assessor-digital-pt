@@ -9,6 +9,7 @@
 import { describePendingPt, sanitizeMiscFields } from "./misc-text";
 import { initialMiscClass } from "./misc-class";
 import { pendingSlot, type PendingSlot } from "./pending-slots";
+import { applyChannelScope, scopeChannels, stateKey } from "./cross-channel/scope.server";
 
 export { describePendingPt };
 export { pendingSlot };
@@ -60,11 +61,16 @@ export async function findActivePendingAction(
   channel: string,
   slot: PendingSlot = "main",
 ): Promise<PendingActionRow | null> {
-  const { data } = await supabase
-    .from("pending_actions")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("channel", channel)
+  // Conversa partilhada (interruptor ligado): pendentes de WhatsApp e
+  // Telegram contam como um só. Desligado: exactamente o filtro por canal.
+  const channels = await scopeChannels(supabase, userId, channel);
+  const { data } = await applyChannelScope(
+    supabase
+      .from("pending_actions")
+      .select("*")
+      .eq("user_id", userId),
+    channels,
+  )
     .in("status", ["pending_confirmation", "collecting_information", "correction_pending"])
     .order("created_at", { ascending: false })
     .limit(10);
@@ -94,11 +100,14 @@ export async function findRecentExpiredConfirmation(
   channel: string,
   maxAgeMs: number = 7 * 24 * 60 * 60 * 1000,
 ): Promise<PendingActionRow | null> {
-  const { data } = await supabase
-    .from("pending_actions")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("channel", channel)
+  const channels = await scopeChannels(supabase, userId, channel);
+  const { data } = await applyChannelScope(
+    supabase
+      .from("pending_actions")
+      .select("*")
+      .eq("user_id", userId),
+    channels,
+  )
     .eq("status", "expired")
     .order("updated_at", { ascending: false })
     .limit(5);
@@ -117,11 +126,14 @@ export async function findLastExecutedAction(
   channel: string,
   intents?: string[],
 ): Promise<PendingActionRow | null> {
-  let q = supabase
-    .from("pending_actions")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("channel", channel)
+  const channels = await scopeChannels(supabase, userId, channel);
+  let q = applyChannelScope(
+    supabase
+      .from("pending_actions")
+      .select("*")
+      .eq("user_id", userId),
+    channels,
+  )
     .eq("status", "executed")
     .order("updated_at", { ascending: false })
     .limit(1);
@@ -155,11 +167,16 @@ export async function createPendingAction(
   // silêncio (caso real: "Casa Teste A" perdida quando chegou "Casa Teste B").
   // Guardamos o que se perdeu em Diversos.
   const slot = pendingSlot(input.intent);
-  const { data: activeRows } = await supabase
-    .from("pending_actions")
-    .select("id, intent, structured_payload, original_content")
-    .eq("user_id", input.userId)
-    .eq("channel", input.channel)
+  // Conversa partilhada: o rascunho novo substitui o da mesma ranhura em
+  // QUALQUER dos dois canais (um só "assunto em aberto" por conta).
+  const scope = await scopeChannels(supabase, input.userId, input.channel);
+  const { data: activeRows } = await applyChannelScope(
+    supabase
+      .from("pending_actions")
+      .select("id, intent, structured_payload, original_content")
+      .eq("user_id", input.userId),
+    scope,
+  )
     .in("status", [
       "pending_confirmation",
       "collecting_information",
@@ -175,7 +192,8 @@ export async function createPendingAction(
         status: "cancelled",
         error_message: "superseded by new pending action",
       } as never)
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .eq("user_id", input.userId);
   }
   for (const row of superseded) {
     if (row.intent === "classify_file" || row.intent === "suggest_file_link") continue;
@@ -217,6 +235,7 @@ export async function createPendingAction(
       pending_question: input.pendingQuestion ?? null,
       current_question: input.currentQuestion ?? null,
       source_message_id: input.sourceMessageId ?? null,
+      presented_channels: [input.channel],
       expires_at: isoFuture(DRAFT_TTL_MS),
     } as never)
     .select("*")
@@ -294,12 +313,13 @@ export async function getConversationState(
   channel: string,
   externalId: string = "default",
 ): Promise<ConversationStateRow | null> {
+  const k = await stateKey(supabase, userId, channel, externalId);
   const { data } = await supabase
     .from("conversation_states")
     .select("*")
     .eq("user_id", userId)
-    .eq("channel", channel)
-    .eq("external_conversation_id", externalId)
+    .eq("channel", k.channel)
+    .eq("external_conversation_id", k.externalId)
     .maybeSingle();
   return (data as ConversationStateRow | null) ?? null;
 }
@@ -321,10 +341,12 @@ export async function upsertConversationState(
     lastPropertyId?: string | null;
   },
 ): Promise<void> {
+  const k = await stateKey(supabase, input.userId, input.channel, input.externalId ?? "default");
   const row: Record<string, unknown> = {
     user_id: input.userId,
-    channel: input.channel,
-    external_conversation_id: input.externalId ?? "default",
+    channel: k.channel,
+    external_conversation_id: k.externalId,
+    ...k.extra,
   };
   if (input.activeTopic !== undefined) row.active_topic = input.activeTopic;
   if (input.stateSummary !== undefined) row.state_summary = input.stateSummary;
