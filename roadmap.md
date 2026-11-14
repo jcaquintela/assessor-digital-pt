@@ -57,3 +57,12 @@
 - [ ] Conversas de referência com etiqueta `action_first` na base — aguarda aprovação para escrever dados
 - [ ] Avaliação direta de satisfação (pergunta ao consultor) — não existe; decisão de produto
 - [ ] Ligar o interruptor/publicar — aguarda aprovação explícita
+
+## Testes de aceitação A (comprador Miguel) e B (angariação ZMPT593612) (14/11/2026, NÃO publicar)
+- [x] Angariação sem procura: diagnóstico de funil, preço divergente, concorrente sem conclusões, kit orgânico, plano 7 dias, pago só com evidência
+- [x] Estados de ação (Executado só com ferramenta / Preparado / Aguarda aprovação / Sem acesso) nos dois casos
+- [x] Comprador: mensagem ao comprador já preparada, preço com data, características e fonte nas propostas
+- [x] Guarda de respostas da IA: retira afirmações de divulgação/publicação e de acompanhamento inexistente (interruptor ligado)
+- [x] Avaliação: pedir licença para preparar, prometer sem entregar e prometer monitorização contam como falha; entrega concreta e verificabilidade de links medidas
+- [ ] Verificar o anúncio do concorrente/portal da Zome — sem acesso; aguarda decisão sobre o site Zome
+- [ ] Estatísticas reais do anúncio (impressões/cliques) — sem integração com os portais

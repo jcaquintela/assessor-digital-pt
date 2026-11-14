@@ -6,6 +6,7 @@ describe("router determinístico — precedência", () => {
   it("mantém a ordem exacta dos casos", () => {
     expect(DETERMINISTIC_ROUTER.map((c) => c.name)).toEqual([
       "prompt_shield",
+      "listing_diagnosis",
       "buyer_qualification",
       "elliptic_entity",
       "person_brief",

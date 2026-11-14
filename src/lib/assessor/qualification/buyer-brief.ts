@@ -52,8 +52,13 @@ export function hasBuyerSignal(text: string): boolean {
 }
 
 /** Mensagem de qualificação de comprador: sinal de comprador + pelo menos um critério. */
+// "Tenho um comprador novo" sem critérios também arranca: as perguntas saem
+// todas juntas numa mensagem, em vez de o motor perguntar uma a uma.
+const NEW_BUYER_RE = /\b(?:tenho|entrou|chegou)\s+(?:um|uma|mais um|mais uma)\s+(?:nov[oa]\s+)?comprador(?:a)?\b|\bcomprador(?:a)?\s+nov[oa]\b/;
+
 export function isBuyerQualification(text: string): boolean {
   if (!hasBuyerSignal(text)) return false;
+  if (NEW_BUYER_RE.test(foldText(text))) return true;
   const b = extractBuyerBrief(text);
   return !!(b.typology || b.zone || b.budgetMax || b.financingApproved);
 }
@@ -143,10 +148,10 @@ export function extractBuyerBrief(text: string, now: Date = new Date()): BuyerBr
   if (known) b.zone = c(ZONE_LABEL[known] ?? titleCase(known));
 
   const name = raw.match(/\b(?:comprador(?:a)?|cliente)[,:]?\s+(?:(?:o|a)\s+)?(?:chamad[oa]\s+)?([A-ZÀ-Ý][a-zà-ÿ]+)/)
-    ?? raw.match(/^\s*(?:[OoAa]\s+)?([A-ZÀ-Ý][a-zà-ÿ]+)\s*(?:[,:-]|\b(?:procura|quer|anda|tem)\b)/);
+    ?? raw.match(/^\s*(?:[OoAa]\s+)?([A-ZÀ-Ý][a-zà-ÿ]+)(?:\s*[,:]|\s+-\s|\s+(?:procura|quer|anda|tem)\b)/);
   if (name && !KNOWN_ZONES.includes(foldText(name[1]))) {
     const n = name[1]!;
-    if (!/^(Olá|Ola|Tenho|Preciso|Um|Uma|Comprador|Cliente|Afonso|Ele|Ela|Eles|Elas|Sim|Não|Nao|Ok|Também|Tambem|Mas|E|Já|Ja)$/i.test(n)) b.buyerName = c(n);
+    if (!/^(Olá|Ola|Tenho|Preciso|Um|Uma|Comprador|Cliente|Afonso|Ele|Ela|Eles|Elas|Sim|Não|Nao|Ok|Também|Tambem|Mas|E|Já|Ja|Pré|Pre|Orçamento|Orcamento|Procura|Prazo|Zona|Tipologia)$/i.test(n)) b.buyerName = c(n);
   }
 
   const fin = moneyNear(fold, /pre-?aprova\w*|credito (?:aprovado|pre-?aprovado)|financiamento(?: aprovado)?/);

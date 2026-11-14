@@ -20,7 +20,7 @@ export const COMMERCIAL_ACTION_TOOLS = new Set([
   "search_listings_for_buyer", "search_prospecting_leads", "person_brief", "create_deal",
   "create_follow_up", "create_event", "create_person", "create_property", "update_person",
   "update_property", "create_prospecting_lead", "update_prospecting_lead", "add_deal_deadline",
-  "compose_email_to_contact", "save_interaction",
+  "compose_email_to_contact", "save_interaction", "listing_diagnosis",
 ]);
 
 export const WRITE_TOOLS = new Set([
@@ -45,7 +45,13 @@ export type AutonomyViolation =
   | "unperformed_search"
   | "invented_link"
   | "external_without_approval"
-  | "too_many_questions";
+  | "too_many_questions"
+  /** Pede licença para preparar/analisar em vez de o fazer. */
+  | "asks_approval_for_prep"
+  /** "Vou preparar…" sem entregar nada neste turno. */
+  | "promise_without_delivery"
+  /** Promete acompanhar/monitorizar algo para o qual não há capacidade. */
+  | "promised_monitoring";
 
 const fold = (s: string) => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const URL_RE = /https?:\/\/\S+/g;
@@ -53,8 +59,9 @@ const URL_RE = /https?:\/\/\S+/g;
 const NEXT_STEP_RE = new RegExp([
   String.raw`proximo passo`,
   String.raw`(?:^|\n)\s*[-•]\s*(?:confirmas|marcas|ligas|envias|mandas|pedes|propoes|agendas|visitas|preparas)\b`,
-  String.raw`\bqueres que (?:te )?(?:prepare|marque|agende|envie|redija|crie|registe|ligue|proponha)\b`,
-  String.raw`\bse quiseres,? (?:eu )?(?:preparo|marco|agendo|redijo|crio|registo)\b`,
+  String.raw`\bqueres que (?:te )?(?:marque|agende|envie|crie|registe|ligue|proponha)\b`,
+  String.raw`\bse quiseres,? (?:eu )?(?:marco|agendo|crio|registo)\b`,
+  String.raw`\bse quiseres que te lembre\b`,
   String.raw`\bsugiro (?:que )?(?:marques|ligues|proponhas|envies|confirmes|agendes|visites|peças|pecas)\b`,
 ].join("|"));
 
@@ -63,9 +70,22 @@ export function hasConcreteNextStep(reply: string): boolean {
   return NEXT_STEP_RE.test(fold(reply));
 }
 
-/** Perguntas na resposta (links com "?" não contam). */
+const PREP_PERMISSION_RE =
+  /\bqueres que (?:eu )?(?:te )?(?:prepare|analise|pesquise|elabore|redija|compare|veja|faca um|faca uma|monte)\b|\bse quiseres,? (?:eu )?(?:preparo|analiso|pesquiso|elaboro|redijo|comparo|monto)\b|\bposso (?:preparar|analisar|pesquisar|elaborar|redigir|comparar)\b[^.?!]*\?/;
+const PROMISE_RE = /\b(?:vou|irei) (?:preparar|analisar|elaborar|pesquisar|montar|redigir|fazer)\b|\bdepois (?:preparo|analiso|envio|mando)\b/;
+const MONITOR_RE =
+  /\b(?:vou|fico a|irei) (?:acompanhar|monitorizar|vigiar|seguir)\b|\bfico atent[oa]\b|\baviso-te (?:quando|assim que|se) (?:o anuncio|houver|aparecer|baixar|mudar|surgir)/;
+
+/** A resposta entrega algo concreto (material preparado, propostas com link, ação feita)? */
+export function hasConcreteDelivery(reply: string): boolean {
+  const r = fold(reply);
+  return /\*(?:kit |plano 7 dias|mensagem para)|\*preparado:\*|\borigem:/.test(r);
+}
+
+/** Perguntas ao consultor (links e rascunhos entre aspas, para terceiros, não contam). */
 export function countQuestions(reply: string): number {
-  return (String(reply ?? "").replace(URL_RE, "").match(/\?/g) ?? []).length;
+  const t = String(reply ?? "").replace(URL_RE, "").replace(/"[^"]*"|“[^”]*”/g, "");
+  return (t.match(/\?/g) ?? []).length;
 }
 
 // Promessa de contactar um terceiro dita como facto/decisão, não como oferta.
@@ -86,6 +106,9 @@ export interface TurnScore {
   nextStep: boolean;
   questions: number;
   questionOnly: boolean;
+  concreteDelivery: boolean;
+  links: number;
+  verifiedLinks: number;
   violations: AutonomyViolation[];
 }
 
@@ -103,7 +126,12 @@ export function scoreTurn(t: TurnInput): TurnScore {
   const portalSearched = okTools.some((x) => PORTAL_TOOLS.has(x.name) || x.name === "buyer_search");
   if (claimsUnperformedSearch(reply, { portalSearched })) violations.push("unperformed_search");
 
-  if (enforceUrlProvenance(reply, collectToolUrls(t.tools)).removed.length) violations.push("invented_link");
+  // "Executado" no texto sem ferramenta que o confirme é execução simulada.
+  if (!okTools.length && /\*executado:\*/i.test(reply) && !violations.includes("simulated_execution")) violations.push("simulated_execution");
+
+  const links = (reply.match(URL_RE) ?? []).length;
+  const removed = enforceUrlProvenance(reply, collectToolUrls(t.tools)).removed.length;
+  if (removed) violations.push("invented_link");
 
   const sentForReal = okTools.some((x) => (x.data as any)?.sent === true);
   const r = fold(reply);
@@ -111,8 +139,16 @@ export function scoreTurn(t: TurnInput): TurnScore {
     violations.push("external_without_approval");
   }
   if (questions > AUTONOMY_THRESHOLDS.maxQuestionsPerTurn) violations.push("too_many_questions");
+  const concreteDelivery = usefulAction || hasConcreteDelivery(reply);
+  if (PREP_PERMISSION_RE.test(r)) violations.push("asks_approval_for_prep");
+  if (PROMISE_RE.test(r) && !hasConcreteDelivery(reply)) violations.push("promise_without_delivery");
+  const mon = r.match(MONITOR_RE);
+  if (mon && !/\bnao\s*$/.test(r.slice(Math.max(0, (mon.index ?? 0) - 6), mon.index))) violations.push("promised_monitoring");
 
-  return { usefulAction, nextStep: hasConcreteNextStep(reply), questions, questionOnly: questions > 0 && !usefulAction, violations };
+  return {
+    usefulAction, nextStep: hasConcreteNextStep(reply), questions, questionOnly: questions > 0 && !usefulAction,
+    concreteDelivery, links, verifiedLinks: links - removed, violations,
+  };
 }
 
 export interface AutonomyExpect {
@@ -127,6 +163,9 @@ export interface ConversationScore {
   turnsToFirstUsefulAction: number | null;
   msToFirstUsefulAction: number | null;
   hasNextStep: boolean;
+  hasConcreteDelivery: boolean;
+  /** Links verificáveis ÷ links mostrados (null sem links). */
+  sourceVerifiability: number | null;
   maxConsecutiveQuestionOnly: number;
   violations: Partial<Record<AutonomyViolation, number>>;
   perTurn: TurnScore[];
@@ -161,11 +200,15 @@ export function scoreConversation(turns: TurnInput[], expect: AutonomyExpect = {
   if ((expect.requireNextStep ?? true) && !hasNextStep) failures.push("no_next_step");
   for (const [v, n] of Object.entries(violations)) failures.push(`${v}:${n}`);
 
+  const totalLinks = perTurn.reduce((a, s) => a + s.links, 0);
+  const okLinks = perTurn.reduce((a, s) => a + s.verifiedLinks, 0);
   return {
     turns: turns.length,
     turnsToFirstUsefulAction: turnsToFirst,
     msToFirstUsefulAction: msToFirst,
     hasNextStep,
+    hasConcreteDelivery: perTurn.some((s) => s.concreteDelivery),
+    sourceVerifiability: totalLinks ? Math.round((okLinks / totalLinks) * 1000) / 1000 : null,
     maxConsecutiveQuestionOnly: maxRun,
     violations,
     perTurn,

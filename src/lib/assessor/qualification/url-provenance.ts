@@ -66,6 +66,33 @@ export const PORTAL_NOT_SEARCHED_REPLY =
 
 export const PORTAL_TOOLS = new Set(["search_similar_listings", "search_listings_for_buyer"]);
 
+// Ações externas que o Afonso não faz (divulgar, publicar, mexer em anúncios,
+// gastar) e acompanhamento que não existe (não monitoriza portais).
+const EXTERNAL_DONE_RE =
+  /\b(divulguei|publiquei|impulsionei|alterei o (?:anuncio|preco)|atualizei o anuncio|baixei o preco|lancei a campanha|partilhei (?:com|nos|no|nas|na) (?:os |as )?(?:colegas|grupos?|redes|portais?|comprador))/;
+const MONITORING_RE =
+  /\b(?:vou|fico a|irei) (?:acompanhar|monitorizar|vigiar)\b|\bfico atent[oa]\b|\baviso-te (?:quando|assim que|se) (?:o anuncio|houver|aparecer|baixar|mudar|surgir)/;
+export const NOT_DONE_EXTERNAL_NOTE =
+  "Não divulguei, publiquei nem alterei nada fora daqui — isso só com o teu ok, e quem publica és tu.";
+export const NO_MONITORING_NOTE =
+  "Não acompanho anúncios sozinho: manda-me os números quando os tiveres e eu leio-os.";
+
+/** Retira frases que afirmam ações externas ou monitorização inexistente. */
+export function guardExternalClaims(reply: string): { reply: string; changed: boolean } {
+  const sentences = String(reply ?? "").split(/(?<=[.!?])\s+/);
+  let ext = false;
+  let mon = false;
+  const kept = sentences.filter((s) => {
+    const f = foldText(s);
+    if (EXTERNAL_DONE_RE.test(f) && !/\bnao (?:divulguei|publiquei|alterei|partilhei)/.test(f)) { ext = true; return false; }
+    if (MONITORING_RE.test(f) && !/\bnao (?:acompanho|monitorizo)/.test(f)) { mon = true; return false; }
+    return true;
+  });
+  if (!ext && !mon) return { reply, changed: false };
+  const notes = [ext ? NOT_DONE_EXTERNAL_NOTE : null, mon ? NO_MONITORING_NOTE : null].filter(Boolean);
+  return { reply: [kept.join(" ").trim(), ...notes].filter(Boolean).join("\n\n"), changed: true };
+}
+
 /** Guarda completa para respostas da IA (interruptor ligado). */
 export function guardSearchAndLinks(
   reply: string,
@@ -76,5 +103,6 @@ export function guardSearchAndLinks(
     const redeClaim = CLAIMS_REDE_SEARCH_RE.test(foldText(reply));
     return { reply: redeClaim ? REDE_NO_ACCESS_REPLY : PORTAL_NOT_SEARCHED_REPLY, removed: [], replaced: true };
   }
-  return { ...enforceUrlProvenance(reply, collectToolUrls(toolResults)), replaced: false };
+  const ext = guardExternalClaims(reply);
+  return { ...enforceUrlProvenance(ext.reply, collectToolUrls(toolResults)), replaced: ext.changed };
 }

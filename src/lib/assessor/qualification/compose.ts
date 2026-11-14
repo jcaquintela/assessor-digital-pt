@@ -8,6 +8,7 @@ import {
 } from "./buyer-brief";
 import { formatProposal, rankProposals, type ListingProposal } from "./proposal-format";
 import { REDE_NO_ACCESS_REPLY } from "./url-provenance";
+import { formatActionStates, type ActionItem } from "../commercial/action-states";
 
 /** Marca a primeira linha: serve para reconhecer a continuação da conversa. */
 export const QUALIFICATION_MARKER = "*Pesquisa para ";
@@ -67,7 +68,14 @@ export function pendingQuestions(b: BuyerBrief, alreadyAsked: string): string[] 
     if (!b.deadline) out.push("Há prazo para comprar?");
     out.push("Algo obrigatório (garagem, elevador, varanda)?");
   }
-  return out.filter((q) => !asked.includes(q)).slice(0, MAX_QUESTIONS);
+  const fresh = out.filter((q) => !asked.includes(q)).slice(0, MAX_QUESTIONS);
+  // O mínimo bloqueia a pesquisa: se ficou por responder, volta-se a pedir
+  // (de forma curta), senão a mensagem ficava sem pergunta nenhuma.
+  if (!fresh.length && miss.length) {
+    const label = { typology: "a tipologia", zone: "a zona", budget: "o orçamento aproximado (ou o valor da pré-aprovação)" };
+    return [`Falta só ${miss.map((m) => label[m]).join(" e ")} — com isso pesquiso logo.`];
+  }
+  return fresh;
 }
 
 function urgencyBlock(b: BuyerBrief, now: Date): string | null {
@@ -81,14 +89,25 @@ function urgencyBlock(b: BuyerBrief, now: Date): string | null {
   return `*Prioridade alta: prazo ${ddmm(b.deadline.value)}, faltam ${n} dias.* Em paralelo:\n${steps.join("\n")}`;
 }
 
-// Próximo passo específico + bloqueio antecipado. Prepara a execução, mas
-// nada sai para terceiros sem o "sim" explícito do consultor.
-function nextStepBlock(b: BuyerBrief, hasProposals: boolean, urgent: boolean): string {
+// Mensagem ao comprador PREPARADA (não pedimos licença para preparar): o
+// consultor copia e envia. Só leva links que já estão na resposta.
+function buyerMessage(b: BuyerBrief, shown: ListingProposal[]): string | null {
+  const withLinks = shown.filter((p) => /^https?:\/\//.test(p.url) && p.source === "portal").slice(0, 2);
+  if (!withLinks.length) return null;
+  const who = b.buyerName?.value ? `Olá ${b.buyerName.value}` : "Olá";
+  const what = [b.typology?.value, b.zone ? `em ${b.zone.value}` : null].filter(Boolean).join(" ");
+  const items = withLinks.map((p, n) => `${n + 1}) ${p.title}${p.price != null && !/\d\s*€/.test(p.title) ? `, ${eur(p.price)}` : ""} ${p.url}`).join(" ");
+  return `*Mensagem para o comprador (preparada — copias e envias tu):*\n"${who}, separei ${withLinks.length === 1 ? "uma opção" : "duas opções"} ${what} dentro do que falámos: ${items}. Qual queres visitar esta semana?"`;
+}
+
+// Próximo passo específico + bloqueio antecipado.
+function nextStepBlock(b: BuyerBrief, hasProposals: boolean, urgent: boolean, prepared: boolean): string {
   const lines: string[] = [];
   if (hasProposals) {
+    const msg = prepared ? " A mensagem para o comprador está pronta acima." : "";
     lines.push(urgent
-      ? "*Próximo passo:* se quiseres, preparo já a mensagem com estes imóveis para enviares — nada sai sem o teu ok."
-      : "*Próximo passo:* marcas visita ao primeiro da lista esta semana. Se quiseres, preparo a mensagem com estes imóveis para enviares — nada sai sem o teu ok.");
+      ? `*Próximo passo:* hoje confirmas a disponibilidade dos que encaixam e marcas as visitas.${msg}`
+      : `*Próximo passo:* marcas visita ao primeiro da lista esta semana.${msg}`);
   } else {
     lines.push("*Próximo passo:* manda-me referências ZMPT ou links que tenhas, ou alarga a zona, e eu cruzo logo com estes critérios.");
   }
@@ -106,6 +125,8 @@ export interface ComposeInput {
   portalStatus: PortalStatus;
   previousReply?: string | null;
   now?: Date;
+  /** A carteira própria foi mesmo consultada neste turno. */
+  ownSearched?: boolean;
 }
 
 export function composeQualificationReply(i: ComposeInput): string {
@@ -157,7 +178,19 @@ export function composeQualificationReply(i: ComposeInput): string {
     parts.push(REDE_NO_ACCESS_REPLY);
   }
 
-  parts.push(nextStepBlock(b, internalTxt.length > 0 || portalShown, !!urgent));
+  const shownPortal = i.portalStatus === "ok" ? portal : [];
+  const msg = buyerMessage(b, shownPortal);
+  if (msg) parts.push(msg);
+
+  const items: ActionItem[] = [];
+  if (i.ownSearched) items.push({ state: "executed", evidenceTool: "search_properties", text: `procurei na tua carteira (${internal.length} a encaixar)` });
+  if (i.portalStatus === "ok") items.push({ state: "executed", evidenceTool: "search_similar_listings", text: `pesquisa nos portais (${i.portal.length} ${i.portal.length === 1 ? "anúncio" : "anúncios"})` });
+  if (msg) items.push({ state: "prepared", text: "mensagem para o comprador" });
+  items.push({ state: "awaiting_approval", text: "enviar ao comprador ou marcar visitas com terceiros — nada sai sem o teu ok" });
+  items.push({ state: "no_access", text: "carteira da Rede/Zome, disponibilidade real dos anúncios dos portais" });
+  parts.push(formatActionStates(items));
+
+  parts.push(nextStepBlock(b, internalTxt.length > 0 || portalShown, !!urgent, !!msg));
 
   if (questions.length) parts.push(`Para afinar, de uma vez:\n${questions.map((q) => `- ${q}`).join("\n")}`);
   return parts.join("\n\n");

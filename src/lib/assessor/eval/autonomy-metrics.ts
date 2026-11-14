@@ -13,7 +13,16 @@
 // - Satisfação: não há avaliação direta; usa-se a média do índice de
 //   qualidade e as correções feitas pelo consultor (proxies, não satisfação).
 
-import { COMMERCIAL_ACTION_TOOLS, hasConcreteNextStep } from "./commercial-autonomy";
+import { COMMERCIAL_ACTION_TOOLS, hasConcreteDelivery, hasConcreteNextStep } from "./commercial-autonomy";
+import { LISTING_DOMAINS } from "@/lib/imoveis/similar-listings";
+
+const LINK_RE = /https?:\/\/[^\s<>()*_]+/g;
+const OWN_HOSTS = ["app.meuafonso.com", "meuafonso.com"];
+function knownSource(url: string): boolean {
+  let h = "";
+  try { h = new URL(url).hostname.replace(/^www\./, "").toLowerCase(); } catch { return false; }
+  return OWN_HOSTS.includes(h) || LISTING_DOMAINS.some((d) => h === d || h.endsWith(`.${d}`));
+}
 
 export const SESSION_GAP_MS = 30 * 60_000;
 
@@ -30,6 +39,11 @@ export interface AutonomyMetrics {
   medianTurnsToFirstAction: number | null;
   medianSecondsToFirstAction: number | null;
   nextStepRate: number | null;
+  /** Conversas com entrega concreta (material preparado, propostas com link, ação feita). */
+  deliveryRate: number | null;
+  /** Links mostrados que apontam para o painel ou portais conhecidos ÷ total (proxy). */
+  sourceVerifiability: { links: number; knownSource: number; rate: number | null };
+  actionsCompleted: number;
   proposals: { executed: number; declinedOrExpired: number; acceptanceRate: number | null };
   nudges: { sent: number; withConsultantOutcome: number };
   followUps: { createdByAfonso: number; completed: number };
@@ -94,9 +108,14 @@ export function computeAutonomyMetrics(input: {
   const secs: number[] = [];
   let withAction = 0;
   let withNext = 0;
+  let withDelivery = 0;
+  let links = 0;
+  let known = 0;
   for (const s of sessions) {
     if (s.assistant.some(hasConcreteNextStep)) withNext++;
+    for (const a of s.assistant) for (const u of a.match(LINK_RE) ?? []) { links++; if (knownSource(u)) known++; }
     const hits = (logsByUser.get(s.userId) ?? []).filter((t) => t >= s.start && t <= s.end + 120_000).sort((a, b) => a - b);
+    if (hits.length || s.assistant.some(hasConcreteDelivery)) withDelivery++;
     if (!hits.length) continue;
     withAction++;
     const first = hits[0];
@@ -117,6 +136,9 @@ export function computeAutonomyMetrics(input: {
     medianTurnsToFirstAction: median(turns),
     medianSecondsToFirstAction: median(secs),
     nextStepRate: ratio(withNext, sessions.length),
+    deliveryRate: ratio(withDelivery, sessions.length),
+    sourceVerifiability: { links, knownSource: known, rate: ratio(known, links) },
+    actionsCompleted: executed + input.followUps.filter((f) => f.created_by_assessor && fold(f.status) === "concluido").length,
     proposals: { executed, declinedOrExpired: declined, acceptanceRate: ratio(executed, executed + declined) },
     nudges: { sent, withConsultantOutcome: answered },
     followUps: {

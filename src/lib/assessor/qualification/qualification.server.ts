@@ -130,15 +130,18 @@ export async function runBuyerQualification(params: {
     };
   }
 
+  let ownSearched = true;
   const [rows, portal] = await Promise.all([
-    deps.loadProperties().catch(() => [] as InternalPropertyRow[]),
+    deps.loadProperties().catch(() => { ownSearched = false; return [] as InternalPropertyRow[]; }),
     deps.searchPortals(brief).catch(() => ({ status: "failed" as PortalStatus, results: [] })),
   ]);
   const internal = matchInternal(rows, brief);
-  const portalProposals = portal.results.map((l) => fromPortalListing(l, brief));
+  const seenAt = new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit" }).format(now);
+  const portalProposals = portal.results.map((l) => fromPortalListing(l, brief, seenAt));
   return {
     reply: composeQualificationReply({
       brief, changes, internal, portal: portalProposals, portalStatus: portal.status, previousReply, now,
+      ownSearched,
     }),
     acted: true,
     brief,

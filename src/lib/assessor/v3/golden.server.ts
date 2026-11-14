@@ -207,16 +207,27 @@ export async function runGolden(
     rows.push({ role: "user", content: t.user, created_at: new Date().toISOString() });
     if (opts.actionFirst) {
       const { runBuyerQualification } = await import("../qualification/qualification.server");
-      const q = await runBuyerQualification({
+      const { runListingDiagnosis } = await import("../listing/listing.server");
+      const listing = await runListingDiagnosis({
+        supabase: null, userId: "golden", channel: "whatsapp", trimmed: t.user, skipFlagCheck: true,
+        deps: {
+          loadRecent: async () => rows.slice(0, -1).map((r) => ({ ...r })),
+          findOwnListing: async () => ({ found: false, price: null, url: null }),
+          searchComparables: async () => ({ status: "not_run", results: [] }),
+        },
+      });
+      const q = listing
+        ? { reply: listing.reply, acted: listing.acted, tool: listing.acted ? "listing_diagnosis" : "listing_questions" }
+        : await runBuyerQualification({
         supabase: null, userId: "golden", channel: "whatsapp", trimmed: t.user, skipFlagCheck: true,
         deps: {
           loadRecent: async () => rows.slice(0, -1).map((r) => ({ ...r })),
           loadProperties: async () => [],
           searchPortals: async () => ({ status: "not_run", results: [] }),
         },
-      });
+      }).then((r) => (r ? { reply: r.reply, acted: r.acted, tool: r.acted ? "buyer_search" : "buyer_questions" } : null));
       if (q) {
-        const tools = [q.acted ? "buyer_search" : "buyer_questions"];
+        const tools = [q.tool];
         const failures = evaluateTurn(q.reply, q.acted ? "act" : "ask", tools, t.expect);
         results.push({ turn: i + 1, user: t.user, reply: q.reply, action: q.acted ? "act" : "ask", tools, passed: failures.length === 0, failures });
         rows.push({ role: "assistant", content: q.reply, created_at: new Date().toISOString() });

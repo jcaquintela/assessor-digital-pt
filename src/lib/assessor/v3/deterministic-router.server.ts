@@ -487,9 +487,27 @@ const buyerQualificationCase: RouterCase = async ({ supabase, userId, channel, t
   return { reply: turn.reply };
 };
 
+// (0-) Angariação com pouca procura (mesmo interruptor action-first). Só lê:
+// carteira própria e comparáveis nos portais; devolve diagnóstico, kit
+// orgânico pronto, plano de 7 dias e estados de ação. Nunca envia nem publica.
+const listingDiagnosisCase: RouterCase = async ({ supabase, userId, channel, trimmed, pending }) => {
+  if (pending) return null;
+  const { runListingDiagnosis } = await import("@/lib/assessor/listing/listing.server");
+  const started = Date.now();
+  const turn = await runListingDiagnosis({ supabase, userId, channel, trimmed });
+  if (!turn) return null;
+  await logAiTurn(supabase, {
+    userId, channel, intent: "listing_diagnosis", route: "v3-deterministic",
+    latencyMs: Date.now() - started, success: true, error: null,
+    toolName: turn.acted ? "listing_diagnosis" : "listing_questions", toolSuccess: true, fallbackUsed: false,
+  });
+  return { reply: turn.reply };
+};
+
 // A ordem é a precedência real do motor. Não reordenar sem testes.
 export const DETERMINISTIC_ROUTER: Array<{ name: string; run: RouterCase }> = [
   { name: "prompt_shield", run: promptShieldCase },
+  { name: "listing_diagnosis", run: listingDiagnosisCase },
   { name: "buyer_qualification", run: buyerQualificationCase },
   { name: "elliptic_entity", run: ellipticEntityCase },
   { name: "person_brief", run: personBriefCase },

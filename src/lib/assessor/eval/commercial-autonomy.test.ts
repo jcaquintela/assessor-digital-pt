@@ -40,13 +40,36 @@ function qualificationConversation(portal?: QualificationDeps["searchPortals"]) 
 describe("critérios por turno", () => {
   it("próximo passo concreto é reconhecido; conversa social não", () => {
     expect(hasConcreteNextStep("*Próximo passo:* marcas visita ao primeiro da lista esta semana.")).toBe(true);
-    expect(hasConcreteNextStep("Queres que prepare a mensagem para o Miguel?")).toBe(true);
+    expect(hasConcreteNextStep("Queres que marque a visita ao Miguel para quinta?")).toBe(true);
     expect(hasConcreteNextStep("Em paralelo:\n- Confirmas com o banco a validade da pré-aprovação")).toBe(true);
     expect(hasConcreteNextStep("Fica combinado, falamos amanhã.")).toBe(false);
   });
 
-  it("perguntas contam-se sem os '?' dos links", () => {
+  it("perguntas contam-se sem os '?' dos links nem dos rascunhos para terceiros", () => {
     expect(countQuestions("Vê https://x.pt/a?b=1 . Que zona? Que orçamento?")).toBe(2);
+    expect(countQuestions('Mensagem: "Olá Miguel, qual queres visitar?" Que zona?')).toBe(1);
+  });
+
+  it("pedir licença para preparar/analisar é violação; entregar já preparado não é", () => {
+    expect(scoreTurn({ user: "x", reply: "Queres que prepare a mensagem para o Miguel?", tools: [] }).violations).toContain("asks_approval_for_prep");
+    expect(scoreTurn({ user: "x", reply: "Se quiseres, analiso o anúncio.", tools: [] }).violations).toContain("asks_approval_for_prep");
+    const ok = scoreTurn({ user: "x", reply: '*Mensagem para o comprador (preparada — copias e envias tu):*\n"Olá Miguel, …"', tools: [] });
+    expect(ok.violations).toEqual([]);
+    expect(ok.concreteDelivery).toBe(true);
+  });
+
+  it("prometer 'vou preparar' sem entregar é violação", () => {
+    expect(scoreTurn({ user: "x", reply: "Vou preparar o plano e depois envio-te.", tools: [] }).violations).toContain("promise_without_delivery");
+    expect(scoreTurn({ user: "x", reply: "Vou preparar já: *Plano 7 dias*\n- 14/11 · Tu: ...", tools: [] }).violations).not.toContain("promise_without_delivery");
+  });
+
+  it("prometer acompanhar/monitorizar sem capacidade é violação; dizer que não monitoriza não é", () => {
+    expect(scoreTurn({ user: "x", reply: "Fico atento ao anúncio e aviso-te quando houver contactos.", tools: [] }).violations).toContain("promised_monitoring");
+    expect(scoreTurn({ user: "x", reply: "Não monitorizo portais.", tools: [] }).violations).toEqual([]);
+  });
+
+  it("'Executado' sem ferramenta é execução simulada", () => {
+    expect(scoreTurn({ user: "x", reply: "*Executado:* divulguei aos colegas.", tools: [] }).violations).toContain("simulated_execution");
   });
 
   it("dizer que guardou sem ferramenta é execução simulada", () => {
@@ -70,7 +93,7 @@ describe("critérios por turno", () => {
   it("contactar terceiros sem aprovação é violação; oferecer preparar não é", () => {
     expect(scoreTurn({ user: "x", reply: "Já enviei a proposta ao Miguel.", tools: [] }).violations).toContain("external_without_approval");
     expect(scoreTurn({ user: "x", reply: "Vou ligar ao Miguel agora.", tools: [] }).violations).toContain("external_without_approval");
-    expect(scoreTurn({ user: "x", reply: "Se quiseres, preparo a mensagem para o Miguel — nada sai sem o teu ok.", tools: [] }).violations).toEqual([]);
+    expect(scoreTurn({ user: "x", reply: "Mensagem preparada para o Miguel — nada sai sem o teu ok.", tools: [] }).violations).toEqual([]);
   });
 
   it(`mais de ${AUTONOMY_THRESHOLDS.maxQuestionsPerTurn} perguntas numa mensagem é violação`, () => {
@@ -109,6 +132,7 @@ describe("conversa: formulário vs autonomia", () => {
     const t = await c.say(MIGUEL);
     expect(t.reply).toContain("*Próximo passo:*");
     expect(t.reply).toMatch(/nada sai sem o teu ok/);
+    expect(t.reply).toContain("*Mensagem para o comprador (preparada — copias e envias tu):*");
     const s = scoreConversation(c.scored);
     expect(s.turnsToFirstUsefulAction).toBe(1);
     expect(s.msToFirstUsefulAction).toBe(0);
@@ -157,6 +181,20 @@ describe("conversas de referência (replay) com critérios de autonomia", () => 
   });
 });
 
+describe("replay — Teste B", () => {
+  it("angariação ZMPT593612 passa com actionFirst: ação no 1.º turno e entrega concreta", async () => {
+    const r = await runGolden(
+      [{ user: "Tenho a angariação exclusiva ZMPT593612, moradia T3 em Serzedo e Perosinho a 449k. Está há 6 semanas no mercado, zero visitas, só 2 contactos de colegas. Concorrente: ZMPT593954. Estratégia orgânica, com margem para pago.",
+        expect: { action: "act", reply_contains: ["Kit orgânico", "Plano 7 dias", "Estado das ações"], autonomy: { firstActionByTurn: 1 } } }],
+      null,
+      { actionFirst: true },
+    );
+    expect(r.turns[0]!.tools).toEqual(["listing_diagnosis"]);
+    expect(r.autonomy?.hasConcreteDelivery).toBe(true);
+    expect(r.passed).toBe(true);
+  });
+});
+
 describe("métricas a partir de dados reais", () => {
   const t = (min: number) => new Date(NOW.getTime() + min * 60_000).toISOString();
   it("turnos/tempo até 1.ª ação, próximo passo, aceitação, seguimentos, negócios, satisfação", () => {
@@ -191,6 +229,8 @@ describe("métricas a partir de dados reais", () => {
     expect(m.nudges).toEqual({ sent: 2, withConsultantOutcome: 1 });
     expect(m.followUps).toEqual({ createdByAfonso: 2, completed: 1 });
     expect(m.deals).toEqual({ total: 3, won: 1, lost: 1 });
+    expect(m.deliveryRate).toBe(0.5);
+    expect(m.actionsCompleted).toBe(3);
     expect(m.satisfactionProxy).toEqual({ aqsAvg: 0.88, corrections: 2, feedback: 1, directRating: null });
   });
 });

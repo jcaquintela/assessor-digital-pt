@@ -31,6 +31,25 @@ export interface ListingProposal {
   matchReasons: string[];
   /** Avisos honestos ("acima do teto assumido"). */
   caveats: string[];
+  /** Características lidas do próprio anúncio/registo (área, garagem, ...). */
+  features?: string[];
+  /** Portais: dia em que o preço foi visto (dd/mm). O preço pode ter mudado. */
+  seenAt?: string | null;
+}
+
+const FEATURE_RES: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
+  [/(\d{2,4})\s*(?:m2|m²)/i, (m) => `${m[1]} m²`],
+  [/\bgaragem\b/i, () => "garagem"], [/\belevador\b/i, () => "elevador"],
+  [/\bvaranda\b/i, () => "varanda"], [/\bterra[çc]o\b/i, () => "terraço"],
+  [/\bremodelad[oa]\b|\brenovad[oa]\b/i, () => "remodelado"],
+];
+
+/** Características explícitas no texto do anúncio — nunca deduzidas. */
+export function parseFeatures(...texts: Array<string | null | undefined>): string[] {
+  const t = texts.filter(Boolean).join(" ");
+  const out: string[] = [];
+  for (const [re, f] of FEATURE_RES) { const m = t.match(re); if (m) out.push(f(m)); }
+  return out;
 }
 
 const ZMPT_RE = /\bZMPT[-\s]?\d{3,}\b/i;
@@ -106,12 +125,13 @@ export function fromInternalProperty(row: InternalPropertyRow, brief: BuyerBrief
     availability: row.status ? STATUS_LABEL[foldText(row.status)] ?? row.status : null,
     matchReasons: reasons,
     caveats,
+    features: parseFeatures(row.title, row.notes),
   };
 }
 
 export interface PortalListing { url: string; title: string; description?: string | null; host: string }
 
-export function fromPortalListing(l: PortalListing, brief: BuyerBrief): ListingProposal {
+export function fromPortalListing(l: PortalListing, brief: BuyerBrief, seenAt: string | null = null): ListingProposal {
   const text = `${l.title} ${l.description ?? ""}`;
   const location = brief.zone && foldText(text).includes(foldText(brief.zone.value)) ? brief.zone.value : null;
   const base = { price: parseListingPrice(text), typology: parseListingTypology(text), location };
@@ -128,6 +148,8 @@ export function fromPortalListing(l: PortalListing, brief: BuyerBrief): ListingP
     availability: null,
     matchReasons: reasons,
     caveats,
+    features: parseFeatures(l.title, l.description),
+    seenAt,
   };
 }
 
@@ -138,7 +160,8 @@ function money(n: number | null): string {
 /** Bloco de uma proposta, em sintaxe WhatsApp. Devolve null sem link real. */
 export function formatProposal(p: ListingProposal, index: number): string | null {
   if (!/^https?:\/\//.test(p.url)) return null;
-  const head = `${index}. *${p.title}* — ${money(p.price)}`;
+  const seen = p.source === "portal" && p.price != null && p.seenAt ? ` (no anúncio a ${p.seenAt}; pode ter mudado)` : "";
+  const head = `${index}. *${p.title}* — ${money(p.price)}${seen}`;
   const facts = [
     `Tipologia: ${p.typology ?? UNVERIFIED}`,
     `Local: ${p.location ?? UNVERIFIED}`,
@@ -148,9 +171,10 @@ export function formatProposal(p: ListingProposal, index: number): string | null
     `Metro: ${p.metroDistance ?? UNVERIFIED}`,
     `Estado: ${p.availability ? `${p.availability} (verificado na tua carteira)` : UNVERIFIED}`,
   ].join(" · ");
+  const feats = `Características: ${p.features?.length ? p.features.join(", ") : UNVERIFIED}`;
   const why = p.matchReasons.length ? `Porquê: ${p.matchReasons.join(", ")}.` : "Porquê: critérios por confirmar.";
   const warn = p.caveats.length ? `_Atenção: ${p.caveats.join("; ")}._` : null;
-  return [head, `   ${facts}`, `   ${origin}`, `   ${status}`, `   ${why}`, warn ? `   ${warn}` : null, `   ${p.url}`]
+  return [head, `   ${facts}`, `   ${feats}`, `   ${origin}`, `   ${status}`, `   ${why}`, warn ? `   ${warn}` : null, `   ${p.url}`]
     .filter(Boolean).join("\n");
 }
 
