@@ -153,3 +153,107 @@ sinais -> deteção -> priorização -> mensagem contextual -> próxima ação
 5. Despacho multi-canal com preferências e dedupe (fase 5).
 6. Vinculação/revogação, memória por conta, configuração por conversa, retirada da app web (fases 3, 4, 6, 7, 8).
 7. Holdout e relatório causal.
+
+---
+
+# DECISÃO DE PRODUTO — Zero-UI / Execução Autónoma (Afonso AI 2.0)
+
+Esta secção define a tese do produto e prevalece sobre as anteriores onde houver conflito.
+
+## Z1. Tese
+- O consultor usa WhatsApp e/ou Telegram, em simultâneo, com uma só conta e memória. Não há dashboard nem app web.
+- Envia material em bruto: áudios, fotos, capturas de ecrã, PDFs e emails reencaminhados. O Afonso faz todo o trabalho interno de ponta a ponta, diz o que fez e permite desfazer quando for reversível.
+- **Nunca sem aprovação explícita:** comunicação externa, partilha de dados com terceiros, compromissos (visitas marcadas com clientes, propostas, valores).
+- OAuth (calendário/email) só quando for estritamente necessário, por link seguro de uso único. O consultor nunca configura webhooks.
+- O núcleo é o motor proativo (secção anterior): identifica, prioriza por receita e confiança, prepara, interage e acompanha.
+
+## Z2. Briefing da manhã
+- Às 08:30 no fuso do utilizador (hoje: fuso fixo de Lisboa no código — **adaptar**: `profiles.timezone` + cálculo do dia por fuso).
+- Opt-in explícito e canal preferido. No WhatsApp fora das 24h só sai por template aprovado; no Telegram sai livre.
+- Respeita silêncio e domingos. O horário atual de envio (9h–20h) tem de passar a permitir 08:30 apenas para o briefing com opt-in.
+- Nunca inventa comissões ou valores: só mostra números que o consultor deu.
+
+## Z3. Forward & Forget
+- WhatsApp/Telegram: reencaminhar qualquer coisa. Já existe para texto, áudio, imagem, documento e cartão de contacto. **Adaptar:** "email reencaminhado como print ou PDF".
+- Endereço de email individual (ex.: `nome.xxxx@in.meuafonso.com`) — **desenvolver**. Requisitos:
+  - endereço aleatório, que se pode revogar;
+  - aceitar só remetentes autorizados (o email do consultor);
+  - verificação SPF/DKIM/DMARC e rejeição de spoofing;
+  - limite de tamanho e de anexos;
+  - quarentena do que for suspeito;
+  - nenhum conteúdo lido sem pertencer à conta.
+- Respeita a regra existente "o Afonso não lê a caixa de entrada": só processa o que o consultor reencaminha de propósito.
+
+## Z4. Resultados que o Afonso produz
+- Texto de anúncio de imóvel (rascunho).
+- Correspondência entre compradores e imóveis, com explicação do porquê.
+- Mensagens de seguimento (rascunho para o consultor aprovar ou copiar).
+- Documentos e dossiers: ficha de imóvel, dossier do cliente, preparação de reunião.
+- Minutas (CPCV, propostas): **apenas rascunho**, com o aviso "precisa de validação"; nunca são enviadas ao cliente pelo Afonso.
+
+## Z5. Matriz existente / adaptar / desenvolver
+| Área | Existe | Adaptar | Desenvolver |
+|---|---|---|---|
+| Entrada WhatsApp (Meta direta) | ✓ | inbox idempotente | — |
+| Entrada Telegram | ✓ | mesma inbox | — |
+| Conta única multi-canal | parcial (`channel_links`) | identidade verificada, revogação | desafio de posse |
+| Memória por conta | parcial (dados por utilizador, estado por canal) | estado/locks por conta | — |
+| Áudio → factos/tarefas | ✓ | — | — |
+| Imagem/cartão/PDF | ✓ (visão LLM) | prints de email | — |
+| Email individual de entrada | ✗ | — | ✓ |
+| Desfazer | parcial (arquivar) | "desfaz o último" por conversa | registo de ações reversíveis |
+| Motor proativo | parcial (3 tipos ativos) | priorização por receita | 6 detetores novos |
+| Briefing 08:30 por fuso | parcial (Lisboa, 9h) | fuso, opt-in, canal | — |
+| Anúncio / match / dossier | parcial (match no detetor) | saída por conversa | anúncio, dossier |
+| Minutas | ✗ | — | rascunho com aviso |
+| Configuração por conversa | parcial (whitelist) | canais e notificações | — |
+| OAuth por link seguro | parcial (páginas web) | página mínima pontual | — |
+| Pagamento por link | parcial (Stripe + página `/planos`) | checkout externo a partir da conversa | — |
+| App web do consultor | ✓ (41 páginas) | retirar | — |
+| Marketing de dashboard (textos, `/planos`, ecrãs) | ✓ | eliminar | — |
+| Landing meuafonso.com | fora deste projeto | **não alterar sem acesso e autorização** | — |
+| Consola admin | ✓ | manter | funil de receita |
+
+## Z6. Modelo de preço — HIPÓTESE a testar
+- Grátis (Telegram): 10 registos/mês.
+- Consultor, 29 €/mês (WhatsApp).
+- Autónomo, 69 €/mês (WhatsApp, execução proativa completa).
+- Os dois canais em simultâneo funcionam em qualquer plano pago, sem exclusividade. O Grátis no Telegram pode ligar o WhatsApp ao fazer upgrade.
+- Hoje os planos usam Base/Consultor/Pro/Team e quotas do Drive (40/200/ilimitado) — **adaptar** depois da validação; não mudar preços em produção antes do teste.
+- **Não prometer "ilimitado"** antes da auditoria de custos (Z7).
+
+## Z7. Auditoria de custos (antes de definir limites)
+Dados registados do projeto, de 16/10 a 14/11 (créditos pedidos, sem valores em dinheiro):
+- Base de dados (instância pico, sempre ligada): ~54,6 créditos, ~93% do total. É um custo fixo, não depende do número de consultores.
+- IA (Gemini): ~0,67 créditos, com o último registo a 03/11. Uso muito baixo e, aparentemente, sem chamadas desde então — **por confirmar** se o motor está a usar IA ou só regras.
+- Pedidos ao servidor: ~0,35 créditos. Ficheiros e rede: desprezáveis.
+- **Desconhecido:** custo do WhatsApp (pago diretamente à Meta, fora deste registo — templates de marketing e utility por conversa), custo de leitura de imagens/PDF por página, custo por consultor ativo.
+- A medir antes de fixar preços: tokens por mensagem, por áudio (por minuto) e por documento (por página); templates enviados por consultor/mês; custo do briefing diário × 30. Com isto, definir a margem por plano e os tetos (ex.: registos/mês, documentos/mês).
+
+## Z8. Backlog por fases (com critérios de aceitação)
+1. **Auditoria do motor proativo e dos custos** — tabela de cobertura e custo por consultor ativo medidos. *Aceite:* números reais para 30 dias e nenhum "ilimitado" sem margem calculada.
+2. **Identidade multi-canal e inbox idempotente** — *Aceite:* os critérios das fases 1–2 acima.
+3. **Medição por aviso e KPIs** — *Aceite:* todos os avisos com resultado ao fim de 7 dias; funil na consola.
+4. **Briefing 08:30 por fuso, opt-in e canal** — *Aceite:* envio à hora certa em 3 fusos de teste; nada sem opt-in; fallback por template testado.
+5. **Detetores de receita** (ordem da secção H) — *Aceite:* testes golden por detetor e teto diário respeitado.
+6. **Execução autónoma interna + desfazer** — *Aceite:* cada ação interna fica com recibo ("fiz X") e "desfaz" funciona em todas as ações reversíveis; nenhuma ação externa sem confirmação (teste negativo obrigatório).
+7. **Resultados que o Afonso produz** (anúncio, dossier, minutas como rascunho) — *Aceite:* todos marcados como rascunho; nenhum enviado a terceiros.
+8. **Email individual de entrada** — *Aceite:* spoofing rejeitado em teste; remetente não autorizado posto em quarentena; endereço revogável.
+9. **Configuração 100% por conversa, OAuth e pagamento por link** — *Aceite:* onboarding e upgrade completos sem dashboard.
+10. **Retirar a app web do consultor e o marketing de dashboard** — *Aceite:* rotas de consultor redirecionam; a consola admin fica intacta.
+11. **Teste de preços** — *Aceite:* conversão e retenção medidas por plano, com margem positiva.
+
+## Z9. Riscos
+- Autonomia sem limites a gerar escritas erradas: recibo obrigatório e desfazer.
+- Fuga para fora por engano: as ações externas têm de passar sempre por confirmação. O teste negativo bloqueia a publicação.
+- Custo do WhatsApp por templates com muitos consultores: medir antes de prometer briefing diário no plano barato.
+- Spoofing de email e privacidade de dados de terceiros (RGPD): base legal, retenção e apagamento.
+- Retirar a app web aos consultores atuais: transição comunicada.
+- Minutas confundidas com documentos finais: aviso fixo e nunca envio automático.
+
+## Z10. Plano de medição
+- **Ativação:** % de consultores com 1.º registo em 24h e com briefing ativo.
+- **Envolvimento:** dias ativos/semana; inputs em bruto por semana.
+- **Valor:** ações internas executadas, avisos aceites, visitas/propostas após aviso, negócios com aviso na cadeia (correlação) e efeito em grupo de controlo (causalidade).
+- **Retenção:** W1, W2, W4. **Correção:** W4 mede-se no dia 28 após o registo, por isso **não pode ser validada num piloto de 21 dias**. O piloto tem de durar ≥ 28 dias após a entrada do último consultor da coorte (recomendado: 35 dias, para dar margem). Num ciclo de 21 dias só se validam W1 e W2; W3 só em coortes que entraram até ao dia 0 desse ciclo.
+- **Economia:** custo por consultor ativo/mês vs. preço do plano.
