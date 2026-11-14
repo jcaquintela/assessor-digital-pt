@@ -56,7 +56,7 @@ const jTxt = (j: string, k: string) => `coalesce(${j} ->> '${k}', '~')`;
 const jTs = (j: string, k: string) => `coalesce(extract(epoch FROM (${j} ->> '${k}')::timestamptz)::text, '~')`;
 const joinBar = (xs: string[]) => xs.join(" || '|' || ");
 
-function verdictQuery(title: string, intro: string[], ctes: string[], checks: Check[], approved = "APROVADO"): string {
+export function verdictQuery(title: string, intro: string[], ctes: string[], checks: Check[], approved = "APROVADO"): string {
   const ids = new Set(checks.map((c) => c.id));
   if (ids.size !== checks.length) throw new Error(`${title}: ids repetidos`);
   const rows = checks.map((c, i) =>

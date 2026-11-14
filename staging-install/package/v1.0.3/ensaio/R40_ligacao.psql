@@ -1,0 +1,9 @@
+-- AFONSO V2 · pacote v1.0.3 · R40 · guião psql (meta-comandos + SQL só de leitura). PREPARADO, NUNCA EXECUTADO.
+-- Só é usado por tools/R40_ligar_cliente.sh, que passa r40_aut, r40_root, r40_tools e r40_r30.
+\set ON_ERROR_STOP on
+\pset pager off
+SELECT pg_backend_pid() AS bpid \gset r40_
+\set r41 `sh :'r40_tools'/R41_processo_cliente.sh :'r40_aut' :'r40_root' :'r40_bpid'`
+SELECT CASE WHEN :'r41' = 'R41 APROVADO' THEN :'r41' ELSE ('R41 ' || :'r41')::int::text END AS r41;
+\i :r40_r30
+SELECT CASE WHEN pg_backend_pid() = :r40_bpid THEN 'MESMA SESSÃO' ELSE ('sessão mudou')::int::text END AS sessao;

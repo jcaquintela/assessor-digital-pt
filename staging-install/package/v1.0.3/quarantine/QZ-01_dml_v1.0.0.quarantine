@@ -1,0 +1,836 @@
+-- QUARENTENA · Dados, reparos, preenchimentos e blocos DO da v1.0.0
+-- NÃO EXECUTÁVEL. Nenhuma instrução abaixo está ativa: todas as linhas começam por "--Q| ".
+-- Reativar qualquer item exige autorização SEPARADA do proprietário e uma nova versão do pacote.
+-- Se este ficheiro for executado por engano, a primeira instrução aborta a transação.
+DO $quarentena$ BEGIN RAISE EXCEPTION 'QUARENTENA %: não executar sem autorização separada', 'QZ-01_dml_v1.0.0.quarantine'; END $quarentena$;
+
+--Q| -- [verificacao] S2-00_staging_roles_prelude.sql:9 (do)
+--Q| DO $$
+--Q| BEGIN
+--Q|   IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+--Q|                  WHERE n.nspname = 'public' AND t.typname = 'app_role') THEN
+--Q|     RAISE EXCEPTION 'staging: public.app_role (admin/tester) não existe; este prelúdio é só para o AFONSO Staging';
+--Q|   END IF;
+--Q|   IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+--Q|                  WHERE t.typname = 'app_role' AND e.enumlabel = 'admin')
+--Q|      OR NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+--Q|                  WHERE t.typname = 'app_role' AND e.enumlabel = 'tester') THEN
+--Q|     RAISE EXCEPTION 'staging: faltam os papéis admin/tester do staging';
+--Q|   END IF;
+--Q| END $$;
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:216 (do)
+--Q| DO $$ BEGIN
+--Q|   CREATE TYPE public.app_role AS ENUM ('consultant','support_admin','super_admin');
+--Q| EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:340 (do)
+--Q| DO $$ BEGIN
+--Q|   IF NOT EXISTS (
+--Q|     SELECT 1 FROM pg_trigger WHERE tgname = 'on_auth_user_created'
+--Q|   ) THEN
+--Q|     CREATE TRIGGER on_auth_user_created
+--Q|       AFTER INSERT ON auth.users
+--Q|       FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+--Q|   END IF;
+--Q| END $$;
+--Q|
+--Q| -- [papel_preenchimento] S2-01_v2_schema_part1.sql:351 (insert)
+--Q| INSERT INTO public.user_roles (user_id, role, created_by)
+--Q| SELECT u.id, 'consultant'::public.app_role, u.id
+--Q| FROM auth.users u
+--Q| WHERE NOT EXISTS (SELECT 1 FROM public.user_roles r WHERE r.user_id = u.id)
+--Q| ON CONFLICT DO NOTHING;
+--Q|
+--Q| -- [interruptor] S2-01_v2_schema_part1.sql:950 (insert)
+--Q| INSERT INTO public.feature_flags (key, description, enabled_globally, enabled_plans, rollout_percentage, updated_at)
+--Q| VALUES (
+--Q|   'assessor.engine.v2',
+--Q|   'Novo motor conversacional do Assessor (Fase 1: IA central com tool-calling via Lovable AI Gateway).',
+--Q|   false,
+--Q|   ARRAY[]::text[],
+--Q|   0,
+--Q|   now()
+--Q| ) ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [interruptor] S2-01_v2_schema_part1.sql:999 (insert)
+--Q| INSERT INTO public.feature_flags (key, description, enabled_globally, enabled_plans, rollout_percentage)
+--Q| VALUES (
+--Q|   'assessor.engine.v3',
+--Q|   'Motor Reasoning Engine (Observe -> Think -> Search -> Decide -> Act). Substitui o v2 quando activo.',
+--Q|   false,
+--Q|   ARRAY[]::text[],
+--Q|   0
+--Q| )
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:1082 (do)
+--Q| DO $$ BEGIN
+--Q|   CREATE TYPE public.assistant_correction_category AS ENUM (
+--Q|     'wrong_person','wrong_property','wrong_date','wrong_document',
+--Q|     'lost_context','unnatural_reply','unnecessary_question',
+--Q|     'wrong_execution','other'
+--Q|   );
+--Q| EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:1090 (do)
+--Q| DO $$ BEGIN
+--Q|   CREATE TYPE public.assistant_reflection_trigger AS ENUM (
+--Q|     'low_aqs','low_ats','user_correction'
+--Q|   );
+--Q| EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:1252 (insert)
+--Q| INSERT INTO public.assistant_golden_conversations (slug, title, description, turns, tags) VALUES
+--Q| ('greeting-bom-dia', 'Saudação simples', 'Consultor diz bom dia; assessor deve reconhecer sem executar nada.',
+--Q|  '[{"user":"Bom dia","expect":{"action":"acknowledge","must_not_contain":["Feito","payload","backend"]}}]'::jsonb,
+--Q|  ARRAY['cultura','saudacao']),
+--Q| ('short-answer-sim', 'Confirmação curta', 'Resposta "sim" sem contexto pendente não deve inventar ação.',
+--Q|  '[{"user":"sim","expect":{"action":"acknowledge","must_not_contain":["Feito","criado","registei"]}}]'::jsonb,
+--Q|  ARRAY['cultura','short-answer']),
+--Q| ('agenda-hoje', 'Pergunta pela agenda', 'Consultor pergunta o que tem hoje; assessor deve reconhecer intenção de consulta.',
+--Q|  '[{"user":"O que tenho hoje?","expect":{"action":"act","tool":"agenda_today","reply_contains":[]}}]'::jsonb,
+--Q|  ARRAY['agenda'])
+--Q| ON CONFLICT (slug) DO UPDATE SET turns = EXCLUDED.turns, description = EXCLUDED.description, updated_at = now();
+--Q|
+--Q| -- [interruptor] S2-01_v2_schema_part1.sql:1266 (insert)
+--Q| INSERT INTO public.feature_flags (key, description, enabled_globally, enabled_plans, rollout_percentage)
+--Q| VALUES ('assessor.supreme.v1', 'Assessor Supremo: Daily Operating Loop, prioridades, outcomes, autonomia', false, ARRAY[]::text[], 0)
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:1359 (do)
+--Q| DO $$ BEGIN
+--Q|   CREATE TYPE public.prospecting_source_type AS ENUM (
+--Q|     'street_sign','referral','online_listing','direct_observation','other'
+--Q|   );
+--Q| EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:1365 (do)
+--Q| DO $$ BEGIN
+--Q|   CREATE TYPE public.prospecting_listing_type AS ENUM (
+--Q|     'owner_sale','other_agency','own_agency','unknown'
+--Q|   );
+--Q| EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:1371 (do)
+--Q| DO $$ BEGIN
+--Q|   CREATE TYPE public.prospecting_status AS ENUM (
+--Q|     'to_contact','contact_attempted','contacted','no_interest','opportunity','converted','archived'
+--Q|   );
+--Q| EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:1440 (do)
+--Q| DO $$ BEGIN
+--Q|   CREATE TYPE public.person_role AS ENUM (
+--Q|     'owner','potential_owner','buyer','potential_buyer','client',
+--Q|     'reference','partner','supplier','colleague','other'
+--Q|   );
+--Q| EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:1464 (update)
+--Q| UPDATE public.people SET email_normalized = lower(trim(email)) WHERE email IS NOT NULL AND email_normalized IS NULL;
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:1498 (insert)
+--Q| INSERT INTO public.person_phones (user_id, person_id, raw, e164, kind, is_primary)
+--Q| SELECT p.user_id, p.id, p.phone, NULL, 'unknown', true
+--Q| FROM public.people p
+--Q| WHERE p.phone IS NOT NULL AND btrim(p.phone) <> ''
+--Q|   AND NOT EXISTS (SELECT 1 FROM public.person_phones pp WHERE pp.person_id = p.id);
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:1505 (update)
+--Q| UPDATE public.people
+--Q| SET roles = ARRAY[
+--Q|   CASE lower(coalesce(relationship_type,''))
+--Q|     WHEN 'proprietário' THEN 'owner'::public.person_role
+--Q|     WHEN 'proprietario' THEN 'owner'::public.person_role
+--Q|     WHEN 'cliente' THEN 'client'::public.person_role
+--Q|     WHEN 'comprador' THEN 'buyer'::public.person_role
+--Q|     WHEN 'potencial' THEN 'potential_buyer'::public.person_role
+--Q|     WHEN 'potencial comprador' THEN 'potential_buyer'::public.person_role
+--Q|     WHEN 'referenciador' THEN 'reference'::public.person_role
+--Q|     WHEN 'referência' THEN 'reference'::public.person_role
+--Q|     WHEN 'referencia' THEN 'reference'::public.person_role
+--Q|     WHEN 'colega' THEN 'colleague'::public.person_role
+--Q|     ELSE 'other'::public.person_role
+--Q|   END
+--Q| ]
+--Q| WHERE (roles IS NULL OR cardinality(roles) = 0);
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:1547 (update)
+--Q| UPDATE public.uploaded_files
+--Q|    SET source_external_file_id = external_file_id
+--Q|  WHERE source_external_file_id IS NULL AND external_file_id IS NOT NULL;
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:1596 (insert)
+--Q| INSERT INTO public.file_links (user_id, file_id, entity_type, entity_id, relation_type, source, confidence, confirmed_at, created_at)
+--Q| SELECT
+--Q|   uf.user_id,
+--Q|   uf.id,
+--Q|   CASE uf.related_resource_type
+--Q|     WHEN 'people' THEN 'person'
+--Q|     WHEN 'person' THEN 'person'
+--Q|     WHEN 'properties' THEN 'property'
+--Q|     WHEN 'property' THEN 'property'
+--Q|     WHEN 'opportunities' THEN 'opportunity'
+--Q|     WHEN 'opportunity' THEN 'opportunity'
+--Q|     WHEN 'follow_ups' THEN 'follow_up'
+--Q|     WHEN 'follow_up' THEN 'follow_up'
+--Q|     WHEN 'interactions' THEN 'interaction'
+--Q|     WHEN 'interaction' THEN 'interaction'
+--Q|     WHEN 'miscellaneous_items' THEN 'miscellaneous'
+--Q|     WHEN 'miscellaneous' THEN 'miscellaneous'
+--Q|     WHEN 'prospecting_leads' THEN 'prospecting_lead'
+--Q|     WHEN 'prospecting_lead' THEN 'prospecting_lead'
+--Q|     ELSE NULL
+--Q|   END,
+--Q|   uf.related_resource_id,
+--Q|   'belongs_to',
+--Q|   'migration',
+--Q|   1.0,
+--Q|   uf.updated_at,
+--Q|   uf.created_at
+--Q| FROM public.uploaded_files uf
+--Q| WHERE uf.related_resource_type IS NOT NULL
+--Q|   AND uf.related_resource_id IS NOT NULL
+--Q|   AND uf.user_id IS NOT NULL
+--Q|   AND CASE uf.related_resource_type
+--Q|     WHEN 'people' THEN 'person'
+--Q|     WHEN 'person' THEN 'person'
+--Q|     WHEN 'properties' THEN 'property'
+--Q|     WHEN 'property' THEN 'property'
+--Q|     WHEN 'opportunities' THEN 'opportunity'
+--Q|     WHEN 'opportunity' THEN 'opportunity'
+--Q|     WHEN 'follow_ups' THEN 'follow_up'
+--Q|     WHEN 'follow_up' THEN 'follow_up'
+--Q|     WHEN 'interactions' THEN 'interaction'
+--Q|     WHEN 'interaction' THEN 'interaction'
+--Q|     WHEN 'miscellaneous_items' THEN 'miscellaneous'
+--Q|     WHEN 'miscellaneous' THEN 'miscellaneous'
+--Q|     WHEN 'prospecting_leads' THEN 'prospecting_lead'
+--Q|     WHEN 'prospecting_lead' THEN 'prospecting_lead'
+--Q|     ELSE NULL
+--Q|   END IS NOT NULL
+--Q| ON CONFLICT DO NOTHING;
+--Q|
+--Q| -- [interruptor] S2-01_v2_schema_part1.sql:1647 (insert)
+--Q| INSERT INTO public.feature_flags (key, description, enabled_globally, enabled_plans, rollout_percentage)
+--Q| VALUES ('drive.v1', 'Drive Inteligente v1 — nova área de ficheiros com relações múltiplas e classificação automática', false, ARRAY[]::text[], 0)
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:1654 (update)
+--Q| UPDATE public.assistant_golden_conversations
+--Q| SET turns = '[{"user":"O que tenho hoje?","expect":{"action":"act","tool":"search_agenda","must_not_contain":["diversos","feito","registei"]}}]'::jsonb,
+--Q|     description = 'Consultor pergunta pela agenda de hoje; assessor chama search_agenda e devolve dados reais.',
+--Q|     updated_at = now()
+--Q| WHERE slug = 'agenda-hoje';
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:1660 (update)
+--Q| UPDATE public.assistant_golden_conversations
+--Q| SET turns = '[{"user":"sim","expect":{"action":"ask","reply_contains":["a que te referes"],"must_not_contain":["feito","criado","registei","registado","marquei"]}}]'::jsonb,
+--Q|     description = 'Confirmação curta sem contexto pendente pede referência, não executa tools.',
+--Q|     updated_at = now()
+--Q| WHERE slug = 'short-answer-sim';
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:1666 (insert)
+--Q| INSERT INTO public.assistant_golden_conversations (slug, title, description, turns, tags) VALUES
+--Q|   ('agenda-que-tenho-hoje','Agenda: Que tenho hoje?','Variante interrogativa curta.',
+--Q|    '[{"user":"Que tenho hoje?","expect":{"action":"act","tool":"search_agenda"}}]'::jsonb, ARRAY['agenda']),
+--Q|   ('agenda-marcado-hoje','Agenda: marcado para hoje','Variante "o que está marcado para hoje".',
+--Q|    '[{"user":"O que está marcado para hoje?","expect":{"action":"act","tool":"search_agenda"}}]'::jsonb, ARRAY['agenda']),
+--Q|   ('agenda-alguma-coisa-hoje','Agenda: alguma coisa hoje','Variante "tenho alguma coisa hoje".',
+--Q|    '[{"user":"Tenho alguma coisa hoje?","expect":{"action":"act","tool":"search_agenda"}}]'::jsonb, ARRAY['agenda']),
+--Q|   ('agenda-como-esta','Agenda: como está a minha agenda','Variante genérica com palavra "agenda".',
+--Q|    '[{"user":"Como está a minha agenda?","expect":{"action":"act","tool":"search_agenda"}}]'::jsonb, ARRAY['agenda']),
+--Q|   ('agenda-e-hoje','Agenda: e hoje?','Variante ultra-curta "E hoje?".',
+--Q|    '[{"user":"E hoje?","expect":{"action":"act","tool":"search_agenda"}}]'::jsonb, ARRAY['agenda'])
+--Q| ON CONFLICT (slug) DO UPDATE SET turns = EXCLUDED.turns, description = EXCLUDED.description, updated_at = now();
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:1786 (update)
+--Q| UPDATE public.profiles
+--Q| SET subscription_tier = CASE
+--Q|   WHEN plan_tier IN ('consultor','pro','hub') THEN plan_tier
+--Q|   WHEN plan_tier = 'pro' THEN 'pro'
+--Q|   ELSE 'base'
+--Q| END
+--Q| WHERE subscription_tier IS NULL;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:1804 (update)
+--Q| UPDATE public.telegram_invites SET plan_tier = 'base' WHERE plan_tier NOT IN ('base','consultor','pro','hub');
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:1930 (insert)
+--Q| INSERT INTO public.plan_configs (tier, price_month, status, notes) VALUES
+--Q|   ('base', 0, 'published', 'Telegram, grátis'),
+--Q|   ('consultor', NULL, 'draft', NULL),
+--Q|   ('pro', NULL, 'draft', NULL),
+--Q|   ('hub', NULL, 'draft', NULL);
+--Q|
+--Q| -- [interruptor] S2-01_v2_schema_part1.sql:2432 (insert)
+--Q| INSERT INTO public.feature_flags (key, description, enabled_globally)
+--Q| VALUES ('whatsapp.templates.approved', 'Templates WhatsApp aprovados pela Meta: autoriza push proativo fora da janela de 24h. Ligado automaticamente pela verificação periódica.', false)
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:2437 (update)
+--Q| UPDATE public.assistant_golden_conversations
+--Q| SET turns = '[
+--Q|   {"user": "lembra-me de ligar ao Miguel {{HORA+2}}", "expect": {"tool": "create_follow_up", "action": "act"}},
+--Q|   {"user": "afinal passa para as {{H+3}}", "expect": {"action": "act"}},
+--Q|   {"user": "melhor às {{H+4}}", "expect": {"action": "act", "must_not_contain": ["criei outro", "novo seguimento"]}}
+--Q| ]'::jsonb,
+--Q|     updated_at = now()
+--Q| WHERE slug = 'reagendamento-repetido';
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:2446 (update)
+--Q| UPDATE public.assistant_golden_conversations
+--Q| SET turns = '[
+--Q|   {"user": "marca reunião com o Pedro amanhã às 10h, e um script para a chamada também", "expect": {"reply_contains": ["script"], "must_not_contain": ["não percebi"]}}
+--Q| ]'::jsonb,
+--Q|     updated_at = now()
+--Q| WHERE slug = 'multiplos-pedidos';
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:2454 (update)
+--Q| UPDATE public.assistant_golden_conversations
+--Q| SET turns = '[
+--Q|   {"user": "marca reunião com o Pedro amanhã às 10h, e um script para a chamada também", "expect": {"reply_contains": ["guião|guiao|script"], "must_not_contain": ["não percebi"]}}
+--Q| ]'::jsonb,
+--Q|     updated_at = now()
+--Q| WHERE slug = 'multiplos-pedidos';
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:2467 (do)
+--Q| DO $$ BEGIN
+--Q|   CREATE TYPE public.deal_stage AS ENUM (
+--Q|     'preparacao','angariacao','promocao','visitas','proposta','cpcv','escritura','concluido'
+--Q|   );
+--Q| EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:2535 (update)
+--Q| UPDATE public.opportunities SET title = coalesce(nullif(btrim(title), ''), 'Negócio') WHERE title IS NULL OR btrim(title) = '';
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:2536 (insert)
+--Q| INSERT INTO public.opportunity_properties (user_id, opportunity_id, property_id, role)
+--Q| SELECT o.user_id, o.id, o.property_id, 'principal'
+--Q| FROM public.opportunities o
+--Q| WHERE o.property_id IS NOT NULL
+--Q| ON CONFLICT (opportunity_id, property_id) DO NOTHING;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:2649 (update)
+--Q| UPDATE public.plan_configs
+--Q|    SET status = 'draft'
+--Q|  WHERE status = 'published' AND price_month IS NULL AND tier <> 'base';
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:2816 (insert)
+--Q| INSERT INTO public.property_categories (user_id, name, color)
+--Q| SELECT p.id, d.name, d.color
+--Q| FROM public.profiles p
+--Q| CROSS JOIN (VALUES
+--Q|   ('Angariação própria', '#22c55e'),
+--Q|   ('Pré-angariação', '#f59e0b'),
+--Q|   ('De colega/agência', '#3b82f6'),
+--Q|   ('Em estudo', '#8b5cf6'),
+--Q|   ('Outros', '#64748b')
+--Q| ) AS d(name, color)
+--Q| WHERE NOT EXISTS (
+--Q|   SELECT 1 FROM public.property_categories c WHERE c.user_id = p.id
+--Q| )
+--Q| ON CONFLICT (user_id, name) DO NOTHING;
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:2917 (insert)
+--Q| INSERT INTO public.product_updates (released_on, title, description, category)
+--Q| VALUES (CURRENT_DATE, 'A app passa a chamar-se Afonso', 'O nome e o ícone ficam iguais em todo o lado: separadores do navegador, ecrã inicial do telemóvel e cabeçalho do painel mostram sempre Afonso.', 'melhoria');
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:2922 (insert)
+--Q| INSERT INTO public.property_categories (user_id, name, color)
+--Q| SELECT DISTINCT user_id, 'FSBO', '#ef4444' FROM public.property_categories
+--Q| ON CONFLICT (user_id, name) DO NOTHING;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:2960 (update)
+--Q| UPDATE public.properties p
+--Q| SET category_id = pc.id
+--Q| FROM public.entity_tags et
+--Q| JOIN public.tags t ON t.id = et.tag_id
+--Q| JOIN public.property_categories pc ON lower(pc.name) = lower(t.name)
+--Q| WHERE et.entity_type = 'property' AND et.entity_id = p.id
+--Q|   AND pc.user_id = p.user_id AND p.category_id IS NULL;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:2969 (update)
+--Q| UPDATE public.properties p
+--Q| SET notes = trim(both E'\n' from coalesce(p.notes,'') || E'\n' || 'Etiquetas anteriores: ' || x.lista)
+--Q| FROM (
+--Q|   SELECT et.entity_id, string_agg(t.name, ', ' ORDER BY t.name) AS lista
+--Q|   FROM public.entity_tags et
+--Q|   JOIN public.tags t ON t.id = et.tag_id
+--Q|   JOIN public.properties pr ON pr.id = et.entity_id
+--Q|   LEFT JOIN public.property_categories pc ON pc.user_id = pr.user_id AND lower(pc.name) = lower(t.name)
+--Q|   WHERE et.entity_type = 'property' AND (pc.id IS NULL OR pr.category_id IS DISTINCT FROM pc.id)
+--Q|   GROUP BY et.entity_id
+--Q| ) x
+--Q| WHERE x.entity_id = p.id;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:2983 (delete)
+--Q| DELETE FROM public.entity_tags WHERE entity_type = 'property';
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:3295 (insert)
+--Q| INSERT INTO public.product_updates (released_on, title, description, category) VALUES (CURRENT_DATE, 'O Drive passa a chamar-se Drive Inteligente', 'O nome mudou em todo o produto — menu, páginas e mensagens. O que faz é o mesmo: envias, o Assessor organiza.', 'melhoria');
+--Q|
+--Q| -- [interruptor] S2-01_v2_schema_part1.sql:3298 (insert)
+--Q| insert into public.feature_flags (key, description, enabled_globally)
+--Q| values ('whatsapp.template.checkin_v2.approved', 'Template de check-in corrigido aprovado pela Meta', true)
+--Q| on conflict (key) do update set enabled_globally = true, updated_at = now();
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:3302 (update)
+--Q| update public.whatsapp_template_bindings
+--Q| set enabled = true, param_count = 3, language = 'pt_PT', updated_at = now()
+--Q| where purpose = 'meeting_briefing' and template_name = 'afonso_briefing_compromisso';
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:3307 (update)
+--Q| WITH q AS (
+--Q|   SELECT s.id, t.user_id, t.channel, t.input_content, t.created_at
+--Q|   FROM public.assessor_quality_scores s JOIN public.assessor_reasoning_traces t ON t.id=s.trace_id
+--Q| ), ctx AS (
+--Q|   SELECT q.*, p.content prev_msg, p.created_at prev_at,
+--Q|     (SELECT m.content FROM public.assessor_messages m WHERE m.user_id=q.user_id AND m.channel=q.channel AND m.role='assistant' AND m.created_at<q.created_at ORDER BY m.created_at DESC LIMIT 1) last_reply
+--Q|   FROM q LEFT JOIN LATERAL (
+--Q|     SELECT content, created_at FROM (
+--Q|       SELECT m.content, m.created_at, row_number() OVER (ORDER BY m.created_at DESC) rn
+--Q|       FROM public.assessor_messages m
+--Q|       WHERE m.user_id=q.user_id AND m.channel=q.channel AND m.role='user' AND m.created_at<q.created_at
+--Q|       ORDER BY m.created_at DESC LIMIT 3) x
+--Q|     WHERE rn = (SELECT CASE WHEN EXISTS (
+--Q|         SELECT 1 FROM public.assessor_messages m2 WHERE m2.user_id=q.user_id AND m2.channel=q.channel AND m2.role='user'
+--Q|           AND m2.created_at<q.created_at AND btrim(m2.content)=btrim(q.input_content)
+--Q|           AND m2.created_at=(SELECT max(m3.created_at) FROM public.assessor_messages m3 WHERE m3.user_id=q.user_id AND m3.channel=q.channel AND m3.role='user' AND m3.created_at<q.created_at)
+--Q|       ) THEN 2 ELSE 1 END) LIMIT 1) p ON true
+--Q| ), sim AS (
+--Q|   SELECT c.*, EXTRACT(epoch FROM (c.created_at-c.prev_at)) dt,
+--Q|    COALESCE((SELECT cardinality(ARRAY(SELECT unnest(z.a) INTERSECT SELECT unnest(z.b)))::numeric/NULLIF(cardinality(ARRAY(SELECT unnest(z.a) UNION SELECT unnest(z.b))),0)
+--Q|     FROM (SELECT
+--Q|      ARRAY(SELECT DISTINCT w FROM unnest(regexp_split_to_array(lower(regexp_replace(translate(c.input_content,'áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ','aaaaeeioooucAAAAEEIOOOUC'),'[^a-zA-Z0-9 ]',' ','g')),'\s+')) w WHERE length(w)>1 AND w NOT IN ('de','da','do','das','dos','um','uma','que','para','por','com','no','na','nos','nas','em','ao','as','os','se','ou')) a,
+--Q|      ARRAY(SELECT DISTINCT w FROM unnest(regexp_split_to_array(lower(regexp_replace(translate(COALESCE(c.prev_msg,''),'áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ','aaaaeeioooucAAAAEEIOOOUC'),'[^a-zA-Z0-9 ]',' ','g')),'\s+')) w WHERE length(w)>1 AND w NOT IN ('de','da','do','das','dos','um','uma','que','para','por','com','no','na','nos','nas','em','ao','as','os','se','ou')) b) z),0) jac
+--Q|   FROM ctx c
+--Q| ), cls AS (
+--Q|   SELECT id,
+--Q|    CASE WHEN prev_msg IS NULL OR dt IS NULL OR dt<0 OR dt>600 THEN false
+--Q|         WHEN jac>=0.9 THEN true
+--Q|         WHEN last_reply ~ '\?\s*$' THEN false
+--Q|         WHEN dt>60 THEN false
+--Q|         WHEN jac>=0.6 OR input_content ~* '(nao e|nao era|errado|erraste|quis dizer|queria dizer|afinal|alias|corrige|troca|substitui)' THEN true
+--Q|         ELSE false END novo FROM sim)
+--Q| UPDATE public.assessor_quality_scores s
+--Q| SET reformulated = c.novo,
+--Q|     score = round((
+--Q|       (CASE WHEN s.understood_first_try THEN 1 ELSE 0 END)
+--Q|       + (CASE WHEN c.novo THEN 0 ELSE 1 END)
+--Q|       + (CASE WHEN s.executed_successfully THEN 1 ELSE 0 END)
+--Q|       + (CASE WHEN s.human_tone THEN 1 ELSE 0 END)
+--Q|     )::numeric / NULLIF((
+--Q|       (CASE WHEN s.understood_first_try IS NULL THEN 0 ELSE 1 END)
+--Q|       + 1
+--Q|       + (CASE WHEN s.executed_successfully IS NULL THEN 0 ELSE 1 END)
+--Q|       + (CASE WHEN s.human_tone IS NULL THEN 0 ELSE 1 END)
+--Q|     ),0), 3)
+--Q| FROM cls c WHERE c.id = s.id AND s.reformulated IS DISTINCT FROM c.novo;
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:3668 (insert)
+--Q| INSERT INTO public.product_updates (released_on, title, description, category, is_published)
+--Q| VALUES (
+--Q|   current_date,
+--Q|   'Documentos de várias páginas',
+--Q|   'Quando envias várias fotos seguidas do mesmo documento (por exemplo, as páginas de uma caderneta predial), o Afonso junta-as num só documento e liga tudo ao mesmo imóvel, sem voltar a perguntar em cada página.',
+--Q|   'melhoria',
+--Q|   true
+--Q| );
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:3678 (insert)
+--Q| insert into public.product_updates (title, description, category, is_published, released_on)
+--Q| values (
+--Q|   'Ordenar páginas de um documento',
+--Q|   'Quando as fotos de um documento chegam fora de ordem, podes agora arrumar as páginas no Drive Inteligente. Depois de guardares a ordem, a leitura do documento é consolidada de novo pela sequência certa.',
+--Q|   'nova_funcionalidade',
+--Q|   true,
+--Q|   current_date
+--Q| );
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:3705 (insert)
+--Q| INSERT INTO public.product_updates (released_on, title, description, category, is_published)
+--Q| VALUES (CURRENT_DATE, 'PDFs digitalizados agora são lidos', 'Os PDFs criados pelo scanner do WhatsApp (páginas que são fotografias) passam agora pela mesma leitura das fotos: o Afonso identifica o tipo de documento, datas, NIF, artigo matricial e morada, e diz logo do que se trata em vez de perguntar "a que se refere?". Quando não consegue identificar, pergunta se queres associar a alguém ou a um imóvel, em vez de adivinhar.', 'melhoria', true);
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:3714 (insert)
+--Q| INSERT INTO public.product_updates (title, description, category, is_published)
+--Q| VALUES (
+--Q|   'Podes definir uma palavra-passe',
+--Q|   'Na primeira vez que entras no painel por link, o Afonso pergunta se queres definir uma palavra-passe para entrares diretamente da próxima vez. Podes saltar — o link continua a funcionar na mesma.',
+--Q|   'nova_funcionalidade',
+--Q|   true
+--Q| );
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:3723 (insert)
+--Q| INSERT INTO public.product_updates (title, description, category, is_published)
+--Q| VALUES (
+--Q|   'Recuperar a palavra-passe',
+--Q|   'Esqueceste-te da palavra-passe? Em Entrar → Recuperar, escreves o teu email e recebes um link para definires uma nova — por email, ou pela conversa com o Afonso se for por aí que falas com ele.',
+--Q|   'nova_funcionalidade',
+--Q|   true
+--Q| );
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:3890 (insert)
+--Q| INSERT INTO public.ai_model_rates (model, credits_per_1m_input, credits_per_1m_output, source)
+--Q| VALUES ('google/gemini-3.6-flash', 6, 30, 'derivado dos registos reais do AI Gateway (ago/2026)')
+--Q| ON CONFLICT (model) DO NOTHING;
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:3894 (insert)
+--Q| INSERT INTO public.admin_cost_settings (key, value, source)
+--Q| VALUES ('credit_price_eur', NULL, 'por confirmar na faturação da workspace')
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [verificacao] S2-01_v2_schema_part1.sql:3977 (do)
+--Q| DO $$
+--Q| DECLARE t text;
+--Q| BEGIN
+--Q|   FOREACH t IN ARRAY ARRAY[
+--Q|     'app_user_connections','app_user_connection_aliases','calendar_connections',
+--Q|     'dashboard_login_tokens','telegram_link_tokens','whatsapp_link_codes',
+--Q|     'support_sessions','ai_model_rates','whatsapp_template_rates','admin_cost_settings'
+--Q|   ] LOOP
+--Q|     EXECUTE format('DROP TRIGGER IF EXISTS audit_sensitive_write ON public.%I', t);
+--Q|     EXECUTE format(
+--Q|       'CREATE TRIGGER audit_sensitive_write AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.audit_sensitive_write()', t);
+--Q|   END LOOP;
+--Q| END $$;
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:4057 (insert)
+--Q| INSERT INTO public.product_updates (title, description, category, is_published)
+--Q| VALUES (
+--Q|   'Guião para abordar quem vende por si',
+--Q|   'Quando registas uma placa de particular a partir de uma foto, o Afonso passa a oferecer também preparar um guião curto para a abordagem — chamada ou mensagem. É sempre um rascunho para leres e mudares; ele nunca envia nada por ti.',
+--Q|   'nova_funcionalidade',
+--Q|   true
+--Q| );
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:4066 (update)
+--Q| WITH explicit_answers AS (
+--Q|   SELECT DISTINCT ON (n.user_id, n.subject_id)
+--Q|     n.user_id,
+--Q|     n.subject_id,
+--Q|     CASE
+--Q|       WHEN lower(trim(m.content)) IN ('sim', 'sim!', 'ok', 'pode ser', 'claro') THEN 'yes'
+--Q|       WHEN lower(trim(m.content)) IN ('não', 'nao', 'não!', 'nao!') THEN 'no'
+--Q|     END AS answer,
+--Q|     m.created_at AS answered_at
+--Q|   FROM public.assessor_nudges n
+--Q|   JOIN public.assessor_messages m
+--Q|     ON m.user_id = n.user_id
+--Q|    AND m.role = 'user'
+--Q|    AND m.created_at >= n.sent_at
+--Q|    AND m.created_at <= n.sent_at + interval '15 minutes'
+--Q|   WHERE n.kind = 'property_missing_docs'
+--Q|     AND n.sent_at IS NOT NULL
+--Q|     AND lower(trim(m.content)) IN ('sim', 'sim!', 'ok', 'pode ser', 'claro', 'não', 'nao', 'não!', 'nao!')
+--Q|   ORDER BY n.user_id, n.subject_id, m.created_at DESC
+--Q| )
+--Q| UPDATE public.assessor_nudges n
+--Q| SET status = 'resolved',
+--Q|     outcome = a.answer,
+--Q|     outcome_at = a.answered_at,
+--Q|     updated_at = now()
+--Q| FROM explicit_answers a
+--Q| WHERE n.user_id = a.user_id
+--Q|   AND n.subject_id = a.subject_id
+--Q|   AND n.kind = 'property_missing_docs'
+--Q|   AND n.outcome_at IS NULL;
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:4098 (insert)
+--Q| INSERT INTO public.product_updates (title, description, category, is_published)
+--Q| VALUES (
+--Q|   'O Afonso nunca fala com terceiros por ti',
+--Q|   'Quando há algo a pedir a um proprietário, cliente ou comprador, o Afonso passa a dizer com precisão o que faz: prepara-te a mensagem para tu enviares. Deixou de usar frases como "vou contactar o proprietário", que davam a ideia errada de que falava com alguém por ti — nunca o fez, e agora a linguagem diz isso mesmo.',
+--Q|   'melhoria',
+--Q|   true
+--Q| );
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:4248 (update)
+--Q| UPDATE public.follow_ups
+--Q| SET event_class = 'interno'
+--Q| WHERE event_class IS NULL
+--Q|   AND (
+--Q|     lower(public.text_norm(coalesce(title,''))) ~ '(^|[^a-z0-9])(reuniao de equipa|reuniao interna|reuniao de operacoes|operacoes|lideranca|equipa|interno|interna|1:1|one on one|daily|standup|stand-up|alinhamento|ponto de situacao interno|formacao interna|administrativo)([^a-z0-9]|$)'
+--Q|   );
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:4258 (update)
+--Q| UPDATE public.follow_ups
+--Q| SET event_class = 'interno'
+--Q| WHERE event_class IS DISTINCT FROM 'negocio'
+--Q|   AND person_id IS NULL
+--Q|   AND related_property_id IS NULL
+--Q|   AND opportunity_id IS NULL;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:4267 (update)
+--Q| UPDATE public.follow_ups
+--Q| SET event_class = 'interno'
+--Q| WHERE event_class IS DISTINCT FROM 'negocio'
+--Q|   AND lower(public.text_norm(coalesce(title, ''))) ~ '(^|[^a-z0-9])(reuniao de equipa|reuniao interna|reuniao de operacoes|operacoes|lideranca|equipa|interno|interna|1:1|one on one|daily|standup|stand up|alinhamento|briefing interno|reuniao geral|plenario|administrativo|administrativa|backoffice|back office|formacao interna|onboarding interno)([^a-z0-9]|$)';
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:4273 (update)
+--Q| UPDATE public.daily_priorities AS dp
+--Q| SET dismissed_at = now()
+--Q| FROM public.follow_ups AS fu
+--Q| WHERE dp.user_id = fu.user_id
+--Q|   AND dp.subject_type = 'follow_up'
+--Q|   AND dp.subject_id = fu.id
+--Q|   AND dp.dismissed_at IS NULL
+--Q|   AND dp.completed_at IS NULL
+--Q|   AND fu.event_class = 'interno';
+--Q|
+--Q| -- [seed] S2-01_v2_schema_part1.sql:4283 (insert)
+--Q| INSERT INTO public.product_updates (released_on, title, description, category, is_published)
+--Q| SELECT
+--Q|   current_date,
+--Q|   'Compromissos internos sem perguntas de resultado',
+--Q|   'Reuniões e blocos de agenda sem ligação a uma pessoa, imóvel ou negócio deixam de gerar perguntas como “Como correu?”.',
+--Q|   'correcao',
+--Q|   true
+--Q| WHERE NOT EXISTS (
+--Q|   SELECT 1
+--Q|   FROM public.product_updates
+--Q|   WHERE title = 'Compromissos internos sem perguntas de resultado'
+--Q| );
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:4300 (update)
+--Q| UPDATE public.follow_ups
+--Q| SET event_class = 'negocio'
+--Q| WHERE event_class = 'interno'
+--Q|   AND related_prospecting_lead_id IS NOT NULL
+--Q|   AND NOT (
+--Q|     lower(public.text_norm(coalesce(title, ''))) ~ '(^|[^a-z0-9])(reuniao de equipa|reuniao interna|reuniao de operacoes|operacoes|lideranca|equipa|interno|interna|1:1|one on one|daily|standup|stand up|alinhamento|briefing interno|reuniao geral|plenario|administrativo|administrativa|backoffice|back office|formacao interna|onboarding interno)([^a-z0-9]|$)'
+--Q|   );
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:4313 (update)
+--Q| UPDATE public.reminders r
+--Q|    SET follow_up_id = r.related_resource_id
+--Q|   FROM public.follow_ups f
+--Q|  WHERE r.related_resource_type = 'follow_up'
+--Q|    AND f.id = r.related_resource_id
+--Q|    AND r.follow_up_id IS DISTINCT FROM r.related_resource_id;
+--Q|
+--Q| -- [reparo] S2-01_v2_schema_part1.sql:4402 (update)
+--Q| WITH pares AS (
+--Q|   SELECT f.opportunity_id, min(f.related_prospecting_lead_id::text)::uuid AS lead_id
+--Q|   FROM public.follow_ups f
+--Q|   JOIN public.opportunities o ON o.id = f.opportunity_id AND o.user_id = f.user_id
+--Q|   JOIN public.prospecting_leads l ON l.id = f.related_prospecting_lead_id AND l.user_id = f.user_id
+--Q|   WHERE f.opportunity_id IS NOT NULL
+--Q|     AND f.related_prospecting_lead_id IS NOT NULL
+--Q|   GROUP BY f.opportunity_id
+--Q|   HAVING count(DISTINCT f.related_prospecting_lead_id) = 1
+--Q| )
+--Q| UPDATE public.opportunities o
+--Q|    SET source_lead_id = p.lead_id
+--Q|   FROM pares p
+--Q|  WHERE o.id = p.opportunity_id
+--Q|    AND o.source_lead_id IS NULL;
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:8 (insert)
+--Q| insert into public.product_updates (released_on, title, description, category, is_published)
+--Q| values (current_date, 'O Afonso já fecha o que dizes que está tratado', 'Quando dizes "o estudo de mercado já está tratado" ou "já liguei ao Nuno", o assunto fica mesmo marcado como concluído e o lembrete deixa de voltar. Se houver uma rotina a repetir esse assunto, o Afonso pergunta-te se queres que continue.', 'melhoria', true);
+--Q|
+--Q| -- [reparo] S2-02_v2_schema_part2.sql:68 (update)
+--Q| with tech as (
+--Q|   select id, summary,
+--Q|     trim(both from regexp_replace(summary, '^Ficou por tratar:\s*', '')) as raw
+--Q|   from public.miscellaneous_items
+--Q|   where summary ilike 'Ficou por tratar%'
+--Q| ),
+--Q| mapped as (
+--Q|   select id, raw,
+--Q|     case
+--Q|       when raw ~* '(act sem ferramenta|no_tool)' then 'Não consegui executar este pedido — falta-me essa capacidade ainda.'
+--Q|       when raw ~* '(indispon|service_down|rate.?limit|timeout|HTTP 4|HTTP 5|429|503)' then 'Não consegui responder na altura por indisponibilidade temporária.'
+--Q|       when raw ~* '(not_found|invalid_args|tool_failed|error|_rls|falha)' or raw like '%:%' then 'Percebi o pedido, mas não consegui concluir a ação.'
+--Q|       else 'Guardei aqui para não se perder — diz-me o que fazer com isto.'
+--Q|     end as pt
+--Q|   from tech
+--Q| )
+--Q| update public.miscellaneous_items m
+--Q| set summary = mapped.pt,
+--Q|     tags = (select array_agg(distinct t) from unnest(m.tags || array['tec:' || left(mapped.raw, 180)]) as t)
+--Q| from mapped
+--Q| where m.id = mapped.id;
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:119 (insert)
+--Q| INSERT INTO public.app_settings (key, value_int)
+--Q| VALUES ('reminder_lead_minutes', 0)
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [reparo] S2-02_v2_schema_part2.sql:246 (update)
+--Q| UPDATE public.email_messages SET provider = 'gmail' WHERE provider IS NULL;
+--Q|
+--Q| -- [reparo] S2-02_v2_schema_part2.sql:247 (update)
+--Q| UPDATE public.email_drafts SET provider = 'gmail' WHERE provider IS NULL;
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:276 (insert)
+--Q| INSERT INTO public.consultant_preferences (user_id, active_mail_provider)
+--Q| SELECT e.user_id,
+--Q|        CASE WHEN count(*) FILTER (WHERE e.provider = 'gmail') > 0 THEN 'gmail' ELSE 'outlook' END
+--Q| FROM public.email_connections e
+--Q| GROUP BY e.user_id
+--Q| ON CONFLICT (user_id) DO UPDATE
+--Q| SET active_mail_provider = COALESCE(public.consultant_preferences.active_mail_provider, EXCLUDED.active_mail_provider);
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:285 (insert)
+--Q| INSERT INTO public.consultant_preferences (user_id, active_calendar_provider)
+--Q| SELECT c.user_id, min(c.provider)
+--Q| FROM public.calendar_connections c
+--Q| GROUP BY c.user_id
+--Q| HAVING count(DISTINCT c.provider) = 1
+--Q| ON CONFLICT (user_id) DO UPDATE
+--Q| SET active_calendar_provider = COALESCE(public.consultant_preferences.active_calendar_provider, EXCLUDED.active_calendar_provider);
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:370 (insert)
+--Q| insert into public.product_updates (released_on, title, description, category, is_published)
+--Q| values (current_date, 'Ecrãs vazios com saída clara', 'Quando não há imóveis num estado, negócios numa fase ou movimentos de faturação, passas a ver uma mensagem clara com um botão para criar ou limpar a pesquisa, em vez de um espaço em branco.', 'melhoria', true);
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:374 (insert)
+--Q| insert into public.product_updates (released_on, title, description, category, is_published)
+--Q| values (current_date, 'Ver as contas por trás da análise', 'Nos cartões de análise (plano Pro) podes abrir "Ver as contas" e ver exatamente o que foi usado: quantos registos entraram, o limiar de dias, quantos ficaram acima, a lista dos casos e a data do último movimento de cada um.', 'melhoria', true);
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:378 (insert)
+--Q| insert into public.product_updates (released_on, title, description, category, is_published)
+--Q| values (current_date, 'O Afonso passa a chamar-se sempre pelo nome', 'Corrigimos os sítios onde ainda aparecia "o teu assessor" em vez do nome que escolheste — por exemplo o cartão de análise em Imóveis, Negócios e Faturação passa a dizer "Análise do Afonso".', 'melhoria', true);
+--Q|
+--Q| -- [interruptor] S2-02_v2_schema_part2.sql:421 (insert)
+--Q| INSERT INTO public.feature_flags (key, description, enabled_globally)
+--Q| VALUES ('assessor.design.v2', 'Redesenho v2: paleta operacional + sidebar consolidada', false)
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:428 (insert)
+--Q| INSERT INTO public.product_updates (title, description, category)
+--Q| VALUES (
+--Q|   'Novo visual e menu mais simples',
+--Q|   'O painel passa a usar cores com significado: verde é feito, âmbar é risco, vermelho é atrasado, e o dourado do Afonso fica só para o que é dele. O menu lateral fica com as cinco áreas do dia a dia (Hoje, Pessoas, Imóveis, Negócios, Agenda) e tudo o resto passa para "Mais". A Prospeção aparece em Hoje quando tens placas por contactar.',
+--Q|   'melhoria'
+--Q| );
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:667 (insert)
+--Q| INSERT INTO public.deal_deadlines (user_id, opportunity_id, label, due_date, status, created_at)
+--Q| SELECT o.user_id, o.id, 'Prazo', (o.deadline AT TIME ZONE 'Europe/Lisbon')::date, 'aberto', now()
+--Q| FROM public.opportunities o
+--Q| WHERE o.deadline IS NOT NULL AND o.user_id IS NOT NULL;
+--Q|
+--Q| -- [reparo] S2-02_v2_schema_part2.sql:676 (update)
+--Q| UPDATE public.consultant_preferences SET evening_wrap_enabled = true WHERE evening_wrap_enabled = false;
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:678 (insert)
+--Q| INSERT INTO public.product_updates (released_on, title, description, category, is_published)
+--Q| VALUES (
+--Q|   current_date,
+--Q|   'Resumo de fim de dia',
+--Q|   'Ao fim do dia (19h) passas a receber um fecho do dia: o que aconteceu, o que ficou por fechar e o que te espera amanhã. Podes pedi-lo a qualquer hora com "como correu o dia?" ou "resumo do dia".',
+--Q|   'nova_funcionalidade',
+--Q|   true
+--Q| );
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:699 (insert)
+--Q| insert into public.product_updates (released_on, title, description, category, is_published)
+--Q| values (current_date, 'Cartela de briefing mais completa', 'Quando tens compromissos seguidos, o aviso passa a mencionar também o que vem logo a seguir, indica sempre que há mais detalhe no painel e avisa quando o texto foi cortado. Se o WhatsApp não puder entregar o aviso, ele segue pelo Telegram em vez de se perder.', 'melhoria', true);
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:732 (insert)
+--Q| INSERT INTO public.product_updates (released_on, title, description, category, is_published)
+--Q| VALUES (current_date, 'Links do briefing mais curtos', 'Os links das prioridades no briefing matinal passam a ser curtos e legíveis, em vez de endereços longos. Abrem exatamente a mesma ficha de sempre.', 'melhoria', true);
+--Q|
+--Q| -- [reparo] S2-02_v2_schema_part2.sql:739 (update)
+--Q| UPDATE public.whatsapp_template_bindings
+--Q|    SET template_name = 'afonso_briefing_compromisso_v2',
+--Q|        param_count = 5,
+--Q|        fallback_template_name = 'afonso_briefing_compromisso',
+--Q|        updated_at = now()
+--Q|  WHERE purpose = 'meeting_briefing';
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:751 (insert)
+--Q| INSERT INTO public.product_updates (released_on, title, description, category, is_published)
+--Q| VALUES (
+--Q|   current_date,
+--Q|   'Avisos de oportunidade mais claros',
+--Q|   'Os avisos de imóveis e negócios parados explicam agora o tempo esperado em linguagem simples.',
+--Q|   'melhoria',
+--Q|   true
+--Q| );
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:761 (insert)
+--Q| INSERT INTO public.product_updates (released_on, title, description, category, is_published)
+--Q| VALUES (
+--Q|   current_date,
+--Q|   'Briefing matinal mais legível',
+--Q|   'Os compromissos e conflitos do briefing matinal aparecem agora separados por espaço no WhatsApp.',
+--Q|   'melhoria',
+--Q|   true
+--Q| );
+--Q|
+--Q| -- [seed] S2-02_v2_schema_part2.sql:771 (insert)
+--Q| INSERT INTO public.product_updates (title, description, category, released_on, is_published)
+--Q| VALUES (
+--Q|   'Adiar sem dizer a hora',
+--Q|   'Já podes dizer "a proposta à Joana passou para segunda-feira" sem indicar hora: o item muda de dia e mantém a hora que tinha (ou continua sem hora). E quando falta algum detalhe para guardar, o Afonso pergunta o que falta em vez de dizer apenas que não conseguiu.',
+--Q|   'correcao',
+--Q|   current_date,
+--Q|   true
+--Q| );
+--Q|
+--Q| -- [interruptor] S2-02_v2_schema_part2.sql:802 (insert)
+--Q| INSERT INTO public.feature_flags (key, description, enabled_globally, enabled_plans, rollout_percentage)
+--Q| VALUES (
+--Q|   'assessor.opportunity_nudges.v1',
+--Q|   'Oportunidades comerciais (match comprador-imóvel e negócio parado) entregues uma a uma no canal, com evidência e prioridade. Desligado = resumo diário agregado antigo.',
+--Q|   true, '{}', 0
+--Q| )
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [reparo] S2-02_v2_schema_part2.sql:983 (update)
+--Q| UPDATE public.consultant_preferences
+--Q|    SET explicit_opt_ins = ARRAY['push']::text[]
+--Q|  WHERE proactive_push_enabled IS TRUE
+--Q|    AND NOT ('push' = ANY(explicit_opt_ins));
+--Q|
+--Q| -- [interruptor] S2-02_v2_schema_part2.sql:1170 (insert)
+--Q| INSERT INTO public.feature_flags (key, enabled_globally, description)
+--Q| VALUES
+--Q|   ('access.early_access_gate.v1', false, 'Early access: contas novas sem convite ficam em espera'),
+--Q|   ('access.referral_invites.v1', false, 'Beta testers geram convites (3, 7 dias) em conversa'),
+--Q|   ('access.waitlist.v1', false, 'Lista de espera com consentimento na conversa')
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [interruptor] S2-02_v2_schema_part2.sql:1285 (insert)
+--Q| INSERT INTO public.feature_flags (key, enabled_globally, description)
+--Q| VALUES
+--Q|   ('pilot.v2_entitlement.v1', false, 'Funções AFONSO 2.0 só para participantes ativos do piloto'),
+--Q|   ('pilot.v2_invites.v1', false, 'Emissor do piloto gera convites do piloto (teto próprio) em conversa')
+--Q| ON CONFLICT (key) DO NOTHING;
+--Q|
+--Q| -- [interruptor] S2-99_staging_safety_checks.sql:8 (update)
+--Q| UPDATE public.feature_flags
+--Q|    SET enabled_globally = false, enabled_plans = '{}'::text[], rollout_percentage = 0, updated_by = NULL
+--Q|  WHERE enabled_globally OR rollout_percentage <> 0 OR cardinality(enabled_plans) > 0 OR updated_by IS NOT NULL;
+--Q|
+--Q| -- [verificacao] S2-99_staging_safety_checks.sql:12 (do)
+--Q| DO $$
+--Q| BEGIN
+--Q|   IF EXISTS (SELECT 1 FROM public.feature_flags
+--Q|              WHERE enabled_globally OR rollout_percentage <> 0 OR cardinality(enabled_plans) > 0) THEN
+--Q|     RAISE EXCEPTION 'staging: há interruptores ligados';
+--Q|   END IF;
+--Q|   IF EXISTS (SELECT 1 FROM public.feature_flag_users) THEN
+--Q|     RAISE EXCEPTION 'staging: há ativações individuais de interruptores';
+--Q|   END IF;
+--Q|   IF EXISTS (SELECT 1 FROM public.pilots) OR EXISTS (SELECT 1 FROM public.pilot_participants) THEN
+--Q|     RAISE EXCEPTION 'staging: há pilotos ou participantes (devem vir só dos dados sintéticos, passo S5)';
+--Q|   END IF;
+--Q|   IF EXISTS (SELECT 1 FROM public.user_roles WHERE role IN ('super_admin', 'support_admin')) THEN
+--Q|     RAISE EXCEPTION 'staging: há administradores V2 atribuídos pela montagem';
+--Q|   END IF;
+--Q|   IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+--Q|                  WHERE t.typname = 'app_role' AND e.enumlabel = 'admin')
+--Q|      OR NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+--Q|                  WHERE t.typname = 'app_role' AND e.enumlabel = 'tester') THEN
+--Q|     RAISE EXCEPTION 'staging: os papéis admin/tester do staging desapareceram';
+--Q|   END IF;
+--Q|   IF to_regprocedure('public.has_staging_access(uuid)') IS NULL THEN
+--Q|     RAISE EXCEPTION 'staging: has_staging_access desapareceu';
+--Q|   END IF;
+--Q| END $$;
