@@ -10,6 +10,7 @@
 // - Respostas neutras: nunca revela números, contas ou convites de terceiros.
 
 import { isAccountFlagEnabled } from "@/lib/flags/account-flag.server";
+import { PILOT_INVITES_FLAG } from "@/lib/pilot/pilot";
 import {
   EARLY_ACCESS_GATE_FLAG, REFERRAL_INVITES_FLAG, WAITLIST_FLAG,
   INVITE_TTL_DAYS, REFERRAL_QUOTA, MAX_FAILED_ATTEMPTS_PER_HOUR, WAITLIST_CONSENT_WINDOW_MS,
@@ -195,9 +196,16 @@ export async function handleReferralCommand(
   supabase: any,
   userId: string,
   text: string,
+  opts: { idempotencyKey?: string | null } = {},
 ): Promise<string | null> {
   const cmd = parseReferralCommand(text);
   if (!cmd) return null;
+  // Emissor do piloto: convites do piloto, com teto próprio (não mexe na quota geral).
+  if (await isAccountFlagEnabled(supabase, PILOT_INVITES_FLAG, userId)) {
+    const { handlePilotInviteCommand } = await import("@/lib/pilot/pilot-access.server");
+    const r = await handlePilotInviteCommand(supabase, userId, cmd, opts);
+    if (r) return r;
+  }
   if (!(await isAccountFlagEnabled(supabase, REFERRAL_INVITES_FLAG, userId))) return null;
 
   if (cmd.kind === "issue") {

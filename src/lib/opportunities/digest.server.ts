@@ -44,14 +44,19 @@ export async function isOpportunityNudgesEnabled(supabase: any, userId: string):
       .select("enabled_globally")
       .eq("key", OPPORTUNITY_NUDGES_FLAG)
       .maybeSingle();
-    if (flag?.enabled_globally) return true;
-    const { data: row } = await supabase
-      .from("feature_flag_users")
-      .select("user_id")
-      .eq("flag_key", OPPORTUNITY_NUDGES_FLAG)
-      .eq("user_id", userId)
-      .maybeSingle();
-    return !!row;
+    let on = flag?.enabled_globally === true;
+    if (!on) {
+      const { data: row } = await supabase
+        .from("feature_flag_users")
+        .select("user_id")
+        .eq("flag_key", OPPORTUNITY_NUDGES_FLAG)
+        .eq("user_id", userId)
+        .maybeSingle();
+      on = !!row;
+    }
+    if (!on) return false;
+    const { pilotAllows } = await import("@/lib/flags/account-flag.server");
+    return await pilotAllows(supabase, OPPORTUNITY_NUDGES_FLAG, userId);
   } catch {
     return false;
   }

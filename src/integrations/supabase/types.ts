@@ -43,8 +43,10 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          idempotency_key: string | null
           issuer_user_id: string | null
           note: string | null
+          pilot_key: string | null
           revoked_at: string | null
           revoked_by: string | null
           source: string
@@ -58,8 +60,10 @@ export type Database = {
           created_at?: string
           expires_at: string
           id?: string
+          idempotency_key?: string | null
           issuer_user_id?: string | null
           note?: string | null
+          pilot_key?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
           source: string
@@ -73,8 +77,10 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          idempotency_key?: string | null
           issuer_user_id?: string | null
           note?: string | null
+          pilot_key?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
           source?: string
@@ -84,7 +90,15 @@ export type Database = {
           used_by?: string | null
           used_channel?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "access_invites_pilot_key_fkey"
+            columns: ["pilot_key"]
+            isOneToOne: false
+            referencedRelation: "pilots"
+            referencedColumns: ["key"]
+          },
+        ]
       }
       access_waitlist: {
         Row: {
@@ -3298,6 +3312,80 @@ export type Database = {
           },
         ]
       }
+      pilot_participants: {
+        Row: {
+          created_at: string
+          invite_id: string | null
+          pilot_key: string
+          reason: string | null
+          source: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          invite_id?: string | null
+          pilot_key: string
+          reason?: string | null
+          source: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          invite_id?: string | null
+          pilot_key?: string
+          reason?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pilot_participants_pilot_key_fkey"
+            columns: ["pilot_key"]
+            isOneToOne: false
+            referencedRelation: "pilots"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      pilots: {
+        Row: {
+          created_at: string
+          invite_cap: number
+          invite_issuer_user_id: string | null
+          invite_ttl_days: number
+          key: string
+          note: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          invite_cap?: number
+          invite_issuer_user_id?: string | null
+          invite_ttl_days?: number
+          key: string
+          note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          invite_cap?: number
+          invite_issuer_user_id?: string | null
+          invite_ttl_days?: number
+          key?: string
+          note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       plan_configs: {
         Row: {
           notes: string | null
@@ -5121,6 +5209,19 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      issue_pilot_invite: {
+        Args: {
+          _idempotency_key: string
+          _issuer: string
+          _pilot_key: string
+          _token_hash: string
+        }
+        Returns: {
+          out_invite_id: string
+          out_outcome: string
+          out_remaining: number
+        }[]
+      }
       issue_referral_invite: {
         Args: {
           _issuer: string

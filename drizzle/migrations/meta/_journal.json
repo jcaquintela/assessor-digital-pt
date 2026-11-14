@@ -29,6 +29,13 @@
       "when": 1794662878683,
       "tag": "0003_early_access_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794671312691,
+      "tag": "0004_pilot_v2_entitlement_and_invites",
+      "breakpoints": true
     }
   ]
 }

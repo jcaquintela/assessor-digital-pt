@@ -318,7 +318,9 @@ async function routeInbound(
     // "os meus convites", "anula o convite …"). Interruptor `access.referral_invites.v1`.
     {
       const { handleReferralCommand } = await import("@/lib/access/early-access.server");
-      const r = await handleReferralCommand(supabaseAdmin, userId, content);
+      const r = await handleReferralCommand(supabaseAdmin, userId, content, {
+        idempotencyKey: inbound.externalMessageId ? `${adapter.channel}:${inbound.externalMessageId}` : null,
+      });
       if (r) {
         const send = await adapter.sendText(inbound.externalConversationId, r);
         await supabaseAdmin.from("assessor_messages").insert({

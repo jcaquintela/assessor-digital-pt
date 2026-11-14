@@ -72,6 +72,10 @@ export async function isCrossChannelEnabled(supabase: any, userId: string | null
         .maybeSingle();
       value = !!row && (row as any).user_id === userId;
     }
+    if (value) {
+      const { pilotAllows } = await import("@/lib/flags/account-flag.server");
+      value = await pilotAllows(supabase, CROSS_CHANNEL_FLAG, userId);
+    }
   } catch {
     value = false;
   }

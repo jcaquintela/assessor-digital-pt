@@ -5,7 +5,8 @@ Estado: por autorizar. Nada disto está ligado. Cada passo precisa de "OK" expl�
 ## 0. Pré-condições
 - [ ] Código Early Access publicado (hoje só existe em desenvolvimento).
 - [x] Composição final decidida pelo proprietário (14/11/2026): 5 lugares = Júlio Quintela, Iolanda Ventura, Pedro Cunha + 2 convidados por convite individual (uso único, 7 dias).
-- [ ] Telmo Sousa sai do piloto: retirar APENAS o beta, depois de aprovação explícita do efeito (ver abaixo). Ainda é beta.
+- [x] Telmo Sousa fora do piloto SEM tocar no beta (decisão 14/11/2026): linha `excluded` em `pilot_participants`. Beta, plano, WhatsApp, dados e faturação intactos. Transição do beta fica para plano próprio.
+- [x] Participação no piloto separada do beta: com `pilot.v2_entitlement.v1` ligado, as funções 2.0 só correm para participantes ativos (Júlio, Iolanda, Pedro Cunha + convidados).
 - [ ] Piloto em GO (critérios do fecho P0). Enquanto for NO-GO: nenhum convite gerado nem enviado.
 
 ### Efeito verificado de retirar o beta ao Telmo (só leitura, 14/11/2026)
@@ -17,9 +18,15 @@ Estado: por autorizar. Nada disto está ligado. Cada passo precisa de "OK" expl�
 - Nada é apagado: conta, dados, histórico e ligação ficam.
 
 ### Reserva de 2 convites (preparada, NÃO emitida)
-- Emissor: Júlio (único beta com `access.referral_invites.v1`, a ligar só para ele no dia do GO).
-- A quota técnica é 3 por beta: o 3.º convite tem de ficar por usar. Disciplina manual, ou limite próprio do piloto (alteração de código ainda não feita).
-- Iolanda e Pedro Cunha não emitem (sem a flag).
+- Piloto `afonso_v2` em `no_go`: a base de dados recusa qualquer convite do piloto enquanto assim estiver.
+- Teto próprio de 2 (vivos + usados), só o Júlio como emissor, 7 dias, uso único, sem duplicados por reentrega da mesma mensagem. A quota geral de 3 dos beta não muda e não é usada.
+- Iolanda e Pedro Cunha não emitem convites do piloto.
+
+### No dia do GO (cada passo com OK explícito)
+- [ ] Passar `pilots.status` de `no_go` para `go`.
+- [ ] Ligar `pilot.v2_invites.v1` APENAS para a conta do Júlio.
+- [ ] Ligar `pilot.v2_entitlement.v1` (global) ANTES de ligar qualquer função 2.0 globalmente.
+- Recuo: desligar `pilot.v2_entitlement.v1` volta à regra anterior; `pilots.status = closed` desliga as funções 2.0 a todos os participantes.
 - [ ] Teste real da reserva atómica de convites contra a base de dados (dois consumos em simultâneo → só um passa).
 
 ## 1. Ligar o bloqueio (afeta só contas NOVAS)
@@ -37,8 +44,8 @@ Estado: por autorizar. Nada disto está ligado. Cada passo precisa de "OK" expl�
 - [ ] Apagar a conta de teste no fim.
 
 ## 3. Convites do Júlio
-- [ ] Ligar `access.referral_invites.v1` APENAS para a conta do Júlio (por conta, nunca para todos).
-- [ ] Júlio pede "dá-me um convite" duas vezes → 2 códigos de 7 dias e "fica 1 por usar".
+- [ ] Ligar `pilot.v2_invites.v1` APENAS para a conta do Júlio (não é preciso `access.referral_invites.v1`).
+- [ ] Júlio pede "dá-me um convite" duas vezes → 2 códigos de 7 dias; o 3.º pedido é recusado.
 - [ ] Júlio partilha pessoalmente os códigos. Não usar a página de administração (não conta para a quota).
 - [ ] Iolanda/Pedro Cunha ao pedir um convite → o Afonso responde normalmente, sem código.
 
