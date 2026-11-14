@@ -1,0 +1,72 @@
+##### P00_alvo.sql
+verificacao | ok | detalhe
+existe public.staging_notes (marca do staging) | t | 
+não existem tabelas da V1 (people, profiles, assessor_messages) | t | 
+public contém exatamente staging_notes e user_roles | t | staging_notes,user_roles
+PostgreSQL 15 ou superior | t | 17.11
+sessão de leitura (informativo: papel que corre esta consulta) | t | postgres / read_only=on
+(5 rows)
+##### P01_executor_migracoes.sql
+objeto | dono
+tabela public.user_roles | postgres
+tabela public.staging_notes | postgres
+tipo public.app_role | postgres
+função public.has_role | postgres
+função public.has_staging_access | postgres
+=> executor inferido | postgres
+=> objetos com dono visível (esperado 5 sem Drizzle visível, 7 com) | 5
+(7 rows)
+##### P02_privilegios_executor.sql
+verificacao | obrigatorio | ok | detalhe
+executor identificado | t | t | postgres
+superutilizador (informativo) | f | t | 
+BYPASSRLS ou superutilizador (funções SECURITY DEFINER escrevem em tabelas com FORCE RLS) | t | t | 
+TRIGGER em auth.users (CREATE TRIGGER on_auth_user_created) | t | t | dono de auth.users = postgres
+REFERENCES em auth.users (chaves estrangeiras para utilizadores) | t | t | 
+USAGE no schema auth | t | t | 
+USAGE no schema storage | t | t | 
+CREATE no schema public | t | t | 
+CREATE no schema extensions (só se unaccent ainda não estiver instalada) | f | t | 
+dono (ou membro do dono) de storage.objects (CREATE POLICY) | t | t | dono = postgres
+dono (ou membro do dono) da publicação supabase_realtime | t | t | dono = postgres
+dono de public.has_role (CREATE OR REPLACE) | t | t | 
+dono de public.app_role (ALTER TYPE … ADD VALUE) | t | t | 
+EXECUTE em auth.uid() | t | t | 
+EXECUTE em storage.foldername() | t | t | 
+(15 rows)
+##### P03_colisoes.sql
+categoria | encontrado | esperado
+funções em public | has_role,has_staging_access | t
+has_role: corpo igual ao da migração 0000 do staging | 6b9bca1cc09de70841cac113efbdd41a | t
+has_staging_access: corpo igual ao da migração 0000 | 4376edeea92abf14230207df0fbbef11 | t
+has_role/has_staging_access: anónimo sem EXECUTE, autenticado com EXECUTE | has_role:anon=false,auth=true has_staging_access:anon=false,auth=true | t
+tipos em public | app_role | t
+valores de app_role | admin,tester | t
+colunas de user_roles | id,user_id,role,created_at | t
+políticas em public | staging_notes.Staging members read notes | user_roles.Users read own roles | t
+gatilhos em auth.users (V2 cria on_auth_user_created) |  | t
+auth.users visível para esta leitura | sim | t
+extensão unaccent: ausente ou em extensions | não instalada | t
+unaccent disponível para instalar | 1.1 | t
+schema extensions existe | sim | t
+publicação supabase_realtime existe e sem tabelas |  | t
+storage.objects existe | sim | t
+políticas V2 em storage.objects ainda não existem |  | t
+staging_notes: 3 notas iguais às da migração 0000 | 3 / 9839c85692f965b4f419fb33c6af3404 | t
+esquemas fora do sistema (informativo) | auth,extensions,public,storage | t
+(18 rows)
+##### P04_conta_proprietario.sql
+verificacao | valor | ok
+contas com o email autorizado | 1 | t
+email confirmado | true | t
+não bloqueada |  | t
+não apagada |  | t
+não anónima | false | t
+papéis da conta = exatamente {admin} | admin | t
+um único admin no staging | 1 | t
+total de contas (informativo) | 1 | t
+contas sem nenhum papel (receberiam consultant no preenchimento da V2) | 0 | t
+impressão digital da identidade (GUARDAR) | 8724667cccd4382c7715e53113d911df | t
+impressão digital dos papéis (GUARDAR) | 4d634367d5eb5fff56c1aa2562f1120d | t
+impressão digital alargada (informativo; pode mudar com um início de sessão) | a01ee597fc531b98ec0a390e9a847cc8 | t
+(12 rows)

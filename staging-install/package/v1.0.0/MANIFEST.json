@@ -1,0 +1,222 @@
+{
+  "package": "afonso-v2-staging-install",
+  "version": "1.0.0",
+  "prepared_on": "2026-11-14",
+  "status": "AUDIT_ONLY - nada executado; G1-G4 NO-GO",
+  "target_project": {
+    "name": "AFONSO Staging",
+    "id": "8d741542-70d9-4078-bfc6-64e3d047396a"
+  },
+  "never_apply_to": [
+    {
+      "name": "Consultor Assistente (V1, produção)",
+      "id": "bf908ebc-1146-4c4f-a804-92bbc45c4e1a"
+    }
+  ],
+  "source": {
+    "repo_path": "staging-install/migrations/",
+    "commit": "71c09d03",
+    "builder": "scripts/staging/build-staging-schema.ts",
+    "rules": "src/lib/staging/schema-rules.ts"
+  },
+  "staging_baseline": {
+    "migration": "drizzle/migrations/0000_staging_access_control.sql",
+    "snapshot_commit": "608dad98",
+    "sha256_prefix": "a87578e560f0c97f"
+  },
+  "sql": [
+    {
+      "order": 1,
+      "file": "sql/S2-00_staging_roles_prelude.sql",
+      "sha256": "4e089b4712a431072512013c82fabebbdddff5a60d56fd97f55f437f1d20604e",
+      "bytes": 1547,
+      "statements": 5,
+      "one_migration_per_file": true,
+      "identical_to_source": true
+    },
+    {
+      "order": 2,
+      "file": "sql/S2-01_v2_schema_part1.sql",
+      "sha256": "d9bf6c0e3adfd8add18f8fe8b9902921e1c0189ea6066690494625260cc5d291",
+      "bytes": 190026,
+      "statements": 918,
+      "one_migration_per_file": true,
+      "identical_to_source": true
+    },
+    {
+      "order": 3,
+      "file": "sql/S2-02_v2_schema_part2.sql",
+      "sha256": "d553e0d4280519bb452157bc20cfc8c471b58f9d934dbbf98620ff901eac287b",
+      "bytes": 75796,
+      "statements": 342,
+      "one_migration_per_file": true,
+      "identical_to_source": true
+    },
+    {
+      "order": 4,
+      "file": "sql/S2-99_staging_safety_checks.sql",
+      "sha256": "fdea9a5cd564ae5189047d5ea4b6472182129dbcdf4936672a838c00e41daba7",
+      "bytes": 2065,
+      "statements": 2,
+      "one_migration_per_file": true,
+      "identical_to_source": true
+    }
+  ],
+  "read_only_checks": {
+    "preflight": [
+      "preflight/P00_alvo.sql",
+      "preflight/P01_executor_migracoes.sql",
+      "preflight/P02_privilegios_executor.sql",
+      "preflight/P03_colisoes.sql",
+      "preflight/P04_conta_proprietario.sql"
+    ],
+    "posflight": [
+      "posflight/Q00_alvo.sql",
+      "posflight/Q01_estrutura.sql",
+      "posflight/Q02_seguranca.sql",
+      "posflight/Q03_conta_proprietario.sql",
+      "posflight/Q04_acesso_staging.sql"
+    ],
+    "placeholder": "__EMAIL_AUTORIZADO__"
+  },
+  "expected": {
+    "has_role_body_md5_before": "6b9bca1cc09de70841cac113efbdd41a",
+    "has_role_body_md5_after": "f12f7a59372b1f9e4bb5221649147a2e",
+    "has_staging_access_body_md5": "4376edeea92abf14230207df0fbbef11",
+    "handle_new_user_body_md5": "a7af893457d61aa06775f46ba8ab7a6a",
+    "staging_notes_md5": "9839c85692f965b4f419fb33c6af3404",
+    "public_tables_after": 106
+  },
+  "blockers": [
+    "B1 permissão TRIGGER/privilégios do executor real: por comprovar (P01+P02 no staging)",
+    "B2 BYPASSRLS do executor: por comprovar (P02)",
+    "B3 limite de tamanho do pedido da ferramenta de migrações: por confirmar"
+  ],
+  "files": [
+    {
+      "path": "COLLISIONS.md",
+      "sha256": "b82aa010d44d74f4d6b7d30ec52ee00754fdb54348bd61f0e90d70d8bc7b7468",
+      "bytes": 4838
+    },
+    {
+      "path": "DEPENDENCIES.md",
+      "sha256": "17ca597b0b8e080bd0b7adb1b8ed48f4a22a968e457069c848be4ce6c9b2bb21",
+      "bytes": 1724
+    },
+    {
+      "path": "EXECUTOR-PRIVILEGES.md",
+      "sha256": "ed9fd3cb919203af8471801a5d6a020f6bdbb6017bb5213ce58134c1155f0c49",
+      "bytes": 4228
+    },
+    {
+      "path": "OWNER-ACCOUNT.md",
+      "sha256": "1d014b66fcdada088715f16a77f810e9056581764594edb63df554e1162c0cc0",
+      "bytes": 2841
+    },
+    {
+      "path": "README.md",
+      "sha256": "e4ce9e17fa8f21904e561fa7b27b477717736f6f9d32b6f4368d162af3f38120",
+      "bytes": 5541
+    },
+    {
+      "path": "evidence/apply-disposable.txt",
+      "sha256": "1ce4459d03d724d2adc519e855d90e1859764f5824dbb8290319d7b8aa8d93bd",
+      "bytes": 152
+    },
+    {
+      "path": "evidence/posflight-disposable.txt",
+      "sha256": "5aaf0281040df6cf159235a3975273a60f27ccc5989b7df1f8ce7cc065447073",
+      "bytes": 3754
+    },
+    {
+      "path": "evidence/preflight-disposable.txt",
+      "sha256": "4f88971fa85b2662452e8ea54586e697f94377bfffdbf4d2eed944132ceb0c01",
+      "bytes": 3696
+    },
+    {
+      "path": "posflight/Q00_alvo.sql",
+      "sha256": "289b861f8e2ca7d2f357c7e58312045ab01d935e07cda0e7ec3388769070de13",
+      "bytes": 696
+    },
+    {
+      "path": "posflight/Q01_estrutura.sql",
+      "sha256": "9c1f546eed7d35578fa6477d3314ebf1b752dfd1c46551ff2619f5401245466e",
+      "bytes": 4453
+    },
+    {
+      "path": "posflight/Q02_seguranca.sql",
+      "sha256": "171cf65789f35dd7da10c4a729feca11816d2fb0f8486c531b090f9f7f1a7ee4",
+      "bytes": 4623
+    },
+    {
+      "path": "posflight/Q03_conta_proprietario.sql",
+      "sha256": "9b3e747562766d7170f19e0b8d65650be9a5a486d95c9bd781482dbc6a6a6956",
+      "bytes": 3136
+    },
+    {
+      "path": "posflight/Q04_acesso_staging.sql",
+      "sha256": "3f958cf3818262af48d37e0306cc75e222d4d2de9205095670539e09dc12c90b",
+      "bytes": 2372
+    },
+    {
+      "path": "preflight/P00_alvo.sql",
+      "sha256": "c9f7ab89018a2ad96e1547f816a1b4dd51512f4b53d839c68c6a8896a3c865a3",
+      "bytes": 1356
+    },
+    {
+      "path": "preflight/P01_executor_migracoes.sql",
+      "sha256": "84b2129462da49daddbe75296a92eb20953c6a962d4f6cd47c564fc805f11f0b",
+      "bytes": 2032
+    },
+    {
+      "path": "preflight/P02_privilegios_executor.sql",
+      "sha256": "2e84b62b99c4e762785a9e453c1f2e7b34d72a310344c9de95ac9177dc4e1ef0",
+      "bytes": 4787
+    },
+    {
+      "path": "preflight/P03_colisoes.sql",
+      "sha256": "06375dc69340ac0876a8f35fa04ac0bc4b5935a72b98b4679ccdad8e62d8c505",
+      "bytes": 6729
+    },
+    {
+      "path": "preflight/P04_conta_proprietario.sql",
+      "sha256": "e7d227d413293a3ecf12b0cfa4cf2dd4880410779d15296f9a245882c4472f42",
+      "bytes": 3071
+    },
+    {
+      "path": "sql/S2-00_staging_roles_prelude.sql",
+      "sha256": "4e089b4712a431072512013c82fabebbdddff5a60d56fd97f55f437f1d20604e",
+      "bytes": 1547
+    },
+    {
+      "path": "sql/S2-01_v2_schema_part1.sql",
+      "sha256": "d9bf6c0e3adfd8add18f8fe8b9902921e1c0189ea6066690494625260cc5d291",
+      "bytes": 190026
+    },
+    {
+      "path": "sql/S2-02_v2_schema_part2.sql",
+      "sha256": "d553e0d4280519bb452157bc20cfc8c471b58f9d934dbbf98620ff901eac287b",
+      "bytes": 75796
+    },
+    {
+      "path": "sql/S2-99_staging_safety_checks.sql",
+      "sha256": "fdea9a5cd564ae5189047d5ea4b6472182129dbcdf4936672a838c00e41daba7",
+      "bytes": 2065
+    },
+    {
+      "path": "tools/check_results.py",
+      "sha256": "7a00c9be94b8d9e61eff5cbe911adb6ffba7537d47ce48a91bcb4cccef94478f",
+      "bytes": 1121
+    },
+    {
+      "path": "tools/make_manifest.py",
+      "sha256": "a84bd6584ef02b52c942b499d2a04328831c68112889a4f5c4f24cf3cc00d678",
+      "bytes": 3421
+    },
+    {
+      "path": "tools/validate-disposable.sh",
+      "sha256": "a4aab65eeb333723810c0d5dcb4fca7ec8323e2d96b3d360eb499fbe318f671d",
+      "bytes": 2638
+    }
+  ]
+}

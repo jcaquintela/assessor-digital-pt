@@ -1,0 +1,61 @@
+##### Q00_alvo.sql
+verificacao | ok | detalhe
+existe public.staging_notes (marca do staging) | t | 
+existem as tabelas V2 (profiles, people, assessor_messages) | t | 
+106 tabelas em public | t | 106
+(3 rows)
+##### Q01_estrutura.sql
+parte | n | n_esperado | impressao | impressao_esperada | ok
+tabelas | 106 | 106 | 763f08375643a3854b8b1659d4ea3b97 | 763f08375643a3854b8b1659d4ea3b97 | t
+colunas | 1259 | 1259 | e430ff2ec16146b724432a1dd660d7e9 | e430ff2ec16146b724432a1dd660d7e9 | t
+funções | 43 | 43 | 2bf9f2bd9a72ef5da5a3e1b91f43d631 | 2bf9f2bd9a72ef5da5a3e1b91f43d631 | t
+políticas (public+storage) | 130 | 130 | 4cdd78d50e8ae8a8e878bc73c40231f5 | 4cdd78d50e8ae8a8e878bc73c40231f5 | t
+gatilhos (public + auth.users) | 73 | 73 | d44387516d390cdae817b8056d460149 | d44387516d390cdae817b8056d460149 | t
+índices | 297 | 297 | a60052ea9315dd2906ad6f5ec9144320 | a60052ea9315dd2906ad6f5ec9144320 | t
+restrições | 339 | 339 | 4eb1163e39816f3e6cde02e4415cb8e6 | 4eb1163e39816f3e6cde02e4415cb8e6 | t
+enums | 8 | 8 | 1b5a7036fcb428b39d49461f0a77c93b | 1b5a7036fcb428b39d49461f0a77c93b | t
+tabelas sem RLS | 0 | 0 |  |  | t
+tabelas com FORCE RLS | 8 | 8 | 48f8b2f56db2ebd6f3e53e752a5de3d8 | 48f8b2f56db2ebd6f3e53e752a5de3d8 | t
+(10 rows)
+##### Q02_seguranca.sql
+verificacao | ok | detalhe
+interruptores: nenhum ligado nem com rollout | t | 13 interruptores
+sem ativações individuais | t | 
+sem pilotos nem participantes | t | 
+sem administradores V2 (super_admin/support_admin) | t | 
+app_role = admin,tester,consultant,support_admin,super_admin | t | 
+auth.users: só on_auth_user_created, AFTER INSERT por linha, -> public.handle_new_user | t | on_auth_user_created:5->public.handle_new_user
+handle_new_user: corpo igual ao ensaio | t | 
+handle_new_user: não executável por anon/authenticated | t | 
+has_role: corpo V2 (só responde sobre quem pergunta) | t | 
+has_role: anon sem EXECUTE; authenticated e service_role com EXECUTE | t | 
+RLS ligado em todas as tabelas de public | t | 
+publicação Realtime: só assessor_messages | t | public.assessor_messages
+unaccent instalada em extensions | t | 
+nenhuma extensão de rede/agendamento instalada pela V2 (informativo: lista) | t | nenhuma
+bucket assessor-files (informativo: criar depois com a ferramenta de armazenamento) | t | ainda não existe
+(15 rows)
+##### Q03_conta_proprietario.sql
+verificacao | valor | ok
+contas com o email autorizado | 1 | t
+email continua confirmado | true | t
+papéis continuam exatamente {admin} (sem consultant acrescentado) | admin | t
+um único admin no staging | 1 | t
+papel admin sem created_by (linha original intacta) | null | t
+impressão digital da identidade (= P04) | 8724667cccd4382c7715e53113d911df | t
+impressão digital dos papéis (= P04) | 4d634367d5eb5fff56c1aa2562f1120d | t
+sem perfil V2 criado para a conta (opção A) | 0 | t
+sem estado de acesso V2 para a conta | 0 | t
+sem categorias de imóveis semeadas para a conta | 0 | t
+total de contas igual ao de P04 (informativo) | 1 | t
+impressão digital alargada (informativo; pode mudar com um início de sessão) | a01ee597fc531b98ec0a390e9a847cc8 | t
+(12 rows)
+##### Q04_acesso_staging.sql
+verificacao | ok | detalhe
+has_staging_access: corpo igual ao da migração 0000 | t | 4376edeea92abf14230207df0fbbef11
+has_staging_access: anon sem EXECUTE, authenticated com EXECUTE | t | 
+staging_notes: mesmas 3 notas | t | 3
+staging_notes: política original intacta e única | t | Staging members read notes:has_staging_access(auth.uid())
+user_roles: política de leitura própria mantida + 4 políticas de admin V2 | t | Admins delete roles,Admins insert roles,Admins read all roles,Admins update roles,Users read own roles
+user_roles: colunas id,user_id,role,created_at,created_by | t | 
+(6 rows)

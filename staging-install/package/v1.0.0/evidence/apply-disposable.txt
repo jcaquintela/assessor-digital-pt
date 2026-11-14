@@ -1,0 +1,4 @@
+aplicado S2-00_staging_roles_prelude.sql
+aplicado S2-01_v2_schema_part1.sql
+aplicado S2-02_v2_schema_part2.sql
+aplicado S2-99_staging_safety_checks.sql
