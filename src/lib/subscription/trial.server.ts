@@ -109,6 +109,11 @@ export async function startWhatsAppTrialIfEligible(
 ): Promise<{ started: boolean; reason?: string; expiresAt?: string }> {
   const now = opts.now ?? new Date();
   const plan = normalizeTier(tier);
+  // Early access: sem convite validado não há trial (registo, QR ou "Olá").
+  {
+    const { trialBlockedByGate } = await import("@/lib/access/early-access.server");
+    if (await trialBlockedByGate(supabaseAdmin, userId)) return { started: false, reason: "awaiting_invite" };
+  }
 
   const { data: prof } = await supabaseAdmin
     .from("profiles")
@@ -527,9 +532,16 @@ export async function runTrialLifecycle(supabaseAdmin: any, opts: { now?: Date }
 export async function startTrialForChannelChoice(
   supabaseAdmin: any,
   userId: string,
-  opts: { now?: Date } = {},
+  opts: { now?: Date; viaInvite?: boolean } = {},
 ): Promise<{ started: boolean; alreadyActive: boolean; reason?: string; expiresAt?: string }> {
   const now = opts.now ?? new Date();
+  // Early access: o trial só arranca pelo caminho do convite (1.ª mensagem após ativação).
+  if (!opts.viaInvite) {
+    const { trialBlockedByGate } = await import("@/lib/access/early-access.server");
+    if (await trialBlockedByGate(supabaseAdmin, userId)) {
+      return { started: false, alreadyActive: false, reason: "awaiting_invite" };
+    }
+  }
   const { data: prof } = await supabaseAdmin
     .from("profiles")
     .select("trial_status, trial_expires_at, subscription_tier, billing_status, stripe_subscription_id")

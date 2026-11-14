@@ -532,7 +532,10 @@ async function tryLinkCode(
     // Revalidar o tier no momento do consumo: quem gerou o código como
     // 'consultor' e entretanto desceu para 'base' não pode ligar WhatsApp.
     const tier = await effectiveTierOf(supabaseAdmin, row.user_id);
-    if (!canUseWhatsApp(tier)) {
+    // Early access: conta em espera pode ligar o WhatsApp (QR aberto); só a conversa fica limitada.
+    const { isAwaitingAccess } = await import("@/lib/access/early-access.server");
+    const awaiting = await isAwaitingAccess(supabaseAdmin, row.user_id);
+    if (!canUseWhatsApp(tier) && !awaiting) {
       await supabaseAdmin
         .from("whatsapp_link_codes")
         .update({ used_at: nowIso } as never)
@@ -586,6 +589,12 @@ async function tryLinkCode(
     // WhatsApp passa a canal principal, mesmo que já houvesse Telegram ligado.
     const { linkChannelToUser } = await import("@/lib/assessor/channels.server");
     await linkChannelToUser(supabaseAdmin, "whatsapp", senderPhone, row.user_id);
+    if (awaiting) {
+      const { isAccountFlagEnabled } = await import("@/lib/flags/account-flag.server");
+      const { earlyAccessReply, WAITLIST_FLAG } = await import("@/lib/access/early-access");
+      const waitlist = await isAccountFlagEnabled(supabaseAdmin, WAITLIST_FLAG, row.user_id);
+      return { reply: earlyAccessReply({ waitlist }), userId: row.user_id };
+    }
     return { reply: REPLY_LINK_OK, userId: row.user_id };
   }
 

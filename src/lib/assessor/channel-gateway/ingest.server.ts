@@ -72,6 +72,33 @@ async function runInboundPipelineInner(
     return;
   }
 
+  // 7a. Early access (interruptor `access.early_access_gate.v1`): conta em
+  // espera nunca chega ao motor — só valida convite / lista de espera. A
+  // primeira mensagem depois da ativação arranca os 14 dias e segue normal.
+  {
+    const { resolveAccess, handleBlockedInbound, startTrialAfterActivation } = await import(
+      "@/lib/access/early-access.server"
+    );
+    const access = await resolveAccess(supabaseAdmin, userId);
+    if (access.blocked) {
+      const text = inbound.messageType === "callback" ? inbound.callback?.data ?? "" : inbound.text ?? "";
+      const g = await handleBlockedInbound(supabaseAdmin, userId, inbound.channel, text);
+      const send = await adapter.sendText(inbound.externalConversationId, g.reply);
+      await supabaseAdmin.from("assessor_messages").insert({
+        user_id: userId, role: "assistant", content: g.reply,
+        message_type: `early_access:${g.kind}`, channel: adapter.channel,
+        status: send.ok ? "sent" : "failed",
+      } as never);
+      if (inbound.callback && adapter.answerInteraction) {
+        try { await adapter.answerInteraction(inbound.callback.callbackQueryId); } catch { /* best-effort */ }
+      }
+      return;
+    }
+    if (access.gate && access.row?.state === "activated") {
+      await startTrialAfterActivation(supabaseAdmin, userId, access.row);
+    }
+  }
+
   // 7b. A partir daqui há estado conversacional em jogo (rascunhos, memória).
   // Pedido de entrada no painel ("entrar"/"login"): link temporário e fim de
   // turno — não passa pelo motor.
@@ -283,6 +310,22 @@ async function routeInbound(
           try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
           catch { /* best-effort */ }
         }
+        return;
+      }
+    }
+
+    // Convites de early access dados por beta testers ("dá-me um convite",
+    // "os meus convites", "anula o convite …"). Interruptor `access.referral_invites.v1`.
+    {
+      const { handleReferralCommand } = await import("@/lib/access/early-access.server");
+      const r = await handleReferralCommand(supabaseAdmin, userId, content);
+      if (r) {
+        const send = await adapter.sendText(inbound.externalConversationId, r);
+        await supabaseAdmin.from("assessor_messages").insert({
+          user_id: userId, role: "assistant", content: r,
+          message_type: "referral_invite", channel: adapter.channel,
+          status: send.ok ? "sent" : "failed",
+        } as never);
         return;
       }
     }

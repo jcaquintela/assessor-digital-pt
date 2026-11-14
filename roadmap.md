@@ -39,3 +39,11 @@
 - [x] Plano base: até 1 match estrito/dia (`assessor.base_match_opportunity.v1`, desligado)
 - [ ] Teste real numa conta piloto — aguarda aprovação explícita do proprietário
 - [ ] Publicar — aguarda aprovação explícita
+
+## Early Access por convite — Fase 1 (14/11/2026, NÃO publicar)
+- [x] Gate de acesso no ponto único de entrada (WhatsApp/Telegram), resposta early access PT-PT
+- [x] Convites de uso único (3/beta tester, 7 dias), emissão/consumo atómicos, revogação, origem
+- [x] Lista de espera com consentimento + gestão admin
+- [x] Trial só após convite validado + 1.ª interação comercial posterior
+- [x] Testes (concorrência, casos-limite), flags OFF
+- [ ] Ligar interruptores para conta piloto e publicar — aguarda aprovação explícita

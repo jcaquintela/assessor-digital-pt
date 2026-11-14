@@ -35,6 +35,20 @@ const REPLY_ONBOARDING = (name: string) =>
   `Esta conta é tua e é a mesma em qualquer canal — se um dia ligares o WhatsApp, continuas exatamente onde ficaste.\n\n` +
   `Experimenta: "Placa Santa Maria da Feira junto ao Castelo, 932145678 Apartamento"`;
 
+/** Conta nova em espera (early access) recebe a explicação do convite, não a boas-vindas completa. */
+async function onboardingWelcome(supabaseAdmin: any, userId: string | null | undefined, firstName: string): Promise<string> {
+  if (userId) {
+    const { resolveAccess } = await import("@/lib/access/early-access.server");
+    const a = await resolveAccess(supabaseAdmin, userId);
+    if (a.blocked) {
+      const { isAccountFlagEnabled } = await import("@/lib/flags/account-flag.server");
+      const { earlyAccessReply, WAITLIST_FLAG } = await import("@/lib/access/early-access");
+      return earlyAccessReply({ waitlist: await isAccountFlagEnabled(supabaseAdmin, WAITLIST_FLAG, userId) });
+    }
+  }
+  return REPLY_ONBOARDING(firstName);
+}
+
 function extractInviteCode(text: string): string | null {
   const trimmed = text.trim();
   const startMatch = trimmed.match(/^\/start(?:@\w+)?\s+([A-Z0-9-]{4,32})$/i);
@@ -307,7 +321,7 @@ export const telegramAdapter: ChannelAdapter = {
       }
       await provider.sendText({
         chatId,
-        text: REPLY_ONBOARDING((inbound.sender?.firstName ?? "").trim()),
+        text: await onboardingWelcome(supabaseAdmin, auto.userId, (inbound.sender?.firstName ?? "").trim()),
       });
       return { handled: true, userId: auto.userId, stopPipeline: true };
     }
@@ -319,7 +333,7 @@ export const telegramAdapter: ChannelAdapter = {
     const firstName = (inbound.sender?.firstName ?? "").trim();
     await provider.sendText({
       chatId: inbound.externalConversationId,
-      text: REPLY_ONBOARDING(firstName),
+      text: await onboardingWelcome(supabaseAdmin, claim.userId, firstName),
     });
     return { handled: true, userId: claim.userId, stopPipeline: true };
   },

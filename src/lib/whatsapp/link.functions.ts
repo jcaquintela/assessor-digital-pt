@@ -85,7 +85,14 @@ export const startWhatsAppLink = createServerFn({ method: "POST" })
       _user_id: context.userId,
     });
     const tier = normalizeTier(tierRaw as string | null);
+    // Early access: conta em espera pode ligar o WhatsApp por QR; a conversa fica limitada até ao convite.
+    let awaiting = false;
     if (!canUseWhatsApp(tier)) {
+      const { supabaseAdmin: sa } = await import("@/integrations/supabase/client.server");
+      const { isAwaitingAccess } = await import("@/lib/access/early-access.server");
+      awaiting = await isAwaitingAccess(sa, context.userId);
+    }
+    if (!canUseWhatsApp(tier) && !awaiting) {
       throw new Error(
         `WhatsApp disponível a partir do plano Consultor. O teu plano actual é ${tierLabel(tier)}. A conta é a mesma em qualquer canal — continuas a falar comigo pelo Telegram sem perderes nada.`,
       );

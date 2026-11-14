@@ -14,6 +14,147 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_invite_attempts: {
+        Row: {
+          channel: string | null
+          created_at: string
+          id: string
+          ok: boolean
+          user_id: string
+        }
+        Insert: {
+          channel?: string | null
+          created_at?: string
+          id?: string
+          ok?: boolean
+          user_id: string
+        }
+        Update: {
+          channel?: string | null
+          created_at?: string
+          id?: string
+          ok?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      access_invites: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          issuer_user_id: string | null
+          note: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          source: string
+          status: string
+          token_hash: string
+          used_at: string | null
+          used_by: string | null
+          used_channel: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          issuer_user_id?: string | null
+          note?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source: string
+          status?: string
+          token_hash: string
+          used_at?: string | null
+          used_by?: string | null
+          used_channel?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          issuer_user_id?: string | null
+          note?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source?: string
+          status?: string
+          token_hash?: string
+          used_at?: string | null
+          used_by?: string | null
+          used_channel?: string | null
+        }
+        Relationships: []
+      }
+      access_waitlist: {
+        Row: {
+          channel: string | null
+          consent_at: string | null
+          consent_contact: boolean
+          created_at: string
+          notify: boolean
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string | null
+          consent_at?: string | null
+          consent_contact?: boolean
+          created_at?: string
+          notify?: boolean
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string | null
+          consent_at?: string | null
+          consent_contact?: boolean
+          created_at?: string
+          notify?: boolean
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      account_access: {
+        Row: {
+          activated_at: string | null
+          created_at: string
+          invite_id: string | null
+          source: string | null
+          state: string
+          trial_started_at: string | null
+          updated_at: string
+          user_id: string
+          waitlist_offered_at: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string
+          invite_id?: string | null
+          source?: string | null
+          state?: string
+          trial_started_at?: string | null
+          updated_at?: string
+          user_id: string
+          waitlist_offered_at?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string
+          invite_id?: string | null
+          source?: string | null
+          state?: string
+          trial_started_at?: string | null
+          updated_at?: string
+          user_id?: string
+          waitlist_offered_at?: string | null
+        }
+        Relationships: []
+      }
       admin_audit_logs: {
         Row: {
           action: string
@@ -4966,6 +5107,10 @@ export type Database = {
         }
         Returns: number
       }
+      consume_access_invite: {
+        Args: { _channel: string; _token_hash: string; _user_id: string }
+        Returns: string
+      }
       effective_tier: { Args: { _user_id: string }; Returns: string }
       expire_beta_testers: { Args: never; Returns: number }
       has_role: {
@@ -4976,6 +5121,15 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      issue_referral_invite: {
+        Args: {
+          _issuer: string
+          _quota: number
+          _token_hash: string
+          _ttl_days: number
+        }
+        Returns: string
+      }
       mark_pending_presented: {
         Args: { _channel: string; _ids: string[]; _user_id: string }
         Returns: number

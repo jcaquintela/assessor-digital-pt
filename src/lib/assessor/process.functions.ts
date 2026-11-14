@@ -16,6 +16,15 @@ export const sendAssessorMessage = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const userId = context.userId;
 
+    // Early access: conta em espera não usa o Afonso pelo painel (mesma regra dos canais).
+    {
+      const { resolveAccess } = await import("@/lib/access/early-access.server");
+      if ((await resolveAccess(supabaseAdmin, userId)).blocked) {
+        const { earlyAccessReply } = await import("@/lib/access/early-access");
+        return { ok: true, reply: earlyAccessReply({ waitlist: false }) };
+      }
+    }
+
     // 1) Persistir a mensagem do consultor
     await supabaseAdmin.from("assessor_messages").insert({
       user_id: userId,

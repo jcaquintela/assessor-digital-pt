@@ -17,6 +17,7 @@ export const navGroups: NavGroup[] = [
       { to: "/admin/beta", label: "Beta testers" },
       { to: "/admin/suporte", label: "Suporte" },
       { to: "/admin/convites", label: "Convites Telegram" },
+      { to: "/admin/acesso-antecipado", label: "Acesso antecipado" },
       { to: "/admin/entradas", label: "Entradas no painel" },
     ],
   },
