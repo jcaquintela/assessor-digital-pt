@@ -519,10 +519,12 @@ export type Database = {
         Row: {
           created_at: string
           dedupe_key: string | null
+          evidence: Json | null
           id: string
           kind: string
           outcome: string | null
           outcome_at: string | null
+          priority: number | null
           reason: string
           scheduled_for: string
           sent_at: string | null
@@ -537,10 +539,12 @@ export type Database = {
         Insert: {
           created_at?: string
           dedupe_key?: string | null
+          evidence?: Json | null
           id?: string
           kind: string
           outcome?: string | null
           outcome_at?: string | null
+          priority?: number | null
           reason: string
           scheduled_for?: string
           sent_at?: string | null
@@ -555,10 +559,12 @@ export type Database = {
         Update: {
           created_at?: string
           dedupe_key?: string | null
+          evidence?: Json | null
           id?: string
           kind?: string
           outcome?: string | null
           outcome_at?: string | null
+          priority?: number | null
           reason?: string
           scheduled_for?: string
           sent_at?: string | null
@@ -1275,6 +1281,7 @@ export type Database = {
           evening_time: string
           evening_wrap_enabled: boolean
           max_daily_nudges: number
+          max_unsolicited_nudges_per_day: number
           morning_briefing_enabled: boolean
           morning_days: number[]
           morning_time: string
@@ -1299,6 +1306,7 @@ export type Database = {
           evening_time?: string
           evening_wrap_enabled?: boolean
           max_daily_nudges?: number
+          max_unsolicited_nudges_per_day?: number
           morning_briefing_enabled?: boolean
           morning_days?: number[]
           morning_time?: string
@@ -1323,6 +1331,7 @@ export type Database = {
           evening_time?: string
           evening_wrap_enabled?: boolean
           max_daily_nudges?: number
+          max_unsolicited_nudges_per_day?: number
           morning_briefing_enabled?: boolean
           morning_days?: number[]
           morning_time?: string

@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
           await import("@/lib/assessor/v3/proactivity.server");
         const { dispatchDueReminders } = await import("@/lib/assessor/v3/reminders.server");
         const { generateSupremeNudges } = await import("@/lib/assessor/supreme/briefing.server");
-        const { generateOpportunityDigestNudges } = await import("@/lib/opportunities/digest.server");
+        const { generateOpportunityDrafts } = await import("@/lib/opportunities/digest.server");
         const { listSupremeUsers } = await import("@/lib/assessor/supreme/feature-flag.server");
 
         // Só corre para utilizadores com v3 activa.
@@ -45,18 +45,19 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
             supremeGenerated += created.length;
           }
         }
-        const dispatched = await dispatchPendingNudges(supabaseAdmin as any, {});
-
-        // Resumo diário de oportunidades detetadas (agregado, nunca em tempo real).
+        // Oportunidades comerciais (match comprador↔imóvel, negócio parado).
+        // Geradas ANTES do envio para competirem pela mesma vaga diária.
         let digests = 0;
         for (const uid of userIds) {
           try {
-            const drafts = await generateOpportunityDigestNudges(supabaseAdmin as any, uid);
+            const drafts = await generateOpportunityDrafts(supabaseAdmin as any, uid);
             if (drafts.length) {
               digests += (await persistNudges(supabaseAdmin as any, uid, drafts)).length;
             }
           } catch { /* noop */ }
         }
+        const dispatched = await dispatchPendingNudges(supabaseAdmin as any, {});
+
         const reminders = await dispatchDueReminders(supabaseAdmin as any, {});
 
         // Rotinas (lembretes recorrentes) — materializa os que já venceram.

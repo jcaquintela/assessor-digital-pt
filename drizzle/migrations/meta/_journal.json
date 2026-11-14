@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794652829486,
+      "tag": "0000_proactive_daily_cap_and_opportunity_nudges",
+      "breakpoints": true
+    }
+  ]
+}

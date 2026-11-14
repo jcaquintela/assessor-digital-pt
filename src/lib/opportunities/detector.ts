@@ -22,6 +22,15 @@ export interface OpportunityAlert {
   urgency: AlertUrgency;
   /** Onde o consultor vai tratar disto. */
   to: string;
+  /** Factos estruturados que sustentam o alerta (evidência auditável). */
+  meta?: {
+    score?: number;
+    days?: number;
+    stage?: DealStage;
+    leadId?: string;
+    propertyId?: string;
+    dealId?: string;
+  };
 }
 
 // ---- Tempos de referência (perfil "equilibrado", confirmado com o consultor) ------
@@ -184,6 +193,7 @@ export function matchAlerts(
         action: `Propor visita a ${lead.name} a este imóvel esta semana.`,
         urgency: score >= 90 ? "alta" : "media",
         to: `/imoveis/${prop.id}`,
+        meta: { score, leadId: lead.id, propertyId: prop.id },
       });
     }
   }
@@ -228,6 +238,7 @@ export function dealCoolingAlerts(deals: DealInput[], now = Date.now()): Opportu
         action: NEXT_STEP[stage],
         urgency: (avancado || dias >= limite * 2 ? "alta" : "media") as AlertUrgency,
         to: `/negocios/${d.id}`,
+        meta: { days: dias, stage, dealId: d.id },
       };
     })
     .filter(Boolean) as OpportunityAlert[];

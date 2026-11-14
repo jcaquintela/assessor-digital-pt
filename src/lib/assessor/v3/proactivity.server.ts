@@ -8,6 +8,7 @@ import { DAILY_BRIEFING_PREFIX } from "../supreme/briefing.server";
 import { isFollowUpClosed, isFollowUpOpen } from "@/lib/follow-ups/state";
 import { computePriorities } from "../supreme/priorities.server";
 import { lisbonYmd, ymdDiffDays, lisbonHhMm } from "@/lib/assessor/lisbon-day";
+import { startOfLocalDay as startOfLocalDayMs } from "@/lib/assessor/day-window";
 import { isNudgeExpired, PRE_EVENT_DEDUPE_PREFIX } from "../proactive/nudge-expiry";
 import { resolvePreEventAtDispatch } from "../supreme/pre-event.server";
 
@@ -30,7 +31,9 @@ export type NudgeKind =
   | "followup_overdue"     // follow-up vencido há > 2 dias
   | "consultant_silence"   // consultor calado há > 3 dias úteis
   | "schedule_conflict"    // dois compromissos sobrepostos
-  | "deal_deadline";       // prazo de negócio a aproximar-se (ou já passado)
+  | "deal_deadline"        // prazo de negócio a aproximar-se (ou já passado)
+  | "opportunity_match"    // comprador com imóvel compatível na carteira
+  | "deal_stalled";        // negócio sem contacto há mais tempo do que a fase aguenta
 
 export interface NudgeDraft {
   kind: NudgeKind;
@@ -39,6 +42,10 @@ export interface NudgeDraft {
   reason: string;
   suggested_reply: string;
   dedupe_key: string;
+  /** 0–100: impacto comercial × urgência × confiança. Sem valor => prioridade do tipo. */
+  priority?: number;
+  /** Factos que sustentam o aviso (auditáveis; nunca texto inventado). */
+  evidence?: Record<string, unknown>;
 }
 
 export const DOCUMENT_NUDGE_MAX_ATTEMPTS = 2;
@@ -363,6 +370,8 @@ export async function persistNudges(
         suggested_reply: d.suggested_reply,
         dedupe_key: d.dedupe_key,
         status: "pending",
+        ...(typeof d.priority === "number" ? { priority: Math.round(d.priority) } : {}),
+        ...(d.evidence ? { evidence: d.evidence } : {}),
       } as never)
       .select("id")
       .maybeSingle();
@@ -371,18 +380,23 @@ export async function persistNudges(
   return created;
 }
 
-// Envia pending para o WhatsApp e marca como sent/dismissed.
+// Envia pending pelo canal principal e marca como sent/dismissed.
+//
+// Ordem: primeiro descarta o que já não vale (duplicado, expirado, tratado),
+// depois aplica, por conta, o teto diário de intervenções NÃO solicitadas
+// (por defeito 1, a de maior prioridade) — o que fica de fora é descartado
+// com `outcome = "daily_cap"` para nunca se acumular para o dia seguinte.
 export async function dispatchPendingNudges(
   supabase: any,
   opts: { maxPerRun?: number; now?: Date } = {},
 ): Promise<{ sent: number; skipped: number }> {
   const now = opts.now ?? new Date();
   if (!isWithinBusinessHours(now)) return { sent: 0, skipped: 0 };
-  const maxPerRun = opts.maxPerRun ?? 20;
+  const maxPerRun = opts.maxPerRun ?? 50;
 
   const { data: pending } = await supabase
     .from("assessor_nudges")
-    .select("id, user_id, suggested_reply, subject_type, subject_id, dedupe_key, created_at")
+    .select("id, user_id, kind, priority, suggested_reply, subject_type, subject_id, dedupe_key, created_at")
     .eq("status", "pending")
     .lte("scheduled_for", now.toISOString())
     .order("created_at", { ascending: true })
@@ -401,73 +415,95 @@ export async function dispatchPendingNudges(
   const v3Set = new Set(((v3Users as any[]) ?? []).map((u) => u.user_id));
 
   let sent = 0, skipped = 0;
+  const dismiss = async (id: string, outcome?: string) => {
+    await supabase
+      .from("assessor_nudges")
+      .update(outcome ? { status: "dismissed", outcome, outcome_at: now.toISOString() } : { status: "dismissed" })
+      .eq("id", id);
+    skipped++;
+  };
   const { resolveOutboundTarget } = await import("@/lib/assessor/primary-channel.server");
   const { sendReplyForChannel } = await import("@/lib/assessor/channels.server");
+  const { applyDailyCap, isInQuietHours, isScheduledNudge, DEFAULT_MAX_UNSOLICITED_PER_DAY } =
+    await import("../proactive/daily-cap");
   const targets = new Map<string, { channel: "whatsapp" | "telegram"; externalId: string } | null>();
   for (const uid of userIds) targets.set(uid, await resolveOutboundTarget(supabase, uid));
+
+  // 1) Validação por aviso — texto final calculado no momento do envio.
+  const ready = new Map<string, Array<any & { text: string }>>();
   const seenSubjects = new Set<string>();
   for (const row of rows) {
     const subjectKey = `${row.user_id}:${row.subject_type ?? ""}:${row.subject_id ?? ""}:${String(row.dedupe_key ?? "").split(":")[0]}`;
-    if (row.subject_id && seenSubjects.has(subjectKey)) {
-      await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
-      skipped++;
-      continue;
-    }
+    if (row.subject_id && seenSubjects.has(subjectKey)) { await dismiss(row.id); continue; }
     if (row.subject_id) seenSubjects.add(subjectKey);
     // Avisos com prazo (briefing, resumo de fim de dia, conflitos, digest,
     // pré-evento) morrem em silêncio quando o momento a que se referem já
     // passou — o horário de silêncio não os deve despejar no dia seguinte.
-    if (isNudgeExpired(row, now)) {
-      await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
-      skipped++;
-      continue;
-    }
+    if (isNudgeExpired(row, now)) { await dismiss(row.id); continue; }
     const target = targets.get(row.user_id) ?? null;
-    if (!target || !v3Set.has(row.user_id)) {
-      await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
-      skipped++;
-      continue;
-    }
+    if (!target || !v3Set.has(row.user_id)) { await dismiss(row.id); continue; }
     // O texto foi escrito quando o nudge nasceu; entretanto o consultor pode
     // ter tratado (ou desmarcado) o assunto. Reavalia antes de falar.
     let text: string = row.suggested_reply;
     if (String(row.dedupe_key ?? "").startsWith(DAILY_BRIEFING_PREFIX)) {
       const { resolveBriefingAtDispatch } = await import("../supreme/briefing.server");
       const fresh = await resolveBriefingAtDispatch(supabase, row.user_id);
-      if (!fresh.send) {
-        await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
-        skipped++;
-        continue;
-      }
+      if (!fresh.send) { await dismiss(row.id); continue; }
       text = fresh.text;
     } else if (row.subject_type === "follow_up" && row.subject_id) {
-      if (await isFollowUpSettled(supabase, row.subject_id)) {
-        await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
-        skipped++;
-        continue;
-      }
+      if (await isFollowUpSettled(supabase, row.subject_id)) { await dismiss(row.id); continue; }
       if (String(row.dedupe_key ?? "").startsWith(PRE_EVENT_DEDUPE_PREFIX)) {
         // "Daqui a X min" tem de ser a distância real no instante do envio.
         const fresh = await resolvePreEventAtDispatch(supabase, row.subject_id, now);
-        if (!fresh.send) {
-          await supabase.from("assessor_nudges").update({ status: "dismissed" }).eq("id", row.id);
-          skipped++;
-          continue;
-        }
+        if (!fresh.send) { await dismiss(row.id); continue; }
         text = fresh.text;
       }
     }
-    const r = await sendReplyForChannel(target.channel, target.externalId, text);
-    if (r.ok) {
-      await supabase.from("assessor_nudges").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", row.id);
-      // Persiste no histórico do chat para o consultor ver na app.
-      await supabase.from("assessor_messages").insert({
-        user_id: row.user_id, channel: target.channel, role: "assistant",
-        content: text, message_type: "proactive_nudge",
-      } as never);
-      sent++;
-    } else {
-      skipped++;
+    const list = ready.get(row.user_id) ?? [];
+    list.push({ ...row, text });
+    ready.set(row.user_id, list);
+  }
+
+  // 2) Teto diário por conta + horário de silêncio do consultor.
+  const dayStartIso = new Date(startOfLocalDayMs(now)).toISOString();
+  const hhmm = lisbonHhMm(now);
+  for (const [uid, list] of ready) {
+    const [{ data: prefs }, { data: sentRows }] = await Promise.all([
+      supabase
+        .from("consultant_preferences")
+        .select("max_unsolicited_nudges_per_day, quiet_hours_start, quiet_hours_end")
+        .eq("user_id", uid)
+        .maybeSingle(),
+      supabase
+        .from("assessor_nudges")
+        .select("dedupe_key")
+        .eq("user_id", uid)
+        .eq("status", "sent")
+        .gte("sent_at", dayStartIso),
+    ]);
+    const cap = typeof (prefs as any)?.max_unsolicited_nudges_per_day === "number"
+      ? (prefs as any).max_unsolicited_nudges_per_day
+      : DEFAULT_MAX_UNSOLICITED_PER_DAY;
+    const quiet = isInQuietHours((prefs as any)?.quiet_hours_start, (prefs as any)?.quiet_hours_end, hhmm);
+    // Em silêncio, os não solicitados esperam (não são descartados nem enviados).
+    const eligible = quiet ? list.filter((r) => isScheduledNudge(r)) : list;
+    skipped += list.length - eligible.length;
+    const decision = applyDailyCap(eligible, ((sentRows as any[]) ?? []).map((r) => r.dedupe_key), cap);
+    for (const d of decision.drop) await dismiss(d.row.id, d.reason);
+    const target = targets.get(uid)!;
+    for (const r of decision.send as any[]) {
+      const res = await sendReplyForChannel(target.channel, target.externalId, r.text);
+      if (res.ok) {
+        await supabase.from("assessor_nudges").update({ status: "sent", sent_at: (opts.now ?? new Date()).toISOString() }).eq("id", r.id);
+        // Persiste no histórico do chat para o consultor ver na app.
+        await supabase.from("assessor_messages").insert({
+          user_id: uid, channel: target.channel, role: "assistant",
+          content: r.text, message_type: "proactive_nudge",
+        } as never);
+        sent++;
+      } else {
+        skipped++;
+      }
     }
   }
   return { sent, skipped };
