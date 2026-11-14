@@ -46,6 +46,17 @@ describe("G2. falha/ausência de escrita → diz que não guardou", () => {
   });
 });
 
+describe("G2b. conversa normal não é trocada pelo aviso de falha", () => {
+  it("'Fica combinado, falamos amanhã' sem ferramentas mantém-se", () => {
+    const reply = "Fica combinado, falamos amanhã.";
+    expect(enforceTransparentConfirmation(reply, [], { executedOk: false })).toBe(reply);
+  });
+  it("recordar um registo antigo ('anotei') sem tentativa de escrita mantém-se", () => {
+    const reply = "Na semana passada anotei que o João quer um T2 em Matosinhos.";
+    expect(enforceTransparentConfirmation(reply, [{ name: "search_people", ok: true }], { executedOk: true })).toBe(reply);
+  });
+});
+
 describe("G3. ocorrência antiga por fechar é substituída", () => {
   it("ocorrência de há 3 semanas fecha e nasce a nova", async () => {
     const sb = makeFakeSupabase({ routines: [weekly()], follow_ups: [occ("2026-09-10")] });

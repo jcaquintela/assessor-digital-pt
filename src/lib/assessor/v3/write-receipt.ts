@@ -96,12 +96,28 @@ export function promisesFutureWrite(text: string | null | undefined): boolean {
 // Frases que afirmam que uma alteração ficou feita/registada. Sem escrita real
 // por trás são mentira (caso real 19/09, Iolanda: "Fica anotado que a Lead Gen
 // é só às quintas-feiras" — nenhuma ferramenta correu e a rotina não mudou).
-const CLAIMS_SAVED_RE =
-  /\b(?:fica(?:\s+entao)?\s+(?:anotad[oa]|registad[oa]|guardad[oa]|alterad[oa]|atualizad[oa]|actualizad[oa]|combinad[oa])|anotei|registei|guardei|alterei|atualizei|actualizei|mudei|corrigi|ja\s+(?:esta|ficou)\s+(?:alterad[oa]|atualizad[oa]|corrigid[oa]))\b/i;
+// "Fica anotado/registado/..." é uma afirmação de escrita neste turno — sem
+// ferramenta por trás é sempre mentira. "Fica combinado" NÃO entra: é acordo
+// social ("Fica combinado, falamos amanhã"), não um registo.
+const CLAIMS_SAVED_NOW_RE =
+  /\b(?:fica(?:\s+entao)?\s+(?:anotad[oa]|registad[oa]|guardad[oa]|alterad[oa]|atualizad[oa]|actualizad[oa])|ja\s+(?:esta|ficou)\s+(?:alterad[oa]|atualizad[oa]|corrigid[oa]))\b/i;
+// Verbos no passado ("guardei", "anotei") também servem para recordar registos
+// antigos ("anotei isso na semana passada"). Só contam como mentira quando
+// houve uma tentativa de escrita neste turno e nenhuma resultou.
+const CLAIMS_SAVED_PAST_RE =
+  /\b(?:anotei|registei|guardei|alterei|atualizei|actualizei|mudei|corrigi)\b/i;
 
-export function claimsSavedChange(text: string | null | undefined): boolean {
-  const t = String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return CLAIMS_SAVED_RE.test(t);
+function norm(text: string | null | undefined): string {
+  return String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+export function claimsSavedChange(
+  text: string | null | undefined,
+  opts: { attemptedWrite?: boolean } = {},
+): boolean {
+  const t = norm(text);
+  if (CLAIMS_SAVED_NOW_RE.test(t)) return true;
+  return !!opts.attemptedWrite && CLAIMS_SAVED_PAST_RE.test(t);
 }
 
 export const NOT_SAVED_REPLY =
@@ -120,7 +136,7 @@ export function enforceTransparentConfirmation(
   if (opts.pendingAsk) return withProspectingHint(out, tools);
   // Nunca "fica anotado" sem nada gravado: diz claramente que não guardou.
   const anyWrite = tools.some((t) => isRealWrite(t));
-  if (!anyWrite && claimsSavedChange(reply)) return NOT_SAVED_REPLY;
+  if (!anyWrite && claimsSavedChange(reply, { attemptedWrite: tools.some((t) => !t.ok) })) return NOT_SAVED_REPLY;
   if (claimsDelivery(reply)) out = receipt ?? "Guardei o registo no dashboard. Não enviei nada a ninguém.";
   else if (opts.executedOk && isBareAck(reply) && receipt) out = receipt;
   // Escrita feita, mas contada no presente/futuro: substituímos pelo recibo
