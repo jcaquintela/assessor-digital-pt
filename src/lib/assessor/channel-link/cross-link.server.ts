@@ -146,7 +146,8 @@ export async function handleCrossLink(
     await supabaseAdmin.from("telegram_link_tokens").insert({
       token, user_id: userId, expires_at: new Date(Date.now() + TOKEN_TTL_MIN * 60_000).toISOString(),
     } as never);
-    const { TELEGRAM_BOT_USERNAME } = await import("@/lib/telegram/pairing.server");
+    const { telegramBotUsername } = await import("@/lib/telegram/pairing.server");
+    const TELEGRAM_BOT_USERNAME = telegramBotUsername();
     await reply(adapter, supabaseAdmin, userId, to, LINK_TEXT.telegramLink(`https://t.me/${TELEGRAM_BOT_USERNAME}?start=${token}`));
     return true;
   }

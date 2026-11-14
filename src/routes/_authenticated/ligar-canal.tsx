@@ -259,12 +259,12 @@ function WhatsAppFlow({ onBack, onDone }: { onBack: () => void; onDone: () => vo
         <>
           <label htmlFor="wa-phone" className="c-eyebrow">O teu número de WhatsApp</label>
           <input
-            id="wa-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+351 932 893 767"
+            id="wa-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="Ex.: +351 9XX XXX XXX"
             value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={24}
             className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
           />
           <p className="c-muted mt-2 text-[12px]">
-            Formato internacional, por exemplo +351932893767. Não pedimos cartão.
+            Formato internacional, por exemplo +351 9XX XXX XXX. Não pedimos cartão.
           </p>
           <button
             className="c-cta mt-3"

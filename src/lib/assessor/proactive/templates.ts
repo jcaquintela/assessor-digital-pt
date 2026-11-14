@@ -6,6 +6,7 @@
 // fica bloqueado (ver `templatesApproved()` em push.server.ts).
 
 export const TEMPLATE_MORNING = "afonso_prioridades_dia";
+import { panelUrlLabel } from "@/lib/env/app-url";
 export const TEMPLATE_CHECKIN = "afonso_resultado_seguimento";
 export const TEMPLATE_CHECKIN_V2 = "afonso_resultado_seguimento_corrigido";
 export const TEMPLATE_PLAN_ACTIVATED = "afonso_plano_ativado";
@@ -14,7 +15,7 @@ export const TEMPLATE_TRIAL_ENDING = "afonso_periodo_experimental";
 export const TEMPLATE_LANG = "pt_PT";
 
 const MORNING_TEMPLATE_LIMIT = 900;
-const MORNING_TEMPLATE_TRUNCATION_NOTE = "… (resto no painel: app.meuafonso.com/hoje)";
+const morningTruncationNote = () => `… (resto no painel: ${panelUrlLabel()})`;
 
 /**
  * A Cloud API rejeita parâmetros de template com quebras de linha, tabs ou
@@ -47,8 +48,9 @@ export function formatMorningTemplateList(text: string, limit = MORNING_TEMPLATE
     .replace(/\n+(?=(?:⚠️\s*)?Conflitos a resolver\b)/g, "\n\n")
     .trim();
   if (spaced.length <= limit) return spaced;
-  const budget = Math.max(0, limit - MORNING_TEMPLATE_TRUNCATION_NOTE.length - 1);
-  return `${spaced.slice(0, budget).replace(/[\s•·-]+$/, "")} ${MORNING_TEMPLATE_TRUNCATION_NOTE}`.trim();
+  const note = morningTruncationNote();
+  const budget = Math.max(0, limit - note.length - 1);
+  return `${spaced.slice(0, budget).replace(/[\s•·-]+$/, "")} ${note}`.trim();
 }
 
 /**

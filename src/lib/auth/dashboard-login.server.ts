@@ -4,6 +4,8 @@
 //
 // Server-only: usa node:crypto e o service role.
 
+import { isStagingEnv, PRODUCTION_APP_URL, resolveAppBaseUrl } from "@/lib/env/app-url";
+
 export const LOGIN_TOKEN_TTL_MIN = 15;
 
 // Um link acabado de usar continua a funcionar durante uns minutos: recarregar
@@ -23,7 +25,7 @@ export function normalizeLoginToken(raw: string | null | undefined): string {
 
 // Domínio público oficial do produto. Os links de entrada enviados ao consultor
 // (WhatsApp, Telegram, painel) usam sempre este domínio, nunca o de preview.
-export const PRODUCTION_APP_URL = "https://app.meuafonso.com";
+export { PRODUCTION_APP_URL };
 
 // Domínios internos do Lovable (preview/staging). Nunca podem sair num link
 // enviado ao consultor.
@@ -40,6 +42,12 @@ export function isInternalPreviewUrl(url: string): boolean {
 // Rede de segurança: se alguma regressão fizer um link apontar para preview,
 // falhamos em vez de enviar um link inútil ao consultor.
 export function assertPublicLoginUrl(url: string): string {
+  if (isStagingEnv()) {
+    // Staging: só o endereço do próprio staging (pode ser *.lovable.app), nunca produção.
+    const base = resolveAppBaseUrl();
+    if (url.startsWith(`${base}/`)) return url;
+    throw new Error("[dashboard-login] link de entrada fora do endereço de staging recusado.");
+  }
   if (isInternalPreviewUrl(url)) {
     throw new Error(
       `[dashboard-login] link de entrada com domínio interno recusado: ${url}. Usa ${PRODUCTION_APP_URL}.`,
@@ -48,12 +56,10 @@ export function assertPublicLoginUrl(url: string): string {
   return url;
 }
 
+// Produção: ignora valores de preview (um link interno do Lovable não serve a
+// quem recebe a mensagem). Staging: STAGING_APP_URL, nunca produção.
 export function appBaseUrl(): string {
-  const configured = (process.env.APP_PUBLIC_URL || process.env.SITE_URL || "").trim();
-  // Ignora valores de staging/preview: um link interno do Lovable não serve
-  // para quem recebe a mensagem.
-  const usable = configured && !isInternalPreviewUrl(configured) ? configured : PRODUCTION_APP_URL;
-  return usable.replace(/\/+$/, "");
+  return resolveAppBaseUrl();
 }
 
 const LOGIN_RE = /^\/?(entrar|login|painel|dashboard|abrir painel|entrar no painel)$/i;

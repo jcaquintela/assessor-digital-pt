@@ -17,6 +17,7 @@ import {
 
 import type { AgendaFactEvent } from "./day-agenda-facts";
 import { lisbonYmd } from "../lisbon-day";
+import { panelUrlLabel } from "@/lib/env/app-url";
 
 export interface BriefingPriority {
   subject_type: string;
@@ -55,6 +56,8 @@ export const MAX_P2 = 2;
 export const BRIEFING_MAX_CHARS = 1200;
 export const PANEL_URL = "app.meuafonso.com/hoje";
 export const TRUNCATION_NOTE = `… (resto no painel: ${PANEL_URL})`;
+/** Versão por ambiente (em produção igual a TRUNCATION_NOTE). */
+const truncationNote = () => `… (resto no painel: ${panelUrlLabel()})`;
 
 const P1_MIN_SCORE = 80;
 const P2_MIN_SCORE = 55;
@@ -192,7 +195,7 @@ export function composeEnrichedBriefing(
   }
   if (restCount > 0) {
     blocks.push({
-      text: `Mais ${restCount} no painel: ${base ? `${base.replace(/\/+$/, "")}/hoje` : PANEL_URL}`,
+      text: `Mais ${restCount} no painel: ${base ? `${base.replace(/\/+$/, "")}/hoje` : panelUrlLabel()}`,
       removable: false,
     });
   }
@@ -236,11 +239,12 @@ export function composeEnrichedBriefing(
   }
   let text = join(list);
   if (text.length > max) {
-    const budget = Math.max(0, max - TRUNCATION_NOTE.length - 1);
-    text = `${text.slice(0, budget).replace(/[\s•·-]+$/, "")} ${TRUNCATION_NOTE}`.trim();
+    const note = truncationNote();
+    const budget = Math.max(0, max - note.length - 1);
+    text = `${text.slice(0, budget).replace(/[\s•·-]+$/, "")} ${note}`.trim();
     cut = true;
   } else if (cut) {
-    const withNote = `${text}\n${TRUNCATION_NOTE}`;
+    const withNote = `${text}\n${truncationNote()}`;
     text = withNote.length <= max ? withNote : text;
   }
   return text;

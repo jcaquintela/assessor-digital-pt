@@ -1,0 +1,98 @@
+{
+  "generated_from": {
+    "supabase_migrations": 174,
+    "drizzle_migrations": 10
+  },
+  "chunks": [
+    {
+      "file": "S2-00_staging_roles_prelude.sql",
+      "sources": 0,
+      "lines": 29,
+      "sha256": "4e089b4712a431072512013c82fabebbdddff5a60d56fd97f55f437f1d20604e"
+    },
+    {
+      "file": "S2-01_v2_schema_part1.sql",
+      "sources": 121,
+      "lines": 4420,
+      "sha256": "d9bf6c0e3adfd8add18f8fe8b9902921e1c0189ea6066690494625260cc5d291"
+    },
+    {
+      "file": "S2-02_v2_schema_part2.sql",
+      "sources": 54,
+      "lines": 1538,
+      "sha256": "d553e0d4280519bb452157bc20cfc8c471b58f9d934dbbf98620ff901eac287b"
+    },
+    {
+      "file": "S2-99_staging_safety_checks.sql",
+      "sources": 0,
+      "lines": 37,
+      "sha256": "fdea9a5cd564ae5189047d5ea4b6472182129dbcdf4936672a838c00e41daba7"
+    }
+  ],
+  "excluded": [
+    {
+      "file": "20260724171931_dbefc538-e993-4663-9151-c79af4c336f9.sql",
+      "reason": "Dá super_admin a um identificador de conta de produção (administrador fixo)."
+    },
+    {
+      "file": "20260731084458_6c6f59e5-67f8-401b-9cfa-824290ae6e6e.sql",
+      "reason": "Limpeza de linhas de produção por identificador."
+    },
+    {
+      "file": "20260801144947_0e213a95-046a-4774-9539-e7b82eeef5ca.sql",
+      "reason": "Limpeza de dados de produção por texto (sem efeito num esquema novo)."
+    },
+    {
+      "file": "20260801164332_45eebeba-ebde-47d5-9c88-cb68c3e62713.sql",
+      "reason": "Apaga uma visita de produção por identificador."
+    },
+    {
+      "file": "20260804150324_545c9612-f875-4463-a02a-825ce45ed63d.sql",
+      "reason": "Fixture de teste: seguimento ligado ao email do proprietário e a um contacto de produção."
+    },
+    {
+      "file": "20260804150413_c7cd7276-3a27-49b4-aa9b-2a02bd0dfa94.sql",
+      "reason": "Apaga a fixture anterior (excluída)."
+    },
+    {
+      "file": "20260815121414_1e48e119-0f21-4c12-bdca-6b09ef7571b4.sql",
+      "reason": "Arquiva um contacto de produção por identificador."
+    },
+    {
+      "file": "20260914085646_a2b7a27c-ecb7-488c-a177-9e091997fc8b.sql",
+      "reason": "Correção de um item de produção por identificador."
+    },
+    {
+      "file": "20260914085718_08a63e8b-1fee-4050-b43d-875caad83fef.sql",
+      "reason": "Correção de um item de produção por identificador."
+    }
+  ],
+  "stripped": [
+    {
+      "file": "20260729093330_31b5bdd8-39b9-491b-ad70-d6fd7c13ce77.sql",
+      "reason": "Retira a ativação individual de um interruptor pelo email do proprietário.",
+      "removed": 1
+    },
+    {
+      "file": "20260806103601_fdd052b8-5f26-434d-b349-894b49eb15f4.sql",
+      "reason": "Mantém a estrutura (restrição e função de fusão); retira a fusão de contas reais e o registo de auditoria com telefones e nomes reais.",
+      "removed": 1
+    },
+    {
+      "file": "20260813084919_4d8f6283-e952-4058-8e08-45a30e6778e2.sql",
+      "reason": "Retira a conclusão de seguimentos de produção por identificador; mantém a novidade do produto.",
+      "removed": 1
+    },
+    {
+      "file": "20260823181720_cbdf3bf7-1e3e-47b7-a649-bd8e403abd57.sql",
+      "reason": "Retira a ativação individual de um interruptor pelo email do proprietário.",
+      "removed": 1
+    },
+    {
+      "file": "0004_pilot_v2_entitlement_and_invites.sql",
+      "reason": "Mantém tabelas, funções e guardas do piloto; retira o piloto e os participantes com identificadores reais (o staging recebe um piloto sintético no passo S5).",
+      "removed": 1
+    }
+  ],
+  "findings": 0
+}

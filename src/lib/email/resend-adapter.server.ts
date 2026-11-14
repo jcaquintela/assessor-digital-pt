@@ -1,9 +1,9 @@
 import { BRAND_NAME } from "@/lib/brand";
 import type { EmailMessage, EmailProvider, EmailSendResult } from "./provider";
+import { emailFrom } from "@/lib/env/app-url";
 
-// Remetente real: domínio meuafonso.com verificado no Resend.
-// (Antes era `onboarding@resend.dev`, que só entregava ao dono da conta.)
-const FROM = `${BRAND_NAME} <ola@meuafonso.com>`;
+// Remetente: em produção ola@meuafonso.com (domínio verificado no Resend);
+// em staging só STAGING_EMAIL_FROM, nunca o domínio de produção (emailFrom).
 
 // Enviamos pelo connector gateway da Lovable (credenciais geridas pelo
 // conector Resend: LOVABLE_API_KEY + RESEND_API_KEY). Não há chave manual.
@@ -34,6 +34,13 @@ export const resendEmailProvider: EmailProvider = {
     if (!lovableKey || !connectionKey) {
       return { success: false, error: "conector Resend não ligado ao projeto" };
     }
+    let from: string;
+    try {
+      from = emailFrom(BRAND_NAME);
+    } catch (e) {
+      // Staging mal configurado: não envia com o remetente de produção.
+      return { success: false, error: e instanceof Error ? e.message : "remetente indisponível" };
+    }
 
     try {
       const res = await fetch(ENDPOINT, {
@@ -44,7 +51,7 @@ export const resendEmailProvider: EmailProvider = {
           "X-Connection-Api-Key": connectionKey,
         },
         body: JSON.stringify({
-          from: FROM,
+          from,
           to: [message.to],
           subject: message.subject,
           text: message.body,

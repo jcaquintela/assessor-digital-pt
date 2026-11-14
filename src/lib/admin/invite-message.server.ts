@@ -3,6 +3,7 @@
 // o registo no painel. Um só WhatsApp/Telegram, sem passos soltos.
 import { LOGIN_TOKEN_TTL_MIN, issueDashboardLoginLink } from "@/lib/auth/dashboard-login.server";
 import { WHATSAPP_CODE_TTL_MIN, getDisplayNumber } from "@/lib/whatsapp/link.functions";
+import { resolveAppBaseUrl } from "@/lib/env/app-url";
 
 export type InvitePayload = {
   texto: string;
@@ -55,7 +56,7 @@ export async function buildInvitePreview(opts: {
   phone?: string | null;
 }): Promise<InvitePreview> {
   const numeroAfonso = prettyNumber(await getDisplayNumber());
-  const url = "https://app.meuafonso.com/entrar?token=…(gerado no envio)";
+  const url = `${resolveAppBaseUrl()}/entrar?token=…(gerado no envio)`;
   const codigo = opts.canal === "whatsapp" && opts.phone ? "LIGAR-XXXX (gerado no envio)" : null;
   return {
     texto: formatInviteMessage({ nome: opts.nome, url, codigo, numeroAfonso }),

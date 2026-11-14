@@ -12,6 +12,7 @@ import { composeListingReply, isListingReply, type Comparable, type ComparablesS
 import {
   extractListingBrief, hasListingIdentity, isListingDiagnosis, mergeListingBriefs, type ListingBrief,
 } from "./listing-brief";
+import { resolveAppBaseUrl } from "@/lib/env/app-url";
 
 export interface ListingDeps {
   loadRecent(): Promise<Array<{ role: string; content: string; created_at: string }>>;
@@ -36,7 +37,7 @@ export function defaultListingDeps(supabase: any, userId: string, channel: strin
         .eq("user_id", userId).or(`title.ilike.%${b.ref}%,notes.ilike.%${b.ref}%`).limit(1);
       const row = Array.isArray(data) && data.length ? data[0] : null;
       return row
-        ? { found: true, price: row.asking_price ?? null, url: `https://app.meuafonso.com/imoveis/${row.id}` }
+        ? { found: true, price: row.asking_price ?? null, url: `${resolveAppBaseUrl()}/imoveis/${row.id}` }
         : { found: false, price: null, url: null };
     },
     async searchComparables(b) {

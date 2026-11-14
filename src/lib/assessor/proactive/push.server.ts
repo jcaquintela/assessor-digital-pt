@@ -17,6 +17,7 @@ import {
 } from "./templates";
 import { composeEnrichedBriefing, tightGapsFromAgenda } from "./briefing-enriched";
 import { lisbonYmd, lisbonHhMm } from "@/lib/assessor/lisbon-day";
+import { resolveAppBaseUrl } from "@/lib/env/app-url";
 
 /**
  * Autorização para enviar fora da janela de 24h.
@@ -120,7 +121,6 @@ export async function listPushUsers(supabase: any): Promise<PushUser[]> {
   return ((data as any[]) ?? []) as PushUser[];
 }
 
-const APP_BASE = "https://app.meuafonso.com";
 
 function formatPriorities(
   name: string,
@@ -139,7 +139,7 @@ function formatPriorities(
       now,
       tightGaps: opts.dayEvents ? tightGapsFromAgenda(opts.dayEvents as any, now) : [],
       conflicts: (opts.conflicts ?? []) as any,
-      base: APP_BASE,
+      base: resolveAppBaseUrl(),
       shortUrls: opts.shortUrls,
     }),
   );
@@ -158,10 +158,10 @@ export async function briefingShortUrls(
     const { priorityUrl } = await import("./briefing-enriched");
     const { shortenUrls } = await import("@/lib/nav/short-link.server");
     const urls = priorities
-      .map((p) => priorityUrl(p as any, APP_BASE))
+      .map((p) => priorityUrl(p as any, resolveAppBaseUrl()))
       .filter((u): u is string => Boolean(u));
     if (!urls.length) return {};
-    return await shortenUrls(supabase, userId, urls, APP_BASE);
+    return await shortenUrls(supabase, userId, urls, resolveAppBaseUrl());
   } catch {
     return {};
   }

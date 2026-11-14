@@ -18,13 +18,13 @@
 
 import { COMMERCIAL_ACTION_TOOLS, hasConcreteDelivery, hasConcreteNextStep, levelOf, type ActionLevel } from "./commercial-autonomy";
 import { LISTING_DOMAINS } from "@/lib/imoveis/similar-listings";
+import { ownAppHosts } from "@/lib/env/app-url";
 
 const LINK_RE = /https?:\/\/[^\s<>()*_]+/g;
-const OWN_HOSTS = ["app.meuafonso.com", "meuafonso.com"];
 function knownSource(url: string): boolean {
   let h = "";
   try { h = new URL(url).hostname.replace(/^www\./, "").toLowerCase(); } catch { return false; }
-  return OWN_HOSTS.includes(h) || LISTING_DOMAINS.some((d) => h === d || h.endsWith(`.${d}`));
+  return ownAppHosts().includes(h) || LISTING_DOMAINS.some((d) => h === d || h.endsWith(`.${d}`));
 }
 
 export const SESSION_GAP_MS = 30 * 60_000;

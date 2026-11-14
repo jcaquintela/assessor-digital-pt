@@ -15,7 +15,8 @@ import { linkChannelToUser } from "@/lib/assessor/channels.server";
 
 export const PAIRING_TTL_MIN = 30;
 export const PAIRING_MAX_ATTEMPTS = 5;
-export const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || "AfonsoAIbot";
+/** Lido no momento do uso: em staging nunca cai no bot de produção. */
+export { telegramBotUsername } from "@/lib/env/app-url";
 
 export type PairingStep = "asked" | "awaiting_phone" | "awaiting_code";
 

@@ -1405,11 +1405,11 @@ function WhatsAppSection() {
         <>
           <label htmlFor="wa-phone" className="c-eyebrow">Número de WhatsApp</label>
           <input
-            id="wa-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+351 932 893 767"
+            id="wa-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="Ex.: +351 9XX XXX XXX"
             value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} maxLength={24}
             className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-[14px]"
           />
-          <p className="c-muted mt-2 text-[12px]">Usa o formato internacional. Exemplo: +351932893767.</p>
+          <p className="c-muted mt-2 text-[12px]">Usa o formato internacional. Exemplo: +351 9XX XXX XXX.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               className="c-cta"

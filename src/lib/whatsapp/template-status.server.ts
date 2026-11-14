@@ -16,6 +16,7 @@ import {
   TEMPLATE_LANG,
 } from "@/lib/assessor/proactive/templates";
 import { TEMPLATE_INVITE } from "@/lib/whatsapp/invite-template";
+import { panelUrlLabel, resolveAppBaseUrl } from "@/lib/env/app-url";
 
 export const TEMPLATES_APPROVED_FLAG = "whatsapp.templates.approved";
 
@@ -230,14 +231,14 @@ export async function submitMeetingBriefingTemplateV2(): Promise<{
             "visita ao T3 da Boavista, com Ana Silva (e mais 1 logo a seguir: reunião com João Pires)",
             "Comprador · orçamento até 320.000 EUR · última nota: quer estacionamento",
             "rascunho de email por enviar · falta a caderneta predial",
-            "Mais detalhe no painel: app.meuafonso.com/hoje",
+            `Mais detalhe no painel: ${panelUrlLabel()}`,
           ]],
         },
       },
       {
         type: "BUTTONS",
         buttons: [
-          { type: "URL", text: "Abrir painel", url: "https://app.meuafonso.com/hoje" },
+          { type: "URL", text: "Abrir painel", url: `${resolveAppBaseUrl()}/hoje` },
         ],
       },
     ],

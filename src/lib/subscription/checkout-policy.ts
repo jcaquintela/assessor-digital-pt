@@ -1,4 +1,5 @@
 import { PLAN_OFFERS } from "./billing-plans";
+import { isStagingEnv, readRuntimeEnv, resolveAppBaseUrl } from "@/lib/env/app-url";
 
 // Regras do servidor para abrir um checkout. O navegador só escolhe entre o
 // que está aqui; qualquer outro preço ou endereço de regresso é recusado.
@@ -25,7 +26,7 @@ export function stripePriceProblem(
 const PROJECT_ID = "bf908ebc-1146-4c4f-a804-92bbc45c4e1a";
 const EXACT_HOSTS = new Set(["app.meuafonso.com", "assessor-digital-pt.lovable.app"]);
 
-export function isAllowedReturnUrl(raw: string | null | undefined): boolean {
+export function isAllowedReturnUrl(raw: string | null | undefined, env = readRuntimeEnv()): boolean {
   if (!raw) return false;
   let u: URL;
   try { u = new URL(raw); } catch { return false; }
@@ -33,6 +34,10 @@ export function isAllowedReturnUrl(raw: string | null | undefined): boolean {
   if (u.protocol === "http:") return u.hostname === "localhost" || u.hostname === "127.0.0.1";
   if (u.protocol !== "https:") return false;
   const host = u.hostname.toLowerCase();
+  if (isStagingEnv(env)) {
+    // Staging: só regressa ao próprio staging; os hosts de produção são recusados.
+    try { return host === new URL(resolveAppBaseUrl(env)).hostname.toLowerCase(); } catch { return false; }
+  }
   if (EXACT_HOSTS.has(host)) return true;
   if (host.includes(PROJECT_ID) && (host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com"))) return true;
   return false;

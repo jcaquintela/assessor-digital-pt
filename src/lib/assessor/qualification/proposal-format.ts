@@ -8,7 +8,9 @@
 
 import { foldText } from "@/lib/search/normalize";
 import type { BuyerBrief } from "./buyer-brief";
+import { resolveAppBaseUrl } from "@/lib/env/app-url";
 
+/** Valor de produção (referência). Os links usam resolveAppBaseUrl() por ambiente. */
 export const APP_BASE_URL = "https://app.meuafonso.com";
 export const UNVERIFIED = "por confirmar";
 
@@ -125,7 +127,7 @@ export function fromInternalProperty(row: InternalPropertyRow, brief: BuyerBrief
   const base = { price: row.asking_price ?? null, typology: row.typology ?? null, location };
   const { reasons, caveats } = within(brief, base);
   return {
-    url: `${APP_BASE_URL}/imoveis/${row.id}`,
+    url: `${resolveAppBaseUrl()}/imoveis/${row.id}`,
     source: "carteira_propria",
     sourceLabel: "Carteira própria",
     title: row.title || "Imóvel",

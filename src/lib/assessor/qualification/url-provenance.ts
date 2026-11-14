@@ -6,6 +6,7 @@
 //   é substituído por uma resposta honesta.
 
 import { foldText } from "@/lib/search/normalize";
+import { ownAppHosts } from "@/lib/env/app-url";
 
 // O site PÚBLICO zome.pt é pesquisável (como um portal); a carteira interna
 // da Rede não — não há integração autorizada.
@@ -13,7 +14,6 @@ export const REDE_NO_ACCESS_REPLY =
   "Não tenho acesso à carteira interna da Rede — só ao que está publicado (portais e site público da Zome). Manda-me referências ZMPT ou links e eu analiso.";
 
 const URL_RE = /https?:\/\/[^\s<>()*_]+/g;
-const OWN_HOSTS = ["app.meuafonso.com", "meuafonso.com"];
 
 function host(u: string): string {
   try { return new URL(u).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; }
@@ -41,7 +41,7 @@ export function enforceUrlProvenance(reply: string, allowed: Set<string>, extraA
   const removed: string[] = [];
   const out = String(reply ?? "").replace(URL_RE, (m) => {
     const u = canon(m);
-    if (ok.has(u) || OWN_HOSTS.includes(host(u))) return m;
+    if (ok.has(u) || ownAppHosts().includes(host(u))) return m;
     removed.push(u);
     return "(link por confirmar)";
   });

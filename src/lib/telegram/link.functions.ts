@@ -42,7 +42,8 @@ export const createTelegramLinkToken = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { randomBytes } = await import("crypto");
-    const { TELEGRAM_BOT_USERNAME } = await import("./pairing.server");
+    const { telegramBotUsername } = await import("./pairing.server");
+    const TELEGRAM_BOT_USERNAME = telegramBotUsername();
 
     // Invalida tokens anteriores por usar.
     await supabaseAdmin

@@ -55,6 +55,7 @@ export interface EventBriefContext {
 
 // Estado aberto/fechado: regra canónica única.
 import { isFollowUpClosed } from "@/lib/follow-ups/state";
+import { panelUrlLabel } from "@/lib/env/app-url";
 
 function norm(v: unknown): string {
   return String(v ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -287,6 +288,9 @@ export const BRIEFING_PANEL_URL = "app.meuafonso.com/hoje";
 export const TEMPLATE_TRUNCATION_NOTE = `… (resto no painel: ${BRIEFING_PANEL_URL})`;
 /** Sufixo do último parâmetro: há sempre mais detalhe no painel. */
 export const TEMPLATE_PANEL_HINT = `Mais detalhe no painel: ${BRIEFING_PANEL_URL}`;
+/** Versões por ambiente (em produção iguais às constantes acima). */
+export const templateTruncationNote = () => `… (resto no painel: ${panelUrlLabel()})`;
+export const templatePanelHint = () => `Mais detalhe no painel: ${panelUrlLabel()}`;
 
 /** Uma linha só, sem quebras nem marcações — exigência da Meta nos params. */
 export function flattenForTemplate(text: string, limit = 900): string {
@@ -297,8 +301,9 @@ export function flattenForTemplate(text: string, limit = 900): string {
     .replace(/^[-·\s]+/, "")
     .trim();
   if (flat.length <= limit) return flat;
-  const budget = Math.max(0, limit - TEMPLATE_TRUNCATION_NOTE.length - 1);
-  return `${flat.slice(0, budget).replace(/[\s·-]+$/, "")} ${TEMPLATE_TRUNCATION_NOTE}`.trim();
+  const note = templateTruncationNote();
+  const budget = Math.max(0, limit - note.length - 1);
+  return `${flat.slice(0, budget).replace(/[\s·-]+$/, "")} ${note}`.trim();
 }
 
 /** "(e mais 1 logo a seguir: reunião com João Pires)" */
@@ -345,7 +350,7 @@ export function briefingTemplateParams(
     .filter((s) => s.trim())
     .join("\n");
 
-  const budget = 900 - TEMPLATE_PANEL_HINT.length - 2;
+  const budget = 900 - templatePanelHint().length - 2;
   const third =
     flattenForTemplate(summary, budget) ||
     flattenForTemplate(brief ? formatPersonBrief(brief) : String(ev.title ?? ""), budget);
@@ -353,7 +358,7 @@ export function briefingTemplateParams(
   return [
     flattenForTemplate(consultantFirstName) || "Olá",
     flattenForTemplate(meeting),
-    `${third}${third ? " " : ""}${TEMPLATE_PANEL_HINT}`.trim(),
+    `${third}${third ? " " : ""}${templatePanelHint()}`.trim(),
   ];
 }
 
@@ -384,5 +389,5 @@ export function briefingTemplateParamsV2(
 
   const third = flattenForTemplate(summary, 700) || "sem notas relevantes";
   const fourth = flattenForTemplate(pend, 500) || "nada por resolver";
-  return [name!, meeting!, third, fourth, TEMPLATE_PANEL_HINT];
+  return [name!, meeting!, third, fourth, templatePanelHint()];
 }

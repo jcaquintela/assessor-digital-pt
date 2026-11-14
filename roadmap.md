@@ -111,3 +111,13 @@
 - [ ] Criar projeto separado (remix) — aguarda o proprietário
 - [ ] Bot Telegram de teste, número WhatsApp de teste, Stripe de teste próprio — aguarda o proprietário
 - [ ] Ligar a restrição de destinatários aos envios no staging e correr E2E — depende dos passos anteriores
+
+## Staging AFONSO 2.0 — preparação (14/11/2026, nada executado)
+- [x] V1: número de exemplo real trocado por "+351 9XX XXX XXX" em Ligar canal e Definições
+- [x] Endereço, remetente e bot por ambiente (produção igual; staging nunca usa produção)
+- [x] Esquema V2 limpo e reprodutível para o staging (`staging-install/`), pesquisa de dados reais = 0
+- [x] Vulnerabilidades das bibliotecas documentadas, sem atualizações
+- [ ] Credenciais de teste próprias no staging (bot, número Meta, pagamentos de teste, email) — proprietário
+- [ ] Aplicar S2-00…S2-99 no staging — aguarda autorização expressa
+- [ ] Ensaio numa base descartável antes do staging — aguarda autorização (pedido "sem executar migrations")
+- [ ] Previews de admin com "ola@meuafonso.com" (só texto) — por decidir
