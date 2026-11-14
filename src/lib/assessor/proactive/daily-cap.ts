@@ -78,11 +78,21 @@ export interface CapDecision {
  * - `sentTodayKeys`: dedupe_keys dos avisos já enviados hoje (dia de Lisboa).
  * - `cap`: teto de não solicitados (por defeito 1).
  */
+export interface CapOptions {
+  /** Quem não conta para o teto (por defeito: os agendados por prefixo). */
+  isExempt?: (row: { dedupe_key?: string | null; kind?: string | null }) => boolean;
+  /** Prioridade alternativa (por defeito `nudgePriority`). */
+  priority?: (row: CapRow) => number;
+}
+
 export function applyDailyCap(
   pending: CapRow[],
   sentTodayKeys: Array<string | null | undefined>,
   cap: number = DEFAULT_MAX_UNSOLICITED_PER_DAY,
+  opts: CapOptions = {},
 ): CapDecision {
+  const exempt = opts.isExempt ?? isScheduledNudge;
+  const prio = opts.priority ?? nudgePriority;
   const send: CapRow[] = [];
   const drop: CapDecision["drop"] = [];
 
@@ -92,11 +102,11 @@ export function applyDailyCap(
     const row = { dedupe_key: k ?? null };
     const p = oncePerDayPrefix(row);
     if (p) sentOnce.add(p);
-    if (!isScheduledNudge(row)) unsolicitedSent++;
+    if (!exempt(row)) unsolicitedSent++;
   }
 
-  const scheduled = pending.filter((r) => isScheduledNudge(r));
-  const unsolicited = pending.filter((r) => !isScheduledNudge(r));
+  const scheduled = pending.filter((r) => exempt(r));
+  const unsolicited = pending.filter((r) => !exempt(r));
 
   for (const r of scheduled) {
     const p = oncePerDayPrefix(r);
@@ -111,7 +121,7 @@ export function applyDailyCap(
   const room = Math.max(0, Math.floor(cap) - unsolicitedSent);
   const ranked = [...unsolicited].sort(
     (a, b) =>
-      nudgePriority(b) - nudgePriority(a) ||
+      prio(b) - prio(a) ||
       String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")) ||
       a.id.localeCompare(b.id),
   );

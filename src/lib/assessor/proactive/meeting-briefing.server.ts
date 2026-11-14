@@ -435,13 +435,25 @@ export async function runMeetingBriefingTick(
       continue;
     }
     const companions = rest.map((e) => ({ ...(e as any), user_id: uid }));
+    // Política global: preparação de reunião é não solicitada → disputa a
+    // vaga única do dia (domingo/horário/silêncio respeitados).
+    const { gateDirectProactive, releaseUnsolicited } = await import("./intervention-gate.server");
+    const refKey = `meeting_briefing:${head.id}`;
+    const g = await gateDirectProactive(supabase, { userId: uid, source: { type: "meeting_briefing" }, refKey, now });
+    if (!g.allow) {
+      result.skipped.push({ id: head.id, reason: `policy_${g.reason}` });
+      continue;
+    }
     const r = await sendMeetingBriefing(
       supabase,
       { ...(head as any), user_id: uid },
       { now, companions },
     );
     if (r.sent) result.sent++;
-    else result.skipped.push({ id: head.id, reason: r.reason ?? "unknown" });
+    else {
+      if (g.reserved) await releaseUnsolicited(supabase, { userId: uid, now, refKey });
+      result.skipped.push({ id: head.id, reason: r.reason ?? "unknown" });
+    }
   }
   return result;
 }

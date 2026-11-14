@@ -302,14 +302,27 @@ export async function runProactivePushTick(
   const { hour } = lisbonParts(now);
   const users = await listPushUsers(supabase);
   let morning = 0, checkins = 0;
+  const { gateDirectProactive, releaseUnsolicited } = await import("./intervention-gate.server");
+  const day = lisbonParts(now).date;
   for (const u of users) {
     if (u.morning_briefing_enabled !== false && hour === hourOf(u.morning_time, 8)) {
-      const r = await sendMorningPush(supabase, u.user_id);
-      if (r.sent) morning++;
+      // Política global: ativado pelo consultor → sai; senão disputa a vaga do dia.
+      const refKey = `push_morning:${day}`;
+      const g = await gateDirectProactive(supabase, { userId: u.user_id, source: { type: "push_morning" }, refKey, now });
+      if (g.allow) {
+        const r = await sendMorningPush(supabase, u.user_id);
+        if (r.sent) morning++;
+        else if (g.reserved) await releaseUnsolicited(supabase, { userId: u.user_id, now, refKey });
+      }
     }
     if (u.evening_checkin_enabled !== false && hour === hourOf(u.evening_checkin_time, 18)) {
-      const r = await sendEveningCheckin(supabase, u.user_id);
-      checkins += r.sent;
+      const refKey = `push_checkin:${day}`;
+      const g = await gateDirectProactive(supabase, { userId: u.user_id, source: { type: "push_checkin" }, refKey, now });
+      if (g.allow) {
+        const r = await sendEveningCheckin(supabase, u.user_id);
+        checkins += r.sent;
+        if (!r.sent && g.reserved) await releaseUnsolicited(supabase, { userId: u.user_id, now, refKey });
+      }
     }
   }
   return { morning, checkins, users: users.length };

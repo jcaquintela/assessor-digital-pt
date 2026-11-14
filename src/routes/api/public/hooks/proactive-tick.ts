@@ -19,6 +19,22 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
         const { generateOpportunityDrafts } = await import("@/lib/opportunities/digest.server");
         const { listSupremeUsers } = await import("@/lib/assessor/supreme/feature-flag.server");
 
+        // Mensagens da conversa partilhada adiadas por falta de lock:
+        // retomadas por ordem de chegada (nunca correm sem lock).
+        let deferred = { replayed: 0, superseded: 0, failed: 0, stillDeferred: 0, media: 0 };
+        try {
+          const { replayDeferredInbound } = await import("@/lib/assessor/channel-gateway/deferred.server");
+          const { whatsappAdapter } = await import("@/lib/assessor/channel-gateway/whatsapp-adapter");
+          const { telegramAdapter } = await import("@/lib/assessor/channel-gateway/telegram-adapter");
+          deferred = await replayDeferredInbound(supabaseAdmin as any, {
+            adapters: { whatsapp: whatsappAdapter, telegram: telegramAdapter },
+            // Na retoma não se espera 45s por mensagem: se o lock continua
+            // ocupado, fica para a próxima corrida (máx. 3 tentativas).
+            maxPerRun: 10,
+            lockOpts: { maxWaitMs: 5_000, pollMs: 250 },
+          });
+        } catch { /* noop */ }
+
         // Só corre para utilizadores com v3 activa.
         const { data: v3Users } = await supabaseAdmin
           .from("feature_flag_users")
@@ -78,6 +94,9 @@ export const Route = createFileRoute("/api/public/hooks/proactive-tick")({
             remindersFailed: reminders.failed,
             remindersSkipped: reminders.skipped,
             routinesCreated: routines.created,
+            deferredReplayed: deferred.replayed,
+            deferredSuperseded: deferred.superseded,
+            deferredFailed: deferred.failed,
           }),
           { headers: { "Content-Type": "application/json" } },
         );

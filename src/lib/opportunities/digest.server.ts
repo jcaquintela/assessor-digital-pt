@@ -82,9 +82,12 @@ export async function generateOpportunityNudges(
   const recent = ((recentRows as any[]) ?? [])
     .map((r) => alertKeyFromDedupe(r.dedupe_key))
     .filter((k): k is string => !!k);
+  // Plano base (match estrito): no máximo 1 candidato por dia.
+  const baseOnly = alerts.every((a) => (a.meta as any)?.strict === true);
   return buildOpportunityNudges(alerts, {
     ymdCompact: lisbonYmdKey(now),
     recentlySentAlertKeys: recent,
+    ...(baseOnly ? { max: 1 } : {}),
   }).map((d) => ({ ...d, suggested_reply: sanitizeReply(d.suggested_reply) }));
 }
 

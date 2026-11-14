@@ -15,6 +15,13 @@
       "when": 1794653977088,
       "tag": "0001_cross_channel_shared_conversation",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794655427012,
+      "tag": "0002_pre_pilot_global_cap_deferred_relink",
+      "breakpoints": true
     }
   ]
 }

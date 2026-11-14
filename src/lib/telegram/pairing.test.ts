@@ -51,7 +51,7 @@ describe("emparelhamento Telegram", () => {
     await stepPairing(db, "222", "/start", "Iolanda");
     expect((await stepPairing(db, "222", "sim", "Iolanda")).reply).toContain("número de WhatsApp");
     const asked = await stepPairing(db, "222", "+351 932 950 353", "Iolanda");
-    expect(asked.reply).toContain("Enviei-te um código");
+    expect(asked.reply).toContain("Se esse número estiver ligado ao Afonso");
     const code = db._t.telegram_pairings[0].code_hash;
     // código errado
     const bad = await stepPairing(db, "222", "LIGAR-000000", "Iolanda");

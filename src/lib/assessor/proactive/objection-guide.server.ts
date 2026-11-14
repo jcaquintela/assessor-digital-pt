@@ -152,9 +152,19 @@ export async function runObjectionGuideTick(
       result.skipped.push({ id: ev.id, reason: "push_disabled" });
       continue;
     }
+    const { gateDirectProactive, releaseUnsolicited } = await import("./intervention-gate.server");
+    const refKey = `objection_guide:${ev.id}`;
+    const g = await gateDirectProactive(supabase, { userId: uid, source: { type: "objection_guide" }, refKey, now });
+    if (!g.allow) {
+      result.skipped.push({ id: ev.id, reason: `policy_${g.reason}` });
+      continue;
+    }
     const r = await sendObjectionGuide(supabase, { ...ev, user_id: uid }, { now });
     if (r.sent) result.sent++;
-    else result.skipped.push({ id: ev.id, reason: r.reason ?? "unknown" });
+    else {
+      if (g.reserved) await releaseUnsolicited(supabase, { userId: uid, now, refKey });
+      result.skipped.push({ id: ev.id, reason: r.reason ?? "unknown" });
+    }
   }
   return result;
 }

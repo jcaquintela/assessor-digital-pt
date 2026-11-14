@@ -315,6 +315,13 @@ export async function generateSupremeNudges(
     }
   }
 
+  // Política global ligada: o teto é decidido num só sítio (envio) e o
+  // aviso de "teto atingido" deixa de existir.
+  {
+    const { isGlobalCapEnabled } = await import("../proactive/intervention-gate.server");
+    if (await isGlobalCapEnabled(supabase, userId)) return drafts;
+  }
+
   const capNotice: NudgeDraft = {
     kind: "consultant_silence" as any,
     subject_type: null,

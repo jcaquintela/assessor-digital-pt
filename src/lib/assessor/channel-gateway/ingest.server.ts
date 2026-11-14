@@ -102,13 +102,65 @@ async function runInboundPipelineInner(
     );
     return;
   }
-  await withConversationLock(
+  await runSharedTurnLocked(adapter, supabaseAdmin, inbound, uid, persistedUuid);
+}
+
+/**
+ * Turno partilhado com lock da conta. Sem lock ao fim do prazo, o turno NÃO
+ * corre: a mensagem fica adiada (`deferred_lock`) e é retomada pela corrida
+ * periódica (`replayDeferredInbound`) — nunca se perde, nunca corre sem lock.
+ */
+async function runSharedTurnLocked(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  persistedUuid: string | null,
+  lockOpts: { maxWaitMs?: number; pollMs?: number } = {},
+): Promise<"done" | "deferred"> {
+  const { ACCOUNT_SCOPE } = await import("@/lib/assessor/cross-channel/scope");
+  return withConversationLock<"done" | "deferred">(
     supabaseAdmin,
-    uid,
-    scope.lockChannel,
-    () => runSharedTurn(adapter, supabaseAdmin, inbound, uid, persistedUuid),
-    { strict: true },
+    userId,
+    ACCOUNT_SCOPE,
+    async () => {
+      await runSharedTurn(adapter, supabaseAdmin, inbound, userId, persistedUuid);
+      return "done";
+    },
+    {
+      strict: true,
+      ...lockOpts,
+      onTimeout: async () => {
+        const { deferInbound } = await import("./deferred.server");
+        await deferInbound(supabaseAdmin, adapter, { userId, inbound, messageId: persistedUuid });
+        return "deferred";
+      },
+    },
   );
+}
+
+/**
+ * Retoma de uma mensagem adiada (já persistida e já resolvida para a conta).
+ * Só é chamada pela corrida de retoma, que garante que não há mensagem mais
+ * recente da conta entretanto.
+ */
+export async function runDeferredInbound(
+  adapter: ChannelAdapter,
+  supabaseAdmin: any,
+  inbound: NormalizedInbound,
+  userId: string,
+  persistedUuid: string,
+  lockOpts: { maxWaitMs?: number; pollMs?: number } = {},
+): Promise<"done" | "deferred"> {
+  const { isCrossChannelEnabled } = await import("@/lib/assessor/cross-channel/scope.server");
+  if (!(await isCrossChannelEnabled(supabaseAdmin, userId))) {
+    // Interruptor desligado entretanto: comportamento antigo por canal.
+    await withConversationLock(supabaseAdmin, userId, inbound.channel, () =>
+      routeInbound(adapter, supabaseAdmin, inbound, userId, persistedUuid),
+    );
+    return "done";
+  }
+  return runSharedTurnLocked(adapter, supabaseAdmin, inbound, userId, persistedUuid, lockOpts);
 }
 
 /** Turno em conversa partilhada (já dentro do lock da conta). */
@@ -220,6 +272,19 @@ async function routeInbound(
         try { await adapter.answerInteraction(inbound.callback.callbackQueryId); } catch { /* best-effort */ }
       }
       return;
+    }
+
+    // Ligar o outro canal (WhatsApp ↔ Telegram) de uma conta separada, com
+    // prova de posse e sem fusão automática. Interruptor `assessor.cross_link.v1`.
+    {
+      const { handleCrossLink } = await import("@/lib/assessor/channel-link/cross-link.server");
+      if (await handleCrossLink(adapter, supabaseAdmin, inbound, userId, content)) {
+        if (inbound.callback && adapter.answerInteraction) {
+          try { await adapter.answerInteraction(inbound.callback.callbackQueryId); }
+          catch { /* best-effort */ }
+        }
+        return;
+      }
     }
 
     // Resgate de código promocional numa conta já existente: confirmação

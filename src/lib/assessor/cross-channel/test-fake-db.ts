@@ -44,7 +44,10 @@ function touch(table: string, row: Row) {
   }
 }
 
-export function createFakeDb(seed: Record<string, Row[]> = {}): FakeDb {
+export function createFakeDb(
+  seed: Record<string, Row[]> = {},
+  opts: { rpc?: Record<string, (args: any) => any> } = {},
+): FakeDb {
   const tables: Record<string, Row[]> = {};
   for (const [k, rows] of Object.entries(seed)) {
     tables[k] = rows.map((r) => ({ ...defaultsFor(k), ...r }));
@@ -121,6 +124,12 @@ export function createFakeDb(seed: Record<string, Row[]> = {}): FakeDb {
       gte: (c: string, v: any) => { filters.push((r) => r[c] != null && r[c] >= v); return q; },
       gt: (c: string, v: any) => { filters.push((r) => r[c] != null && r[c] > v); return q; },
       lt: (c: string, v: any) => { filters.push((r) => r[c] != null && r[c] < v); return q; },
+      lte: (c: string, v: any) => { filters.push((r) => r[c] != null && r[c] <= v); return q; },
+      like: (c: string, pat: string) => {
+        const re = new RegExp("^" + String(pat).split("%").map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$");
+        filters.push((r) => re.test(String(r[c] ?? "")));
+        return q;
+      },
       is: (c: string, v: any) => { filters.push((r) => (r[c] ?? null) === v); return q; },
       order: (c: string, o?: { ascending?: boolean }) => { orderBy = { col: c, asc: o?.ascending !== false }; return q; },
       limit: (n: number) => { lim = n; return q; },
@@ -149,6 +158,24 @@ export function createFakeDb(seed: Record<string, Row[]> = {}): FakeDb {
   async function rpc(fn: string, a: any) {
     calls.push({ table: `rpc:${fn}`, op: "rpc" });
     const now = Date.now();
+    if (opts.rpc?.[fn]) {
+      try { return { data: await opts.rpc[fn](a), error: null }; }
+      catch (e: any) { return { data: null, error: { message: String(e?.message ?? e) } }; }
+    }
+    if (fn === "reserve_unsolicited_slot") {
+      const led = tbl("proactive_daily_ledger");
+      if (led.some((r) => r.user_id === a._user_id && r.day === a._day && r.ref_key === a._ref_key)) return { data: true, error: null };
+      const n = led.filter((r) => r.user_id === a._user_id && r.day === a._day).length;
+      if (n >= Math.max(a._cap ?? 1, 0)) return { data: false, error: null };
+      led.push({ id: uuid(), user_id: a._user_id, day: a._day, source: a._source, ref_key: a._ref_key, created_at: nowIso() });
+      return { data: true, error: null };
+    }
+    if (fn === "release_unsolicited_slot") {
+      tables.proactive_daily_ledger = tbl("proactive_daily_ledger").filter(
+        (r) => !(r.user_id === a._user_id && r.day === a._day && r.ref_key === a._ref_key),
+      );
+      return { data: null, error: null };
+    }
     if (fn === "try_acquire_conversation_lock") {
       const locks = tbl("conversation_locks");
       const cur = locks.find((l) => l.user_id === a._user_id && l.channel === a._channel);

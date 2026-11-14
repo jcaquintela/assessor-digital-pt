@@ -2,13 +2,15 @@
 // entrega-os ao motor puro (`detector.ts`), que decide.
 
 import {
-  applyMutes, dealCoolingAlerts, matchAlerts, propertyStalledAlerts, sortAlerts,
+  applyMutes, dealCoolingAlerts, matchAlerts, propertyStalledAlerts, sortAlerts, strictMatchAlerts,
   type AlertMute, type DealInput, type LeadInput, type OpportunityAlert,
   type PropertyInput, type PropertyMatchInput,
 } from "./detector";
 import { isDealClosed } from "@/lib/deals/stages";
 import { normalizeTier, tierAtLeast } from "@/lib/subscription/tiers";
 import { computeLastContact } from "@/lib/insights/last-contact.server";
+
+export const BASE_MATCH_FLAG = "assessor.base_match_opportunity.v1";
 
 const IMOVEL_FORA = new Set(["vendido", "arquivado", "reservado"]);
 // "Por angariar" é território exclusivo do Mentor (régua de 10 dias). Fica fora
@@ -23,8 +25,16 @@ export async function computeOpportunityAlerts(
   now = new Date(),
 ): Promise<OpportunityAlert[]> {
   // Gate Pro — mesmo `effective_tier()` do resto da análise proativa.
+  // Abaixo de Pro: só o match estrito, e só com o interruptor
+  // `assessor.base_match_opportunity.v1` ligado para a conta.
   const { data: tierRaw } = await supabase.rpc("effective_tier", { _user_id: userId });
-  if (!tierAtLeast(normalizeTier(tierRaw as string | null), "pro")) return [];
+  const isPro = tierAtLeast(normalizeTier(tierRaw as string | null), "pro");
+  let baseStrictOnly = false;
+  if (!isPro) {
+    const { isAccountFlagEnabled } = await import("@/lib/flags/account-flag.server");
+    if (!(await isAccountFlagEnabled(supabase, BASE_MATCH_FLAG, userId))) return [];
+    baseStrictOnly = true;
+  }
 
   const nowMs = now.getTime();
   const recente = new Date(nowMs - JANELA_MATCH_DIAS * 864e5).toISOString();
@@ -105,6 +115,10 @@ export async function computeOpportunityAlerts(
     alertKey: String(m.alert_key),
     mutedUntil: String(m.muted_until),
   }));
+
+  if (baseStrictOnly) {
+    return sortAlerts(applyMutes(strictMatchAlerts(leads, paraMatch), silenciados, nowMs));
+  }
 
   const todos = [
     ...propertyStalledAlerts(parados, nowMs),

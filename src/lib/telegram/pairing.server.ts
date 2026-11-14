@@ -52,13 +52,18 @@ const ASK_AGAIN = "Só preciso de um sim ou um não: já falas comigo pelo Whats
 const PHONE_INVALID =
   "Esse número não me parece válido. Escreve-o em formato internacional, por exemplo +351912345678.";
 
-const PHONE_NOT_FOUND =
+export const CODE_SENT_UNIFORM =
+  "Se esse número estiver ligado ao Afonso, acabou de receber um código no WhatsApp. Escreve-o aqui — ou escreve criar para começarmos uma conta nova.";
+
+/** @deprecated Revelava se um número tinha conta; substituído por CODE_SENT_UNIFORM. */
+export const PHONE_NOT_FOUND =
   "Não encontrei nenhuma conta com esse número. Confirma o número, ou escreve criar para começarmos uma conta nova aqui.";
 
-const CODE_SENT = (phone: string) =>
+export const CODE_SENT = (phone: string) =>
   `Enviei-te um código para o WhatsApp ${formatPhone(phone)}. Escreve-o aqui para eu ligar os dois canais.`;
 
-const CODE_SEND_FAILED =
+/** @deprecated Revelava se um número tinha conta; substituído por CODE_SENT_UNIFORM. */
+export const CODE_SEND_FAILED =
   "Não consegui enviar o código para esse WhatsApp. Escreve criar para começarmos uma conta nova aqui, ou tenta de novo daqui a pouco.";
 
 const CODE_WRONG = (left: number) =>
@@ -214,27 +219,29 @@ export async function stepPairing(
     if (!phone || phone.length < 8 || phone.length > 15) {
       return { handled: true, reply: PHONE_INVALID };
     }
+    // Privacidade: a resposta é a MESMA haja ou não conta com esse número
+    // (e mesmo que o envio falhe) — ninguém descobre por aqui se um número
+    // é cliente. Sem conta, o código nunca bate certo.
     const userId = await findAccountByPhone(supabaseAdmin, phone);
-    if (!userId) return { handled: true, reply: PHONE_NOT_FOUND };
-
-    const { generateLinkCode, hashLinkCode } = await import("@/lib/whatsapp/link-code.server");
-    const code = generateLinkCode();
-    const sent = await sendWhatsAppText(
-      phone,
-      `Pediste para ligar o Telegram à tua conta do Afonso. Código: ${code}\n\nEscreve-o no Telegram. Se não foste tu, ignora esta mensagem.`,
-      { kind: "auto" },
-    );
-    if (!sent?.ok) {
-      return { handled: true, reply: CODE_SEND_FAILED };
+    let codeHash: string | null = null;
+    if (userId) {
+      const { generateLinkCode, hashLinkCode } = await import("@/lib/whatsapp/link-code.server");
+      const code = generateLinkCode();
+      const sent = await sendWhatsAppText(
+        phone,
+        `Pediste para ligar o Telegram à tua conta do Afonso. Código: ${code}\n\nEscreve-o no Telegram. Se não foste tu, ignora esta mensagem.`,
+        { kind: "auto" },
+      ).catch(() => null);
+      if (sent?.ok) codeHash = hashLinkCode(code);
     }
     await savePairing(supabaseAdmin, chatId, {
       step: "awaiting_code",
-      target_user_id: userId,
+      target_user_id: codeHash ? userId : null,
       phone,
-      code_hash: hashLinkCode(code),
+      code_hash: codeHash,
       attempts: 0,
     });
-    return { handled: true, reply: CODE_SENT(phone) };
+    return { handled: true, reply: CODE_SENT_UNIFORM };
   }
 
   // awaiting_code

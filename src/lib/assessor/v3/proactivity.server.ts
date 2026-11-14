@@ -468,6 +468,19 @@ export async function dispatchPendingNudges(
   const dayStartIso = new Date(startOfLocalDayMs(now)).toISOString();
   const hhmm = lisbonHhMm(now);
   for (const [uid, list] of ready) {
+    // Política global (interruptor `assessor.global_unsolicited_cap.v1`):
+    // a vaga única do dia é partilhada com os outros emissores proativos.
+    const { isGlobalCapEnabled } = await import("../proactive/intervention-gate.server");
+    if (await isGlobalCapEnabled(supabase, uid)) {
+      const r = await dispatchUserWithGlobalPolicy(supabase, {
+        uid, list, now, sentAtIso: (opts.now ?? new Date()).toISOString(),
+        dayStartIso, target: targets.get(uid)!, dismiss,
+        send: sendReplyForChannel,
+      });
+      sent += r.sent;
+      skipped += r.skipped;
+      continue;
+    }
     const [{ data: prefs }, { data: sentRows }] = await Promise.all([
       supabase
         .from("consultant_preferences")
@@ -504,6 +517,105 @@ export async function dispatchPendingNudges(
       } else {
         skipped++;
       }
+    }
+  }
+  return { sent, skipped };
+}
+
+/**
+ * Envio de UM consultor com a política global ligada.
+ * - Aviso de "teto atingido": deixa de existir (descartado).
+ * - Ativados explicitamente e pedidos: saem (uma vez por dia/evento).
+ * - Não solicitados: domingo/horário/silêncio esperam; o melhor candidato
+ *   tem de reservar a vaga do dia (atómica, partilhada); os outros caem.
+ * - Briefing não ativado leva dentro a melhor oportunidade comercial.
+ */
+async function dispatchUserWithGlobalPolicy(
+  supabase: any,
+  a: {
+    uid: string;
+    list: Array<any & { text: string }>;
+    now: Date;
+    sentAtIso: string;
+    dayStartIso: string;
+    target: { channel: "whatsapp" | "telegram"; externalId: string };
+    dismiss: (id: string, outcome?: string) => Promise<void>;
+    send: (channel: any, externalId: string, text: string) => Promise<{ ok: boolean }>;
+  },
+): Promise<{ sent: number; skipped: number }> {
+  const { loadPolicyPrefs, reserveUnsolicited, releaseUnsolicited } = await import(
+    "../proactive/intervention-gate.server"
+  );
+  const { classifyIntervention, unsolicitedWindow, policyPriority, isBriefingNudge, isCommercialOpportunity, consolidateBriefing } =
+    await import("../proactive/intervention-policy");
+  const { applyDailyCap, nudgePriority } = await import("../proactive/daily-cap");
+  const prefs = await loadPolicyPrefs(supabase, a.uid);
+  const cls = (r: any) => classifyIntervention({ type: "nudge", dedupe_key: r.dedupe_key, kind: r.kind }, prefs.explicit_opt_ins);
+  let sent = 0, skipped = 0;
+
+  const live: any[] = [];
+  for (const r of a.list) {
+    if (cls(r) === "retired") { await a.dismiss(r.id, "retired_cap_notice"); skipped++; continue; }
+    live.push(r);
+  }
+  const w = unsolicitedWindow(a.now, { start: prefs.quiet_hours_start, end: prefs.quiet_hours_end });
+  const isExempt = (r: any) => { const c = cls(r); return c === "activated" || c === "requested"; };
+  // Fora da janela, os não solicitados esperam (nem saem nem são descartados).
+  const eligible = w.ok ? live : live.filter(isExempt);
+  skipped += live.length - eligible.length;
+
+  const { data: sentRows } = await supabase
+    .from("assessor_nudges")
+    .select("dedupe_key")
+    .eq("user_id", a.uid)
+    .eq("status", "sent")
+    .gte("sent_at", a.dayStartIso);
+  const decision = applyDailyCap(eligible, ((sentRows as any[]) ?? []).map((r) => r.dedupe_key), prefs.cap, {
+    isExempt,
+    priority: (r) => policyPriority(r, nudgePriority(r)),
+  });
+
+  // Consolidação: a melhor oportunidade que ficaria de fora entra no briefing.
+  const chosenBriefing = (decision.send as any[]).find((r) => !isExempt(r) && isBriefingNudge(r));
+  const droppedOpps = decision.drop
+    .filter((d) => d.reason === "daily_cap" && isCommercialOpportunity(d.row as any))
+    .map((d) => d.row as any)
+    .sort((x, y) => nudgePriority(y) - nudgePriority(x));
+  const consolidated = chosenBriefing ? droppedOpps[0] ?? null : null;
+
+  for (const d of decision.drop) {
+    if (consolidated && d.row.id === consolidated.id) continue;
+    await a.dismiss(d.row.id, d.reason);
+  }
+
+  for (const r of decision.send as any[]) {
+    const unsolicited = !isExempt(r);
+    const refKey = `nudge:${r.id}`;
+    if (unsolicited) {
+      const ok = await reserveUnsolicited(supabase, {
+        userId: a.uid, now: a.now, source: "nudge", refKey, cap: prefs.cap,
+      });
+      if (!ok) { await a.dismiss(r.id, "daily_cap"); continue; }
+    }
+    const text = r === chosenBriefing && consolidated ? consolidateBriefing(r.text, consolidated.text) : r.text;
+    const res = await a.send(a.target.channel, a.target.externalId, text);
+    if (!res.ok) {
+      if (unsolicited) await releaseUnsolicited(supabase, { userId: a.uid, now: a.now, refKey });
+      skipped++;
+      continue;
+    }
+    await supabase.from("assessor_nudges").update({ status: "sent", sent_at: a.sentAtIso }).eq("id", r.id);
+    await supabase.from("assessor_messages").insert({
+      user_id: a.uid, channel: a.target.channel, role: "assistant",
+      content: text, message_type: "proactive_nudge",
+    } as never);
+    sent++;
+    if (r === chosenBriefing && consolidated) {
+      // Conta como enviada (guarda de 7 dias sem repetir), mas dentro do briefing.
+      await supabase
+        .from("assessor_nudges")
+        .update({ status: "sent", sent_at: a.sentAtIso, outcome: "consolidated_in_briefing", outcome_at: a.sentAtIso })
+        .eq("id", consolidated.id);
     }
   }
   return { sent, skipped };

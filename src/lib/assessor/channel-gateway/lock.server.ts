@@ -7,6 +7,11 @@
 // com um lock em base de dados (funciona entre instâncias).
 
 const LOCK_TTL_SECONDS = 90;
+let testTiming: { maxWaitMs?: number; pollMs?: number } | null = null;
+/** Só para testes: encurta a espera pelo lock. */
+export function __setLockTimingForTests(t: { maxWaitMs?: number; pollMs?: number } | null): void {
+  testTiming = t;
+}
 const POLL_MS = 300;
 const MAX_WAIT_MS = 45_000;
 
@@ -21,10 +26,20 @@ export async function withConversationLock<T>(
   userId: string,
   channel: string,
   fn: (acquired: boolean) => Promise<T>,
-  opts: { strict?: boolean } = {},
+  opts: {
+    strict?: boolean;
+    /**
+     * Só com `strict`: o que fazer quando o lock não chega no prazo. Com
+     * `onTimeout`, o turno NUNCA corre sem lock — o chamador adia o evento
+     * (sem o perder) e devolve o resultado deste callback.
+     */
+    onTimeout?: () => Promise<T>;
+    maxWaitMs?: number;
+    pollMs?: number;
+  } = {},
 ): Promise<T> {
   const holder = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  const deadline = Date.now() + MAX_WAIT_MS;
+  const deadline = Date.now() + (opts.maxWaitMs ?? testTiming?.maxWaitMs ?? MAX_WAIT_MS);
   let acquired = false;
 
   while (Date.now() < deadline) {
@@ -41,8 +56,10 @@ export async function withConversationLock<T>(
     } catch {
       if (!opts.strict) break;
     }
-    await sleep(POLL_MS);
+    await sleep(opts.pollMs ?? testTiming?.pollMs ?? POLL_MS);
   }
+
+  if (!acquired && opts.strict && opts.onTimeout) return opts.onTimeout();
 
   try {
     return await fn(acquired);

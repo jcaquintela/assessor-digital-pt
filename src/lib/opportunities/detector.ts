@@ -30,6 +30,13 @@ export interface OpportunityAlert {
     leadId?: string;
     propertyId?: string;
     dealId?: string;
+    /** Match estrito (plano base): zona, tipologia e orçamento coincidem. */
+    strict?: boolean;
+    criteria?: {
+      zone: { lead: string | null; property: string | null };
+      typology: { lead: string | null; property: string | null };
+      budget: { min: number | null; max: number | null; price: number | null };
+    };
   };
 }
 
@@ -194,6 +201,52 @@ export function matchAlerts(
         urgency: score >= 90 ? "alta" : "media",
         to: `/imoveis/${prop.id}`,
         meta: { score, leadId: lead.id, propertyId: prop.id },
+      });
+    }
+  }
+  return out.sort((a, b) => a.key.localeCompare(b.key));
+}
+
+/**
+ * Match ESTRITO para o plano base (sem falsos positivos): os três critérios
+ * têm de existir dos dois lados e coincidir —
+ *   zona igual ou contida (não basta uma palavra em comum),
+ *   tipologia exatamente igual,
+ *   preço dentro do orçamento, com teto máximo definido pelo comprador.
+ * A evidência descreve cada critério com os valores reais.
+ */
+export function strictMatchAlerts(leads: LeadInput[], props: PropertyMatchInput[]): OpportunityAlert[] {
+  const out: OpportunityAlert[] = [];
+  for (const lead of leads) {
+    if (lead.budgetMax == null) continue;
+    for (const prop of props) {
+      const z = zoneScore(lead.searchLocation, prop.location);
+      const t = typologyScore(lead.searchTypology, prop.typology);
+      const b = budgetScore(lead, prop.price);
+      if (z == null || t == null || b == null) continue;
+      if (z < 34 || t < 30 || b < 30) continue;
+      const fmt = (n: number | null | undefined) =>
+        n == null ? "?" : `${Math.round(Number(n)).toLocaleString("pt-PT")} €`;
+      const budget = lead.budgetMin != null ? `${fmt(lead.budgetMin)}–${fmt(lead.budgetMax)}` : `até ${fmt(lead.budgetMax)}`;
+      out.push({
+        key: `match_lead_imovel:${lead.id}:${prop.id}`,
+        engine: "match_lead_imovel",
+        title: `${lead.name} ↔ ${prop.title}`,
+        detail: `Zona (${prop.location}), tipologia (${prop.typology}) e preço (${fmt(prop.price)}, orçamento ${budget}) coincidem`,
+        action: `Propor visita a ${lead.name} a este imóvel esta semana.`,
+        urgency: "alta",
+        to: `/imoveis/${prop.id}`,
+        meta: {
+          score: matchScore(lead, prop),
+          leadId: lead.id,
+          propertyId: prop.id,
+          strict: true,
+          criteria: {
+            zone: { lead: lead.searchLocation, property: prop.location },
+            typology: { lead: lead.searchTypology, property: prop.typology },
+            budget: { min: lead.budgetMin, max: lead.budgetMax, price: prop.price },
+          },
+        },
       });
     }
   }

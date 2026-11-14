@@ -31,3 +31,11 @@
 - [x] Análise (sem alterar) do teto de avisos e gating Pro → proposta
 - [ ] Ligar o interruptor para contas piloto — aguarda aprovação explícita do proprietário
 - [ ] Publicar Fase 1 + Fase 2 — aguarda aprovação explícita
+
+## Correções pré-piloto (14/11/2026, NÃO publicar)
+- [x] Teto global de 1 intervenção não solicitada/dia por conta, briefing+oportunidade consolidados (`assessor.global_unsolicited_cap.v1`, desligado)
+- [x] Sem lock em 45s: mensagem adiada e retomada, nunca corre sem lock
+- [x] Ligação segura WhatsApp↔Telegram de contas separadas, sem fusão automática (`assessor.cross_link.v1`, desligado)
+- [x] Plano base: até 1 match estrito/dia (`assessor.base_match_opportunity.v1`, desligado)
+- [ ] Teste real numa conta piloto — aguarda aprovação explícita do proprietário
+- [ ] Publicar — aguarda aprovação explícita

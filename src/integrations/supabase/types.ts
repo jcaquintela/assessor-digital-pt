@@ -1280,6 +1280,7 @@ export type Database = {
           evening_review_detail: string
           evening_time: string
           evening_wrap_enabled: boolean
+          explicit_opt_ins: string[]
           max_daily_nudges: number
           max_unsolicited_nudges_per_day: number
           morning_briefing_enabled: boolean
@@ -1305,6 +1306,7 @@ export type Database = {
           evening_review_detail?: string
           evening_time?: string
           evening_wrap_enabled?: boolean
+          explicit_opt_ins?: string[]
           max_daily_nudges?: number
           max_unsolicited_nudges_per_day?: number
           morning_briefing_enabled?: boolean
@@ -1330,6 +1332,7 @@ export type Database = {
           evening_review_detail?: string
           evening_time?: string
           evening_wrap_enabled?: boolean
+          explicit_opt_ins?: string[]
           max_daily_nudges?: number
           max_unsolicited_nudges_per_day?: number
           morning_briefing_enabled?: boolean
@@ -3184,6 +3187,33 @@ export type Database = {
         }
         Relationships: []
       }
+      proactive_daily_ledger: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          ref_key: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          id?: string
+          ref_key: string
+          source: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          ref_key?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_feedback: {
         Row: {
           attachment_file_id: string | null
@@ -4412,6 +4442,7 @@ export type Database = {
           created_at: string
           expires_at: string
           phone: string | null
+          source_user_id: string | null
           step: string
           target_user_id: string | null
           updated_at: string
@@ -4423,6 +4454,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           phone?: string | null
+          source_user_id?: string | null
           step?: string
           target_user_id?: string | null
           updated_at?: string
@@ -4434,6 +4466,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           phone?: string | null
+          source_user_id?: string | null
           step?: string
           target_user_id?: string | null
           updated_at?: string
@@ -4966,6 +4999,20 @@ export type Database = {
       release_pending_confirmation: {
         Args: { _channel: string; _token: string; _user_id: string }
         Returns: number
+      }
+      release_unsolicited_slot: {
+        Args: { _day: string; _ref_key: string; _user_id: string }
+        Returns: undefined
+      }
+      reserve_unsolicited_slot: {
+        Args: {
+          _cap?: number
+          _day: string
+          _ref_key: string
+          _source: string
+          _user_id: string
+        }
+        Returns: boolean
       }
       text_norm: { Args: { _t: string }; Returns: string }
       tier_at_least: {
