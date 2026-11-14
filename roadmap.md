@@ -83,3 +83,9 @@
 - [ ] Backend de testes isolado — BLOQUEADO: proprietário cria projeto de testes e adiciona os segredos TEST_SUPABASE_*
 - [ ] Lista de contas de teste de faturação — aguarda decisão do proprietário
 - [ ] Publicação e rollout de 3 — aguarda GO separado
+
+## Encerramento V1.0 + exportação self-service (14/11/2026, só plano)
+- [x] Plano consolidado (docs/go-live/encerramento-v1-plano.md)
+- [ ] Decisões do proprietário: prazos 30/7/60 dias, textos dos avisos, base de consentimento WhatsApp, exclusão das contas de teste, D1/D2
+- [ ] Exportador e página "Os meus dados" — aguarda autorização de implementação
+- [ ] Template WhatsApp e envio de avisos — aguarda GO separado
