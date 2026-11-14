@@ -33,6 +33,21 @@ function conversation(over: Partial<QualificationDeps> = {}) {
 }
 
 describe("Teste A — comprador Miguel", () => {
+  it("variante 'até 15 min do metro, urgente': teto rigoroso, riscos, próxima ação com responsável e prazo, tarefas pendentes", async () => {
+    const c = conversation();
+    const t = await c.say("Tenho um comprador, o Miguel: procura T1 em Gaia até 15 min do metro, pré-aprovação até 150k, 15k de capitais próprios, urgente.");
+    expect(t.acted).toBe(true);
+    expect(t.brief.nearMetro?.value).toBe(true);
+    expect(t.reply).toMatch(/Confirmado: T1, Gaia, perto do metro/);
+    expect(t.reply).toMatch(/Assumido: teto de \*114 000 €\* \(crédito até 90% do preço, no máximo 150k pré-aprovados, e 15k de capitais a pagar entrada, IMT, Selo e escritura — contas 2026; com IMT Jovem e garantia pública \(até 35 anos\) pode chegar a ~162k\)/);
+    expect(t.reply).toMatch(/\*Prioridade alta: urgente, sem data — confirma a data limite\.\*/);
+    expect(t.reply).toMatch(/\[alta\] com crédito a 90%, o teto real é ~114 000 €, abaixo da pré-aprovação de 150 000 € \(calculado\)/);
+    expect(t.reply).toMatch(/\[média\] pré-aprovação não é aprovação final/);
+    expect(t.reply).toMatch(/\*Próximo passo:\* confirmas a idade do Miguel e pedes ao banco a simulação com um imóvel concreto\. Porquê: .+ Responsável: Tu\. Prazo: 14\/11\./);
+    expect(t.reply).toMatch(/\*Tarefas prontas \(pendentes — diz "cria as tarefas"/);
+    expect(scoreConversation(c.scored).passed).toBe(true);
+  });
+
   it("1.º turno: pesquisa feita, proposta verificável, mensagem preparada, estados e próximo passo", async () => {
     const c = conversation();
     const t = await c.say(MIGUEL);

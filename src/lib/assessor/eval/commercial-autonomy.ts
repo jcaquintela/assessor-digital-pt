@@ -20,7 +20,7 @@ export const COMMERCIAL_ACTION_TOOLS = new Set([
   "search_listings_for_buyer", "search_prospecting_leads", "person_brief", "create_deal",
   "create_follow_up", "create_event", "create_person", "create_property", "update_person",
   "update_property", "create_prospecting_lead", "update_prospecting_lead", "add_deal_deadline",
-  "compose_email_to_contact", "save_interaction", "listing_diagnosis",
+  "compose_email_to_contact", "save_interaction", "listing_diagnosis", "deal_risk_analysis",
 ]);
 
 export const WRITE_TOOLS = new Set([
@@ -58,6 +58,7 @@ const URL_RE = /https?:\/\/\S+/g;
 
 const NEXT_STEP_RE = new RegExp([
   String.raw`proximo passo`,
+  String.raw`proxima melhor acao`,
   String.raw`(?:^|\n)\s*[-•]\s*(?:confirmas|marcas|ligas|envias|mandas|pedes|propoes|agendas|visitas|preparas)\b`,
   String.raw`\bqueres que (?:te )?(?:marque|agende|envie|crie|registe|ligue|proponha)\b`,
   String.raw`\bse quiseres,? (?:eu )?(?:marco|agendo|crio|registo)\b`,

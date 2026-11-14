@@ -195,6 +195,19 @@ describe("replay — Teste B", () => {
   });
 });
 
+describe("replay — Teste C", () => {
+  it("negócio em risco passa com actionFirst: ação no 1.º turno, próximo passo e entrega", async () => {
+    const r = await runGolden(
+      [{ user: "Negócio em risco: o meu comprador fez proposta de 385k, a avaliação do banco deu 365k. O banco financia até 90% do menor valor e ele tem 45k de capitais próprios. O vendedor diz que tem outro interessado a 390k.",
+        expect: { action: "act", reply_contains: ["Contas", "Próximo passo", "Se não fechar", "Mensagem para o vendedor"], must_not_contain: ["Executado:"], autonomy: { firstActionByTurn: 1 } } }],
+      null,
+      { actionFirst: true },
+    );
+    expect(r.turns[0]!.tools).toEqual(["deal_risk_analysis"]);
+    expect(r.passed).toBe(true);
+  });
+});
+
 describe("métricas a partir de dados reais", () => {
   const t = (min: number) => new Date(NOW.getTime() + min * 60_000).toISOString();
   it("turnos/tempo até 1.ª ação, próximo passo, aceitação, seguimentos, negócios, satisfação", () => {

@@ -208,7 +208,12 @@ export async function runGolden(
     if (opts.actionFirst) {
       const { runBuyerQualification } = await import("../qualification/qualification.server");
       const { runListingDiagnosis } = await import("../listing/listing.server");
-      const listing = await runListingDiagnosis({
+      const { runDealRisk } = await import("../deal/deal.server");
+      const deal = await runDealRisk({
+        supabase: null, userId: "golden", channel: "whatsapp", trimmed: t.user, skipFlagCheck: true,
+        deps: { loadRecent: async () => rows.slice(0, -1).map((r) => ({ ...r })) },
+      });
+      const listing = deal ? null : await runListingDiagnosis({
         supabase: null, userId: "golden", channel: "whatsapp", trimmed: t.user, skipFlagCheck: true,
         deps: {
           loadRecent: async () => rows.slice(0, -1).map((r) => ({ ...r })),
@@ -216,7 +221,9 @@ export async function runGolden(
           searchComparables: async () => ({ status: "not_run", results: [] }),
         },
       });
-      const q = listing
+      const q = deal
+        ? { reply: deal.reply, acted: deal.acted, tool: deal.acted ? "deal_risk_analysis" : "deal_questions" }
+        : listing
         ? { reply: listing.reply, acted: listing.acted, tool: listing.acted ? "listing_diagnosis" : "listing_questions" }
         : await runBuyerQualification({
         supabase: null, userId: "golden", channel: "whatsapp", trimmed: t.user, skipFlagCheck: true,

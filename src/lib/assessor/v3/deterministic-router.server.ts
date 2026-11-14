@@ -487,6 +487,39 @@ const buyerQualificationCase: RouterCase = async ({ supabase, userId, channel, t
   return { reply: turn.reply };
 };
 
+// (0-) Execução assistida: "cria as tarefas" depois de uma proposta comercial
+// do Afonso grava as tarefas mostradas (Seguimentos), uma vez só.
+const commercialTasksCase: RouterCase = async ({ supabase, userId, channel, trimmed, pending }) => {
+  if (pending) return null;
+  const { runCreateTasks } = await import("@/lib/assessor/commercial/task-execution.server");
+  const started = Date.now();
+  const turn = await runCreateTasks({ supabase, userId, channel, trimmed });
+  if (!turn) return null;
+  await logAiTurn(supabase, {
+    userId, channel, intent: "commercial_tasks", route: "v3-deterministic",
+    latencyMs: Date.now() - started, success: true, error: null,
+    toolName: "create_follow_up", toolSuccess: turn.created > 0, fallbackUsed: false,
+  });
+  return { reply: turn.reply };
+};
+
+// (0-) Negócio em risco (mesmo interruptor action-first): contas do
+// simulador, riscos, próxima melhor ação (ou parar), mensagens e tarefas
+// prontas. Não escreve nem contacta ninguém.
+const dealRiskCase: RouterCase = async ({ supabase, userId, channel, trimmed, pending }) => {
+  if (pending) return null;
+  const { runDealRisk } = await import("@/lib/assessor/deal/deal.server");
+  const started = Date.now();
+  const turn = await runDealRisk({ supabase, userId, channel, trimmed });
+  if (!turn) return null;
+  await logAiTurn(supabase, {
+    userId, channel, intent: "deal_risk", route: "v3-deterministic",
+    latencyMs: Date.now() - started, success: true, error: null,
+    toolName: turn.acted ? "deal_risk_analysis" : "deal_questions", toolSuccess: true, fallbackUsed: false,
+  });
+  return { reply: turn.reply };
+};
+
 // (0-) Angariação com pouca procura (mesmo interruptor action-first). Só lê:
 // carteira própria e comparáveis nos portais; devolve diagnóstico, kit
 // orgânico pronto, plano de 7 dias e estados de ação. Nunca envia nem publica.
@@ -507,6 +540,8 @@ const listingDiagnosisCase: RouterCase = async ({ supabase, userId, channel, tri
 // A ordem é a precedência real do motor. Não reordenar sem testes.
 export const DETERMINISTIC_ROUTER: Array<{ name: string; run: RouterCase }> = [
   { name: "prompt_shield", run: promptShieldCase },
+  { name: "commercial_tasks", run: commercialTasksCase },
+  { name: "deal_risk", run: dealRiskCase },
   { name: "listing_diagnosis", run: listingDiagnosisCase },
   { name: "buyer_qualification", run: buyerQualificationCase },
   { name: "elliptic_entity", run: ellipticEntityCase },

@@ -5,14 +5,14 @@
 
 import { ddmmLisbon } from "./next-best-action";
 
-export interface PreparedMessage { to: string; text: string }
+export interface PreparedMessage { to: string; text: string; note?: string }
 export interface PreparedTask { title: string; dueYmd: string; owner: string; priority: "alta" | "media" | "baixa" }
 
 export const CREATE_TASKS_HINT = 'diz "cria as tarefas" e ficam nos teus Seguimentos';
 
 export function formatMessages(list: PreparedMessage[]): string | null {
   if (!list.length) return null;
-  return list.map((m) => `*Mensagem para ${m.to} (preparada — copias e envias tu):*\n"${m.text}"`).join("\n\n");
+  return list.map((m) => `*Mensagem para ${m.to} (preparada — copias e envias tu${m.note ? `; ${m.note}` : ""}):*\n"${m.text}"`).join("\n\n");
 }
 
 const ymdToDdmm = (ymd: string) => `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}`;

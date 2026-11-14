@@ -66,3 +66,12 @@
 - [x] Avaliação: pedir licença para preparar, prometer sem entregar e prometer monitorização contam como falha; entrega concreta e verificabilidade de links medidas
 - [ ] Verificar o anúncio do concorrente/portal da Zome — sem acesso; aguarda decisão sobre o site Zome
 - [ ] Estatísticas reais do anúncio (impressões/cliques) — sem integração com os portais
+
+## Motor de Decisão Comercial — P0 (14/11/2026, NÃO publicar)
+- [x] P0-1 Detetor de risco (prazos, avaliação, CPCV, desistência, baixa procura, financiamento, alegações)
+- [x] P0-2 Simulador financeiro (90% do menor valor, IMT/Selo 2026, IMT Jovem, estimativas ditas, pré-aprovação ≠ aprovação)
+- [x] P0-3 Próxima melhor ação com porquê, responsável, prazo e recomendação de parar
+- [x] P0-4 Execução assistida: mensagens preparadas, tarefas pendentes, "cria as tarefas" → Executado (idempotente)
+- [x] Cenários A (Miguel), B (ZMPT593612) e C (385k/365k) com testes de aceitação e casos limite
+- [ ] P1: memória de negócio, prazos proativos, negociação, aprendizagem — aguarda autorização
+- [ ] Atualizar as tabelas de IMT/Selo quando sair o Orçamento de 2027
