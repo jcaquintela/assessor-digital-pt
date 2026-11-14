@@ -1,0 +1,5 @@
+N1 interruptores ligados depois do S2-99: 0
+psql:/dev-server/staging-install/migrations/S2-99_staging_safety_checks.sql:36: ERROR:  staging: há ativações individuais de interruptores
+CONTEXT:  PL/pgSQL function inline_code_block line 8 at RAISE
+psql:/dev-server/staging-install/migrations/S2-99_staging_safety_checks.sql:36: ERROR:  staging: há administradores V2 atribuídos pela montagem
+CONTEXT:  PL/pgSQL function inline_code_block line 14 at RAISE

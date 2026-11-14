@@ -1,0 +1,9 @@
+00_supabase_shim.sql:13: NOTICE:  00000: role "authenticator" has already been granted membership in role "anon" by role "postgres"
+LOCATION:  AddRoleMems, user.c:1891
+00_supabase_shim.sql:13: NOTICE:  00000: role "authenticator" has already been granted membership in role "authenticated" by role "postgres"
+LOCATION:  AddRoleMems, user.c:1891
+00_supabase_shim.sql:13: NOTICE:  00000: role "authenticator" has already been granted membership in role "service_role" by role "postgres"
+LOCATION:  AddRoleMems, user.c:1891
+00_supabase_shim.sql:75: WARNING:  55000: "wal_level" is insufficient to publish logical changes
+HINT:  Set "wal_level" to "logical" before creating subscriptions.
+LOCATION:  CreatePublication, publicationcmds.c:867

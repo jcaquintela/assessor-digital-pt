@@ -1,0 +1,68 @@
+S2-01_v2_schema_part1.sql:228: NOTICE:  42P07: relation "user_roles" already exists, skipping
+LOCATION:  transformCreateStmt, parse_utilcmd.c:210
+S2-01_v2_schema_part1.sql:253: NOTICE:  00000: policy "Admins read all roles" for relation "public.user_roles" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:273: NOTICE:  00000: policy "Admins read audit" for relation "public.admin_audit_logs" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:291: NOTICE:  00000: policy "Authenticated read flags" for relation "public.feature_flags" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:303: NOTICE:  00000: policy "User reads own flag membership" for relation "public.feature_flag_users" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:316: NOTICE:  00000: policy "Admins read mfa flags" for relation "public.admin_mfa_required" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:368: NOTICE:  00000: policy "Admins manage roles" for relation "public.user_roles" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:408: NOTICE:  00000: constraint "profiles_whatsapp_link_status_check" of relation "profiles" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-01_v2_schema_part1.sql:435: NOTICE:  00000: policy "own link codes read" for relation "public.whatsapp_link_codes" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:916: NOTICE:  00000: policy "own tool calls" for relation "public.assessor_tool_calls" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:941: NOTICE:  00000: policy "own calendar connections" for relation "public.calendar_connections" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:944: NOTICE:  00000: trigger "calendar_connections_touch" for relation "public.calendar_connections" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:1487: NOTICE:  00000: policy "person_phones_owner_all" for relation "public.person_phones" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:1531: NOTICE:  00000: trigger "people_email_norm_trg" for relation "public.people" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:2317: NOTICE:  00000: trigger "profiles_restrict_self_update" for relation "public.profiles" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:2483: NOTICE:  00000: constraint "opportunities_deal_kind_check" of relation "opportunities" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-01_v2_schema_part1.sql:3004: NOTICE:  00000: constraint "profiles_trial_status_check" of relation "profiles" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-01_v2_schema_part1.sql:3067: NOTICE:  00000: policy "subscription_events_admin_read" for relation "public.subscription_events" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3093: NOTICE:  00000: trigger "subscription_events_validate_trg" for relation "public.subscription_events" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3867: NOTICE:  42P07: relation "assessor_ai_logs_user_created_idx" already exists, skipping
+LOCATION:  index_create, index.c:899
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.app_user_connections" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.app_user_connection_aliases" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.calendar_connections" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.dashboard_login_tokens" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.telegram_link_tokens" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.whatsapp_link_codes" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.support_sessions" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.ai_model_rates" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.whatsapp_template_rates" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:3989: NOTICE:  00000: trigger "audit_sensitive_write" for relation "public.admin_cost_settings" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:4206: NOTICE:  00000: trigger "profiles_validate_billing" for relation "public.profiles" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-01_v2_schema_part1.sql:4242: NOTICE:  00000: constraint "follow_ups_event_class_chk" of relation "follow_ups" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-01_v2_schema_part1.sql:4321: NOTICE:  00000: constraint "reminders_follow_up_id_fkey" of relation "reminders" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-01_v2_schema_part1.sql:4348: NOTICE:  00000: trigger "reminders_sync_follow_up_id_trg" for relation "public.reminders" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523

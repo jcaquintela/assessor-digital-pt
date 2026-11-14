@@ -1,0 +1,41 @@
+== alvo
+socket=/tmp/afonso-disposable-pg/sock porta=54329 base=afonso_disposable utilizador=postgres pid=12465
+== namespace de rede: servidor vs sandbox
+net:[4026532241]
+net:[4026531840]
+== interfaces no namespace do servidor
+rotas:
+(fim rotas)
+== teste de saída de rede a partir do namespace do servidor (host neutro)
+curl: (6) Could not resolve host: example.com
+== variáveis visíveis ao cliente
+PATH
+== utilizador do processo servidor
+nobody     12465 /tmp/pg17/bin/postgres -D /tmp/afonso-disposable-pg/data
+?column? | version
+versao | PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by clang version 21.1.8, 64-bit
+(1 row)
+?column? | current_setting
+listen_addresses | 
+(1 row)
+?column? | coalesce
+inet_server_addr | NULL (só socket local)
+(1 row)
+?column? | current_setting
+data_directory | /tmp/afonso-disposable-pg/data
+(1 row)
+?column? | system_identifier
+system_identifier | 7708101453725167784
+(1 row)
+?column? | string_agg
+bases | postgres,afonso_disposable,template1,template0
+(1 row)
+?column? | string_agg
+extensoes instaladas | plpgsql
+(1 row)
+?column? | coalesce
+extensoes de rede disponiveis | dblink,postgres_fdw
+(1 row)
+?column? | string_agg
+schemas | public
+(1 row)

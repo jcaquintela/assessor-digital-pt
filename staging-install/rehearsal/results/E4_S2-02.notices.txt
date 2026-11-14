@@ -1,0 +1,24 @@
+S2-02_v2_schema_part2.sql:109: NOTICE:  00000: policy "app_settings_read" for relation "public.app_settings" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-02_v2_schema_part2.sql:113: NOTICE:  00000: policy "app_settings_admin_write" for relation "public.app_settings" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523
+S2-02_v2_schema_part2.sql:264: NOTICE:  00000: constraint "consultant_preferences_active_calendar_provider_check" of relation "consultant_preferences" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-02_v2_schema_part2.sql:270: NOTICE:  00000: constraint "consultant_preferences_active_mail_provider_check" of relation "consultant_preferences" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-02_v2_schema_part2.sql:359: NOTICE:  42P07: relation "uploaded_files_user_checksum_idx" already exists, skipping
+LOCATION:  index_create, index.c:899
+S2-02_v2_schema_part2.sql:411: NOTICE:  00000: constraint "miscellaneous_items_item_class_check" of relation "miscellaneous_items" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-02_v2_schema_part2.sql:443: NOTICE:  00000: constraint "conversation_states_last_read_axis_check" of relation "conversation_states" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-02_v2_schema_part2.sql:568: NOTICE:  42701: column "person_id" of relation "email_drafts" already exists, skipping
+LOCATION:  check_for_column_name_collision, tablecmds.c:7483
+S2-02_v2_schema_part2.sql:692: NOTICE:  00000: constraint "consultant_preferences_evening_review_detail_check" of relation "consultant_preferences" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-02_v2_schema_part2.sql:708: NOTICE:  00000: constraint "routines_kind_check" of relation "routines" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-02_v2_schema_part2.sql:792: NOTICE:  00000: constraint "consultant_preferences_max_unsolicited_check" of relation "consultant_preferences" does not exist, skipping
+LOCATION:  ATExecDropConstraint, tablecmds.c:12672
+S2-02_v2_schema_part2.sql:1022: NOTICE:  00000: trigger "consultant_preferences_track_opt_ins" for relation "public.consultant_preferences" does not exist, skipping
+LOCATION:  does_not_exist_skipping, dropcmds.c:523

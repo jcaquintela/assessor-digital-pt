@@ -1,0 +1,11 @@
+alvo confirmado: sysid=7708101453725167784 socket=/tmp/afonso-disposable-pg/sock base=afonso_disposable
+E0_shim rc=0 0.02s 04b11d62cd786812
+E1_staging0000 rc=0 0.01s a87578e560f0c97f
+E2_S2-00 rc=0 0.01s 4e089b4712a43107
+E3_S2-01 rc=0 0.23s d9bf6c0e3adfd8ad
+E4_S2-02 rc=0 0.08s d553e0d4280519bb
+E5_S2-99 rc=0 0.01s fdea9a5cd564ae51
+todas as etapas aplicadas
+E6_smoke 8/8 verificações OK
+E7_negative 3/3 casos negativos com o resultado esperado
+esquema public: 106 tabelas, sha256 e047c2e1fe0effb5

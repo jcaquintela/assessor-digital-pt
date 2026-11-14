@@ -1,0 +1,16 @@
+psql:/dev-server/staging-install/rehearsal/10_synthetic_smoke.sql:16: NOTICE:  OK T1 perfis criados pelo registo
+ {"sub":"00000000-0000-4000-8000-00000000000a","role":"authenticated"}
+
+psql:/dev-server/staging-install/rehearsal/10_synthetic_smoke.sql:32: NOTICE:  OK T2 A vê só o seu, não escreve por B, não é admin, não lê notas do staging
+ {"sub":"00000000-0000-4000-8000-00000000000b","role":"authenticated"}
+
+psql:/dev-server/staging-install/rehearsal/10_synthetic_smoke.sql:40: NOTICE:  OK T3 B não vê nem altera dados de A
+ {"sub":"00000000-0000-4000-8000-00000000000c","role":"authenticated"}
+
+psql:/dev-server/staging-install/rehearsal/10_synthetic_smoke.sql:49: NOTICE:  OK T4 tester do staging lê notas e não é admin V2
+psql:/dev-server/staging-install/rehearsal/10_synthetic_smoke.sql:60: NOTICE:  OK T5 anónimo sem leitura nem verificação de papéis
+ {"role":"service_role"}
+
+psql:/dev-server/staging-install/rehearsal/10_synthetic_smoke.sql:78: NOTICE:  OK T6 mensagem reclamada uma vez, teto 1/dia, lock exclusivo, plano efetivo = base
+psql:/dev-server/staging-install/rehearsal/10_synthetic_smoke.sql:88: NOTICE:  OK T7a sem piloto: resultado = no_pilot
+psql:/dev-server/staging-install/rehearsal/10_synthetic_smoke.sql:95: NOTICE:  OK T7b escrita direta de participante recusada (pilot seats are granted only by a used pilot invite)

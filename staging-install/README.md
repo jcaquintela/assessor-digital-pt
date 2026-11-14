@@ -88,7 +88,7 @@ bun scripts/staging/build-staging-schema.ts
 
 ## Limites conhecidos (não verificado)
 
-- **Execução:** nenhuma migração foi executada numa base nova. Só confirmei que o SQL é sintaticamente válido com o analisador oficial do Postgres 17 (1 267 instruções). O analisador não valida o corpo das funções nem a existência de tabelas. Erros de execução só aparecem num ensaio real, que exige autorização.
+- **Execução:** foi aplicado sem erros numa base PostgreSQL 17 descartável e isolada (ver `rehearsal/README.md`), mas ainda não no staging. A plataforma (autenticação, ficheiros, Realtime) foi simulada.
 - **Objetos criados à mão:** podem existir na produção objetos criados fora das migrações, que faltariam no staging. Uma comparação de esquema exige ler a produção, fora deste pedido.
 - **Previews de admin:** ainda mostram "ola@meuafonso.com" como texto fixo (`admin/comunicacao.tsx`, `daily-digest.tsx`, `name-preview.ts`). Não enviam nada.
 - **Lista de destinatários:** os 21 módulos de envio ainda não consultam `isStagingRecipientAllowed`. Isto é obrigatório antes de qualquer envio no staging.

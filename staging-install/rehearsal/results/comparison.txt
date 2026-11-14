@@ -1,0 +1,11 @@
+types.ts: 105 tabelas, 21 funções, 8 enums | descartável: 106 tabelas, 43 funções, 8 enums
+tabelas em falta na descartável: []
+tabelas a mais na descartável: ['staging_notes']
+colunas em falta: {}
+colunas a mais: {}
+diferenças de nulabilidade: []
+funções de types.ts em falta: []
+código: 15 funções chamadas, em falta: []
+código: 100 tabelas usadas, em falta: []
+enum diferente app_role: types.ts=['consultant', 'support_admin', 'super_admin'] descartável=['admin', 'tester', 'consultant', 'support_admin', 'super_admin']
+enums a mais: []

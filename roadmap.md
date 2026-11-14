@@ -119,5 +119,5 @@
 - [x] Vulnerabilidades das bibliotecas documentadas, sem atualizações
 - [ ] Credenciais de teste próprias no staging (bot, número Meta, pagamentos de teste, email) — proprietário
 - [ ] Aplicar S2-00…S2-99 no staging — aguarda autorização expressa
-- [ ] Ensaio numa base descartável antes do staging — aguarda autorização (pedido "sem executar migrations")
+- [x] Ensaio numa base PostgreSQL 17 descartável e isolada: 4 ficheiros sem erros, 8/8 + 3/3 verificações, 0 dependências em falta
 - [ ] Previews de admin com "ola@meuafonso.com" (só texto) — por decidir
