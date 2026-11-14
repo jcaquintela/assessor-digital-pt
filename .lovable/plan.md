@@ -87,3 +87,77 @@ Legenda: **E** existe no código · **P** existe em parte ou precisa de adaptaç
 - **Erros de extração no grafo:** recibo de cada escrita e desfazer.
 - **Amostra pequena e enviesada** (beta testers conhecidos): ler os resultados como sinal, não como prova.
 - **Dados de terceiros (RGPD):** notas confidenciais nunca saem; apagar a pedido.
+
+---
+
+## 8. Entrada de novos consultores: landing → registo → canal (requisito confirmado)
+
+Zero-UI significa que não há dashboard no dia a dia. A landing e o registo continuam a existir. A landing externa meuafonso.com **não se altera** sem acesso e autorização: o botão dela aponta para a página de registo desta app.
+
+### 8.1 Fluxo alvo
+```text
+meuafonso.com -> /registo (nome, email, telemóvel opcional, aceitar termos)
+  -> "Onde queres falar com o Afonso?"  [WhatsApp] [Telegram]
+  -> ecrã de ligação: QR (desktop) + botão "Abrir no WhatsApp/Telegram" (mobile)
+  -> consultor envia a 1.ª mensagem com token efémero
+  -> Afonso confirma a ligação e pede logo os 3 negócios prioritários (secção 1.4)
+  -> mais tarde: "liga também o Telegram" -> novo token no canal já ligado
+```
+
+### 8.2 Token efémero
+- Uso único, aleatório (≥ 128 bits), válido 15 minutos. Na base de dados guarda-se só o hash.
+- Sem dados pessoais no link: `wa.me/<número Afonso>?text=Olá Afonso AF-XXXX` e `t.me/<bot>?start=<token>`.
+- O WhatsApp exige que a mensagem seja enviada pelo próprio consultor, e isso é a prova de posse do número. No Telegram, a prova de posse é o próprio chat.
+- Gerar um token novo invalida os anteriores. Há limite de tentativas e um limite de geração por conta.
+
+### 8.3 UX
+- **Mobile:** botão grande "Abrir no WhatsApp/Telegram" e, por baixo, "Não abriu? Copia este código e envia-o para +351…".
+- **Desktop:** QR grande, o mesmo link escrito por baixo e a indicação "aponta a câmara do telemóvel".
+- O ecrã fica à espera. Mostra "À espera da tua mensagem…" e muda sozinho para "Ligado! Continua no WhatsApp" quando a ligação é feita.
+- O ecrã tem também a contagem do prazo e o botão "Gerar novo código".
+
+### 8.4 Estados e casos-limite
+| Caso | Comportamento |
+|---|---|
+| Token expirado | No canal: "Este código já expirou. Volta à página e pede um novo." O ecrã oferece "Gerar novo". |
+| Link já usado pela mesma pessoa | "Já estás ligado 👍", e continua a conversa |
+| Link usado por outro número/chat | Recusa sem revelar de quem é a conta; avisa o dono no canal ligado; regista na auditoria |
+| Troca de canal antes de ligar | Volta à escolha; o token antigo é invalidado |
+| Registo duplicado (email já existe) | "Já tens conta — enviámos-te um link de entrada", sem confirmar a existência a terceiros |
+| Número/chat já ligado a outra conta | Nunca reatribui; pede prova no canal antigo ou passa à equipa (consola admin) |
+| Mensagem sem token de alguém desconhecido | Resposta curta com o link de registo; não cria conta automaticamente na V1 |
+| Segundo canal | Só a partir do canal já verificado; mesma conta e memória |
+
+### 8.5 Prevenção de takeover
+- O token só liga uma conta que ainda não tem esse canal ligado.
+- Uma identidade já verificada nunca muda de conta sem passar pela consola admin.
+- Cada ligação e cada desligar ficam na auditoria, sem número completo nos metadados.
+- O consultor recebe aviso no canal existente quando é ligado um segundo canal, com a opção "Não fui eu → desligar".
+
+### 8.6 Políticas
+- **WhatsApp:** a primeira mensagem tem de vir do consultor (abre a janela de 24h). Sem templates de marketing no arranque. Opt-in explícito para o briefing e o check-in.
+- **Telegram:** só deep link `/start`; o bot não pode iniciar a conversa.
+- **Privacidade:** termos e RGPD aceites no registo; o link e o QR não levam email nem telefone.
+
+### 8.7 Diferenças face ao fluxo atual
+| Atual (confirmado no código) | Alvo |
+|---|---|
+| Registo com email e password e confirmação de email antes de continuar (`/registo` → `/ligar-canal`) | Registo simples; confirmação feita pelo próprio canal ou link mágico |
+| WhatsApp: o consultor escreve o telefone, recebe um código no ecrã e envia-o à mão ao número do Afonso | QR/link `wa.me` com o código já preenchido; telefone opcional no registo |
+| WhatsApp: o código fica ligado a um telefone escrito antes; a conta fica "pendente" | Prova de posse = o número que envia a mensagem |
+| Telegram: deep link com token já existe (`t.me/...?start=tg_…`), mas é gerado nas Definições (dashboard) e o token fica guardado em claro | Gerado no ecrã de ligação após o registo; guardar só o hash |
+| Telegram também regista contas sozinho na primeira mensagem, sem registo web | Na V1, a primeira mensagem sem token recebe o link de registo (fecha o caminho paralelo) |
+| A auditoria do início de ligação WhatsApp guarda o telefone completo | Guardar mascarado |
+| Sem QR em desktop nem estado "à espera" | QR, contagem do prazo e mudança automática para "Ligado" |
+| O segundo canal é ligado nas Definições (dashboard) | Ligado por conversa, a partir do canal já verificado |
+| Depois de ligar não há pedido imediato de prioridades | Pede os 3 negócios prioritários de imediato |
+
+### 8.8 Critérios de aceitação
+- Do registo à primeira resposta no canal em menos de 90 s no mobile, medido em 5 ensaios.
+- Os testes golden cobrem todos os estados de 8.4, com resposta certa em cada um.
+- Teste negativo de takeover: um token usado por um terceiro não liga nada e o dono é avisado.
+- Nenhum dado pessoal aparece no link, no QR ou nos registos de auditoria.
+- A landing externa continua sem alterações.
+
+### 8.9 Lugar no cronograma
+Entra na preparação (semana −2 a −1) como ponto 9 da secção 3. É obrigatório antes do dia 1, porque os 15 consultores entram por este fluxo.
