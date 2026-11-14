@@ -2,8 +2,12 @@
 // orgânico pronto, plano de 7 dias, estados de ação e próximo passo.
 
 import { formatActionStates, type ActionItem } from "../commercial/action-states";
+import { CREATE_TASKS_HINT } from "../commercial/assisted-execution";
+import { formatNextAction } from "../commercial/next-best-action";
+import { formatRisks } from "../commercial/risk-detector";
+import { listingPlan } from "./listing-plan";
 import { parseListingPrice } from "../qualification/proposal-format";
-import { checkPrice, compareCompetitor, eur, readFunnel, type FunnelBreak, type VerifiedSighting } from "./diagnosis";
+import { checkPrice, compareCompetitor, eur, readFunnel, type VerifiedSighting } from "./diagnosis";
 import type { ListingBrief } from "./listing-brief";
 import {
   CHANNEL_CHECKLIST, colleagueMessage, differentiation, kpis, paidRule, photoBrief, sevenDayPlan, socialCopy,
@@ -42,21 +46,6 @@ function factsLine(b: ListingBrief): string {
   ].filter(Boolean);
   const line = parts.join(" · ");
   return line.charAt(0).toUpperCase() + line.slice(1);
-}
-
-function nextStep(breakAt: FunnelBreak, b: ListingBrief, now: Date, discrepancy: boolean): string {
-  const checkpoint = ddmm(new Date(now.getTime() + 3 * 86400_000));
-  const first = discrepancy
-    ? "hoje confirmas o preço publicado em cada portal"
-    : ({
-        reach: "hoje aumentas a exposição: mensagem aos colegas e redes",
-        listing_click: "hoje trocas a 1.ª foto e o título",
-        listing_convert: "hoje revês fotos e descrição e mandas-me 2-3 links de comparáveis para cruzar o preço",
-        follow_up: "hoje ligas aos contactos que já tens e qualificas cada um",
-        none: "manténs o plano e mandas-me os números no checkpoint",
-        unknown: "hoje tiras do portal impressões, cliques e pedidos de contacto e mandas-mos",
-      } as Record<FunnelBreak, string>)[breakAt];
-  return `*Próximo passo:* ${first}. Se quiseres que te lembre do checkpoint, diz "lembra-me dia ${checkpoint} de rever ${b.ref ?? "a angariação"}" e fica marcado.`;
 }
 
 export function composeListingReply(i: ListingComposeInput): string {
@@ -106,12 +95,16 @@ export function composeListingReply(i: ListingComposeInput): string {
     ].join("\n"));
     const plan = sevenDayPlan(b, now);
     parts.push([
-      "*Plano 7 dias*",
+      `*Plano 7 dias* (tarefas pendentes — ${CREATE_TASKS_HINT})`,
       `- ${seen} · Afonso: diagnóstico, kit e plano (feito acima)`,
       ...plan.map((s) => `- ${s.day} · ${s.owner}: ${s.task}`),
       paidRule(b),
     ].join("\n"));
   }
+
+  const lp = listingPlan(b, now, { breakAt: funnel.breakAt, discrepancy: price.discrepancy, demandProblem: funnel.demandProblem });
+  const risks = formatRisks(lp.risks, 3);
+  if (risks) parts.splice(2, 0, risks);
 
   const items: ActionItem[] = [];
   if (i.ownLookup.ran) {
@@ -124,13 +117,13 @@ export function composeListingReply(i: ListingComposeInput): string {
     items.push({ state: "executed", evidenceTool: "search_similar_listings", text: `pesquisa de comparáveis nos portais (${i.comparables.results.length} ${i.comparables.results.length === 1 ? "anúncio" : "anúncios"})` });
   }
   items.push({ state: "prepared", text: i.update ? "leitura do funil com os teus números" : "diagnóstico, kit orgânico e plano de 7 dias" });
-  items.push({ state: "awaiting_approval", text: "enviar mensagens, publicar, mudar preço ou anúncio, gastar margem paga — nada disto faço sem o teu sim" });
+  items.push({ state: "awaiting_approval", text: `enviar mensagens, publicar, mudar preço ou anúncio, gastar margem paga — nada disto faço sem o teu sim${i.update ? "" : "; gravar o plano nos Seguimentos"}` });
   const noAccess = ["estatísticas do anúncio nos portais", "carteira da Rede/Zome", "acompanhar o anúncio sozinho (não monitorizo portais)"];
   if (b.competitorRef && b.competitorPrice == null) noAccess.splice(1, 0, `anúncio do concorrente ${b.competitorRef}`);
   items.push({ state: "no_access", text: noAccess.join(", ") });
   parts.push(formatActionStates(items));
 
-  parts.push(nextStep(funnel.breakAt, b, now, price.discrepancy));
+  parts.push(formatNextAction(lp.next));
 
   const questions: string[] = [];
   if (b.askingPrice == null) questions.push("Qual o preço pedido?");

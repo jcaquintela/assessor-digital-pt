@@ -6,6 +6,7 @@
 // nunca volta a ser perguntado.
 
 import { foldText } from "@/lib/search/normalize";
+import { DEFAULT_LTV, maxViablePrice, TAX_YEAR, YOUNG_GUARANTEE_LTV } from "../commercial/financial-simulator";
 
 export type CriterionStatus = "confirmed" | "assumed";
 
@@ -28,6 +29,8 @@ export interface BuyerBrief {
   /** YYYY-MM-DD */
   deadline: Criterion<string> | null;
   nearMetro: Criterion<boolean> | null;
+  /** "Urgente" dito sem data. */
+  urgent: Criterion<boolean> | null;
   /** Referências ZMPT e links que o consultor deu. */
   refs: string[];
   links: string[];
@@ -36,7 +39,7 @@ export interface BuyerBrief {
 export function emptyBrief(): BuyerBrief {
   return {
     buyerName: null, typology: null, propertyType: null, zone: null, budgetMax: null,
-    financingApproved: null, ownFunds: null, deadline: null, nearMetro: null, refs: [], links: [],
+    financingApproved: null, ownFunds: null, deadline: null, nearMetro: null, urgent: null, refs: [], links: [],
   };
 }
 
@@ -168,21 +171,21 @@ export function extractBuyerBrief(text: string, now: Date = new Date()): BuyerBr
     : dl ? toIsoDate(Number(dl[1]), MONTHS[dl[2]!]!, now) : null;
   if (iso) b.deadline = c(iso);
 
-  if (/\b(perto|junto|ao pe|proximo|a \d+ ?min(?:utos)?) (?:d[oa] |de (?:uma )?)?(?:metro|estacao de metro)\b/.test(fold)) {
+  if (/\b(perto|junto|ao pe|proximo|(?:a|ate) \d+ ?min(?:utos)?(?: a pe)?) (?:d[oa] |de (?:uma )?)?(?:metro|estacao de metro)\b/.test(fold)) {
     b.nearMetro = c(true);
   }
+  if (/\b(urgente|urgencia|com pressa|o mais rapido possivel|quanto antes)\b/.test(fold)) b.urgent = c(true);
 
   b.refs = Array.from(new Set((raw.match(/\bZMPT[-\s]?\d{3,}\b/gi) ?? []).map((r) => r.toUpperCase().replace(/\s/g, "-"))));
   b.links = Array.from(new Set(raw.match(/https?:\/\/[^\s<>()]+/g) ?? []));
   return withAssumptions(b);
 }
 
-/** Custos de aquisição assumidos (IMT, imposto do selo, escritura e registo). */
-export const ACQUISITION_COSTS_PCT = 0.08;
-
 /**
- * Teto assumido a partir de pré-aprovação + capitais próprios, descontando
- * custos de aquisição. Nunca substitui um orçamento dito pelo consultor.
+ * Teto assumido a partir de pré-aprovação + capitais próprios, com o
+ * simulador financeiro (crédito até 90% do preço/avaliação, IMT e Selo 2026,
+ * escritura e banco estimados). Nunca substitui um orçamento dito pelo
+ * consultor e é sempre mostrado como assumido.
  */
 export function withAssumptions(b: BuyerBrief): BuyerBrief {
   if (b.budgetMax?.status === "confirmed") return b;
@@ -191,15 +194,24 @@ export function withAssumptions(b: BuyerBrief): BuyerBrief {
     if (b.budgetMax?.status === "assumed") b.budgetMax = null;
     return b;
   }
-  const own = b.ownFunds?.value ?? 0;
-  const ceiling = Math.floor((fin + own) / (1 + ACQUISITION_COSTS_PCT) / 1000) * 1000;
   const k = (n: number) => `${Math.round(n / 1000)}k`;
+  const own = b.ownFunds?.value ?? null;
+  if (own == null) {
+    // Sem capitais conhecidos, o teto é o preço em que a pré-aprovação é 90%.
+    b.budgetMax = {
+      value: Math.floor(fin / DEFAULT_LTV / 1000) * 1000,
+      status: "assumed",
+      note: `pré-aprovação ${k(fin)} = 90% do preço; exige ~10% de entrada mais IMT, Selo e escritura em capitais próprios (por confirmar)`,
+    };
+    return b;
+  }
+  const ceiling = maxViablePrice({ ownFunds: own, loanCap: fin });
+  const young = maxViablePrice({ ownFunds: own, loanCap: fin, young: true, ltv: YOUNG_GUARANTEE_LTV });
   b.budgetMax = {
     value: ceiling,
     status: "assumed",
-    note: own
-      ? `pré-aprovação ${k(fin)} + ${k(own)} de capitais, descontando ~8% de impostos e escritura`
-      : `pré-aprovação ${k(fin)}, descontando ~8% de impostos e escritura`,
+    note: `crédito até 90% do preço, no máximo ${k(fin)} pré-aprovados, e ${k(own)} de capitais a pagar entrada, IMT, Selo e escritura — contas ${TAX_YEAR}` +
+      (young > ceiling ? `; com IMT Jovem e garantia pública (até 35 anos) pode chegar a ~${k(young)}` : ""),
   };
   return b;
 }
@@ -207,7 +219,7 @@ export function withAssumptions(b: BuyerBrief): BuyerBrief {
 export interface BriefChange { field: keyof BuyerBrief; from: string; to: string }
 
 const FIELDS: Array<keyof BuyerBrief> = [
-  "buyerName", "typology", "propertyType", "zone", "budgetMax", "financingApproved", "ownFunds", "deadline", "nearMetro",
+  "buyerName", "typology", "propertyType", "zone", "budgetMax", "financingApproved", "ownFunds", "deadline", "nearMetro", "urgent",
 ];
 
 function show(v: unknown): string {
@@ -275,7 +287,7 @@ export function daysUntil(isoDate: string, now: Date = new Date()): number {
 }
 
 export function isUrgent(b: BuyerBrief, now: Date = new Date()): boolean {
-  if (!b.deadline) return false;
+  if (!b.deadline) return b.urgent?.value === true;
   const n = daysUntil(b.deadline.value, now);
   return n >= 0 && n <= URGENT_DAYS;
 }

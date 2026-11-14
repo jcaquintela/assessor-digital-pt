@@ -44,13 +44,15 @@ describe("Teste A — comprador Miguel", () => {
     expect(t.reply).toContain("Local: Gaia");
     expect(t.reply).toContain("Características: 55 m², elevador");
     expect(t.reply).toContain("Origem: idealista.pt");
-    expect(t.reply).toMatch(/Porquê: T1 como pedido, em Gaia, dentro do teto assumido/);
+    expect(t.reply).toMatch(/Porquê: T1 como pedido, em Gaia\./);
+    // 139k está acima do teto real a 90% (~114k): aparece, mas com aviso.
+    expect(t.reply).toContain("acima do teto assumido");
     expect(t.reply).toContain("Metro: por confirmar · Estado: por confirmar");
     expect(t.reply).not.toMatch(/!\[|\.(jpg|jpeg|png|webp)\b/i);
     // Material entregue, não prometido; nada sai sem aprovação.
     expect(t.reply).toContain("*Mensagem para o comprador (preparada — copias e envias tu):*");
     expect(t.reply).toMatch(/\*Executado:\* procurei na tua carteira \(0 a encaixar\); pesquisa nos portais \(1 anúncio\)/);
-    expect(t.reply).toMatch(/\*Aguarda aprovação:\* enviar ao comprador ou marcar visitas com terceiros — nada sai sem o teu ok/);
+    expect(t.reply).toMatch(/\*Pendente \(aguarda o teu ok\):\* gravar as tarefas nos Seguimentos; enviar ao comprador ou marcar visitas com terceiros — nada sai sem o teu ok/);
     expect(t.reply).toMatch(/\*Sem acesso:\* carteira da Rede\/Zome/);
     expect(t.reply).toContain("*Próximo passo:*");
     const s = scoreConversation(c.scored);
@@ -86,7 +88,8 @@ describe("Teste A — comprador Miguel", () => {
     expect(t.reply).not.toMatch(/\*Executado:\*/);
     expect(t.reply).not.toMatch(/https?:\/\/(?!app\.meuafonso)/);
     expect(t.reply).toMatch(/A pesquisa nos portais falhou agora/);
-    expect(t.reply).toMatch(/\*Próximo passo:\* manda-me referências ZMPT ou links/);
+    expect(t.reply).toMatch(/\*Próximo passo:\* confirmas a idade do Miguel e pedes ao banco a simulação/);
+    expect(t.reply).toContain("Manda-me referências ZMPT ou links");
     expect(t.reply).not.toContain("*Mensagem para o comprador");
   });
 

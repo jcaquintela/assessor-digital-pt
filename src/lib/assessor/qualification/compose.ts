@@ -9,6 +9,10 @@ import {
 import { formatProposal, rankProposals, type ListingProposal } from "./proposal-format";
 import { REDE_NO_ACCESS_REPLY } from "./url-provenance";
 import { formatActionStates, type ActionItem } from "../commercial/action-states";
+import { formatRisks } from "../commercial/risk-detector";
+import { formatNextAction } from "../commercial/next-best-action";
+import { formatTasks } from "../commercial/assisted-execution";
+import { buyerPlan } from "./buyer-plan";
 
 /** Marca a primeira linha: serve para reconhecer a continuação da conversa. */
 export const QUALIFICATION_MARKER = "*Pesquisa para ";
@@ -79,14 +83,15 @@ export function pendingQuestions(b: BuyerBrief, alreadyAsked: string): string[] 
 }
 
 function urgencyBlock(b: BuyerBrief, now: Date): string | null {
-  if (!isUrgent(b, now) || !b.deadline) return null;
-  const n = daysUntil(b.deadline.value, now);
+  if (!isUrgent(b, now)) return null;
+  const n = b.deadline ? daysUntil(b.deadline.value, now) : null;
   const steps = [
     b.financingApproved ? "- Confirmas com o banco a validade da pré-aprovação" : "- Confirmas o financiamento com o banco",
     "- Marcas visitas esta semana aos que encaixam",
     "- Mandas-me referências ZMPT da Rede e eu cruzo com estes critérios",
   ];
-  return `*Prioridade alta: prazo ${ddmm(b.deadline.value)}, faltam ${n} dias.* Em paralelo:\n${steps.join("\n")}`;
+  const head = b.deadline ? `prazo ${ddmm(b.deadline.value)}, faltam ${n} dias` : "urgente, sem data — confirma a data limite";
+  return `*Prioridade alta: ${head}.* Em paralelo:\n${steps.join("\n")}`;
 }
 
 // Mensagem ao comprador PREPARADA (não pedimos licença para preparar): o
@@ -98,23 +103,6 @@ function buyerMessage(b: BuyerBrief, shown: ListingProposal[]): string | null {
   const what = [b.typology?.value, b.zone ? `em ${b.zone.value}` : null].filter(Boolean).join(" ");
   const items = withLinks.map((p, n) => `${n + 1}) ${p.title}${p.price != null && !/\d\s*€/.test(p.title) ? `, ${eur(p.price)}` : ""} ${p.url}`).join(" ");
   return `*Mensagem para o comprador (preparada — copias e envias tu):*\n"${who}, separei ${withLinks.length === 1 ? "uma opção" : "duas opções"} ${what} dentro do que falámos: ${items}. Qual queres visitar esta semana?"`;
-}
-
-// Próximo passo específico + bloqueio antecipado.
-function nextStepBlock(b: BuyerBrief, hasProposals: boolean, urgent: boolean, prepared: boolean): string {
-  const lines: string[] = [];
-  if (hasProposals) {
-    const msg = prepared ? " A mensagem para o comprador está pronta acima." : "";
-    lines.push(urgent
-      ? `*Próximo passo:* hoje confirmas a disponibilidade dos que encaixam e marcas as visitas.${msg}`
-      : `*Próximo passo:* marcas visita ao primeiro da lista esta semana.${msg}`);
-  } else {
-    lines.push("*Próximo passo:* manda-me referências ZMPT ou links que tenhas, ou alarga a zona, e eu cruzo logo com estes critérios.");
-  }
-  if (!urgent && !b.financingApproved) {
-    lines.push("Atenção: sem pré-aprovação confirmada, uma proposta pode cair — vale a pena pedir já a simulação ao banco.");
-  }
-  return lines.join("\n");
 }
 
 export interface ComposeInput {
@@ -182,15 +170,21 @@ export function composeQualificationReply(i: ComposeInput): string {
   const msg = buyerMessage(b, shownPortal);
   if (msg) parts.push(msg);
 
+  const plan = buyerPlan(b, now, { hasProposals: internalTxt.length > 0 || portalShown, aboveCeilingOnly: [...internal, ...shownPortal].length > 0 && [...internal, ...shownPortal].every((p) => p.caveats.some((c) => /acima/.test(c))) });
+  const risks = formatRisks(plan.risks);
+  if (risks) parts.push(risks);
+  parts.push(formatNextAction(plan.next) + (!urgent && !b.financingApproved
+    ? "\nAtenção: sem pré-aprovação confirmada, uma proposta pode cair — vale a pena pedir já a simulação ao banco." : ""));
+  const tasks = formatTasks(plan.tasks);
+  if (tasks) parts.push(tasks);
+
   const items: ActionItem[] = [];
   if (i.ownSearched) items.push({ state: "executed", evidenceTool: "search_properties", text: `procurei na tua carteira (${internal.length} a encaixar)` });
   if (i.portalStatus === "ok") items.push({ state: "executed", evidenceTool: "search_similar_listings", text: `pesquisa nos portais (${i.portal.length} ${i.portal.length === 1 ? "anúncio" : "anúncios"})` });
-  if (msg) items.push({ state: "prepared", text: "mensagem para o comprador" });
-  items.push({ state: "awaiting_approval", text: "enviar ao comprador ou marcar visitas com terceiros — nada sai sem o teu ok" });
-  items.push({ state: "no_access", text: "carteira da Rede/Zome, disponibilidade real dos anúncios dos portais" });
+  items.push({ state: "prepared", text: [b.budgetMax?.status === "assumed" ? "contas do teto" : null, msg ? "mensagem para o comprador" : null, `${plan.tasks.length} tarefas`].filter(Boolean).join(", ") });
+  items.push({ state: "awaiting_approval", text: "gravar as tarefas nos Seguimentos; enviar ao comprador ou marcar visitas com terceiros — nada sai sem o teu ok" });
+  items.push({ state: "no_access", text: "carteira da Rede/Zome, disponibilidade real dos anúncios dos portais, decisão do banco" });
   parts.push(formatActionStates(items));
-
-  parts.push(nextStepBlock(b, internalTxt.length > 0 || portalShown, !!urgent, !!msg));
 
   if (questions.length) parts.push(`Para afinar, de uma vez:\n${questions.map((q) => `- ${q}`).join("\n")}`);
   return parts.join("\n\n");

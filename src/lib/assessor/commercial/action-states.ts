@@ -17,7 +17,7 @@ export interface ActionItem {
 export const STATE_LABEL: Record<ActionState, string> = {
   executed: "Executado",
   prepared: "Preparado",
-  awaiting_approval: "Aguarda aprovação",
+  awaiting_approval: "Pendente (aguarda o teu ok)",
   no_access: "Sem acesso",
 };
 

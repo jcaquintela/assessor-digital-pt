@@ -54,8 +54,9 @@ describe("critérios do comprador", () => {
     expect(b.financingApproved?.value).toBe(150000);
     expect(b.ownFunds?.value).toBe(15000);
     expect(b.deadline?.value).toBe("2026-11-30");
-    // (150k + 15k) / 1,08 = 152 777 → 152 000, sempre marcado como assumido.
-    expect(b.budgetMax).toMatchObject({ value: 152000, status: "assumed" });
+    // Crédito a 90% (máx. 150k) + 15k para entrada, IMT, Selo e escritura → ~114 000 €,
+    // sempre marcado como assumido (o antigo (150k+15k)/1,08 ignorava o limite de 90%).
+    expect(b.budgetMax).toMatchObject({ value: 114000, status: "assumed" });
   });
   it("um orçamento dito pelo consultor ganha ao assumido", () => {
     const { brief } = briefFromMessages([MIGUEL, "o orçamento máximo é 160 mil"], NOW);
@@ -74,7 +75,7 @@ describe("primeira ação útil", () => {
     expect(t.acted).toBe(true);
     expect(t.reply.startsWith(`${QUALIFICATION_MARKER}Miguel*`)).toBe(true);
     expect(t.reply).toMatch(/Confirmado: T1, Gaia, perto do metro/);
-    expect(t.reply).toMatch(/Assumido: teto de \*152[\s.]000 €\*/);
+    expect(t.reply).toMatch(/Assumido: teto de \*114[\s.\u00a0\u202f]000 €\*/);
     expect(t.reply).toMatch(/Prioridade alta: prazo 30\/11, faltam 16 dias/);
     expect(t.reply).toContain("https://app.meuafonso.com/imoveis/p1");
     expect(t.reply).not.toContain("/imoveis/p2");
@@ -128,12 +129,12 @@ describe("sem repetir perguntas", () => {
 describe("propostas de imóveis", () => {
   const brief = extractBuyerBrief(MIGUEL, NOW);
   it("cada proposta tem link, origem, preço, tipologia, local, metro, estado e porquê", () => {
-    const p = fromPortalListing({ url: PORTAL_URL, title: "T1 em Gaia ZMPT-12345, 139.000 €", host: "idealista.pt" }, brief);
+    const p = fromPortalListing({ url: PORTAL_URL, title: "T1 em Gaia ZMPT-12345, 109.000 €", host: "idealista.pt" }, brief);
     const txt = formatProposal(p, 1)!;
     expect(txt).toContain(PORTAL_URL);
     expect(txt).toContain("Origem: idealista.pt");
     expect(txt).toContain("Ref. ZMPT-12345");
-    expect(txt).toMatch(/139\.000 €|139 000 €/);
+    expect(txt).toMatch(/109\.000 €|109[\s\u00a0\u202f]000 €/);
     expect(txt).toContain("Tipologia: T1");
     expect(txt).toContain("Local: Gaia");
     expect(txt).toContain("Metro: por confirmar");
