@@ -3,12 +3,21 @@
 // Sem isto, um envio proativo fora da janela de 24h só se sabe "aceite pela
 // Meta" — que não é o mesmo que ter chegado. Aqui fechamos a prova.
 
+import {
+  buildDeliveryEvent,
+  extractMetaStatusError,
+  logDeliveryEvent,
+  providerTsToIso,
+  type DeliveryStage,
+} from "@/lib/messaging/delivery-log";
+
 const ORDER: Record<string, number> = { sent: 1, delivered: 2, read: 3, failed: 4 };
 
 export interface MetaStatus {
   id: string;
   status: string;
   timestamp?: string | number | null;
+  errors?: unknown[];
 }
 
 function tsToIso(ts: string | number | null | undefined): string {
@@ -29,9 +38,25 @@ export async function applyDeliveryStatuses(
 
     const { data: log } = await supabaseAdmin
       .from("whatsapp_send_logs")
-      .select("id, delivery_status, test_id")
+      .select("id, delivery_status, test_id, purpose, template_name")
       .eq("message_id", messageId)
       .maybeSingle();
+    const providerErr = status === "failed" ? extractMetaStatusError(s) : null;
+    logDeliveryEvent(
+      buildDeliveryEvent({
+        channel: "whatsapp",
+        stage: status as DeliveryStage,
+        provider_message_id: messageId,
+        provider_at: providerTsToIso(s.timestamp),
+        log_id: (log as any)?.id ?? null,
+        provider_code: providerErr?.code ?? null,
+        provider_subcode: providerErr?.subcode ?? null,
+        provider_title: providerErr?.title ?? null,
+        provider_detail: providerErr?.detail ?? null,
+        purpose: (log as any)?.purpose ?? null,
+        template: (log as any)?.template_name ?? null,
+      }),
+    );
     if (!log) continue;
 
     const current = ORDER[String((log as any).delivery_status ?? "sent")] ?? 1;
@@ -41,6 +66,17 @@ export async function applyDeliveryStatuses(
     const patch: Record<string, unknown> = { delivery_status: status };
     if (status === "delivered") patch['delivered_at'] = at;
     if (status === "read") patch['read_at'] = at;
+    if (status === "failed") {
+      // Falha de entrega depois de aceite (ok=true): o motivo vem do callback.
+      // Distingue-se de uma recusa no envio, que tem ok=false.
+      patch['error_type'] = "delivery_failed";
+      patch['error_code'] = providerErr?.code ?? null;
+      patch['error_subcode'] = providerErr?.subcode ?? null;
+      patch['error_message'] = [providerErr?.title, providerErr?.detail, `at ${at}`]
+        .filter(Boolean)
+        .join(" | ")
+        .slice(0, 500);
+    }
     await supabaseAdmin.from("whatsapp_send_logs").update(patch as never).eq("id", (log as any).id);
 
     if ((log as any).test_id) {

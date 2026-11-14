@@ -1,6 +1,8 @@
 // Server-only helper to send a WhatsApp text via the Meta Cloud API.
 // Never import from client code. NEVER log the access token.
 
+import { buildDeliveryEvent, logDeliveryEvent, redactProviderText } from "@/lib/messaging/delivery-log";
+
 export type SendTelemetry = {
   ok: boolean;
   httpStatus: number | null;
@@ -19,12 +21,8 @@ export type SendResult =
   | ({ ok: false; error: string } & { telemetry: SendTelemetry; logId?: string | null });
 
 function sanitize(msg: string | null | undefined): string | null {
-  if (!msg) return null;
-  // Redact anything that looks like a bearer token or long opaque secret.
-  return String(msg)
-    .replace(/EAA[0-9A-Za-z_\-]{20,}/g, "[redacted-token]")
-    .replace(/Bearer\s+[A-Za-z0-9_\-\.]+/gi, "Bearer [redacted]")
-    .slice(0, 500);
+  // Tokens, telefones, chat ids e emails nunca ficam no log.
+  return redactProviderText(msg);
 }
 
 /** Contexto de custo/proatividade de um envio (fica no log para COGS). */
@@ -100,7 +98,23 @@ async function persistLog(entry: {
       delivery_status: entry.telemetry.ok ? "sent" : "failed",
       test_id: meta.testId ?? null,
     } as never).select("id").maybeSingle();
-    return ((data as any)?.id as string) ?? null;
+    const logId = ((data as any)?.id as string) ?? null;
+    logDeliveryEvent(
+      buildDeliveryEvent({
+        channel: "whatsapp",
+        stage: entry.telemetry.ok ? "accepted" : "rejected",
+        provider_message_id: entry.telemetry.messageId,
+        log_id: logId,
+        http_status: entry.telemetry.httpStatus,
+        provider_code: entry.telemetry.errorCode,
+        provider_subcode: entry.telemetry.errorSubcode,
+        provider_title: entry.telemetry.errorType,
+        provider_detail: entry.telemetry.errorMessage,
+        purpose: meta.purpose ?? null,
+        template: meta.templateName ?? null,
+      }),
+    );
+    return logId;
   } catch (err) {
     console.error("[whatsapp-send] falha a gravar log:", err instanceof Error ? err.message : err);
     return null;

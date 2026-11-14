@@ -47,6 +47,10 @@ jobs:
           command: bash scripts/ci/run-isolation.sh
         env:
           CI: "true"
+          # Opt-in explícito. O teste recusa-se a correr (e falha) se
+          # TEST_SUPABASE_URL apontar para o backend da aplicação.
+          ALLOW_REMOTE_STORAGE_ISOLATION_TEST: "1"
+          ISOLATION_FORBIDDEN_REFS: "ydwthwusdlxlgyreulsd"
           TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
           # Chave publicável atual (sb_publishable_…). A antiga chave anon em JWT
           # deixou de ser aceite quando o projeto passou a chaves assimétricas.

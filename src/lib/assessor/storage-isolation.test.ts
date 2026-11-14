@@ -10,49 +10,44 @@
 // role key is available it falls back to pre-created accounts from
 // TEST_USER_A_* / TEST_USER_B_*.
 //
-// Env vars (CI secrets):
-//   TEST_SUPABASE_URL              (falls back to SUPABASE_URL / VITE_SUPABASE_URL)
-//   TEST_SUPABASE_PUBLISHABLE_KEY  (falls back to TEST_SUPABASE_ANON_KEY /
-//                                   SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PUBLISHABLE_KEY)
-//   TEST_SUPABASE_SERVICE_ROLE_KEY (falls back to SUPABASE_SERVICE_ROLE_KEY)
+// Env vars (dedicated TEST backend only — never the app's own backend):
+//   ALLOW_REMOTE_STORAGE_ISOLATION_TEST=1   explicit opt-in
+//   TEST_SUPABASE_URL, TEST_SUPABASE_PUBLISHABLE_KEY   (no fallbacks)
+//   TEST_SUPABASE_SERVICE_ROLE_KEY   (no fallback to the app's service key)
 //   TEST_USER_A_EMAIL/PASSWORD, TEST_USER_B_EMAIL/PASSWORD (only without service key)
 //
-// Locally the suite skips when nothing is configured. In CI (process.env.CI)
-// it fails loudly instead of silently skipping.
+// Without the opt-in the suite is skipped. With the opt-in but an unsafe or
+// incomplete config (e.g. URL = app backend) it fails loudly.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const url =
-  process.env.TEST_SUPABASE_URL || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-// Publishable (`sb_publishable_…`) keys are the current format; the legacy
-// `anon` JWT stops working once a project migrates to asymmetric signing keys,
-// which is exactly how this suite broke before. Accept either name.
-const anon =
-  process.env.TEST_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.TEST_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_PUBLISHABLE_KEY ||
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const serviceKey =
-  process.env.TEST_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { resolveIsolationTarget } from "./storage-isolation.guard";
 
-const aEmail = process.env.TEST_USER_A_EMAIL;
-const aPass = process.env.TEST_USER_A_PASSWORD;
-const bEmail = process.env.TEST_USER_B_EMAIL;
-const bPass = process.env.TEST_USER_B_PASSWORD;
+// Barreira: só corre contra um backend de TESTE dedicado e com opt-in explícito.
+// Nunca recorre ao URL/chaves da aplicação (ver storage-isolation.guard.ts).
+const target = resolveIsolationTarget(process.env as Record<string, string | undefined>);
 
-const canProvision = Boolean(url && anon && serviceKey);
-const hasFixtures = Boolean(url && anon && aEmail && aPass && bEmail && bPass);
-const hasEnv = canProvision || hasFixtures;
-
-if (!hasEnv && process.env.CI) {
-  throw new Error(
-    "storage-isolation: falta configuração. Define TEST_SUPABASE_URL + " +
-      "TEST_SUPABASE_PUBLISHABLE_KEY e (TEST_SUPABASE_SERVICE_ROLE_KEY ou as contas TEST_USER_*).",
-  );
+if (!target.enabled && target.misconfigured) {
+  // Opt-in pedido mas configuração insegura ou incompleta: falha alto.
+  throw new Error(`storage-isolation: ${target.reason}`);
+}
+if (!target.enabled) {
+  // eslint-disable-next-line no-console
+  console.warn(`[isolation] teste E2E de armazenamento ${target.reason}`);
 }
 
-const d = hasEnv ? describe : describe.skip;
+const url = target.enabled ? target.url : undefined;
+const anon = target.enabled ? target.anon : undefined;
+const serviceKey = target.enabled ? target.serviceKey : null;
+const aEmail = target.enabled ? target.fixtures?.aEmail : undefined;
+const aPass = target.enabled ? target.fixtures?.aPass : undefined;
+const bEmail = target.enabled ? target.fixtures?.bEmail : undefined;
+const bPass = target.enabled ? target.fixtures?.bPass : undefined;
+
+const canProvision = Boolean(target.enabled && serviceKey);
+
+const d = target.enabled ? describe : describe.skip;
 
 const BUCKET = "assessor-files";
 
@@ -155,10 +150,15 @@ async function provisionUser(tag: string) {
 
 async function deleteUser(userId: string) {
   if (!serviceKey) return;
-  await fetch(`${url}/auth/v1/admin/users/${userId}`, {
+  const res = await fetch(`${url}/auth/v1/admin/users/${userId}`, {
     method: "DELETE",
     headers: adminHeaders(),
   });
+  if (!res.ok) {
+    // Antes falhava em silêncio e deixava contas descartáveis para trás.
+    // eslint-disable-next-line no-console
+    console.error(`[isolation] não consegui apagar a conta de teste ${userId} [${res.status}]`);
+  }
 }
 
 async function signIn(email: string, password: string) {
@@ -215,7 +215,7 @@ d("assessor-files bucket cross-tenant isolation (real JWTs)", () => {
         if (b?.userId) await deleteUser(b.userId);
       } catch {}
     }
-  });
+  }, 60_000);
 
   it("B cannot list A's prefix via storage.list", async () => {
     const res = await b.client.storage.from(BUCKET).list(`${a.userId}/isolation-test`);

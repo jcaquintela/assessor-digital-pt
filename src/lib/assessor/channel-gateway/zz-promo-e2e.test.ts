@@ -4,10 +4,22 @@ import { setTelegramProviderOverride } from "@/lib/telegram/provider.server";
 import { getAdapter } from "./adapter";
 import { runInboundPipeline } from "./ingest.server";
 
-const url = process.env['SUPABASE_URL']!;
-const key = process.env['SUPABASE_SERVICE_ROLE_KEY']!;
+import { resolveRemoteTestTarget } from "../storage-isolation.guard";
 
-describe("resgate de código promocional em conta existente", () => {
+// Este teste cria contas, códigos promocionais e mensagens com a chave de
+// serviço. Antes usava o backend da aplicação (SUPABASE_URL) em cada execução
+// da suite e deixava contas Pro para trás. Agora só corre com opt-in explícito
+// contra um backend de TESTE dedicado (nunca o da aplicação).
+const target = resolveRemoteTestTarget(
+  process.env as Record<string, string | undefined>,
+  "ALLOW_REMOTE_PROMO_E2E_TEST",
+);
+if (!target.enabled && target.misconfigured) throw new Error(`promo-e2e: ${target.reason}`);
+const url = target.enabled ? target.url : "";
+const key = target.enabled ? target.serviceKey ?? "" : "";
+const d = target.enabled && key ? describe : describe.skip;
+
+d("resgate de código promocional em conta existente", () => {
   it("aplica o plano após confirmação", async () => {
     const admin: any = createClient(url, key, { auth: { persistSession: false } });
     const stamp = Date.now();

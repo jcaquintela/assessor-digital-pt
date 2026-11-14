@@ -4,6 +4,7 @@
 // (gateway) autenticado com LOVABLE_API_KEY + TELEGRAM_API_KEY.
 
 import { formatForTelegram, TELEGRAM_PARSE_MODE } from "./telegram-format";
+import { buildDeliveryEvent, logDeliveryEvent } from "@/lib/messaging/delivery-log";
 
 export interface TelegramSendResult {
   ok: boolean;
@@ -102,6 +103,19 @@ async function gatewayCall(
   }
 }
 
+function logTelegramSend(r: { ok: boolean; result?: any; error?: string; status?: number }) {
+  logDeliveryEvent(
+    buildDeliveryEvent({
+      channel: "telegram",
+      // O Telegram não envia recibos de entrega a bots: "accepted" é o máximo provável.
+      stage: r.ok ? "accepted" : "rejected",
+      provider_message_id: r.result?.message_id != null ? String(r.result.message_id) : null,
+      http_status: r.status ?? null,
+      provider_title: r.ok ? null : r.error ?? null,
+    }),
+  );
+}
+
 export const lovableTelegramProvider: TelegramProvider = {
   async sendText({ chatId, text, replyToMessageId }) {
     const body: Record<string, unknown> = {
@@ -116,6 +130,7 @@ export const lovableTelegramProvider: TelegramProvider = {
     if (!r.ok && /parse|entit|tag/i.test(r.error ?? "")) {
       r = await gatewayCall("sendMessage", { ...body, text: String(text ?? ""), parse_mode: undefined });
     }
+    logTelegramSend(r);
     return {
       ok: r.ok,
       messageId: r.result?.message_id ? String(r.result.message_id) : undefined,
@@ -136,6 +151,7 @@ export const lovableTelegramProvider: TelegramProvider = {
     if (!r.ok && /parse|entit|tag/i.test(r.error ?? "")) {
       r = await gatewayCall("sendMessage", { ...base, text: String(text ?? ""), parse_mode: undefined });
     }
+    logTelegramSend(r);
     return {
       ok: r.ok,
       messageId: r.result?.message_id ? String(r.result.message_id) : undefined,
@@ -161,6 +177,7 @@ export const lovableTelegramProvider: TelegramProvider = {
       ...(lastName ? { last_name: lastName } : {}),
       ...(vcard ? { vcard } : {}),
     });
+    logTelegramSend(r);
     return {
       ok: r.ok,
       messageId: r.result?.message_id ? String(r.result.message_id) : undefined,
@@ -175,6 +192,7 @@ export const lovableTelegramProvider: TelegramProvider = {
       document: url,
       ...(caption ? { caption } : {}),
     });
+    logTelegramSend(r);
     return {
       ok: r.ok,
       messageId: r.result?.message_id ? String(r.result.message_id) : undefined,
