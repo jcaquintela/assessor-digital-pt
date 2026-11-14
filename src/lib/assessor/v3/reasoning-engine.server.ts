@@ -580,6 +580,17 @@ async function runReasoningEngineInner(
   reply = shaped.reply;
   const cancelTool = shaped.cancelTool;
 
+  // Action-first (interruptor por conta, desligado): nenhum link sem origem
+  // num resultado deste turno e nenhuma pesquisa afirmada sem ter corrido.
+  try {
+    const { isAccountFlagEnabled } = await import("@/lib/flags/account-flag.server");
+    const { ACTION_FIRST_FLAG } = await import("@/lib/assessor/qualification/qualification.server");
+    if (await isAccountFlagEnabled(supabase, ACTION_FIRST_FLAG, userId)) {
+      const { guardSearchAndLinks } = await import("@/lib/assessor/qualification/url-provenance");
+      reply = guardSearchAndLinks(reply, toolResults as any).reply;
+    }
+  } catch { /* nunca bloquear a resposta */ }
+
   // Cauda do turno (finalização, rede de segurança, métricas, ofertas):
   // extraída para engine-tail.server.ts sem alteração de ordem nem de lógica.
   return await runEngineTail({

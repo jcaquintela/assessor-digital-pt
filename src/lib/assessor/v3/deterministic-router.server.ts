@@ -469,9 +469,28 @@ const openQuestionCase: RouterCase = async ({ ctx, supabase, userId, channel, tr
   return { reply: answered.reply };
 };
 
+// (0-) Qualificação de comprador action-first (interruptor por conta
+// `assessor.action_first_qualification.v1`, desligado). Com tipologia, zona e
+// orçamento aproximado age logo: carteira própria + portais, perguntas que
+// faltam agrupadas numa só mensagem. Só lê; nunca contacta ninguém.
+const buyerQualificationCase: RouterCase = async ({ supabase, userId, channel, trimmed, pending }) => {
+  if (pending) return null;
+  const { runBuyerQualification } = await import("@/lib/assessor/qualification/qualification.server");
+  const started = Date.now();
+  const turn = await runBuyerQualification({ supabase, userId, channel, trimmed });
+  if (!turn) return null;
+  await logAiTurn(supabase, {
+    userId, channel, intent: "buyer_qualification", route: "v3-deterministic",
+    latencyMs: Date.now() - started, success: true, error: null,
+    toolName: turn.acted ? "buyer_search" : "buyer_questions", toolSuccess: true, fallbackUsed: false,
+  });
+  return { reply: turn.reply };
+};
+
 // A ordem é a precedência real do motor. Não reordenar sem testes.
 export const DETERMINISTIC_ROUTER: Array<{ name: string; run: RouterCase }> = [
   { name: "prompt_shield", run: promptShieldCase },
+  { name: "buyer_qualification", run: buyerQualificationCase },
   { name: "elliptic_entity", run: ellipticEntityCase },
   { name: "person_brief", run: personBriefCase },
   { name: "drive_bulk_archive", run: driveBulkArchiveCase },
@@ -503,6 +522,7 @@ export async function runDeterministicRouter(rc: RouterCtx): Promise<RouterReply
 // testes caso a caso.
 export const ROUTER_CASES = {
   promptShieldCase,
+  buyerQualificationCase,
   ellipticEntityCase,
   personBriefCase,
   driveBulkArchiveCase,
