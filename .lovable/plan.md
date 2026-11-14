@@ -161,3 +161,97 @@ meuafonso.com -> /registo (nome, email, telemóvel opcional, aceitar termos)
 
 ### 8.9 Lugar no cronograma
 Entra na preparação (semana −2 a −1) como ponto 9 da secção 3. É obrigatório antes do dia 1, porque os 15 consultores entram por este fluxo.
+
+---
+
+## 9. Arquitetura de billing (em análise — só plano)
+
+### 9.1 Princípios
+- Uma subscrição por **conta**. Os dois canais ficam associados à mesma conta e nunca pagam a dobrar.
+- A fonte de verdade é o backend, que só muda através de webhooks do Stripe, verificados e idempotentes. O canal nunca decide se a conta está paga.
+- O consultor tem de ter o primeiro valor antes de pagar: trial de 14 dias **sem cartão**.
+- A memória nunca fica bloqueada ao expirar. O consultor consulta e exporta sempre; o que pára é a execução nova.
+- O preço de **39 €/mês é uma hipótese**. Não se altera o catálogo em produção antes do piloto.
+
+### 9.2 O que já existe (confirmado no código)
+| Peça | Estado |
+|---|---|
+| Checkout Stripe embutido (`createSubscriptionCheckout`, `ui_mode: embedded_page`) | E |
+| Compliance fiscal gerida pelo Stripe (`managed_payments`: IVA, faturas, fraude) | E (ativo no checkout) |
+| Portal do cliente (`createBillingPortal`) | E |
+| Webhook verificado com idempotência por `event_id` (`stripe_webhook_events`) | E |
+| Sincronização de estados: trialing, active, past_due, unpaid, canceled, incomplete_expired, payment_failed (`billing-sync.ts`) | E |
+| Trial de 14 dias sem cartão, um por conta, com "piso" do plano anterior (`trial.server.ts`, hook `trial-lifecycle`) | E |
+| Gating por `effective_tier()` | E |
+| Catálogo atual: Consultor 14,90 €, Pro 24,90 €, Team 39,90 € (mensal/anual) | E — **não bate** com a hipótese de 39 € plano único |
+| Checkout só a partir de páginas do dashboard (`/planos`, Definições) | E — contradiz o Zero-UI |
+| NIF/dados de faturação PT próprios | F (depende do que o checkout do Stripe recolhe) |
+| Quotas do trial e antifraude (1 trial por número/chat/email) | P (1 por conta; não cruza número e chat) |
+| Link de checkout de uso único enviado pela conversa | F |
+
+### 9.3 Fluxo alvo
+```text
+registo -> canal ligado -> trial 14 dias (sem cartão, quotas)
+  dia 1-2: primeiro valor (3 prioridades) | dia 10: resumo de valor + aviso
+  dia 12: link seguro de checkout (uso único, 30 min, abre página mínima)
+  -> Stripe Checkout -> webhook -> conta "active" -> confirmação no canal
+  dia 14 sem pagamento -> "expirado": memória só de leitura/exportação; captura nova suspensa
+```
+- **Página de pagamento:** uma página mínima (`/pagar/<token>`), sem login, aberta a partir da conversa. Mostra o checkout embutido e regressa com "Já está, volta à conversa".
+- **Portal:** "quero cancelar / mudar o cartão / ver faturas" na conversa leva a um link de uso único para o portal do Stripe.
+
+### 9.4 Estados e comportamento
+| Estado | Acesso | Mensagem no canal |
+|---|---|---|
+| trialing | completo, com quotas | lembretes nos dias 10 e 12 (no máximo 2) |
+| active | completo | confirmação da ativação e do recibo |
+| past_due | completo (período de tolerância de 7 dias) | 1 aviso com link para atualizar o pagamento |
+| unpaid / expired | memória só de leitura e exportação; sem novos avisos proativos | 1 mensagem com o link de reativação; depois silêncio |
+| canceled (fim do período) | acesso até `current_period_end`, depois igual a expired | confirmação da data |
+| reativação | volta ao estado anterior, sem perder dados | "Bem-vindo de volta" |
+
+### 9.5 Quotas e antifraude do trial
+- **Quotas do trial:** por exemplo, 100 registos, 20 áudios, 20 imagens e 2 avisos por dia. Os números exatos dependem da medição de custo (meta abaixo de 5 €/mês).
+- **Um trial por identidade:** mesmo número WhatsApp, chat Telegram ou email normalizado conta como a mesma pessoa.
+- Limite de contas por número/IP no registo e auditoria das tentativas.
+
+### 9.6 Impostos, faturação e RGPD (por validar com contabilista e jurista)
+- O Stripe com compliance gerida emite as faturas e trata o IVA. **Falta validar** se isto cumpre a faturação portuguesa: certificação de software da AT e NIF do cliente na fatura. Em alternativa, ligar a um programa de faturação certificado.
+- NIF opcional no checkout, para consultores com atividade aberta.
+- **RGPD:**
+  - dados de pagamento só no Stripe;
+  - na base de dados só o estado e os ids;
+  - retenção das faturas conforme a lei fiscal;
+  - apagamento da conta sem apagar as faturas legais.
+- Nenhuma destas regras se assume como cumprida sem confirmação.
+
+### 9.7 Telegram e pagamentos (validar antes de implementar)
+- O Telegram tem regras próprias para bens e serviços digitais vendidos **dentro** de bots: pode exigir Telegram Stars, e as lojas de apps têm regras próprias.
+- **Antes de enviar links de checkout pelo Telegram, verificar:**
+  - os Termos atuais da Bot Platform e de Pagamentos do Telegram;
+  - se um link para uma página web externa é permitido para uma subscrição de um serviço que não é só o bot.
+- Até haver essa validação, o upgrade feito a partir do Telegram é tratado como hipótese de risco.
+- Alternativa segura: enviar o link por email ou pelo WhatsApp, se estiver ligado.
+- O WhatsApp também tem políticas de comércio. Validar que enviar um link de pagamento da própria subscrição é permitido.
+
+### 9.8 Pricing (hipótese)
+- Um plano a 39 €/mês, com WhatsApp e Telegram incluídos e sem uso "ilimitado", com tetos justos.
+- Opção anual a testar mais tarde.
+- Os planos atuais (14,90 €, 24,90 €, 39,90 €) mantêm-se em produção até à decisão GO. Os consultores que já pagam ficam no plano que têm (grandfathering).
+- Novos preços entram como preços novos no Stripe, sem alterar ids existentes.
+
+### 9.9 Testes
+- Webhook duplicado → efeito aplicado uma só vez.
+- Eventos fora de ordem (`updated` antes de `created`) → estado final correto.
+- Trial: o 2.º trial com o mesmo número, chat ou email é recusado.
+- Expiração → memória legível e exportável; captura nova bloqueada com mensagem clara.
+- `past_due` → tolerância de 7 dias, 1 só aviso, depois expira.
+- Cancelamento → acesso até ao fim do período.
+- Reativação → nenhum dado perdido.
+- Link de checkout expirado ou já usado → recusado, com oferta de link novo.
+- Os dois canais ligados → uma só subscrição, e a confirmação chega num só canal.
+- Ensaio completo no ambiente de teste (cartão 4242, recusa, 3DS) antes de ativar pagamentos reais.
+
+### 9.10 Lugar no cronograma
+- **Durante o piloto (30 dias):** só trial, sem cobrança. A oferta de 39 € é feita no fim do piloto, para medir a conversão.
+- **Antes da oferta:** link de checkout pela conversa, página mínima, estados da secção 9.4, validações jurídicas (9.6 e 9.7).
