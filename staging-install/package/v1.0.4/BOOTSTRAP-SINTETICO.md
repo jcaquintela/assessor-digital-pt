@@ -40,7 +40,7 @@ Depois do B02, P00–P05 e Q00–Q05 correm **como `postgres`** (o dono históri
 | L7 | Sem lista de extensões permitidas da plataforma | Um CREATE EXTENSION que passa no ensaio pode ser recusado no staging |
 | L8 | `ensaio_super` existe só aqui; T01 e B* dependem dele | No staging as guardas abortam (intencional) |
 | L9 | Versão menor do PostgreSQL 17 e colação `C` | Texto deparsado (políticas, tipos) pode diferir; P05/Q03/Q04 comparam na mesma instância |
-| L10 | A 0000 vem de fora; o corpo de `has_role` e as notas comparados no P03/Q04 só conferem se for o ficheiro autêntico | B14 (PENDENTE; nada inventado) |
+| L10 | A 0000 vem de fora; o corpo de `has_role` e as notas comparados no P03/Q04 só conferem se for o ficheiro autêntico | B14 (PENDENTE: metadados registados, bytes não obtidos; nada inventado) |
 | L11 | A identidade sintética imita o formato do GoTrue para contas de email (B2), mas não é gravada pelo GoTrue | Prova a coerência que P04/P05/Q03 leem, não o comportamento do serviço de autenticação |
 
 Um ensaio aprovado **não** transfere automaticamente para o staging (B15).

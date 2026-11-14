@@ -299,16 +299,33 @@ describe("v1.0.4: B1/B2 bootstrap, E1–E10, 0000 pendente", () => {
     expect(read("tools/R10_arranque_controlado.sh")).toContain("PENDENTE|POR VERIFICAR");
   });
 
-  it("0000: continua PENDENTE, nada inventado; R05 e R10 recusam esse estado", () => {
-    expect(STAGING_0000_INPUT_V104.sha256Full).toBeNull();
-    expect(STAGING_0000_INPUT_V104.alternativeBootstrap).toBeNull();
+  it("0000: metadados localizados registados, bytes NÃO obtidos, continua PENDENTE; R05 e R10 recusam", () => {
+    const m = STAGING_0000_INPUT_V104;
+    expect(m.state).toBe("PENDENTE");
+    expect(m.bytesObtained).toBe(false);
+    expect(m.alternativeBootstrap).toBeNull();
+    expect(m.gitCommit).toBe("ab5187829bb989795d47a283e0f093b796843e72");
+    expect(m.gitBlob).toBe("24c38a525e549551e1fdf3028ff58e1e1906b0ee");
+    expect(m.sha256Full).toBe("a87578e560f0c97f9c1184d5fe3e2730f18de6e513b8e610c4808a28f98aecd2");
+    expect(m.sha256Full.startsWith(m.sha256Prefix)).toBe(true);
+    expect([m.bytes, m.lines, m.trailingNewline]).toEqual([2303, 44, false]);
+    expect(m.caveat).toMatch(/NÃO verificada/);
+    expect(m.caveat).toMatch(/3 INSERTs sintéticos/);
     const e = read("entradas/0000/ESPERADO");
     expect(e).toContain("\nestado=PENDENTE\n");
-    expect(e).toContain("\nsha256=PENDENTE\n");
-    expect(e).toContain(`\nsha256_prefixo=${STAGING_0000_INPUT_V104.sha256Prefix}\n`);
-    expect(e.match(/[0-9a-f]{64}/)).toBeNull();
-    for (const p of ["tools/R05_entrada_0000.sh", "tools/R10_arranque_controlado.sh"]) expect(read(p)).toMatch(/AUTENTICADO\)|AUTENTICADO\|ALTERNATIVO_AUDITADO\)/);
+    expect(e).toContain(`\nsha256=${m.sha256Full}\n`);
+    expect(e).toContain(`\ngit_blob=${m.gitBlob}\n`);
+    expect(e).toContain(`\ncommit=${m.gitCommit}\n`);
+    expect(e).toContain("\nbytes=2303\nlinhas=44\nlf_final=nao\n");
+    expect(e).toContain(`\nsha256_prefixo=${m.sha256Prefix}\n`);
+    // nenhum ficheiro 0000 (nem nenhum SQL) dentro de entradas/: os bytes não foram obtidos nem reconstruídos
+    expect(onDisk.filter((p) => p.startsWith("entradas/"))).toEqual(["entradas/0000/ESPERADO", "entradas/0000/README.md"]);
     expect(onDisk.some((p) => /0000_staging_access_control\.sql$/.test(p))).toBe(false);
+    const manifest = JSON.parse(read("MANIFEST.json"));
+    expect(manifest.staging_0000_input).toMatchObject({ state: "PENDENTE", bytes_obtained: false, included_in_package: false, sha256: m.sha256Full, git_blob: m.gitBlob, bytes: 2303 });
+    for (const p of ["tools/R05_entrada_0000.sh", "tools/R10_arranque_controlado.sh"]) expect(read(p)).toMatch(/AUTENTICADO\)|AUTENTICADO\|ALTERNATIVO_AUDITADO\)/);
+    const r05 = read("tools/R05_entrada_0000.sh");
+    for (const k of ["chave \"$ESP\" bytes", "chave \"$ESP\" linhas", "chave \"$ESP\" lf_final", "chave \"$ESP\" git_blob", "sha1sum"]) expect(r05).toContain(k);
   });
 
   it("documentos: nada executado, sem GO, sem promessas de isolamento absoluto", () => {

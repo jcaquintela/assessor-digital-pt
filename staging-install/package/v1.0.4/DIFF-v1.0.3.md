@@ -9,15 +9,15 @@ Comparação ficheiro a ficheiro com o `SHA256SUMS` da v1.0.3 (commit `fd4fdaca`
 | Ficheiro | Estado | sha256 v1.0.3 (16) | sha256 v1.0.4 (16) |
 |---|---|---|---|
 | ACCESS-MATRIX.md | idêntico | 7181fa2caded1846 | 7181fa2caded1846 |
-| BLOCKERS.md | ALTERADO | aea6f6bcd928ef23 | 2bcd37dc5783b222 |
-| BOOTSTRAP-SINTETICO.md | ALTERADO | 7630e8ee9bbcfd7c | 9e90c1dc675e5c15 |
+| BLOCKERS.md | ALTERADO | aea6f6bcd928ef23 | be22ea2a1bca1dc8 |
+| BOOTSTRAP-SINTETICO.md | ALTERADO | 7630e8ee9bbcfd7c | 553d13d9dc2716b3 |
 | COLLISIONS.md | idêntico | 4874a3fb6ee9a5b2 | 4874a3fb6ee9a5b2 |
 | EXECUTOR-PRIVILEGES.md | ALTERADO | 894c457bebc5b47c | b0dd8ee82f0ebd38 |
-| FINDINGS-RESOLUTION.md | ALTERADO | 68ce28c1b6ef78ce | 852917793385019e |
+| FINDINGS-RESOLUTION.md | ALTERADO | 68ce28c1b6ef78ce | 5a0363316eefd163 |
 | OWNER-ACCOUNT.md | idêntico | ccecb316555e682a | ccecb316555e682a |
-| README.md | ALTERADO | 0a65e6cbeeef1d97 | f6279e0c40f13013 |
+| README.md | ALTERADO | 0a65e6cbeeef1d97 | 1ad87a62ba97fef0 |
 | REHEARSAL-PLAN.md | ALTERADO | 24b544223c18469d | e7fda83cab61b047 |
-| REHEARSAL-TARGET.md | ALTERADO | 8ce8fba5c18be32a | 077e968b394fe91f |
+| REHEARSAL-TARGET.md | ALTERADO | 8ce8fba5c18be32a | bd7148b8ecaa3680 |
 | TEST-CRITERIA.md | ALTERADO | 801d8d4aa926ffc5 | 49de0e1c92326ea3 |
 | ensaio/B00_papeis_e_base.bloqueado.sql | ALTERADO | 467589ccc5efa4a3 | c200892c26f6c0d6 |
 | ensaio/B01_plataforma_sintetica.bloqueado.sql | ALTERADO | ac7f2d57307e7651 | f2d5565a5f066bb8 |
@@ -28,10 +28,10 @@ Comparação ficheiro a ficheiro com o `SHA256SUMS` da v1.0.3 (commit `fd4fdaca`
 | ensaio/R32_instancia_super.sql | NOVO | — | 2babc1d7f9fdf5ce |
 | ensaio/R40_ligacao.psql | RETIRADO | 587640447a91618b | — |
 | ensaio/R40_sessao.psql | NOVO | — | 9fed4d048e1db21a |
-| entradas/0000/ESPERADO | NOVO | — | 76186c6b8f0e79a8 |
-| entradas/0000/README.md | NOVO | — | 68c2e9676dd5dd0c |
+| entradas/0000/ESPERADO | NOVO | — | a311f84ecca01d2e |
+| entradas/0000/README.md | NOVO | — | 83d64dc2fd2eaf45 |
 | evidence/parse-check.txt | ALTERADO | 65e7e2e9b6fc094a | 56d47aeffde118bc |
-| evidence/shell-check.txt | NOVO | — | 7795a0d8a08a94cc |
+| evidence/shell-check.txt | NOVO | — | 197607eacb39c0df |
 | operador/E-EVIDENCIA.modelo | NOVO | — | 37d43a97f25d8d0b |
 | posflight/Q00_alvo.sql | idêntico | 194005d58f83da71 | 194005d58f83da71 |
 | posflight/Q01_estrutura.sql | idêntico | e70797606a43ab11 | e70797606a43ab11 |
@@ -59,7 +59,7 @@ Comparação ficheiro a ficheiro com o `SHA256SUMS` da v1.0.3 (commit `fd4fdaca`
 | sql/S4-04_indices_chaves_gatilhos.sql | idêntico | 8ba1230d83e7c879 | 8ba1230d83e7c879 |
 | sql/S4-05_politicas.sql | idêntico | 6276b63eb5bd6c1c | 6276b63eb5bd6c1c |
 | tests-db/T01_matriz_comportamental.bloqueado.sql | ALTERADO | 77e32ddcbcd9042e | 3736c98d96a927f3 |
-| tools/R05_entrada_0000.sh | NOVO | — | 4a4757ebe8139474 |
+| tools/R05_entrada_0000.sh | NOVO | — | b5a824cd7639d0a3 |
 | tools/R10_arranque_controlado.sh | ALTERADO | f8025f2699de7135 | 215f9f7d196b26c1 |
 | tools/R20_verificar_processo.sh | ALTERADO | e76569ba76103b99 | 3fb261c685fca5a1 |
 | tools/R40_ligar_cliente.sh | RETIRADO | 9e664e5209b83274 | — |

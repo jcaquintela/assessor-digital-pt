@@ -30,7 +30,7 @@ Princípio: **os scripts sozinhos não provam isolamento.** Provam o que o *proc
 
 | Passo | Ficheiro | Prova |
 |---|---|---|
-| R05 | `tools/R05_entrada_0000.sh` | Entrada 0000. Só aceita o estado registado em `entradas/0000/ESPERADO`: `AUTENTICADO` (sha256 integral) ou `ALTERNATIVO_AUDITADO`. **Hoje recusa (PENDENTE, B14)** |
+| R05 | `tools/R05_entrada_0000.sh` | Entrada 0000. Só aceita o estado registado em `entradas/0000/ESPERADO`: `AUTENTICADO` (sha256 integral, tamanho, linhas, LF final e blob Git) ou `ALTERNATIVO_AUDITADO`. **Hoje recusa (PENDENTE, B14)** |
 | R10 | `tools/R10_arranque_controlado.sh` | Marca a pasta e regista a unidade **antes** de qualquer processo. Recusa sem ficha E1–E10, com a 0000 pendente ou com o pacote alterado. Depois: nonce **fora** de PGDATA primeiro; `initdb` só local; postmaster arrancado **diretamente** com as opções críticas na linha de comando. Regista a **identidade estável**: início, executável (dispositivo:inode, sha256), cwd, namespaces, cgroup e início no `postmaster.pid`. Se falhar depois de arrancar, faz paragem rápida do **seu** postmaster e manda correr o R90 |
 | R20 | `tools/R20_verificar_processo.sh` | Sem SQL. O postmaster é o **mesmo processo** do R10, provado pela identidade estável e não pela linha de comando (V5). Confere o `postmaster.pid` e o `.lock` do socket, e que o socket em escuta é descritor do processo. A unidade só tem o postmaster e filhos dele. Rede, montagens, ambiente e HOME. Configuração completa sem pipelines (V4). Nonce fora de PGDATA e sysid |
 | R40 | `tools/R40_sessao.sh` + `ensaio/R40_sessao.psql` | **Wrapper único** (S1/S2), ver `REHEARSAL-PLAN.md` §2 |

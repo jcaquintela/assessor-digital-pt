@@ -20,7 +20,7 @@
 - Todos os REVOKE e o acesso **só pelo servidor**; as APIs de servidor continuam a **não existir** (B3).
 - **F1 `pg_get_userbyid(oid)`**: válido, não alterado.
 - Quarentena, `ACCESS-MATRIX.md`, P00, P01, P03–P05, Q00–Q05: iguais à v1.0.3.
-- **Entrada 0000 do staging: continua PENDENTE** (só o prefixo sha256 é conhecido). Nada foi inventado nem substituído; só existe a interface `entradas/0000/` (B14).
+- **Entrada 0000 do staging: continua PENDENTE.** Metadados localizados no código do staging e registados (commit `ab518782`, blob `24c38a52`, sha256 integral `a87578e5…aecd2`, 2303 bytes, 44 linhas, sem LF final); os **bytes originais não foram obtidos** e o ficheiro não está no pacote. Nada foi inventado nem substituído; só existe a interface `entradas/0000/` (B14).
 
 ## O que muda (detalhe em `FINDINGS-RESOLUTION.md`, medido em `DIFF-v1.0.3.md`)
 
@@ -60,7 +60,7 @@
 1. **Integridade**: `sha256sum -c SHA256SUMS`.
 2. **Preflight só de leitura**: P00 → P04 `APROVADO` (P01/P02 "só como dono histórico"; o P02 diz INSTALADA ou NOVA); P05 `REGISTO VÁLIDO`.
 3. **Executor efetivo** (externo, B2): obrigatório. **Pendente.**
-4. **Entrada 0000** (B14): ficheiro histórico autenticado ou bootstrap alternativo auditado, numa nova versão. **Pendente.**
+4. **Entrada 0000** (B14): transferência autorizada dos bytes originais (metadados já registados) e conferência pelo R05; ou bootstrap alternativo auditado. **Pendente.**
 5. **Ensaio descartável** (autorização separada): `REHEARSAL-PLAN.md`, com E1–E10 cumpridas. **Não feito; sem GO.**
 6. **Instalação** (autorização separada): S4-00 → S4-05, um ficheiro por migração.
 7. **Posflight só de leitura**: Q00 → Q05 com as impressões do P05. Qualquer erro ⇒ parar e reportar.
