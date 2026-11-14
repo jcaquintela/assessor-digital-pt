@@ -75,3 +75,81 @@ Só plano. Nada é alterado até aprovação explícita de cada fase.
 - Servidor MCP: manter (para equipa) ou retirar.
 - Avisos em ambos os canais por omissão, ou só no preferido.
 - Período de transição da app web.
+
+---
+
+# PRIORIDADE DO PROPRIETÁRIO — Motor proativo orientado a receita
+
+O motor proativo é o diferencial central: o objetivo é gerar mais receita ao consultor, não só gerir tarefas. Esta secção tem precedência sobre as fases 1–8 acima (ver "Ordem revista").
+
+## A. Estado atual (observado, sem assumir que funciona)
+- Peças existentes no código: `assessor_nudges` (caminho único), `proactive-tick`, `dispatchPendingNudges` com expiração e texto recalculado, briefing da manhã enriquecido P1/P2/P3, revisão do fim do dia, pré-evento, preparação de reunião (`meeting-briefing`), guia de objeções, detetor de oportunidades + resumo (`opportunities/detector`, `digest`), `next-best-action`, Mentor, conflitos de agenda, `outcomes`.
+- Dados reais dos últimos 60 dias em `assessor_nudges`: só 3 tipos aparecem — silêncio do consultor (133 enviados, 47 descartados), tarefa em atraso (77 enviados) e conflito de agenda (90 descartados, 1 pendente). **Nenhum aviso de oportunidade comercial** (comprador compatível, angariação parada, proposta sem resposta, reativação) foi registado. A maioria do que o motor envia hoje é sobre tarefas, não receita.
+- `proactive-tick` só corre para utilizadores com a flag v3 (hoje 1 conta segundo a memória do projeto) — **[D]** quantos consultores recebem de facto avisos.
+- Não existe medição de resultado ligada ao aviso (aviso → ação → visita/proposta/negócio).
+
+## B. Fase 0 obrigatória — Auditoria do motor existente (antes de mudar)
+- Inventário de cada gerador: o que deteta, de que tabelas lê, cadência, limites, dedupe_key, taxa enviado/descartado/respondido.
+- Rever as 90 dispensas de conflito e os 47 silêncios descartados: ruído ou expiração correta.
+- Confirmar se `opportunities/detector` e `next-best-action` chegam a gerar avisos ou só alimentam o painel web (que vai desaparecer).
+- Aceite quando: tabela de cobertura por caso de uso (abaixo) com "existe/parcial/falta" baseada em consultas e testes, não em leitura de nomes.
+
+## C. Ciclo contínuo alvo
+```text
+sinais -> deteção -> priorização -> mensagem contextual -> próxima ação
+   ^                                                          |
+   |                                                          v
+ medição <- follow-up <- execução assistida <- confirmação do consultor
+```
+1. **Sinais**: novas pessoas/leads, interações, visitas, propostas, prazos de negócio, estado de imóveis, agenda, silêncio de contactos, histórico de compradores.
+2. **Deteção**: regras determinísticas por caso (sem LLM para decidir se há oportunidade); LLM só para redigir.
+3. **Priorização**: pontuação = potencial comercial (valor/fase do negócio) × urgência (tempo desde último contacto, prazo) × confiança (qualidade dos dados). Teto diário por consultor; a melhor oportunidade vai no briefing.
+4. **Mensagem**: curta, PT-PT, com o porquê ("o João viu o T2 há 9 dias e não houve contacto"), no canal preferido.
+5. **Próxima ação concreta**: botões/opções ("Ligo-lhe / Envio mensagem / Adiar 3 dias / Não interessa").
+6. **Confirmação e execução assistida**: nada externo sai sem confirmação explícita; rascunho de mensagem para o cliente que o consultor copia ou aprova.
+7. **Follow-up**: tarefa criada automaticamente com data; reavaliação se não houver resultado.
+8. **Medição**: cada aviso guarda o resultado (aceite, ignorado, executado, levou a visita/proposta/negócio).
+
+## D. Casos de uso e lacunas
+| Caso | Sinal | Hoje |
+|---|---|---|
+| Lead sem contacto | pessoa nova sem interação em X h | parcial (silêncio do consultor ≠ lead esquecida) |
+| Comprador compatível com imóvel | `property_interests` + critérios vs. imóvel novo/baixa de preço | falta como aviso |
+| Angariação parada | imóvel ativo sem visitas/marketing há X dias | falta como aviso |
+| Visita sem follow-up | visita passada sem interação posterior | parcial ("como correu?" pós-evento) |
+| Proposta sem resposta | `property_offers` pendente há X dias | falta como aviso |
+| Negócio em risco | `deal_deadlines` perto + fase parada | parcial (prazos), sem risco |
+| Cliente antigo reativável | negócio concluído há 6–24 meses | falta |
+| Preparação de reunião | evento com pessoa/imóvel conhecido | existe (meeting-briefing) — validar uso real |
+
+## E. Regras transversais
+- **Anti-spam**: teto diário (reaproveitar `max_daily_nudges`), agrupamento no briefing quando há vários, silêncio após 2 ignorados do mesmo tipo, "não me lembres disto" permanente (`alert_mutes`).
+- **Horários**: 9h–20h, sem domingos (já existe), preferências por canal.
+- **Deduplicação entre canais**: um aviso lógico = uma entrega (`outbound_deliveries`), mesmo com WhatsApp e Telegram ligados.
+- **Explicabilidade**: todo o aviso diz porquê; "porque me disseste isto?" responde com os factos.
+- **Privacidade**: notas confidenciais nunca em textos para terceiros; nenhum dado de um cliente aparece na mensagem de outro.
+- **Consentimento**: qualquer ação externa (mensagem/email a cliente, evento em calendário partilhado) só após confirmação explícita; registado.
+
+## F. KPIs (com honestidade causal)
+- Adoção: consultores ativos/semana, avisos lidos/respondidos, taxa de "não interessa".
+- Ações: próximas ações aceites e executadas por aviso.
+- Atividade comercial: contactos feitos, visitas marcadas, propostas enviadas após aviso.
+- Resultado: negócios fechados e receita (comissão) com aviso na cadeia.
+- **Correlação vs. causalidade**: "atribuível" = houve aviso → ação na cadeia (correlação). Para causalidade: grupo de controlo (holdout de ~10–20% dos avisos por tipo não enviados, aleatório) e comparação de taxas de conversão. Sem holdout, reportar só como correlação.
+
+## G. Critérios de aceitação do motor
+- Cada caso da tabela tem gerador com teste golden (dispara / não dispara / expira / dedupe).
+- 0 avisos duplicados entre canais num ensaio com WhatsApp + Telegram.
+- Nenhum aviso sem "porquê" e sem próxima ação.
+- Teto diário respeitado em 100% dos testes.
+- Cada aviso enviado tem registo de resultado após 7 dias.
+- Painel admin mostra funil aviso→ação→visita→proposta→negócio por tipo, com e sem holdout.
+
+## H. Ordem revista das fases
+1. Fase 0 — auditoria do motor proativo (B).
+2. Identidade + inbox idempotente (fases 1–2) — necessárias para saber o canal e não duplicar.
+3. Medição de resultados por aviso (antes de criar novos tipos, para comparar).
+4. Novos detetores por ordem de potencial: proposta sem resposta → comprador compatível → visita sem follow-up → lead sem contacto → angariação parada → negócio em risco → reativação.
+5. Despacho multi-canal com preferências e dedupe (fase 5).
+6. Vinculação/revogação, memória por conta, configuração por conversa, retirada da app web (fases 3, 4, 6, 7, 8).
+7. Holdout e relatório causal.
