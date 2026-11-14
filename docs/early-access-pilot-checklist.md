@@ -4,8 +4,22 @@ Estado: por autorizar. Nada disto está ligado. Cada passo precisa de "OK" expl�
 
 ## 0. Pré-condições
 - [ ] Código Early Access publicado (hoje só existe em desenvolvimento).
-- [ ] Beta testers do piloto confirmados: Júlio Quintela, Iolanda Ventura, Pedro Cunha.
-- [ ] Decidido o caso Telmo Sousa (ainda é beta; sem beta perde o WhatsApp, porque o plano Base não o inclui).
+- [x] Composição final decidida pelo proprietário (14/11/2026): 5 lugares = Júlio Quintela, Iolanda Ventura, Pedro Cunha + 2 convidados por convite individual (uso único, 7 dias).
+- [ ] Telmo Sousa sai do piloto: retirar APENAS o beta, depois de aprovação explícita do efeito (ver abaixo). Ainda é beta.
+- [ ] Piloto em GO (critérios do fecho P0). Enquanto for NO-GO: nenhum convite gerado nem enviado.
+
+### Efeito verificado de retirar o beta ao Telmo (só leitura, 14/11/2026)
+- Conta única que corresponde: "Telmo Sousa", email @zome.pt, papel `consultant`, conta real.
+- Plano guardado `base`, sem subscrição Stripe, faturação `none`, trial expirado em 24/08. Sem linha de acesso antecipado, sem flags próprias.
+- Dados: 1 pessoa, 1 imóvel, 1 canal WhatsApp ligado; última mensagem 23/08/2026.
+- Hoje recebe plano efetivo "hub" só por ser beta. Sem beta passa a `base`: perde os módulos acima de Base.
+- WhatsApp: o código só bloqueia o Base ao LIGAR o canal; a ligação existente fica. A regra de produto diz que Base não inclui WhatsApp: se a ligação cair, não a pode refazer. Comportamento em conversa não testado em runtime.
+- Nada é apagado: conta, dados, histórico e ligação ficam.
+
+### Reserva de 2 convites (preparada, NÃO emitida)
+- Emissor: Júlio (único beta com `access.referral_invites.v1`, a ligar só para ele no dia do GO).
+- A quota técnica é 3 por beta: o 3.º convite tem de ficar por usar. Disciplina manual, ou limite próprio do piloto (alteração de código ainda não feita).
+- Iolanda e Pedro Cunha não emitem (sem a flag).
 - [ ] Teste real da reserva atómica de convites contra a base de dados (dois consumos em simultâneo → só um passa).
 
 ## 1. Ligar o bloqueio (afeta só contas NOVAS)
