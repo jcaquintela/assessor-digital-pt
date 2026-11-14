@@ -19,12 +19,15 @@ Estado: por autorizar. Nada disto está ligado. Cada passo precisa de "OK" expl�
 
 ### Reserva de 2 convites (preparada, NÃO emitida)
 - Piloto `afonso_v2` em `no_go`: a base de dados recusa qualquer convite do piloto enquanto assim estiver.
-- Teto próprio de 2 (vivos + usados), só o Júlio como emissor, 7 dias, uso único, sem duplicados por reentrega da mesma mensagem. A quota geral de 3 dos beta não muda e não é usada.
-- Iolanda e Pedro Cunha não emitem convites do piloto.
+- Teto global de 2 lugares (vivos + usados), 7 dias, uso único, sem duplicados (mesma mensagem ou mesmo pedido na administração). A quota geral de 3 dos beta não muda e não é usada.
+- Quem emite e anula convites do piloto: o emissor designado (Júlio) ou qualquer Super Admin, pela conversa (WhatsApp/Telegram) ou pela página "Acesso antecipado" → "Piloto AFONSO 2.0". Support Admin só vê. Consultores (incl. Iolanda, Pedro Cunha) não emitem.
+- Todos os caminhos passam pela mesma regra na base de dados; escrita direta de convites do piloto, reativação, prolongamento, anulação por fora e lugares sem convite são recusados.
+- A página geral de convites da equipa não lista nem anula convites do piloto; convites gerais, links de onboarding, convites Telegram e códigos promocionais não dão lugar no piloto.
+- Envio: o código aparece uma vez a quem o gerou, para partilhar pessoalmente. Envio automático pelo Afonso a uma conta em espera NÃO está implementado (decisão pendente).
 
 ### No dia do GO (cada passo com OK explícito)
 - [ ] Passar `pilots.status` de `no_go` para `go`.
-- [ ] Ligar `pilot.v2_invites.v1` APENAS para a conta do Júlio.
+- [ ] Ligar `pilot.v2_invites.v1` só para quem vai pedir convites na conversa (Júlio e, se decidido, outro Super Admin). A página de administração não precisa deste interruptor.
 - [ ] Ligar `pilot.v2_entitlement.v1` (global) ANTES de ligar qualquer função 2.0 globalmente.
 - Recuo: desligar `pilot.v2_entitlement.v1` volta à regra anterior; `pilots.status = closed` desliga as funções 2.0 a todos os participantes.
 - [ ] Teste real da reserva atómica de convites contra a base de dados (dois consumos em simultâneo → só um passa).

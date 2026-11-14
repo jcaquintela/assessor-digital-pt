@@ -1,5 +1,12 @@
 // Piloto AFONSO 2.0 — participação e convites do piloto.
 // Não importa os interruptores (é importado por eles). Falha fechada.
+//
+// Convites do piloto: UM caminho para todos (conversa WhatsApp/Telegram e
+// administração). Quem pode emitir, o teto global, os 7 dias, o uso único,
+// a idempotência e a anulação são decididos na base de dados
+// (`issue_pilot_invite` / `revoke_pilot_invite`); gatilhos recusam qualquer
+// escrita direta. Quem pode emitir: o emissor designado do piloto ou um
+// super_admin. support_admin só vê.
 
 import {
   generateInviteCode, hashInviteCode, REFERRAL_REVOKE_NEED_CODE, REFERRAL_REVOKED_REPLY, type ReferralCommand,
@@ -23,45 +30,91 @@ export async function isPilotParticipant(supabase: any, userId: string | null | 
   }
 }
 
+/** Espelho da regra da base de dados, só para mostrar/ocultar opções. A base de dados decide. */
+export async function canManagePilotInvites(supabase: any, userId: string | null | undefined, pilotKey = PILOT_KEY): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const { data: p } = await supabase.from("pilots").select("invite_issuer_user_id").eq("key", pilotKey).maybeSingle();
+    if (p?.invite_issuer_user_id === userId) return true;
+    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    return (roles ?? []).some((r: any) => r.role === "super_admin");
+  } catch {
+    return false;
+  }
+}
+
+export type PilotIssueResult = { outcome: PilotInviteOutcome | "error"; code: string | null; remaining: number; ttlDays: number };
+
+/** Emissão comum a todos os canais. O código só existe aqui, nunca é guardado. */
+export async function issuePilotInvite(
+  supabase: any,
+  p: { issuer: string; idempotencyKey: string | null; note?: string | null; via: string },
+  pilotKey = PILOT_KEY,
+): Promise<PilotIssueResult> {
+  const { data: pilot } = await supabase.from("pilots").select("invite_ttl_days").eq("key", pilotKey).maybeSingle();
+  const ttlDays = Number(pilot?.invite_ttl_days ?? 7);
+  for (let i = 0; i < 3; i++) {
+    const code = generateInviteCode();
+    const { data, error } = await supabase.rpc("issue_pilot_invite", {
+      _pilot_key: pilotKey, _issuer: p.issuer, _token_hash: await hashInviteCode(code),
+      _idempotency_key: p.idempotencyKey, _note: p.note ?? null, _issued_via: p.via,
+    });
+    if (error && /duplicate|unique/i.test(error.message ?? "")) continue; // colisão de código improvável
+    if (error) return { outcome: "error", code: null, remaining: 0, ttlDays };
+    const row = (Array.isArray(data) ? data[0] : data) as { out_outcome?: PilotInviteOutcome; out_remaining?: number } | null;
+    const outcome = row?.out_outcome ?? "error";
+    return { outcome, code: outcome === "issued" ? code : null, remaining: Number(row?.out_remaining ?? 0), ttlDays };
+  }
+  return { outcome: "error", code: null, remaining: 0, ttlDays };
+}
+
+/** Anulação comum a todos os canais (por id na administração, por código na conversa). */
+export async function revokePilotInvite(
+  supabase: any,
+  p: { actor: string; inviteId?: string | null; code?: string | null },
+  pilotKey = PILOT_KEY,
+): Promise<"revoked" | "not_found" | "error"> {
+  const { data, error } = await supabase.rpc("revoke_pilot_invite", {
+    _pilot_key: pilotKey, _actor: p.actor, _invite_id: p.inviteId ?? null,
+    _token_hash: p.code ? await hashInviteCode(p.code) : null,
+  });
+  if (error) return "error";
+  return data === "revoked" ? "revoked" : "not_found";
+}
+
 /**
- * "dá-me um convite" / "os meus convites" / "anula o convite …" para o emissor do piloto.
- * Devolve null quando não se aplica (não é o emissor, ou anulação de um convite que não é do piloto):
- * o pedido segue para o caminho geral de convites, sem mudanças.
+ * "dá-me um convite" / "os meus convites" / "anula o convite …" na conversa.
+ * Devolve null quando não se aplica (quem pede não gere convites do piloto,
+ * ou anulação de um convite que não é do piloto): o pedido segue para o
+ * caminho geral de convites, sem mudanças.
  */
 export async function handlePilotInviteCommand(
   supabase: any,
   userId: string,
   cmd: ReferralCommand,
-  opts: { idempotencyKey?: string | null } = {},
+  opts: { idempotencyKey?: string | null; channel?: string | null } = {},
   pilotKey = PILOT_KEY,
 ): Promise<string | null> {
-  const { data: pilot } = await supabase.from("pilots")
-    .select("status, invite_issuer_user_id, invite_cap, invite_ttl_days").eq("key", pilotKey).maybeSingle();
-  if (!pilot || pilot.invite_issuer_user_id !== userId) return null;
-
   if (cmd.kind === "revoke") {
+    if (!(await canManagePilotInvites(supabase, userId, pilotKey))) return null;
     if (!cmd.code) return REFERRAL_REVOKE_NEED_CODE;
-    const { data } = await supabase.from("access_invites")
-      .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: userId } as never)
-      .eq("token_hash", await hashInviteCode(cmd.code))
-      .eq("issuer_user_id", userId)
-      .eq("pilot_key", pilotKey)
-      .eq("status", "issued")
-      .select("id");
-    // Não é um convite do piloto: segue para o caminho geral.
-    return (data ?? []).length ? REFERRAL_REVOKED_REPLY : null;
+    const r = await revokePilotInvite(supabase, { actor: userId, code: cmd.code }, pilotKey);
+    return r === "revoked" ? REFERRAL_REVOKED_REPLY : null;
   }
 
   if (cmd.kind === "list") {
+    if (!(await canManagePilotInvites(supabase, userId, pilotKey))) return null;
+    const { data: pilot } = await supabase.from("pilots").select("status, invite_cap").eq("key", pilotKey).maybeSingle();
+    if (!pilot) return null;
     const { data } = await supabase.from("access_invites")
-      .select("status, expires_at, created_at").eq("pilot_key", pilotKey).eq("issuer_user_id", userId)
+      .select("status, expires_at, created_at").eq("pilot_key", pilotKey)
       .order("created_at", { ascending: false }).limit(10);
     const rows = (data ?? []) as Array<{ status: string; expires_at: string; created_at: string }>;
     const live = rows.filter((r) => r.status === "used" || (r.status === "issued" && new Date(r.expires_at).getTime() > Date.now())).length;
     const left = Math.max(0, Number(pilot.invite_cap) - live);
     if (!rows.length) {
       return pilot.status === "go"
-        ? `Ainda não geraste convites do piloto. Tens ${left} disponíveis — pede "dá-me um convite".`
+        ? `Ainda não há convites do piloto. Há ${left} disponíveis — pede "dá-me um convite".`
         : PILOT_NOT_OPEN_REPLY;
     }
     const fmt = (d: string) => new Date(d).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", timeZone: "Europe/Lisbon" });
@@ -72,27 +125,18 @@ export async function handlePilotInviteCommand(
         : `por usar, até ${fmt(r.expires_at)}`;
       return `• Convite do piloto de ${fmt(r.created_at)}: ${st}`;
     });
-    return `${lines.join("\n")}\n\nPodes gerar mais ${left}.`;
+    return `${lines.join("\n")}\n\nPodem gerar-se mais ${left}.`;
   }
 
-  // issue — o teto, o emissor, o estado do piloto e a idempotência são decididos na base de dados.
-  for (let i = 0; i < 3; i++) {
-    const code = generateInviteCode();
-    const { data, error } = await supabase.rpc("issue_pilot_invite", {
-      _pilot_key: pilotKey, _issuer: userId, _token_hash: await hashInviteCode(code),
-      _idempotency_key: opts.idempotencyKey ?? null,
-    });
-    if (error && /duplicate|unique/i.test(error.message ?? "")) continue; // colisão de código improvável
-    if (error) return PILOT_ERROR_REPLY;
-    const row = (Array.isArray(data) ? data[0] : data) as { out_outcome?: PilotInviteOutcome; out_remaining?: number } | null;
-    switch (row?.out_outcome) {
-      case "issued": return pilotInviteIssuedReply(code, Number(row.out_remaining ?? 0), Number(pilot.invite_ttl_days));
-      case "replayed": return PILOT_REPLAYED_REPLY;
-      case "not_open": return PILOT_NOT_OPEN_REPLY;
-      case "cap_reached": return PILOT_CAP_REPLY;
-      case "not_issuer": case "no_pilot": return null;
-      default: return PILOT_ERROR_REPLY;
-    }
+  const r = await issuePilotInvite(supabase, {
+    issuer: userId, idempotencyKey: opts.idempotencyKey ?? null, via: `chat:${opts.channel ?? "unknown"}`,
+  }, pilotKey);
+  switch (r.outcome) {
+    case "issued": return pilotInviteIssuedReply(r.code!, r.remaining, r.ttlDays);
+    case "replayed": return PILOT_REPLAYED_REPLY;
+    case "not_open": return PILOT_NOT_OPEN_REPLY;
+    case "cap_reached": return PILOT_CAP_REPLY;
+    case "not_issuer": case "no_pilot": return null;
+    default: return PILOT_ERROR_REPLY;
   }
-  return PILOT_ERROR_REPLY;
 }

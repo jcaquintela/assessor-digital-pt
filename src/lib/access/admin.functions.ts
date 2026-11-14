@@ -25,6 +25,7 @@ export const getEarlyAccessOverview = createServerFn({ method: "GET" })
     const [inv, wl, acc, flags] = await Promise.all([
       sa.from("access_invites")
         .select("id, source, issuer_user_id, status, note, expires_at, used_by, used_at, used_channel, created_at")
+        .is("pilot_key", null) // convites do piloto: secção própria, regras próprias
         .order("created_at", { ascending: false }).limit(200),
       sa.from("access_waitlist")
         .select("user_id, channel, consent_contact, consent_at, notify, status, created_at")
@@ -94,7 +95,7 @@ export const revokeAccessInvite = createServerFn({ method: "POST" })
     const { supabaseAdmin: sa } = await import("@/integrations/supabase/client.server");
     const { data: rows } = await sa.from("access_invites")
       .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: context.userId } as never)
-      .eq("id", data.id).eq("status", "issued").select("id");
+      .eq("id", data.id).eq("status", "issued").is("pilot_key", null).select("id");
     await audit(sa, context.userId, "access.invite_revoked", null, { invite_id: data.id });
     return { revoked: (rows ?? []).length > 0 };
   });

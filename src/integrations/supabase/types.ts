@@ -44,6 +44,7 @@ export type Database = {
           expires_at: string
           id: string
           idempotency_key: string | null
+          issued_via: string | null
           issuer_user_id: string | null
           note: string | null
           pilot_key: string | null
@@ -61,6 +62,7 @@ export type Database = {
           expires_at: string
           id?: string
           idempotency_key?: string | null
+          issued_via?: string | null
           issuer_user_id?: string | null
           note?: string | null
           pilot_key?: string | null
@@ -78,6 +80,7 @@ export type Database = {
           expires_at?: string
           id?: string
           idempotency_key?: string | null
+          issued_via?: string | null
           issuer_user_id?: string | null
           note?: string | null
           pilot_key?: string | null
@@ -5212,7 +5215,9 @@ export type Database = {
       issue_pilot_invite: {
         Args: {
           _idempotency_key: string
+          _issued_via?: string
           _issuer: string
+          _note?: string
           _pilot_key: string
           _token_hash: string
         }
@@ -5268,6 +5273,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      revoke_pilot_invite: {
+        Args: {
+          _actor: string
+          _invite_id: string
+          _pilot_key: string
+          _token_hash: string
+        }
+        Returns: string
       }
       text_norm: { Args: { _t: string }; Returns: string }
       tier_at_least: {

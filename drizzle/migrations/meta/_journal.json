@@ -36,6 +36,13 @@
       "when": 1794671312691,
       "tag": "0004_pilot_v2_entitlement_and_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794672232711,
+      "tag": "0005_pilot_invites_admin_rbac_and_guards",
+      "breakpoints": true
     }
   ]
 }

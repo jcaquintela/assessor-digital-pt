@@ -196,11 +196,11 @@ export async function handleReferralCommand(
   supabase: any,
   userId: string,
   text: string,
-  opts: { idempotencyKey?: string | null } = {},
+  opts: { idempotencyKey?: string | null; channel?: string | null } = {},
 ): Promise<string | null> {
   const cmd = parseReferralCommand(text);
   if (!cmd) return null;
-  // Emissor do piloto: convites do piloto, com teto próprio (não mexe na quota geral).
+  // Emissor do piloto ou super_admin: convites do piloto, com teto próprio (não mexe na quota geral).
   if (await isAccountFlagEnabled(supabase, PILOT_INVITES_FLAG, userId)) {
     const { handlePilotInviteCommand } = await import("@/lib/pilot/pilot-access.server");
     const r = await handlePilotInviteCommand(supabase, userId, cmd, opts);

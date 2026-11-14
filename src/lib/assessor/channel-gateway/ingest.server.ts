@@ -320,6 +320,7 @@ async function routeInbound(
       const { handleReferralCommand } = await import("@/lib/access/early-access.server");
       const r = await handleReferralCommand(supabaseAdmin, userId, content, {
         idempotencyKey: inbound.externalMessageId ? `${adapter.channel}:${inbound.externalMessageId}` : null,
+        channel: adapter.channel,
       });
       if (r) {
         const send = await adapter.sendText(inbound.externalConversationId, r);

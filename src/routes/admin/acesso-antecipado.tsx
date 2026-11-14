@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   getEarlyAccessOverview, grantEarlyAccess, issueAdminInvite, removeFromWaitlist, revokeAccessInvite,
 } from "@/lib/access/admin.functions";
+import { getPilotOverview, issuePilotInviteAdmin, revokePilotInviteAdmin } from "@/lib/pilot/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,15 @@ export const Route = createFileRoute("/admin/acesso-antecipado")({
 });
 
 const STATUS: Record<string, string> = { issued: "Por usar", used: "Usado", revoked: "Anulado", expired: "Expirado" };
+const PILOT_STATUS: Record<string, string> = { no_go: "Fechado (NO-GO)", go: "Aberto (GO)", closed: "Terminado" };
+const OUTCOME: Record<string, string> = {
+  not_open: "O piloto ainda não está aberto: nenhum convite foi gerado.",
+  cap_reached: "Os lugares do piloto já estão todos em uso.",
+  replayed: "Este pedido já tinha gerado um convite.",
+  not_issuer: "A tua conta não pode emitir convites do piloto.",
+  no_pilot: "Piloto não encontrado.",
+  error: "Não foi possível gerar o convite.",
+};
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleString("pt-PT") : "—");
 
 function AcessoAntecipadoPage() {
@@ -122,6 +132,8 @@ function AcessoAntecipadoPage() {
         )}
       </section>
 
+      <PilotSection />
+
       <section className="rounded-lg border bg-card">
         <h2 className="border-b px-4 py-2 text-sm font-semibold">Lista de espera</h2>
         <table className="w-full text-sm">
@@ -150,5 +162,96 @@ function AcessoAntecipadoPage() {
         </table>
       </section>
     </div>
+  );
+}
+
+function PilotSection() {
+  const overview = useServerFn(getPilotOverview);
+  const issue = useServerFn(issuePilotInviteAdmin);
+  const revoke = useServerFn(revokePilotInviteAdmin);
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["admin", "pilot"], queryFn: () => overview() });
+  const [note, setNote] = useState("");
+  // Um pedido = uma chave: repetir o clique (ou a rede repetir) não gera outro convite.
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const [lastCode, setLastCode] = useState<string | null>(null);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "pilot"] });
+
+  const issueMut = useMutation({
+    mutationFn: () => issue({ data: { requestId, note: note.trim() || undefined } }),
+    onSuccess: (r) => {
+      if (r.outcome === "issued" && r.code) { setLastCode(r.code); setNote(""); setRequestId(crypto.randomUUID()); }
+      else toast.message(OUTCOME[r.outcome] ?? OUTCOME.error);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falhou"),
+  });
+  const revokeMut = useMutation({
+    mutationFn: (id: string) => revoke({ data: { id } }),
+    onSuccess: (r) => { r.revoked ? toast.success("Convite do piloto anulado") : toast.message("Nada a anular"); refresh(); },
+  });
+
+  if (!data?.pilot) return null;
+  const p = data.pilot;
+  const open = p.status === "go";
+  return (
+    <section className="rounded-lg border bg-card">
+      <div className="border-b px-4 py-2">
+        <h2 className="text-sm font-semibold">Piloto AFONSO 2.0</h2>
+        <p className="text-xs text-muted-foreground">
+          Estado: {PILOT_STATUS[p.status] ?? p.status} · Lugares por convite livres: {data.seatsLeft} de {p.invite_cap} ·
+          Validade {p.invite_ttl_days} dias · Emissor designado: {p.issuer_name} (e Super Admin) ·{" "}
+          {data.flags.map((fl: any) => `${fl.key} ${fl.enabled_globally ? "ligado" : "desligado"}`).join(" · ")}
+        </p>
+      </div>
+      <div className="space-y-3 p-4">
+        <div className="flex flex-wrap gap-2 text-sm">
+          {data.participants.map((x: any) => (
+            <span key={x.user_id} className="rounded-md border px-2 py-1">
+              {x.name} — {x.status === "active" ? "participa" : "excluído"}
+            </span>
+          ))}
+        </div>
+        {data.canManage && (
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div>
+              <Label htmlFor="pilot-note">Nota (opcional)</Label>
+              <Input id="pilot-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Para quem é" />
+            </div>
+            <Button onClick={() => issueMut.mutate()} disabled={!open || issueMut.isPending || data.seatsLeft === 0}>
+              {issueMut.isPending ? "A gerar…" : "Gerar convite do piloto"}
+            </Button>
+          </div>
+        )}
+        {!open && <p className="text-xs text-muted-foreground">O piloto está fechado: não é possível gerar convites.</p>}
+        {lastCode && (
+          <p className="text-sm">
+            Código (só aparece agora): <span className="font-mono font-semibold">{lastCode}</span>
+          </p>
+        )}
+      </div>
+      <table className="w-full text-sm">
+        <thead className="border-y text-left text-xs uppercase text-muted-foreground">
+          <tr><th className="px-4 py-2">Emitido por</th><th className="px-4 py-2">Via</th><th className="px-4 py-2">Estado</th><th className="px-4 py-2">Usado por</th><th className="px-4 py-2">Expira</th><th /></tr>
+        </thead>
+        <tbody>
+          {data.invites.map((i: any) => (
+            <tr key={i.id} className="border-b last:border-0">
+              <td className="px-4 py-2">{i.issuer_name}</td>
+              <td className="px-4 py-2 text-muted-foreground">{i.issued_via ?? "—"}</td>
+              <td className="px-4 py-2">{STATUS[i.effective_status] ?? i.effective_status}</td>
+              <td className="px-4 py-2">{i.used_by_name ?? "—"}</td>
+              <td className="px-4 py-2 text-muted-foreground">{fmt(i.expires_at)}</td>
+              <td className="px-4 py-2 text-right">
+                {data.canManage && i.effective_status === "issued" && (
+                  <Button size="sm" variant="outline" onClick={() => revokeMut.mutate(i.id)}>Anular</Button>
+                )}
+              </td>
+            </tr>
+          ))}
+          {!data.invites.length && <tr><td className="px-4 py-3 text-muted-foreground" colSpan={6}>Ainda não há convites do piloto.</td></tr>}
+        </tbody>
+      </table>
+    </section>
   );
 }

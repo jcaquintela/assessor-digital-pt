@@ -7,7 +7,7 @@ import {
   __resetAccountFlagsForTests, __setAccountFlagForTests, isAccountFlagEnabled,
 } from "@/lib/flags/account-flag.server";
 import { PILOT_ENTITLEMENT_FLAG, PILOT_GATED_FLAGS, PILOT_INVITES_FLAG, PILOT_KEY, PILOT_CAP_REPLY, PILOT_NOT_OPEN_REPLY, PILOT_REPLAYED_REPLY } from "./pilot";
-import { isPilotParticipant } from "./pilot-access.server";
+import { isPilotParticipant, issuePilotInvite, revokePilotInvite } from "./pilot-access.server";
 import { EARLY_ACCESS_GATE_FLAG, REFERRAL_INVITES_FLAG, REFERRAL_QUOTA, hashInviteCode } from "@/lib/access/early-access";
 import { handleBlockedInbound, handleReferralCommand, resolveAccess } from "@/lib/access/early-access.server";
 import { isOpportunityNudgesEnabled } from "@/lib/opportunities/digest.server";
@@ -19,6 +19,7 @@ const PEDRO = "00000000-0000-0000-0000-0000000000p1";
 const TELMO = "00000000-0000-0000-0000-0000000000t1";
 const OTHER_BETA = "00000000-0000-0000-0000-0000000000b2";
 const ADMIN = "00000000-0000-0000-0000-0000000000a1";
+const SUPPORT = "00000000-0000-0000-0000-0000000000s1";
 const GUEST = "00000000-0000-0000-0000-0000000000g1";
 const ACTION_FIRST = "assessor.action_first_qualification.v1";
 const DAY = 864e5;
@@ -32,9 +33,10 @@ function makeDb(opts: { pilotStatus?: string; flags?: Array<{ key: string; enabl
       { id: TELMO, is_beta_tester: true, beta_expires_at: null, subscription_tier: "base", whatsapp_link_status: "linked" },
       { id: OTHER_BETA, is_beta_tester: true, beta_expires_at: null, subscription_tier: "base" },
       { id: ADMIN, is_beta_tester: false, subscription_tier: "base" },
+      { id: SUPPORT, is_beta_tester: false, subscription_tier: "base" },
       { id: GUEST, is_beta_tester: false, subscription_tier: "base" },
     ],
-    user_roles: [{ user_id: JULIO, role: "super_admin" }, { user_id: ADMIN, role: "super_admin" }],
+    user_roles: [{ user_id: JULIO, role: "super_admin" }, { user_id: ADMIN, role: "super_admin" }, { user_id: SUPPORT, role: "support_admin" }],
     pilots: [{ key: PILOT_KEY, status: opts.pilotStatus ?? "no_go", invite_issuer_user_id: JULIO, invite_cap: 2, invite_ttl_days: 7 }],
     pilot_participants: [
       { pilot_key: PILOT_KEY, user_id: JULIO, status: "active", source: "seed" },
@@ -54,7 +56,10 @@ function makeDb(opts: { pilotStatus?: string; flags?: Array<{ key: string; enabl
     if (fn === "issue_pilot_invite") {
       const p = t("pilots").find((r: any) => r.key === a._pilot_key);
       if (!p) return { data: [{ out_invite_id: null, out_outcome: "no_pilot", out_remaining: 0 }], error: null };
-      if (p.invite_issuer_user_id !== a._issuer) return { data: [{ out_invite_id: null, out_outcome: "not_issuer", out_remaining: 0 }], error: null };
+      const superAdmin = t("user_roles").some((r: any) => r.user_id === a._issuer && r.role === "super_admin");
+      if (!a._issuer || (p.invite_issuer_user_id !== a._issuer && !superAdmin)) {
+        return { data: [{ out_invite_id: null, out_outcome: "not_issuer", out_remaining: 0 }], error: null };
+      }
       const n = t("access_invites").filter((r: any) => r.pilot_key === a._pilot_key && live(r)).length;
       if (a._idempotency_key) {
         const prev = t("access_invites").find((r: any) => r.issuer_user_id === a._issuer && r.idempotency_key === a._idempotency_key);
@@ -64,9 +69,20 @@ function makeDb(opts: { pilotStatus?: string; flags?: Array<{ key: string; enabl
       if (n >= p.invite_cap) return { data: [{ out_invite_id: null, out_outcome: "cap_reached", out_remaining: 0 }], error: null };
       const id = `inv-${t("access_invites").length + 1}`;
       t("access_invites").push({ id, token_hash: a._token_hash, issuer_user_id: a._issuer, source: "pilot", pilot_key: a._pilot_key,
-        idempotency_key: a._idempotency_key, status: "issued", expires_at: new Date(Date.now() + p.invite_ttl_days * DAY).toISOString(),
+        idempotency_key: a._idempotency_key, note: a._note, issued_via: a._issued_via, status: "issued", expires_at: new Date(Date.now() + p.invite_ttl_days * DAY).toISOString(),
         created_at: new Date().toISOString() });
       return { data: [{ out_invite_id: id, out_outcome: "issued", out_remaining: p.invite_cap - n - 1 }], error: null };
+    }
+    if (fn === "revoke_pilot_invite") {
+      const p = t("pilots").find((r: any) => r.key === a._pilot_key);
+      const inv = t("access_invites").find((r: any) => r.pilot_key === a._pilot_key &&
+        ((a._invite_id && r.id === a._invite_id) || (a._token_hash && r.token_hash === a._token_hash)));
+      const superAdmin = t("user_roles").some((r: any) => r.user_id === a._actor && r.role === "super_admin");
+      if (!inv || !(inv.issuer_user_id === a._actor || p?.invite_issuer_user_id === a._actor || superAdmin) || inv.status !== "issued") {
+        return { data: "not_found", error: null };
+      }
+      Object.assign(inv, { status: "revoked", revoked_by: a._actor });
+      return { data: "revoked", error: null };
     }
     if (fn === "issue_referral_invite") {
       const p = t("profiles").find((r: any) => r.id === a._issuer);
@@ -168,7 +184,7 @@ describe("participação no piloto ≠ beta/plano/papel", () => {
   });
 });
 
-describe("convites do piloto: 2, só do Júlio, 7 dias, uso único", () => {
+describe("convites do piloto: 2 lugares, 7 dias, uso único", () => {
   beforeEach(() => { __setAccountFlagForTests(PILOT_INVITES_FLAG, JULIO, true); });
 
   it("piloto em NO-GO: a base de dados recusa e não fica nenhum convite", async () => {
@@ -258,6 +274,77 @@ describe("convites do piloto: 2, só do Júlio, 7 dias, uso único", () => {
     await handleReferralCommand(db, JULIO, "dá-me um convite", { idempotencyKey: "a" });
     const r = await handleReferralCommand(db, JULIO, "os meus convites");
     expect(r).toContain("Convite do piloto");
-    expect(r).toContain("Podes gerar mais 1");
+    expect(r).toContain("Podem gerar-se mais 1");
+  });
+});
+
+describe("convites do piloto pela administração e por Super Admin: mesmas regras", () => {
+  beforeEach(() => {
+    __setAccountFlagForTests(PILOT_INVITES_FLAG, JULIO, true);
+    __setAccountFlagForTests(PILOT_INVITES_FLAG, ADMIN, true);
+    __setAccountFlagForTests(PILOT_INVITES_FLAG, SUPPORT, true);
+  });
+
+  it("com o piloto em NO-GO, a administração também não gera nada", async () => {
+    const db = makeDb({ pilotStatus: "no_go" });
+    const r = await issuePilotInvite(db, { issuer: ADMIN, idempotencyKey: "admin:r1", via: "admin" });
+    expect(r).toMatchObject({ outcome: "not_open", code: null });
+    expect(db.state.access_invites).toHaveLength(0);
+  });
+
+  it("Super Admin que não é o emissor designado pode emitir, mas partilha o mesmo teto de 2", async () => {
+    const db = makeDb({ pilotStatus: "go" });
+    const a = await issuePilotInvite(db, { issuer: ADMIN, idempotencyKey: "admin:r1", note: "Ana", via: "admin" });
+    expect(a.outcome).toBe("issued");
+    expect(codeOf(await handleReferralCommand(db, JULIO, "dá-me um convite", { idempotencyKey: "whatsapp:m1", channel: "whatsapp" }))).not.toBeNull();
+    expect(await handleReferralCommand(db, ADMIN, "dá-me um convite", { idempotencyKey: "telegram:t1", channel: "telegram" })).toBe(PILOT_CAP_REPLY);
+    expect((await issuePilotInvite(db, { issuer: ADMIN, idempotencyKey: "admin:r2", via: "admin" })).outcome).toBe("cap_reached");
+    expect(db.state.access_invites.map((r: any) => r.issued_via).sort()).toEqual(["admin", "chat:whatsapp"]);
+  });
+
+  it("Support Admin e consultores não emitem, nem pela administração nem pela conversa", async () => {
+    const db = makeDb({ pilotStatus: "go" });
+    expect((await issuePilotInvite(db, { issuer: SUPPORT, idempotencyKey: "admin:s", via: "admin" })).outcome).toBe("not_issuer");
+    expect((await issuePilotInvite(db, { issuer: TELMO, idempotencyKey: "admin:t", via: "admin" })).outcome).toBe("not_issuer");
+    expect(await handleReferralCommand(db, SUPPORT, "dá-me um convite")).toBeNull();
+    expect(db.state.access_invites).toHaveLength(0);
+  });
+
+  it("o mesmo pedido da administração (duplo clique / nova tentativa) não gera segundo convite", async () => {
+    const db = makeDb({ pilotStatus: "go" });
+    expect((await issuePilotInvite(db, { issuer: ADMIN, idempotencyKey: "admin:same", via: "admin" })).outcome).toBe("issued");
+    const again = await issuePilotInvite(db, { issuer: ADMIN, idempotencyKey: "admin:same", via: "admin" });
+    expect(again).toMatchObject({ outcome: "replayed", code: null });
+    expect(db.state.access_invites).toHaveLength(1);
+  });
+
+  it("pedidos simultâneos de administração e conversa: só 2 convites no total", async () => {
+    const db = makeDb({ pilotStatus: "go" });
+    await Promise.all([
+      issuePilotInvite(db, { issuer: ADMIN, idempotencyKey: "admin:1", via: "admin" }),
+      issuePilotInvite(db, { issuer: ADMIN, idempotencyKey: "admin:2", via: "admin" }),
+      handleReferralCommand(db, JULIO, "dá-me um convite", { idempotencyKey: "whatsapp:1", channel: "whatsapp" }),
+      handleReferralCommand(db, JULIO, "dá-me um convite", { idempotencyKey: "telegram:1", channel: "telegram" }),
+      handleReferralCommand(db, ADMIN, "dá-me um convite", { idempotencyKey: "whatsapp:2", channel: "whatsapp" }),
+    ]);
+    expect(db.state.access_invites.filter((r: any) => r.pilot_key === PILOT_KEY)).toHaveLength(2);
+  });
+
+  it("anular: Super Admin anula o convite do Júlio; um consultor não; o lugar fica livre", async () => {
+    const db = makeDb({ pilotStatus: "go" });
+    await issuePilotInvite(db, { issuer: JULIO, idempotencyKey: "a", via: "chat:whatsapp" });
+    await issuePilotInvite(db, { issuer: JULIO, idempotencyKey: "b", via: "chat:whatsapp" });
+    const id = db.state.access_invites[0].id;
+    expect(await revokePilotInvite(db, { actor: TELMO, inviteId: id })).toBe("not_found");
+    expect(await revokePilotInvite(db, { actor: SUPPORT, inviteId: id })).toBe("not_found");
+    expect(await revokePilotInvite(db, { actor: ADMIN, inviteId: id })).toBe("revoked");
+    expect((await issuePilotInvite(db, { issuer: ADMIN, idempotencyKey: "c", via: "admin" })).outcome).toBe("issued");
+  });
+
+  it("a página geral de convites não lista nem anula convites do piloto", async () => {
+    const db = makeDb({ pilotStatus: "go" });
+    await issuePilotInvite(db, { issuer: ADMIN, idempotencyKey: "a", via: "admin" });
+    const general = await db.from("access_invites").select("id").is("pilot_key", null);
+    expect(general.data).toHaveLength(0);
   });
 });
