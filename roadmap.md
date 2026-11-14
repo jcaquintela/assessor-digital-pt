@@ -125,3 +125,12 @@
 - [ ] Aplicar S2-00…S2-99 no staging — aguarda autorização expressa
 - [x] Ensaio numa base PostgreSQL 17 descartável e isolada: 4 ficheiros sem erros, 8/8 + 3/3 verificações, 0 dependências em falta
 - [ ] Previews de admin com "ola@meuafonso.com" (só texto) — por decidir
+
+## Pacote staging v1.0.1 corrigido (14/11/2026, nada executado)
+- [x] Migrações só-DDL a partir do estado final (S3-00…S3-05), sem DML/DROP/RENAME/SET
+- [x] Deny-by-default: RLS + barreira admin/tester + REVOKE em cada tabela; funções só para o servidor
+- [x] Sem FKs para auth.users fora de profiles; objetos do staging intactos
+- [x] Quarentena não executável (dados v1.0.0, gatilho auth.users, Realtime, storage, FKs)
+- [x] Preflight/posflight que dão erro quando falham; matriz de acesso estática; testes negativos
+- [ ] Ensaio descartável da v1.0.1 (S3 + Q00–Q05 + T01) — aguarda autorização separada
+- [ ] Decisões B3 (acesso direto vs servidor), B4 (admin staging → V2), B5 (perfil automático), B6 (apagamento) — proprietário

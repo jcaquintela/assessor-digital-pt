@@ -1,0 +1,24 @@
+# Gerado por tools/parse_check.mjs (libpg-query 17.8.3, parser oficial do PostgreSQL 17). Sem base de dados.
+OK sintaxe S3-00_prelude_aditivo.sql [1b6a9d7772403ad2]: 5 instruções {"AlterEnumStmt":3,"CreateExtensionStmt":1,"AlterTableStmt":1}
+OK sintaxe S3-01_tipos_tabelas_a.sql [77a4fc76b9ede710]: 279 instruções {"CreateEnumStmt":7,"CreateFunctionStmt":1,"GrantStmt":106,"CreateStmt":52,"AlterTableStmt":53,"CreatePolicyStmt":52,"CommentStmt":8}
+OK sintaxe S3-02_tabelas_b_restricoes.sql [57707ea62d601706]: 406 instruções {"CreateStmt":52,"AlterTableStmt":190,"CreatePolicyStmt":52,"GrantStmt":104,"CommentStmt":8}
+OK sintaxe S3-03_funcoes.sql [00702e7609f37977]: 120 instruções {"CreateFunctionStmt":40,"GrantStmt":80}
+OK sintaxe S3-04_indices_chaves_gatilhos.sql [10ff7a0003c9bbee]: 311 instruções {"IndexStmt":163,"AlterTableStmt":76,"CreateTrigStmt":72}
+OK sintaxe S3-05_politicas.sql [0a6b580f4e93580f]: 120 instruções {"CreatePolicyStmt":120}
+OK sintaxe preflight/P00_alvo.sql [760f81b653329dbe]: 1 SELECT
+OK sintaxe preflight/P01_executor_migracoes.sql [7c8fae05cf866498]: 1 SELECT
+OK sintaxe preflight/P02_privilegios_executor.sql [c09bc8cb1aaa650a]: 1 SELECT
+OK sintaxe preflight/P03_colisoes.sql [2a85345f3573edde]: 1 SELECT
+OK sintaxe preflight/P04_conta_proprietario.sql [a41322d5dec94ed6]: 1 SELECT
+OK sintaxe posflight/Q00_alvo.sql [91fc671d8382ebcf]: 1 SELECT
+OK sintaxe posflight/Q01_estrutura.sql [205716b5dd76a855]: 1 SELECT
+OK sintaxe posflight/Q02_seguranca.sql [3f449bf73f98a976]: 1 SELECT
+OK sintaxe posflight/Q03_conta_proprietario.sql [5c8aa969c4333853]: 1 SELECT
+OK sintaxe posflight/Q04_acesso_staging.sql [31c6530395d2e24e]: 1 SELECT
+OK sintaxe posflight/Q05_matriz_acesso.sql [6bc5ba9b8d192624]: 1 SELECT
+OK quarantine/QZ-01_dml_v1.0.0.quarantine [618c4228c915c4a6]: única instrução ativa = guarda que aborta
+OK quarantine/QZ-02_gatilho_auth_users.quarantine [23f28f563c39d52f]: única instrução ativa = guarda que aborta
+OK quarantine/QZ-03_realtime.quarantine [d1454149232a16b9]: única instrução ativa = guarda que aborta
+OK quarantine/QZ-04_politicas_storage_v1.0.0.quarantine [39c60174aa6aff3a]: única instrução ativa = guarda que aborta
+OK quarantine/QZ-05_chaves_auth_users_retiradas.quarantine [69a0e30f321817aa]: única instrução ativa = guarda que aborta
+RESULTADO: 0 falhas

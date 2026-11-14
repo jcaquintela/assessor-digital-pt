@@ -1,0 +1,450 @@
+{
+  "package": "afonso-v2-staging-install",
+  "version": "1.0.1",
+  "status": "AUDIT_ONLY — NOT EXECUTED anywhere (no database, disposable or managed)",
+  "executed": false,
+  "gates": "G1–G4 NO-GO",
+  "target_project": {
+    "name": "AFONSO Staging",
+    "id": "8d741542-70d9-4078-bfc6-64e3d047396a"
+  },
+  "never_apply_to": "V1 / produção (nem a nenhum outro projeto)",
+  "supersedes": {
+    "version": "1.0.0",
+    "commit": "cc20a982"
+  },
+  "source": {
+    "dump": "staging-install/rehearsal/results/schema_public.sql",
+    "sha256": "e047c2e1fe0effb55a1208970befbb3d15a1e283baaaefc61793f9e1dc9e278c",
+    "rehearsal_commit": "84f428ce",
+    "v100_sql": [
+      {
+        "file": "staging-install/migrations/S2-00_staging_roles_prelude.sql",
+        "sha256": "4e089b4712a431072512013c82fabebbdddff5a60d56fd97f55f437f1d20604e"
+      },
+      {
+        "file": "staging-install/migrations/S2-01_v2_schema_part1.sql",
+        "sha256": "d9bf6c0e3adfd8add18f8fe8b9902921e1c0189ea6066690494625260cc5d291"
+      },
+      {
+        "file": "staging-install/migrations/S2-02_v2_schema_part2.sql",
+        "sha256": "d553e0d4280519bb452157bc20cfc8c471b58f9d934dbbf98620ff901eac287b"
+      },
+      {
+        "file": "staging-install/migrations/S2-99_staging_safety_checks.sql",
+        "sha256": "fdea9a5cd564ae5189047d5ea4b6472182129dbcdf4936672a838c00e41daba7"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "order": 1,
+      "file": "sql/S3-00_prelude_aditivo.sql",
+      "sha256": "1b6a9d7772403ad20146ebe55438343827174672e075659ef0695d1f8610cbe8",
+      "bytes": 1044,
+      "statements": 5,
+      "one_migration_per_file": true
+    },
+    {
+      "order": 2,
+      "file": "sql/S3-01_tipos_tabelas_a.sql",
+      "sha256": "77a4fc76b9ede7107e9ab472e6d1f3d882339f5820290fade7c99e47a8b31f16",
+      "bytes": 54927,
+      "statements": 279,
+      "one_migration_per_file": true
+    },
+    {
+      "order": 3,
+      "file": "sql/S3-02_tabelas_b_restricoes.sql",
+      "sha256": "57707ea62d601706c0e1c2ad8d1d98c52e4b885493a6575d7e8dece1b5bc8e86",
+      "bytes": 76316,
+      "statements": 406,
+      "one_migration_per_file": true
+    },
+    {
+      "order": 4,
+      "file": "sql/S3-03_funcoes.sql",
+      "sha256": "00702e7609f3797741a2438864e9f7b10e7b0519a256913b04150a9df6c335de",
+      "bytes": 43426,
+      "statements": 120,
+      "one_migration_per_file": true
+    },
+    {
+      "order": 5,
+      "file": "sql/S3-04_indices_chaves_gatilhos.sql",
+      "sha256": "10ff7a0003c9bbee01565453c159c1c967a2b17101b943f67e10798376b51a1b",
+      "bytes": 43572,
+      "statements": 311,
+      "one_migration_per_file": true
+    },
+    {
+      "order": 6,
+      "file": "sql/S3-05_politicas.sql",
+      "sha256": "0a6b580f4e93580f97626fbdebef985450ebbbacdf2a0410f828589225f8e2c5",
+      "bytes": 18421,
+      "statements": 120,
+      "one_migration_per_file": true
+    }
+  ],
+  "queries": [
+    {
+      "file": "preflight/P00_alvo.sql",
+      "sha256": "760f81b653329dbe1ef37a83a4372c1ad1c83f6031fd0fab8b0f32faed6ee3c7",
+      "checks": 6,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "preflight/P01_executor_migracoes.sql",
+      "sha256": "7c8fae05cf866498ae890429657b54a3e2e9eab439dca226f20900cfd4a57db6",
+      "checks": 3,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "preflight/P02_privilegios_executor.sql",
+      "sha256": "c09bc8cb1aaa650a1684b0feceeafe2f4d9c5c936ab571c43a91571fbe9dc043",
+      "checks": 10,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "preflight/P03_colisoes.sql",
+      "sha256": "2a85345f3573edde61f5a6850ec823006711b2e434979b0de34bd80886cb0d9c",
+      "checks": 15,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "preflight/P04_conta_proprietario.sql",
+      "sha256": "a41322d5dec94ed61151b0a8b4f06aea0dff9d091689f9f64a3733aa7c2f8df3",
+      "checks": 13,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "posflight/Q00_alvo.sql",
+      "sha256": "91fc671d8382ebcf51bbd05505c1b35ae2b0082e2471fce427cd64b564de8f21",
+      "checks": 3,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "posflight/Q01_estrutura.sql",
+      "sha256": "205716b5dd76a855023a6adfa15d883ab02849f258e4066dd0619f4c34f4aaf4",
+      "checks": 8,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "posflight/Q02_seguranca.sql",
+      "sha256": "3f449bf73f98a976aafc1550bc9f5c1f8bd0159fe4a3b265e8c29cbb6b400867",
+      "checks": 23,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "posflight/Q03_conta_proprietario.sql",
+      "sha256": "5c8aa969c4333853331ece0f3222704f41ae5c893762d538615f917c3ea716bd",
+      "checks": 11,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "posflight/Q04_acesso_staging.sql",
+      "sha256": "31c6530395d2e24e0b89c7283717b1a60c1503759c841b285b15bdc96ec6b41c",
+      "checks": 10,
+      "read_only": true,
+      "fails_with_error": true
+    },
+    {
+      "file": "posflight/Q05_matriz_acesso.sql",
+      "sha256": "6bc5ba9b8d192624b2b9194eae8f3c3ad30c04530271858123cf107deba8aeb9",
+      "checks": 10,
+      "read_only": true,
+      "fails_with_error": true
+    }
+  ],
+  "quarantine": [
+    {
+      "file": "quarantine/QZ-01_dml_v1.0.0.quarantine",
+      "sha256": "618c4228c915c4a6b7ab28a504a1ca5c4f112302d099fea4e2394b8db6eb3fbd",
+      "items": 90,
+      "executable": false
+    },
+    {
+      "file": "quarantine/QZ-02_gatilho_auth_users.quarantine",
+      "sha256": "23f28f563c39d52fc7285c5735526f922288e89047a6040a6fea6fa0382b4fa5",
+      "items": 1,
+      "executable": false
+    },
+    {
+      "file": "quarantine/QZ-03_realtime.quarantine",
+      "sha256": "d1454149232a16b9fa8cb61ec29254ceb90d70279444c5bb98c1e08ff8f683bf",
+      "items": 2,
+      "executable": false
+    },
+    {
+      "file": "quarantine/QZ-04_politicas_storage_v1.0.0.quarantine",
+      "sha256": "39c60174aa6aff3a1a7bfb5ceddeda4ef5d2434516cc20f474850580874167f0",
+      "items": 4,
+      "executable": false
+    },
+    {
+      "file": "quarantine/QZ-05_chaves_auth_users_retiradas.quarantine",
+      "sha256": "69a0e30f321817aa5842becc419a671f48436a53cd635f7f4c74b56e61495446",
+      "items": 84,
+      "executable": false
+    }
+  ],
+  "counts": {
+    "v2_tables": 104,
+    "v2_functions": 41,
+    "v2_types": 7,
+    "v2_policies": 120,
+    "gate_policies": 104,
+    "triggers": 72,
+    "indexes": 294,
+    "constraints": 250,
+    "auth_users_fks_kept": [
+      "profiles.profiles_id_fkey"
+    ],
+    "auth_users_fks_removed": 84,
+    "default_overrides": [
+      "access_waitlist.notify",
+      "calendar_sync_state.enabled",
+      "consultant_preferences.morning_briefing_enabled",
+      "consultant_preferences.evening_wrap_enabled",
+      "consultant_preferences.evening_checkin_enabled",
+      "whatsapp_proactive_tests.forced"
+    ]
+  },
+  "static_audit": {
+    "violations": 0,
+    "matrix": {
+      "anon": {
+        "principal": "anon",
+        "tablesWithDirectAccess": 0,
+        "executableFunctions": 0,
+        "tablesIfGrantedToClient": 0,
+        "tablesUnderGate": 104
+      },
+      "authenticated_sem_papel": {
+        "principal": "authenticated_sem_papel",
+        "tablesWithDirectAccess": 0,
+        "executableFunctions": 0,
+        "tablesIfGrantedToClient": 0,
+        "tablesUnderGate": 104
+      },
+      "tester": {
+        "principal": "tester",
+        "tablesWithDirectAccess": 0,
+        "executableFunctions": 0,
+        "tablesIfGrantedToClient": 96,
+        "tablesUnderGate": 104
+      },
+      "admin": {
+        "principal": "admin",
+        "tablesWithDirectAccess": 0,
+        "executableFunctions": 0,
+        "tablesIfGrantedToClient": 96,
+        "tablesUnderGate": 104
+      },
+      "service_role": {
+        "principal": "service_role",
+        "tablesWithDirectAccess": 104,
+        "executableFunctions": 41,
+        "tablesIfGrantedToClient": 104,
+        "tablesUnderGate": 0
+      }
+    }
+  },
+  "blockers": [
+    "B1 NÃO ENSAIADO: a v1.0.1 não foi aplicada em nenhuma base (nem descartável), por instrução. A ordem e a validade do SQL estão verificadas só por análise estática. Aplicar exige primeiro um ensaio descartável com autorização separada.",
+    "B2 EXECUTOR: BYPASSRLS e REFERENCES em auth.users do papel real das migrações só são inferidos do catálogo (P01/P02); não há prova definitiva sem escrever.",
+    "B3 AMBIGUIDADE 'acesso somente via funções server-side autorizadas': aplicado no sentido mais estrito (nenhuma permissão direta de cliente em tabelas e funções V2). A app V2 ainda lê/escreve várias tabelas com a sessão do utilizador; no staging essas chamadas são recusadas até a app passar a usar o servidor (com verificação de has_staging_access) ou o proprietário aprovar uma lista de tabelas abertas.",
+    "B4 ADMIN DO STAGING ≠ ADMIN V2: o papel admin do staging não dá super_admin/support_admin. Mapear um no outro é uma decisão de privilégios do proprietário; não feito.",
+    "B5 PERFIL AUTOMÁTICO: o gatilho em auth.users que cria perfil/papel/categorias está em quarentena (QZ-02). Contas de teste novas não recebem perfil V2 sem autorização separada.",
+    "B6 APAGAMENTO EM CASCATA: sem as 84 chaves para auth.users, apagar uma conta já não apaga em cascata as linhas V2 dessa conta. O apagamento tem de passar por um caminho explícito (por decidir) antes de haver dados de teste.",
+    "B7 FICHEIROS E TEMPO REAL: sem bucket nem políticas de storage (QZ-04) e sem publicação Realtime (QZ-03). Essas funções não existem no staging até autorização.",
+    "B8 TESTE COMPORTAMENTAL DA MATRIZ: tests-db/T01 está preparado mas bloqueado (escreve contas sintéticas numa transação com ROLLBACK). Só com autorização separada, e só numa base descartável ou no staging.",
+    "B9 DIVERGÊNCIA INTENCIONAL: 6 valores por omissão de envio/sincronização passam a false no staging (diferente da V1)."
+  ],
+  "files": [
+    {
+      "path": "ACCESS-MATRIX.md",
+      "sha256": "9173d8a31e2cef6f0280576b29eeb79e60d162178d7f5cd35d47bfbc2d8f5570",
+      "bytes": 1958
+    },
+    {
+      "path": "BLOCKERS.md",
+      "sha256": "c899a5ae299c478b6b0db0b74118bfe952a74f07d1c8deba0e2ec0bc8622a825",
+      "bytes": 2605
+    },
+    {
+      "path": "COLLISIONS.md",
+      "sha256": "803a4de92335aa33a9a7a6988cb47b9d56919b6b4a1774d4dc1074c4e9c17732",
+      "bytes": 1914
+    },
+    {
+      "path": "DIFF-v1.0.0.md",
+      "sha256": "fed798966f344d85052999de964420f3f8e10b7324c3d6e21d70777fd4814911",
+      "bytes": 9127
+    },
+    {
+      "path": "EXECUTOR-PRIVILEGES.md",
+      "sha256": "9740127c0b308393c84afbebe9da5e8fba398ca8ed0a82b3df6cc9326f05b0db",
+      "bytes": 1687
+    },
+    {
+      "path": "FINDINGS-RESOLUTION.md",
+      "sha256": "b79beefede2363fa231e22816587c92b63dcfdd2fdd2ba17899f65b6b7d69902",
+      "bytes": 3591
+    },
+    {
+      "path": "OWNER-ACCOUNT.md",
+      "sha256": "8e3c844f919fd8bd1af259ae020c5be67f24679d1b1d1b07723a0eb82a889a80",
+      "bytes": 1692
+    },
+    {
+      "path": "README.md",
+      "sha256": "1b05ba23cfe4a02e9a91ed7245dbec4fed7a5dc842f858f399ddefd6c096a568",
+      "bytes": 4656
+    },
+    {
+      "path": "TEST-CRITERIA.md",
+      "sha256": "883d43afa6a62a9104e81a261df36ea734a2713249df710c4151aad35d7a2c0b",
+      "bytes": 3008
+    },
+    {
+      "path": "evidence/parse-check.txt",
+      "sha256": "eb6a58c91787ac470274cd975640dfdd080922361c26381a423a550ee08ec03a",
+      "bytes": 2340
+    },
+    {
+      "path": "posflight/Q00_alvo.sql",
+      "sha256": "91fc671d8382ebcf51bbd05505c1b35ae2b0082e2471fce427cd64b564de8f21",
+      "bytes": 6831
+    },
+    {
+      "path": "posflight/Q01_estrutura.sql",
+      "sha256": "205716b5dd76a855023a6adfa15d883ab02849f258e4066dd0619f4c34f4aaf4",
+      "bytes": 6555
+    },
+    {
+      "path": "posflight/Q02_seguranca.sql",
+      "sha256": "3f449bf73f98a976aafc1550bc9f5c1f8bd0159fe4a3b265e8c29cbb6b400867",
+      "bytes": 19860
+    },
+    {
+      "path": "posflight/Q03_conta_proprietario.sql",
+      "sha256": "5c8aa969c4333853331ece0f3222704f41ae5c893762d538615f917c3ea716bd",
+      "bytes": 5160
+    },
+    {
+      "path": "posflight/Q04_acesso_staging.sql",
+      "sha256": "31c6530395d2e24e0b89c7283717b1a60c1503759c841b285b15bdc96ec6b41c",
+      "bytes": 6830
+    },
+    {
+      "path": "posflight/Q05_matriz_acesso.sql",
+      "sha256": "6bc5ba9b8d192624b2b9194eae8f3c3ad30c04530271858123cf107deba8aeb9",
+      "bytes": 9471
+    },
+    {
+      "path": "preflight/P00_alvo.sql",
+      "sha256": "760f81b653329dbe1ef37a83a4372c1ad1c83f6031fd0fab8b0f32faed6ee3c7",
+      "bytes": 10024
+    },
+    {
+      "path": "preflight/P01_executor_migracoes.sql",
+      "sha256": "7c8fae05cf866498ae890429657b54a3e2e9eab439dca226f20900cfd4a57db6",
+      "bytes": 2901
+    },
+    {
+      "path": "preflight/P02_privilegios_executor.sql",
+      "sha256": "c09bc8cb1aaa650a1684b0feceeafe2f4d9c5c936ab571c43a91571fbe9dc043",
+      "bytes": 6516
+    },
+    {
+      "path": "preflight/P03_colisoes.sql",
+      "sha256": "2a85345f3573edde61f5a6850ec823006711b2e434979b0de34bd80886cb0d9c",
+      "bytes": 8570
+    },
+    {
+      "path": "preflight/P04_conta_proprietario.sql",
+      "sha256": "a41322d5dec94ed61151b0a8b4f06aea0dff9d091689f9f64a3733aa7c2f8df3",
+      "bytes": 4972
+    },
+    {
+      "path": "quarantine/QZ-01_dml_v1.0.0.quarantine",
+      "sha256": "618c4228c915c4a6b7ab28a504a1ca5c4f112302d099fea4e2394b8db6eb3fbd",
+      "bytes": 45732
+    },
+    {
+      "path": "quarantine/QZ-02_gatilho_auth_users.quarantine",
+      "sha256": "23f28f563c39d52fc7285c5735526f922288e89047a6040a6fea6fa0382b4fa5",
+      "bytes": 675
+    },
+    {
+      "path": "quarantine/QZ-03_realtime.quarantine",
+      "sha256": "d1454149232a16b9fa8cb61ec29254ceb90d70279444c5bb98c1e08ff8f683bf",
+      "bytes": 648
+    },
+    {
+      "path": "quarantine/QZ-04_politicas_storage_v1.0.0.quarantine",
+      "sha256": "39c60174aa6aff3a1a7bfb5ceddeda4ef5d2434516cc20f474850580874167f0",
+      "bytes": 1517
+    },
+    {
+      "path": "quarantine/QZ-05_chaves_auth_users_retiradas.quarantine",
+      "sha256": "69a0e30f321817aa5842becc419a671f48436a53cd635f7f4c74b56e61495446",
+      "bytes": 15402
+    },
+    {
+      "path": "quarantine/README.md",
+      "sha256": "d25412f46aae0fb895d31dd04e48c1855c434b6891b14f0749ab122830bd1baa",
+      "bytes": 2176
+    },
+    {
+      "path": "sql/S3-00_prelude_aditivo.sql",
+      "sha256": "1b6a9d7772403ad20146ebe55438343827174672e075659ef0695d1f8610cbe8",
+      "bytes": 1044
+    },
+    {
+      "path": "sql/S3-01_tipos_tabelas_a.sql",
+      "sha256": "77a4fc76b9ede7107e9ab472e6d1f3d882339f5820290fade7c99e47a8b31f16",
+      "bytes": 54927
+    },
+    {
+      "path": "sql/S3-02_tabelas_b_restricoes.sql",
+      "sha256": "57707ea62d601706c0e1c2ad8d1d98c52e4b885493a6575d7e8dece1b5bc8e86",
+      "bytes": 76316
+    },
+    {
+      "path": "sql/S3-03_funcoes.sql",
+      "sha256": "00702e7609f3797741a2438864e9f7b10e7b0519a256913b04150a9df6c335de",
+      "bytes": 43426
+    },
+    {
+      "path": "sql/S3-04_indices_chaves_gatilhos.sql",
+      "sha256": "10ff7a0003c9bbee01565453c159c1c967a2b17101b943f67e10798376b51a1b",
+      "bytes": 43572
+    },
+    {
+      "path": "sql/S3-05_politicas.sql",
+      "sha256": "0a6b580f4e93580f97626fbdebef985450ebbbacdf2a0410f828589225f8e2c5",
+      "bytes": 18421
+    },
+    {
+      "path": "tests-db/T01_matriz_comportamental.bloqueado.sql",
+      "sha256": "f17c18c1efb4c1796a20eb264b3822df99d0c62178f9f2e625d2b7cfd7d12ece",
+      "bytes": 6820
+    },
+    {
+      "path": "tools/parse_check.mjs",
+      "sha256": "a59296618f42bc39005269c9c5374aa074a4d90f3dc97bcff009e958507c9586",
+      "bytes": 4009
+    }
+  ]
+}
