@@ -47,3 +47,13 @@
 - [x] Trial só após convite validado + 1.ª interação comercial posterior
 - [x] Testes (concorrência, casos-limite), flags OFF
 - [ ] Ligar interruptores para conta piloto e publicar — aguarda aprovação explícita
+
+## Autonomia comercial transversal V2.0 (14/11/2026, NÃO publicar)
+- [x] Critérios únicos de avaliação (1.ª ação útil ≤3 turnos, próximo passo, perguntas agrupadas, nada simulado/inventado, terceiros só com ok)
+- [x] Replay das conversas de referência pontua autonomia (`expect.autonomy`, etiqueta `action_first`)
+- [x] Métricas reais só de leitura para a administração (turnos/tempo, próximo passo, aceitação, seguimentos, negócios, proxies de satisfação)
+- [x] Resposta de pesquisa de comprador termina com próximo passo e bloqueio antecipado (atrás do interruptor desligado)
+- [ ] Aplicar a autonomia às respostas da IA fora da qualificação — exige mudar prompts (só com 100 avaliações verdes)
+- [ ] Conversas de referência com etiqueta `action_first` na base — aguarda aprovação para escrever dados
+- [ ] Avaliação direta de satisfação (pergunta ao consultor) — não existe; decisão de produto
+- [ ] Ligar o interruptor/publicar — aguarda aprovação explícita

@@ -81,6 +81,23 @@ function urgencyBlock(b: BuyerBrief, now: Date): string | null {
   return `*Prioridade alta: prazo ${ddmm(b.deadline.value)}, faltam ${n} dias.* Em paralelo:\n${steps.join("\n")}`;
 }
 
+// Próximo passo específico + bloqueio antecipado. Prepara a execução, mas
+// nada sai para terceiros sem o "sim" explícito do consultor.
+function nextStepBlock(b: BuyerBrief, hasProposals: boolean, urgent: boolean): string {
+  const lines: string[] = [];
+  if (hasProposals) {
+    lines.push(urgent
+      ? "*Próximo passo:* se quiseres, preparo já a mensagem com estes imóveis para enviares — nada sai sem o teu ok."
+      : "*Próximo passo:* marcas visita ao primeiro da lista esta semana. Se quiseres, preparo a mensagem com estes imóveis para enviares — nada sai sem o teu ok.");
+  } else {
+    lines.push("*Próximo passo:* manda-me referências ZMPT ou links que tenhas, ou alarga a zona, e eu cruzo logo com estes critérios.");
+  }
+  if (!urgent && !b.financingApproved) {
+    lines.push("Atenção: sem pré-aprovação confirmada, uma proposta pode cair — vale a pena pedir já a simulação ao banco.");
+  }
+  return lines.join("\n");
+}
+
 export interface ComposeInput {
   brief: BuyerBrief;
   changes: BriefChange[];
@@ -120,8 +137,10 @@ export function composeQualificationReply(i: ComposeInput): string {
   const internalTxt = fmt(internal);
   parts.push(internalTxt ? `Na tua carteira:\n${internalTxt}` : "Na tua carteira não há nada que encaixe agora.");
 
+  let portalShown = false;
   if (i.portalStatus === "ok") {
     const portalTxt = fmt(portal);
+    portalShown = portalTxt.length > 0;
     parts.push(portalTxt
       ? `Nos portais (anúncios publicados; disponibilidade por confirmar):\n${portalTxt}`
       : "Nos portais não encontrei anúncios que encaixem agora. Prefiro dizer-te isso do que inventar.");
@@ -137,6 +156,8 @@ export function composeQualificationReply(i: ComposeInput): string {
   } else {
     parts.push(REDE_NO_ACCESS_REPLY);
   }
+
+  parts.push(nextStepBlock(b, internalTxt.length > 0 || portalShown, !!urgent));
 
   if (questions.length) parts.push(`Para afinar, de uma vez:\n${questions.map((q) => `- ${q}`).join("\n")}`);
   return parts.join("\n\n");

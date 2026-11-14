@@ -14,12 +14,20 @@ import {
   BARE_CONFIRMATION_REPLY,
 } from "./deterministic.server";
 import { isConfirmation as saIsConfirmation } from "../culture/short-answers";
+import { scoreConversation, type AutonomyExpect, type ConversationScore, type TurnInput } from "../eval/commercial-autonomy";
 
 export interface GoldenExpect {
   action?: "act" | "ask" | "acknowledge" | "do_nothing" | "search_more";
   tool?: string;
   reply_contains?: string[];
   must_not_contain?: string[];
+  /**
+   * Critérios de autonomia comercial para a conversa inteira (lidos do 1.º
+   * turno que os tiver). Com isto presente, a conversa reprova se a 1.ª ação
+   * útil chegar tarde, se houver perguntas em série, sem próximo passo, ou
+   * com execução simulada / links inventados / contacto a terceiros.
+   */
+  autonomy?: AutonomyExpect;
 }
 
 export interface GoldenTurn {
@@ -48,6 +56,13 @@ export interface GoldenRunResult {
   // true quando pelo menos um turno ficou por avaliar por indisponibilidade.
   inconclusive?: boolean;
   unavailableReason?: string | null;
+  /** Pontuação de autonomia comercial (sempre calculada; só reprova quando pedida). */
+  autonomy?: ConversationScore;
+}
+
+export interface GoldenRunOptions {
+  /** Reproduz a qualificação de compradores action-first (como com o interruptor ligado). */
+  actionFirst?: boolean;
 }
 
 function nowLisbonYmd(): string {
@@ -175,9 +190,11 @@ function evaluateTurn(reply: string, action: string, tools: string[], expect?: G
 export async function runGolden(
   turns: GoldenTurn[],
   assessorName?: string | null,
+  opts: GoldenRunOptions = {},
 ): Promise<GoldenRunResult> {
   const results: GoldenTurnResult[] = [];
   const historyLines: string[] = [];
+  const rows: Array<{ role: string; content: string; created_at: string }> = [];
   const name = sanitizeAssessorName(assessorName ?? "") || ASSESSOR_NAME_DEFAULT;
   const ymd = nowLisbonYmd();
   const human = nowLisbonHuman();
@@ -187,6 +204,27 @@ export async function runGolden(
     const t: GoldenTurn = { ...raw, user: renderGoldenText(raw.user) };
     // Router determinístico — replica o comportamento do runtime real
     // para agenda e "sim" sem contexto, sem depender da IA.
+    rows.push({ role: "user", content: t.user, created_at: new Date().toISOString() });
+    if (opts.actionFirst) {
+      const { runBuyerQualification } = await import("../qualification/qualification.server");
+      const q = await runBuyerQualification({
+        supabase: null, userId: "golden", channel: "whatsapp", trimmed: t.user, skipFlagCheck: true,
+        deps: {
+          loadRecent: async () => rows.slice(0, -1).map((r) => ({ ...r })),
+          loadProperties: async () => [],
+          searchPortals: async () => ({ status: "not_run", results: [] }),
+        },
+      });
+      if (q) {
+        const tools = [q.acted ? "buyer_search" : "buyer_questions"];
+        const failures = evaluateTurn(q.reply, q.acted ? "act" : "ask", tools, t.expect);
+        results.push({ turn: i + 1, user: t.user, reply: q.reply, action: q.acted ? "act" : "ask", tools, passed: failures.length === 0, failures });
+        rows.push({ role: "assistant", content: q.reply, created_at: new Date().toISOString() });
+        historyLines.push(`consultor: ${t.user}`);
+        historyLines.push(`assessor: ${q.reply}`);
+        continue;
+      }
+    }
     const agendaPeriod = detectAgendaQuery(t.user);
     if (agendaPeriod) {
       const reply = formatAgendaReply(agendaPeriod, []);
@@ -198,6 +236,7 @@ export async function runGolden(
       });
       historyLines.push(`consultor: ${t.user}`);
       historyLines.push(`assessor: ${reply}`);
+      rows.push({ role: "assistant", content: reply, created_at: new Date().toISOString() });
       continue;
     }
     if (saIsConfirmation(t.user)) {
@@ -210,6 +249,7 @@ export async function runGolden(
       });
       historyLines.push(`consultor: ${t.user}`);
       historyLines.push(`assessor: ${reply}`);
+      rows.push({ role: "assistant", content: reply, created_at: new Date().toISOString() });
       continue;
     }
 
@@ -257,6 +297,7 @@ export async function runGolden(
       });
       historyLines.push(`consultor: ${t.user}`);
       historyLines.push(`assessor: ${reply}`);
+      rows.push({ role: "assistant", content: reply, created_at: new Date().toISOString() });
       continue;
     }
 
@@ -269,15 +310,25 @@ export async function runGolden(
 
     historyLines.push(`consultor: ${t.user}`);
     historyLines.push(`assessor: ${reply}`);
+      rows.push({ role: "assistant", content: reply, created_at: new Date().toISOString() });
   }
 
   const unavailableTurn = results.find((r) => r.unavailable);
   const inconclusive = !!unavailableTurn;
   // Um guião com turnos inconclusivos não passa nem reprova por
   // comportamento — quem lê o resultado tem de ver que foi o serviço.
-  const passed = !inconclusive && results.every((r) => r.passed);
+  // O replay não executa ferramentas: uma ação decidida conta como feita
+  // (a execução real é coberta pelos testes do motor).
+  const scored: TurnInput[] = results.map((r) => ({
+    user: r.user, reply: r.reply, tools: r.tools.map((name) => ({ name, ok: !r.unavailable, data: {} })),
+  }));
+  const autonomyExpect = turns.find((x) => x.expect?.autonomy)?.expect?.autonomy;
+  const autonomy = scoreConversation(scored, autonomyExpect ?? {});
+  const autonomyOk = !autonomyExpect || autonomy.passed;
+  const passed = !inconclusive && results.every((r) => r.passed) && autonomyOk;
   return {
     passed,
+    autonomy,
     turns: results,
     aqsAvg: null,
     inconclusive,

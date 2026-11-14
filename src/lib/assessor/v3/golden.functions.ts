@@ -51,7 +51,7 @@ export const runGoldenSuite = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let query = supabaseAdmin
       .from("assistant_golden_conversations")
-      .select("id, slug, title, turns")
+      .select("id, slug, title, turns, tags")
       .eq("active", true);
     if (data.goldenId) query = query.eq("id", data.goldenId);
     const { data: goldens } = await query;
@@ -64,7 +64,9 @@ export const runGoldenSuite = createServerFn({ method: "POST" })
       const turns = (g.turns as GoldenTurn[]) ?? [];
       let result;
       try {
-        result = await runGolden(turns);
+        result = await runGolden(turns, null, {
+          actionFirst: Array.isArray(g.tags) && g.tags.includes("action_first"),
+        });
       } catch (err) {
         result = { passed: false, turns: [{ turn: 0, user: "", reply: "", action: "error", tools: [], passed: false, failures: [String(err instanceof Error ? err.message : err)] }], aqsAvg: null };
       }
@@ -80,6 +82,9 @@ export const runGoldenSuite = createServerFn({ method: "POST" })
           turns: result.turns,
           inconclusive: (result as any).inconclusive === true,
           unavailable_reason: (result as any).unavailableReason ?? null,
+          autonomy: (result as any).autonomy
+            ? { ...(result as any).autonomy, perTurn: undefined }
+            : null,
         } as unknown,
       } as never);
       summaries.push({

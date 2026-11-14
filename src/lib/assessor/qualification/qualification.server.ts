@@ -89,9 +89,11 @@ export async function runBuyerQualification(params: {
   trimmed: string;
   now?: Date;
   deps?: QualificationDeps;
+  /** Só para replay de avaliação (conversas de referência): ignora o interruptor. */
+  skipFlagCheck?: boolean;
 }): Promise<QualificationTurn | null> {
   const { supabase, userId, channel, trimmed } = params;
-  if (!(await isAccountFlagEnabled(supabase, ACTION_FIRST_FLAG, userId))) return null;
+  if (!params.skipFlagCheck && !(await isAccountFlagEnabled(supabase, ACTION_FIRST_FLAG, userId))) return null;
   const now = params.now ?? new Date();
   const deps = params.deps ?? defaultDeps(supabase, userId, channel);
 
