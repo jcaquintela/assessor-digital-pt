@@ -7,11 +7,33 @@ import { functionOf, objectName, parsePgDump, tableOf, type DumpEntry } from "./
 import {
   APP_ROLE_VALUES_ADDED, AUTH_USERS_FK_ALLOWED_TABLES, CLIENT_ROLES, CLIENT_TABLE_ALLOWLIST, GATE_EXPR,
   GATE_POLICY_NAME, QUARANTINED_FROM_DUMP, SEND_DEFAULT_OVERRIDES, SERVER_ROLE, SERVER_TABLE_PRIVILEGES,
-  SOURCE_DUMP, STAGING_OWNED, USER_ROLES_ADDED_COLUMN, V100_SQL, V101_MIGRATIONS,
+  SOURCE_DUMP, STAGING_OWNED, USER_ROLES_ADDED_COLUMN, V100_SQL, V101_MIGRATIONS, V101_VERSION,
 } from "./rules";
 import { doBlockWritesData, skeleton, splitStatements, statementKind } from "./sql-split";
 
 export const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+
+/**
+ * Perfil de montagem. O perfil v1.0.1 reproduz byte a byte o pacote v1.0.1 (congelado);
+ * versões seguintes mudam só o que o perfil declara.
+ */
+export interface BuildProfile {
+  version: string;
+  generator: string;
+  migrations: readonly string[];
+  /** Funções do estado final que NÃO entram na instalação (vão, comentadas, para a quarentena). */
+  quarantinedFunctions: readonly { name: string; reason: string }[];
+  /** true: REVOKE ALL também de service_role antes do GRANT exato (normaliza privilégios por omissão). */
+  revokeFromServer: boolean;
+}
+
+export const V101_PROFILE: BuildProfile = {
+  version: V101_VERSION,
+  generator: "scripts/staging/build-staging-package-v101.ts",
+  migrations: V101_MIGRATIONS,
+  quarantinedFunctions: [],
+  revokeFromServer: false,
+};
 
 export interface V101Input {
   dump: string;
@@ -43,6 +65,8 @@ export interface V101Facts {
   keptAuthFks: string[];
   removedAuthFks: { table: string; constraint: string; column: string; onDelete: string; statement: string }[];
   defaultOverrides: { table: string; column: string; reason: string }[];
+  /** Funções do estado final retiradas da instalação (perfil). */
+  quarantinedFunctions: { name: string; signature: string; reason: string }[];
   /** Colunas boolean que, depois dos ajustes, continuam com DEFAULT true (verificado no posflight). */
   boolDefaultTrue: string[];
   /** Ficheiros de migração da v1.0.1 onde nasce cada tabela V2. */
@@ -75,10 +99,10 @@ export interface V101Output {
 
 const unquote = (s: string) => (s.startsWith('"') ? s.slice(1, -1).replace(/""/g, '"') : s);
 
-const header = (title: string, purpose: string) =>
+const header = (profile: BuildProfile, title: string, purpose: string) =>
   `-- ${title}\n` +
-  `-- AFONSO V2 · pacote de instalação v1.0.1 · destino ÚNICO: AFONSO Staging.\n` +
-  `-- Gerado por scripts/staging/build-staging-package-v101.ts a partir do estado final do esquema\n` +
+  `-- AFONSO V2 · pacote de instalação v${profile.version} · destino ÚNICO: AFONSO Staging.\n` +
+  `-- Gerado por ${profile.generator} a partir do estado final do esquema\n` +
   `-- (${SOURCE_DUMP.path}, sha256 ${SOURCE_DUMP.sha256.slice(0, 16)}…).\n` +
   `-- Só DDL aditivo: sem INSERT/UPDATE/DELETE, sem DROP, sem RENAME, sem DROP NOT NULL, sem instruções SET de sessão.\n` +
   `-- NÃO EXECUTAR na V1 (produção). Aplicar só com autorização, por ordem, um ficheiro por migração.\n` +
@@ -139,7 +163,10 @@ function topoSortFunctions(fns: DumpEntry[]): DumpEntry[] {
 
 const stmts = (sql: string) => splitStatements(sql).map((s) => s.text);
 
-export function buildV101(input: V101Input): V101Output {
+export function buildV101(input: V101Input, profile: BuildProfile = V101_PROFILE): V101Output {
+  const MIG = profile.migrations;
+  if (MIG.length !== 6) throw new Error(`v${profile.version}: são precisos 6 ficheiros de migração`);
+  const clientRevoke = profile.revokeFromServer ? [...CLIENT_ROLES, SERVER_ROLE].join(", ") : CLIENT_ROLES.join(", ");
   if (sha256(input.dump) !== SOURCE_DUMP.sha256) throw new Error("v1.0.1: o dump de origem mudou (sha256). Rever antes de montar.");
   for (const r of V100_SQL) {
     const f = input.v100.find((x) => x.name === r.name);
@@ -217,7 +244,7 @@ export function buildV101(input: V101Input): V101Output {
       rls.get(t.name)!,
       ...extra,
       `CREATE POLICY ${GATE_POLICY_NAME} ON public.${t.name} AS RESTRICTIVE FOR ALL TO ${CLIENT_ROLES.join(", ")} USING (${GATE_EXPR}) WITH CHECK (${GATE_EXPR});`,
-      `REVOKE ALL ON TABLE public.${t.name} FROM PUBLIC, ${CLIENT_ROLES.join(", ")};`,
+      `REVOKE ALL ON TABLE public.${t.name} FROM PUBLIC, ${clientRevoke};`,
       `GRANT ${SERVER_TABLE_PRIVILEGES.join(", ")} ON TABLE public.${t.name} TO ${SERVER_ROLE};`,
       ...(allow ? [`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.${t.name} TO authenticated;`] : []),
       ...tComments,
@@ -232,8 +259,18 @@ export function buildV101(input: V101Input): V101Output {
   for (const c of pkUnique) constraints.push(`${tableOf(c)}.${objectName(c)}`);
 
   // ---------- funções ----------
-  const fns = of("FUNCTION").map((f) => ({ ...f, sql: stmts(f.sql).filter((s) => statementKind(s) !== "set").map((s) => `${s};`).join("\n") }));
-  for (const f of fns) if (!/^CREATE FUNCTION public\./.test(f.sql)) throw new Error(`v1.0.1: função sem CREATE FUNCTION public.: ${f.name}`);
+  const allFns = of("FUNCTION").map((f) => ({ ...f, sql: stmts(f.sql).filter((s) => statementKind(s) !== "set").map((s) => `${s};`).join("\n") }));
+  for (const f of allFns) if (!/^CREATE FUNCTION public\./.test(f.sql)) throw new Error(`v1.0.1: função sem CREATE FUNCTION public.: ${f.name}`);
+  const qNames = new Set(profile.quarantinedFunctions.map((q) => q.name));
+  for (const q of qNames) if (allFns.filter((f) => functionOf(f) === q).length !== 1) throw new Error(`v${profile.version}: função a pôr em quarentena não encontrada 1 vez: ${q}`);
+  const quarantinedFns = allFns.filter((f) => qNames.has(functionOf(f)!));
+  const fns = allFns.filter((f) => !qNames.has(functionOf(f)!));
+  // Nada do que fica instalado pode depender de uma função em quarentena.
+  for (const q of qNames) {
+    const re = new RegExp(`\\b${q}\\s*\\(`);
+    const users = [...fns, ...tables, ...of("CONSTRAINT"), ...of("TRIGGER"), ...of("POLICY"), ...of("INDEX"), ...of("FK CONSTRAINT")].filter((e) => re.test(e.sql));
+    if (users.length) throw new Error(`v${profile.version}: ${q} está em quarentena mas é usada por ${users.map((u) => u.name).join(", ")}`);
+  }
   const fnNames = new Set(fns.map((f) => functionOf(f)!));
   const referencedByTables = new Set<string>();
   for (const e of [...tables, ...pkUnique]) for (const m of e.sql.matchAll(/public\.(\w+)\(/g)) if (fnNames.has(m[1])) referencedByTables.add(m[1]);
@@ -254,7 +291,11 @@ export function buildV101(input: V101Input): V101Output {
     `GRANT EXECUTE ON FUNCTION public.${f.name} TO ${SERVER_ROLE};`,
   ].join("\n");
   const fnComments = (f: DumpEntry) => comments.filter((c) => functionOf(c) === functionOf(f)).map((c) => c.sql);
-  const fnBlock = (f: DumpEntry) => [`-- ----- função public.${f.name} -----`, f.sql, fnAcl(f), ...fnComments(f)].join("\n");
+  const fnAclSql = (f: DumpEntry) => [
+    `REVOKE ALL ON FUNCTION public.${f.name} FROM PUBLIC, ${clientRevoke};`,
+    `GRANT EXECUTE ON FUNCTION public.${f.name} TO ${SERVER_ROLE};`,
+  ].join("\n");
+  const fnBlock = (f: DumpEntry) => [`-- ----- função public.${f.name} -----`, f.sql, profile.revokeFromServer ? fnAclSql(f) : fnAcl(f), ...fnComments(f)].join("\n");
   const preFns = topoSortFunctions(fns.filter((f) => preTable.has(functionOf(f)!)));
   const postFns = topoSortFunctions(fns.filter((f) => !preTable.has(functionOf(f)!)));
 
@@ -303,19 +344,21 @@ export function buildV101(input: V101Input): V101Output {
   ].join("\n");
   const half = Math.ceil(tableBlocks.length / 2);
   const bodies: [string, string, string][] = [
-    [V101_MIGRATIONS[0], "S3-00 · prelúdio aditivo", "Novos valores de app_role (transação própria), extensão unaccent e user_roles.created_by (nulo, sem chave para auth.users). Não muda linhas, políticas nem permissões do staging.\n" + prelude],
-    [V101_MIGRATIONS[1], "S3-01 · tipos e tabelas (parte A)", "Cada tabela nasce com RLS, barreira admin/tester (RESTRICTIVE) e permissões só para o servidor, na mesma migração.\n" +
+    [MIG[0], `${MIG[0].slice(0, 5)} · prelúdio aditivo`, "Novos valores de app_role (transação própria), extensão unaccent e user_roles.created_by (nulo, sem chave para auth.users). Não muda linhas, políticas nem permissões do staging.\n" + prelude],
+    [MIG[1], `${MIG[1].slice(0, 5)} · tipos e tabelas (parte A)`, "Cada tabela nasce com RLS, barreira admin/tester (RESTRICTIVE) e permissões só para o servidor, na mesma migração.\n" +
       [...types.map((t) => t.sql), ...preFns.map(fnBlock), ...tableBlocks.slice(0, half)].join("\n\n")],
-    [V101_MIGRATIONS[2], "S3-02 · tabelas (parte B), chaves primárias, unicidade e verificações", "Mesmas regras da parte A: RLS, barreira e permissões só para o servidor nascem com cada tabela.\n" +
+    [MIG[2], `${MIG[2].slice(0, 5)} · tabelas (parte B), chaves primárias, unicidade e verificações`, "Mesmas regras da parte A: RLS, barreira e permissões só para o servidor nascem com cada tabela.\n" +
       [...tableBlocks.slice(half), "-- ----- chaves primárias, unicidade e verificações -----", ...pkUnique.map((c) => c.sql)].join("\n\n")],
-    [V101_MIGRATIONS[3], "S3-03 · funções", "Cada função perde EXECUTE para PUBLIC/anon/authenticated logo a seguir à criação; só service_role a executa.\n" + postFns.map(fnBlock).join("\n\n")],
-    [V101_MIGRATIONS[4], "S3-04 · índices, chaves estrangeiras e gatilhos", `Sem chaves para auth.users fora de ${AUTH_USERS_FK_ALLOWED_TABLES.join(", ")}.\n` +
+    [MIG[3], `${MIG[3].slice(0, 5)} · funções`, (profile.revokeFromServer
+      ? "Cada função perde TODOS os privilégios (PUBLIC/anon/authenticated/service_role) logo a seguir à criação; depois só service_role recebe EXECUTE."
+      : "Cada função perde EXECUTE para PUBLIC/anon/authenticated logo a seguir à criação; só service_role a executa.") + "\n" + postFns.map(fnBlock).join("\n\n")],
+    [MIG[4], `${MIG[4].slice(0, 5)} · índices, chaves estrangeiras e gatilhos`, `Sem chaves para auth.users fora de ${AUTH_USERS_FK_ALLOWED_TABLES.join(", ")}.\n` +
       [...indexes.map((i) => i.sql), ...keptFks.map((f) => f.sql), ...triggers.map((t) => t.sql)].join("\n\n")],
-    [V101_MIGRATIONS[5], "S3-05 · políticas V2 (papéis estreitados a authenticated/service_role)", "Ficam sempre debaixo da barreira RESTRICTIVE criada com cada tabela. Nenhuma política para PUBLIC ou anon.\n" + policySql.join("\n")],
+    [MIG[5], `${MIG[5].slice(0, 5)} · políticas V2 (papéis estreitados a authenticated/service_role)`, "Ficam sempre debaixo da barreira RESTRICTIVE criada com cada tabela. Nenhuma política para PUBLIC ou anon.\n" + policySql.join("\n")],
   ];
   const migrations = bodies.map(([name, title, rest]) => {
     const [purpose, ...sqlLines] = rest.split("\n");
-    const sql = header(title, purpose) + sqlLines.join("\n").trim() + "\n";
+    const sql = header(profile, title, purpose) + sqlLines.join("\n").trim() + "\n";
     return { name, sql, statements: splitStatements(sql).length };
   });
 
@@ -364,6 +407,12 @@ export function buildV101(input: V101Input): V101Output {
     { name: "QZ-03_realtime.quarantine", title: "Publicação Realtime de assessor_messages", items: realtime.length, body: realtime },
     { name: "QZ-04_politicas_storage_v1.0.0.quarantine", title: "Políticas de storage.objects para assessor-files (v1.0.0, SEM barreira admin/tester — não usar tal como estão)", items: storagePolicies.length, body: storagePolicies },
     { name: "QZ-05_chaves_auth_users_retiradas.quarantine", title: "Chaves estrangeiras para auth.users retiradas da instalação (só para rastreio)", items: removedFkSql.length, body: removedFkSql },
+    ...(quarantinedFns.length ? [{
+      name: "QZ-06_funcoes_retiradas.quarantine",
+      title: "Funções do estado final retiradas da instalação (escrevem ou descobrem tabelas do staging, incluindo user_roles)",
+      items: quarantinedFns.length,
+      body: quarantinedFns.map((f) => [`-- ${f.name}: ${profile.quarantinedFunctions.find((q) => q.name === functionOf(f))!.reason}`, f.sql, ...fnComments(f)].join("\n")),
+    }] : []),
   ].map((q) => ({
     name: q.name, title: q.title, items: q.items,
     content:
@@ -403,7 +452,8 @@ export function buildV101(input: V101Input): V101Output {
       removedAuthFks,
       defaultOverrides: SEND_DEFAULT_OVERRIDES.map((o) => ({ table: o.table, column: o.column, reason: o.reason })),
       boolDefaultTrue,
-      tableMigration: Object.fromEntries(v2Tables.map((t, i) => [t, i < half ? V101_MIGRATIONS[1] : V101_MIGRATIONS[2]])),
+      tableMigration: Object.fromEntries(v2Tables.map((t, i) => [t, i < half ? MIG[1] : MIG[2]])),
+      quarantinedFunctions: quarantinedFns.map((f) => ({ name: functionOf(f)!, signature: f.name, reason: profile.quarantinedFunctions.find((q) => q.name === functionOf(f))!.reason })),
       stagingOwned,
     },
     v100: { perFile, dml, destructive, authUsersFks, anonGrants, publicPolicies },

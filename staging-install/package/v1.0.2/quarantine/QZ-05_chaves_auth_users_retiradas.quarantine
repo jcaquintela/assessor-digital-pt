@@ -1,0 +1,257 @@
+-- QUARENTENA · Chaves estrangeiras para auth.users retiradas da instalação (só para rastreio)
+-- NÃO EXECUTÁVEL. Nenhuma instrução abaixo está ativa: todas as linhas começam por "--Q| ".
+-- Reativar qualquer item exige autorização SEPARADA do proprietário e uma nova versão do pacote.
+-- Se este ficheiro for executado por engano, a primeira instrução aborta a transação.
+DO $quarentena$ BEGIN RAISE EXCEPTION 'QUARENTENA %: não executar sem autorização separada', 'QZ-05_chaves_auth_users_retiradas.quarantine'; END $quarentena$;
+
+--Q| ALTER TABLE ONLY public.admin_audit_logs
+--Q|     ADD CONSTRAINT admin_audit_logs_admin_user_id_fkey FOREIGN KEY (admin_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.admin_audit_logs
+--Q|     ADD CONSTRAINT admin_audit_logs_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.admin_broadcast_recipients
+--Q|     ADD CONSTRAINT admin_broadcast_recipients_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.admin_mfa_required
+--Q|     ADD CONSTRAINT admin_mfa_required_required_by_fkey FOREIGN KEY (required_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.admin_mfa_required
+--Q|     ADD CONSTRAINT admin_mfa_required_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.announcement_dismissals
+--Q|     ADD CONSTRAINT announcement_dismissals_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.app_user_connection_aliases
+--Q|     ADD CONSTRAINT app_user_connection_aliases_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.app_user_connections
+--Q|     ADD CONSTRAINT app_user_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.assessor_ai_logs
+--Q|     ADD CONSTRAINT assessor_ai_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE NOT VALID;
+--Q|
+--Q| ALTER TABLE ONLY public.assessor_messages
+--Q|     ADD CONSTRAINT assessor_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.assessor_nudges
+--Q|     ADD CONSTRAINT assessor_nudges_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.assessor_quality_scores
+--Q|     ADD CONSTRAINT assessor_quality_scores_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.assessor_reasoning_traces
+--Q|     ADD CONSTRAINT assessor_reasoning_traces_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.assessor_tool_calls
+--Q|     ADD CONSTRAINT assessor_tool_calls_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.assistant_reflections
+--Q|     ADD CONSTRAINT assistant_reflections_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.assistant_shadow_runs
+--Q|     ADD CONSTRAINT assistant_shadow_runs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.assistant_trust_scores
+--Q|     ADD CONSTRAINT assistant_trust_scores_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.assistant_user_corrections
+--Q|     ADD CONSTRAINT assistant_user_corrections_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.autonomy_rules
+--Q|     ADD CONSTRAINT autonomy_rules_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.calendar_connections
+--Q|     ADD CONSTRAINT calendar_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.calendar_event_links
+--Q|     ADD CONSTRAINT calendar_event_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.calendar_sync_log
+--Q|     ADD CONSTRAINT calendar_sync_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.calendar_sync_state
+--Q|     ADD CONSTRAINT calendar_sync_state_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.channel_links
+--Q|     ADD CONSTRAINT channel_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.consultant_preferences
+--Q|     ADD CONSTRAINT consultant_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.content_access_consents
+--Q|     ADD CONSTRAINT content_access_consents_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.conversation_locks
+--Q|     ADD CONSTRAINT conversation_locks_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE NOT VALID;
+--Q|
+--Q| ALTER TABLE ONLY public.conversation_states
+--Q|     ADD CONSTRAINT conversation_states_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.daily_digests
+--Q|     ADD CONSTRAINT daily_digests_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.daily_priorities
+--Q|     ADD CONSTRAINT daily_priorities_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.dashboard_login_tokens
+--Q|     ADD CONSTRAINT dashboard_login_tokens_issued_by_fkey FOREIGN KEY (issued_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.dashboard_login_tokens
+--Q|     ADD CONSTRAINT dashboard_login_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.deal_deadlines
+--Q|     ADD CONSTRAINT deal_deadlines_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.email_connections
+--Q|     ADD CONSTRAINT email_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.email_drafts
+--Q|     ADD CONSTRAINT email_drafts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.email_messages
+--Q|     ADD CONSTRAINT email_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.email_threads
+--Q|     ADD CONSTRAINT email_threads_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.entity_tags
+--Q|     ADD CONSTRAINT entity_tags_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.event_categories
+--Q|     ADD CONSTRAINT event_categories_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.feature_flag_users
+--Q|     ADD CONSTRAINT feature_flag_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.feature_flags
+--Q|     ADD CONSTRAINT feature_flags_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.file_categories
+--Q|     ADD CONSTRAINT file_categories_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.file_links
+--Q|     ADD CONSTRAINT file_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.financial_movements
+--Q|     ADD CONSTRAINT financial_movements_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.folder_items
+--Q|     ADD CONSTRAINT folder_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.folders
+--Q|     ADD CONSTRAINT folders_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.follow_ups
+--Q|     ADD CONSTRAINT follow_ups_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.interactions
+--Q|     ADD CONSTRAINT interactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.miscellaneous_items
+--Q|     ADD CONSTRAINT miscellaneous_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.opportunities
+--Q|     ADD CONSTRAINT opportunities_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.opportunity_events
+--Q|     ADD CONSTRAINT opportunity_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.opportunity_properties
+--Q|     ADD CONSTRAINT opportunity_properties_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.pending_actions
+--Q|     ADD CONSTRAINT pending_actions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.people
+--Q|     ADD CONSTRAINT people_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.person_phones
+--Q|     ADD CONSTRAINT person_phones_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.product_feedback
+--Q|     ADD CONSTRAINT product_feedback_handled_by_fkey FOREIGN KEY (handled_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.product_feedback
+--Q|     ADD CONSTRAINT product_feedback_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.product_telemetry_events
+--Q|     ADD CONSTRAINT product_telemetry_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.promo_redemptions
+--Q|     ADD CONSTRAINT promo_redemptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.properties
+--Q|     ADD CONSTRAINT properties_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.property_categories
+--Q|     ADD CONSTRAINT property_categories_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE NOT VALID;
+--Q|
+--Q| ALTER TABLE ONLY public.property_interests
+--Q|     ADD CONSTRAINT property_interests_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.property_marketing_activities
+--Q|     ADD CONSTRAINT property_marketing_activities_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.property_offers
+--Q|     ADD CONSTRAINT property_offers_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.prospecting_leads
+--Q|     ADD CONSTRAINT prospecting_leads_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.reminders
+--Q|     ADD CONSTRAINT reminders_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.routines
+--Q|     ADD CONSTRAINT routines_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.short_links
+--Q|     ADD CONSTRAINT short_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.similar_listing_searches
+--Q|     ADD CONSTRAINT similar_listing_searches_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.subscription_events
+--Q|     ADD CONSTRAINT subscription_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.support_sessions
+--Q|     ADD CONSTRAINT support_sessions_admin_user_id_fkey FOREIGN KEY (admin_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.support_sessions
+--Q|     ADD CONSTRAINT support_sessions_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.tags
+--Q|     ADD CONSTRAINT tags_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.telegram_invites
+--Q|     ADD CONSTRAINT telegram_invites_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.telegram_invites
+--Q|     ADD CONSTRAINT telegram_invites_used_by_fkey FOREIGN KEY (used_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.telegram_link_tokens
+--Q|     ADD CONSTRAINT telegram_link_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.telegram_pairings
+--Q|     ADD CONSTRAINT telegram_pairings_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.uploaded_files
+--Q|     ADD CONSTRAINT uploaded_files_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.whatsapp_link_codes
+--Q|     ADD CONSTRAINT whatsapp_link_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+--Q|
+--Q| ALTER TABLE ONLY public.whatsapp_proactive_tests
+--Q|     ADD CONSTRAINT whatsapp_proactive_tests_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.whatsapp_proactive_tests
+--Q|     ADD CONSTRAINT whatsapp_proactive_tests_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.whatsapp_send_logs
+--Q|     ADD CONSTRAINT whatsapp_send_logs_triggered_by_fkey FOREIGN KEY (triggered_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.whatsapp_template_bindings
+--Q|     ADD CONSTRAINT whatsapp_template_bindings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+--Q|
+--Q| ALTER TABLE ONLY public.whatsapp_template_rates
+--Q|     ADD CONSTRAINT whatsapp_template_rates_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL;

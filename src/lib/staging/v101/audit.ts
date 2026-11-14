@@ -19,7 +19,20 @@ const ALLOWED: ReadonlySet<StatementKind> = new Set([
 
 const OWNED_RE = new RegExp(`\\bpublic\\.(${[...STAGING_OWNED.tables, ...STAGING_OWNED.functions].join("|")})\\b`, "i");
 
-export function auditMigrations(files: { name: string; sql: string }[]): Violation[] {
+/**
+ * Regras adicionais (v1.0.2+). Sem opções, a auditoria é exatamente a da v1.0.1.
+ * - serverAclExact: cada REVOKE de tabela/função inclui service_role (normaliza privilégios por
+ *   omissão da plataforma) e cada GRANT dá só SELECT/INSERT/UPDATE/DELETE (tabela) ou EXECUTE (função).
+ * - stagingSafeFunctions: nenhuma função instalada escreve em tabelas do staging (user_roles,
+ *   staging_notes) nem usa SQL dinâmico sobre tabelas descobertas no catálogo.
+ */
+export interface AuditOptions { serverAclExact?: boolean; stagingSafeFunctions?: boolean }
+
+const WRITES_STAGING_RE = new RegExp(`\\b(?:INSERT\\s+INTO|UPDATE|DELETE\\s+FROM|TRUNCATE(?:\\s+TABLE)?|MERGE\\s+INTO)\\s+(?:ONLY\\s+)?(?:public\\.)?"?(?:${STAGING_OWNED.tables.join("|")})\\b`, "i");
+const DISCOVERS_TABLES_RE = /\binformation_schema\.(?:columns|tables)\b|\bpg_catalog\.pg_(?:class|attribute|tables)\b|\bFROM\s+pg_(?:class|attribute|tables)\b/i;
+const DYNAMIC_IDENT_RE = /\bEXECUTE\s+format\s*\([^;]*%I/i;
+
+export function auditMigrations(files: { name: string; sql: string }[], opts: AuditOptions = {}): Violation[] {
   const v: Violation[] = [];
   const add = (file: string, line: number, rule: string, s: string) => v.push({ file, line, rule, excerpt: skeleton(s).slice(0, 140) });
   for (const f of files) {
@@ -48,6 +61,17 @@ export function auditMigrations(files: { name: string; sql: string }[]): Violati
         const m = /\bTO ([\w, ]+)$/i.exec(sk);
         const to = (m?.[1] ?? "").split(",").map((x) => x.trim().toLowerCase());
         if (to.some((r) => r !== SERVER_ROLE)) add(f.name, s.line, "GRANT a papel cliente/PUBLIC", s.text);
+        if (opts.serverAclExact) {
+          const g = /^GRANT (.+?) ON (TABLE|FUNCTION) public\./.exec(sk);
+          const ok = g && ((g[2] === "TABLE" && g[1] === "SELECT, INSERT, UPDATE, DELETE") || (g[2] === "FUNCTION" && g[1] === "EXECUTE"));
+          if (!ok || /WITH GRANT OPTION/i.test(sk)) add(f.name, s.line, "GRANT ao servidor fora do conjunto exato", s.text);
+        }
+      }
+      if (k === "revoke" && opts.serverAclExact && !/^REVOKE ALL ON (TABLE|FUNCTION) public\.\S+(?: [^)]*\))? FROM PUBLIC, anon, authenticated, service_role$/.test(sk))
+        add(f.name, s.line, "REVOKE sem normalizar service_role", s.text);
+      if (k === "create_function" && opts.stagingSafeFunctions) {
+        if (WRITES_STAGING_RE.test(s.text)) add(f.name, s.line, "função escreve em tabela do staging", s.text);
+        if (DISCOVERS_TABLES_RE.test(s.text) && DYNAMIC_IDENT_RE.test(s.text)) add(f.name, s.line, "função com SQL dinâmico sobre tabelas descobertas no catálogo", s.text);
       }
       if (k === "create_policy") {
         const m = /^CREATE POLICY ("(?:[^"]|"")+"|\w+) ON public\.(\w+)(?: AS (RESTRICTIVE|PERMISSIVE))?(?: FOR (\w+))?(?: TO ([\w", ]+?))?(?: USING | WITH CHECK |$)/.exec(sk);
@@ -180,4 +204,20 @@ export function accessMatrix(model: AccessModel): MatrixRow[] {
     for (const fs of model.functions.values()) if (fs.has(role) || fs.has("public")) exec++;
     return { principal: p, tablesWithDirectAccess: direct, executableFunctions: exec, tablesIfGrantedToClient: ifGranted, tablesUnderGate: underGate };
   });
+}
+
+// ------------------------------------------------------------------ ACL do servidor
+
+/**
+ * Privilégios FINAIS de service_role em cada tabela/função V2, no modelo de pior caso
+ * (antes dos REVOKE, service_role tem tudo, como com privilégios por omissão da plataforma).
+ */
+export function serverAcl(model: AccessModel): { tables: Record<string, string[]>; functionsWithoutExecute: string[] } {
+  const tables: Record<string, string[]> = {};
+  for (const [name, t] of model.tables) {
+    const p = t.privs.get(SERVER_ROLE) ?? new Set<string>();
+    tables[name] = p.has("ALL") ? ["ALL"] : [...p].sort();
+  }
+  const functionsWithoutExecute = [...model.functions].filter(([, r]) => !r.has(SERVER_ROLE)).map(([n]) => n);
+  return { tables, functionsWithoutExecute };
 }

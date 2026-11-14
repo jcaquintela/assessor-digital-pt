@@ -1,0 +1,27 @@
+# Gerado por tools/parse_check.mjs (libpg-query 17.8.3, parser oficial do PostgreSQL 17). Sem base de dados.
+OK sintaxe S4-00_prelude_aditivo.sql [23f198ffa3135153]: 5 instruções {"AlterEnumStmt":3,"CreateExtensionStmt":1,"AlterTableStmt":1}
+OK sintaxe S4-01_tipos_tabelas_a.sql [5724b20543f0716e]: 279 instruções {"CreateEnumStmt":7,"CreateFunctionStmt":1,"GrantStmt":106,"CreateStmt":52,"AlterTableStmt":53,"CreatePolicyStmt":52,"CommentStmt":8}
+OK sintaxe S4-02_tabelas_b_restricoes.sql [5b8fae75417e16e2]: 406 instruções {"CreateStmt":52,"AlterTableStmt":190,"CreatePolicyStmt":52,"GrantStmt":104,"CommentStmt":8}
+OK sintaxe S4-03_funcoes.sql [68f244fffb97280e]: 111 instruções {"CreateFunctionStmt":37,"GrantStmt":74}
+OK sintaxe S4-04_indices_chaves_gatilhos.sql [8ba1230d83e7c879]: 311 instruções {"IndexStmt":163,"AlterTableStmt":76,"CreateTrigStmt":72}
+OK sintaxe S4-05_politicas.sql [6276b63eb5bd6c1c]: 120 instruções {"CreatePolicyStmt":120}
+OK sintaxe preflight/P00_alvo.sql [89eaf34725d66bbf]: 1 SELECT
+OK sintaxe preflight/P01_dono_historico.sql [b26f5f878eed2c91]: 1 SELECT
+OK sintaxe preflight/P02_privilegios_dono_historico.sql [f1ccd059c9e33a36]: 1 SELECT
+OK sintaxe preflight/P03_colisoes.sql [ece9eac7f0292d9c]: 1 SELECT
+OK sintaxe preflight/P04_conta_proprietario.sql [db2839ddc46e0b8b]: 1 SELECT
+OK sintaxe preflight/P05_registo_base.sql [69d084471601e573]: 1 SELECT
+OK sintaxe posflight/Q00_alvo.sql [194005d58f83da71]: 1 SELECT
+OK sintaxe posflight/Q01_estrutura.sql [e70797606a43ab11]: 1 SELECT
+OK sintaxe posflight/Q02_seguranca.sql [09d1bc27a1f4ffb8]: 1 SELECT
+OK sintaxe posflight/Q03_conta_proprietario.sql [9de4246c8a376685]: 1 SELECT
+OK sintaxe posflight/Q04_acesso_staging.sql [9a1665072f0fddb6]: 1 SELECT
+OK sintaxe posflight/Q05_matriz_acesso.sql [faaa0cf67587bec1]: 1 SELECT
+OK quarantine/QZ-01_dml_v1.0.0.quarantine [618c4228c915c4a6]: única instrução ativa = guarda que aborta
+OK quarantine/QZ-02_gatilho_auth_users.quarantine [23f28f563c39d52f]: única instrução ativa = guarda que aborta
+OK quarantine/QZ-03_realtime.quarantine [d1454149232a16b9]: única instrução ativa = guarda que aborta
+OK quarantine/QZ-04_politicas_storage_v1.0.0.quarantine [39c60174aa6aff3a]: única instrução ativa = guarda que aborta
+OK quarantine/QZ-05_chaves_auth_users_retiradas.quarantine [69a0e30f321817aa]: única instrução ativa = guarda que aborta
+OK quarantine/QZ-06_funcoes_retiradas.quarantine [6c1c0cda6917b376]: única instrução ativa = guarda que aborta
+RESULTADO: 0 falhas
+# Verificação de sintaxe do script de alvo (sem o executar): sh -n OK, bash -n OK — tools/rehearsal_target_check.sh [bfa8253a5939eb6f]
