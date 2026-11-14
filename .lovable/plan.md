@@ -1,87 +1,77 @@
-# Auditoria técnica (só leitura) — Afonso AI
+# Plano de migração — Afonso AI 2.0 (WhatsApp + Telegram, uma conta, só conversa)
 
-Nada foi alterado. Legenda: **[C]** confirmado no código · **[CNT]** configurado mas não testado ponta-a-ponta nesta auditoria · **[NI]** não implementado · **[D]** desconhecido.
+Só plano. Nada é alterado até aprovação explícita de cada fase.
 
-## 1. Arquitetura
-- [C] TanStack Start (React 19, Vite 7) em Cloudflare Workers; backend Lovable Cloud (Postgres + Auth + Storage); 174 migrações.
-- [C] Motor "Reasoning Engine v3" (Observe→Think→Search→Decide→Act→Remember→Reply) em `src/lib/assessor/v3`, com router determinístico antes do LLM; ativo por feature flag por utilizador.
-- [C] Channel Gateway único (`channel-gateway/ingest.server.ts`) com adaptadores WhatsApp e Telegram.
+## Ponto de partida (confirmado no código)
+- Uma conta = `profiles` (id = utilizador de Auth). Canais em `channel_links (user_id, channel, external_id)`; o WhatsApp tem ainda um caminho legado em `profiles.phone` + `whatsapp_link_status`.
+- Vinculação: `whatsapp_link_codes` (código com hash, tentativas, validade), `telegram_link_tokens` e `telegram_pairings` (pareamento com telefone + código).
+- Dados de negócio (pessoas, imóveis, tarefas, negócios, rotinas, memória) já pertencem ao `user_id`, não ao canal — partilha entre canais já é natural.
+- Contexto de conversa em `conversation_states` e bloqueio em `conversation_locks` são **por canal**.
+- Envio proativo: `primary-channel.server.ts` escolhe 1 canal (WhatsApp tem prioridade); avisos passam por `assessor_nudges`.
+- Existe app web do consultor (41 páginas), chat do dashboard e servidor MCP — fora da nova premissa.
 
-## 2. Inconsistências com "WhatsApp-only"
-- [C] Existe app web completa para o consultor: 41 páginas autenticadas (`/hoje`, `/assessor`, `/calendario`, `/drive`, `/imoveis`, `/comunicacao`, `/definicoes`...), registo, login, recuperação de password, planos.
-- [C] Canal Telegram completo e paralelo (webhook, onboarding, "Telegram Grátis"), contrário a WhatsApp-only.
-- [C] Chat do dashboard (`dashboard-chat.functions.ts`) — segunda interface conversacional.
-- [C] Servidor MCP (`/mcp`, OAuth consent) — terceira interface.
-- [C] Memória do projeto ainda afirma "Dashboard cria Pessoas e Imóveis" — contradiz a premissa.
-- [C] Painel `/admin` (~38 páginas) — legítimo, só equipa.
+## 1. Esquema de identidade (alvo)
+- `channel_identities` (substitui/estende `channel_links`): `user_id`, `channel` (whatsapp|telegram), `external_id` único por canal, `status` (pending|verified|revoked), `verified_at`, `verification_method`, `revoked_at`, `revoked_reason`, `last_seen_at`. Único global (channel, external_id) entre identidades ativas.
+- `identity_link_challenges`: desafio de posse (código com hash, canal de origem e de destino, tentativas, expira em 10 min, uso único).
+- `channel_preferences`: por utilizador e canal — recebe briefing, lembretes, avisos, horário de silêncio, canal preferido por tipo de aviso.
+- `inbound_events`: inbox duradoura por (channel, provider_message_id) única — idempotência de entrada.
+- `outbound_deliveries`: um registo por aviso lógico (`nudge_id`) com canal escolhido, id do fornecedor e estado — garante 1 entrega por aviso.
+- Deixar de usar `profiles.phone/whatsapp_link_status` como fonte de verdade (só marcar como obsoleto; não apagar).
 
-## 3. WhatsApp
-- [C] Fornecedor: Meta Cloud API **direta** (`graph.facebook.com/v20.0` em `whatsapp/send.server.ts`), não o conector Lovable. Webhook `/api/public/whatsapp-webhook` com verificação HMAC `x-hub-signature-256` em tempo constante e verify token.
-- [C] Tipos: texto, áudio, imagem, documento, botões, reações, cartões de contacto.
-- [C] Templates (briefing, check-in, plano ativado, trial) com parâmetros achatados; estado de templates por hook.
-- [CNT] Estados de entrega (sent/delivered/read) — registados em `whatsapp_send_logs`; reconciliação completa não verificada.
-- [D] Se há inbox duradoura e idempotência por id de entrega antes de processar (risco de perder mensagens se o processamento falhar).
-- [NI] Fallback quando um template é rejeitado (a mensagem perde-se, só log).
+## 2. Vinculação de contas (prova de posse e revogação)
+- Primeiro canal cria a conta (onboarding por conversa).
+- Adicionar segundo canal: no canal já verificado, "liga o meu Telegram" → Afonso dá um código de uso único; o consultor envia-o no novo canal (ou o contrário). Só fica verificado se o código chegar pelo canal-alvo dentro do prazo.
+- Conflito: identidade já ligada a outra conta → nunca reatribuir automaticamente; exige prova no canal antigo ou intervenção da equipa (consola admin), com auditoria.
+- Revogação: "desliga o Telegram" (confirmação obrigatória), ou pela consola admin. Revogar o último canal ativo é bloqueado com explicação.
+- Contas duplicadas pré-existentes: reaproveitar `merge_accounts_preview/apply` apenas pela consola admin.
 
-## 4. Autenticação e identidade
-- [C] Auth por email/password + ligação de canal por código (`whatsapp_link_codes`, `telegram_link_tokens`); tokens de login por link (`dashboard_login_tokens`).
-- [C] Papéis em `user_roles` com `has_role`/`is_admin` (security definer). MFA admin (`admin_mfa_required`).
-- [D] Comportamento de um número WhatsApp desconhecido (registo automático vs. recusa) — merece verificação dedicada.
+## 3. Onboarding e configuração por conversa
+- Remover dependência de registo/password web: conta nasce no primeiro contacto verificado.
+- Definições (nome do assistente, horários, briefing, rotinas, canais, notificações) só por conversa — estender a whitelist de `settings-conversa.ts` com preferências por canal.
+- OAuth (Google/Outlook) e pagamento (Stripe) por link seguro de uso único e curta validade, aberto a partir da conversa; resultado confirmado de volta no canal.
+- App web do consultor: fase de desativação gradual (redirecionar para "fala comigo no WhatsApp/Telegram"); consola `/admin` mantém-se.
 
-## 5. Base de dados e RLS
-- [C] ~95 tabelas, todas com RLS e pelo menos 1 política; dados por `user_id`.
-- [C] Linter: 1 extensão no esquema público; 3 funções security definer executáveis por qualquer utilizador autenticado (candidatas: `merge_accounts_apply/preview`, `purge_admin_audit_logs`, `expire_beta_testers` — **[D]** quais exatamente; se forem estas, é crítico).
-- [C] Escritas só por Domain Services (IA nunca escreve diretamente).
+## 4. Motor de memória e roteamento
+- Memória, entidades e `pending_actions` passam a ser por **conta**; `conversation_states` ganha um estado partilhado por conta + um fio curto por canal (para "sim/não" responder ao canal certo).
+- Confirmações pendentes: uma pergunta aberta só pode ser respondida no canal onde foi feita (ou explicitamente transferida), evitando confirmar no canal errado.
+- `conversation_locks` passam a ser por conta (evita duas escritas simultâneas vindas dos dois canais).
+- Entrada: webhook → grava em `inbound_events` (idempotente) → resolve identidade verificada → pipeline único existente.
+- Saída proativa: `dispatchPendingNudges` escolhe canal por `channel_preferences` (+ janela 24h no WhatsApp; fallback para Telegram se template falhar) e regista em `outbound_deliveries` — nunca dois canais para o mesmo aviso, salvo preferência explícita.
+- Respostas a pedidos saem sempre no canal de origem.
 
-## 6. LLM, prompts e memória
-- [C] Gemini `google/gemini-3.6-flash` via AI Gateway (think, decide, áudio, correções). Telemetria em `assessor_ai_logs`, traces, AQS/ATS.
-- [C] Proteção contra extração do system prompt (`prompt-shield.ts`) + bloco de confidencialidade; notas confidenciais filtradas (`dropConfidential`).
-- [C] Memória: `conversation_states`, `memory.server.ts`, correções do utilizador, reflexões.
-- [C] Salvaguarda "não dizer fica anotado sem escrita" (`write-receipt.ts`).
-- [D] Custos por consultor/mês e limites de tokens.
+## 5. UX conversacional
+- Mensagens novas: ligar/desligar canal, código de vinculação, "estou ligado em WhatsApp e Telegram", escolha "onde preferes receber o resumo da manhã?".
+- Paridade de funcionalidades nos dois canais (botões do WhatsApp ↔ teclado inline do Telegram), mesmos textos PT-PT.
+- Privacidade: nunca mostrar o número/ID completo do outro canal; confirmar antes de revogar; nota confidencial continua filtrada.
 
-## 7. Tarefas, lembretes, rotinas, calendário
-- [C] `follow_ups`, `reminders`, `routines` (ocorrência substituída pela seguinte), prazos de negócio, avisos por caminho único `assessor_nudges` com expiração e texto recalculado no envio; horário 9h–20h sem domingos.
-- [C] Google Calendar e Outlook com sincronização por polling, chaves cifradas, deteção de conflitos.
-- [CNT] Rotinas da Iolanda ainda não passadas para quinta-feira (espera resposta dela).
+## 6. Testes (golden + E2E)
+- Vinculação: código certo no canal certo → liga; errado/expirado/repetido → recusa; identidade de outra conta → não reatribui.
+- Revogação e bloqueio do último canal.
+- Mesma tarefa criada no WhatsApp aparece ao perguntar no Telegram.
+- Mesma mensagem recebida 2× → processada 1×.
+- Aviso proativo entregue num único canal conforme preferência; fallback quando template é rejeitado.
+- Confirmação pendente não é respondida a partir do outro canal.
+- Escritas concorrentes dos dois canais não duplicam.
 
-## 8. OCR / ficheiros / integrações
-- [C] Leitura de imagem por LLM com visão (cartões de visita, documentos), Drive com quotas mensais, Storage com isolamento.
-- [C] Firecrawl (imóveis semelhantes, com guardrails de linguagem); email Gmail (envio) / Outlook (rascunho) / Resend.
-- [NI] OCR dedicado (não há motor OCR próprio; depende do LLM).
+## 7. Riscos de migração
+- Utilizadores existentes com WhatsApp em `profiles.phone` e Telegram em `channel_links` — backfill para `channel_identities` sem perder ligação.
+- Contas duplicadas (caso Iolanda) a fundir antes de ativar a regra de unicidade.
+- Consultores que usam a app web hoje — comunicação prévia e período de transição.
+- Duplicação de avisos durante a mudança do despacho.
+- Regressões no motor v3 ao mudar estado de conversa para "por conta".
+- Telegram não tem janela de 24h nem templates — comportamentos assimétricos.
 
-## 9. Jobs e notificações
-- [C] 14 hooks públicos (proactive-tick, push, daily-digest, meeting-briefing, calendar-poll, trial/beta lifecycle...), protegidos por `requireCronSecret`.
-- [C] Comentário desatualizado em `proactive-tick.ts` diz "autenticado com chave anon" — o código usa segredo próprio.
-- [D] Frequência real e monitorização de falhas dos crons.
+## 8. Fases e critérios de aceitação
+1. **Fundação de identidade** — tabelas novas + backfill + leitura dupla. Aceite quando todos os canais existentes estão em `channel_identities` verificadas e nada muda para o consultor.
+2. **Inbox idempotente** — entrada por `inbound_events` nos dois webhooks. Aceite: mensagem duplicada processada 1×; nenhum 200 sem gravação.
+3. **Vinculação e revogação por conversa** — Aceite: testes de posse/revogação verdes; auditoria registada.
+4. **Memória e locks por conta** — Aceite: teste "criado num canal, lido no outro" verde; bateria do motor sem regressões.
+5. **Despacho multi-canal com preferências** — Aceite: 0 avisos duplicados num ensaio com 2 canais; fallback testado.
+6. **Configuração 100% por conversa + links seguros para OAuth/pagamento** — Aceite: onboarding completo sem abrir a app web.
+7. **Desativação da app web do consultor** (e chat do dashboard/MCP) — Aceite: rotas de consultor redirecionam; consola admin intacta; nenhum consultor ativo dependente.
+8. **Limpeza** — marcar colunas/tabelas antigas como obsoletas.
 
-## 10. Billing
-- [C] Stripe com webhook verificado (`verifyWebhook`), eventos idempotentes (`stripe_webhook_events`), tiers via `effective_tier()`, códigos promocionais, trial.
-- [CNT] Pagamento real em produção não testado nesta auditoria.
-
-## 11. Logs e testes
-- [C] 263 ficheiros de teste (vitest, ~1900 testes, golden tests), 9 specs Playwright (todas sobre a app web).
-- [C] Teste de isolamento de Storage com timeout recorrente (instável).
-- [NI] Testes ponta-a-ponta do fluxo WhatsApp real (webhook assinado → resposta).
-
-## Pontos críticos de segurança
-1. Funções security definer chamáveis por qualquer utilizador autenticado (linter).
-2. Superfícies extra expostas (web, Telegram, MCP, chat do dashboard) aumentam a área de ataque face ao produto declarado.
-3. Webhook WhatsApp processa sem inbox duradoura confirmada → perdas silenciosas.
-4. Hooks públicos dependem de um único segredo partilhado — confirmar rotação e que nenhum hook ficou sem `requireCronSecret`.
-5. Registo automático por número desconhecido no canal (verificar abuso / custos de LLM).
-
-## 10 prioridades (ordenadas)
-1. Rever as 3 funções security definer e retirar execução a utilizadores comuns.
-2. Decisão de produto: desligar/limitar a app web do consultor, chat do dashboard e MCP, ou atualizar a premissa WhatsApp-only.
-3. Decidir o futuro do Telegram (manter como canal ou retirar).
-4. Inbox duradoura e idempotente para o webhook WhatsApp com recuperação de falhas.
-5. Fallback quando um template WhatsApp é rejeitado (ex.: texto livre se dentro de 24h, alerta à equipa).
-6. Teste ponta-a-ponta do fluxo WhatsApp (assinatura, ingest, resposta, estados).
-7. Fechar o caso da Iolanda (rotinas para quinta) e publicar as correções pendentes já testadas.
-8. Monitorização dos crons (alerta quando um job falha ou não corre).
-9. Controlo de custos de LLM por consultor e limite de mensagens.
-10. Estabilizar o teste instável de Storage e limpar comentários/memórias desatualizados.
-
-## Nota
-Esta auditoria não executa nenhuma alteração. Aprovar este documento só serve para o arquivar; cada prioridade seria um pedido separado.
+## Decisões em aberto para o proprietário
+- Servidor MCP: manter (para equipa) ou retirar.
+- Avisos em ambos os canais por omissão, ou só no preferido.
+- Período de transição da app web.
