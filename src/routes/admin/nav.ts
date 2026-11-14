@@ -60,6 +60,7 @@ export const navGroups: NavGroup[] = [
     group: "Plataforma",
     items: [
       { to: "/admin/integracoes-flags", label: "Integrações & flags" },
+      { to: "/admin/v2", label: "AFONSO 2.0 — decisões e gates" },
       { to: "/admin/whatsapp-nome", label: "Nome do WhatsApp" },
       { to: "/admin/auditoria-seguranca", label: "Auditoria & segurança" },
       { to: "/admin/definicoes", label: "Definições" },

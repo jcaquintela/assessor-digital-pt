@@ -23,6 +23,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAssessorRouteImport } from './routes/_authenticated/assessor'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
+import { Route as AuthenticatedContaRouteImport } from './routes/_authenticated/conta'
 import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
 import { Route as AuthenticatedDiversosRouteImport } from './routes/_authenticated/diversos'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
@@ -31,6 +32,7 @@ import { Route as AuthenticatedHojeRouteImport } from './routes/_authenticated/h
 import { Route as AuthenticatedInteracoesRouteImport } from './routes/_authenticated/interacoes'
 import { Route as AuthenticatedLigarCanalRouteImport } from './routes/_authenticated/ligar-canal'
 import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
+import { Route as AuthenticatedPrivacidadeRouteImport } from './routes/_authenticated/privacidade'
 import { Route as AuthenticatedRotinasRouteImport } from './routes/_authenticated/rotinas'
 import { Route as AuthenticatedSobreAIaRouteImport } from './routes/_authenticated/sobre-a-ia'
 import { Route as AuthenticatedSubscricaoRouteImport } from './routes/_authenticated/subscricao'
@@ -69,6 +71,7 @@ import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminSuporteRouteImport } from './routes/admin/suporte'
 import { Route as AdminUtilizacaoRouteImport } from './routes/admin/utilizacao'
 import { Route as AdminUtilizadoresRouteImport } from './routes/admin/utilizadores'
+import { Route as AdminV2RouteImport } from './routes/admin/v2'
 import { Route as AdminWhatsappNomeRouteImport } from './routes/admin/whatsapp-nome'
 import { Route as DevLigarCanalRouteImport } from './routes/dev.ligar-canal'
 import { Route as SCodeRouteImport } from './routes/s.$code'
@@ -195,6 +198,11 @@ const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
   path: '/calendario',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedContaRoute = AuthenticatedContaRouteImport.update({
+  id: '/conta',
+  path: '/conta',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDefinicoesRoute = AuthenticatedDefinicoesRouteImport.update({
   id: '/definicoes',
   path: '/definicoes',
@@ -235,6 +243,12 @@ const AuthenticatedMaisRoute = AuthenticatedMaisRouteImport.update({
   path: '/mais',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPrivacidadeRoute =
+  AuthenticatedPrivacidadeRouteImport.update({
+    id: '/privacidade',
+    path: '/privacidade',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedRotinasRoute = AuthenticatedRotinasRouteImport.update({
   id: '/rotinas',
   path: '/rotinas',
@@ -424,6 +438,11 @@ const AdminUtilizacaoRoute = AdminUtilizacaoRouteImport.update({
 const AdminUtilizadoresRoute = AdminUtilizadoresRouteImport.update({
   id: '/utilizadores',
   path: '/utilizadores',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminV2Route = AdminV2RouteImport.update({
+  id: '/v2',
+  path: '/v2',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminWhatsappNomeRoute = AdminWhatsappNomeRouteImport.update({
@@ -749,6 +768,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
+  '/conta': typeof AuthenticatedContaRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/diversos': typeof AuthenticatedDiversosRouteWithChildren
   '/documentos': typeof AuthenticatedDocumentosRoute
@@ -757,6 +777,7 @@ export interface FileRoutesByFullPath {
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
   '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
+  '/privacidade': typeof AuthenticatedPrivacidadeRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
   '/subscricao': typeof AuthenticatedSubscricaoRoute
@@ -794,6 +815,7 @@ export interface FileRoutesByFullPath {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/admin/v2': typeof AdminV2Route
   '/admin/whatsapp-nome': typeof AdminWhatsappNomeRoute
   '/dev/ligar-canal': typeof DevLigarCanalRoute
   '/s/$code': typeof SCodeRoute
@@ -863,6 +885,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/assessor': typeof AuthenticatedAssessorRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
+  '/conta': typeof AuthenticatedContaRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/diversos': typeof AuthenticatedDiversosRouteWithChildren
   '/documentos': typeof AuthenticatedDocumentosRoute
@@ -871,6 +894,7 @@ export interface FileRoutesByTo {
   '/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
   '/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/mais': typeof AuthenticatedMaisRoute
+  '/privacidade': typeof AuthenticatedPrivacidadeRoute
   '/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
   '/subscricao': typeof AuthenticatedSubscricaoRoute
@@ -908,6 +932,7 @@ export interface FileRoutesByTo {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/admin/v2': typeof AdminV2Route
   '/admin/whatsapp-nome': typeof AdminWhatsappNomeRoute
   '/dev/ligar-canal': typeof DevLigarCanalRoute
   '/s/$code': typeof SCodeRoute
@@ -980,6 +1005,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/assessor': typeof AuthenticatedAssessorRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
+  '/_authenticated/conta': typeof AuthenticatedContaRoute
   '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
   '/_authenticated/diversos': typeof AuthenticatedDiversosRouteWithChildren
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
@@ -988,6 +1014,7 @@ export interface FileRoutesById {
   '/_authenticated/interacoes': typeof AuthenticatedInteracoesRouteWithChildren
   '/_authenticated/ligar-canal': typeof AuthenticatedLigarCanalRoute
   '/_authenticated/mais': typeof AuthenticatedMaisRoute
+  '/_authenticated/privacidade': typeof AuthenticatedPrivacidadeRoute
   '/_authenticated/rotinas': typeof AuthenticatedRotinasRouteWithChildren
   '/_authenticated/sobre-a-ia': typeof AuthenticatedSobreAIaRoute
   '/_authenticated/subscricao': typeof AuthenticatedSubscricaoRoute
@@ -1025,6 +1052,7 @@ export interface FileRoutesById {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/utilizacao': typeof AdminUtilizacaoRoute
   '/admin/utilizadores': typeof AdminUtilizadoresRoute
+  '/admin/v2': typeof AdminV2Route
   '/admin/whatsapp-nome': typeof AdminWhatsappNomeRoute
   '/dev/ligar-canal': typeof DevLigarCanalRoute
   '/s/$code': typeof SCodeRoute
@@ -1097,6 +1125,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/assessor'
     | '/calendario'
+    | '/conta'
     | '/definicoes'
     | '/diversos'
     | '/documentos'
@@ -1105,6 +1134,7 @@ export interface FileRouteTypes {
     | '/interacoes'
     | '/ligar-canal'
     | '/mais'
+    | '/privacidade'
     | '/rotinas'
     | '/sobre-a-ia'
     | '/subscricao'
@@ -1142,6 +1172,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
+    | '/admin/v2'
     | '/admin/whatsapp-nome'
     | '/dev/ligar-canal'
     | '/s/$code'
@@ -1211,6 +1242,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/assessor'
     | '/calendario'
+    | '/conta'
     | '/definicoes'
     | '/diversos'
     | '/documentos'
@@ -1219,6 +1251,7 @@ export interface FileRouteTypes {
     | '/interacoes'
     | '/ligar-canal'
     | '/mais'
+    | '/privacidade'
     | '/rotinas'
     | '/sobre-a-ia'
     | '/subscricao'
@@ -1256,6 +1289,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
+    | '/admin/v2'
     | '/admin/whatsapp-nome'
     | '/dev/ligar-canal'
     | '/s/$code'
@@ -1327,6 +1361,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/assessor'
     | '/_authenticated/calendario'
+    | '/_authenticated/conta'
     | '/_authenticated/definicoes'
     | '/_authenticated/diversos'
     | '/_authenticated/documentos'
@@ -1335,6 +1370,7 @@ export interface FileRouteTypes {
     | '/_authenticated/interacoes'
     | '/_authenticated/ligar-canal'
     | '/_authenticated/mais'
+    | '/_authenticated/privacidade'
     | '/_authenticated/rotinas'
     | '/_authenticated/sobre-a-ia'
     | '/_authenticated/subscricao'
@@ -1372,6 +1408,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/utilizacao'
     | '/admin/utilizadores'
+    | '/admin/v2'
     | '/admin/whatsapp-nome'
     | '/dev/ligar-canal'
     | '/s/$code'
@@ -1570,6 +1607,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarioRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/conta': {
+      id: '/_authenticated/conta'
+      path: '/conta'
+      fullPath: '/conta'
+      preLoaderRoute: typeof AuthenticatedContaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/definicoes': {
       id: '/_authenticated/definicoes'
       path: '/definicoes'
@@ -1624,6 +1668,13 @@ declare module '@tanstack/react-router' {
       path: '/mais'
       fullPath: '/mais'
       preLoaderRoute: typeof AuthenticatedMaisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/privacidade': {
+      id: '/_authenticated/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof AuthenticatedPrivacidadeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/rotinas': {
@@ -1890,6 +1941,13 @@ declare module '@tanstack/react-router' {
       path: '/utilizadores'
       fullPath: '/admin/utilizadores'
       preLoaderRoute: typeof AdminUtilizadoresRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/v2': {
+      id: '/admin/v2'
+      path: '/v2'
+      fullPath: '/admin/v2'
+      preLoaderRoute: typeof AdminV2RouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/whatsapp-nome': {
@@ -2353,6 +2411,7 @@ const AuthenticatedNegocioDespesasRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAssessorRoute: typeof AuthenticatedAssessorRoute
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
+  AuthenticatedContaRoute: typeof AuthenticatedContaRoute
   AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
   AuthenticatedDiversosRoute: typeof AuthenticatedDiversosRouteWithChildren
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
@@ -2361,6 +2420,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInteracoesRoute: typeof AuthenticatedInteracoesRouteWithChildren
   AuthenticatedLigarCanalRoute: typeof AuthenticatedLigarCanalRoute
   AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
+  AuthenticatedPrivacidadeRoute: typeof AuthenticatedPrivacidadeRoute
   AuthenticatedRotinasRoute: typeof AuthenticatedRotinasRouteWithChildren
   AuthenticatedSobreAIaRoute: typeof AuthenticatedSobreAIaRoute
   AuthenticatedSubscricaoRoute: typeof AuthenticatedSubscricaoRoute
@@ -2389,6 +2449,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssessorRoute: AuthenticatedAssessorRoute,
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
+  AuthenticatedContaRoute: AuthenticatedContaRoute,
   AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
   AuthenticatedDiversosRoute: AuthenticatedDiversosRouteWithChildren,
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
@@ -2397,6 +2458,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInteracoesRoute: AuthenticatedInteracoesRouteWithChildren,
   AuthenticatedLigarCanalRoute: AuthenticatedLigarCanalRoute,
   AuthenticatedMaisRoute: AuthenticatedMaisRoute,
+  AuthenticatedPrivacidadeRoute: AuthenticatedPrivacidadeRoute,
   AuthenticatedRotinasRoute: AuthenticatedRotinasRouteWithChildren,
   AuthenticatedSobreAIaRoute: AuthenticatedSobreAIaRoute,
   AuthenticatedSubscricaoRoute: AuthenticatedSubscricaoRoute,
@@ -2465,6 +2527,7 @@ interface AdminRouteRouteChildren {
   AdminSuporteRoute: typeof AdminSuporteRoute
   AdminUtilizacaoRoute: typeof AdminUtilizacaoRoute
   AdminUtilizadoresRoute: typeof AdminUtilizadoresRoute
+  AdminV2Route: typeof AdminV2Route
   AdminWhatsappNomeRoute: typeof AdminWhatsappNomeRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminConsultorIdRoute: typeof AdminConsultorIdRoute
@@ -2505,6 +2568,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSuporteRoute: AdminSuporteRoute,
   AdminUtilizacaoRoute: AdminUtilizacaoRoute,
   AdminUtilizadoresRoute: AdminUtilizadoresRoute,
+  AdminV2Route: AdminV2Route,
   AdminWhatsappNomeRoute: AdminWhatsappNomeRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminConsultorIdRoute: AdminConsultorIdRoute,

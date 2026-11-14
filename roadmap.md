@@ -89,3 +89,18 @@
 - [ ] Decisões do proprietário: prazos 30/7/60 dias, textos dos avisos, base de consentimento WhatsApp, exclusão das contas de teste, D1/D2
 - [ ] Exportador e página "Os meus dados" — aguarda autorização de implementação
 - [ ] Template WhatsApp e envio de avisos — aguarda GO separado
+
+## AFONSO 2.0 — 50 decisões (14/11/2026, desenvolvimento, NÃO publicar)
+- [x] Inventário V1/V2 e plano por dependências (docs/v2/afonso-2-0-inventario-e-plano.md)
+- [x] Auditoria de isolamento por catálogo (105/105 com RLS, sem políticas abertas)
+- [x] Portal mínimo V2 sem áreas comerciais (`v2.minimal_portal.v1`, desligado)
+- [x] Exportação ZIP self-service do titular (`v2.self_export.v1`, desligado)
+- [x] Regras puras: subscrição 29 €, tolerância 7d, exportação 30d, trial na 1.ª ação útil, referências 29 € crédito
+- [x] Porta para CRM externo com consentimento (sem conectores)
+- [x] 4 gates GO/NO-GO + estado das 50 decisões no admin (todos NO-GO)
+- [ ] Ambiente de testes independente + E2E isolamento/WhatsApp/Telegram — BLOQUEADO: projeto e segredos TEST_SUPABASE_*
+- [ ] Produto/preço 29 € e ligar ciclo de vida ao acesso real — aguarda autorização
+- [ ] Antecedência do aviso de preço e retenção das referências — decisão do proprietário
+- [ ] Menu V2 nas páginas Subscrição/Canais/Definições
+- [ ] Ligar interruptores para Júlio (G1) — aguarda autorização expressa
+

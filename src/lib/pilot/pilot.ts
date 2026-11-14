@@ -22,6 +22,8 @@ export const PILOT_GATED_FLAGS: ReadonlySet<string> = new Set([
   "assessor.cross_link.v1",
   "assessor.opportunity_nudges.v1",
   "assessor.base_match_opportunity.v1",
+  "v2.minimal_portal.v1",
+  "v2.self_export.v1",
 ]);
 
 export type PilotInviteOutcome = "issued" | "replayed" | "not_open" | "cap_reached" | "not_issuer" | "no_pilot";
