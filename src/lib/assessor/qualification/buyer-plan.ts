@@ -18,19 +18,29 @@ export function buyerPlan(b: BuyerBrief, now: Date, opts: { hasProposals: boolea
   if (dl) risks.push(dl);
   else if (b.urgent?.value) risks.push({ kind: "deadline", severity: "alta", text: "urgente sem data — confirma a data limite", evidence: "confirmado" });
 
-  const youngOpen = !!b.budgetMax?.note && /IMT Jovem/.test(b.budgetMax.note);
-  const budgetGap = b.budgetMax?.status === "assumed" && b.financingApproved && b.budgetMax.value < b.financingApproved.value;
+  const bud = b.budgetMax?.status === "assumed" ? b.budget ?? null : null;
+  // Idade por confirmar e a isenção jovem mudaria o teto.
+  const youngOpen = bud?.fiscal === "unknown" && (bud.withYoung != null || bud.guarantee != null);
+  // Idade dita (≤35): falta verificar a elegibilidade e a garantia pública com o banco.
+  const youngDeclared = bud?.fiscal === "young_declared";
+  const budgetGap = !!bud && !!b.financingApproved && b.budgetMax!.value < b.financingApproved.value;
   if (budgetGap) {
     risks.push({
       kind: "budget_reality", severity: "alta", evidence: "calculado",
-      text: `com crédito a 90%, o teto real é ~${eur(b.budgetMax!.value)}, abaixo da pré-aprovação de ${eur(b.financingApproved!.value)}`,
+      text: `com crédito a 90%, o orçamento provisório é ~${eur(b.budgetMax!.value)}, abaixo da pré-aprovação de ${eur(b.financingApproved!.value)}`,
+    });
+  }
+  if (youngDeclared) {
+    risks.push({
+      kind: "budget_reality", severity: "média", evidence: "alegado",
+      text: "isenção IMT/IS Jovem declarada, não verificada — sem ela o orçamento desce",
     });
   }
   if (b.financingApproved) {
     risks.push({ kind: "pre_approval", severity: "média", evidence: "confirmado", text: "pré-aprovação não é aprovação final — o banco decide depois de avaliar o imóvel" });
   }
   if (opts.aboveCeilingOnly) {
-    risks.push({ kind: "budget_reality", severity: "média", evidence: "calculado", text: "o que encontrei está acima do teto assumido" });
+    risks.push({ kind: "budget_reality", severity: "média", evidence: "calculado", text: "o que encontrei está acima do orçamento provisório" });
   }
 
   const urgent = isUrgent(b, now);
@@ -39,6 +49,12 @@ export function buyerPlan(b: BuyerBrief, now: Date, opts: { hasProposals: boolea
     next = {
       action: `confirmas a idade do ${who} e pedes ao banco a simulação com um imóvel concreto`,
       why: "decide se o teto é o de crédito a 90% ou o de IMT Jovem com garantia pública",
+      owner: "Tu", due: ddmmLisbon(now),
+    };
+  } else if (budgetGap && youngDeclared) {
+    next = {
+      action: `pedes ao banco a simulação do ${who} com um imóvel concreto, a 90% e com garantia pública, e confirmas a elegibilidade para a isenção IMT/IS Jovem`,
+      why: `decide se o teto é ~${eur(bud!.base)} (crédito a 90%)${bud!.guarantee != null ? ` ou até ~${eur(bud!.guarantee)} (garantia pública)` : ""}`,
       owner: "Tu", due: ddmmLisbon(now),
     };
   } else if (opts.hasProposals) {
@@ -50,7 +66,7 @@ export function buyerPlan(b: BuyerBrief, now: Date, opts: { hasProposals: boolea
   }
 
   const tasks: PreparedTask[] = [];
-  if (b.financingApproved) tasks.push({ title: `${who}: validar com o banco a pré-aprovação e o teto${youngOpen ? " (e a idade para IMT Jovem)" : ""}`, dueYmd: today, owner: "Tu", priority: "alta" });
+  if (b.financingApproved) tasks.push({ title: `${who}: validar com o banco a pré-aprovação e o teto${youngOpen ? " (e a idade para IMT Jovem)" : youngDeclared ? " (e a elegibilidade IMT/IS Jovem)" : ""}`, dueYmd: today, owner: "Tu", priority: "alta" });
   tasks.push({ title: `${who}: marcar visitas aos imóveis que encaixam`, dueYmd: ymdLisbon(plusDays(now, urgent ? 1 : 3)), owner: "Tu", priority: urgent ? "alta" : "media" });
   tasks.push({ title: `${who}: rever a pesquisa com o Afonso`, dueYmd: ymdLisbon(plusDays(now, urgent ? 2 : 5)), owner: "Tu", priority: "media" });
   return { risks, next, tasks };

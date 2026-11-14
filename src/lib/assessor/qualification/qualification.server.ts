@@ -2,7 +2,8 @@
 // `assessor.action_first_qualification.v1`, por conta, desligado).
 //
 // Só lê: carteira própria e, com o mesmo limite diário e cache das
-// pesquisas de mercado, os portais. Não escreve no domínio, não contacta
+// pesquisas de mercado, os portais e o site PÚBLICO zome.pt (fonte pública,
+// não a carteira interna da Rede). Não escreve no domínio, não contacta
 // ninguém e nunca mostra imagens.
 
 import { isAccountFlagEnabled } from "@/lib/flags/account-flag.server";
@@ -11,6 +12,8 @@ import {
   briefFromMessages, hasMinimumCriteria, isBuyerQualification, extractBuyerBrief, type BuyerBrief,
 } from "./buyer-brief";
 import { composeQualificationReply, isQualificationReply, type PortalStatus } from "./compose";
+import { dedupeListings } from "./dedupe";
+import { ZOME_SOURCE_LABEL, type ZomeListing } from "@/lib/imoveis/zome-public";
 import {
   fromInternalProperty, fromPortalListing, type InternalPropertyRow, type ListingProposal, type PortalListing,
 } from "./proposal-format";
@@ -23,6 +26,16 @@ export interface QualificationDeps {
   loadRecent(): Promise<Array<{ role: string; content: string; created_at: string }>>;
   loadProperties(): Promise<InternalPropertyRow[]>;
   searchPortals(brief: BuyerBrief): Promise<{ status: PortalStatus; results: PortalListing[] }>;
+  /** Site público zome.pt. Ausente = não consultado (ex.: replay de avaliação). */
+  searchZome?(brief: BuyerBrief): Promise<{ status: PortalStatus; results: ZomeListing[] }>;
+}
+
+export function zomeToPortalListing(l: ZomeListing): PortalListing {
+  return {
+    url: l.url, title: l.title, description: l.description, host: l.host, sourceLabel: ZOME_SOURCE_LABEL,
+    ref: l.ref, price: l.price, typology: l.typology, location: l.location, areaM2: l.areaM2, verification: l.verification,
+    status: l.status ?? null,
+  };
 }
 
 export function defaultDeps(supabase: any, userId: string, channel: string): QualificationDeps {
@@ -51,6 +64,14 @@ export function defaultDeps(supabase: any, userId: string, channel: string): Qua
       if (!r.ok) return { status: "failed", results: [] };
       if (r.data?.rate_limited) return { status: "rate_limited", results: [] };
       return { status: "ok", results: (r.data?.results ?? []) as PortalListing[] };
+    },
+    async searchZome(brief) {
+      const { searchZomePublic } = await import("@/lib/imoveis/zome-public.server");
+      return searchZomePublic({ supabase, userId }, {
+        typology: brief.typology?.value ?? null,
+        propertyType: brief.typology ? null : brief.propertyType?.value ?? null,
+        location: brief.zone?.value ?? null,
+      });
     },
   };
 }
@@ -131,17 +152,25 @@ export async function runBuyerQualification(params: {
   }
 
   let ownSearched = true;
-  const [rows, portal] = await Promise.all([
+  const [rows, portal, zome] = await Promise.all([
     deps.loadProperties().catch(() => { ownSearched = false; return [] as InternalPropertyRow[]; }),
     deps.searchPortals(brief).catch(() => ({ status: "failed" as PortalStatus, results: [] })),
+    deps.searchZome
+      ? deps.searchZome(brief).catch(() => ({ status: "failed" as PortalStatus, results: [] as ZomeListing[] }))
+      : Promise.resolve({ status: "not_run" as PortalStatus, results: [] as ZomeListing[] }),
   ]);
   const internal = matchInternal(rows, brief);
   const seenAt = new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit" }).format(now);
-  const portalProposals = portal.results.map((l) => fromPortalListing(l, brief, seenAt));
+  const portalOk = portal.status === "ok" ? portal.results : [];
+  const zomeOk = zome.status === "ok" ? zome.results : [];
+  const external = dedupeListings([
+    ...portalOk.map((l) => fromPortalListing(l, brief, seenAt)),
+    ...zomeOk.map((l) => fromPortalListing(zomeToPortalListing(l), brief, seenAt)),
+  ]);
   return {
     reply: composeQualificationReply({
-      brief, changes, internal, portal: portalProposals, portalStatus: portal.status, previousReply, now,
-      ownSearched,
+      brief, changes, internal, portal: external, portalStatus: portal.status, previousReply, now,
+      ownSearched, zomeStatus: zome.status, zomeCount: zomeOk.length, portalCount: portalOk.length,
     }),
     acted: true,
     brief,

@@ -94,9 +94,21 @@ export function checkPrice(b: ListingBrief, opts: { ownRecordPrice?: number | nu
   };
 }
 
-export function compareCompetitor(b: ListingBrief): string | null {
+/** Anúncio do concorrente lido por ferramenta (site público zome.pt). */
+export interface VerifiedCompetitor { url: string; price: number | null; areaM2: number | null; seenAt: string }
+
+export function compareCompetitor(b: ListingBrief, verified: VerifiedCompetitor | null = null): string | null {
   if (!b.competitorRef) return null;
   const head = `*Concorrente ${b.competitorRef}:*`;
+  if (verified && verified.price != null) {
+    const facts = [eur(verified.price), verified.areaM2 ? `${verified.areaM2} m² úteis` : null].filter(Boolean).join(" · ");
+    const said = b.competitorPrice != null && b.competitorPrice !== verified.price ? ` (disseste ${eur(b.competitorPrice)})` : "";
+    if (b.askingPrice == null) return `${head} ${facts} no site público zome.pt (lido a ${verified.seenAt})${said}: ${verified.url}. Sem o teu preço não comparo.`;
+    const diff = b.askingPrice - verified.price;
+    const dir = diff > 0 ? `o teu está ${eur(diff)} acima` : diff < 0 ? `o teu está ${eur(-diff)} abaixo` : "mesmo preço";
+    const perM2 = b.areaM2 && verified.areaM2 ? ` Por m²: ${eur(b.askingPrice / b.areaM2)} vs ${eur(verified.price / verified.areaM2)}.` : "";
+    return `${head} ${facts} no site público zome.pt (lido a ${verified.seenAt})${said}: ${verified.url} — ${dir}.${perM2} Isto sozinho não prova que o teu está caro ou competitivo: falta comparar terreno, estado e localização exata.`;
+  }
   if (b.competitorPrice == null || b.askingPrice == null) {
     return `${head} sem o anúncio não tenho preço, área nem estado verificados, por isso não comparo. Manda-me o link e eu cruzo.`;
   }

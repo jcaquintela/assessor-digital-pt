@@ -1,13 +1,14 @@
 // Angariação com pouca procura, action-first (mesmo interruptor por conta da
 // qualificação: `assessor.action_first_qualification.v1`, desligado).
 //
-// Só lê: carteira própria e comparáveis nos portais (mesmo limite diário e
-// cache das pesquisas de mercado). Não escreve, não contacta ninguém, não
+// Só lê: carteira própria, comparáveis nos portais e, para as referências
+// ZMPT dadas (o imóvel e o concorrente), o anúncio no site PÚBLICO zome.pt
+// (mesmo limite diário e cache das pesquisas de mercado). Não escreve, não contacta ninguém, não
 // publica nem altera anúncios.
 
 import { isAccountFlagEnabled } from "@/lib/flags/account-flag.server";
 import { ACTION_FIRST_FLAG, CONTINUATION_WINDOW_MS } from "../qualification/qualification.server";
-import { composeListingReply, isListingReply, type Comparable, type ComparablesStatus } from "./compose";
+import { composeListingReply, isListingReply, type Comparable, type ComparablesStatus, type ZomeLookup } from "./compose";
 import {
   extractListingBrief, hasListingIdentity, isListingDiagnosis, mergeListingBriefs, type ListingBrief,
 } from "./listing-brief";
@@ -16,6 +17,8 @@ export interface ListingDeps {
   loadRecent(): Promise<Array<{ role: string; content: string; created_at: string }>>;
   findOwnListing(b: ListingBrief): Promise<{ found: boolean; price: number | null; url: string | null }>;
   searchComparables(b: ListingBrief): Promise<{ status: ComparablesStatus; results: Comparable[] }>;
+  /** Anúncio público zome.pt de uma referência ZMPT. Ausente = não consultado. */
+  lookupZomeRef?(ref: string): Promise<ZomeLookup>;
 }
 
 export function defaultListingDeps(supabase: any, userId: string, channel: string): ListingDeps {
@@ -43,6 +46,10 @@ export function defaultListingDeps(supabase: any, userId: string, channel: strin
       if (!r.ok) return { status: "failed", results: [] };
       if (r.data?.rate_limited) return { status: "rate_limited", results: [] };
       return { status: "ok", results: (r.data?.results ?? []) as Comparable[] };
+    },
+    async lookupZomeRef(ref) {
+      const { lookupZomeRef } = await import("@/lib/imoveis/zome-public.server");
+      return lookupZomeRef({ supabase, userId }, ref);
     },
   };
 }
@@ -91,12 +98,17 @@ export async function runListingDiagnosis(params: {
     };
   }
 
-  const [own, comparables] = await Promise.all([
+  const lookup = (ref: string | null): Promise<ZomeLookup> =>
+    !ref || !deps.lookupZomeRef ? Promise.resolve({ status: "not_run", listing: null })
+      : deps.lookupZomeRef(ref).catch(() => ({ status: "failed" as const, listing: null }));
+  const [own, comparables, zomeOwn, zomeCompetitor] = await Promise.all([
     deps.findOwnListing(brief).then((r) => ({ ran: true, ...r })).catch(() => ({ ran: false, found: false, price: null, url: null })),
     deps.searchComparables(brief).catch(() => ({ status: "failed" as ComparablesStatus, results: [] })),
+    lookup(startsNow ? brief.ref : null),
+    lookup(startsNow ? brief.competitorRef : null),
   ]);
   return {
-    reply: composeListingReply({ brief, now, ownLookup: own, comparables, update: !startsNow }),
+    reply: composeListingReply({ brief, now, ownLookup: own, comparables, update: !startsNow, zomeOwn, zomeCompetitor }),
     acted: true,
     brief,
   };

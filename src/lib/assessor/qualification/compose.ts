@@ -13,6 +13,7 @@ import { formatRisks } from "../commercial/risk-detector";
 import { formatNextAction } from "../commercial/next-best-action";
 import { formatTasks } from "../commercial/assisted-execution";
 import { buyerPlan } from "./buyer-plan";
+import { costsLine, NOT_BANK_DECISION } from "../commercial/financial-simulator";
 
 /** Marca a primeira linha: serve para reconhecer a continuação da conversa. */
 export const QUALIFICATION_MARKER = "*Pesquisa para ";
@@ -42,12 +43,41 @@ function confirmedLine(b: BuyerBrief): string | null {
   if (b.financingApproved) parts.push(`pré-aprovação ${eur(b.financingApproved.value)}`);
   if (b.ownFunds) parts.push(`${eur(b.ownFunds.value)} de capitais`);
   if (b.deadline) parts.push(`prazo ${ddmm(b.deadline.value)}`);
+  if (b.age) parts.push(`${b.age.value} anos`);
+  if (b.firstHome?.value) parts.push("1.ª habitação");
+  if (b.use) parts.push(b.use.value === "hpp" ? "habitação própria permanente" : "investimento/secundária");
   return parts.length ? `Confirmado: ${parts.join(", ")}.` : null;
 }
 
-function assumedLine(b: BuyerBrief): string | null {
-  if (b.budgetMax?.status !== "assumed") return null;
-  return `Assumido: teto de *${eur(b.budgetMax.value)}* (${b.budgetMax.note}). Corrige-me se não for assim.`;
+/**
+ * Orçamento provisório com as contas à vista: crédito, capitais, entrada,
+ * custos e elegibilidade fiscal separados. Nunca um teto apresentado como facto.
+ */
+export function budgetBlock(b: BuyerBrief): string | null {
+  const bud = b.budget;
+  if (b.budgetMax?.status !== "assumed" || !bud) return null;
+  const k = (n: number) => `~${eur(n)}`;
+  const lines = [
+    "*Orçamento provisório* (contas, não decisão do banco — corrige-me se algum dado não estiver certo):",
+    `- Crédito: pré-aprovação de ${eur(bud.loanCap)} — não é aprovação final; o banco empresta sobre o menor entre preço e avaliação (avaliação ainda por fazer).`,
+  ];
+  if (bud.ownFunds == null || !bud.baseSim) {
+    lines.push(`- Capitais: por confirmar. A pré-aprovação cobre 90% de ${k(bud.base)}; a entrada (10%) e os custos (IMT, Selo, escritura) saem dos capitais.`);
+    return lines.join("\n");
+  }
+  const s = bud.baseSim;
+  lines.push(`- Capitais: ${eur(bud.ownFunds)}.`);
+  lines.push(`- Com crédito a 90%: teto ${k(bud.base)} → entrada ${eur(s.entry)} + custos ${k(s.costsTotal)} (${costsLine(s)}).`);
+  if (bud.fiscal === "young_declared") {
+    lines.push(`- Isenção IMT/IS Jovem: elegibilidade declarada, *não verificada* (${bud.unverified.join("; ")}).${bud.withoutYoung != null ? ` Sem ela, o teto a 90% desce para ${k(bud.withoutYoung)}.` : ""}`);
+  } else if (bud.fiscal === "unknown") {
+    lines.push(`- Fiscalidade: contas com IMT e Selo normais. ${bud.withYoung != null ? `Se tiver direito à isenção IMT/IS Jovem, o teto a 90% sobe para ${k(bud.withYoung)}` : "A isenção IMT/IS Jovem pode mudar estas contas"} — por confirmar: ${bud.unverified.join("; ")}.`);
+  } else {
+    lines.push("- Fiscalidade: IMT e Selo pelas tabelas normais (sem isenção jovem).");
+  }
+  if (bud.guarantee != null) lines.push(`- Com garantia pública jovem (até 100% de crédito, decide o banco${bud.fiscal === "unknown" ? "; só se for elegível" : ""}): até ${k(bud.guarantee)}.`);
+  lines.push(`_Escritura/registo e banco são estimativas; IMT e Selo pelas tabelas 2026 (Continente). ${NOT_BANK_DECISION}_`);
+  return lines.join("\n");
 }
 
 function changesLine(changes: BriefChange[]): string | null {
@@ -102,15 +132,22 @@ function buyerMessage(b: BuyerBrief, shown: ListingProposal[]): string | null {
   const who = b.buyerName?.value ? `Olá ${b.buyerName.value}` : "Olá";
   const what = [b.typology?.value, b.zone ? `em ${b.zone.value}` : null].filter(Boolean).join(" ");
   const items = withLinks.map((p, n) => `${n + 1}) ${p.title}${p.price != null && !/\d\s*€/.test(p.title) ? `, ${eur(p.price)}` : ""} ${p.url}`).join(" ");
-  return `*Mensagem para o comprador (preparada — copias e envias tu):*\n"${who}, separei ${withLinks.length === 1 ? "uma opção" : "duas opções"} ${what} dentro do que falámos: ${items}. Qual queres visitar esta semana?"`;
+  return `*Mensagem para o comprador (preparada — copias e envias tu):*\n"${who}, separei ${withLinks.length === 1 ? "uma opção" : "duas opções"} ${what} para veres: ${items}. Qual queres visitar esta semana?"`;
 }
 
 export interface ComposeInput {
   brief: BuyerBrief;
   changes: BriefChange[];
   internal: ListingProposal[];
+  /** Anúncios públicos (portais + site público zome.pt), já deduplicados. */
   portal: ListingProposal[];
   portalStatus: PortalStatus;
+  /** Site público zome.pt. "not_run" quando não foi consultado. */
+  zomeStatus?: PortalStatus;
+  /** Quantos anúncios zome.pt vieram da pesquisa (antes de deduplicar). */
+  zomeCount?: number;
+  /** Quantos vieram dos portais (antes de deduplicar). */
+  portalCount?: number;
   previousReply?: string | null;
   now?: Date;
   /** A carteira própria foi mesmo consultada neste turno. */
@@ -125,8 +162,8 @@ export function composeQualificationReply(i: ComposeInput): string {
   if (changed) parts.push(changed);
   const conf = confirmedLine(b);
   if (conf) parts.push(conf);
-  const ass = assumedLine(b);
-  if (ass) parts.push(ass);
+  const bud = budgetBlock(b);
+  if (bud) parts.push(bud);
 
   const questions = pendingQuestions(b, i.previousReply ?? "");
   if (missingMinimum(b).length) {
@@ -146,17 +183,25 @@ export function composeQualificationReply(i: ComposeInput): string {
   const internalTxt = fmt(internal);
   parts.push(internalTxt ? `Na tua carteira:\n${internalTxt}` : "Na tua carteira não há nada que encaixe agora.");
 
+  const zomeStatus = i.zomeStatus ?? "not_run";
+  const anyOk = i.portalStatus === "ok" || zomeStatus === "ok";
+  const sources = [i.portalStatus === "ok" ? "portais" : null, zomeStatus === "ok" ? "site público zome.pt" : null].filter(Boolean).join(" e ");
   let portalShown = false;
-  if (i.portalStatus === "ok") {
+  if (anyOk) {
     const portalTxt = fmt(portal);
     portalShown = portalTxt.length > 0;
     parts.push(portalTxt
-      ? `Nos portais (anúncios publicados; disponibilidade por confirmar):\n${portalTxt}`
-      : "Nos portais não encontrei anúncios que encaixem agora. Prefiro dizer-te isso do que inventar.");
-  } else if (i.portalStatus === "rate_limited") {
+      ? `Anúncios publicados (${sources}; ordenados só por encaixe, disponibilidade por confirmar):\n${portalTxt}`
+      : `Nos ${sources} não encontrei anúncios que encaixem agora. Prefiro dizer-te isso do que inventar.`);
+  }
+  if (i.portalStatus === "rate_limited" || zomeStatus === "rate_limited") {
     parts.push("Já fiz as pesquisas de mercado de hoje; amanhã volto aos portais.");
-  } else if (i.portalStatus === "failed") {
+  }
+  if (i.portalStatus === "failed") {
     parts.push("A pesquisa nos portais falhou agora. Não te mostro anúncios que não consegui confirmar.");
+  }
+  if (zomeStatus === "failed") {
+    parts.push("A consulta ao site público da Zome falhou agora — dali não te mostro nada que não consegui confirmar.");
   }
 
   if (b.refs.length || b.links.length) {
@@ -166,7 +211,7 @@ export function composeQualificationReply(i: ComposeInput): string {
     parts.push(REDE_NO_ACCESS_REPLY);
   }
 
-  const shownPortal = i.portalStatus === "ok" ? portal : [];
+  const shownPortal = anyOk ? portal : [];
   const msg = buyerMessage(b, shownPortal);
   if (msg) parts.push(msg);
 
@@ -180,10 +225,13 @@ export function composeQualificationReply(i: ComposeInput): string {
 
   const items: ActionItem[] = [];
   if (i.ownSearched) items.push({ state: "executed", evidenceTool: "search_properties", text: `procurei na tua carteira (${internal.length} a encaixar)` });
-  if (i.portalStatus === "ok") items.push({ state: "executed", evidenceTool: "search_similar_listings", text: `pesquisa nos portais (${i.portal.length} ${i.portal.length === 1 ? "anúncio" : "anúncios"})` });
-  items.push({ state: "prepared", text: [b.budgetMax?.status === "assumed" ? "contas do teto" : null, msg ? "mensagem para o comprador" : null, `${plan.tasks.length} tarefas`].filter(Boolean).join(", ") });
+  const nP = i.portalCount ?? i.portal.length;
+  if (i.portalStatus === "ok") items.push({ state: "executed", evidenceTool: "search_similar_listings", text: `pesquisa nos portais (${nP} ${nP === 1 ? "anúncio" : "anúncios"})` });
+  const nZ = i.zomeCount ?? 0;
+  if (zomeStatus === "ok") items.push({ state: "executed", evidenceTool: "search_zome_public", text: `pesquisa no site público zome.pt (${nZ} ${nZ === 1 ? "anúncio" : "anúncios"})` });
+  items.push({ state: "prepared", text: [b.budgetMax?.status === "assumed" ? "orçamento provisório" : null, msg ? "mensagem para o comprador" : null, `${plan.tasks.length} tarefas`].filter(Boolean).join(", ") });
   items.push({ state: "awaiting_approval", text: "gravar as tarefas nos Seguimentos; enviar ao comprador ou marcar visitas com terceiros — nada sai sem o teu ok" });
-  items.push({ state: "no_access", text: "carteira da Rede/Zome, disponibilidade real dos anúncios dos portais, decisão do banco" });
+  items.push({ state: "no_access", text: "carteira interna da Rede/Zome (só vejo o site público), disponibilidade real dos anúncios, decisão do banco" });
   parts.push(formatActionStates(items));
 
   if (questions.length) parts.push(`Para afinar, de uma vez:\n${questions.map((q) => `- ${q}`).join("\n")}`);

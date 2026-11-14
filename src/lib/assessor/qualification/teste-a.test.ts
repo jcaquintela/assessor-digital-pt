@@ -39,9 +39,12 @@ describe("Teste A — comprador Miguel", () => {
     expect(t.acted).toBe(true);
     expect(t.brief.nearMetro?.value).toBe(true);
     expect(t.reply).toMatch(/Confirmado: T1, Gaia, perto do metro/);
-    expect(t.reply).toMatch(/Assumido: teto de \*114 000 €\* \(crédito até 90% do preço, no máximo 150k pré-aprovados, e 15k de capitais a pagar entrada, IMT, Selo e escritura — contas 2026; com IMT Jovem e garantia pública \(até 35 anos\) pode chegar a ~162k\)/);
+    // Idade não dita: contas com IMT/Selo normais e a isenção jovem como hipótese.
+    expect(t.reply).toMatch(/Com crédito a 90%: teto ~114 000 € → entrada 11 400 € \+ custos ~/);
+    expect(t.reply).toMatch(/Se tiver direito à isenção IMT\/IS Jovem, o teto a 90% sobe para ~125 000 € — por confirmar: idade até 35 anos \(por confirmar\)/);
+    expect(t.reply).toMatch(/Com garantia pública jovem \(até 100% de crédito, decide o banco; só se for elegível\): até ~162 000 €/);
     expect(t.reply).toMatch(/\*Prioridade alta: urgente, sem data — confirma a data limite\.\*/);
-    expect(t.reply).toMatch(/\[alta\] com crédito a 90%, o teto real é ~114 000 €, abaixo da pré-aprovação de 150 000 € \(calculado\)/);
+    expect(t.reply).toMatch(/\[alta\] com crédito a 90%, o orçamento provisório é ~114 000 €, abaixo da pré-aprovação de 150 000 € \(calculado\)/);
     expect(t.reply).toMatch(/\[média\] pré-aprovação não é aprovação final/);
     expect(t.reply).toMatch(/\*Próximo passo:\* confirmas a idade do Miguel e pedes ao banco a simulação com um imóvel concreto\. Porquê: .+ Responsável: Tu\. Prazo: 14\/11\./);
     expect(t.reply).toMatch(/\*Tarefas prontas \(pendentes — diz "cria as tarefas"/);
@@ -55,20 +58,20 @@ describe("Teste A — comprador Miguel", () => {
     // Proposta: link direto, referência, preço com data, local, características, fonte, porquê, incertezas.
     expect(t.reply).toContain(URL1);
     expect(t.reply).toContain("Ref. ZMPT-12345");
-    expect(t.reply).toMatch(/139 000 € \(no anúncio a 14\/11; pode ter mudado\)/);
+    expect(t.reply).toMatch(/139 000 € \(visto na pesquisa a 14\/11; confirma no anúncio\)/);
     expect(t.reply).toContain("Local: Gaia");
     expect(t.reply).toContain("Características: 55 m², elevador");
     expect(t.reply).toContain("Origem: idealista.pt");
     expect(t.reply).toMatch(/Porquê: T1 como pedido, em Gaia\./);
-    // 139k está acima do teto real a 90% (~114k): aparece, mas com aviso.
-    expect(t.reply).toContain("acima do teto assumido");
+    // 139k está acima do orçamento a 90% (~114k) mas dentro do de garantia pública: aparece, com aviso.
+    expect(t.reply).toContain("acima do orçamento provisório a 90%; só cabe com garantia pública (decide o banco)");
     expect(t.reply).toContain("Metro: por confirmar · Estado: por confirmar");
     expect(t.reply).not.toMatch(/!\[|\.(jpg|jpeg|png|webp)\b/i);
     // Material entregue, não prometido; nada sai sem aprovação.
     expect(t.reply).toContain("*Mensagem para o comprador (preparada — copias e envias tu):*");
     expect(t.reply).toMatch(/\*Executado:\* procurei na tua carteira \(0 a encaixar\); pesquisa nos portais \(1 anúncio\)/);
     expect(t.reply).toMatch(/\*Pendente \(aguarda o teu ok\):\* gravar as tarefas nos Seguimentos; enviar ao comprador ou marcar visitas com terceiros — nada sai sem o teu ok/);
-    expect(t.reply).toMatch(/\*Sem acesso:\* carteira da Rede\/Zome/);
+    expect(t.reply).toMatch(/\*Sem acesso:\* carteira interna da Rede\/Zome \(só vejo o site público\)/);
     expect(t.reply).toContain("*Próximo passo:*");
     const s = scoreConversation(c.scored);
     expect(s.turnsToFirstUsefulAction).toBe(1);

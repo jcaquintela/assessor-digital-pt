@@ -81,7 +81,7 @@ describe("Teste B — primeira ação útil no 1.º turno", () => {
     expect(t.reply).toMatch(/\*Executado:\* procurei ZMPT593612 na tua carteira \(não está lá\); pesquisa de comparáveis nos portais \(1 anúncio\)/);
     expect(t.reply).toMatch(/\*Preparado:\* diagnóstico, kit orgânico e plano de 7 dias/);
     expect(t.reply).toMatch(/\*Pendente \(aguarda o teu ok\):\* enviar mensagens, publicar, mudar preço ou anúncio, gastar margem paga/);
-    expect(t.reply).toMatch(/\*Sem acesso:\* estatísticas do anúncio nos portais, anúncio do concorrente ZMPT593954, carteira da Rede\/Zome, acompanhar o anúncio sozinho/);
+    expect(t.reply).toMatch(/\*Sem acesso:\* estatísticas do anúncio nos portais, anúncio do concorrente ZMPT593954, carteira interna da Rede\/Zome \(só vejo o site público\), acompanhar o anúncio sozinho/);
     expect(t.reply).toContain("*Próximo passo:*");
     expect(t.reply).toContain(COMP_URL);
     // Cabe numa mensagem de WhatsApp/Telegram.

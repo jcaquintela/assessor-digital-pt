@@ -7,8 +7,10 @@
 
 import { foldText } from "@/lib/search/normalize";
 
+// O site PÚBLICO zome.pt é pesquisável (como um portal); a carteira interna
+// da Rede não — não há integração autorizada.
 export const REDE_NO_ACCESS_REPLY =
-  "Não tenho acesso à carteira da Rede. Manda-me referências ZMPT ou links e eu analiso.";
+  "Não tenho acesso à carteira interna da Rede — só ao que está publicado (portais e site público da Zome). Manda-me referências ZMPT ou links e eu analiso.";
 
 const URL_RE = /https?:\/\/[^\s<>()*_]+/g;
 const OWN_HOSTS = ["app.meuafonso.com", "meuafonso.com"];
@@ -47,13 +49,14 @@ export function enforceUrlProvenance(reply: string, allowed: Set<string>, extraA
 }
 
 const CLAIMS_REDE_SEARCH_RE =
-  /\b(pesquisei|procurei|consultei|vi|encontrei|verifiquei)\b[^.!?\n]{0,60}\b(carteira (?:da|na) rede|rede (?:zome|remax)|zome|zmpt|carteira da agencia)\b/;
+  /\b(pesquisei|procurei|consultei|vi|encontrei|verifiquei)\b[^.!?\n]{0,60}\b(carteira (?:interna )?(?:da|na) (?:rede|zome)|rede (?:zome|remax)|carteira (?:interna )?zome|carteira da agencia|base (?:interna )?da (?:rede|zome))\b/;
 const CLAIMS_PORTAL_SEARCH_RE =
-  /\b(pesquisei|procurei|consultei|fui ver)\b[^.!?\n]{0,60}\b(portais?|idealista|imovirtual|supercasa|casa sapo|mercado)\b/;
+  /\b(pesquisei|procurei|consultei|fui ver|verifiquei|vi)\b[^.!?\n]{0,60}\b(portais?|idealista|imovirtual|supercasa|casa sapo|mercado|zome(?:\.pt)?)\b/;
 
 /**
- * A resposta afirma uma pesquisa que não correu? A carteira da Rede nunca é
- * pesquisável (não há ligação); portais só se a ferramenta correu.
+ * A resposta afirma uma pesquisa que não correu? A carteira interna da Rede
+ * nunca é pesquisável (não há ligação); portais e o site público zome.pt só
+ * se a ferramenta correu.
  */
 export function claimsUnperformedSearch(reply: string, opts: { portalSearched: boolean }): boolean {
   const t = foldText(reply);
@@ -64,7 +67,7 @@ export function claimsUnperformedSearch(reply: string, opts: { portalSearched: b
 export const PORTAL_NOT_SEARCHED_REPLY =
   "Não fiz nenhuma pesquisa nos portais neste momento. " + REDE_NO_ACCESS_REPLY;
 
-export const PORTAL_TOOLS = new Set(["search_similar_listings", "search_listings_for_buyer"]);
+export const PORTAL_TOOLS = new Set(["search_similar_listings", "search_listings_for_buyer", "search_zome_public"]);
 
 // Ações externas que o Afonso não faz (divulgar, publicar, mexer em anúncios,
 // gastar) e acompanhamento que não existe (não monitoriza portais).

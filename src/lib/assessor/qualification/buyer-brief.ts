@@ -6,7 +6,9 @@
 // nunca volta a ser perguntado.
 
 import { foldText } from "@/lib/search/normalize";
-import { DEFAULT_LTV, maxViablePrice, TAX_YEAR, YOUNG_GUARANTEE_LTV } from "../commercial/financial-simulator";
+import {
+  DEFAULT_LTV, maxViablePrice, simulatePurchase, YOUNG_GUARANTEE_LTV, type SimResult, type Use,
+} from "../commercial/financial-simulator";
 
 export type CriterionStatus = "confirmed" | "assumed";
 
@@ -31,15 +33,48 @@ export interface BuyerBrief {
   nearMetro: Criterion<boolean> | null;
   /** "Urgente" dito sem data. */
   urgent: Criterion<boolean> | null;
+  /** Idade do comprador (para a isenção IMT/IS Jovem — declarada, nunca verificada). */
+  age: Criterion<number> | null;
+  /** Primeira compra de habitação (declarado pelo consultor). */
+  firstHome: Criterion<boolean> | null;
+  /** Habitação própria e permanente vs secundária/investimento. */
+  use: Criterion<Use> | null;
   /** Referências ZMPT e links que o consultor deu. */
   refs: string[];
   links: string[];
+  /** Orçamento provisório calculado (nunca dito pelo consultor). */
+  budget?: ProvisionalBudget | null;
+}
+
+/**
+ * Orçamento provisório parametrizado — CONTAS, não decisão do banco.
+ * Separa: crédito pré-aprovado, capitais, entrada, custos e elegibilidade
+ * fiscal (declarada, nunca verificada). Não há percentagem fixa de custos:
+ * IMT/Selo dependem da idade, 1.ª habitação e uso; o resto são estimativas.
+ */
+export interface ProvisionalBudget {
+  loanCap: number;
+  ownFunds: number | null;
+  /** young_declared: até 35 anos dito; unknown: idade não dita; not_eligible: >35 ou secundária. */
+  fiscal: "young_declared" | "unknown" | "not_eligible";
+  /** Teto usado na pesquisa: crédito a 90% com o regime fiscal declarado. */
+  base: number;
+  baseSim: SimResult | null;
+  /** young_declared: teto se a isenção NÃO se confirmar. */
+  withoutYoung: number | null;
+  /** unknown: teto se a isenção se confirmar. */
+  withYoung: number | null;
+  /** Garantia pública jovem (até 100% de crédito, decide o banco). */
+  guarantee: number | null;
+  /** Condições da isenção que ficam por verificar. */
+  unverified: string[];
 }
 
 export function emptyBrief(): BuyerBrief {
   return {
     buyerName: null, typology: null, propertyType: null, zone: null, budgetMax: null,
-    financingApproved: null, ownFunds: null, deadline: null, nearMetro: null, urgent: null, refs: [], links: [],
+    financingApproved: null, ownFunds: null, deadline: null, nearMetro: null, urgent: null,
+    age: null, firstHome: null, use: null, refs: [], links: [], budget: null,
   };
 }
 
@@ -176,43 +211,77 @@ export function extractBuyerBrief(text: string, now: Date = new Date()): BuyerBr
   }
   if (/\b(urgente|urgencia|com pressa|o mais rapido possivel|quanto antes)\b/.test(fold)) b.urgent = c(true);
 
+  // Idade: "30 anos", "tem 30 anos" — nunca prazos de crédito ("crédito a 40 anos").
+  const ageRe = /\b(\d{2})\s*anos\b/g;
+  let am: RegExpExecArray | null;
+  while ((am = ageRe.exec(fold))) {
+    const before = fold.slice(Math.max(0, am.index - 22), am.index);
+    const after = fold.slice(am.index + am[0].length, am.index + am[0].length + 14);
+    const n = Number(am[1]);
+    if (/(credito|prazo|emprestimo|financiamento|hipoteca|ha|durante|semanas)\W*(?:\w+\W+)?$/.test(before) || /^\s*(de (credito|prazo)|no mercado)/.test(after)) continue;
+    if (n >= 18 && n <= 90) { b.age = c(n); break; }
+  }
+  if (/\b(primeira (?:casa|habitacao|compra)|1\.?\s?a? habitacao|nunca (?:teve|comprou) casa)\b/.test(fold)) b.firstHome = c(true);
+  if (/\b(ja (?:tem|teve) casa|segunda casa|vende a casa (?:dele|dela|atual))\b/.test(fold)) b.firstHome = c(false);
+  if (/\b(habitacao propria(?: e)? permanente|hpp|para (?:viver|morar))\b/.test(fold)) b.use = c("hpp");
+  else if (/\b(investimento|para arrendar|habitacao secundaria|segunda habitacao|casa de ferias)\b/.test(fold)) b.use = c("secondary");
+
   b.refs = Array.from(new Set((raw.match(/\bZMPT[-\s]?\d{3,}\b/gi) ?? []).map((r) => r.toUpperCase().replace(/\s/g, "-"))));
   b.links = Array.from(new Set(raw.match(/https?:\/\/[^\s<>()]+/g) ?? []));
   return withAssumptions(b);
 }
 
+/** Orçamento provisório a partir do que foi confirmado (null sem pré-aprovação). */
+export function provisionalBudget(b: BuyerBrief): ProvisionalBudget | null {
+  const fin = b.financingApproved?.value ?? null;
+  if (fin == null) return null;
+  const own = b.ownFunds?.value ?? null;
+  const use: Use = b.use?.value ?? "hpp";
+  const age = b.age?.value ?? null;
+  const fiscal: ProvisionalBudget["fiscal"] =
+    use === "secondary" || (age != null && age > 35) || b.firstHome?.value === false ? "not_eligible"
+      : age != null ? "young_declared" : "unknown";
+  const unverified = fiscal === "not_eligible" ? [] : [
+    age != null ? `até 35 anos (declarado: ${age})` : "idade até 35 anos (por confirmar)",
+    b.firstHome?.value ? "1.ª compra de habitação (declarado)" : "1.ª compra de habitação (por confirmar)",
+    b.use?.value === "hpp" ? "habitação própria e permanente (declarado)" : "habitação própria e permanente (assumido)",
+    "não ser dependente no IRS (por confirmar)",
+  ];
+  if (own == null) {
+    // Sem capitais conhecidos: o preço em que a pré-aprovação cobre 90%.
+    return {
+      loanCap: fin, ownFunds: null, fiscal, base: Math.floor(fin / DEFAULT_LTV / 1000) * 1000, baseSim: null,
+      withoutYoung: null, withYoung: null, guarantee: null, unverified,
+    };
+  }
+  const p = { ownFunds: own, loanCap: fin, use };
+  const normal = maxViablePrice({ ...p, young: false });
+  const young = fiscal === "not_eligible" ? null : maxViablePrice({ ...p, young: true });
+  const guarantee = fiscal === "not_eligible" ? null : maxViablePrice({ ...p, young: true, ltv: YOUNG_GUARANTEE_LTV });
+  const base = fiscal === "young_declared" ? young! : normal;
+  return {
+    loanCap: fin, ownFunds: own, fiscal, base,
+    baseSim: simulatePurchase({ price: base, ...p, young: fiscal === "young_declared" }),
+    withoutYoung: fiscal === "young_declared" && normal < base ? normal : null,
+    withYoung: fiscal === "unknown" && young! > base ? young : null,
+    guarantee: guarantee != null && guarantee > base ? guarantee : null,
+    unverified,
+  };
+}
+
 /**
- * Teto assumido a partir de pré-aprovação + capitais próprios, com o
- * simulador financeiro (crédito até 90% do preço/avaliação, IMT e Selo 2026,
- * escritura e banco estimados). Nunca substitui um orçamento dito pelo
- * consultor e é sempre mostrado como assumido.
+ * Teto assumido = orçamento provisório (crédito a 90%, regime fiscal
+ * declarado). Nunca substitui um orçamento dito pelo consultor e é sempre
+ * mostrado como provisório, com as contas à vista.
  */
 export function withAssumptions(b: BuyerBrief): BuyerBrief {
+  b.budget = provisionalBudget(b);
   if (b.budgetMax?.status === "confirmed") return b;
-  const fin = b.financingApproved?.value ?? null;
-  if (fin == null) {
+  if (!b.budget) {
     if (b.budgetMax?.status === "assumed") b.budgetMax = null;
     return b;
   }
-  const k = (n: number) => `${Math.round(n / 1000)}k`;
-  const own = b.ownFunds?.value ?? null;
-  if (own == null) {
-    // Sem capitais conhecidos, o teto é o preço em que a pré-aprovação é 90%.
-    b.budgetMax = {
-      value: Math.floor(fin / DEFAULT_LTV / 1000) * 1000,
-      status: "assumed",
-      note: `pré-aprovação ${k(fin)} = 90% do preço; exige ~10% de entrada mais IMT, Selo e escritura em capitais próprios (por confirmar)`,
-    };
-    return b;
-  }
-  const ceiling = maxViablePrice({ ownFunds: own, loanCap: fin });
-  const young = maxViablePrice({ ownFunds: own, loanCap: fin, young: true, ltv: YOUNG_GUARANTEE_LTV });
-  b.budgetMax = {
-    value: ceiling,
-    status: "assumed",
-    note: `crédito até 90% do preço, no máximo ${k(fin)} pré-aprovados, e ${k(own)} de capitais a pagar entrada, IMT, Selo e escritura — contas ${TAX_YEAR}` +
-      (young > ceiling ? `; com IMT Jovem e garantia pública (até 35 anos) pode chegar a ~${k(young)}` : ""),
-  };
+  b.budgetMax = { value: b.budget.base, status: "assumed", note: "orçamento provisório (contas, não decisão do banco)" };
   return b;
 }
 
@@ -220,6 +289,7 @@ export interface BriefChange { field: keyof BuyerBrief; from: string; to: string
 
 const FIELDS: Array<keyof BuyerBrief> = [
   "buyerName", "typology", "propertyType", "zone", "budgetMax", "financingApproved", "ownFunds", "deadline", "nearMetro", "urgent",
+  "age", "firstHome", "use",
 ];
 
 function show(v: unknown): string {

@@ -9,6 +9,7 @@ import { listingPlan } from "./listing-plan";
 import { parseListingPrice } from "../qualification/proposal-format";
 import { checkPrice, compareCompetitor, eur, readFunnel, type VerifiedSighting } from "./diagnosis";
 import type { ListingBrief } from "./listing-brief";
+import type { ZomeListing } from "@/lib/imoveis/zome-public";
 import {
   CHANNEL_CHECKLIST, colleagueMessage, differentiation, kpis, paidRule, photoBrief, sevenDayPlan, socialCopy,
 } from "./organic-kit";
@@ -18,6 +19,7 @@ export const isListingReply = (t: string | null | undefined) => String(t ?? "").
 
 export type ComparablesStatus = "ok" | "rate_limited" | "failed" | "not_run";
 export interface Comparable { url: string; title: string; description?: string | null; host: string }
+export interface ZomeLookup { status: ComparablesStatus; listing: ZomeListing | null }
 
 const ddmm = (d: Date) => new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit" }).format(d);
 
@@ -29,6 +31,9 @@ export interface ListingComposeInput {
   comparables: { status: ComparablesStatus; results: Comparable[] };
   /** Turno de continuação: só a atualização, sem repetir o kit. */
   update?: boolean;
+  /** Consulta ao site público zome.pt do próprio imóvel e do concorrente. */
+  zomeOwn?: ZomeLookup;
+  zomeCompetitor?: ZomeLookup;
 }
 
 function title(b: ListingBrief, update: boolean): string {
@@ -63,10 +68,22 @@ export function composeListingReply(i: ListingComposeInput): string {
       }
     }
   }
+  const zOwn = i.zomeOwn?.status === "ok" ? i.zomeOwn.listing : null;
+  if (zOwn && zOwn.verification === "page") sightings.push({ url: zOwn.url, host: "zome.pt (site público)", price: zOwn.price, seenAt: seen });
   const price = checkPrice(b, { ownRecordPrice: i.ownLookup.found ? i.ownLookup.price : null, sightings });
   if (price.line) parts.push(price.line);
-  const comp = compareCompetitor(b);
+  const zComp = i.zomeCompetitor?.status === "ok" ? i.zomeCompetitor.listing : null;
+  const comp = compareCompetitor(b, zComp && zComp.verification === "page" ? { ...zComp, seenAt: seen } : null);
   if (comp) parts.push(comp);
+  const zomeLines: string[] = [];
+  for (const [label, ref, lk] of [["o teu imóvel", b.ref, i.zomeOwn], ["o concorrente", b.competitorRef, i.zomeCompetitor]] as const) {
+    if (!ref || !lk || lk.status === "not_run") continue;
+    if (lk.status === "failed") zomeLines.push(`- ${ref} (${label}): a consulta ao site público da Zome falhou agora — não confirmo nada dali.`);
+    else if (lk.status === "rate_limited") zomeLines.push(`- ${ref} (${label}): já fiz as pesquisas de mercado de hoje; amanhã consulto o site público da Zome.`);
+    else if (!lk.listing) zomeLines.push(`- ${ref} (${label}): não o encontrei publicado no site público da Zome (pode estar despublicado ou não indexado).`);
+    else if (lk.listing.verification !== "page") zomeLines.push(`- ${ref} (${label}): encontrei o anúncio mas não consegui ler a página — preço por confirmar: ${lk.listing.url}`);
+  }
+  if (zomeLines.length) parts.push(`*Site público zome.pt:*\n${zomeLines.join("\n")}`);
 
   if (i.comparables.status === "ok") {
     const list = i.comparables.results.filter((r) => /^https?:\/\//.test(r.url)).slice(0, 3);
@@ -118,8 +135,13 @@ export function composeListingReply(i: ListingComposeInput): string {
   }
   items.push({ state: "prepared", text: i.update ? "leitura do funil com os teus números" : "diagnóstico, kit orgânico e plano de 7 dias" });
   items.push({ state: "awaiting_approval", text: `enviar mensagens, publicar, mudar preço ou anúncio, gastar margem paga — nada disto faço sem o teu sim${i.update ? "" : "; gravar o plano nos Seguimentos"}` });
-  const noAccess = ["estatísticas do anúncio nos portais", "carteira da Rede/Zome", "acompanhar o anúncio sozinho (não monitorizo portais)"];
-  if (b.competitorRef && b.competitorPrice == null) noAccess.splice(1, 0, `anúncio do concorrente ${b.competitorRef}`);
+  for (const [ref, lk] of [[b.ref, i.zomeOwn], [b.competitorRef, i.zomeCompetitor]] as const) {
+    if (ref && lk?.status === "ok") {
+      items.push({ state: "executed", evidenceTool: "search_zome_public", text: `consulta de ${ref} no site público zome.pt (${lk.listing ? lk.listing.verification === "page" ? "anúncio lido" : "anúncio encontrado, página por ler" : "não encontrado"})` });
+    }
+  }
+  const noAccess = ["estatísticas do anúncio nos portais", "carteira interna da Rede/Zome (só vejo o site público)", "acompanhar o anúncio sozinho (não monitorizo portais)"];
+  if (b.competitorRef && b.competitorPrice == null && !(zComp && zComp.verification === "page")) noAccess.splice(1, 0, `anúncio do concorrente ${b.competitorRef}`);
   items.push({ state: "no_access", text: noAccess.join(", ") });
   parts.push(formatActionStates(items));
 

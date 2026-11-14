@@ -75,7 +75,8 @@ describe("primeira ação útil", () => {
     expect(t.acted).toBe(true);
     expect(t.reply.startsWith(`${QUALIFICATION_MARKER}Miguel*`)).toBe(true);
     expect(t.reply).toMatch(/Confirmado: T1, Gaia, perto do metro/);
-    expect(t.reply).toMatch(/Assumido: teto de \*114[\s.\u00a0\u202f]000 €\*/);
+    expect(t.reply).toMatch(/\*Orçamento provisório\*/);
+    expect(t.reply).toMatch(/Com crédito a 90%: teto ~114[\s.\u00a0\u202f]000 €/);
     expect(t.reply).toMatch(/Prioridade alta: prazo 30\/11, faltam 16 dias/);
     expect(t.reply).toContain("https://app.meuafonso.com/imoveis/p1");
     expect(t.reply).not.toContain("/imoveis/p2");
@@ -139,11 +140,11 @@ describe("propostas de imóveis", () => {
     expect(txt).toContain("Local: Gaia");
     expect(txt).toContain("Metro: por confirmar");
     expect(txt).toContain("Estado: por confirmar");
-    expect(txt).toMatch(/Porquê: T1 como pedido, em Gaia, dentro do teto assumido/);
+    expect(txt).toMatch(/Porquê: T1 como pedido, em Gaia, dentro do orçamento provisório/);
   });
-  it("acima do teto assumido não é escondido: aparece com aviso", () => {
+  it("acima do orçamento provisório não é escondido: aparece com aviso", () => {
     const p = fromPortalListing({ url: PORTAL_URL, title: "T1 Gaia 175.000 €", host: "idealista.pt" }, brief);
-    expect(formatProposal(p, 1)).toContain("acima do teto assumido");
+    expect(formatProposal(p, 1)).toContain("acima do orçamento provisório");
   });
   it("sem link real não há proposta; nunca há imagens", () => {
     const p: ListingProposal = { ...fromPortalListing({ url: PORTAL_URL, title: "T1", host: "x" }, brief), url: "" };
