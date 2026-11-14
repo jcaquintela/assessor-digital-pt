@@ -255,3 +255,95 @@ registo -> canal ligado -> trial 14 dias (sem cartão, quotas)
 ### 9.10 Lugar no cronograma
 - **Durante o piloto (30 dias):** só trial, sem cobrança. A oferta de 39 € é feita no fim do piloto, para medir a conversão.
 - **Antes da oferta:** link de checkout pela conversa, página mínima, estados da secção 9.4, validações jurídicas (9.6 e 9.7).
+
+---
+
+## 10. DECISÃO DEFINITIVA — Billing V1 (prevalece sobre a secção 9 onde houver conflito)
+
+### 10.1 Regras
+- O trial dura **14 dias corridos**, é gratuito e não pede cartão. A seguir vem a subscrição paga.
+- O trial começa na **primeira mensagem válida** depois da associação segura da conta (token aceite e depois uma mensagem real do consultor). Não começa no registo nem na escolha de canal.
+- Há **uma conta e um trial**, mesmo que o consultor use WhatsApp e Telegram ao mesmo tempo. A memória é partilhada.
+- O preço de 39 €/mês é **hipótese não aprovada**: não entra no catálogo nem em textos até haver aprovação.
+- Antes de implementar, validar duas coisas:
+  - as regras do Telegram (Stars / pagamentos de bens digitais em bots);
+  - a faturação e o IVA em Portugal (certificação AT, NIF).
+
+### 10.2 Lacunas do código atual (confirmadas)
+| Hoje | Lacuna |
+|---|---|
+| O trial arranca **na escolha de canal no site, antes de haver ligação** (`startTrialForChannelChoice`) | Tem de arrancar na 1.ª mensagem válida após a ligação |
+| O outro caminho exige **WhatsApp ligado** (`whatsapp_not_linked`); o Telegram leva ao plano Base grátis | O trial tem de valer igual para os dois canais |
+| Há um trial por conta (`trial_status`), mas sem cruzar número, chat, email ou dispositivo | Antiabuso entre contas |
+| Os timestamps de trial estão em `profiles` (`trial_started_at`, `trial_expires_at`) | Mantém-se; garantir UTC e auditoria do evento de arranque com a origem (canal, id da mensagem) |
+| A expiração aplica uma "escolha" ou desce para Base | Expiração com memória só de leitura e exportação (secção 9.4), sem apagar nada |
+| Webhook idempotente e sincronização de estados existem | Falta tratar eventos fora de ordem e confirmar a reativação |
+| Checkout e portal só abrem no dashboard | Link seguro de uso único a partir da conversa |
+| O catálogo tem 3 planos pagos e o plano Base grátis | O plano da V1 ainda não está decidido; o catálogo não muda até à aprovação |
+| Quotas só no Drive (40/200/ilimitado) | Faltam as quotas do trial V1 |
+
+### 10.3 Máquina de estados (backend, UTC)
+```text
+registered -> linked (token aceite) -> trial_active (1.ª mensagem válida; started_at, expires_at = +14d)
+trial_active -> active (webhook checkout/subscription ativa)
+trial_active -> expired (expires_at < now, sem subscrição)
+active -> past_due -> active | expired
+active -> canceled_pending (cancelado, até ao fim do período) -> expired
+expired -> active (reativação; dados intactos)
+```
+- Cada transição fica registada em `subscription_events` com o carimbo de data/hora e a origem (webhook, job ou conversa).
+- Um job diário trata as expirações, e a mesma verificação corre também a cada mensagem recebida.
+- **Retenção de dados após expirar:** os dados ficam intactos e legíveis. Ao fim de 90 dias, aviso de que a conta vai ser apagada daí a 30 dias (prazo a confirmar com jurista). Só se apaga a pedido ou depois disso.
+
+### 10.4 Antiabuso
+- Um trial por número WhatsApp, chat Telegram e email normalizado. Também vale para identidades já revogadas: guarda-se o hash.
+- Uma conta nova com uma identidade que já teve trial entra logo em `expired`, com a explicação e o link para pagar.
+- Limite de registos por IP/dia e por domínio de email descartável.
+- Só conta como "primeira mensagem válida" uma mensagem do consultor com conteúdo real. A mensagem do token não conta.
+
+### 10.5 Quotas do trial (propostas, a ajustar após medir o custo)
+| Recurso | Quota em 14 dias |
+|---|---|
+| Registos comerciais (pessoas, imóveis, notas, tarefas) | 150 |
+| Áudios processados | 40 (máx. 5 min cada) |
+| Fotos / prints / PDFs simples | 30 |
+| Alertas proativos | máx. 2/dia (regra V1) |
+| Matching comprador-imóvel | ilimitado sobre os dados já registados |
+
+- A 80% de uma quota, 1 aviso. A 100%, a captura nova pára até haver pagamento.
+- A consulta e o desfazer continuam sempre disponíveis.
+
+### 10.6 Mensagens de conversão (máximo 3 no trial, nunca no mesmo dia que 2 alertas)
+- **Dia 1:** só valor, nenhuma menção a pagar.
+- **Dia 10, resumo de valor com números reais:** "Em 10 dias guardaste 23 contactos, preparei 8 follow-ups e encontrei 3 compradores para os teus imóveis. Faltam 4 dias do período grátis."
+- **Dia 13:** "Amanhã termina o período grátis. Se quiseres continuar, deixo-te aqui o link seguro (válido 30 min)." Só se o consultor estiver ativo.
+- **Dia 14 (expirou):** "O período grátis terminou. Tudo o que guardaste continua aqui e podes consultar quando quiseres. Para eu voltar a registar e avisar-te, ativa aqui."
+- Depois disto, silêncio até o consultor escrever.
+- Sem urgência inventada e sem descontos não aprovados. Os números vêm sempre da base de dados; se não houver, a frase não sai.
+- No WhatsApp, fora das 24h, estas mensagens só podem sair por um template aprovado (categoria utility). Se não houver template aprovado, não saem.
+
+### 10.7 Checkout e portal pela conversa
+- "Quero subscrever" → link de uso único, válido 30 min, que abre uma página mínima com o checkout embutido.
+- O webhook confirma a subscrição e o canal de origem responde "ativo".
+- "Cancelar / cartão / faturas" → link de uso único para o portal do cliente.
+- O link nunca leva email ou telefone e expira depois de usado.
+- No Telegram, até validar as regras de pagamento em bots, a alternativa é enviar o link por email, ou pelo WhatsApp se estiver ligado.
+
+### 10.8 Critérios de aceitação
+- O trial **não** arranca no registo nem na escolha de canal, e arranca na 1.ª mensagem válida após a ligação. Teste golden obrigatório.
+- Ligar o segundo canal não cria nem prolonga o trial.
+- Uma identidade que já teve trial noutra conta não recebe outro.
+- `expires_at` = `started_at` + 14 dias exatos em UTC, e a expiração acontece até 1h depois dessa hora.
+- Expirado: a consulta e a exportação da memória funcionam; a captura nova e os alertas param.
+- Webhook repetido ou fora de ordem leva sempre ao mesmo estado final.
+- Reativação sem perda de dados (contagem de registos igual antes e depois).
+- Máximo de 3 mensagens de conversão no trial, todas com números reais.
+- Nenhum link de pagamento sai pelo Telegram antes da validação jurídica (teste negativo).
+- Ensaio completo no ambiente de teste do Stripe (sucesso, recusa, 3DS, cancelamento, reativação).
+
+### 10.9 Validações externas obrigatórias antes do código
+1. **Telegram:** Termos da Bot Platform e de Pagamentos (Stars), e se é permitido um link externo para uma subscrição.
+2. **WhatsApp:** política de comércio e categoria de template para lembretes de fim de trial.
+3. **Faturação em Portugal:** se as faturas do Stripe chegam, ou se é preciso um programa certificado pela AT e o NIF na fatura.
+4. **IVA:** taxa aplicável e tratamento B2B/B2C (consultores com atividade aberta).
+5. **RGPD:** prazos de retenção depois da expiração e base legal para guardar hashes de identidade para o antiabuso.
