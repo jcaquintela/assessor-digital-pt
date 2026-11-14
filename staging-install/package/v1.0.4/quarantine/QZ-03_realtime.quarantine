@@ -1,0 +1,9 @@
+-- QUARENTENA · Publicação Realtime de assessor_messages
+-- NÃO EXECUTÁVEL. Nenhuma instrução abaixo está ativa: todas as linhas começam por "--Q| ".
+-- Reativar qualquer item exige autorização SEPARADA do proprietário e uma nova versão do pacote.
+-- Se este ficheiro for executado por engano, a primeira instrução aborta a transação.
+DO $quarentena$ BEGIN RAISE EXCEPTION 'QUARENTENA %: não executar sem autorização separada', 'QZ-03_realtime.quarantine'; END $quarentena$;
+
+--Q| ALTER TABLE ONLY public.assessor_messages REPLICA IDENTITY FULL;
+--Q|
+--Q| ALTER PUBLICATION supabase_realtime ADD TABLE public.assessor_messages;

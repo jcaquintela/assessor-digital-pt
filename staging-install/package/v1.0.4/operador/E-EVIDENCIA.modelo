@@ -1,0 +1,17 @@
+# Ficha de evidência do operador — obrigações E1–E10 (REHEARSAL-TARGET.md §1). MODELO: todas PENDENTE.
+# Copiar para fora do pacote, preencher CADA linha com a referência da evidência registada (nunca valores
+# de segredos) e passá-la ao R10. O R10 recusa se faltar uma linha, se houver repetidas ou desconhecidas,
+# se alguma tiver menos de 8 caracteres ou disser PENDENTE / POR VERIFICAR / TODO / N/A.
+# LIMITE: o R10 só confere a FORMA desta ficha; a verdade de cada evidência é responsabilidade do operador.
+operador=PENDENTE
+data=PENDENTE
+E1=PENDENTE
+E2=PENDENTE
+E3=PENDENTE
+E4=PENDENTE
+E5=PENDENTE
+E6=PENDENTE
+E7=PENDENTE
+E8=PENDENTE
+E9=PENDENTE
+E10=PENDENTE

@@ -1,0 +1,11 @@
+# Entrada 0000 do AFONSO Staging — estado registado NESTA versão do pacote (coberto pelo SHA256SUMS).
+# Mudar qualquer linha = NOVA versão do pacote + auditoria separada. Nunca editar no alvo do ensaio.
+# Estados aceites pelo R05/R10: AUTENTICADO (ficheiro histórico) ou ALTERNATIVO_AUDITADO. Hoje: PENDENTE.
+estado=PENDENTE
+ficheiro=drizzle/migrations/0000_staging_access_control.sql
+commit_snapshot=608dad98
+sha256_prefixo=a87578e560f0c97f
+sha256=PENDENTE
+alternativo=NENHUM
+alternativo_sha256=PENDENTE
+auditoria=NENHUMA

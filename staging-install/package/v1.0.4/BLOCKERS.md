@@ -1,0 +1,24 @@
+# Bloqueios e ambiguidades — v1.0.4 (gerado de BLOCKERS_V104)
+
+Nenhum destes pontos foi "resolvido" por simulação. Nada foi executado. G1–G4 continuam NO-GO; o ensaio não tem GO.
+
+| # | Bloqueio | Impacto | O que falta | Estado |
+|---|---|---|---|---|
+| B1 | **NÃO ENSAIADO: nenhuma versão (v1.0.0…v1.0.4) foi aplicada em nenhuma base, nem descartável; nenhum script do ensaio foi corrido** | Validade só por análise estática e pelo parser oficial. Erros que só uma base ou o /proc real mostram não estão excluídos (o V1/V3 da v1.0.3 eram desse tipo) | Autorização separada para o REHEARSAL-PLAN.md, só numa instância descartável | ABERTO |
+| B2 | **EXECUTOR EFETIVO NÃO PROVADO (inclui o caminho de unaccent)** | P01/P02 avaliam o DONO HISTÓRICO, não o papel da ferramenta de migrações do staging | Evidência independente do papel efetivo (EXECUTOR-PRIVILEGES.md). PENDENTE | ABERTO |
+| B3 | **SEGURANÇA FUNCIONAL NÃO ESTABELECIDA: as APIs de servidor com verificação de sessão + has_staging_access AINDA NÃO EXISTEM** | Os REVOKE mantêm-se (só servidor); service_role ignora a barreira | Escrever e auditar essas APIs (decisão do proprietário) | ABERTO |
+| B4 | **ADMIN DO STAGING ≠ ADMIN V2: nenhuma elevação automática** | A consola de administração V2 não funciona no staging | Decisão de privilégios do proprietário | ABERTO |
+| B5 | **PERFIL AUTOMÁTICO EM QUARENTENA (QZ-02, QZ-06)** | Contas de teste novas não recebem perfil, papel nem categorias V2 | Autorização separada + versão que não escreva em user_roles | ABERTO |
+| B6 | **SEM APAGAMENTO EM CASCATA (84 chaves para auth.users retiradas)** | Apagar uma conta não apaga as linhas V2 dela | Definir o caminho de apagamento antes de haver dados de teste | ABERTO |
+| B7 | **SEM FICHEIROS NEM TEMPO REAL (QZ-03, QZ-04)** | Essas funções não existem no staging | Reescrever com a barreira / só servidor e autorizar | ABERTO |
+| B8 | **T01 BLOQUEADO e SÓ DESCARTÁVEL** | A matriz está provada estaticamente e confirmável só de leitura (Q02/Q05) | Autorização separada, só dentro do plano de ensaio | ABERTO |
+| B9 | **VALORES POR OMISSÃO DESLIGADOS NÃO IMPEDEM ATIVAÇÕES FUTURAS** | O esquema não proíbe que o servidor ou o dono liguem envios depois | Controlo de processo: qualquer ativação é decisão separada do proprietário | ABERTO |
+| B10 | **FUSÃO DE CONTAS INDISPONÍVEL (QZ-06)** | A fusão de contas da consola V2 falha no staging | Reescrita com allowlist explícita, autorização separada e nova versão | ABERTO |
+| B11 | **LEITURA DE auth.identities NÃO CONFIRMADA no staging** | Sem permissão, P04/P05/Q03 dão ERRO: a conta não conta como verificada | Confirmar a permissão de leitura (só leitura). Se não existir: BLOQUEIO | ABERTO |
+| B12 | **ALVO DO ENSAIO: R05–R90 PREPARADOS, NÃO EXECUTADOS; os scripts sozinhos NÃO provam isolamento** | Os scripts veem o processo (/proc, ficheiros, sockets, cgroup), não o anfitrião, o hipervisor nem a rede da plataforma | Executar com autorização separada E as obrigações E1–E10 cumpridas pelo operador (B13) | ABERTO |
+| B13 | **OBRIGAÇÕES EXTERNAS E1–E10 POR CUMPRIR PELO OPERADOR** | O R10 só confere que a ficha de evidência existe, está completa e não diz PENDENTE; não consegue confirmar que é verdadeira | O operador preenche operador/E-EVIDENCIA.modelo com a evidência de cada obrigação; sem ela o R10 recusa | ABERTO |
+| B14 | **ENTRADA 0000 DO STAGING PENDENTE: só o prefixo sha256 é conhecido (a87578e560f0c97f)** | Sem o ficheiro histórico autenticado (sha256 integral registado numa versão auditada) o R05 recusa e o passo 0000 não corre; nenhum bootstrap alternativo existe | Ficheiro histórico autenticado + sha256 integral numa NOVA versão do pacote, OU bootstrap alternativo sujeito a auditoria separada (entradas/0000/README.md) | ABERTO |
+| B15 | **BOOTSTRAP SINTÉTICO ≠ SUPABASE REAL** | Sem GoTrue, PostgREST, supautils, Storage API, Realtime; privilégios aproximados | Tratar o ensaio como prova do SQL e das verificações, não da plataforma (L1–L10) | ABERTO |
+| B16 | **unaccent NO STAGING: estado (INSTALADA/NOVA) desconhecido até o P02 correr lá** | O caminho NOVA depende do executor real e de camadas da plataforma | Correr o P02 (só leitura) no staging e, com B2, confirmar o caminho | ABERTO |
+| B17 | **R90 PODE DECLARAR INCERTEZA: nesse caso a máquina TEM de ser destruída** | Se o cgroup/unidade não ficar vazio ou não puder ser lido, os scripts não conseguem garantir que nenhum processo do ensaio sobreviveu | Obrigação E1/E10: destruir a VM/contentor sempre que o R90 termine com INCERTEZA (código 3) | ABERTO |
+| B18 | **psql E shell NÃO EXERCITADOS: guiões .psql e scripts só verificados estaticamente** | O comportamento real de \gset/\if/\g, dos /proc/<pid>/stat e do cgroup v2 não foi observado; shellcheck/dash -n são análise estática | Só o ensaio autorizado o pode observar | ABERTO |
