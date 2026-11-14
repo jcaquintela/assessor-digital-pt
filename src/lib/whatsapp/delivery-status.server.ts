@@ -57,6 +57,12 @@ export async function applyDeliveryStatuses(
         template: (log as any)?.template_name ?? null,
       }),
     );
+    if ((log as any)?.purpose === "pilot_invite") {
+      try {
+        const { applyPilotDeliveryStatus } = await import("@/lib/pilot/invite-delivery.server");
+        await applyPilotDeliveryStatus(supabaseAdmin, messageId, status, providerErr?.code != null ? String(providerErr.code) : null);
+      } catch { /* o estado do convite nunca parte o registo de entregas */ }
+    }
     if (!log) continue;
 
     const current = ORDER[String((log as any).delivery_status ?? "sent")] ?? 1;

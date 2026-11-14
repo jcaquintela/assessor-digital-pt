@@ -6,7 +6,11 @@ import { toast } from "sonner";
 import {
   getEarlyAccessOverview, grantEarlyAccess, issueAdminInvite, removeFromWaitlist, revokeAccessInvite,
 } from "@/lib/access/admin.functions";
-import { getPilotOverview, issuePilotInviteAdmin, revokePilotInviteAdmin } from "@/lib/pilot/admin.functions";
+import {
+  getPilotOverview, issuePilotInviteAdmin, revokePilotInviteAdmin,
+  listPilotInviteCandidates, previewPilotInviteDeliveryAdmin, sendPilotInviteAdmin,
+} from "@/lib/pilot/admin.functions";
+import { DELIVERY_OUTCOME_LABEL, type DeliveryOutcome } from "@/lib/pilot/invite-delivery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -224,6 +228,7 @@ function PilotSection() {
           </div>
         )}
         {!open && <p className="text-xs text-muted-foreground">O piloto está fechado: não é possível gerar convites.</p>}
+        {data.canManage && <PilotDeliveryPanel onDone={refresh} />}
         {lastCode && (
           <p className="text-sm">
             Código (só aparece agora): <span className="font-mono font-semibold">{lastCode}</span>
@@ -253,5 +258,98 @@ function PilotSection() {
         </tbody>
       </table>
     </section>
+  );
+}
+
+const DELIVERY_STATUS: Record<string, string> = {
+  issuing: "A emitir", accepted: "Aceite pelo WhatsApp", sent: "Enviado", delivered: "Entregue",
+  read: "Lido", failed: "Falhou", blocked: "Bloqueado",
+};
+
+function PilotDeliveryPanel({ onDone }: { onDone: () => void }) {
+  const list = useServerFn(listPilotInviteCandidates);
+  const preview = useServerFn(previewPilotInviteDeliveryAdmin);
+  const send = useServerFn(sendPilotInviteAdmin);
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["admin", "pilot-delivery"], queryFn: () => list() });
+  const [recipient, setRecipient] = useState("");
+  const [channel, setChannel] = useState<"whatsapp" | "telegram">("whatsapp");
+  const [pv, setPv] = useState<Awaited<ReturnType<typeof preview>> | null>(null);
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["admin", "pilot-delivery"] }); onDone(); };
+
+  const pvMut = useMutation({
+    mutationFn: () => preview({ data: { recipientUserId: recipient, channel } }),
+    onSuccess: (r) => setPv(r),
+    onError: (e: any) => toast.error(e?.message ?? "Falhou"),
+  });
+  const sendMut = useMutation({
+    mutationFn: () => send({ data: { recipientUserId: recipient, channel, confirm: { recipientUserId: recipient, channel, confirmed: true } } }),
+    onSuccess: (r) => {
+      const label = DELIVERY_OUTCOME_LABEL[r.outcome as DeliveryOutcome] ?? DELIVERY_OUTCOME_LABEL.error;
+      r.outcome === "accepted" || r.outcome === "sent" ? toast.success(label) : toast.message(label);
+      setPv(null); refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falhou"),
+  });
+
+  if (!data) return null;
+  return (
+    <div className="space-y-3 rounded-md border p-3">
+      <div className="text-sm font-medium">Enviar convite a uma pessoa registada e em espera</div>
+      {!data.enabled && (
+        <p className="text-xs text-muted-foreground">O envio automático está desligado. Usa “Gerar convite do piloto” para partilhar o código à mão.</p>
+      )}
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+        <div>
+          <Label htmlFor="pilot-recipient">Destinatário</Label>
+          <select id="pilot-recipient" className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+            value={recipient} onChange={(e) => { setRecipient(e.target.value); setPv(null); }}>
+            <option value="">Escolhe…</option>
+            {data.candidates.map((c: any) => <option key={c.user_id} value={c.user_id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="pilot-channel">Canal</Label>
+          <select id="pilot-channel" className="h-9 rounded-md border bg-background px-2 text-sm"
+            value={channel} onChange={(e) => { setChannel(e.target.value as any); setPv(null); }}>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="telegram">Telegram</option>
+          </select>
+        </div>
+        <Button variant="outline" disabled={!recipient || pvMut.isPending} onClick={() => pvMut.mutate()}>Verificar</Button>
+      </div>
+      {pv && (
+        <div className="space-y-2 rounded-md bg-muted p-3 text-sm" role="status">
+          <div>Vais enviar um convite do piloto a <strong>{pv.recipientName}</strong> por <strong>{pv.destination}</strong>.</div>
+          {pv.eligibility !== "ok" && <div>{DELIVERY_OUTCOME_LABEL[pv.eligibility as DeliveryOutcome]}</div>}
+          {!pv.channelOk && pv.channelProblem && <div>{DELIVERY_OUTCOME_LABEL[pv.channelProblem as DeliveryOutcome]}</div>}
+          {pv.mode === "template" && <div className="text-xs text-muted-foreground">Fora da janela de 24 h: será usado o template aprovado.</div>}
+          <Button
+            disabled={!pv.enabled || !pv.canManage || pv.eligibility !== "ok" || !pv.channelOk || sendMut.isPending}
+            onClick={() => sendMut.mutate()}
+          >
+            {sendMut.isPending ? "A enviar…" : "Confirmo: enviar convite"}
+          </Button>
+        </div>
+      )}
+      {!!data.deliveries.length && (
+        <table className="w-full text-xs">
+          <thead className="text-left text-muted-foreground">
+            <tr><th className="py-1">Pessoa</th><th>Canal</th><th>Estado</th><th>Tentativas</th><th>Atualizado</th></tr>
+          </thead>
+          <tbody>
+            {data.deliveries.map((d: any) => (
+              <tr key={d.id} className="border-t">
+                <td className="py-1">{d.name}</td>
+                <td>{d.channel === "whatsapp" ? "WhatsApp" : "Telegram"}</td>
+                <td>{DELIVERY_STATUS[d.status] ?? d.status}{d.error_reason ? ` (${d.error_reason})` : ""}</td>
+                <td>{d.attempts}</td>
+                <td>{fmt(d.updated_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }

@@ -92,3 +92,71 @@ export const revokePilotInviteAdmin = createServerFn({ method: "POST" })
     await audit(sa, context.userId, "pilot.invite_revoke", { outcome: r, invite_id: data.id });
     return { revoked: r === "revoked" };
   });
+
+// ── Envio direto de convites do piloto (interruptor `pilot.v2_invite_delivery.v1`, desligado) ──
+
+const channelSchema = z.enum(["whatsapp", "telegram"]);
+
+export const listPilotInviteCandidates = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin: sa } = await import("@/integrations/supabase/client.server");
+    const { PILOT_KEY } = await import("./pilot");
+    const { PILOT_INVITE_DELIVERY_FLAG } = await import("./invite-delivery");
+    const { isAccountFlagEnabled } = await import("@/lib/flags/account-flag.server");
+    const [acc, parts, dels] = await Promise.all([
+      sa.from("account_access").select("user_id, state").in("state", ["registered_waiting", "invited"]).limit(200),
+      sa.from("pilot_participants").select("user_id").eq("pilot_key", PILOT_KEY),
+      sa.from("pilot_invite_deliveries")
+        .select("id, recipient_user_id, channel, status, attempts, error_reason, error_code, last_attempt_at, updated_at")
+        .eq("pilot_key", PILOT_KEY).order("updated_at", { ascending: false }).limit(50),
+    ]);
+    const inPilot = new Set((parts.data ?? []).map((r: any) => r.user_id));
+    const ids = new Set<string>();
+    for (const r of acc.data ?? []) ids.add(r.user_id);
+    for (const r of dels.data ?? []) ids.add(r.recipient_user_id);
+    const names: Record<string, string> = {};
+    if (ids.size) {
+      const { data: ps } = await sa.from("profiles").select("id, name").in("id", [...ids]);
+      for (const p of ps ?? []) names[p.id] = p.name || "—";
+    }
+    return {
+      enabled: await isAccountFlagEnabled(sa, PILOT_INVITE_DELIVERY_FLAG, null),
+      candidates: (acc.data ?? []).filter((r: any) => !inPilot.has(r.user_id))
+        .map((r: any) => ({ user_id: r.user_id, state: r.state, name: names[r.user_id] ?? "—" })),
+      deliveries: (dels.data ?? []).map((r: any) => ({ ...r, name: names[r.recipient_user_id] ?? "—" })),
+    };
+  });
+
+export const previewPilotInviteDeliveryAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ recipientUserId: z.string().uuid(), channel: channelSchema }).parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin: sa } = await import("@/integrations/supabase/client.server");
+    const { previewPilotInviteDelivery } = await import("./invite-delivery.server");
+    return previewPilotInviteDelivery(sa, { actor: context.userId, ...data });
+  });
+
+export const sendPilotInviteAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({
+    recipientUserId: z.string().uuid(),
+    channel: channelSchema,
+    // Confirmação explícita: o ecrã repete destinatário e canal que o admin viu.
+    confirm: z.object({ recipientUserId: z.string().uuid(), channel: channelSchema, confirmed: z.literal(true) }),
+  }).parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin: sa } = await import("@/integrations/supabase/client.server");
+    const { sendPilotInvite } = await import("./invite-delivery.server");
+    const r = await sendPilotInvite(sa, {
+      actor: context.userId, recipientUserId: data.recipientUserId, channel: data.channel, confirm: data.confirm,
+    });
+    // Auditoria sem código, sem contacto.
+    await audit(sa, context.userId, "pilot.invite_send", {
+      outcome: r.outcome, delivery_id: r.deliveryId ?? null, recipient_user_id: data.recipientUserId, channel: data.channel,
+    });
+    return r;
+  });

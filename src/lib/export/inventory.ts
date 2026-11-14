@@ -73,6 +73,7 @@ export const TABLE_CLASS: Record<string, DataClass> = {
   pending_actions: "migrate",
   people: "migrate",
   person_phones: "migrate",
+  pilot_invite_deliveries: "retain",
   pilot_participants: "migrate",
   pilots: "exclude",
   plan_configs: "exclude",

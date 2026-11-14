@@ -3357,6 +3357,65 @@ export type Database = {
           },
         ]
       }
+      pilot_invite_deliveries: {
+        Row: {
+          attempts: number
+          channel: string
+          created_at: string
+          error_code: string | null
+          error_reason: string | null
+          id: string
+          invite_id: string | null
+          last_attempt_at: string
+          pilot_key: string
+          provider_message_id: string | null
+          recipient_user_id: string
+          requested_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          channel: string
+          created_at?: string
+          error_code?: string | null
+          error_reason?: string | null
+          id?: string
+          invite_id?: string | null
+          last_attempt_at?: string
+          pilot_key: string
+          provider_message_id?: string | null
+          recipient_user_id: string
+          requested_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          channel?: string
+          created_at?: string
+          error_code?: string | null
+          error_reason?: string | null
+          id?: string
+          invite_id?: string | null
+          last_attempt_at?: string
+          pilot_key?: string
+          provider_message_id?: string | null
+          recipient_user_id?: string
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pilot_invite_deliveries_pilot_key_fkey"
+            columns: ["pilot_key"]
+            isOneToOne: false
+            referencedRelation: "pilots"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       pilot_participants: {
         Row: {
           created_at: string
