@@ -1,4 +1,4 @@
-# Plano de ensaio — v1.0.4
+# Plano de ensaio — v1.0.5
 
 **PLANO. NÃO AUTORIZADO. NÃO EXECUTADO. SEM GO.** Nenhum passo pode começar sem uma autorização **separada** do proprietário que cite este ficheiro e o sha256 do `MANIFEST.json`. Só numa instância PostgreSQL 17 **descartável**; nunca no AFONSO Staging, na V1 ou em produção. G1–G4 continuam NO-GO, aprove ou não o ensaio. **Hoje o R10 recusa arrancar** porque não há ficha E1–E10 preenchida (B13). A entrada 0000 está AUTENTICADA como input histórico, mas a correspondência com a base real do staging não foi verificada (B14).
 
@@ -8,7 +8,10 @@ Qualquer erro, `REPROVADO`, resultado inesperado, aviso que não esteja previsto
 
 1. Correr o `R90` **fora** da unidade do servidor.
 2. Se der `R90 DESCARTADO`: arquivar `<ROOT>/evidencia/` e destruir a máquina (E1).
-3. Se der `R90 INCERTEZA` (código 3) ou não terminar: **destruir a máquina** sem reutilizar nada.
+3. Se der `R90 INCERTEZA` (código 3) ou não terminar: **destruir a máquina** sem reutilizar nada. Na v1.0.5, depois de o R90 começar o descarte, **qualquer** falha sai com código 3.
+4. Se o R10 terminar com `R10 INCERTEZA` (código 3: não conseguiu confirmar a identidade do seu postmaster antes do sinal): correr o R90 e **destruir a máquina** em qualquer caso.
+
+**Trinco global (v1.0.5):** R05, R10 e R40 seguram `<ROOT>/.trinco` enquanto correm; um segundo passo em simultâneo é recusado. Um trinco deixado por um passo interrompido só é libertado pelo R90 (que recusa se o dono ainda corre).
 
 **Nunca** corrigir à mão e continuar, nunca repetir nem saltar um passo, nunca reutilizar a instância: o R40 recusa um passo já tentado. Um novo ensaio recomeça em E1 com uma máquina e um `<ROOT>` novos.
 
@@ -16,6 +19,7 @@ Qualquer erro, `REPROVADO`, resultado inesperado, aviso que não esteja previsto
 
 Todo o SQL passa por `tools/R40_sessao.sh AUTORIZADO:<ref> <ROOT> <PASSO>`. Não há outra forma prevista de abrir uma sessão. Cada chamada:
 
+0. Segura o trinco global e valida a linha do passo: **exatamente 7 campos**, ficheiro, base, papel, `super`/`tx`/`desbloquear` (e a coerência entre eles), nomes-token só da lista conhecida, sem repetidos; cada token tem de cobrir pelo menos um campo `__…__` da fonte.
 1. Confere o pacote inteiro (`SHA256SUMS`, nenhum ficheiro a mais) e a **ordem**: o passo anterior tem de estar `APROVADO` e este nunca ter sido tentado. A pasta da sessão nasce logo, para nada se poder repetir.
 2. Corre o **R20 completo** e verifica o próprio wrapper: ambiente, HOME, rede, mesmo namespace de rede e de PIDs do servidor, fora da unidade.
 3. Faz **cópias determinísticas** em `evidencia/sessoes/<PASSO>/` (S2). Cada cópia depende só dos bytes da fonte e dos valores registados, sem datas. Regras:

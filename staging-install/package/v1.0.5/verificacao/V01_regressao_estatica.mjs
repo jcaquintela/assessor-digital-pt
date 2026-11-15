@@ -140,18 +140,20 @@ export function verificar(pkg, opcoes = {}) {
   const man = JSON.parse(ler("MANIFEST.json"));
   const steps = new Map((man.session_steps ?? []).map((s) => [s.passo, s]));
   for (const d of defs) {
-    const [fich, base, papel, sup, tx, desb, marc] = d.f;
+    const [fich = "", base, papel, sup, tx, desb, marc = ""] = d.f;
     const tokens = marc === "-" ? [] : marc.split(",");
-    const boa = d.f.length === 7 && ["postgres", "afonso_ensaio"].includes(base) && ["ensaio_super", "postgres"].includes(papel) && [sup, tx, desb].every((v) => v === "sim" || v === "nao") && ((sup === "sim") === (papel === "ensaio_super")) && (desb === "nao" || fich.endsWith(".bloqueado.sql")) && tokens.every((t) => t in TOKENS) && new Set(tokens).size === tokens.length;
+    const conhecidos = tokens.every((t) => Object.prototype.hasOwnProperty.call(TOKENS, t));
+    const boa = d.f.length === 7 && conhecidos && ["postgres", "afonso_ensaio"].includes(base) && ["ensaio_super", "postgres"].includes(papel) && [sup, tx, desb].every((v) => v === "sim" || v === "nao") && ((sup === "sim") === (papel === "ensaio_super")) && (desb === "nao" || fich.endsWith(".bloqueado.sql")) && tokens.every((t) => t in TOKENS) && new Set(tokens).size === tokens.length;
     const st = steps.get(d.passo);
     const espelho = !!st && st.base === base && st.papel === papel && st.super === (sup === "sim") && st.tx === (tx === "sim") && st.desbloquear === (desb === "sim") && (d.passo === "0000" ? fich === "ENTRADA_0000" : st.ficheiro === fich);
     let cobre = true, sobra = [];
-    if (fich !== "ENTRADA_0000") {
+    if (fich !== "ENTRADA_0000" && conhecidos && existsSync(join(pkg, fich))) {
       const t = ler(fich);
       cobre = tokens.every((k) => TOKENS[k].some((m) => t.includes(m)));
       const perm = new Set(tokens.flatMap((k) => TOKENS[k]));
       sobra = [...new Set(t.match(/__[A-Z][A-Z0-9_]*__/g) ?? [])].filter((m) => !perm.has(m));
     }
+    else if (fich !== "ENTRADA_0000") cobre = false;
     ok(boa && espelho && cobre && sobra.length === 0, `K2 passo ${d.passo}: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token${sobra.length ? " — sem token: " + sobra.join(",") : ""}`);
   }
   ok(/\[ "\$NC" = 7 \]/.test(r40) && /marcadores_ou_falha "\$MARC" "INST EMAIL P05A P05B"/.test(r40) && /marcadores_ou_falha "\$_m" "INST EMAIL R31 GUIAO P05A P05B"/.test(r40) && /não cobre nenhum campo/.test(r40), "K3 R40: conta os campos, valida nomes-token e a cobertura de cada um antes de copiar");

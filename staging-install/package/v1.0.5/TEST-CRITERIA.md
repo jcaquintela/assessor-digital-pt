@@ -1,53 +1,49 @@
-# Critérios de teste — v1.0.4
+# Critérios de teste — v1.0.5
 
-**Nada foi executado.** Não correu SQL, base de dados (nem descartável), script de ensaio, guião psql nem o R05/R10/R20/R40/R41/R90. Tudo abaixo é estático.
+**Nada foi executado.** Não correu SQL, base de dados (nem descartável), script de ensaio, guião psql nem o R05/R10/R20/R40/R41/R90. Tudo abaixo é estático e **está no pacote**: quem audita reproduz cada resultado só com esta pasta.
 
-## Já verificado (estático)
+## Reproduzir (só leitura)
 
-| Verificação | Onde | Critério |
+| Verificação | Comando, dentro desta pasta | Registo guardado |
 |---|---|---|
-| Migrações preservadas | `src/lib/staging/v104/package-v104.test.ts` | S4-00…S4-05 com os 6 sha256 auditados e iguais byte a byte à v1.0.3 (e à v1.0.2) |
-| Só o P02 muda entre as P/Q | idem + `DIFF-v1.0.3.md` | Todas as outras P/Q, quarentena, `ACCESS-MATRIX.md` e documentos copiados iguais à v1.0.3; F1 intacto |
-| P1/P2 | idem | P02-16 nova (dicionário: pertença, modelo, opções, dono), condicional INSTALADA; P02-14 sem `10::oid`, superutilizador de arranque lido do catálogo; veredito "só como dono histórico" |
-| V1 | idem | Nenhuma fonte de passo tem marcadores fora dos declarados; a cópia simulada de cada passo (mesmas regras do wrapper) não deixa nenhum `__…__`; R30 com as 17 verificações da v1.0.3 |
-| V2 | idem | A linha `\set r41` do guião só tem texto literal (sem `:`, aspas nem variáveis); caminhos validados; R41 sem argumento de autorização |
-| V3 | idem | Guiões `.psql` sem `::int`; decisões por `\if`; falhas por `RAISE EXCEPTION`; R31/R32 sem conversões constantes para int |
-| V4 | idem + `evidence/shell-check.txt` | Sem pipelines nas verificações; `grep` só dentro de `procura`; `fail` no stderr; `shellcheck` sem avisos de severidade `warning` ou superior |
-| V5 | idem | R20/R41/R90 decidem pela identidade estável (`identidade.postmaster`), nunca pela `cmdline` |
-| V6/V7 | idem | R90 com marca, fases, `trap`, `cgroup.kill`, código 3 INCERTEZA, sem `kill -KILL`; R10 regista marca e unidade antes de qualquer processo |
-| S1/S2 | idem | Tabela de passos do `R40_sessao.sh` = `SESSION_STEPS`; ordem; guião R41→R31→[R32]→passo→R31→PID; cópias registadas e reconferidas |
-| B1/B2 | idem + parser | 1.ª instrução = guarda `BLOQUEADO`, 2.ª = guarda `SÓ DESCARTÁVEL` com superutilizador, papel, base, sem TCP, `data_directory`, sysid, nonce; B01/B02 com provider/email/sub; corpo T01 (M1–M7) = v1.0.2 |
-| E1–E10 | idem | 10 obrigações no documento, no modelo da ficha e no R10 |
-| 0000 | idem | `entradas/0000/ESPERADO` diz AUTENTICADO; a cópia no pacote tem sha256 integral, blob Git, 2303 bytes, 44 linhas e nenhum LF final iguais aos registados; md5 do corpo de `has_role`/`has_staging_access` e das 3 notas iguais às constantes do P03/Q04; o R05 reconfere a cópia contra o `SHA256SUMS` |
-| Sintaxe SQL | `evidence/parse-check.txt` | Parser oficial do PostgreSQL 17 (libpg-query 17.8.3): 0 falhas |
-| Sintaxe shell | `evidence/shell-check.txt` | `sh -n`, `bash -n`, `dash -n`; `shellcheck` |
-| Integridade | idem | `SHA256SUMS` cobre todos os ficheiros e confere; `MANIFEST.json` com os mesmos hashes; v1.0.1, v1.0.2 e v1.0.3 continuam byte a byte iguais |
-| Sem dados reais | idem | Só emails `@afonso-staging.invalid`; nenhum telefone, UUID (exceto o id do projeto staging), endereço ou referência de produção nos ficheiros novos |
+| Integridade | `sha256sum -c SHA256SUMS` | — |
+| Regressão estática (X1, X2, X3, ficha, trinco, campos-token, S4, 0000, documentos) | `node verificacao/V01_regressao_estatica.mjs .` | `evidence/regressao-estatica.txt` (RESULTADO: 0 falhas) |
+| Sintaxe SQL | `bun tools/parse_check.mjs .` numa pasta com `libpg-query@17` | `evidence/parse-check.txt` (igual à v1.0.4: o SQL não mudou) |
+| Sintaxe e análise de shell | `sh -n`, `bash -n`, `dash -n` e `shellcheck -s sh -x -P SCRIPTDIR -S style tools/*.sh` (a partir de `tools/`) | `evidence/shell-check.txt` |
+| Entrada 0000 | ver `entradas/0000/README.md` | `evidence/entrada-0000-check.txt` (igual à v1.0.4) |
+
+A V01 só lê ficheiros; se houver `sh`, corre `sh -n` (análise de sintaxe, nada é executado). Termina com código 0 só com 0 falhas.
+
+## O que a V01 confere
+
+| Id | Critério |
+|---|---|
+| A1, A2 | Todos os ficheiros do `SHA256SUMS` conferem; nenhum ficheiro fora dele |
+| B1–B4 | S4-00…S4-05 com os 6 sha256 auditados; exatamente 6 migrações; entrada 0000 com sha256, blob Git, 2303 bytes, 44 linhas, sem LF final; `ESPERADO` = AUTENTICADO |
+| X1-0 | **Controlo negativo:** o detetor reprova o ciclo defeituoso da v1.0.4 (uma linha e várias linhas) |
+| X1-1, X1-2 | Nenhum ciclo `done … \|\|` termina numa lista `&&`, em nenhum script; HOME contada, exatamente 1 e igual à pasta do ensaio |
+| X2-1…X2-6 | Montagem cgroup v2 única com raiz `/` e sem v1; `populated_de` por `cgroup.events`; `sem_descendentes_ou_falha` por `cgroup.stat`; R10, R20 (antes e depois) e R90 usam-nos; o R90 não decide por `cgroup.procs` |
+| X3-0 | **Controlo negativo:** o detetor encontra o `kill` direto da v1.0.4 |
+| X3-1…X3-7 | Só dois `kill` no pacote (`sinaliza_se_mesmo` e o psql filho do R40); identidade relida e comparada antes de cada sinal; R90: EXIT trap e `CODIGO_FALHA=3` dão 3 a partir de `DESCARTE=1`; trap do R10 com identidade completa e código 3 em dúvida |
+| F1, F2 | Modelo da ficha no formato novo; o R10 exige artefacto com sha256 que confere, descrição ≥ 30 caracteres e ≥ 5 palavras, sem repetições, 10 artefactos |
+| T1, T2 | Trinco em R05, R10, R40; não em R20/R41; R90 recusa dono vivo e assume órfãos |
+| K1–K4 | 25 passos pela ordem do `ORDEM`; cada linha com 7 campos válidos, igual ao `MANIFEST.json`; cada token cobre um campo da fonte e nenhum campo fica sem token; o R40 valida tudo isto antes de copiar |
+| D1 | `README.md`, `TEST-CRITERIA.md` e `FINDINGS-RESOLUTION.md` não citam como prova nada que esteja fora do pacote |
+| S0, S1 | `sh -n` em todos os scripts |
 
 ## NÃO incluído (dito explicitamente)
 
 - **Nenhum teste com base de dados** (nem descartável): S4, P/Q, R30/R31/R32, bootstrap, T01.
 - **Nenhum script nem guião psql executado.** O comportamento real não foi observado em:
-  - `\gset`, `\if`, `\g (…)` e da expansão dos acentos graves no psql 17;
-  - `/proc/<pid>/stat`, `cgroup.procs` e `cgroup.kill`;
-  - `sha256sum --strict`, `mktemp` e `stat -L` na máquina do ensaio.
+  - `\gset`, `\if`, `\g (…)` no psql 17;
+  - `/proc/<pid>/stat`, `cgroup.events`, `cgroup.stat`, `cgroup.procs`, `cgroup.kill`;
+  - o EXIT trap e o `exit` dentro dele em `dash`/`bash`; o trinco em concorrência real;
+  - `sha256sum --strict`, `mktemp`, `stat -L`, `readlink -f`, `date -u` na máquina do ensaio.
+- A V01 confere **estrutura** (padrões e chamadas no código), não comportamento. Um erro de lógica que mantenha a estrutura não é apanhado.
 - **Isolamento**: nenhuma prova; os scripts sozinhos **não** o provam (E1–E10 são do operador).
 - **Executor real do staging**, leitura de `auth.identities` no staging, estado de `unaccent` no staging: nada lido.
-- **Entrada 0000**: AUTENTICADA só como ficheiro do repositório do staging; a correspondência com a base de dados real do staging **não** foi verificada; nenhum bootstrap alternativo.
-- Formato exato de `pg_ts_dict.dictinitoption` e de `postmaster.opts` nesta versão do PostgreSQL: só documentado. Uma diferença dá REPROVADO (falso negativo), nunca APROVADO.
-- APIs de servidor, Storage, Realtime, GoTrue: não existem / não cobertos.
-
-## Limites das impressões (P05 → Q03/Q04)
-
-Iguais à v1.0.3 (as consultas não mudaram):
-
-- cobrem só o que está listado;
-- são sha256 de texto deparsado, por isso P05 e Q03/Q04 têm de correr na mesma sessão-tipo. O wrapper garante isso: mesmo papel `postgres` e mesma base, com psql `-X`;
-- detetam mudança, não correção;
-- `md5` só contra constantes da 0000;
-- sem leitura de `auth.identities` dão erro (B11).
-
-Na v1.0.4 as 7 impressões são extraídas pelo wrapper e não copiadas à mão. Se não forem exatamente 7 (B01…B07) com sha256 válido e `REGISTO VÁLIDO`: REPROVADO.
+- **Entrada 0000**: AUTENTICADA só como ficheiro do repositório do staging; correspondência com a base real **não** verificada.
+- O repositório de desenvolvimento tem testes próprios do montador; estão fora do pacote e **não** são apresentados aqui como prova.
 
 ## Por verificar (exige autorização separada; nenhuma dada)
 

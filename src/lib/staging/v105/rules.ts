@@ -7,7 +7,7 @@
 import { BLOCKERS_V104, STAGING_0000_INPUT_V104, V104_PRESERVED_SQL_SHA256, type BlockerV104 } from "../v104/rules";
 
 export const V105_VERSION = "1.0.5";
-export const V105_PREVIOUS = { version: "1.0.4", commit: "4d531df9" } as const;
+export const V105_PREVIOUS = { version: "1.0.4", commit: "a4f275c0" } as const;
 export const V105_PREVIOUS_DIR = "staging-install/package/v1.0.4";
 
 /** sha256 das 6 migrações auditadas (iguais desde a v1.0.2). */
