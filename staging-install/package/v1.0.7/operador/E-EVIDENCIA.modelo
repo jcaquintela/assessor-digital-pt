@@ -1,0 +1,24 @@
+# Ficha de evidência do operador — obrigações E1–E10 (REHEARSAL-TARGET.md §1). MODELO: todas PENDENTE.
+# Copiar para uma pasta FORA do pacote e fora de <ROOT>; guardar nessa pasta um ARTEFACTO por obrigação (saída
+# do comando, registo ou captura em texto, >= 64 bytes, nunca valores de segredos) e preencher cada linha assim:
+#   En=<artefacto>|<sha256 do artefacto>|<descrição: o que foi verificado, como e com que resultado>
+#   <artefacto>  caminho relativo simples dentro da pasta da ficha (A-Z a-z 0-9 . _ - /), sem ligações simbólicas
+#   <sha256>     64 hex minúsculos do artefacto (sha256sum); o R10 recalcula e compara
+#   <descrição>  >= 30 caracteres e >= 5 palavras; sem PENDENTE, POR VERIFICAR, POR FAZER, A PREENCHER, TODO,
+#                TBD, N/A, XXX, IDEM, VER ACIMA, EXEMPLO nem < >
+# Artefactos, sha256 e descrições não se repetem entre obrigações. data=AAAA-MM-DD (não futura).
+# O R10 recusa qualquer outra forma e copia os artefactos para evidencia/E-artefactos/.
+# LIMITE: o R10 só confere a FORMA desta ficha e a integridade dos artefactos; a VERDADE de cada evidência
+# continua a ser responsabilidade do operador.
+operador=PENDENTE
+data=PENDENTE
+E1=PENDENTE
+E2=PENDENTE
+E3=PENDENTE
+E4=PENDENTE
+E5=PENDENTE
+E6=PENDENTE
+E7=PENDENTE
+E8=PENDENTE
+E9=PENDENTE
+E10=PENDENTE

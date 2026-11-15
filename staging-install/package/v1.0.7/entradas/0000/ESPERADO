@@ -1,0 +1,22 @@
+# Entrada 0000 do AFONSO Staging — estado registado NESTA versão do pacote (coberto pelo SHA256SUMS).
+# Mudar qualquer linha = NOVA versão do pacote ou nova auditoria. Nunca editar no alvo do ensaio.
+# Estados aceites pelo R05/R10: AUTENTICADO (ficheiro histórico) ou ALTERNATIVO_AUDITADO. Hoje: AUTENTICADO.
+# Os BYTES originais foram obtidos por leitura entre projetos (só leitura, autorizada pelo proprietário) e
+# conferidos contra TODOS os metadados abaixo antes de marcar AUTENTICADO. Nada foi reconstruído a partir de texto.
+estado=AUTENTICADO
+motivo=bytes originais obtidos e conferidos (sha256 integral, blob Git, 2303 bytes, 44 linhas, sem LF final)
+ficheiro=drizzle/migrations/0000_staging_access_control.sql
+ficheiro_no_pacote=entradas/0000/0000_staging_access_control.sql
+commit=ab5187829bb989795d47a283e0f093b796843e72
+git_blob=24c38a525e549551e1fdf3028ff58e1e1906b0ee
+sha256_prefixo=a87578e560f0c97f
+sha256=a87578e560f0c97f9c1184d5fe3e2730f18de6e513b8e610c4808a28f98aecd2
+bytes=2303
+linhas=44
+lf_final=nao
+origem_bytes=leitura entre projetos (snapshot só de leitura do AFONSO Staging no commit 608dad98); o commit ab518782 não é selecionável pela ferramenta; identidade com ab518782 assente no blob Git e no sha256 declarados pelo proprietário para esse commit
+referencia_anterior=608dad98
+ressalva=correspondência com a base de dados real do staging NÃO verificada; contém 3 INSERTs sintéticos (as 3 notas de staging_notes, numa única instrução INSERT com 3 linhas)
+alternativo=NENHUM
+alternativo_sha256=NAO_APLICAVEL
+auditoria=NENHUMA

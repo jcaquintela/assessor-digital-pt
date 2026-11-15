@@ -1,0 +1,48 @@
+-- AFONSO V2 · pacote v1.0.4 · R40 · guião de UMA sessão de passo (meta-comandos psql). PREPARADO, NUNCA EXECUTADO.
+-- Só é usado pelo wrapper único tools/R40_sessao.sh, que gera uma CÓPIA por sessão com os marcadores de
+-- caminho e de passo substituídos por valores já validados (só A-Z a-z 0-9 / . _ -: sem espaços, aspas,
+-- dois-pontos nem acentos graves) e passa r40_super e r40_p05 (true/false) com -v.
+-- V2: nenhuma variável psql é expandida dentro do comando de shell do R41 (o comando é texto literal da
+--     cópia); o PID desta sessão vai para um ficheiro com \g, e o R41 lê-o de lá.
+-- V3: as decisões são \if sobre booleanos obtidos com \gset; uma falha é RAISE EXCEPTION, que com
+--     ON_ERROR_STOP termina o psql com código diferente de zero. Nenhuma conversão de texto constante para int.
+-- Ordem: R41 (processo, fora do SQL) -> R31 (sessão) [-> R32 se superutilizador] -> ficheiro do passo -> R31 -> mesmo PID.
+\set ON_ERROR_STOP on
+\set QUIET on
+\pset pager off
+SELECT pg_backend_pid() AS bpid \gset r40_
+SELECT pg_backend_pid() \g (format=unaligned tuples_only=on) __R_SESS__/bpid
+\set r41 `sh __R_TOOLS__/R41_processo_cliente.sh __R_ROOT__ __R_SESS__`
+SELECT (:'r41' = 'R41 APROVADO') AS r41_ok \gset r40_
+\if :r40_r41_ok
+\echo 'R41 APROVADO'
+\else
+\echo 'REPROVADO: R41 (ver sessao.err na pasta da sessão)'
+DO $r40$ BEGIN RAISE EXCEPTION 'REPROVADO: R41'; END $r40$;
+\endif
+\i __R_SESS__/R31.sql
+\if :r40_super
+\i __R_SESS__/R32.sql
+\endif
+\if :r40_p05
+\pset format unaligned
+\pset tuples_only on
+\pset fieldsep_zero on
+\o __R_SESS__/P05.dados
+\i __R_SESS__/passo.sql
+\o
+\pset format aligned
+\pset tuples_only off
+\pset fieldsep '|'
+\else
+\i __R_SESS__/passo.sql
+\endif
+\i __R_SESS__/R31.sql
+SELECT (pg_backend_pid() = :r40_bpid) AS mesma \gset r40_
+\if :r40_mesma
+\echo 'MESMA SESSÃO'
+\else
+\echo 'REPROVADO: a sessão mudou durante o passo'
+DO $r40$ BEGIN RAISE EXCEPTION 'REPROVADO: sessão mudou'; END $r40$;
+\endif
+\echo 'R40 SESSÃO APROVADA __R_PASSO__'

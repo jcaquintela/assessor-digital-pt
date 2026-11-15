@@ -1,0 +1,11 @@
+# Verificação ESTÁTICA dos scripts (nenhum foi executado): sintaxe com sh -n, bash -n e dash -n (0.5.13.3) e análise com shellcheck.
+# Reproduzir, a partir de tools/: for f in *.sh; do sh -n "$f"; bash -n "$f"; dash -n "$f"; done; shellcheck -s sh -x -P SCRIPTDIR -S style *.sh
+OK sh -n, bash -n, dash -n — tools/lib_ensaio.sh [a0da25ba39e49fc4]
+OK sh -n, bash -n, dash -n — tools/R05_entrada_0000.sh [3ee944fd5e48ae09]
+OK sh -n, bash -n, dash -n — tools/R10_arranque_controlado.sh [6a5975d8573b5f3b]
+OK sh -n, bash -n, dash -n — tools/R20_verificar_processo.sh [db6cdf254574dec1]
+OK sh -n, bash -n, dash -n — tools/R40_sessao.sh [20d3a93baebd9688]
+OK sh -n, bash -n, dash -n — tools/R41_processo_cliente.sh [1679e9034b7f7c40]
+OK sh -n, bash -n, dash -n — tools/R90_descartar.sh [c9819a870ae4acd6]
+shellcheck 0.11.0 (-s sh -x -P SCRIPTDIR -S style): 0 avisos em todas as severidades (info, style, warning, error)
+# Limite: análise estática. O comportamento real em /proc, cgroup v2, EXIT trap, trinco (mkdir/rename concorrentes, mv -T, boot_id, uuid), recolha do psql pelo shell e psql não foi observado (B18).
