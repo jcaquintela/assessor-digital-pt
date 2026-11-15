@@ -1,0 +1,113 @@
+# Saída de: node verificacao/V01_regressao_estatica.mjs .  (dentro desta pasta; só lê ficheiros e corre sh -n; nada executado)
+OK A1 SHA256SUMS: 64 ficheiros listados conferem
+OK A2 nenhum ficheiro fora do SHA256SUMS
+OK B1 sql/S4-00_prelude_aditivo.sql = 23f198ffa3135153…
+OK B1 sql/S4-01_tipos_tabelas_a.sql = 5724b20543f0716e…
+OK B1 sql/S4-02_tabelas_b_restricoes.sql = 5b8fae75417e16e2…
+OK B1 sql/S4-03_funcoes.sql = 68f244fffb97280e…
+OK B1 sql/S4-04_indices_chaves_gatilhos.sql = 8ba1230d83e7c879…
+OK B1 sql/S4-05_politicas.sql = 6276b63eb5bd6c1c…
+OK B2 exatamente 6 migrações em sql/
+OK B3 entrada 0000: sha256, blob Git, 2303 bytes, 44 linhas, sem LF final
+OK B4 entradas/0000/ESPERADO: estado=AUTENTICADO
+OK X1-0 controlo negativo: o detetor reprova o ciclo defeituoso da v1.0.4 (uma linha e várias linhas)
+OK X1-1 tools/R05_entrada_0000.sh: nenhum ciclo "done … ||" termina numa lista "&&"
+OK X1-1 tools/R10_arranque_controlado.sh: nenhum ciclo "done … ||" termina numa lista "&&"
+OK X1-1 tools/R20_verificar_processo.sh: nenhum ciclo "done … ||" termina numa lista "&&"
+OK X1-1 tools/R40_sessao.sh: nenhum ciclo "done … ||" termina numa lista "&&"
+OK X1-1 tools/R41_processo_cliente.sh: nenhum ciclo "done … ||" termina numa lista "&&"
+OK X1-1 tools/R90_descartar.sh: nenhum ciclo "done … ||" termina numa lista "&&"
+OK X1-1 tools/lib_ensaio.sh: nenhum ciclo "done … ||" termina numa lista "&&"
+OK X1-2 home_controlada_ou_falha: conta as definições HOME, exige exatamente 1 e igual à pasta do ensaio, sem lista && no ciclo
+OK X2-1 lib: cgroup2_ou_falha exige montagem única cgroup2 em /sys/fs/cgroup com raiz / e nenhum cgroup v1
+OK X2-2 lib: populated_de lê cgroup.events (exatamente uma linha populated, 0|1)
+OK X2-3 lib: sem_descendentes_ou_falha exige nr_descendants 0 e nenhuma subpasta
+OK X2-4 R10: montagem cgroup v2, sem descendentes e populated antes de registar a unidade
+OK X2-5 R20: montagem cgroup v2 (servidor e R20), sem subcgroups antes E depois de ler cgroup.procs, populated 1
+OK X2-6 R90: "vazia" decide-se por cgroup.events populated 0 (cgroup.procs só como evidência); montagem cgroup v2 confirmada
+OK X3-0 controlo negativo: o detetor encontra o kill direto da v1.0.4
+OK X3-1 só um kill no pacote: o de sinaliza_se_mesmo (identidade completa relida antes)
+OK X3-2 sinaliza_se_mesmo: relê a identidade completa, compara byte a byte e só depois envia o sinal
+OK X3-3 R90: SIGINT e SIGQUIT só por sinaliza_se_mesmo (identidade relida antes de CADA sinal)
+OK X3-4 R90: EXIT trap converte QUALQUER saída ≠ 0 depois de DESCARTE=1 em código 3; fail passa a código 3 (CODIGO_FALHA)
+OK X3-5 R90: o EXIT trap só é retirado DEPOIS da linha final DESCARTADO (escrita com || exit 3)
+OK X3-6 lib: fail termina com 3 quando CODIGO_FALHA=3
+OK X3-7 R10: trap só sinaliza com identidade completa (registada ou provisória: início logo após o arranque, pai, executável, cwd, cgroup); dúvida => código 3
+OK Y1-0 controlo negativo: o detetor reprova o SIGTERM direto ao cliente do R40 da v1.0.5 (tools/R40_sessao.sh:112)
+OK Y1-1 tools/R05_entrada_0000.sh: nenhum kill fora de sinaliza_se_mesmo
+OK Y1-1 tools/R10_arranque_controlado.sh: nenhum kill fora de sinaliza_se_mesmo
+OK Y1-1 tools/R20_verificar_processo.sh: nenhum kill fora de sinaliza_se_mesmo
+OK Y1-1 tools/R40_sessao.sh: nenhum kill fora de sinaliza_se_mesmo
+OK Y1-1 tools/R41_processo_cliente.sh: nenhum kill fora de sinaliza_se_mesmo
+OK Y1-1 tools/R90_descartar.sh: nenhum kill fora de sinaliza_se_mesmo
+OK Y1-1 tools/lib_ensaio.sh: nenhum kill fora de sinaliza_se_mesmo
+OK Y1-2 R40 cliente_termina: referência = identidade lida agora e aceite só com início do lançamento, executável do psql do R10, namespaces, cgroup e pai = wrapper; sinal só por sinaliza_se_mesmo; vivo e não confirmado => 3
+OK Y1-3 R40: EXIT trap instalado antes do trinco; sinais só marcam e saem (o EXIT trap decide); INCERTEZA => código 3 sem libertar o trinco
+OK Y1-4 R40: início do psql lido logo após o lançamento; executável do psql conferido com o registo do R10; cgroup do wrapper fixado antes do lançamento
+OK Y1-5 lib terminou: só /proc (ausente ou zombie = terminou); não sinaliza
+OK Y2-0 controlo negativo: o detetor reprova a v1.0.5 (rm do trinco órfão e trinco_adquire antes de DESCARTE=1; EXIT trap retirado antes da linha final) e uma saída explícita ≠ 3 depois do início
+OK Y2-1 R90: nenhuma alteração antes de DESCARTE=1/CODIGO_FALHA=3 (rm, mkdir, cp, escrita, trinco, sinal, cgroup.kill)
+OK Y2-2 R90: assumir o trinco órfão (rm) e adquiri-lo vêm DEPOIS de DESCARTE=1
+OK Y2-3 R90: todos os caminhos depois do início dão 3 — 26 incerteza, 0 fail (CODIGO_FALHA=3), 1 exit 3, 0 exit ≠ 3; funções da biblioteca usadas (10: ler1, chave, exe_id, cwd_de, uid_de, identidade_para, cgroup2_ou_falha, populated_de, sinaliza_se_mesmo, trinco_adquire) só saem com 2 ou 3 e o EXIT trap converte ≠ 0 em 3; incerteza não retira o EXIT trap
+OK Y2-4 R90: a linha final DESCARTADO é escrita com o EXIT trap ativo (|| exit 3) e só depois o trap é retirado (único trap - EXIT depois do início)
+OK Y3-0 controlo negativo: o detetor reprova a tabela de fases da v1.0.5 (REHEARSAL-PLAN.md:57-58: fase do R05 antes da do R10, contrária à frase da linha 66), uma frase e uma seta contrárias; aceita a frase correta
+OK Y3-1 ACCESS-MATRIX.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 BLOCKERS.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 BOOTSTRAP-SINTETICO.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 COLLISIONS.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 EXECUTOR-PRIVILEGES.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 FINDINGS-RESOLUTION.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 OWNER-ACCOUNT.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 README.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 REHEARSAL-PLAN.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 REHEARSAL-TARGET.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 TEST-CRITERIA.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 entradas/0000/README.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-1 quarantine/README.md: nenhuma seta nem "antes/depois" contrária à ordem única R10 → R20 → R05 → R40 → R90
+OK Y3-2 tabelas de fases (REHEARSAL-PLAN §3) e de passos (REHEARSAL-TARGET §2): R10 → R20 → R05 → R40 → R90, todos presentes
+OK Y3-3 sequência única do MANIFEST (rehearsal_sequence) escrita igual em README.md, REHEARSAL-PLAN.md, REHEARSAL-TARGET.md, TEST-CRITERIA.md
+OK Y3-4 scripts impõem a sequência: R05 exige a fase pronto do R10, corre o R20 completo (linha exata), recusa sessões do R40 já começadas e grava R05.aprovado por último; o R40 recusa qualquer passo (o 1.º é R30) sem R05.aprovado; o R20 exige o R10 terminado
+OK F1 modelo da ficha: 10 obrigações PENDENTE e formato artefacto|sha256|descrição
+OK F2 R10: oito caracteres já não bastam — exige artefacto existente com sha256 que confere, descrição >= 30 caracteres e >= 5 palavras, sem repetições
+OK T1 trinco global: R10, R05 e R40 seguram <ROOT>/.trinco; R20 e R41 (só leitura) não
+OK T2 R90: recusa se o dono do trinco ainda corre, assume órfãos, conhece .trinco
+OK K1 R40: 25 passos na tabela, pela mesma ordem do ORDEM
+OK K2 passo R30: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo B00: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo B01: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo B01b: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo 0000: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo B02: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo P00: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo P01: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo P02: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo P03: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo P04: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo P05: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo S4-00: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo S4-01: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo S4-02: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo S4-03: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo S4-04: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo S4-05: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo Q00: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo Q01: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo Q02: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo Q03: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo Q04: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo Q05: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K2 passo T01: 7 campos válidos, igual ao MANIFEST, cada token cobre um campo da fonte e nenhum campo fica sem token
+OK K3 R40: conta os campos, valida nomes-token e a cobertura de cada um antes de copiar
+OK K4 R40: o copia_det substitui exatamente os marcadores de cada token
+OK D1 README.md: nenhuma prova citada que não esteja no pacote
+OK D1 TEST-CRITERIA.md: nenhuma prova citada que não esteja no pacote
+OK D1 FINDINGS-RESOLUTION.md: nenhuma prova citada que não esteja no pacote
+OK S0 sh disponível para a análise de sintaxe
+OK S1 sh -n tools/R05_entrada_0000.sh [b75a46d8183e21bd]
+OK S1 sh -n tools/R10_arranque_controlado.sh [dee88c8d13a320c5]
+OK S1 sh -n tools/R20_verificar_processo.sh [db6cdf254574dec1]
+OK S1 sh -n tools/R40_sessao.sh [89f71fef5ba91a84]
+OK S1 sh -n tools/R41_processo_cliente.sh [1679e9034b7f7c40]
+OK S1 sh -n tools/R90_descartar.sh [7360606cd4a58661]
+OK S1 sh -n tools/lib_ensaio.sh [7b3184ab9b7e8d96]
+RESULTADO: 0 falhas

@@ -1,0 +1,33 @@
+-- QUARENTENA · Políticas de storage.objects para assessor-files (v1.0.0, SEM barreira admin/tester — não usar tal como estão)
+-- NÃO EXECUTÁVEL. Nenhuma instrução abaixo está ativa: todas as linhas começam por "--Q| ".
+-- Reativar qualquer item exige autorização SEPARADA do proprietário e uma nova versão do pacote.
+-- Se este ficheiro for executado por engano, a primeira instrução aborta a transação.
+DO $quarentena$ BEGIN RAISE EXCEPTION 'QUARENTENA %: não executar sem autorização separada', 'QZ-04_politicas_storage_v1.0.0.quarantine'; END $quarentena$;
+
+--Q| CREATE POLICY "assessor_files_owner_select" ON storage.objects
+--Q|   FOR SELECT TO authenticated
+--Q|   USING (
+--Q|     bucket_id = 'assessor-files'
+--Q|     AND auth.uid()::text = (storage.foldername(name))[1]
+--Q|   );
+--Q|
+--Q| CREATE POLICY "assessor_files_owner_insert" ON storage.objects
+--Q|   FOR INSERT TO authenticated
+--Q|   WITH CHECK (
+--Q|     bucket_id = 'assessor-files'
+--Q|     AND auth.uid()::text = (storage.foldername(name))[1]
+--Q|   );
+--Q|
+--Q| CREATE POLICY "assessor_files_owner_update" ON storage.objects
+--Q|   FOR UPDATE TO authenticated
+--Q|   USING (
+--Q|     bucket_id = 'assessor-files'
+--Q|     AND auth.uid()::text = (storage.foldername(name))[1]
+--Q|   );
+--Q|
+--Q| CREATE POLICY "assessor_files_owner_delete" ON storage.objects
+--Q|   FOR DELETE TO authenticated
+--Q|   USING (
+--Q|     bucket_id = 'assessor-files'
+--Q|     AND auth.uid()::text = (storage.foldername(name))[1]
+--Q|   );
