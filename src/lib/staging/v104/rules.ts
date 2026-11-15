@@ -5,7 +5,7 @@
 //  - copia S4-00…S4-05 BYTE A BYTE (mesmos 6 sha256 da v1.0.2/v1.0.3), com os REVOKE/só-servidor;
 //  - não altera pg_get_userbyid(oid) (F1 válido);
 //  - corrige o procedimento: V1–V7, S1–S2, B1–B2, P1–P2 e E1–E10 como obrigações com evidência;
-//  - mantém a migração 0000 do staging PENDENTE e só prepara a interface de entrada (nada inventado).
+//  - inclui a migração 0000 do staging como input histórico AUTENTICADO (bytes originais conferidos), com ressalva.
 
 export const V104_VERSION = "1.0.4";
 export const V104_PREVIOUS = { version: "1.0.3", commit: "fd4fdaca" } as const;
@@ -29,8 +29,9 @@ export const V104_CHANGED_QUERY = "preflight/P02_privilegios_dono_historico.sql"
 
 /**
  * Entrada externa: a migração 0000 histórica do staging. Os METADADOS foram localizados no código do AFONSO
- * Staging e comunicados pelo proprietário; os BYTES originais NÃO foram obtidos (nenhuma transferência
- * autorizada recebida). Por isso continua PENDENTE: nenhum ficheiro é incluído nem reconstruído.
+ * Staging e comunicados pelo proprietário; os BYTES originais foram obtidos por leitura entre projetos (só
+ * leitura, autorizada) e só depois de conferidos sha256 integral, blob Git, tamanho, linhas e LF final passou a
+ * AUTENTICADO. Nada foi reconstruído a partir de texto. A cópia fica em `packagedPath`, byte a byte.
  */
 export const STAGING_0000_INPUT_V104 = {
   file: "drizzle/migrations/0000_staging_access_control.sql",
@@ -42,11 +43,16 @@ export const STAGING_0000_INPUT_V104 = {
   bytes: 2303,
   lines: 44,
   trailingNewline: false,
-  bytesObtained: false,
-  metadataSource: "localizado pelo proprietário no código do AFONSO Staging; registado sem os bytes",
+  bytesObtained: true,
+  packagedPath: "entradas/0000/0000_staging_access_control.sql",
+  metadataSource: "localizado pelo proprietário no código do AFONSO Staging (commit ab518782)",
+  bytesSource: "leitura entre projetos: snapshot só de leitura do AFONSO Staging no commit 608dad98 (a ferramenta não seleciona commits); identidade com ab518782 assente no blob Git e no sha256 declarados pelo proprietário",
+  snapshotCommit: "608dad98",
+  /** md5 do corpo de has_role / has_staging_access e das 3 notas, calculados do ficheiro: iguais às constantes do P03/Q04. */
+  derivedConstants: { hasRoleProsrcMd5: "6b9bca1cc09de70841cac113efbdd41a", hasStagingAccessProsrcMd5: "4376edeea92abf14230207df0fbbef11", notesMd5: "9839c85692f965b4f419fb33c6af3404" },
   alternativeBootstrap: null as string | null,
-  state: "PENDENTE",
-  caveat: "Input histórico do repositório do staging: correspondência com a base de dados real do staging NÃO verificada; contém 3 INSERTs sintéticos (as 3 notas de staging_notes)",
+  state: "AUTENTICADO",
+  caveat: "Input histórico do repositório do staging: correspondência com a base de dados real do staging NÃO verificada; contém 3 INSERTs sintéticos (as 3 notas de staging_notes, numa única instrução INSERT com 3 linhas)",
 } as const;
 
 /** Conta sintética única do ensaio (email reservado .invalid). */
@@ -112,7 +118,7 @@ export const BLOCKERS_V104: readonly BlockerV104[] = [
   { id: "B11", title: "LEITURA DE auth.identities NÃO CONFIRMADA no staging", impact: "Sem permissão, P04/P05/Q03 dão ERRO: a conta não conta como verificada", missing: "Confirmar a permissão de leitura (só leitura). Se não existir: BLOQUEIO", resolved: false },
   { id: "B12", title: "ALVO DO ENSAIO: R05–R90 PREPARADOS, NÃO EXECUTADOS; os scripts sozinhos NÃO provam isolamento", impact: "Os scripts veem o processo (/proc, ficheiros, sockets, cgroup), não o anfitrião, o hipervisor nem a rede da plataforma", missing: "Executar com autorização separada E as obrigações E1–E10 cumpridas pelo operador (B13)", resolved: false },
   { id: "B13", title: "OBRIGAÇÕES EXTERNAS E1–E10 POR CUMPRIR PELO OPERADOR", impact: "O R10 só confere que a ficha de evidência existe, está completa e não diz PENDENTE; não consegue confirmar que é verdadeira", missing: "O operador preenche operador/E-EVIDENCIA.modelo com a evidência de cada obrigação; sem ela o R10 recusa", resolved: false },
-  { id: "B14", title: "ENTRADA 0000 DO STAGING PENDENTE: metadados registados (commit ab518782, blob 24c38a52, sha256 a87578e5…aecd2, 2303 bytes, 44 linhas, sem LF final), BYTES ORIGINAIS NÃO OBTIDOS", impact: "Sem os bytes originais o pacote não inclui o ficheiro, o ESPERADO fica PENDENTE, o R10/R05 recusam e o passo 0000 não corre. Nada foi reconstruído a partir de texto", missing: "Transferência AUTORIZADA do ficheiro byte-exato do repositório do staging; conferir sha256, blob Git, tamanho, linhas e ausência de LF final; só então incorporá-lo como input histórico auditado (ressalva: correspondência com a BD real não verificada; contém 3 INSERTs sintéticos)", resolved: false },
+  { id: "B14", title: "ENTRADA 0000 DO STAGING AUTENTICADA (bytes originais conferidos: sha256 a87578e5…aecd2, blob 24c38a52, 2303 bytes, 44 linhas, sem LF final), mas CORRESPONDÊNCIA COM A BD REAL DO STAGING NÃO VERIFICADA", impact: "O ficheiro entra no ensaio só como input histórico do repositório do staging (bytes lidos do snapshot 608dad98, iguais aos declarados para ab518782); não prova o estado da base real do staging. Contém 3 INSERTs sintéticos", missing: "Conferência só de leitura no staging (P03), com autorização separada, de que a base real corresponde a esta 0000; até lá a ressalva mantém-se", resolved: false },
   { id: "B15", title: "BOOTSTRAP SINTÉTICO ≠ SUPABASE REAL", impact: "Sem GoTrue, PostgREST, supautils, Storage API, Realtime; privilégios aproximados", missing: "Tratar o ensaio como prova do SQL e das verificações, não da plataforma (L1–L10)", resolved: false },
   { id: "B16", title: "unaccent NO STAGING: estado (INSTALADA/NOVA) desconhecido até o P02 correr lá", impact: "O caminho NOVA depende do executor real e de camadas da plataforma", missing: "Correr o P02 (só leitura) no staging e, com B2, confirmar o caminho", resolved: false },
   { id: "B17", title: "R90 PODE DECLARAR INCERTEZA: nesse caso a máquina TEM de ser destruída", impact: "Se o cgroup/unidade não ficar vazio ou não puder ser lido, os scripts não conseguem garantir que nenhum processo do ensaio sobreviveu", missing: "Obrigação E1/E10: destruir a VM/contentor sempre que o R90 termine com INCERTEZA (código 3)", resolved: false },

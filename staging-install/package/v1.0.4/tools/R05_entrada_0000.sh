@@ -1,7 +1,8 @@
 #!/bin/sh
-# AFONSO V2 · pacote v1.0.4 · R05 · ENTRADA 0000 do staging (interface; hoje RECUSA: estado PENDENTE, B14).
+# AFONSO V2 · pacote v1.0.4 · R05 · ENTRADA 0000 do staging (estado registado: AUTENTICADO; ficheiro no pacote).
 # ESTADO: PREPARADO, NUNCA EXECUTADO.
 # Uso: env -i PATH="<PG_BIN>:/usr/bin:/bin" HOME=<ROOT>/home LANG=C sh tools/R05_entrada_0000.sh AUTORIZADO:<ref> <ROOT> <FICHEIRO>
+#   <FICHEIRO> = <pacote>/entradas/0000/0000_staging_access_control.sql (cópia byte a byte do original, no SHA256SUMS).
 #
 # Aceita APENAS um de dois caminhos, ambos fixados em entradas/0000/ESPERADO DESTA versão do pacote
 # (coberto pelo SHA256SUMS: mudar o estado exige uma NOVA versão auditada; nada se substitui em silêncio):
@@ -10,7 +11,9 @@
 #                                  tamanho em bytes, número de linhas, LF final e blob Git conferidos;
 #   estado=ALTERNATIVO_AUDITADO -> um bootstrap alternativo com sha256 integral e referência de auditoria
 #                                  SEPARADA registados.
-# Qualquer outro estado (hoje: PENDENTE) => REPROVADO, sem tocar em nada. Nenhum conteúdo é inventado.
+# No estado AUTENTICADO a cópia histórica do pacote (ficheiro_no_pacote) tem de estar no SHA256SUMS com o MESMO
+# sha256 registado e de conferir no disco; o ficheiro entregue tem de ser byte a byte essa cópia.
+# Qualquer outro estado => REPROVADO, sem tocar em nada. Nenhum conteúdo é inventado.
 # Se aceite: cópia para evidencia/entradas/0000.sql e sha256 registado; o passo 0000 do R40 só usa essa cópia.
 set -eu
 umask 077
@@ -30,6 +33,14 @@ case "$ESTADO" in
 esac
 exige_hex64 "$H" "sha256 registado da entrada 0000"
 [ "$ESTADO" != AUTENTICADO ] || case "$H" in "$PREF"*) ;; *) fail "o sha256 integral registado não começa pelo prefixo conhecido $PREF" ;; esac
+if [ "$ESTADO" = AUTENTICADO ]; then
+  PF=$(chave "$ESP" ficheiro_no_pacote) || exit 2
+  case "$PF" in entradas/0000/*.sql) ;; *) fail "ficheiro_no_pacote fora de entradas/0000/: $PF" ;; esac
+  case "$PF" in *[!A-Za-z0-9/._-]*|*..*) fail "ficheiro_no_pacote com caracteres não permitidos" ;; esac
+  [ "$(sha_registado "$PKG" "$PF")" = "$H" ] || fail "cópia histórica do pacote não está no SHA256SUMS com o sha256 registado"
+  [ -f "$PKG/$PF" ] && [ ! -L "$PKG/$PF" ] || fail "cópia histórica do pacote em falta ou não é ficheiro normal"
+  [ "$(sha_de "$PKG/$PF")" = "$H" ] || fail "cópia histórica do pacote alterada desde o SHA256SUMS"
+fi
 ROOT=$(cd "$2" && pwd -P) || fail "ROOT ilegível"; exige_caminho_simples "$ROOT" ROOT
 EV=$ROOT/evidencia
 [ -f "$ROOT/$MARCA" ] || fail "ROOT sem a marca do ensaio"

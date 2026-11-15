@@ -54,7 +54,7 @@ describe("v1.0.4: integridade e reprodutibilidade", () => {
     expect(m.target_project.id).toBe(STAGING_PROJECT_ID);
     expect(m.supersedes).toEqual({ version: "1.0.3", commit: "fd4fdaca" });
     expect(m.evidence_status.executor_effective_role).toMatch(/^PENDENTE/);
-    expect(m.evidence_status.staging_0000_input).toMatch(/^PENDENTE/);
+    expect(m.evidence_status.staging_0000_input).toMatch(/^AUTENTICADO — .*NÃO verificada/);
     expect(m.evidence_status.rehearsal_target).toMatch(/NÃO provam isolamento/);
     expect(m.rehearsal_plan.status).toMatch(/NÃO AUTORIZADO, NÃO EXECUTADO, SEM GO/);
     expect(m.scripts.every((s: { executed: boolean }) => s.executed === false)).toBe(true);
@@ -262,7 +262,7 @@ describe("v1.0.4: V2–V7 nos scripts", () => {
   });
 });
 
-describe("v1.0.4: B1/B2 bootstrap, E1–E10, 0000 pendente", () => {
+describe("v1.0.4: B1/B2 bootstrap, E1–E10, 0000 autenticada", () => {
   it("B1: cada ficheiro bloqueado: 1.ª guarda BLOQUEADO, 2.ª SÓ DESCARTÁVEL com superutilizador, papel, base, sem TCP, PGDATA, sysid e nonce", () => {
     expect(blocked).toEqual(["ensaio/B00_papeis_e_base.bloqueado.sql", "ensaio/B01_plataforma_sintetica.bloqueado.sql", "ensaio/B01b_unaccent_instalada.bloqueado.sql", "ensaio/B02_papel_admin_sintetico.bloqueado.sql", "tests-db/T01_matriz_comportamental.bloqueado.sql"]);
     for (const p of blocked) {
@@ -299,33 +299,66 @@ describe("v1.0.4: B1/B2 bootstrap, E1–E10, 0000 pendente", () => {
     expect(read("tools/R10_arranque_controlado.sh")).toContain("PENDENTE|POR VERIFICAR");
   });
 
-  it("0000: metadados localizados registados, bytes NÃO obtidos, continua PENDENTE; R05 e R10 recusam", () => {
+  it("0000: bytes originais no pacote conferem com TODOS os metadados registados (sha256, blob Git, tamanho, linhas, sem LF final)", () => {
     const m = STAGING_0000_INPUT_V104;
-    expect(m.state).toBe("PENDENTE");
-    expect(m.bytesObtained).toBe(false);
+    expect(m.state).toBe("AUTENTICADO");
+    expect(m.bytesObtained).toBe(true);
     expect(m.alternativeBootstrap).toBeNull();
     expect(m.gitCommit).toBe("ab5187829bb989795d47a283e0f093b796843e72");
     expect(m.gitBlob).toBe("24c38a525e549551e1fdf3028ff58e1e1906b0ee");
     expect(m.sha256Full).toBe("a87578e560f0c97f9c1184d5fe3e2730f18de6e513b8e610c4808a28f98aecd2");
     expect(m.sha256Full.startsWith(m.sha256Prefix)).toBe(true);
     expect([m.bytes, m.lines, m.trailingNewline]).toEqual([2303, 44, false]);
+    const b = readFileSync(join(PKG, m.packagedPath));
+    expect(sha(b)).toBe(m.sha256Full);
+    expect(createHash("sha1").update(Buffer.concat([Buffer.from(`blob ${b.length}\0`), b])).digest("hex")).toBe(m.gitBlob);
+    expect(b.length).toBe(m.bytes);
+    expect(b.filter((x) => x === 0x0a).length + 1).toBe(m.lines);
+    expect(b[b.length - 1]).not.toBe(0x0a);
+    expect(b.includes(0x0d)).toBe(false);
+    // o único ficheiro SQL em entradas/ é a cópia histórica
+    expect(onDisk.filter((p) => p.startsWith("entradas/")).sort()).toEqual(["entradas/0000/0000_staging_access_control.sql", "entradas/0000/ESPERADO", "entradas/0000/README.md"]);
+  });
+
+  it("0000: md5 do corpo de has_role/has_staging_access e das 3 notas, calculados dos bytes, = constantes do P03/Q04", () => {
+    const s = readFileSync(join(PKG, STAGING_0000_INPUT_V104.packagedPath), "utf8");
+    const md5 = (x: string) => createHash("md5").update(x).digest("hex");
+    const body = (n: string) => s.match(new RegExp(`FUNCTION public\\.${n}\\(.*?AS \\$\\$([\\s\\S]*?)\\$\\$`, "s"))![1];
+    const rows = [...s.slice(s.indexOf("INSERT INTO public.staging_notes")).matchAll(/\('([^']*)', '([^']*)'\)/g)].map((r) => [r[1], r[2]]);
+    expect(rows.length).toBe(3);
+    rows.sort((x, y) => Buffer.compare(Buffer.from(x[0]), Buffer.from(y[0])));
+    const c = STAGING_0000_INPUT_V104.derivedConstants;
+    expect(md5(body("has_role"))).toBe(c.hasRoleProsrcMd5);
+    expect(md5(body("has_staging_access"))).toBe(c.hasStagingAccessProsrcMd5);
+    expect(md5(rows.map(([t, x]) => `${t}|${x}|true`).join("\n"))).toBe(c.notesMd5);
+    for (const k of [c.hasRoleProsrcMd5, c.hasStagingAccessProsrcMd5, c.notesMd5]) expect(read("preflight/P03_colisoes.sql")).toContain(`'${k}'`);
+    for (const k of [c.hasRoleProsrcMd5, c.hasStagingAccessProsrcMd5]) expect(read("posflight/Q04_acesso_staging.sql")).toContain(`'${k}'`);
+    expect(read("evidence/entrada-0000-check.txt")).toMatch(/RESULTADO: 0 falhas\n$/);
+  });
+
+  it("0000: ESPERADO, MANIFEST e R05 registam AUTENTICADO com ressalva; R05 reconfere a cópia contra o SHA256SUMS", () => {
+    const m = STAGING_0000_INPUT_V104;
     expect(m.caveat).toMatch(/NÃO verificada/);
     expect(m.caveat).toMatch(/3 INSERTs sintéticos/);
     const e = read("entradas/0000/ESPERADO");
-    expect(e).toContain("\nestado=PENDENTE\n");
+    expect(e).toContain("\nestado=AUTENTICADO\n");
+    expect(e).toContain(`\nficheiro_no_pacote=${m.packagedPath}\n`);
     expect(e).toContain(`\nsha256=${m.sha256Full}\n`);
     expect(e).toContain(`\ngit_blob=${m.gitBlob}\n`);
     expect(e).toContain(`\ncommit=${m.gitCommit}\n`);
     expect(e).toContain("\nbytes=2303\nlinhas=44\nlf_final=nao\n");
     expect(e).toContain(`\nsha256_prefixo=${m.sha256Prefix}\n`);
-    // nenhum ficheiro 0000 (nem nenhum SQL) dentro de entradas/: os bytes não foram obtidos nem reconstruídos
-    expect(onDisk.filter((p) => p.startsWith("entradas/"))).toEqual(["entradas/0000/ESPERADO", "entradas/0000/README.md"]);
-    expect(onDisk.some((p) => /0000_staging_access_control\.sql$/.test(p))).toBe(false);
+    expect(e).toMatch(/\nressalva=.*NÃO verificada.*3 INSERTs sintéticos/);
+    for (const k of ["estado", "sha256", "git_blob", "bytes", "linhas", "lf_final", "ficheiro_no_pacote", "sha256_prefixo"]) expect(e.split("\n").filter((l) => l.startsWith(`${k}=`)).length, k).toBe(1);
+    const sums = new Map(read("SHA256SUMS").trim().split("\n").map((l) => [l.slice(66), l.slice(0, 64)]));
+    expect(sums.get(m.packagedPath)).toBe(m.sha256Full);
     const manifest = JSON.parse(read("MANIFEST.json"));
-    expect(manifest.staging_0000_input).toMatchObject({ state: "PENDENTE", bytes_obtained: false, included_in_package: false, sha256: m.sha256Full, git_blob: m.gitBlob, bytes: 2303 });
+    expect(manifest.staging_0000_input).toMatchObject({ state: "AUTENTICADO", bytes_obtained: true, included_in_package: true, packaged_file: m.packagedPath, packaged_sha256: m.sha256Full, sha256: m.sha256Full, git_blob: m.gitBlob, bytes: 2303, lines: 44, trailing_newline: false });
+    expect(manifest.staging_0000_input.caveat).toMatch(/NÃO verificada/);
+    expect(BLOCKERS_V104.find((x) => x.id === "B14")!.title).toMatch(/AUTENTICADA.*NÃO VERIFICADA/);
     for (const p of ["tools/R05_entrada_0000.sh", "tools/R10_arranque_controlado.sh"]) expect(read(p)).toMatch(/AUTENTICADO\)|AUTENTICADO\|ALTERNATIVO_AUDITADO\)/);
     const r05 = read("tools/R05_entrada_0000.sh");
-    for (const k of ["chave \"$ESP\" bytes", "chave \"$ESP\" linhas", "chave \"$ESP\" lf_final", "chave \"$ESP\" git_blob", "sha1sum"]) expect(r05).toContain(k);
+    for (const k of ["chave \"$ESP\" bytes", "chave \"$ESP\" linhas", "chave \"$ESP\" lf_final", "chave \"$ESP\" git_blob", "sha1sum", "chave \"$ESP\" ficheiro_no_pacote", "sha_registado \"$PKG\" \"$PF\"", "sha_de \"$PKG/$PF\""]) expect(r05).toContain(k);
   });
 
   it("documentos: nada executado, sem GO, sem promessas de isolamento absoluto", () => {

@@ -3,22 +3,22 @@
 Comparação ficheiro a ficheiro com o `SHA256SUMS` da v1.0.3 (commit `fd4fdaca`). MANIFEST, SHA256SUMS e os ficheiros DIFF ficam de fora.
 
 - **Migrações S4-00…S4-05: 6/6 idênticas byte a byte** (com os REVOKE e o acesso só pelo servidor).
-- Idênticos: 27 · alterados: 22 · novos: 9 · retirados: 2.
+- Idênticos: 27 · alterados: 22 · novos: 11 · retirados: 2.
 - F1 (`pg_get_userbyid(oid)`): válido; **não alterado** (P01, P05 e Q02 iguais à v1.0.3).
 
 | Ficheiro | Estado | sha256 v1.0.3 (16) | sha256 v1.0.4 (16) |
 |---|---|---|---|
 | ACCESS-MATRIX.md | idêntico | 7181fa2caded1846 | 7181fa2caded1846 |
-| BLOCKERS.md | ALTERADO | aea6f6bcd928ef23 | be22ea2a1bca1dc8 |
-| BOOTSTRAP-SINTETICO.md | ALTERADO | 7630e8ee9bbcfd7c | 553d13d9dc2716b3 |
+| BLOCKERS.md | ALTERADO | aea6f6bcd928ef23 | 2ec2abe9f134e67a |
+| BOOTSTRAP-SINTETICO.md | ALTERADO | 7630e8ee9bbcfd7c | 2abdc045102578bd |
 | COLLISIONS.md | idêntico | 4874a3fb6ee9a5b2 | 4874a3fb6ee9a5b2 |
 | EXECUTOR-PRIVILEGES.md | ALTERADO | 894c457bebc5b47c | b0dd8ee82f0ebd38 |
-| FINDINGS-RESOLUTION.md | ALTERADO | 68ce28c1b6ef78ce | 5a0363316eefd163 |
+| FINDINGS-RESOLUTION.md | ALTERADO | 68ce28c1b6ef78ce | 97a2140849dd8697 |
 | OWNER-ACCOUNT.md | idêntico | ccecb316555e682a | ccecb316555e682a |
-| README.md | ALTERADO | 0a65e6cbeeef1d97 | 1ad87a62ba97fef0 |
-| REHEARSAL-PLAN.md | ALTERADO | 24b544223c18469d | e7fda83cab61b047 |
-| REHEARSAL-TARGET.md | ALTERADO | 8ce8fba5c18be32a | bd7148b8ecaa3680 |
-| TEST-CRITERIA.md | ALTERADO | 801d8d4aa926ffc5 | 49de0e1c92326ea3 |
+| README.md | ALTERADO | 0a65e6cbeeef1d97 | 188a9c5701534af9 |
+| REHEARSAL-PLAN.md | ALTERADO | 24b544223c18469d | 70f8cb1ec0a2360e |
+| REHEARSAL-TARGET.md | ALTERADO | 8ce8fba5c18be32a | e0a081c96ff05001 |
+| TEST-CRITERIA.md | ALTERADO | 801d8d4aa926ffc5 | 85ab97a17f77958c |
 | ensaio/B00_papeis_e_base.bloqueado.sql | ALTERADO | 467589ccc5efa4a3 | c200892c26f6c0d6 |
 | ensaio/B01_plataforma_sintetica.bloqueado.sql | ALTERADO | ac7f2d57307e7651 | f2d5565a5f066bb8 |
 | ensaio/B01b_unaccent_instalada.bloqueado.sql | ALTERADO | ed89bfc952a8e87e | f0be1e2cc36b39b5 |
@@ -28,10 +28,12 @@ Comparação ficheiro a ficheiro com o `SHA256SUMS` da v1.0.3 (commit `fd4fdaca`
 | ensaio/R32_instancia_super.sql | NOVO | — | 2babc1d7f9fdf5ce |
 | ensaio/R40_ligacao.psql | RETIRADO | 587640447a91618b | — |
 | ensaio/R40_sessao.psql | NOVO | — | 9fed4d048e1db21a |
-| entradas/0000/ESPERADO | NOVO | — | a311f84ecca01d2e |
-| entradas/0000/README.md | NOVO | — | 83d64dc2fd2eaf45 |
+| entradas/0000/0000_staging_access_control.sql | NOVO | — | a87578e560f0c97f |
+| entradas/0000/ESPERADO | NOVO | — | f979e3347530c39f |
+| entradas/0000/README.md | NOVO | — | 43892674910a1ea3 |
+| evidence/entrada-0000-check.txt | NOVO | — | 21bab853b78205f4 |
 | evidence/parse-check.txt | ALTERADO | 65e7e2e9b6fc094a | 56d47aeffde118bc |
-| evidence/shell-check.txt | NOVO | — | 197607eacb39c0df |
+| evidence/shell-check.txt | NOVO | — | a28df6e38dad9d72 |
 | operador/E-EVIDENCIA.modelo | NOVO | — | 37d43a97f25d8d0b |
 | posflight/Q00_alvo.sql | idêntico | 194005d58f83da71 | 194005d58f83da71 |
 | posflight/Q01_estrutura.sql | idêntico | e70797606a43ab11 | e70797606a43ab11 |
@@ -59,11 +61,11 @@ Comparação ficheiro a ficheiro com o `SHA256SUMS` da v1.0.3 (commit `fd4fdaca`
 | sql/S4-04_indices_chaves_gatilhos.sql | idêntico | 8ba1230d83e7c879 | 8ba1230d83e7c879 |
 | sql/S4-05_politicas.sql | idêntico | 6276b63eb5bd6c1c | 6276b63eb5bd6c1c |
 | tests-db/T01_matriz_comportamental.bloqueado.sql | ALTERADO | 77e32ddcbcd9042e | 3736c98d96a927f3 |
-| tools/R05_entrada_0000.sh | NOVO | — | b5a824cd7639d0a3 |
+| tools/R05_entrada_0000.sh | NOVO | — | 1ecc55be13c700cf |
 | tools/R10_arranque_controlado.sh | ALTERADO | f8025f2699de7135 | 215f9f7d196b26c1 |
 | tools/R20_verificar_processo.sh | ALTERADO | e76569ba76103b99 | 3fb261c685fca5a1 |
 | tools/R40_ligar_cliente.sh | RETIRADO | 9e664e5209b83274 | — |
-| tools/R40_sessao.sh | NOVO | — | eb9bc8eb495a636b |
+| tools/R40_sessao.sh | NOVO | — | 02b093954bdd215c |
 | tools/R41_processo_cliente.sh | ALTERADO | 0294459e6969f66c | 1679e9034b7f7c40 |
 | tools/R90_descartar.sh | ALTERADO | 503375277786824d | b4e95500c1b5f422 |
 | tools/lib_ensaio.sh | ALTERADO | 05aadb68ec14fb4f | c5ac44d00fc88e45 |

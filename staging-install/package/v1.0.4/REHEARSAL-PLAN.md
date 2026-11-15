@@ -1,6 +1,6 @@
 # Plano de ensaio — v1.0.4
 
-**PLANO. NÃO AUTORIZADO. NÃO EXECUTADO. SEM GO.** Nenhum passo pode começar sem uma autorização **separada** do proprietário que cite este ficheiro e o sha256 do `MANIFEST.json`. Só numa instância PostgreSQL 17 **descartável**; nunca no AFONSO Staging, na V1 ou em produção. G1–G4 continuam NO-GO, aprove ou não o ensaio. **Hoje o R10 recusa arrancar** porque a entrada 0000 está PENDENTE (B14) e porque não há ficha E1–E10 preenchida (B13).
+**PLANO. NÃO AUTORIZADO. NÃO EXECUTADO. SEM GO.** Nenhum passo pode começar sem uma autorização **separada** do proprietário que cite este ficheiro e o sha256 do `MANIFEST.json`. Só numa instância PostgreSQL 17 **descartável**; nunca no AFONSO Staging, na V1 ou em produção. G1–G4 continuam NO-GO, aprove ou não o ensaio. **Hoje o R10 recusa arrancar** porque não há ficha E1–E10 preenchida (B13). A entrada 0000 está AUTENTICADA como input histórico, mas a correspondência com a base real do staging não foi verificada (B14).
 
 ## 1. Regra de paragem (vale para todas as fases)
 
@@ -38,7 +38,7 @@ Todo o SQL passa por `tools/R40_sessao.sh AUTORIZADO:<ref> <ROOT> <PASSO>`. Não
 | B00 | `ensaio/B00…bloqueado.sql` | `postgres` / `ensaio_super` | não (CREATE DATABASE) | instância |
 | B01 | `ensaio/B01…bloqueado.sql` | `afonso_ensaio` / `ensaio_super` | sim | instância |
 | B01b | `ensaio/B01b…bloqueado.sql` (**só** variante INSTALADA) | `afonso_ensaio` / `ensaio_super` | sim | instância |
-| 0000 | `evidencia/entradas/0000.sql` (do R05; **hoje PENDENTE**) | `afonso_ensaio` / `postgres` | sim | — |
+| 0000 | `evidencia/entradas/0000.sql` (do R05, a partir de `entradas/0000/0000_staging_access_control.sql`) | `afonso_ensaio` / `postgres` | sim | — |
 | B02 | `ensaio/B02…bloqueado.sql` | `afonso_ensaio` / `ensaio_super` | sim | instância |
 | P00–P05 | `preflight/` | `afonso_ensaio` / `postgres` | sim | P04, P05: email sintético |
 | S4-00…S4-05 | `sql/` (iguais byte a byte) | `afonso_ensaio` / `postgres` | sim, um ficheiro por transação | — |
@@ -50,7 +50,7 @@ Todo o SQL passa por `tools/R40_sessao.sh AUTORIZADO:<ref> <ROOT> <PASSO>`. Não
 | Fase | Passos | Critério para seguir |
 |---|---|---|
 | E | E1–E10 cumpridas; ficha preenchida (`REHEARSAL-TARGET.md` §1) | ficha completa; sem ela o R10 recusa |
-| 0 | `R05` com o ficheiro 0000 aceite pelo `ESPERADO` desta versão | `R05 APROVADO` — **hoje impossível (B14)** |
+| 0 | `R05` com o ficheiro 0000 aceite pelo `ESPERADO` desta versão | `R05 APROVADO` (estado AUTENTICADO; nunca executado) |
 | A | `R10` (dentro da unidade) → `R20` | `R10 PRONTO`, `R20 APROVADO` |
 | B | `R40 R30` → `R40 B00` → `R40 B01` → [`R40 B01b`] → `R40 0000` → `R40 B02` | cada `R40 <passo> APROVADO` |
 | P | `R40 P00` … `R40 P05` | idem; P05 grava `sessoes/P05/impressoes` |

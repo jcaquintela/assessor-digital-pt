@@ -124,7 +124,7 @@ P05B=false; [ "$PASSO" = P05 ] && P05B=true
 # Fonte do passo, conferida.
 if [ "$FICH" = ENTRADA_0000 ]; then
   SRC=$EV/entradas/0000.sql
-  [ -f "$SRC" ] && [ ! -L "$SRC" ] || fail "entrada 0000 não preparada: correr o R05 (hoje PENDENTE, B14)"
+  [ -f "$SRC" ] && [ ! -L "$SRC" ] || fail "entrada 0000 não preparada: correr o R05 antes deste passo (B14)"
   SRCSHA=$(sha_de "$SRC") || exit 2
   [ "$SRCSHA" = "$(ler1 "$EV/entradas/0000.sha256")" ] || fail "entrada 0000 mudou desde o R05"
 else

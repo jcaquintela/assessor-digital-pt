@@ -18,7 +18,7 @@
 | S1/S2 | idem | Tabela de passos do `R40_sessao.sh` = `SESSION_STEPS`; ordem; guião R41→R31→[R32]→passo→R31→PID; cópias registadas e reconferidas |
 | B1/B2 | idem + parser | 1.ª instrução = guarda `BLOQUEADO`, 2.ª = guarda `SÓ DESCARTÁVEL` com superutilizador, papel, base, sem TCP, `data_directory`, sysid, nonce; B01/B02 com provider/email/sub; corpo T01 (M1–M7) = v1.0.2 |
 | E1–E10 | idem | 10 obrigações no documento, no modelo da ficha e no R10 |
-| 0000 | idem | `entradas/0000/ESPERADO` diz PENDENTE; `sha256Full` nulo; R05 e R10 recusam esse estado |
+| 0000 | idem | `entradas/0000/ESPERADO` diz AUTENTICADO; a cópia no pacote tem sha256 integral, blob Git, 2303 bytes, 44 linhas e nenhum LF final iguais aos registados; md5 do corpo de `has_role`/`has_staging_access` e das 3 notas iguais às constantes do P03/Q04; o R05 reconfere a cópia contra o `SHA256SUMS` |
 | Sintaxe SQL | `evidence/parse-check.txt` | Parser oficial do PostgreSQL 17 (libpg-query 17.8.3): 0 falhas |
 | Sintaxe shell | `evidence/shell-check.txt` | `sh -n`, `bash -n`, `dash -n`; `shellcheck` |
 | Integridade | idem | `SHA256SUMS` cobre todos os ficheiros e confere; `MANIFEST.json` com os mesmos hashes; v1.0.1, v1.0.2 e v1.0.3 continuam byte a byte iguais |
@@ -33,7 +33,7 @@
   - `sha256sum --strict`, `mktemp` e `stat -L` na máquina do ensaio.
 - **Isolamento**: nenhuma prova; os scripts sozinhos **não** o provam (E1–E10 são do operador).
 - **Executor real do staging**, leitura de `auth.identities` no staging, estado de `unaccent` no staging: nada lido.
-- **Entrada 0000**: PENDENTE; nenhum ficheiro autenticado, nenhum bootstrap alternativo.
+- **Entrada 0000**: AUTENTICADA só como ficheiro do repositório do staging; a correspondência com a base de dados real do staging **não** foi verificada; nenhum bootstrap alternativo.
 - Formato exato de `pg_ts_dict.dictinitoption` e de `postmaster.opts` nesta versão do PostgreSQL: só documentado. Uma diferença dá REPROVADO (falso negativo), nunca APROVADO.
 - APIs de servidor, Storage, Realtime, GoTrue: não existem / não cobertos.
 
@@ -51,4 +51,4 @@ Na v1.0.4 as 7 impressões são extraídas pelo wrapper e não copiadas à mão.
 
 ## Por verificar (exige autorização separada; nenhuma dada)
 
-Ver `REHEARSAL-PLAN.md`. O ensaio continua **sem GO**: hoje o R10 recusa (B13, B14).
+Ver `REHEARSAL-PLAN.md`. O ensaio continua **sem GO**: hoje o R10 recusa (B13: sem ficha E1–E10).

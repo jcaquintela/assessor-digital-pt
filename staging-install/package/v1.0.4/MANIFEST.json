@@ -79,12 +79,14 @@
     "rehearsal_target": "R05–R90 preparados, NÃO executados; os scripts sozinhos NÃO provam isolamento",
     "operator_obligations": "E1, E2, E3, E4, E5, E6, E7, E8, E9, E10 POR CUMPRIR pelo operador; o R10 recusa sem ficha completa (só confere forma, não verdade)",
     "unaccent_state_in_staging": "DESCONHECIDO até o P02 correr no staging (só leitura)",
-    "staging_0000_input": "PENDENTE — metadados registados, BYTES ORIGINAIS NÃO OBTIDOS (nenhum ficheiro incluído nem reconstruído); bootstrap alternativo: nenhum"
+    "staging_0000_input": "AUTENTICADO — bytes originais obtidos por leitura entre projetos e conferidos (sha256, blob Git, tamanho, linhas, sem LF final); incluído em entradas/0000/0000_staging_access_control.sql; correspondência com a BD real do staging NÃO verificada; bootstrap alternativo: nenhum"
   },
   "staging_0000_input": {
-    "state": "PENDENTE",
-    "bytes_obtained": false,
-    "included_in_package": false,
+    "state": "AUTENTICADO",
+    "bytes_obtained": true,
+    "included_in_package": true,
+    "packaged_file": "entradas/0000/0000_staging_access_control.sql",
+    "packaged_sha256": "a87578e560f0c97f9c1184d5fe3e2730f18de6e513b8e610c4808a28f98aecd2",
     "file": "drizzle/migrations/0000_staging_access_control.sql",
     "git_commit": "ab5187829bb989795d47a283e0f093b796843e72",
     "git_blob": "24c38a525e549551e1fdf3028ff58e1e1906b0ee",
@@ -92,17 +94,32 @@
     "bytes": 2303,
     "lines": 44,
     "trailing_newline": false,
-    "metadata_source": "localizado pelo proprietário no código do AFONSO Staging; registado sem os bytes",
+    "metadata_source": "localizado pelo proprietário no código do AFONSO Staging (commit ab518782)",
+    "bytes_source": "leitura entre projetos: snapshot só de leitura do AFONSO Staging no commit 608dad98 (a ferramenta não seleciona commits); identidade com ab518782 assente no blob Git e no sha256 declarados pelo proprietário",
+    "verified": {
+      "sha256": true,
+      "git_blob": true,
+      "bytes": true,
+      "lines": true,
+      "no_trailing_newline": true,
+      "p03_q04_constants": true,
+      "method": "estático, sobre os bytes (nenhum SQL executado); evidence/entrada-0000-check.txt"
+    },
+    "derived_constants": {
+      "hasRoleProsrcMd5": "6b9bca1cc09de70841cac113efbdd41a",
+      "hasStagingAccessProsrcMd5": "4376edeea92abf14230207df0fbbef11",
+      "notesMd5": "9839c85692f965b4f419fb33c6af3404"
+    },
     "previous_snapshot_reference": "608dad98",
-    "caveat": "Input histórico do repositório do staging: correspondência com a base de dados real do staging NÃO verificada; contém 3 INSERTs sintéticos (as 3 notas de staging_notes)",
-    "next_step": "transferência autorizada dos bytes originais do repositório do staging; conferência sha256 + blob + tamanho + linhas + sem LF final; só então estado=AUTENTICADO"
+    "caveat": "Input histórico do repositório do staging: correspondência com a base de dados real do staging NÃO verificada; contém 3 INSERTs sintéticos (as 3 notas de staging_notes, numa única instrução INSERT com 3 linhas)",
+    "next_step": "no ensaio, o R05 volta a conferir a cópia do pacote (SHA256SUMS + sha256 + blob + tamanho + linhas + sem LF final); a correspondência com a BD real do staging exige conferência só de leitura separada (B14)"
   },
   "rehearsal_plan": {
     "status": "PLANO — NÃO AUTORIZADO, NÃO EXECUTADO, SEM GO",
     "document": "REHEARSAL-PLAN.md",
     "order": [
       "E1–E10 (operador, ficha de evidência)",
-      "R05 (entrada 0000; hoje recusa: PENDENTE)",
+      "R05 (entrada 0000 AUTENTICADA: reconfere a cópia do pacote)",
       "R10",
       "R20",
       "R40 R30",
@@ -682,7 +699,7 @@
     },
     {
       "file": "tools/R05_entrada_0000.sh",
-      "sha256": "b5a824cd7639d0a3a68f0a64294562a57470599d819e608558ad07914c77d7ba",
+      "sha256": "1ecc55be13c700cf044a2095b1a0da04971f2b85ca7860e7548e67015df162c3",
       "executed": false
     },
     {
@@ -697,7 +714,7 @@
     },
     {
       "file": "tools/R40_sessao.sh",
-      "sha256": "eb9bc8eb495a636b201909237ef0e1455dc5ae516d531aaf72064751a121cd6d",
+      "sha256": "02b093954bdd215cfa122465bb1e5a663dbb35cc391609c158c13bfa4b4ca610",
       "executed": false
     },
     {
@@ -775,7 +792,7 @@
     "B11 LEITURA DE auth.identities NÃO CONFIRMADA no staging",
     "B12 ALVO DO ENSAIO: R05–R90 PREPARADOS, NÃO EXECUTADOS; os scripts sozinhos NÃO provam isolamento",
     "B13 OBRIGAÇÕES EXTERNAS E1–E10 POR CUMPRIR PELO OPERADOR",
-    "B14 ENTRADA 0000 DO STAGING PENDENTE: metadados registados (commit ab518782, blob 24c38a52, sha256 a87578e5…aecd2, 2303 bytes, 44 linhas, sem LF final), BYTES ORIGINAIS NÃO OBTIDOS",
+    "B14 ENTRADA 0000 DO STAGING AUTENTICADA (bytes originais conferidos: sha256 a87578e5…aecd2, blob 24c38a52, 2303 bytes, 44 linhas, sem LF final), mas CORRESPONDÊNCIA COM A BD REAL DO STAGING NÃO VERIFICADA",
     "B15 BOOTSTRAP SINTÉTICO ≠ SUPABASE REAL",
     "B16 unaccent NO STAGING: estado (INSTALADA/NOVA) desconhecido até o P02 correr lá",
     "B17 R90 PODE DECLARAR INCERTEZA: nesse caso a máquina TEM de ser destruída",
@@ -789,13 +806,13 @@
     },
     {
       "path": "BLOCKERS.md",
-      "sha256": "be22ea2a1bca1dc8da28c73abf0b5dec6b5d590c0851e6e573aafaefb38539ba",
-      "bytes": 5224
+      "sha256": "2ec2abe9f134e67a290b3eafe9220822321182011461d36d421e17a966bcf0d5",
+      "bytes": 5167
     },
     {
       "path": "BOOTSTRAP-SINTETICO.md",
-      "sha256": "553d13d9dc2716b39bfc9055767154b96d4f43d45f9e1163ef107b2424f88dc3",
-      "bytes": 5904
+      "sha256": "2abdc045102578bd04dd36fe9267b0c24e78b8cd8b3bf7103ede7a600a7f2bf2",
+      "bytes": 5996
     },
     {
       "path": "COLLISIONS.md",
@@ -804,8 +821,8 @@
     },
     {
       "path": "DIFF-v1.0.3.md",
-      "sha256": "f70f06fe3137f4d796842ac995e60a958cbf2b8723c8c284c36381997b6c50d3",
-      "bytes": 8175
+      "sha256": "94e977a874d906a972c4b10c14cb364d151d30584706fdd31575036f2994145f",
+      "bytes": 8326
     },
     {
       "path": "EXECUTOR-PRIVILEGES.md",
@@ -814,8 +831,8 @@
     },
     {
       "path": "FINDINGS-RESOLUTION.md",
-      "sha256": "5a0363316eefd16370e814c039fb773a75b74d26c0a539a056b81ee876df2a92",
-      "bytes": 8285
+      "sha256": "97a2140849dd8697f52c38f2e22c645f42127fb6ea3ccef94618ef5712109648",
+      "bytes": 8396
     },
     {
       "path": "OWNER-ACCOUNT.md",
@@ -824,23 +841,23 @@
     },
     {
       "path": "README.md",
-      "sha256": "1ad87a62ba97fef0861720b775b9e55045f573a20c01bb4c5e2ca8d948da40df",
-      "bytes": 5652
+      "sha256": "188a9c5701534af918928871d956ee3e0b367d926262c2bc4b81af35b8fa4659",
+      "bytes": 6000
     },
     {
       "path": "REHEARSAL-PLAN.md",
-      "sha256": "e7fda83cab61b047b5eaea32aeb67c496b56a0eabb05ec5565bd6fd8081e196c",
-      "bytes": 6598
+      "sha256": "70f8cb1ec0a2360e41c39df0a9f2da2718821405fa82b9633aba4ff7e47e806f",
+      "bytes": 6735
     },
     {
       "path": "REHEARSAL-TARGET.md",
-      "sha256": "bd7148b8ecaa3680699750e1102b3854270fbcde7eca7338ce7c371c6adb7087",
-      "bytes": 8412
+      "sha256": "e0a081c96ff05001421104f7e4607f43714d86385fcf76bb7460e2aa533848a4",
+      "bytes": 8583
     },
     {
       "path": "TEST-CRITERIA.md",
-      "sha256": "49de0e1c92326ea372ee59a7748f2bd74e53a48149d165cf5643568134f3dac9",
-      "bytes": 4639
+      "sha256": "85ab97a17f77958c94b0ff0395cf40c0dbe92c6d99df8d4c00d593f17c945e15",
+      "bytes": 4963
     },
     {
       "path": "ensaio/B00_papeis_e_base.bloqueado.sql",
@@ -883,14 +900,24 @@
       "bytes": 2017
     },
     {
+      "path": "entradas/0000/0000_staging_access_control.sql",
+      "sha256": "a87578e560f0c97f9c1184d5fe3e2730f18de6e513b8e610c4808a28f98aecd2",
+      "bytes": 2303
+    },
+    {
       "path": "entradas/0000/ESPERADO",
-      "sha256": "a311f84ecca01d2ec104ea823e88adbfa38c012c5332c6025462d1e928c6f36b",
-      "bytes": 1162
+      "sha256": "f979e3347530c39f61f16ebb79a1460f19eb0bf74caca3e3075ab3fb34c69074",
+      "bytes": 1572
     },
     {
       "path": "entradas/0000/README.md",
-      "sha256": "83d64dc2fd2eaf45e9b2cb91162988ce02c79711ec015df60878685238cf13f0",
-      "bytes": 3410
+      "sha256": "43892674910a1ea3db8805afea53a9a60a04e3a61be452cb7664e52260f81e22",
+      "bytes": 2791
+    },
+    {
+      "path": "evidence/entrada-0000-check.txt",
+      "sha256": "21bab853b78205f4cc0e04da59f0853b6f4e935b6b368e0fc67eece0fdeee8b4",
+      "bytes": 1792
     },
     {
       "path": "evidence/parse-check.txt",
@@ -899,7 +926,7 @@
     },
     {
       "path": "evidence/shell-check.txt",
-      "sha256": "197607eacb39c0dfc1f3f1046e86d7d7e8c9993241fb99ce776abe2ec61c1c61",
+      "sha256": "a28df6e38dad9d7298488a5ade3cd97fe191be8b8d2e23f1c3d70a68f210df5c",
       "bytes": 868
     },
     {
@@ -1039,8 +1066,8 @@
     },
     {
       "path": "tools/R05_entrada_0000.sh",
-      "sha256": "b5a824cd7639d0a3a68f0a64294562a57470599d819e608558ad07914c77d7ba",
-      "bytes": 4839
+      "sha256": "1ecc55be13c700cf044a2095b1a0da04971f2b85ca7860e7548e67015df162c3",
+      "bytes": 5812
     },
     {
       "path": "tools/R10_arranque_controlado.sh",
@@ -1054,8 +1081,8 @@
     },
     {
       "path": "tools/R40_sessao.sh",
-      "sha256": "eb9bc8eb495a636b201909237ef0e1455dc5ae516d531aaf72064751a121cd6d",
-      "bytes": 13752
+      "sha256": "02b093954bdd215cfa122465bb1e5a663dbb35cc391609c158c13bfa4b4ca610",
+      "bytes": 13755
     },
     {
       "path": "tools/R41_processo_cliente.sh",

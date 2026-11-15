@@ -1,0 +1,16 @@
+# Conferência ESTÁTICA da entrada 0000 (bytes lidos do ficheiro; nenhum SQL executado, nenhuma base de dados).
+# Ficheiro: entradas/0000/0000_staging_access_control.sql
+# Origem: leitura entre projetos, só leitura, snapshot 608dad98 do AFONSO Staging (o commit ab518782 não é selecionável pela ferramenta).
+OK sha256 integral: obtido a87578e560f0c97f9c1184d5fe3e2730f18de6e513b8e610c4808a28f98aecd2 / registado a87578e560f0c97f9c1184d5fe3e2730f18de6e513b8e610c4808a28f98aecd2
+OK blob Git (sha1 de "blob <n>\0" + bytes): obtido 24c38a525e549551e1fdf3028ff58e1e1906b0ee / registado 24c38a525e549551e1fdf3028ff58e1e1906b0ee
+OK tamanho em bytes: obtido 2303 / registado 2303
+OK linhas (LF + 1, sem LF final): obtido 44 / registado 44
+OK LF final: obtido nao / registado nao
+OK sem CR nem BOM: obtido sim / registado sim
+OK md5 corpo has_role (constante P03/Q04): obtido 6b9bca1cc09de70841cac113efbdd41a / registado 6b9bca1cc09de70841cac113efbdd41a
+OK md5 corpo has_staging_access (constante P03/Q04): obtido 4376edeea92abf14230207df0fbbef11 / registado 4376edeea92abf14230207df0fbbef11
+OK md5 das 3 notas (constante P03-15): obtido 9839c85692f965b4f419fb33c6af3404 / registado 9839c85692f965b4f419fb33c6af3404
+OK notas no INSERT: obtido 3 / registado 3
+OK sintaxe (libpg-query 17.8.3, parser oficial do PostgreSQL 17, sem base de dados): 18 instruções {"CreateEnumStmt":1,"CreateStmt":2,"GrantStmt":8,"AlterTableStmt":2,"CreatePolicyStmt":2,"CreateFunctionStmt":2,"InsertStmt":1} — inclui 1 INSERT (3 linhas sintéticas), REFERENCES auth.users e GRANT a authenticated: é o ficheiro histórico do staging, NÃO uma migração deste pacote
+# Limite: conferência dos bytes e das constantes; a correspondência com a base de dados real do staging NÃO foi verificada.
+RESULTADO: 0 falhas

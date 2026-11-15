@@ -20,7 +20,7 @@
 - Todos os REVOKE e o acesso **só pelo servidor**; as APIs de servidor continuam a **não existir** (B3).
 - **F1 `pg_get_userbyid(oid)`**: válido, não alterado.
 - Quarentena, `ACCESS-MATRIX.md`, P00, P01, P03–P05, Q00–Q05: iguais à v1.0.3.
-- **Entrada 0000 do staging: continua PENDENTE.** Metadados localizados no código do staging e registados (commit `ab518782`, blob `24c38a52`, sha256 integral `a87578e5…aecd2`, 2303 bytes, 44 linhas, sem LF final); os **bytes originais não foram obtidos** e o ficheiro não está no pacote. Nada foi inventado nem substituído; só existe a interface `entradas/0000/` (B14).
+- **Entrada 0000 do staging: AUTENTICADA como input histórico.** Os bytes originais foram obtidos por leitura entre projetos (só leitura, autorizada pelo proprietário) e conferidos antes de marcar AUTENTICADO: sha256 integral `a87578e5…aecd2`, blob Git `24c38a52`, 2303 bytes, 44 linhas, sem LF final. Cópia byte a byte em `entradas/0000/0000_staging_access_control.sql`; prova em `evidence/entrada-0000-check.txt`. Nada foi reconstruído a partir de texto. **Ressalva:** correspondência com a base de dados real do staging **não verificada**; contém 3 INSERTs sintéticos (B14 continua aberto por isso).
 
 ## O que muda (detalhe em `FINDINGS-RESOLUTION.md`, medido em `DIFF-v1.0.3.md`)
 
@@ -47,9 +47,9 @@
 | `ensaio/R40_sessao.psql` | Guião de cada sessão (usado só pelo wrapper) |
 | `ensaio/B00 … B02 *.bloqueado.sql`, `tests-db/T01…bloqueado.sql` | Bootstrap sintético e matriz comportamental — **bloqueados** (2 guardas) |
 | `tools/R05 R10 R20 R40 R41 R90 *.sh`, `tools/lib_ensaio.sh` | Passos do ensaio — **não executados**; exigem `AUTORIZADO:<ref>` (o R41 lê-a do registo) |
-| `entradas/0000/` | Interface da entrada 0000 (**PENDENTE**) |
+| `entradas/0000/` | Entrada 0000: `ESPERADO` (**AUTENTICADO**), cópia histórica byte a byte e interface |
 | `operador/E-EVIDENCIA.modelo` | Ficha das obrigações E1–E10 (modelo, tudo PENDENTE) |
-| `tools/parse_check.mjs`, `evidence/parse-check.txt`, `evidence/shell-check.txt` | Verificação estática (parser oficial do PostgreSQL 17; `sh/bash/dash -n`, `shellcheck`) |
+| `tools/parse_check.mjs`, `evidence/parse-check.txt`, `evidence/shell-check.txt`, `evidence/entrada-0000-check.txt` | Verificação estática (parser oficial do PostgreSQL 17; `sh/bash/dash -n`, `shellcheck`) |
 | `quarantine/` | Igual — não executável |
 | `REHEARSAL-TARGET.md`, `REHEARSAL-PLAN.md`, `BOOTSTRAP-SINTETICO.md`, `EXECUTOR-PRIVILEGES.md`, `FINDINGS-RESOLUTION.md`, `TEST-CRITERIA.md` | Escritos para a v1.0.4 |
 | `OWNER-ACCOUNT.md`, `COLLISIONS.md`, `quarantine/README.md` | Copiados (continuam válidos) |
@@ -60,7 +60,7 @@
 1. **Integridade**: `sha256sum -c SHA256SUMS`.
 2. **Preflight só de leitura**: P00 → P04 `APROVADO` (P01/P02 "só como dono histórico"; o P02 diz INSTALADA ou NOVA); P05 `REGISTO VÁLIDO`.
 3. **Executor efetivo** (externo, B2): obrigatório. **Pendente.**
-4. **Entrada 0000** (B14): transferência autorizada dos bytes originais (metadados já registados) e conferência pelo R05; ou bootstrap alternativo auditado. **Pendente.**
+4. **Entrada 0000** (B14): bytes originais incluídos e conferidos estaticamente; no ensaio o R05 reconfere-os. **Falta** a conferência só de leitura de que a base real do staging corresponde a esta 0000.
 5. **Ensaio descartável** (autorização separada): `REHEARSAL-PLAN.md`, com E1–E10 cumpridas. **Não feito; sem GO.**
 6. **Instalação** (autorização separada): S4-00 → S4-05, um ficheiro por migração.
 7. **Posflight só de leitura**: Q00 → Q05 com as impressões do P05. Qualquer erro ⇒ parar e reportar.
