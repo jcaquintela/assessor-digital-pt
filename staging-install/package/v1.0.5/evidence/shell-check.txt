@@ -1,0 +1,10 @@
+# Verificação ESTÁTICA dos scripts (nenhum foi executado): sintaxe com sh -n, bash -n e dash -n (0.5.13.3) e análise com shellcheck.
+OK sh -n, bash -n, dash -n — tools/lib_ensaio.sh [c5ac44d00fc88e45]
+OK sh -n, bash -n, dash -n — tools/R05_entrada_0000.sh [1ecc55be13c700cf]
+OK sh -n, bash -n, dash -n — tools/R10_arranque_controlado.sh [215f9f7d196b26c1]
+OK sh -n, bash -n, dash -n — tools/R20_verificar_processo.sh [3fb261c685fca5a1]
+OK sh -n, bash -n, dash -n — tools/R40_sessao.sh [02b093954bdd215c]
+OK sh -n, bash -n, dash -n — tools/R41_processo_cliente.sh [1679e9034b7f7c40]
+OK sh -n, bash -n, dash -n — tools/R90_descartar.sh [b4e95500c1b5f422]
+shellcheck 0.11.0 (-s sh -x): 0 avisos em todas as severidades (info, style, warning, error)
+# Limite: análise estática. O comportamento real em /proc, cgroup v2 e psql não foi observado (B18).

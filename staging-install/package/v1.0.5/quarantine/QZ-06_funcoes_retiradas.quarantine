@@ -1,0 +1,170 @@
+-- QUARENTENA · Funções do estado final retiradas da instalação (escrevem ou descobrem tabelas do staging, incluindo user_roles)
+-- NÃO EXECUTÁVEL. Nenhuma instrução abaixo está ativa: todas as linhas começam por "--Q| ".
+-- Reativar qualquer item exige autorização SEPARADA do proprietário e uma nova versão do pacote.
+-- Se este ficheiro for executado por engano, a primeira instrução aborta a transação.
+DO $quarentena$ BEGIN RAISE EXCEPTION 'QUARENTENA %: não executar sem autorização separada', 'QZ-06_funcoes_retiradas.quarantine'; END $quarentena$;
+
+--Q| -- handle_new_user(): escreve em user_roles (papel consultant) e cria perfil/categorias; só servia ao gatilho em auth.users, que já está em quarentena (QZ-02)
+--Q| CREATE FUNCTION public.handle_new_user() RETURNS trigger
+--Q|     LANGUAGE plpgsql SECURITY DEFINER
+--Q|     SET search_path TO 'public'
+--Q|     AS $$
+--Q| BEGIN
+--Q|   INSERT INTO public.profiles (id, email, name)
+--Q|   VALUES (
+--Q|     NEW.id,
+--Q|     NEW.email,
+--Q|     COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', split_part(NEW.email,'@',1))
+--Q|   ) ON CONFLICT (id) DO NOTHING;
+--Q| 
+--Q|   INSERT INTO public.user_roles (user_id, role, created_by)
+--Q|   VALUES (NEW.id, 'consultant', NEW.id)
+--Q|   ON CONFLICT DO NOTHING;
+--Q| 
+--Q|   INSERT INTO public.property_categories (user_id, name, color)
+--Q|   VALUES
+--Q|     (NEW.id, 'Angariação própria', '#22c55e'),
+--Q|     (NEW.id, 'Pré-angariação', '#f59e0b'),
+--Q|     (NEW.id, 'De colega/agência', '#3b82f6'),
+--Q|     (NEW.id, 'FSBO', '#ef4444'),
+--Q|     (NEW.id, 'Em estudo', '#8b5cf6'),
+--Q|     (NEW.id, 'Outros', '#64748b')
+--Q|   ON CONFLICT (user_id, name) DO NOTHING;
+--Q| 
+--Q|   RETURN NEW;
+--Q| END;
+--Q| $$;
+--Q|
+--Q| -- merge_accounts_apply(uuid, uuid): descobre TODAS as tabelas de public com user_id (incluindo user_roles e qualquer tabela futura) e move/APAGA linhas — podia transferir ou apagar o papel admin do staging
+--Q| CREATE FUNCTION public.merge_accounts_apply(_source uuid, _target uuid) RETURNS jsonb
+--Q|     LANGUAGE plpgsql SECURITY DEFINER
+--Q|     SET search_path TO 'public'
+--Q|     AS $_$
+--Q| DECLARE
+--Q|   t text;
+--Q|   ctids tid[];
+--Q|   c tid;
+--Q|   moved bigint;
+--Q|   skipped bigint;
+--Q|   result jsonb := '[]'::jsonb;
+--Q|   src record;
+--Q|   tgt record;
+--Q| BEGIN
+--Q|   IF _source IS NULL OR _target IS NULL OR _source = _target THEN
+--Q|     RAISE EXCEPTION 'contas de origem e destino inválidas';
+--Q|   END IF;
+--Q| 
+--Q|   SELECT * INTO src FROM public.profiles WHERE id = _source;
+--Q|   IF NOT FOUND THEN RAISE EXCEPTION 'conta de origem inexistente'; END IF;
+--Q|   SELECT * INTO tgt FROM public.profiles WHERE id = _target;
+--Q|   IF NOT FOUND THEN RAISE EXCEPTION 'conta de destino inexistente'; END IF;
+--Q| 
+--Q|   PERFORM set_config('app.system_job', 'on', true);
+--Q| 
+--Q|   FOR t IN
+--Q|     SELECT c2.table_name
+--Q|     FROM information_schema.columns c2
+--Q|     JOIN information_schema.tables tb
+--Q|       ON tb.table_schema = c2.table_schema AND tb.table_name = c2.table_name
+--Q|     WHERE c2.table_schema = 'public'
+--Q|       AND c2.column_name = 'user_id'
+--Q|       AND tb.table_type = 'BASE TABLE'
+--Q|     ORDER BY 1
+--Q|   LOOP
+--Q|     moved := 0;
+--Q|     skipped := 0;
+--Q|     EXECUTE format('SELECT coalesce(array_agg(ctid), ''{}''::tid[]) FROM public.%I WHERE user_id = $1', t)
+--Q|       INTO ctids USING _source;
+--Q| 
+--Q|     FOREACH c IN ARRAY ctids LOOP
+--Q|       BEGIN
+--Q|         EXECUTE format('UPDATE public.%I SET user_id = $1 WHERE ctid = $2', t)
+--Q|           USING _target, c;
+--Q|         moved := moved + 1;
+--Q|       EXCEPTION WHEN unique_violation OR foreign_key_violation THEN
+--Q|         EXECUTE format('DELETE FROM public.%I WHERE ctid = $1', t) USING c;
+--Q|         skipped := skipped + 1;
+--Q|       END;
+--Q|     END LOOP;
+--Q| 
+--Q|     IF moved > 0 OR skipped > 0 THEN
+--Q|       result := result || jsonb_build_object('table', t, 'moved', moved, 'discarded', skipped);
+--Q|     END IF;
+--Q|   END LOOP;
+--Q| 
+--Q|   -- Liberta o contacto da conta de origem antes de o passar para o destino.
+--Q|   UPDATE public.profiles
+--Q|      SET phone = NULL,
+--Q|          phone_verified_at = NULL,
+--Q|          whatsapp_link_status = 'unlinked',
+--Q|          whatsapp_linked_at = NULL,
+--Q|          updated_at = now()
+--Q|    WHERE id = _source;
+--Q| 
+--Q|   UPDATE public.profiles
+--Q|      SET phone = coalesce(tgt.phone, src.phone),
+--Q|          phone_verified_at = coalesce(tgt.phone_verified_at, src.phone_verified_at),
+--Q|          whatsapp_link_status = CASE
+--Q|            WHEN tgt.whatsapp_link_status = 'linked' THEN tgt.whatsapp_link_status
+--Q|            ELSE coalesce(src.whatsapp_link_status, tgt.whatsapp_link_status)
+--Q|          END,
+--Q|          whatsapp_linked_at = coalesce(tgt.whatsapp_linked_at, src.whatsapp_linked_at),
+--Q|          primary_channel = coalesce(tgt.primary_channel, src.primary_channel),
+--Q|          assessor_name = coalesce(tgt.assessor_name, src.assessor_name),
+--Q|          name = coalesce(tgt.name, src.name),
+--Q|          subscription_tier = CASE
+--Q|            WHEN src.subscription_tier = 'hub' OR tgt.subscription_tier = 'hub' THEN 'hub'
+--Q|            WHEN src.subscription_tier = 'pro' OR tgt.subscription_tier = 'pro' THEN 'pro'
+--Q|            WHEN src.subscription_tier = 'consultor' OR tgt.subscription_tier = 'consultor' THEN 'consultor'
+--Q|            ELSE coalesce(tgt.subscription_tier, 'base')
+--Q|          END,
+--Q|          is_beta_tester = coalesce(tgt.is_beta_tester, false) OR coalesce(src.is_beta_tester, false),
+--Q|          beta_expires_at = greatest(
+--Q|            coalesce(tgt.beta_expires_at, src.beta_expires_at),
+--Q|            coalesce(src.beta_expires_at, tgt.beta_expires_at)
+--Q|          ),
+--Q|          updated_at = now()
+--Q|    WHERE id = _target;
+--Q| 
+--Q|   UPDATE public.profiles
+--Q|      SET subscription_tier = 'base',
+--Q|          is_beta_tester = false,
+--Q|          beta_expires_at = NULL,
+--Q|          account_kind = 'merged',
+--Q|          readonly_until = 'infinity'::timestamptz,
+--Q|          updated_at = now()
+--Q|    WHERE id = _source;
+--Q| 
+--Q|   RETURN jsonb_build_object('source', _source, 'target', _target, 'tables', result);
+--Q| END;
+--Q| $_$;
+--Q|
+--Q| -- merge_accounts_preview(uuid): par de leitura de merge_accounts_apply; também descobre tabelas no catálogo (incluindo user_roles); sem a fusão não tem uso
+--Q| CREATE FUNCTION public.merge_accounts_preview(_source uuid) RETURNS TABLE(table_name text, rows bigint)
+--Q|     LANGUAGE plpgsql SECURITY DEFINER
+--Q|     SET search_path TO 'public'
+--Q|     AS $_$
+--Q| DECLARE
+--Q|   t text;
+--Q|   n bigint;
+--Q| BEGIN
+--Q|   FOR t IN
+--Q|     SELECT c.table_name
+--Q|     FROM information_schema.columns c
+--Q|     JOIN information_schema.tables tb
+--Q|       ON tb.table_schema = c.table_schema AND tb.table_name = c.table_name
+--Q|     WHERE c.table_schema = 'public'
+--Q|       AND c.column_name = 'user_id'
+--Q|       AND tb.table_type = 'BASE TABLE'
+--Q|     ORDER BY 1
+--Q|   LOOP
+--Q|     EXECUTE format('SELECT count(*) FROM public.%I WHERE user_id = $1', t)
+--Q|       INTO n USING _source;
+--Q|     IF n > 0 THEN
+--Q|       table_name := t;
+--Q|       rows := n;
+--Q|       RETURN NEXT;
+--Q|     END IF;
+--Q|   END LOOP;
+--Q| END;
+--Q| $_$;

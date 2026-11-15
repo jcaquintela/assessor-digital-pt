@@ -1,0 +1,9 @@
+-- QUARENTENA · Gatilho em auth.users que cria perfil/papel/categorias em cada conta nova
+-- NÃO EXECUTÁVEL. Nenhuma instrução abaixo está ativa: todas as linhas começam por "--Q| ".
+-- Reativar qualquer item exige autorização SEPARADA do proprietário e uma nova versão do pacote.
+-- Se este ficheiro for executado por engano, a primeira instrução aborta a transação.
+DO $quarentena$ BEGIN RAISE EXCEPTION 'QUARENTENA %: não executar sem autorização separada', 'QZ-02_gatilho_auth_users.quarantine'; END $quarentena$;
+
+--Q| CREATE TRIGGER on_auth_user_created
+--Q|   AFTER INSERT ON auth.users
+--Q|   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
